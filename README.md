@@ -14,6 +14,5 @@ please contact us on the Spout developer forum :
 
 http://spout.zeal.co/forums/forum/spout/developer/
 
-------------------------------------------------------
 SpoutSDK is licenced under the Simplified BSD licence.
-------------------------------------------------------
+
