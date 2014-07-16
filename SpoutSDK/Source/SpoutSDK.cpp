@@ -4,12 +4,11 @@
 //
 //		The Main Spout class - used by Sender and Receiver classes
 //
-//		TODO	- remove all double defaults
-//				- further test memoryshare mode
-//
 //		Revisions :
 //		14-07-14	- SelectSenderPanel - return true was missing.
-//
+//		16-07-14	- deleted fbo & texture in SpoutCleanup - test for OpenGL context
+//					- used CopyMemory in FlipVertical instead of memcpy
+//					- cleanup
 // ================================================================
 /*
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
@@ -134,13 +133,13 @@ void Spout::ReleaseSender(DWORD dwMsec)
 		senders.ReleaseSenderName(g_SharedMemoryName); // if not registered it does not matter
 	}
 	SpoutCleanUp();
-	bInitialized = false; // LJ DEBUG
+	bInitialized = false; // LJ DEBUG - needs tracing
 	
-	Sleep(dwMsec); // LJ DEBUG
+	Sleep(dwMsec); // LJ DEBUG - not needed - debugging aid only
 
 }
 
-
+// LJ DEBUG - redundancy
 bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height)
 {
 	return OpenReceiver (sendername, width, height);
@@ -200,6 +199,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 
 			// Default invert flag is true so do the flip to get it the
 			// right way up unless the user has specifically indicated not to
+			// LJ DEBUG - needs tracing semder/receiver - possible double invert - default false?
 			if(bInvert) FlipVertical(pBits, width, height);
 
 			// Write the header plus the image data to shared memory
@@ -213,7 +213,6 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 	}
 	return false;
 } // end SendTexture
-
 
 
 // If the local texure has changed dimensions this will return false
@@ -441,7 +440,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 } // end ReceiveTexture (name, TextureID, TextureTarget)
 
 
-// Note RGB only. Any other format will crash.
+// Note was RGB only. Format passed should go through now and work.
 bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, unsigned char* pixels, int glFormat)
 {
 	bool bRet = false;
@@ -532,7 +531,8 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 
 		// If a valid pixel pointer was passed, read the shared texture into it
 		if(pixels) {
-			if(interop.ReadTexturePixels(pixels, g_Width, g_Height)) {
+			// Default format is GL_RGB
+			if(interop.ReadTexturePixels(pixels, g_Width, g_Height, glFormat)) {
 				return true;
 			}
 			else {
@@ -565,7 +565,7 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 				else {
 					// otherwise transfer the image data to the texture pixels - Note RGB only
 					src = rgbBuffer + sizeof(BITMAPINFOHEADER);
-					CopyMemory(pixels, src, width*height*3); // if format is RGB
+					CopyMemory(pixels, src, width*height*3); // assumes format is RGB
 				} // endif size matches
 			} // endif MemoryShare.ReadFromMemory
 			free((void *)rgbBuffer);
@@ -736,6 +736,8 @@ bool Spout::GetSenderName(int index, char* sendername, int sendernameMaxSize)
 	return false;
 }
 
+
+// Alll of these redundant - can be directly in the Receiver class . Change/Test
 //---------------------------------------------------------
 bool Spout::GetActiveSender(char* Sendername)
 {
@@ -1050,6 +1052,12 @@ bool Spout::ReleaseMemoryShare()
 void Spout::SpoutCleanUp(bool bExit)
 {
 	interop.CleanupInterop(bExit); // true means it is the exit so don't call wglDXUnregisterObjectNV
+	
+	// LJ DEBUG - Is an openGL context needed ?
+	if(wglGetCurrentContext() != NULL) {
+		if(g_fbo != 0) glDeleteFramebuffersEXT(1, &g_fbo);
+		if(g_fbo_texture != 0) glDeleteTextures(1, &g_fbo_texture);
+	}
 	g_fbo = 0;
 	g_fbo_texture = 0;
 	bDxInitOK = false;
@@ -1163,9 +1171,14 @@ bool Spout::FlipVertical(unsigned char *src, unsigned int width, unsigned int he
 		unsigned int line_t = (height-1)*pitch;
 
 		for(unsigned int y = 0; y<height/2; y++) {
+			CopyMemory(Mid, From + line_s, pitch);
+			CopyMemory(From + line_s, From + line_t, pitch);
+			CopyMemory(From + line_t, Mid, pitch);
+			/*
 			memcpy(Mid, From + line_s, pitch);
 			memcpy(From + line_s, From + line_t, pitch);
 			memcpy(From + line_t, Mid, pitch);
+			*/
 			line_s += pitch;
 			line_t -= pitch;
 		}

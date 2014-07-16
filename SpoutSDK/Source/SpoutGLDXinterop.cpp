@@ -27,7 +27,10 @@
 		INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 		LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+		========================
 
+		15-07-14	- ReadTexturePixels - allowed for variable OpenGL format instead of RGB only.
+					- Needs testing.
 */
 
 #include "spoutGLDXinterop.h"
@@ -108,21 +111,9 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// printf("spoutGLDXinterop::CreateInterop - format passed = %d, format used = %d\n", dwFormat, format);
 
 	// LJ DEBUG - testing
-	// format = DXGI_FORMAT_R8G8B8A8_UNORM; // crash not compatible with DX9
-	// format = DXGI_FORMAT_B8G8R8A8_UNORM; // works
-	// format = DXGI_FORMAT_R8G8B8A8_TYPELESS; // no sender running
-	// format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // crash
-	// format = DXGI_FORMAT_R8G8B8A8_UINT; // crash
-	// format = DXGI_FORMAT_R8G8B8A8_SNORM; // crash
-	// format = DXGI_FORMAT_R8G8B8A8_SINT; // crash
-	// format = DXGI_FORMAT_R8G8_B8G8_UNORM; // no sender running
-	// format = DXGI_FORMAT_G8R8_G8B8_UNORM; // invalid
+	// format = DXGI_FORMAT_R8G8B8A8_UNORM; // not compatible with DX9
+	// format = DXGI_FORMAT_B8G8R8A8_UNORM; // works with DX9
 	// format = DXGI_FORMAT_B8G8R8X8_UNORM; // crash
-	// format = DXGI_FORMAT_B8G8R8A8_TYPELESS; // no sender
-	// format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB; // no sender
-	// format = DXGI_FORMAT_B8G8R8X8_TYPELESS; // no sender
-	// format = DXGI_FORMAT_B8G8R8X8_UNORM_SRGB; // no sender
-
 
 	// Quit now if the receiver can't access the shared memory info of the sender
 	// Otherwise m_dxShareHandle is set by getSharedTextureInfo and is the
@@ -771,13 +762,15 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 
 
 //
-// COPY THE SHARED TEXTURE TO IMAGE PIXELS - NOTE RGB only
+// COPY THE SHARED TEXTURE TO IMAGE PIXELS - 15-07-14 allowed for variable format instead of RGB only
 // #define GL_RGB   0x1907
 // #define GL_RGBA  0x1908
 bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels, unsigned int width, unsigned int height, int glFormat)
 {
 	if(m_hInteropDevice == NULL || m_hInteropObject == NULL) return false;
 	if(width != m_TextureInfo.width || height != m_TextureInfo.height) return false;
+
+	// printf("ReadTexturePixels - format = [%x]\n", glFormat);
 
 	// retrieve opengl texture data directly to image pixels rather than via an fbo and texture
 
@@ -787,7 +780,8 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels, unsigned int wid
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 			glBindTexture(GL_TEXTURE_2D, m_glTexture);
-			glGetTexImage(GL_TEXTURE_2D, 0,  GL_RGB,  GL_UNSIGNED_BYTE, pixels);
+			// glGetTexImage(GL_TEXTURE_2D, 0,  GL_RGB,  GL_UNSIGNED_BYTE, pixels);
+			glGetTexImage(GL_TEXTURE_2D, 0,  glFormat,  GL_UNSIGNED_BYTE, pixels);
 			glBindTexture(GL_TEXTURE_2D, 0);
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 			// drop through to manage events and return true;

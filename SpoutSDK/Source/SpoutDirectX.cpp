@@ -1,6 +1,6 @@
 /**
 
-	spoutDirectX.cpp
+			spoutDirectX.cpp
 
 
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.

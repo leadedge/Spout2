@@ -160,9 +160,6 @@ bool spoutSenderNames::GetSenderInfo(char* sendername, unsigned int &width, unsi
 		height		  = (unsigned int)info.height;
 		dxShareHandle = (HANDLE)info.shareHandle;
 		dwFormat      = info.format;
-
-		// printf("getSenderInfo(%s) %dx%d\n", sendername, width, height);
-
 		return true;
 	}
 	return false;
@@ -887,7 +884,10 @@ bool spoutSenderNames::LockMap(char *mapname, HANDLE &hLock)
 	DWORD dwWaitResult;
 	char mutexname[256];
 
-	// LJ DEBUG 
+	// LJ DEBUG - locks do not seem to be necessary probably because
+	// most operations are read and write operations are infrequent.
+	// Needs careful testing to determine whether they will stop an operation
+	// and failsafe for functions if they do - timeout duration ?
 	hLock = NULL; // the unlock has no effect
 	return true;
 
@@ -938,7 +938,7 @@ void spoutSenderNames::ReleaseMapLock(char *mapname)
 //	Events are created or opended by different processes.
 //	https://en.wikipedia.org/wiki/Readers-writers_problem
 //
-//	LJ DEBUG - disabled until there is evidence of a problem with the interop lock
+//	LJ DEBUG - Used in SpoutSDK.cpp. Disabled until there is evidence of a problem with the interop lock
 //
 bool spoutSenderNames::InitEvents(char *eventname, HANDLE &hReadEvent, HANDLE &hWriteEvent)
 {
