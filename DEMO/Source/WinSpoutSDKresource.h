@@ -11,8 +11,9 @@
 #define IDM_SPOUTSENDERS		201
 #define IDM_TOPMOST				202
 #define IDM_FULLSCREEN			203
-#define IDM_CAPS				204
-#define IDM_ABOUT				205
+#define IDM_FITWINDOW			204
+#define IDM_CAPS				205
+#define IDM_ABOUT				206
 
 // Icon and bitmaps
 #define IDI_SPOUTICON			300

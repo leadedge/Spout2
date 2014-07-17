@@ -9,6 +9,10 @@
 
 	Licence : http://www.gamedev.net/page/resources/_/gdnethelp/gamedevnet-open-license-r2956
 
+	16-07-14	- removed resize of window to sender size for receiver
+				- allowed user resizeable window
+				- included option for preserving the aspect ratio of the sender
+
 */
 #define MAX_LOADSTRING 100
 #define PI 3.14159265358979323846f
@@ -31,9 +35,9 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // ================= CHANGE COMPILE FLAGS HERE =================
 // Rename the executable as necessary to get a sender/receiver pair
 //
-bool			bReceiver		= false;	// Compile for receiver (true) or sender (false)
+bool			bReceiver		= true;		// Compile for receiver (true) or sender (false)
 bool			bMemoryMode		= false;	// Use memory share specifically (default is false)
-bool			bDX9compatible	= false;	// (default) Compatible DX11 format for DX9 receivers to pick up
+bool			bDX9compatible	= false;	// (true - default) Compatible DX11 format for DX9 receivers to pick up
 // =============================================================
 
 //
@@ -59,6 +63,7 @@ bool			active		= true;			// Window Active Flag Set To TRUE By Default
 bool			bFullscreen	= false;		// Windowed Mode
 bool			bFsmenubar	= false;		// Space bar to show the taskbar when fullscreen
 bool			bTopmost	= false;		// Set as topmost window
+bool			bFitWindow	= true;			// Fit to window or preserve aspect ratio of the sender for a receiver
 
 HWND			g_hwnd=NULL;				// global handle to the OpenGL render window
 RECT			windowRect;					// Render window rectangle
@@ -98,6 +103,8 @@ INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK Capabilities(HWND, UINT, WPARAM, LPARAM);
 int FindPixelType();
 void doFullScreen(bool bFullscreen);
+void SaveOpenGLstate();
+void RestoreOpenGLstate();
 float ofGetElapsedTimef();
 void GLerror();
 bool OpenSender();
@@ -368,23 +375,11 @@ bool OpenReceiver()
 	// Returns true for success or false for initialisation failure.
 	//
 	if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height)) {
-
-		// Reset render window
-		// Note - g_Width and g_Height are the client rect
-		GetWindowRect(hWnd, &windowRect);
-		GetClientRect(hWnd, &clientRect);
-		AddX = (windowRect.right - windowRect.left) - (clientRect.right - clientRect.left);
-		AddY = (windowRect.bottom - windowRect.top) - (clientRect.bottom - clientRect.top);
-		SetWindowPos(hWnd, HWND_TOP, windowRect.left, windowRect.top, g_Width+AddX, g_Height+AddY, SWP_SHOWWINDOW);
-		// This causes a WM_SIZE message which then calls ReSizeGLScene and also resets texture size
-
 		// Update the local texture
 		InitTexture(g_Width, g_Height);
-
 		// LJ DEBUG !!!
 		width  = 0;
 		height = 0;
-
 		return true;
 	}
 
@@ -447,31 +442,22 @@ int DrawGLScene(GLvoid)
 		//		No sender detected
 		//
 		if(receiver.ReceiveTexture(g_SenderName, width, height, myTexture, GL_TEXTURE_2D)) {
-
 			// Received the texture OK, but the sender or texture dimensions could have changed
-			// !!! The global name is already changed but the width and height also may be changed
+			// The global name is already changed but the width and height also may be changed
 			if(width != g_Width || height != g_Height) {
-
 				// Reset the global width and height
 				g_Width  = width;
 				g_Height = height;
-
 				//	METHOD 1 - the local texture has to be resized.
 				InitTexture(g_Width, g_Height);
-
-				// Reset the render window unless full screen 
-				if(!bFullscreen) {
-					GetWindowRect(hWnd, &windowRect);
-					GetClientRect(hWnd, &clientRect);
-					AddX = (windowRect.right - windowRect.left) - (clientRect.right - clientRect.left);
-					AddY = (windowRect.bottom - windowRect.top) - (clientRect.bottom - clientRect.top);
-					SetWindowPos(hWnd, HWND_TOP, windowRect.left, windowRect.top, g_Width+AddX, g_Height+AddY, SWP_SHOWWINDOW);
-				} 
 				bInitialized = true;
 				return TRUE; // Return for the next round
 			} // endif sender has changed
 	
 			// Received OK at the current size
+
+			// LJ DEBUG
+			SaveOpenGLstate(); // Aspect ratio control
 
 			// METHOD 1 - use the local received texture
 			glPushMatrix();
@@ -486,6 +472,8 @@ int DrawGLScene(GLvoid)
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, 0);
 			glDisable(GL_TEXTURE_2D);
+
+			RestoreOpenGLstate();
 
 			/*
 			// METHOD 2 - Draw the shared texture
@@ -790,10 +778,10 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 	WindowPosTop  += ((WorkArea.bottom-WorkArea.top) - (WindowRect.bottom-WindowRect.top))/2;
 
 	dwStyle = WS_OVERLAPPEDWINDOW; // default style
-	
-	// Remove maximixe and minimize
-	dwStyle ^= WS_THICKFRAME;
+
+	// Remove maximixe and minimize for a sender
 	if(!bReceiver) {
+		dwStyle ^= WS_THICKFRAME; // Not resizeable
 		dwStyle ^= WS_MAXIMIZEBOX;
 		dwStyle ^= WS_MINIMIZEBOX;
 	}
@@ -831,7 +819,8 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 		RemoveMenu(hSubMenu,  IDM_SPOUTSENDERS, MF_BYCOMMAND);
 		RemoveMenu(hSubMenu,  0, MF_BYPOSITION); // and the separator
 		hSubMenu = GetSubMenu(hMenu, 1); // Window
-		RemoveMenu(hSubMenu,  IDM_FULLSCREEN, MF_BYCOMMAND);
+		RemoveMenu(hSubMenu, IDM_FULLSCREEN, MF_BYCOMMAND);
+		RemoveMenu(hSubMenu, IDM_FITWINDOW, MF_BYCOMMAND);
 	}
 
 	int bitsPerPixel = bits; // default passed int
@@ -999,6 +988,16 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,			// Handle For This Window
 					if(bReceiver) {
 						bFullscreen = true;
 						doFullScreen(bFullscreen);
+					}
+				break;
+
+				case IDM_FITWINDOW: // removed for a sender
+					if(bReceiver) {
+						bFitWindow = !bFitWindow;
+						if(bFitWindow) 
+							CheckMenuItem (hmenu, IDM_FITWINDOW, MF_BYCOMMAND | MF_CHECKED);
+						else 
+							CheckMenuItem (hmenu, IDM_FITWINDOW, MF_BYCOMMAND | MF_UNCHECKED);
 					}
 				break;
 
@@ -1253,6 +1252,8 @@ void doFullScreen(bool bFullscreen)
 		GetClientRect(hWnd, &clientRect);
 		AddX = (windowRect.right - windowRect.left) - (clientRect.right - clientRect.left);
 		AddY = (windowRect.bottom - windowRect.top) - (clientRect.bottom - clientRect.top);
+		nonFullScreenX = clientRect.right - clientRect.left;
+		nonFullScreenY = clientRect.bottom - clientRect.top;
 
 		// find the OpenGL render window
 		GLhdc = wglGetCurrentDC();
@@ -1303,8 +1304,14 @@ void doFullScreen(bool bFullscreen)
 			CheckMenuItem (hMenu, IDM_TOPMOST, MF_BYCOMMAND | MF_UNCHECKED);
 		}
 
+		if(bReceiver) {
+			if(bFitWindow) 
+				CheckMenuItem (hMenu, IDM_FITWINDOW, MF_BYCOMMAND | MF_CHECKED);
+		}
+
 		// Restore our window
-		SetWindowPos(g_hwnd, hWndMode, windowRect.left, windowRect.top, g_Width+AddX, g_Height+AddY, SWP_SHOWWINDOW);
+		// SetWindowPos(g_hwnd, hWndMode, windowRect.left, windowRect.top, g_Width+AddX, g_Height+AddY, SWP_SHOWWINDOW);
+		SetWindowPos(g_hwnd, hWndMode, windowRect.left, windowRect.top, nonFullScreenX+AddX, nonFullScreenY+AddY, SWP_SHOWWINDOW);
 
 		// Reset the window that was top before - could be ours
 		if(GetWindowLong(hwndForeground2, GWL_EXSTYLE) & WS_EX_TOPMOST)
@@ -1319,6 +1326,78 @@ void doFullScreen(bool bFullscreen)
 
 }
 
+
+void SaveOpenGLstate()
+{
+	float dim[4];
+	float vpScaleX, vpScaleY, vpWidth, vpHeight;
+	int vpx, vpy;
+
+	// save texture state, client state, etc.
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+
+	glMatrixMode(GL_TEXTURE);
+	glPushMatrix();
+	glLoadIdentity();
+
+	glPushAttrib(GL_TRANSFORM_BIT);
+
+	// find the current viewport dimensions in order to scale to the aspect ratio required
+	glGetFloatv(GL_VIEWPORT, dim);
+
+	// Fit to window
+	if(bFitWindow) {
+		// Scale width and height to the current viewport size
+		vpScaleX = dim[2]/(float)g_Width;
+		vpScaleY = dim[3]/(float)g_Height;
+		vpWidth  = (float)g_Width  * vpScaleX;
+		vpHeight = (float)g_Height * vpScaleY;
+		vpx = vpy = 0;
+	}
+	else {
+		// Preserve aspect ratio of the sender
+		// and fit to the width or the height
+		vpWidth = dim[2];
+		vpHeight = ((float)g_Height/(float)g_Width)*vpWidth;
+		if(vpHeight > dim[3]) {
+			vpHeight = dim[3];
+			vpWidth = ((float)g_Width/(float)g_Height)*vpHeight;
+		}
+		vpx = (int)(dim[2]-vpWidth)/2;;
+		vpy = (int)(dim[3]-vpHeight)/2;
+	}
+
+	glViewport((int)vpx, (int)vpy, (int)vpWidth, (int)vpHeight);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity(); // reset the current matrix back to its default state
+	glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0f, 1.0f);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+}
+
+
+void RestoreOpenGLstate()
+{
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+		
+	glPopAttrib();
+		
+	glMatrixMode(GL_TEXTURE);
+	glPopMatrix();
+
+	glPopClientAttrib();			
+	glPopAttrib();
+
+}
 
 
 // Message handler for about box.
@@ -1397,3 +1476,4 @@ LRESULT CALLBACK Capabilities(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 
 	return FALSE;
 }
+
