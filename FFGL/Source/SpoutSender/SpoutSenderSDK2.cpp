@@ -16,6 +16,7 @@
 	24.06.14 - major revision using SpoutSDK - renamed project to SpoutSenderSDK2
 	08-07-14 - Version 3.000
 	14.07-14 - changed to fixed SpoutSender object
+	16.07.14 - restored host fbo binding after writetexture
 
 */
 #include "SpoutSenderSDK2.h"
@@ -182,6 +183,9 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	// Now we can send the FFGL texture
 	sender.SendTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height);
 
+	// Important - Restore the FFGL host FBO binding becasue Spout uses a local fbo
+	if(pGL->HostFBO) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, pGL->HostFBO);
+
 	return FF_SUCCESS;
 
 }
@@ -291,8 +295,6 @@ void SpoutSenderSDK2::DrawTexture(GLuint TextureHandle, FFGLTexCoords maxCoords)
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable(GL_TEXTURE_2D);
-
-	// glDisable(GL_BLEND);
 
 }
 

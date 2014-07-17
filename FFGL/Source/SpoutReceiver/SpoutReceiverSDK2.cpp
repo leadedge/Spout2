@@ -12,6 +12,8 @@
 	26.06.14 - major change to use Spout SDK
 	08-07-14 - Version 3.000
 	14.07-14 - changed to fixed SpoutReceiver object
+	16.07.14 - restored host fbo binding after readtexture otherwise texture draw does not work
+			 - used a local texture for both textureshare and memoryshare
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -54,7 +56,7 @@ static CFFGLPluginInfo PluginInfo (
 	"Spout SDK DX11 receiver",					// Plugin description
 	#else
 	"OF49",										// Plugin unique ID
-	"SpoutReceiver2M",						// Plugin name (receive texture from DX)
+	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
 	1,											// API major version number
 	001,										// API minor version number
 	2,											// Plugin major version number
@@ -181,6 +183,7 @@ DWORD SpoutReceiverSDK2::DeInitGL()
 DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 {
 	bool bRet;
+
 	//
 	// Initialize a receiver
 	//
@@ -192,10 +195,9 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		if(receiver.CreateReceiver(UserSenderName, g_Width, g_Height)) {
 			strcpy_s(SenderName, UserSenderName);
 			// Did it initialized in Memory share mode ?
-			if(receiver.GetMemoryShareMode()) {
-				InitTexture(g_Width, g_Height); // initialize an RGB texture
-				bMemoryMode = true;
-			}
+			bMemoryMode = receiver.GetMemoryShareMode();
+			// Initialize a texture - Memorymode RGB or Texturemode RGBA
+			InitTexture();
 			bInitialized = true;
 			return FF_SUCCESS;
 		}
@@ -208,33 +210,24 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	//	Success : Returns the sender name, width and height
 	//	Failure : No sender detected
 	//
-	if(bMemoryMode)
-		bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D);
-	else
-		bRet = receiver.ReceiveTexture(SenderName, width, height);
-
+	SaveOpenGLstate(); // Aspect ratio control
+	bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D);
+	// Important - Restore the FFGL host FBO binding before the draw
+	if(pGL->HostFBO) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, pGL->HostFBO);
 	if(bRet) {
 		// Received the texture OK, but the sender or texture dimensions could have changed
 		// Reset the global width and height so that the viewport can be set for aspect ratio control
 		if(width != g_Width || height != g_Height) {
 			g_Width  = width;
 			g_Height = height;
-			// Reset the local texture for memoryshare mode
-			if(bMemoryMode)
-				InitTexture(g_Width, g_Height);
+			// Reset the local texture
+			InitTexture();
 			return FF_SUCCESS;
 		} // endif sender has changed
-	
-		SaveOpenGLstate(); // Aspect ratio control
-
-		if(bMemoryMode) 
-			DrawTexture(myTexture);
-		else
-			receiver.DrawSharedTexture();
-
-		RestoreOpenGLstate();
-
+		// All matches so draw the texture
+		DrawTexture(myTexture);
 	}
+	RestoreOpenGLstate();
 
 	return FF_SUCCESS;
 
@@ -423,30 +416,33 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 }
 
 
-// Initialize a local RGB texture for memoryshare mode
-void SpoutReceiverSDK2::InitTexture(int width, int height)
+// Initialize a local texture
+void SpoutReceiverSDK2::InitTexture()
 {
 	if(myTexture != 0) glDeleteTextures(1, &myTexture);
 
 	glGenTextures(1, &myTexture);
 	glBindTexture(GL_TEXTURE_2D, myTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	if(bMemoryMode)
+		glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGB, g_Width, g_Height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	else
+		glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGBA, g_Width, g_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
 }
 
 
-// Draw a memoryshare texture
-void SpoutReceiverSDK2::DrawTexture(GLuint TextureHandle)
+// Draw a texture
+void SpoutReceiverSDK2::DrawTexture(GLuint TextureID)
 {
 	glPushMatrix();
 	glColor4f(1.f, 1.f, 1.f, 1.f);
 	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, TextureHandle); // bind our local texture
+	glBindTexture(GL_TEXTURE_2D, TextureID); // bind our local texture
 	glBegin(GL_QUADS);
 	glTexCoord2f(0.0, 1.0);	glVertex2f(-1.0,-1.0); // lower left
 	glTexCoord2f(0.0, 0.0);	glVertex2f(-1.0, 1.0); // upper left
@@ -456,7 +452,6 @@ void SpoutReceiverSDK2::DrawTexture(GLuint TextureHandle)
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable(GL_TEXTURE_2D);
 	glPopMatrix();
-
 }
 
 //

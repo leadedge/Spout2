@@ -56,7 +56,7 @@ protected:
 
 	void SaveOpenGLstate();
 	void RestoreOpenGLstate();
-	void InitTexture(int width, int height);
+	void InitTexture();
 	void DrawTexture(GLuint TextureHandle);
 
 };
