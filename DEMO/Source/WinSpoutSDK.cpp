@@ -12,6 +12,7 @@
 	16-07-14	- removed resize of window to sender size for receiver
 				- allowed user resizeable window
 				- included option for preserving the aspect ratio of the sender
+	19-07-14	- corrected rasterpos coords for text
 
 */
 #define MAX_LOADSTRING 100
@@ -472,6 +473,7 @@ int DrawGLScene(GLvoid)
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, 0);
 			glDisable(GL_TEXTURE_2D);
+			glPopMatrix();
 
 			RestoreOpenGLstate();
 
@@ -606,6 +608,9 @@ int DrawGLScene(GLvoid)
 
 void ShowReceiverInfo()
 {
+	GetClientRect(hWnd, &clientRect);
+	int width = clientRect.right - clientRect.left;
+	int height = clientRect.bottom - clientRect.top;
 
 	// Show what a receiver is receiving
 	if(!bFullscreen) {
@@ -613,7 +618,7 @@ void ShowReceiverInfo()
 		glMatrixMode( GL_PROJECTION );
 		glPushMatrix();
 		glLoadIdentity();
-		gluOrtho2D( 0, g_Width, 0, g_Height );
+		gluOrtho2D( 0, width, 0, height );
 		glMatrixMode( GL_MODELVIEW );
 		glPushMatrix();
 		glLoadIdentity();
@@ -621,33 +626,31 @@ void ShowReceiverInfo()
 
 		if(bInitialized) {
 			if(bMemoryMode) {
-				glRasterPos2i( 30, g_Height-30 );
-				glPrint("Memoryshare Receiver", 0.0f);
+				glRasterPos2i( 20, height-30 );
+				glPrint("Memoryshare Receiver - fps %2.0f", frameRate, 0.0f);
 			}
 			else {
-				glRasterPos2i( 30, g_Height-30 );
-				glPrint("Receiving from : [%s]", g_SenderName, 0.0f);
-				glRasterPos2i( 30, 40 );
+				glRasterPos2i( 20, height-30 );
+				glPrint("Receiving from : [%s] - fps %2.0f", g_SenderName, frameRate, 0.0f);
+				glRasterPos2i( 20, 40 );
 				glPrint("RH click to select  a sender", 0.0f);
 			}
-			glRasterPos2i( 30, 20 );
+			glRasterPos2i( 20, 20 );
  			glPrint("' f  ' full screen", 0.0f);
 		}
 		else {
 			// Indicate no sender
 			if(bMemoryMode) {
-				glRasterPos2i( 30, g_Height-30 );
+				glRasterPos2i( 20, height-30 );
 				glPrint("Memoryshare Receiver", 0.0f);
 			}
 			else {
-				glRasterPos2i( 30, g_Height-30 );
+				glRasterPos2i( 20, height-30 );
 				glPrint("Textureshare receiver", 0.0f);
 			}
-			glRasterPos2i( 30, g_Height-50 );
+			glRasterPos2i( 20, height-50 );
 			glPrint("No sender detected", 0.0f);
 		}
-		glRasterPos2i( g_Width-100, g_Height-30 );
-		glPrint("fps %2.0f", frameRate, 0.0f);
 
 		glPopMatrix();
 		glMatrixMode( GL_PROJECTION );
@@ -661,30 +664,32 @@ void ShowReceiverInfo()
 
 void ShowSenderInfo()
 {
+
+	GetClientRect(hWnd, &clientRect);
+	int width = clientRect.right - clientRect.left;
+	int height = clientRect.bottom - clientRect.top;
+
 	// Show what a sender is sending
 	if(!bFullscreen) {
 		glMatrixMode( GL_PROJECTION ); // Set matrix mode
 		glPushMatrix();
 		// Set an ortho projection based on window size
 		glLoadIdentity();
-		gluOrtho2D( 0, g_Width, 0, g_Height );
+		gluOrtho2D( 0, width, 0, height );
 		glMatrixMode( GL_MODELVIEW ); // Switch back to model-view matrix
 		glPushMatrix();
 		glLoadIdentity();
 		glColor3f(1.0f, 1.0f, 1.0f);
 
 		if(bMemoryMode) {
-			glRasterPos2i( 30, g_Height-30 );
-			glPrint("Memoryshare Sender", 0.0f);
+			glRasterPos2i( 20, height-30 );
+			glPrint("Memoryshare Sender - fps %2.0f", frameRate, 0.0f);
 		}
 		else {
-			glRasterPos2i( 30, g_Height-30 );
-			glPrint("Sending as : [%s]", g_SenderName, 0.0f);
+			glRasterPos2i( 20, height-30 );
+			glPrint("Sending as : [%s] - fps %2.0f", g_SenderName, frameRate, 0.0f);
 		}
 		
-		glRasterPos2i( g_Width-100, g_Height-30 );
-		glPrint("fps %2.0f", frameRate, 0.0f);
-
 		glPopMatrix();
 		glMatrixMode( GL_PROJECTION );
 		glPopMatrix();
