@@ -87,6 +87,15 @@ class spoutGLDXinterop {
 		spoutSenderNames senders;	// Sender management
 		spoutDirectX spoutdx;	// DirectX class
 
+		// 21.07.14 - made public for debugging
+		GLuint	m_glTexture;		// the linked OpenGL texture
+		HANDLE	m_hInteropDevice;	// handle to the DX/GL interop device
+		HANDLE	m_hInteropObject;	// handle to the DX/GL interop object (the shared texture)
+		// Locks for gl/dx interop functions
+		HRESULT LockInteropObject(HANDLE hDevice, HANDLE *hObject);
+		HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE *hObject);
+
+
 	protected:
 
 		bool m_bInitialized;	// this instance initialized flag
@@ -110,18 +119,18 @@ class spoutGLDXinterop {
 		bool CreateDX11device(HWND hWnd); // Create a DX11 device
 		HANDLE LinkGLDXtextures(HANDLE hInteropDevice, ID3D11Texture2D* pSharedTexture, HANDLE dxShareHandle, GLuint glTextureID); // , HANDLE &hInteropObject);
 
-		GLuint	m_glTexture;		// the OpneGL texture linked to it
-		GLuint	m_fbo;				// a local frame buffer object used for texture transfers
-		HANDLE	m_hInteropDevice;	// handle to the DX/GL interop device
-		HANDLE	m_hInteropObject;	// handle to the DX/GL interop object (the shared texture)
+		// GLuint	m_glTexture;		// the OpneGL texture linked to it
+		// GLuint	m_fbo;				// a local frame buffer object used for texture transfers
+		// HANDLE	m_hInteropDevice;	// handle to the DX/GL interop device
+		// HANDLE	m_hInteropObject;	// handle to the DX/GL interop object (the shared texture)
 		HANDLE	m_dxShareHandle;	// shared DX texture handle
 
 		bool getSharedTextureInfo(char* sharedMemoryName);
 		bool setSharedTextureInfo(char* sharedMemoryName);
 
 		// Locks for gl/dx interop functions
-		HRESULT LockInteropObject(HANDLE hDevice, HANDLE *hObject);
-		HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE *hObject);
+		// HRESULT LockInteropObject(HANDLE hDevice, HANDLE *hObject);
+		// HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE *hObject);
 		
 		// Texture access event lock handles
 		HANDLE	m_hReadEvent;  // this instance handle to read event

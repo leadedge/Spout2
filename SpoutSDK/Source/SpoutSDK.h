@@ -135,8 +135,6 @@ DXGI_FORMAT_R8G8B8A8_TYPELESS				= 27,
 	DWORD g_Format;
 	GLuint g_TexID;
 	HWND g_hWnd;
-	GLuint g_fbo; 
-	GLuint g_fbo_texture;
 	bool bMemory; // force memoryshare flag
 	bool bGLDXcompatible;
 	bool bMemoryShareInitOK;
@@ -154,7 +152,6 @@ DXGI_FORMAT_R8G8B8A8_TYPELESS				= 27,
 	bool InitSender(HWND hwnd, char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bMemoryMode);
 	bool InitMemoryShare(bool bReceiver);
 	bool ReleaseMemoryShare();
-	bool InitTexture();
 	void SpoutCleanUp(bool bExit = false);
 	bool FlipVertical(unsigned char *src, unsigned int width, unsigned int height);
 	bool CheckSpoutPanel();

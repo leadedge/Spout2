@@ -9,6 +9,8 @@
 //		16-07-14	- deleted fbo & texture in SpoutCleanup - test for OpenGL context
 //					- used CopyMemory in FlipVertical instead of memcpy
 //					- cleanup
+//		18-07-14	- removed local fbo and texture - used in the interop class now
+//
 // ================================================================
 /*
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
@@ -43,8 +45,6 @@ Spout::Spout()
 	g_Format			= 0;
 	g_TexID				= 0;
 	g_hWnd				= NULL;		// handle to render window
-	g_fbo				= NULL;		// for copying and inverting the texture
-	g_fbo_texture		= NULL;
 	g_SharedMemoryName[0] = 0;		// No name to start 
 	bDxInitOK			= false;
 	bMemoryShareInitOK	= false;
@@ -109,8 +109,6 @@ bool Spout::UpdateSender(char *sendername, unsigned int width, unsigned int heig
 		// Get the new sender width, height and share handle into local copy
 		senders.GetSenderInfo(g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
 		// printf("Spout::UpdateSender (%s) %dx%d\n", g_SharedMemoryName, g_Width, g_Height);
-		// set up the local fbo and texture for texture transfers
-		InitTexture(); 
 		return true;
 	}
 	else {
@@ -148,7 +146,7 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 
 void Spout::ReleaseReceiver() 
 {
-	if(bDxInitOK || bMemoryShareInitOK)
+	// can be done without a check here if(bDxInitOK || bMemoryShareInitOK)
 		SpoutCleanUp();
 }
 
@@ -384,6 +382,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 
 		// If a valid texture was passed, read the shared texture into it
 		if(TextureID > 0 && TextureTarget > 0) {
+
 			if(interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height)) {
 				return true;
 			}
@@ -392,6 +391,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 				return false;
 			}
 		}
+
 		return true;
 	} // was initialized in texture mode
 	else {
@@ -882,6 +882,7 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 	//	- the user memory mode flag is not set
 	//	- Hardware is compatible
 	if(bGLDXcompatible && !bMemoryMode) {
+		
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
 		interop.CreateInterop(g_hWnd, theSendername, theWidth, theHeight, dwFormat, false); // False for a sender
 
@@ -890,8 +891,6 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 				
 		// Get the sender width, height and share handle into local copy
 		senders.GetSenderInfo(g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
-
-		InitTexture(); // set up the local fbo and texture for texture transfers
 
 		bDxInitOK			= true;
 		bMemoryShareInitOK	= false;
@@ -946,7 +945,7 @@ bool Spout::InitReceiver (HWND hwnd, char* theSendername, unsigned int theWidth,
 	// bChangeRequested is set when the Sender name, image size or share handle changes
 	// or the user selects another Sender - everything has to be reset if already initialized
 	if(bChangeRequested) {
-		ReleaseMemoryShare();
+		// ReleaseMemoryShare(); // done in spoutcleanup
 		SpoutCleanUp();
 		bDxInitOK			= false;
 		bMemoryShareInitOK	= false;
@@ -966,6 +965,7 @@ bool Spout::InitReceiver (HWND hwnd, char* theSendername, unsigned int theWidth,
 		if(!senders.FindSender(sendername, width, height, sharehandle, format)) {
 			return false;
 		}
+		
 		// Initialize the receiver interop (this will create globals local to the interop class)
 		interop.CreateInterop(hwnd, sendername, width, height, format, true); // true meaning receiver
 
@@ -975,8 +975,6 @@ bool Spout::InitReceiver (HWND hwnd, char* theSendername, unsigned int theWidth,
 		g_ShareHandle = sharehandle;
 		g_Format = format;
 		strcpy_s(g_SharedMemoryName, 256, sendername);
-
-		InitTexture();
 
 		bDxInitOK = true;
 		bMemoryShareInitOK = false;
@@ -1053,13 +1051,6 @@ void Spout::SpoutCleanUp(bool bExit)
 {
 	interop.CleanupInterop(bExit); // true means it is the exit so don't call wglDXUnregisterObjectNV
 	
-	// LJ DEBUG - Is an openGL context needed ?
-	if(wglGetCurrentContext() != NULL) {
-		if(g_fbo != 0) glDeleteFramebuffersEXT(1, &g_fbo);
-		if(g_fbo_texture != 0) glDeleteTextures(1, &g_fbo_texture);
-	}
-	g_fbo = 0;
-	g_fbo_texture = 0;
 	bDxInitOK = false;
 	g_ShareHandle = NULL;
 	g_Width	= 0;
@@ -1118,38 +1109,6 @@ bool Spout::CheckSpoutPanel()
 		return bRet;
 } // ========= END USER SELECTION PANEL =====
 
-//
-//	InitTexture
-//
-bool Spout::InitTexture()
-{
-	// Reset fbo and texture
-	if(g_fbo != 0) glDeleteFramebuffersEXT(1, &g_fbo);
-	if(g_fbo_texture != 0) glDeleteTextures(1, &g_fbo_texture);
-	g_fbo = 0;
-	g_fbo_texture =0;
-
-	// generate framebuffer object for copying textures
-	glGenFramebuffersEXT(1, &g_fbo);
-
-	// Create a standard texture with the width and height of our window
-	// to attach to the fbo or to get information into
-	// RGB for memoryshare, otherwise RGBA
-	glGenTextures(1, &g_fbo_texture); // Generate one texture
-
-	glBindTexture(GL_TEXTURE_2D, g_fbo_texture);
-	if(bDxInitOK) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_Width, g_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	else		  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_Width, g_Height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	// Setup the basic texture parameters
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	return true;
-
-}
 
 
 // Adapted from FreeImage function

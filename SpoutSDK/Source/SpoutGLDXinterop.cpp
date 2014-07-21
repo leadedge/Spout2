@@ -30,7 +30,10 @@
 		========================
 
 		15-07-14	- ReadTexturePixels - allowed for variable OpenGL format instead of RGB only.
-					- Needs testing.
+					- Needs testing. 
+					- TODO - variable gl format for WriteTexturePixels
+		21.07.14	- removed local fbo and replaced with temporary fbo within
+					  texture functions due to problems with Max / Jitter
 */
 
 #include "spoutGLDXinterop.h"
@@ -39,7 +42,6 @@ spoutGLDXinterop::spoutGLDXinterop() {
 
 	m_hWnd				= NULL;
 	m_glTexture			= 0;
-	m_fbo				= 0;
 	m_hInteropObject	= NULL;
 	m_hSharedMemory		= NULL;
 	m_hInteropDevice	= NULL;
@@ -140,10 +142,6 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	if(m_glTexture) glDeleteTextures(1, &m_glTexture);
 	glGenTextures(1, &m_glTexture);
 
-	// Create a local fbo for copying textures
-	if(m_fbo) glDeleteFramebuffersEXT(1, &m_fbo);
-	glGenFramebuffersEXT(1, &m_fbo); 
-
 	// Create or use a shared DirectX texture that will be linked to the OpenGL texture
 	// and get it's share handle for sharing textures
 	if (bReceive) {
@@ -159,6 +157,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 			return false;
 		}
 	}
+
 	// Link the shared DirectX texture to the OpenGL texture
 	// This registers for interop and associates the opengl texture with the dx texture
 	// by calling wglDXRegisterObjectNV which returns a handle to the interop object
@@ -168,7 +167,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	if(m_hInteropObject == NULL) {
 		return false;
 	}
-
+	
 	// Now the global shared texture handle - m_dxShareHandle - has been set so a sender can be created
 	// this creates the sender shared memory map and registers the sender
 	if (!bReceive) senders.CreateSender(sendername, width, height, m_dxShareHandle, format);
@@ -280,15 +279,12 @@ void spoutGLDXinterop::CleanupInterop(bool bExit)
 			wglDXCloseDeviceNV(m_hInteropDevice);
 		}
 		if (m_glTexture > 0) glDeleteTextures(1, &m_glTexture);
-		if (m_fbo > 0) glDeleteFramebuffersEXT(1, &m_fbo);
 		m_glTexture = 0;
-		m_fbo = 0;
 	} // endif there is an opengl contex
 
 	m_hInteropDevice = NULL;
 	m_hInteropObject = NULL;
 	m_glTexture = 0;
-	m_fbo = 0;
 
 	CleanupDirectX();
 
@@ -599,6 +595,8 @@ bool spoutGLDXinterop::LoadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 //
 bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert)
 {
+	GLuint tempFBO;
+
 	if(m_hInteropDevice == NULL || m_hInteropObject == NULL) {
 		return false;
 	}
@@ -607,16 +605,34 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 		return false;
 	}
 
+	// Use a local fbo due to problems with Max Jitter
+	glGenFramebuffersEXT(1, &tempFBO);
+
+	/* 
+	// Basic code for debugging
+	wglDXLockObjectsNV(m_hInteropDevice, 1, &m_hInteropObject);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, tempFBO);
+	glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, TextureTarget, TextureID, 0);
+	glBindTexture(GL_TEXTURE_2D, m_glTexture);
+	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+	glBindTexture(GL_TEXTURE_2D, 0);	
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	wglDXUnlockObjectsNV(m_hInteropDevice, 1, &m_hInteropObject);
+	glDeleteFramebuffersEXT(1, &tempFBO);
+	tempFBO = 0;
+	return true;
+	*/
+
 	// Wait for reader to stop reading
 	// if(senders.CheckAccess(m_hReadEvent)) { // go ahead and write to the shared texture
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
-			// m_fbo is a  local FBO and width/height are the dimensions of the texture.
+			// fbo is a  local FBO and width/height are the dimensions of the texture.
 			// "TextureID" is the source texture, and "m_glTexture" is destination texture
 			// which should have been already created
-
 			// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+			// glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, tempFBO);
 
 			// Attach the Input texture to the color buffer in our frame buffer - note texturetarget 
 			#ifdef USE_GLEW
@@ -648,7 +664,6 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 										 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
 				} 
 				else { // no blitting supported - directly copy to texture line by line to invert
-
 					// bind dx texture (destination)
 					glBindTexture(GL_TEXTURE_2D, m_glTexture);
 					// copy from framebuffer (m_fbo here) to the bound texture
@@ -668,18 +683,25 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 			// unbind the shared texture
 			glBindTexture(GL_TEXTURE_2D, 0);
+
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
-		// if interop lock failed just keep going
+
 		// Allow readers and writers access
 		// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
+
+		glDeleteFramebuffersEXT(1, &tempFBO);
+		tempFBO = 0;
+
+
 		return true;
 	// }
 
 	// There is no reader
 	// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
-	return false;
+	//return false;
+
 
 } // end WriteTexture
 
@@ -721,6 +743,10 @@ bool spoutGLDXinterop::WriteTexturePixels(unsigned char *pixels, unsigned int wi
 // COPY THE SHARED TEXTURE TO AN OUTPUT TEXTURE
 bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height)
 {
+
+	// Local fbo
+	GLuint tempFBO;
+
 	if(m_hInteropDevice == NULL || m_hInteropObject == NULL) {
 		// printf("spoutGLDXinterop::ReadTexture- error 1\n");
 		return false;
@@ -731,32 +757,51 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 		return false;
 	}
 
+	glGenFramebuffersEXT(1, &tempFBO);
+
+	// printf("spoutGLDXinterop::ReadTexture [%d][%x] %dx%d\n", TextureID, TextureTarget, width, height);
+
 	// Wait for writer to signal ready to read
 	// if(senders.CheckAccess(m_hWriteEvent)) { // Read the shared texture
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+
 			// Bind our local fbo
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
+			// glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, tempFBO); 
 			// Attach the shared texture to the color buffer in our frame buffer
-			// needs GL_TEXTURE_2D as a target for our shared ttexture
+			// needs GL_TEXTURE_2D as a target for our shared texture
 			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
-			// bind output texture (destination)
-			glBindTexture(TextureTarget, TextureID);
-			// copy from framebuffer (fbo) to the bound texture
-			glCopyTexSubImage2D(TextureTarget, 0, 0, 0, 0, 0, width, height);
-			// unbind the texture
-			glBindTexture(TextureTarget, 0);
+			// LJ DEBUG
+			if(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
+				// bind output texture (destination)
+				glBindTexture(TextureTarget, TextureID);
+				// copy from framebuffer (fbo) to the bound texture
+				glCopyTexSubImage2D(TextureTarget, 0, 0, 0, 0, 0, width, height);
+				// unbind the texture
+				glBindTexture(TextureTarget, 0);
+			}
+			// else {
+				// printf("spoutGLDXinterop::ReadTexture - fbo not complete\n");
+			// }
 			// Unbind our fbo
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); 
+
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
+		// else {
+			// printf("spoutGLDXinterop::ReadTexture - lock error2\n");
+		// }
 		// Allow readers and writers access
 		// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
-		return true;
+		// return true;
 	// }
 
-	// return false;
+	glDeleteFramebuffersEXT(1, &tempFBO);
+	tempFBO = 0;
+
+	return true;
 
 } // end ReadTexture
 
