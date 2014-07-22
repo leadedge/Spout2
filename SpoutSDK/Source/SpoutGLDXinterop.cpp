@@ -40,6 +40,8 @@
 
 spoutGLDXinterop::spoutGLDXinterop() {
 
+	// printf("spoutGLDXinterop::spoutGLDXinterop()\n");
+
 	m_hWnd				= NULL;
 	m_glTexture			= 0;
 	m_hInteropObject	= NULL;
@@ -48,6 +50,12 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	
 	m_hReadEvent		= NULL;
 	m_hWriteEvent		= NULL;
+
+	// DX9
+	bUseDX9				= false; // Use DX9 or DX11
+	m_pD3D				= NULL;
+	m_pDevice			= NULL;
+	m_dxTexture			= NULL;
 	
 	// DX11
 	g_pd3dDevice		= NULL;
@@ -72,9 +80,42 @@ spoutGLDXinterop::~spoutGLDXinterop() {
 }
 
 // For external access so that the local global variables are used
-bool spoutGLDXinterop::OpenDirectX(HWND hWnd)
+bool spoutGLDXinterop::OpenDirectX(HWND hWnd, bool bDX9)
 {
-	return (OpenDirectX11(hWnd, g_pd3dDevice, m_hInteropDevice));
+	if(bDX9) {
+
+		// Already initialized ?
+		if(m_pD3D != NULL) {
+			// printf("    DX9 - OpenDirectX already initialized\n");
+			// printf("	m_pDevice = %x, m_pD3D = %x\n", m_pDevice, m_pD3D);
+			return true;
+		}
+
+		// printf("OpenDirectX - DirectX 9\n");
+
+		// return (OpenDirectX9(hWnd, ));
+		// Create a IDirect3D9Ex object if not already created
+		if(!m_pD3D) {
+			// printf("    DX9 - spoutdx.CreateDX9object()\n");
+			m_pD3D = spoutdx.CreateDX9object(); 
+		}
+
+		if(m_pD3D == NULL) return false;
+		// Create a DX9 device
+		if(!m_pDevice) {
+			// printf("    DX9 - spoutdx.CreateDX9device()\n");
+			m_pDevice = spoutdx.CreateDX9device(m_pD3D, hWnd); 
+		}
+		if(m_pDevice == NULL) {
+			// printf("    NULL m_pDevice\n");
+			return false;
+		}
+		return true;
+	}
+	else {
+		// printf("OpenDirectX - DirectX 11\n");
+		return (OpenDirectX11(hWnd, g_pd3dDevice, m_hInteropDevice));
+	}
 }
 
 
@@ -83,6 +124,12 @@ bool spoutGLDXinterop::OpenDirectX(HWND hWnd)
 // Returns a pointer to the DirectX device and a handle to the GLDX interop device
 bool spoutGLDXinterop::OpenDirectX11(HWND hWnd, ID3D11Device* &pd3dDevice, HANDLE &hInteropDevice)
 {
+
+	if(pd3dDevice != NULL)
+		return true;
+
+	// printf("OpenDirectX - DirectX 11\n");
+
 	// Create a DirectX 11 device
 	if(!pd3dDevice) pd3dDevice = spoutdx.CreateDX11device(hWnd);
 	if(pd3dDevice == NULL) return false;
@@ -98,7 +145,11 @@ bool spoutGLDXinterop::OpenDirectX11(HWND hWnd, ID3D11Device* &pd3dDevice, HANDL
 //
 bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive)
 {
-	DXGI_FORMAT format = DX11format; // DXGI_FORMAT_B8G8R8A8_UNORM;
+	
+	// DXGI_FORMAT format = DX11format; // DXGI_FORMAT_B8G8R8A8_UNORM;
+	DWORD format;
+	D3DFORMAT DX9format = D3DFMT_A8R8G8B8; // fixed format for DX9 (21)
+
 
 	// printf("spoutGLDXinterop::CreateInterop (%s, %d, %d, %d, %d)\n", sendername, width, height, dwFormat, bReceive);
 
@@ -108,14 +159,24 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 		return false;
 	}
 
-	if(dwFormat > 0) format = (DXGI_FORMAT)dwFormat;
-
-	// printf("spoutGLDXinterop::CreateInterop - format passed = %d, format used = %d\n", dwFormat, format);
+	if(bUseDX9) {
+		// DirectX 9
+		format = (DWORD)DX9format;
+		// printf("spoutGLDXinterop::CreateInterop - DX9 format used = %d\n", format);
+	}
+	else {
+		// DirectX 11
+		if(dwFormat > 0) 
+			format = (DXGI_FORMAT)dwFormat;
+		else
+			format = (DWORD)DX11format;
+		// printf("spoutGLDXinterop::CreateInterop DX11 - format passed = %d, format used = %d\n", dwFormat, format);
+	}
 
 	// LJ DEBUG - testing
-	// format = DXGI_FORMAT_R8G8B8A8_UNORM; // not compatible with DX9
-	// format = DXGI_FORMAT_B8G8R8A8_UNORM; // works with DX9
-	// format = DXGI_FORMAT_B8G8R8X8_UNORM; // crash
+	// format = DXGI_FORMAT_R8G8B8A8_UNORM; // not compatible with DX9 (28)
+	// format = DXGI_FORMAT_B8G8R8A8_UNORM; // works with DX9 (87)
+	// format = DXGI_FORMAT_B8G8R8X8_UNORM; // crash (88)
 
 	// Quit now if the receiver can't access the shared memory info of the sender
 	// Otherwise m_dxShareHandle is set by getSharedTextureInfo and is the
@@ -124,13 +185,28 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 		return false;
 	}
 
+	// Check the sender format for a DX9 receiver
+	// It can only be from a DX9 sender (format 0)
+	// or from a compatible DX11 sender (format 87)
+	if(bReceive && bUseDX9) {
+		if(!(m_TextureInfo.format == 0 || m_TextureInfo.format == 87)) {
+			// printf("Incompatible format %d \n", m_TextureInfo.format);
+			return false;
+		}
+	}
+
+	// printf("spoutGLDXinterop::CreateInterop - m_dxShareHandle = %x\n", m_dxShareHandle);
+
 	// Make sure DirectX has been initialized
 	// Also opens the GLDX interop (wglDXOpenDeviceNV)
 	// Returns a pointer to the DirectX11 device (g_pd3dDevice)
 	// Returns a handle to a GL/DirectX interop device ( m_hInteropDevice)
-	if(!OpenDirectX11(hWnd, g_pd3dDevice, m_hInteropDevice)) {
+	// if(!OpenDirectX11(hWnd, g_pd3dDevice, m_hInteropDevice)) {
+	// printf("    OpenDirectX(%d)\n", bUseDX9);
+	if(!OpenDirectX(hWnd, bUseDX9)) {
 		return false;
 	}
+	// printf("OpenDirectX OK\n");
 
 	// Allow for sender updates
 	if(m_hInteropDevice != NULL &&  m_hInteropObject != NULL) {
@@ -142,6 +218,10 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	if(m_glTexture) glDeleteTextures(1, &m_glTexture);
 	glGenTextures(1, &m_glTexture);
 
+	if(bUseDX9)	CreateDX9interop(sendername, width, height, format, bReceive);
+	else CreateDX11interop(sendername, width, height, format, bReceive);
+
+	/*
 	// Create or use a shared DirectX texture that will be linked to the OpenGL texture
 	// and get it's share handle for sharing textures
 	if (bReceive) {
@@ -153,7 +233,8 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 		// otherwise create a new shared DirectX resource g_pSharedTexture 
 		// with local handle m_dxShareHandle for a sender
 		m_dxShareHandle = NULL; // A sender creates a new texture with a new share handle
-		if(!spoutdx.CreateSharedDX11Texture(g_pd3dDevice, width, height, format, &g_pSharedTexture, m_dxShareHandle)) {
+		// if(!spoutdx.CreateSharedDX11Texture(g_pd3dDevice, width, height, (DXGI_FORMAT)format, &g_pSharedTexture, m_dxShareHandle)) {
+		if(!spoutdx.CreateSharedDX11Texture(g_pd3dDevice, width, height, DX11format, &g_pSharedTexture, m_dxShareHandle)) {
 			return false;
 		}
 	}
@@ -167,7 +248,8 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	if(m_hInteropObject == NULL) {
 		return false;
 	}
-	
+	*/
+
 	// Now the global shared texture handle - m_dxShareHandle - has been set so a sender can be created
 	// this creates the sender shared memory map and registers the sender
 	if (!bReceive) senders.CreateSender(sendername, width, height, m_dxShareHandle, format);
@@ -205,7 +287,133 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 
 }
 
+
 //
+// =================== DX9 ===============================
+//
+//
+//		CreateDX9interop()
+//	
+//		bReceive		when receiving a texture from a DX application this must be set to true (default)
+//						when sending a texture from GL to the DX application, set to false
+//
+bool spoutGLDXinterop::CreateDX9interop(char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive) 
+{
+
+	bool bRet;
+	D3DFORMAT format;
+
+	format = (D3DFORMAT)dwFormat;
+
+	// printf("CreateDX9interop(%s, %dx%d, format (%d) bReceive = %d\n", sendername, width, height, dwFormat, bReceive);
+
+	// The shared texture handle of the Sender texture "m_dxShareHandle" 
+	// is already set by getSharedTextureInfo, but should be NULL for a sender
+	if (!bReceive) {
+		// Create a new shared DirectX resource m_dxTexture 
+		// with new local handle m_dxShareHandle for a sender
+		// If an existing texture exists, CreateTexture can fail with and "unknown error"
+		// so delete any existing texture object
+		// printf("    CreateDX9interop 1\n");
+		if (m_dxTexture) {
+			m_dxTexture->Release();
+			m_dxTexture = NULL;
+		}
+		// printf("    CreateDX9interop 2\n");
+		m_dxShareHandle = NULL; // A sender creates a new texture
+	}
+
+	// printf("    CreateDX9interop - m_dxShareHandle = %d\n", m_dxShareHandle);
+
+	// Create a shared DirectX9 texture - m_dxTexture
+	// by giving it a sharehandle variable - m_dxShareHandle
+	// For a SENDER : the sharehandle is NULL and a new texture is created
+	// For a RECEIVER : the sharehandle is valid and becomes a handle to the existing shared texture
+	// USAGE is D3DUSAGE_RENDERTARGET
+	bRet = spoutdx.CreateSharedDX9Texture(  m_pDevice,
+											width,
+											height,
+											format,			  // default is D3DFMT_A8R8G8B8
+											m_dxTexture,
+											m_dxShareHandle);
+
+	if(!bRet) {
+		// printf("    CreateDX9interop 3\n");
+		return false;
+	}
+
+	// printf("    CreateDX9interop 4\n");
+
+	// Associate the DirectX share handle with the DirectX texture prior to registering it with OpenGL
+	if (!wglDXSetResourceShareHandleNV(m_dxTexture, m_dxShareHandle) ) {
+		// printf("    CreateDX9interop 5\n");
+		return false;
+	}
+
+	// Prepare the DirectX device for interoperability with OpenGL
+	// The return value is a handle to a GL/DirectX interop device.
+	if(!m_hInteropDevice) {
+		// printf("    DX9 - wglDXOpenDeviceNV\n");
+		m_hInteropDevice = wglDXOpenDeviceNV(m_pDevice);
+	}
+	if ( m_hInteropDevice == NULL ) {
+		// printf("    NULL m_hInteropDevice\n");
+		return false;
+	}
+
+	// register for interop and associate the opengl texture with the dx texture
+	// see comments https://sites.google.com/site/snippetsanddriblits/OpenglDxInterop
+	m_hInteropObject = wglDXRegisterObjectNV( m_hInteropDevice,		// The interop device handle
+											m_dxTexture,			// shared directX texture
+											m_glTexture,			// the opengl texture to link with it
+											GL_TEXTURE_2D,			// required by interop spec
+											WGL_ACCESS_READ_WRITE_NV);
+
+	// printf("    CreateDX9interop 7 - m_hInteropDevice = %x\n    m_hInteropObject = %x, m_dxTexture = %x\n", m_hInteropDevice, m_hInteropObject, m_dxTexture);
+
+	if(!m_hInteropObject) {
+		DWORD dwError = GetLastError();
+		// printf("    Error %d [%x]\n", dwError, dwError);
+		return false;
+	}
+
+	return true;
+}
+
+
+
+//
+// =================== DX11 ==============================
+//
+bool spoutGLDXinterop::CreateDX11interop(char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive ) 
+{
+
+	// Create or use a shared DirectX texture that will be linked to the OpenGL texture
+	// and get it's share handle for sharing textures
+	if (bReceive) {
+		// Retrieve the shared texture pointer via the sharehandle
+		if(!spoutdx.OpenDX11shareHandle(g_pd3dDevice, &g_pSharedTexture, m_dxShareHandle)) {
+			return false;
+		}
+	} else {
+		// otherwise create a new shared DirectX resource g_pSharedTexture 
+		// with local handle m_dxShareHandle for a sender
+		m_dxShareHandle = NULL; // A sender creates a new texture with a new share handle
+		if(!spoutdx.CreateSharedDX11Texture(g_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &g_pSharedTexture, m_dxShareHandle)) {
+			return false;
+		}
+	}
+
+	// Link the shared DirectX texture to the OpenGL texture
+	// This registers for interop and associates the opengl texture with the dx texture
+	// by calling wglDXRegisterObjectNV which returns a handle to the interop object
+	// (the shared texture) (m_hInteropObject)
+	m_hInteropObject = LinkGLDXtextures(m_hInteropDevice, g_pSharedTexture, m_dxShareHandle, m_glTexture); 
+
+	return true;
+
+}
+
 //	Link a shared DirectX texture to an OpenGL texture
 //	and create a GLDX interop object handle
 //
@@ -334,6 +542,8 @@ bool spoutGLDXinterop::getSharedTextureInfo(char* sharedMemoryName) {
 	// Set local share handle from the info
 	m_dxShareHandle = (HANDLE)m_TextureInfo.shareHandle;
 
+	// printf("getSharedTextureInfo - m_dxShareHandle = %x\n", m_dxShareHandle);
+
 	senders.CloseMap(pBuf, hMap);
 	// senders.UnlockMap(hLock);
 
@@ -428,6 +638,9 @@ bool spoutGLDXinterop::setSharedInfo(char* sharedMemoryName, SharedTextureInfo* 
 //
 bool spoutGLDXinterop::GLDXcompatible()
 {
+
+	// printf("spoutGLDXinterop::GLDXcompatible()\n");
+
 	//
 	// ======= Hardware compatibility test =======
 	//
@@ -450,7 +663,9 @@ bool spoutGLDXinterop::GLDXcompatible()
 	if(LoadGLextensions()) {
 		// all OK and not debug memoryshare
 		// try to set up directx and open the GL/DX interop
-		if(OpenDirectX11(hWnd, g_pd3dDevice, m_hInteropDevice)) { // if it passes here all is well
+		// printf("Calling OpenDirectX(%d)\n", bUseDX9);
+		if(OpenDirectX(hWnd, bUseDX9)) {
+			// if(OpenDirectX11(hWnd, g_pd3dDevice, m_hInteropDevice)) { // if it passes here all is well
 			return true;
 		}
 	} // end hardware compatibility test
@@ -998,6 +1213,18 @@ HRESULT spoutGLDXinterop::UnlockInteropObject(HANDLE hDevice, HANDLE *hObject)
 
 } // end UnlockInteropObject
 
+
+void spoutGLDXinterop::UseDX9(bool bDX9)
+{
+	bUseDX9 = bDX9;
+	// printf("spoutGLDXinterop::UseDX9(%d)\n", bUseDX9);
+}
+
+bool spoutGLDXinterop::isDX9()
+{
+	// printf("spoutGLDXinterop::isDX9() = %d\n", bUseDX9);
+	return bUseDX9;
+}
 
 void spoutGLDXinterop::SetDX11format(DXGI_FORMAT textureformat)
 {

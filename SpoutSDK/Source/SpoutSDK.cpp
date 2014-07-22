@@ -9,7 +9,7 @@
 //		16-07-14	- deleted fbo & texture in SpoutCleanup - test for OpenGL context
 //					- used CopyMemory in FlipVertical instead of memcpy
 //					- cleanup
-//		18-07-14	- removed local fbo and texture - used in the interop class now
+//		18-07-14	- removed SpoutSDK local fbo and texture - used in the interop class now
 //
 // ================================================================
 /*
@@ -112,7 +112,7 @@ bool Spout::UpdateSender(char *sendername, unsigned int width, unsigned int heig
 		return true;
 	}
 	else {
-		printf("Spout::UpdateSender could not get sender (%s) info\n", sendername);
+		// printf("Spout::UpdateSender could not get sender (%s) info\n", sendername);
 	}
 
 	return false;
@@ -967,7 +967,10 @@ bool Spout::InitReceiver (HWND hwnd, char* theSendername, unsigned int theWidth,
 		}
 		
 		// Initialize the receiver interop (this will create globals local to the interop class)
-		interop.CreateInterop(hwnd, sendername, width, height, format, true); // true meaning receiver
+		if(!interop.CreateInterop(hwnd, sendername, width, height, format, true)) { // true meaning receiver
+			// printf("Spout::InitReceiver - CreateInterop failed\n");
+			return false;
+		}
 
 		// Set globals here
 		g_Width  = width;
@@ -1166,8 +1169,11 @@ bool Spout::OpenSpout()
 		}
 		g_hWnd = WindowFromDC(hdc); // can be null though
 		if(interop.LoadGLextensions()) { // did the extensions load OK ?
+
+			// printf("OpenSpout() - GetDX9() = %d\n", GetDX9());
+
 			// Initialize DirectX and prepare GLDX interop
-			if(interop.OpenDirectX(g_hWnd)) { // did the NVIDIA open interop extension work ?
+			if(interop.OpenDirectX(g_hWnd, GetDX9())) { // did the NVIDIA open interop extension work ?
 				bDxInitOK = true; // DirectX initialization OK
 				bMemoryShareInitOK = false;
 				bGLDXcompatible = true; // Set global compatibility flag as well
@@ -1189,3 +1195,16 @@ bool Spout::OpenSpout()
 	return false;
 }
 
+void Spout::SetDX9(bool bDX9)
+{
+	// printf("Spout::SetDX9(%d)\n", bDX9);
+	interop.UseDX9(bDX9);
+}
+
+
+bool Spout::GetDX9()
+{
+	// printf("Spout::GetDX9() = %d\n",interop.isDX9());
+
+	return interop.isDX9();
+}

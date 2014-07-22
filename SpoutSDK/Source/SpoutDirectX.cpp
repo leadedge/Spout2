@@ -32,6 +32,7 @@
 
 spoutDirectX::spoutDirectX() {
 
+	// DX11
 	g_pImmediateContext = NULL;
 	g_driverType		= D3D_DRIVER_TYPE_NULL;
 	g_featureLevel		= D3D_FEATURE_LEVEL_11_0;
@@ -41,6 +42,124 @@ spoutDirectX::spoutDirectX() {
 spoutDirectX::~spoutDirectX() {
 
 }
+
+//
+// =========================== DX9 ================================
+//
+
+// Create a DX9 object
+IDirect3D9Ex* spoutDirectX::CreateDX9object()
+{
+	HRESULT res;
+	IDirect3D9Ex* pD3D;
+    
+	res = Direct3DCreate9Ex(D3D_SDK_VERSION, &pD3D);
+	if ( res != D3D_OK ) return NULL;
+
+	return pD3D;
+}
+
+// Create a DX9 device
+IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
+{
+	HRESULT res;
+	IDirect3DDevice9Ex* pDevice;
+    D3DPRESENT_PARAMETERS d3dpp;
+	D3DCAPS9 d3dCaps;
+
+    ZeroMemory(&d3dpp, sizeof(d3dpp));
+    d3dpp.Windowed		= TRUE;						// windowed and not full screen
+    d3dpp.SwapEffect	= D3DSWAPEFFECT_DISCARD;	// discard old frames
+    d3dpp.hDeviceWindow	= hWnd;						// set the window to be used by D3D
+
+	// D3DFMT_UNKNOWN can be specified for the BackBufferFormat while in windowed mode. 
+	// This tells the runtime to use the current display-mode format and eliminates
+	// the need to call GetDisplayMode. 
+	d3dpp.BackBufferFormat		 = D3DFMT_UNKNOWN;
+
+	// Set a dummy resolution - we don't render anything
+    d3dpp.BackBufferWidth		 = 1920;
+    d3dpp.BackBufferHeight		 = 1080;
+	d3dpp.EnableAutoDepthStencil = FALSE;
+	d3dpp.AutoDepthStencilFormat = D3DFMT_D24S8;
+	d3dpp.BackBufferCount		 = 1;
+
+	// Test for hardware vertex processing capability and set up as needed
+	// D3DCREATE_MULTITHREADED required by interop spec
+	if(pD3D->GetDeviceCaps( D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, &d3dCaps) != S_OK ) return false;
+	// | D3DCREATE_NOWINDOWCHANGES
+	DWORD dwBehaviorFlags = D3DCREATE_PUREDEVICE | D3DCREATE_MULTITHREADED; 
+	if ( d3dCaps.VertexProcessingCaps != 0 )
+		dwBehaviorFlags |= D3DCREATE_HARDWARE_VERTEXPROCESSING;
+	else
+		dwBehaviorFlags |= D3DCREATE_SOFTWARE_VERTEXPROCESSING;
+
+	// Create a DirectX9 device - we use directx only for accessing the handle
+	// LJ notes - hwnd seems to have no effect - maybe because we do not render anything.
+	// Note here that we are setting up for Windowed mode but it seems not to be affected
+	// by fullscreen, probably because we are not rendering to it.
+    res = pD3D->CreateDeviceEx(	D3DADAPTER_DEFAULT,
+								D3DDEVTYPE_HAL, // Hardware rasterization. 
+								hWnd,			// hFocusWindow (can be NULL)
+								dwBehaviorFlags,
+								&d3dpp,			// d3dpp.hDeviceWindow should be valid if hFocusWindow is NULL
+								NULL,			// pFullscreenDisplayMode must be NULL for windowed mode
+								&pDevice);
+	
+	if ( res != D3D_OK ) {
+		return NULL;
+	}
+
+	return pDevice;
+
+} // end CreateDX9device
+
+
+// Create a shared DirectX9 texture
+// by giving it a sharehandle variable - dxShareHandle
+// For a SENDER : the sharehanlde is NULL and a new texture is created
+// For a RECEIVER : the sharehandle is valid and a handle to the existing shared texture is created
+bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle)
+{
+
+	HRESULT res = pDevice->CreateTexture(width,
+										 height,
+										 1,
+										 D3DUSAGE_RENDERTARGET, 
+										 format,	// default is D3DFMT_A8R8G8B8 - may be set externally
+										 D3DPOOL_DEFAULT,	// Required by interop spec
+										 &dxTexture,
+										 &dxShareHandle);	// local share handle to allow type casting for 64bit
+
+	// USAGE may also be D3DUSAGE_DYNAMIC and pay attention to format and resolution!!!
+	// USAGE, format and size for sender and receiver must all match
+	if ( res != D3D_OK ) {
+		switch (res) {
+			case D3DERR_INVALIDCALL:
+				// printf("    D3DERR_INVALIDCALL \n");
+				break;
+			case D3DERR_OUTOFVIDEOMEMORY:
+				// printf("    D3DERR_OUTOFVIDEOMEMORY \n");
+				break;
+			case E_OUTOFMEMORY:
+				// printf("    E_OUTOFMEMORY \n");
+				break;
+			default :
+				// printf("    Unknown error\n");
+				break;
+		}
+		return false;
+	}
+
+	return true;
+
+} // end CreateSharedDX9Texture
+// =========================== end DX9 =============================
+
+
+//
+// =========================== DX11 ================================
+//
 
 //
 // Notes for DX11 : https://www.opengl.org/registry/specs/NV/DX_interop2.txt

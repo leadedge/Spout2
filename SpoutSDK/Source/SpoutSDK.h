@@ -82,6 +82,9 @@ class Spout {
 	bool SetActiveSender(char* Sendername);
 	
 	// Utilities
+	void SetDX9(bool bDX9 = true); // set to use DirectX 9 (default is DirectX 11)
+	bool GetDX9();
+
 	bool GetMemoryShareMode();
 	bool SetMemoryShareMode(bool bMemory = true);
 	bool GetVerticalSync();

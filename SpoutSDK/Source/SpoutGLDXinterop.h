@@ -54,7 +54,7 @@ class spoutGLDXinterop {
 
 		// Initialization functions
 		bool LoadGLextensions(); // Load required opengl extensions
-		bool OpenDirectX(HWND hWnd);
+		bool OpenDirectX(HWND hWnd, bool bDX9);
 		bool CreateInterop(HWND hWnd, char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
 		bool CheckInterop(HWND hWnd); // Check for successful open of the interop
 		void CleanupInterop(bool bExit = false); // Cleanup with flag to avoid unknown crash bug
@@ -73,6 +73,10 @@ class spoutGLDXinterop {
 		bool BindSharedTexture();
 		bool UnBindSharedTexture();
 		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0);
+
+		bool bUseDX9; // Use DX9 or DX11 (default)
+		void UseDX9(bool bDX9);
+		bool isDX9();
 
 		DXGI_FORMAT	DX11format; // the DX11 texture format to be used
 		void SetDX11format(DXGI_FORMAT textureformat); // set format by user
@@ -115,10 +119,21 @@ class spoutGLDXinterop {
 		D3D_FEATURE_LEVEL		g_featureLevel;
 		ID3D11Texture2D*		g_pSharedTexture; // The shared DX11 texture
 
+		bool CreateDX11interop(char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive);
 		bool OpenDirectX11(HWND hWnd, ID3D11Device* &hDXdevice, HANDLE &hInteropDevice); // Initialize and prepare DirectX11
 		bool CreateDX11device(HWND hWnd); // Create a DX11 device
 		HANDLE LinkGLDXtextures(HANDLE hInteropDevice, ID3D11Texture2D* pSharedTexture, HANDLE dxShareHandle, GLuint glTextureID); // , HANDLE &hInteropObject);
 
+		// DX9
+		IDirect3D9Ex*			m_pD3D;		 // DX9 object
+		IDirect3DDevice9Ex*		m_pDevice;	 // DX9 device
+		LPDIRECT3DTEXTURE9		m_dxTexture; // the shared DX9 texture
+
+		bool CreateDX9interop(char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
+		void CleanupDX9();
+		
+		
+		
 		// GLuint	m_glTexture;		// the OpneGL texture linked to it
 		// GLuint	m_fbo;				// a local frame buffer object used for texture transfers
 		// HANDLE	m_hInteropDevice;	// handle to the DX/GL interop device

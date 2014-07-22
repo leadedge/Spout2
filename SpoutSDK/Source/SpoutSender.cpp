@@ -92,6 +92,20 @@ bool SpoutSender::SetMemoryShareMode(bool bMemoryMode)
 	return spout.SetMemoryShareMode(bMemoryMode);
 }
 
+
+//---------------------------------------------------------
+void SpoutSender::SetDX9(bool bDX9)
+{
+	spout.SetDX9(bDX9);
+}
+
+
+//---------------------------------------------------------
+bool SpoutSender::GetDX9()
+{
+	return spout.interop.isDX9();
+}
+
 //---------------------------------------------------------
 void SpoutSender::SetDX9compatible(bool bCompatible)
 {
