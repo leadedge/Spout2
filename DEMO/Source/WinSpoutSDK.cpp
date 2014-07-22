@@ -36,10 +36,12 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // ================= CHANGE COMPILE FLAGS HERE =================
 // Rename the executable as necessary to get a sender/receiver pair
 //
-bool			bReceiver		= true;		// Compile for receiver (true) or sender (false)
-bool			bMemoryMode		= false;	// Use memory share specifically (default is false)
-bool			bDX9compatible	= false;	// (true - default) Compatible DX11 format for DX9 receivers to pick up
+bool bReceiver      = false; // Compile for receiver (true) or sender (false)
+bool bMemoryMode    = false; // Use memory share specifically (default is false)
+bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
+bool bDX9compatible = false; // For DX11 only - compatible DX9 format for DX11 senders
 // =============================================================
+
 
 //
 // Global Variables:
@@ -266,6 +268,38 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 
 	HGLRC glContext;
 
+	// A render window must be visible for Spout initialization to work
+	HDC	GLhdc = wglGetCurrentDC();
+	HWND hwnd = WindowFromDC(GLhdc); 
+
+	// Open Spout and remove the sender selection option for memorymode
+	if(bMemoryMode) {
+		sender.SetMemoryShareMode();	// Force memoryshare
+		receiver.SetMemoryShareMode();	// Must be set independently for each object
+		hMenu = GetMenu(hWnd);
+		HMENU hSubMenu;
+		hSubMenu = GetSubMenu(hMenu, 0); // File
+		RemoveMenu(hSubMenu,  IDM_SPOUTSENDERS, MF_BYCOMMAND);
+		RemoveMenu(hSubMenu,  0, MF_BYPOSITION); // and the separator
+	}
+	else {
+		// Set whether to use DirectX 9 or DirectX 11
+		if(bDX9mode) {
+			// printf("setting DX9 mode true\n");
+			sender.SetDX9(true);
+			receiver.SetDX9(true); // Must be set independently for each object
+		}
+		else {
+			// printf("setting DX9 mode false\n");
+			sender.SetDX9(false);
+			receiver.SetDX9(false);
+			// Here the sender DX11 texure format can be set to be DX9 compatible or not
+			// printf("setting DX11 sender bDX9compatible = (%d)\n", bDX9compatible);
+			sender.SetDX9compatible(bDX9compatible);
+			receiver.SetDX9compatible(bDX9compatible);
+		}
+	}
+
 	// Determine hardware capabilities now, not later when all is initialized
 	glContext = wglGetCurrentContext(); // should check if opengl context creation succeed
 	if(glContext) {
@@ -292,7 +326,13 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 			// It is possible that the extensions load OK, but that initialization will still fail
 			// This occurs when wglDXOpenDeviceNV fails - noted on dual graphics machines with NVIDIA Optimus
 			// Directx initialization seems OK with null hwnd, but in any case we will not use it.
-			if (!sender.GetMemoryShareMode()) { // Test for memoryshare initialization
+			// printf("GetMemoryShareMode\n");
+			bool bMem;
+			if(bReceiver) 
+				bMem = receiver.GetMemoryShareMode();
+			else
+				bMem = sender.GetMemoryShareMode();
+			if (!bMem) { // Test for memoryshare initialization
 				if(wglGetProcAddress("glBlitFramebufferEXT"))
 					strcat_s(gldxcaps, 1024, "Compatible hardware\r\nNV_DX_interop extensions supported\r\nInterop load successful\r\nTexture sharing mode available\r\nFBO blit available");
 				else
@@ -331,32 +371,11 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	lastFrameTime = diff = timeThen = timeNow = 0.0;
 	startTime = (double)timeGetTime();
 
-	// A render window must be visible for Spout initialization to work
-	HDC	GLhdc = wglGetCurrentDC();
-	HWND hwnd = WindowFromDC(GLhdc); 
-
-	// Open Spout and remove the sender selection option for memorymode
-	if(bMemoryMode) {
-		sender.SetMemoryShareMode();	// Force memoryshare
-		receiver.SetMemoryShareMode();	// Must be set independently for each object
-		hMenu = GetMenu(hWnd);
-		HMENU hSubMenu;
-		hSubMenu = GetSubMenu(hMenu, 0); // File
-		RemoveMenu(hSubMenu,  IDM_SPOUTSENDERS, MF_BYCOMMAND);
-		RemoveMenu(hSubMenu,  0, MF_BYPOSITION); // and the separator
-	}
-	else {
-		// Here the sender DX11 texure format can be set to be DX9 compatible or not
-		// printf("setting sender compat (%d)\n", bDX9compatible);
-		sender.SetDX9compatible(bDX9compatible);
-	}
-
 	// set initial values
 	g_Width  = width;
 	g_Height = height;
 	// null name to begin so that createreceiever finds the active sender
 	g_SenderName[0] = 0; 
-	// strcpy_s(g_SenderName, 256, "test"); // LJ DEBUG
 
 	// Update the local texture
 	InitTexture(g_Width, g_Height);
@@ -430,6 +449,7 @@ int DrawGLScene(GLvoid)
 
 		if(!bInitialized) {
 			bInitialized = OpenReceiver();
+			// printf("OpenReceiver returned %d\n", bInitialized);
 			ShowReceiverInfo();
 			return TRUE;
 		}
@@ -1022,7 +1042,7 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,			// Handle For This Window
 						// This application is DX11 and will receive from all formats
 						// Texture compatibility argument /DX9
 						// Tells spoutpanel to only list senders with DX9 compatible format
-						if(bDX9compatible)
+						if(!bDX9mode && bDX9compatible)
 							receiver.SelectSenderPanel("/DX9");
 						else
 							receiver.SelectSenderPanel();
@@ -1102,7 +1122,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	g_Width  = 640;
 	g_Height = 360; 
 
-	if(bDX9compatible)
+	if(bDX9mode)
 		strcpy_s(WindowTitle, 256, "Spout SDK DX9 ");
 	else
 		strcpy_s(WindowTitle, 256, "Spout SDK DX11 ");
@@ -1148,7 +1168,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 					// This application is DX11 and will receive from all formats
 					// Texture compatibility argument /DX9
 					// Tells spoutpanel to only list senders with DX9 compatible format
-					if(bDX9compatible)
+					if(!bDX9mode && bDX9compatible)
 						receiver.SelectSenderPanel("/DX9");
 					else
 						receiver.SelectSenderPanel();
