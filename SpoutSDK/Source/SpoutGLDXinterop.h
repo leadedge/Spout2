@@ -72,7 +72,7 @@ class spoutGLDXinterop {
 
 		bool BindSharedTexture();
 		bool UnBindSharedTexture();
-		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0);
+		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0);
 
 		bool bUseDX9; // Use DX9 or DX11 (default)
 		void UseDX9(bool bDX9);

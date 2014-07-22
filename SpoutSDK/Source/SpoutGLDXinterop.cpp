@@ -680,7 +680,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 // ----------------------------------------------------------
 
 // DRAW THE SHARED TEXTURE
-bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y)
+bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect)
 {
 	if(m_hInteropDevice == NULL || m_hInteropObject == NULL) {
 		return false;
@@ -701,10 +701,10 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y)
 			// FFGL examples have origin at bottom left
 			// but needs to be this way or it comes out inverted
 			glBegin(GL_QUADS);
-			glTexCoord2f(0.0,	max_y);	glVertex2f(-1.0,-1.0); // lower left
-			glTexCoord2f(0.0,	0.0);	glVertex2f(-1.0, 1.0); // upper left
-			glTexCoord2f(max_x, 0.0);	glVertex2f( 1.0, 1.0); // upper right
-			glTexCoord2f(max_x, max_y);	glVertex2f( 1.0,-1.0); // lower right
+			glTexCoord2f(0.0,	max_y);	glVertex2f(-aspect,-1.0); // lower left
+			glTexCoord2f(0.0,	0.0);	glVertex2f(-aspect, 1.0); // upper left
+			glTexCoord2f(max_x, 0.0);	glVertex2f( aspect, 1.0); // upper right
+			glTexCoord2f(max_x, max_y);	glVertex2f( aspect,-1.0); // lower right
 			glEnd();
 
 			glBindTexture(GL_TEXTURE_2D, 0); // unbind shared texture
