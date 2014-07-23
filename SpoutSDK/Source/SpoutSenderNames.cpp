@@ -10,6 +10,8 @@
 	05.06.14 - FindSenderName - allow for a null name entered
 	08.06.14 - rebuild
 	12.06.13 - major revision, included map handling
+	23-07-14 - cleanup of DX9 / DX11 functions
+			 - Changed CheckSender logic
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -565,68 +567,6 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 } // end FindSender
 
 
-
-//
-//	Check the details of an existing sender
-//
-//	1) Find the sender
-//	2) Get it's texture info
-//	3) Return the sharehandle, width, height, and format
-//
-//	Returns :
-//		true	- all OK.
-//		false	- sender not found or size changed
-//			1) width and height are returned zero for sender not found
-//			2) width and height are returned changed for sender size change
-//			   The local texture then has to be resized.
-
-bool spoutSenderNames::CheckSender(char *sendername, unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
-{
-	SharedTextureInfo info;
-	char sname[256];
-	unsigned int width = 0;
-	unsigned int height = 0;
-	bool bRet = false;
-
-	// Is the given sender registered ?
-	if(FindSenderName(sendername)) {
-		// Does it still exist ?
-		if(getSharedInfo(sendername, &info)) {
-			// Get the size to check it
-			width  = (unsigned int)info.width;
-			height = (unsigned int)info.height;
-			// Has the size changed ? If so, return false to indicate a change
-			if(width != theWidth || height != theHeight) {
-				bRet = false;
-			}
-			else {
-				bRet = true;
-			}
-
-			// Return the texture info
-			// strcpy_s(sendername, 256, sname);
-			theWidth		= (unsigned int)info.width;
-			theHeight		= (unsigned int)info.height;
-			hSharehandle	= (HANDLE)info.shareHandle;
-			dwFormat		= (DWORD)info.format;
-			// Return the result
-			return bRet;
-		}
-		else {
-			// Sender is registered but does not exist so unregister it
-			ReleaseSenderName(sname);
-		}
-	}
-	
-	// Return zero width and height to indicate sender not found
-	theHeight = 0;
-	theWidth  = 0;
-
-	return false;
-
-} // end CheckSender
-
-
 //
 // Retrieve the texture info of the active sender
 //
@@ -657,7 +597,8 @@ bool spoutSenderNames::FindActiveSender(char *sendername, unsigned int &theWidth
 // ======================
 
 //
-// Receive a texture from a Spout sender
+//	Check the details of an existing sender
+//
 //	1) Find the sender
 //	2) Get it's texture info
 //	3) Return the sharehandle, width, height, and format
@@ -668,28 +609,27 @@ bool spoutSenderNames::FindActiveSender(char *sendername, unsigned int &theWidth
 //		false	- sender not found or size changed
 //			width and height are returned zero for sender not found
 //
-bool spoutSenderNames::GetSenderTexture(char *sendername, unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
+bool spoutSenderNames::CheckSender(char *sendername, unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
 {
 	SharedTextureInfo info;
+	char sname[256];
+	bool bRet = false;
 
 	// Is the given sender registered ?
 	if(FindSenderName(sendername)) {
-
 		// Does it still exist ?
 		if(getSharedInfo(sendername, &info)) {
-
 			// Return the texture info
+			// strcpy_s(sendername, 256, sname);
 			theWidth		= (unsigned int)info.width;
 			theHeight		= (unsigned int)info.height;
 			hSharehandle	= (HANDLE)info.shareHandle;
 			dwFormat		= (DWORD)info.format;
-
 			return true;
-
 		}
 		else {
 			// Sender is registered but does not exist so unregister it
-			ReleaseSenderName(sendername);
+			ReleaseSenderName(sname);
 		}
 	}
 	
@@ -699,8 +639,7 @@ bool spoutSenderNames::GetSenderTexture(char *sendername, unsigned int &theWidth
 
 	return false;
 
-}
-
+} // end CheckSender
 
 
 //

@@ -2,18 +2,9 @@
 
 	spoutSenderNames.h
 
-	LJ - leadedge@adam.com.au
+		LJ - leadedge@adam.com.au
 
-	Spout sender management
-
-	= multiple Senders - a set of Sender names =
-	Revisions :
-
-	25.04.14 - started
-	27.05.14 - increased MaxSenders from 10 to 20
-	08.06.14 - rebuild
-	11.07.14 - major re-write
-
+		Spout sender management
 
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
 
@@ -120,7 +111,6 @@ class spoutSenderNames {
 
 		// Utility functions
 		bool SenderChanged   (char *sendername, unsigned int width, unsigned int height, DWORD dwFormat, HANDLE hShareHandle);
-		bool GetSenderTexture(char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 
 		// Access event locks
 		bool	InitEvents	(char *eventname, HANDLE &hReadEvent, HANDLE &hWriteEvent);
