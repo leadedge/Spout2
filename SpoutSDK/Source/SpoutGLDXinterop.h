@@ -46,7 +46,7 @@
 #include <d3d11.h>	// DX11
 #include <gl/gl.h>
 
-class DLLEXP spoutGLDXinterop {
+class SPOUT_DLLEXP spoutGLDXinterop {
 
 	public:
 

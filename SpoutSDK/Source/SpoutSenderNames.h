@@ -66,7 +66,7 @@ struct SharedTextureInfo {
 
 using namespace std;
 
-class DLLEXP spoutSenderNames {
+class SPOUT_DLLEXP spoutSenderNames {
 
 	public:
 

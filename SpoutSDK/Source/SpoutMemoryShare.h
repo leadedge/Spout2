@@ -72,7 +72,7 @@
 #include <Windows.h>
 #include <stdio.h>
 
-class DLLEXP spoutMemoryShare {
+class SPOUT_DLLEXP spoutMemoryShare {
 
 	public:
 

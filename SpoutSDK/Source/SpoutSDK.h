@@ -47,7 +47,7 @@
 // #elif defined(__i386) || defined(_M_IX86)
 //	x86 32-bit
 #endif
-class DLLEXP Spout {
+class SPOUT_DLLEXP Spout {
 
 	public:
 

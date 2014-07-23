@@ -34,11 +34,11 @@
 #define __SpoutCommon__
 
 #if defined(SPOUT_BUILD_DLL)
-#define DLLEXP	__declspec(dllexport)
+#define SPOUT_DLLEXP	__declspec(dllexport)
 #elif defined(SPOUT_IMPORT_DLL)
-#define DLLEXP	__declspec(dllimport)
+#define SPOUT_DLLEXP	__declspec(dllimport)
 #else
-#define DLLEXP
+#define SPOUT_DLLEXP
 #endif
 
 #endif
