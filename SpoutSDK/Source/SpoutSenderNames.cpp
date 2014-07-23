@@ -652,6 +652,54 @@ bool spoutSenderNames::FindActiveSender(char *sendername, unsigned int &theWidth
 // ===============================================================================
 
 
+// ======================
+// DirectX texture access
+// ======================
+
+//
+// Receive a texture from a Spout sender
+//	1) Find the sender
+//	2) Get it's texture info
+//	3) Return the sharehandle, width, height, and format
+//
+//	Returns :
+//		true	- all OK.
+//			width and height are returned changed for sender size change
+//		false	- sender not found or size changed
+//			width and height are returned zero for sender not found
+//
+bool spoutSenderNames::GetSenderTexture(char *sendername, unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
+{
+	SharedTextureInfo info;
+
+	// Is the given sender registered ?
+	if(FindSenderName(sendername)) {
+
+		// Does it still exist ?
+		if(getSharedInfo(sendername, &info)) {
+
+			// Return the texture info
+			theWidth		= (unsigned int)info.width;
+			theHeight		= (unsigned int)info.height;
+			hSharehandle	= (HANDLE)info.shareHandle;
+			dwFormat		= (DWORD)info.format;
+
+			return true;
+
+		}
+		else {
+			// Sender is registered but does not exist so unregister it
+			ReleaseSenderName(sendername);
+		}
+	}
+	
+	// Return zero width and height to indicate sender not found
+	theHeight = 0;
+	theWidth  = 0;
+
+	return false;
+
+}
 
 
 
@@ -1548,7 +1596,7 @@ bool spoutSenderNames::getSharedInfo(char* sharedMemoryName, SharedTextureInfo* 
 //	SenderChanged
 //
 // Check to see if the Sender has changed anything - does not depend on directx being initialized
-bool spoutSenderNames::SenderChanged(char *theSendername, int theWidth, int theHeight, DWORD theFormat, HANDLE theShareHandle) 
+bool spoutSenderNames::SenderChanged(char *theSendername, unsigned int theWidth, unsigned int theHeight, DWORD theFormat, HANDLE theShareHandle) 
 {
 		unsigned int width, height;
 		HANDLE sharehandle;

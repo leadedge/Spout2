@@ -119,7 +119,8 @@ class spoutSenderNames {
 		// ------------------------------------------------------------
 
 		// Utility functions
-		bool SenderChanged(char *theSendername, int theWidth, int theHeight, DWORD dwFormat, HANDLE theShareHandle);
+		bool SenderChanged   (char *sendername, unsigned int width, unsigned int height, DWORD dwFormat, HANDLE hShareHandle);
+		bool GetSenderTexture(char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 
 		// Access event locks
 		bool	InitEvents	(char *eventname, HANDLE &hReadEvent, HANDLE &hWriteEvent);

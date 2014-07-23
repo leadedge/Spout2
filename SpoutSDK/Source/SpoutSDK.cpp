@@ -10,6 +10,7 @@
 //					- used CopyMemory in FlipVertical instead of memcpy
 //					- cleanup
 //		18-07-14	- removed SpoutSDK local fbo and texture - used in the interop class now
+//		22-07-14	- added option for DX9 or DX11
 //
 // ================================================================
 /*
