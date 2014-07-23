@@ -77,9 +77,9 @@ class SPOUT_DLLEXP spoutSenderNames {
 
 		// ------------------------------------------------------------
 		// Registration and find sender functions
-		bool RegisterSenderName (char* Sendername);
-		bool ReleaseSenderName  (char* Sendername);
-		bool FindSenderName		(char* Sendername);
+		bool RegisterSenderName (const char* Sendername);
+		bool ReleaseSenderName  (const char* Sendername);
+		bool FindSenderName		(const char* Sendername);
 
 		// ------------------------------------------------------------
 		// Functions to retrieve info about the sender set map and the senders in it
@@ -90,40 +90,40 @@ class SPOUT_DLLEXP spoutSenderNames {
 
 		// ------------------------------------------------------------
 		// Functions to read and write info to a sender memory map
-		bool GetSenderInfo (char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
-		bool SetSenderInfo (char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat);
+		bool GetSenderInfo (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
+		bool SetSenderInfo (const char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat);
 
 		// ------------------------------------------------------------
 		// Functions to maintain the active sender
-		bool SetActiveSender	 (char* Sendername);
+		bool SetActiveSender	 (const char* Sendername);
 		bool GetActiveSender	 (char* Sendername);
 		bool GetActiveSenderInfo (SharedTextureInfo* info);
 
 		// ------------------------------------------------------------
 		// Functions to Create, Find, Update and Close a sender without initializing DirectX or the GL/DX interop functions
-		bool CreateSender (char *sendername, unsigned int width = 0, unsigned int height = 0, HANDLE hSharehandle = NULL, DWORD dwFormat = 0);
-		bool UpdateSender (char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
-		bool CloseSender  (char* sendername);
+		bool CreateSender (const char *sendername, unsigned int width = 0, unsigned int height = 0, HANDLE hSharehandle = NULL, DWORD dwFormat = 0);
+		bool UpdateSender (const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
+		bool CloseSender  (const char* sendername);
 		
 		bool FindSender		  (char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
-		bool CheckSender	  (char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
+		bool CheckSender	  (const char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 		bool FindActiveSender (char *activename, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 		// ------------------------------------------------------------
 
 		// Utility functions
-		bool SenderChanged   (char *sendername, unsigned int width, unsigned int height, DWORD dwFormat, HANDLE hShareHandle);
+		bool SenderChanged   (const char *sendername, unsigned int width, unsigned int height, DWORD dwFormat, HANDLE hShareHandle);
 
 		// Access event locks
-		bool	InitEvents	(char *eventname, HANDLE &hReadEvent, HANDLE &hWriteEvent);
+		bool	InitEvents	(const char *eventname, HANDLE &hReadEvent, HANDLE &hWriteEvent);
 		void	CloseEvents (HANDLE &hReadEvent, HANDLE &hWriteEvent);
 		bool	CheckAccess (HANDLE hEvent);
 		void	AllowAccess (HANDLE hReadEvent, HANDLE hWriteEvent);
 
-		HANDLE	CreateMap		 (char* MapName, int MapSize);
-		char*	OpenMap			 (char* MapName, int MapSize, HANDLE &hMap);
-		void	CloseMap		 (char* MapBuffer, HANDLE hMap);
+		HANDLE	CreateMap		 (const char* MapName, int MapSize);
+		char*	OpenMap			 (const char* MapName, int MapSize, HANDLE &hMap);
+		void	CloseMap		 (const char* MapBuffer, HANDLE hMap);
 
-		bool SenderDebug(char *Sendername, int size);
+		bool SenderDebug(const char *Sendername, int size);
 
 	protected:
 
@@ -158,27 +158,27 @@ class SPOUT_DLLEXP spoutSenderNames {
 		// and will release the memory.
 		// The matching named mutex (ReleaseMapLock) is also released.
 		//
-		HANDLE	CreateMemoryMap	 (char *MapName, int MapSize);
-		bool	ReleaseMemoryMap (char* MapName);
+		HANDLE	CreateMemoryMap	 (const char *MapName, int MapSize);
+		bool	ReleaseMemoryMap (const char* MapName);
 
 		// The map of map handles
-		bool	GetHandleMap (char* MapName, std::map<std::string, HANDLE> &MapHandles);
-		bool	SetHandleMap (char* MapName, std::map<std::string, HANDLE> MapHandles);
+		bool	GetHandleMap (const char* MapName, std::map<std::string, HANDLE> &MapHandles);
+		bool	SetHandleMap (const char* MapName, std::map<std::string, HANDLE> MapHandles);
 
 		// Memory map mutex locks
-		bool	CreateMapLock  (char *mapname);
-		void	ReleaseMapLock (char *mapname);
-		bool	LockMap        (char *mapname, HANDLE &hMutex);
+		bool	CreateMapLock  (const char *mapname);
+		void	ReleaseMapLock (const char *mapname);
+		bool	LockMap        (const char *mapname, HANDLE &hMutex);
 		void	UnlockMap      (HANDLE hMutex);
 
 		// Sender name set management
 		bool CreateSenderSet();
 		bool GetSenderSet		 (std::set<string>& SenderNames);
 		bool SetSenderSet		 (std::set<string>& Sendernames);
-		bool RemoveSender		 (char* Sendername);
-		bool setActiveSenderName (char* SenderName);
-		bool getActiveSenderName (char* SenderName);
-		bool getSharedInfo		 (char* SenderName, SharedTextureInfo* info);
+		bool RemoveSender		 (const char* Sendername);
+		bool setActiveSenderName (const char* SenderName);
+		bool getActiveSenderName (const char* SenderName);
+		bool getSharedInfo		 (const char* SenderName, SharedTextureInfo* info);
 
 
 };
