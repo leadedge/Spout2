@@ -37,7 +37,7 @@
 #include <string>
 #include "Shellapi.h"
 
-
+#include "SpoutCommon.h"
 #include "spoutMemoryShare.h"
 #include "SpoutSenderNames.h"
 #include "spoutGLDXinterop.h"
@@ -47,7 +47,7 @@
 // #elif defined(__i386) || defined(_M_IX86)
 //	x86 32-bit
 #endif
-class Spout {
+class DLLEXP Spout {
 
 	public:
 

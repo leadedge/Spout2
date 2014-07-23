@@ -32,7 +32,7 @@
 
 #include "spoutSDK.h"
 
-class SpoutReceiver {
+class DLLEXP SpoutReceiver {
 
 	public:
 

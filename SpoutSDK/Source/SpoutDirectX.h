@@ -32,6 +32,7 @@
 #ifndef __spoutDirectX__ 
 #define __spoutDirectX__
 
+#include "SpoutCommon.h"
 #include <windowsx.h>
 #include <d3d9.h>
 #include <d3d11.h>
@@ -40,7 +41,7 @@
 #pragma comment (lib, "d3d9.lib")
 #pragma comment (lib, "d3d11.lib")
 
-class spoutDirectX {
+class DLLEXP spoutDirectX {
 
 	public:
 

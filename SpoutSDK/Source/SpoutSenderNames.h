@@ -42,6 +42,7 @@
 #include <string>
 #include <vector>
 
+#include "SpoutCommon.h"
 #include "spoutMemoryShare.h"
 
 #define SPOUT_WAIT_TIMEOUT 100 // 100 msec wait for events
@@ -65,7 +66,7 @@ struct SharedTextureInfo {
 
 using namespace std;
 
-class spoutSenderNames {
+class DLLEXP spoutSenderNames {
 
 	public:
 

@@ -1,8 +1,8 @@
 /*
 
-					SpoutSender.h
- 
-					TODO: SendImage - undocumented. Work in progress.
+			Spout.h
+
+			The main Spout include file for the SDK
 
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
 
@@ -26,43 +26,19 @@
 		LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
 */
 #pragma once
 
-#ifndef __SpoutSender__
-#define __SpoutSender__
+#ifndef __SpoutCommon__
+#define __SpoutCommon__
 
-#include "spoutSDK.h"
-
-class DLLEXP SpoutSender {
-
-	public:
-
-	SpoutSender();
-    ~SpoutSender();
-
-	bool CreateSender(char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
-	bool UpdateSender(char *Sendername, unsigned int width, unsigned int height);
-	void ReleaseSender(DWORD dwMsec = 0);
-	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true);
-	bool SendImage(unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert=true);
-
-	bool SetMemoryShareMode(bool bMemoryMode = true);
-	bool GetMemoryShareMode();
-
-	void SetDX9(bool bDX9 = true); // set to use DirectX 9 (default is DirectX 11)
-	bool GetDX9();
-
-	void SetDX9compatible(bool bCompatible = true); // DirectX 11 format compatible with DirectX 9
-	bool GetDX9compatible();
-
-	bool SenderDebug(char *Sendername, int size);
-
-
-protected :
-
-	Spout spout;
-
-};
+#if defined(SPOUT_BUILD_DLL)
+#define DLLEXP	__declspec(dllexport)
+#elif defined(SPOUT_IMPORT_DLL)
+#define DLLEXP	__declspec(dllimport)
+#else
+#define DLLEXP
+#endif
 
 #endif
