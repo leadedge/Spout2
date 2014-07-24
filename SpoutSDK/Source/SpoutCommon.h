@@ -33,12 +33,17 @@
 #ifndef __SpoutCommon__
 #define __SpoutCommon__
 
-#if defined(SPOUT_BUILD_DLL)
-#define SPOUT_DLLEXP	__declspec(dllexport)
-#elif defined(SPOUT_IMPORT_DLL)
-#define SPOUT_DLLEXP	__declspec(dllimport)
-#else
-#define SPOUT_DLLEXP
-#endif
+#if defined(_MSC_VER)
+	#if defined(SPOUT_BUILD_DLL)
+		#define SPOUT_DLLEXP	__declspec(dllexport)
+	#elif defined(SPOUT_IMPORT_DLL)
+		#define SPOUT_DLLEXP	__declspec(dllimport)
+	#else
+		#define SPOUT_DLLEXP
+	#endif
+#else // _MSC_VER
+	#define SPOUT_DLLEXP
+#endif // _MSC_VERR
+
 
 #endif
