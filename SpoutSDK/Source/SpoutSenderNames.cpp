@@ -55,7 +55,7 @@ spoutSenderNames::~spoutSenderNames() {
 //
 // Register a new Sender by adding to the list of Sender names
 //
-bool spoutSenderNames::RegisterSenderName(char* Sendername) {
+bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 
 	std::pair<std::set<string>::iterator, bool> ret;
 	std::set<string> SenderNames; // set of names
@@ -96,7 +96,7 @@ bool spoutSenderNames::RegisterSenderName(char* Sendername) {
 // Removes the Sender name and if it was the last one, 
 // closes the shared memory map for the Sender name list
 // See also RemoveSender
-bool spoutSenderNames::ReleaseSenderName(char* Sendername) 
+bool spoutSenderNames::ReleaseSenderName(const char* Sendername) 
 {
 	string namestring;
 	std::set<string> SenderNames; // set of names
@@ -153,7 +153,7 @@ bool spoutSenderNames::GetSenderNames(std::set<string> *Sendernames)
 
 // This retrieves the info from the requested sender and fails if the sender does not exist
 // Possible redundancy with getSharedInfo 
-bool spoutSenderNames::GetSenderInfo(char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
+bool spoutSenderNames::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
 {
 	SharedTextureInfo info;
 
@@ -171,7 +171,7 @@ bool spoutSenderNames::GetSenderInfo(char* sendername, unsigned int &width, unsi
 // Set texture info to a sender shared memory map without affecting the 
 // interop class globals used for GL/DX interop texture sharing
 //
-bool spoutSenderNames::SetSenderInfo(char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat) 
+bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat) 
 {
 	SharedTextureInfo info;
 	HANDLE hMap; // handle to the shared memory map
@@ -332,7 +332,7 @@ bool spoutSenderNames::GetImageSize(char* name, unsigned int &width, unsigned in
 
 
 // Test to see if the Sender name exists
-bool spoutSenderNames::FindSenderName(char* Sendername)
+bool spoutSenderNames::FindSenderName(const char* Sendername)
 {
 	string namestring;
 	std::set<string> SenderNames;
@@ -369,7 +369,7 @@ bool spoutSenderNames::FindSenderName(char* Sendername)
 // The dialog or executable sets the info of the selected Sender
 // into the ActiveSender shared memory so the clients can picks it up.
 //  !!! The active Sender has to be a member of the Sender list !!!
-bool spoutSenderNames::SetActiveSender(char *Sendername)
+bool spoutSenderNames::SetActiveSender(const char *Sendername)
 {
 	std::set<string> SenderNames;
 
@@ -431,7 +431,7 @@ bool spoutSenderNames::GetActiveSenderInfo(SharedTextureInfo* info)
 //		2) Set the sender texture info to the map
 //		3) Register the sender name in the list of Spout senders
 // ---------------------------------------------------------
-bool spoutSenderNames::CreateSender(char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
+bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
 	std::map<std::string, HANDLE> maphandles;
 	std::map<std::string, HANDLE>::iterator it;
@@ -493,7 +493,7 @@ bool spoutSenderNames::CreateSender(char *sendername, unsigned int width, unsign
 //	Update the texture info of a sender
 //	Used for example when a sender's texture changes size
 // ---------------------------------------------------------
-bool spoutSenderNames::UpdateSender(char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
+bool spoutSenderNames::UpdateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
 	// Save the info for this sender in the sender shared memory map
 	if(!SetSenderInfo(sendername, width, height, hSharehandle, dwFormat))
@@ -508,7 +508,7 @@ bool spoutSenderNames::UpdateSender(char *sendername, unsigned int width, unsign
 //	Close a sender
 //	See - ReleaseSenderName
 // ---------------------------------------------------------
-bool spoutSenderNames::CloseSender(char* sendername)
+bool spoutSenderNames::CloseSender(const char* sendername)
 {
 	ReleaseSenderName(sendername);
 	return true;
@@ -609,7 +609,7 @@ bool spoutSenderNames::FindActiveSender(char *sendername, unsigned int &theWidth
 //		false	- sender not found or size changed
 //			width and height are returned zero for sender not found
 //
-bool spoutSenderNames::CheckSender(char *sendername, unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
+bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
 {
 	SharedTextureInfo info;
 	char sname[256];
@@ -645,7 +645,7 @@ bool spoutSenderNames::CheckSender(char *sendername, unsigned int &theWidth, uns
 //
 // Functions to manage creating, releasing, opening and closing of named memory maps
 //
-HANDLE spoutSenderNames::CreateMap(char *MemoryMapName, int MapSize)
+HANDLE spoutSenderNames::CreateMap(const char *MemoryMapName, int MapSize)
 {
 	HANDLE hMapFile;
 	DWORD errnum;
@@ -682,7 +682,7 @@ HANDLE spoutSenderNames::CreateMap(char *MemoryMapName, int MapSize)
 }
 
 
-char* spoutSenderNames::OpenMap(char* MapName, int MapSize, HANDLE &hMap)
+char* spoutSenderNames::OpenMap(const char* MapName, int MapSize, HANDLE &hMap)
 {
 	char* pBuf;
 	HANDLE hMapFile;
@@ -721,7 +721,7 @@ char* spoutSenderNames::OpenMap(char* MapName, int MapSize, HANDLE &hMap)
 // Here we can unmap the view of the map but not close the handle
 // When the process no longer needs access to the file mapping object, it should call the CloseHandle function. 
 // When all handles are closed, the system can free the section of the paging file that the object uses.
-void spoutSenderNames::CloseMap(char* MapBuffer, HANDLE hMap)
+void spoutSenderNames::CloseMap(const char* MapBuffer, HANDLE hMap)
 {
 	if(MapBuffer) {
 		UnmapViewOfFile((LPCVOID)MapBuffer);
@@ -735,7 +735,7 @@ void spoutSenderNames::CloseMap(char* MapBuffer, HANDLE hMap)
 
 
 
-HANDLE spoutSenderNames::CreateMemoryMap(char *MemoryMapName, int MapSize)
+HANDLE spoutSenderNames::CreateMemoryMap(const char *MemoryMapName, int MapSize)
 {
 
 	HANDLE hMap;
@@ -798,7 +798,7 @@ HANDLE spoutSenderNames::CreateMemoryMap(char *MemoryMapName, int MapSize)
 // Therefore, to fully close a file mapping object, an application must unmap all 
 // mapped views of the file mapping object by calling UnmapViewOfFile and close the
 // file mapping object handle by calling CloseHandle.
-bool spoutSenderNames::ReleaseMemoryMap(char* MapName)
+bool spoutSenderNames::ReleaseMemoryMap(const char* MapName)
 {
 	HANDLE hMap;
 	std::map<std::string, HANDLE> maphandles;
@@ -842,7 +842,7 @@ bool spoutSenderNames::ReleaseMemoryMap(char* MapName)
 //		2) Active sender info structure
 //		3) Sender info structure
 // ======================================
-bool spoutSenderNames::CreateMapLock(char *mapname)
+bool spoutSenderNames::CreateMapLock(const char *mapname)
 {
 	HANDLE hMutex;
 	char mutexname[256];
@@ -865,7 +865,7 @@ bool spoutSenderNames::CreateMapLock(char *mapname)
 // Waits for 4 frames before deciding the lock has failed
 // if it does, a receiver will assume the information has not changed
 // LockMap returns NULL if the mutex does not exist - i.e. the sender has closed
-bool spoutSenderNames::LockMap(char *mapname, HANDLE &hLock)
+bool spoutSenderNames::LockMap(const char *mapname, HANDLE &hLock)
 {
 	HANDLE hMutex;
 	DWORD dwWaitResult;
@@ -908,7 +908,7 @@ void spoutSenderNames::UnlockMap(HANDLE hMutex)
 }
 
 
-void spoutSenderNames::ReleaseMapLock(char *mapname)
+void spoutSenderNames::ReleaseMapLock(const char *mapname)
 {
 	HANDLE hMutex;
 	char mutexname[256];
@@ -927,7 +927,7 @@ void spoutSenderNames::ReleaseMapLock(char *mapname)
 //
 //	LJ DEBUG - Used in SpoutSDK.cpp. Disabled until there is evidence of a problem with the interop lock
 //
-bool spoutSenderNames::InitEvents(char *eventname, HANDLE &hReadEvent, HANDLE &hWriteEvent)
+bool spoutSenderNames::InitEvents(const char *eventname, HANDLE &hReadEvent, HANDLE &hWriteEvent)
 {
 	DWORD errnum;
 	char szReadEventName[256];	// name of the read event
@@ -1215,7 +1215,7 @@ bool spoutSenderNames::SetSenderSet(std::set<string>& SenderNames)
 } // end SetSenderSet
 
 // Copy the map handles set to shared memory which must exist first
-bool spoutSenderNames::SetHandleMap(char* MapName, std::map<std::string, HANDLE> maphandles)
+bool spoutSenderNames::SetHandleMap(const char* MapName, std::map<std::string, HANDLE> maphandles)
 {
 	char* pBuf;
 	HANDLE hMap;
@@ -1308,7 +1308,7 @@ bool spoutSenderNames::SetHandleMap(char* MapName, std::map<std::string, HANDLE>
 
 
 // Get the map handles from shared memory into a std::map
-bool spoutSenderNames::GetHandleMap(char* MapName, std::map<std::string, HANDLE> &maphandles) 
+bool spoutSenderNames::GetHandleMap(const char* MapName, std::map<std::string, HANDLE> &maphandles) 
 {
 	int i;
 	string namestring;	// local string to retrieve names
@@ -1395,7 +1395,7 @@ bool spoutSenderNames::GetHandleMap(char* MapName, std::map<std::string, HANDLE>
 //
 // Removes a Sender from the set of Sender names
 //
-bool spoutSenderNames::RemoveSender(char* Sendername) 
+bool spoutSenderNames::RemoveSender(const char* Sendername) 
 {
 	std::set<string> SenderNames;
 	std::set<string>::iterator iter;
@@ -1443,7 +1443,7 @@ bool spoutSenderNames::RemoveSender(char* Sendername)
 // Create a shared memory map to set the active Sender name to shared memory
 // This is a separate small shared memory with a fixed sharing name
 // that clients can use to retrieve the current active Sender
-bool spoutSenderNames::setActiveSenderName(char* SenderName) 
+bool spoutSenderNames::setActiveSenderName(const char* SenderName) 
 {
 
 	char* pBuf;
@@ -1474,7 +1474,7 @@ bool spoutSenderNames::setActiveSenderName(char* SenderName)
 
 
 // Get the active Sender name from shared memory
-bool spoutSenderNames::getActiveSenderName(char* SenderName) 
+bool spoutSenderNames::getActiveSenderName(const char* SenderName) 
 {
 
 	HANDLE hMap; // handle to the memory map
@@ -1502,7 +1502,7 @@ bool spoutSenderNames::getActiveSenderName(char* SenderName)
 
 // Return current sharing handle, width and height of a Sender
 // A receiver checks this all the time so it has to be compact
-bool spoutSenderNames::getSharedInfo(char* sharedMemoryName, SharedTextureInfo* info) 
+bool spoutSenderNames::getSharedInfo(const char* sharedMemoryName, SharedTextureInfo* info) 
 {
 	HANDLE hMap; // handle to the shared memory map
 	char* pBuf; // pointer to the memory map
@@ -1535,7 +1535,7 @@ bool spoutSenderNames::getSharedInfo(char* sharedMemoryName, SharedTextureInfo* 
 //	SenderChanged
 //
 // Check to see if the Sender has changed anything - does not depend on directx being initialized
-bool spoutSenderNames::SenderChanged(char *theSendername, unsigned int theWidth, unsigned int theHeight, DWORD theFormat, HANDLE theShareHandle) 
+bool spoutSenderNames::SenderChanged(const char *theSendername, unsigned int theWidth, unsigned int theHeight, DWORD theFormat, HANDLE theShareHandle) 
 {
 		unsigned int width, height;
 		HANDLE sharehandle;
@@ -1562,7 +1562,7 @@ bool spoutSenderNames::SenderChanged(char *theSendername, unsigned int theWidth,
 
 
 //---------------------------------------------------------
-bool spoutSenderNames::SenderDebug(char *Sendername, int size)
+bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 {
 	// LJ DEBUG
 	HANDLE hMap; // handle to the shared memory map

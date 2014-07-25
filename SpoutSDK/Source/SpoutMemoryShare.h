@@ -68,10 +68,11 @@
 
 // #define CONSOLE_DEBUG  // to activate debug console messages
 
+#include "SpoutCommon.h"
 #include <Windows.h>
 #include <stdio.h>
 
-class spoutMemoryShare {
+class SPOUT_DLLEXP spoutMemoryShare {
 
 	public:
 
