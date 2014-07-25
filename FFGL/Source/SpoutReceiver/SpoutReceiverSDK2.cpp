@@ -14,6 +14,7 @@
 	14.07-14 - changed to fixed SpoutReceiver object
 	16.07.14 - restored host fbo binding after readtexture otherwise texture draw does not work
 			 - used a local texture for both textureshare and memoryshare
+	25.07.14 - Version 3.001 - corrected ReceiveTexture in SpoutSDK.cpp for reset if the sender was closed
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -64,7 +65,7 @@ static CFFGLPluginInfo PluginInfo (
 	FF_SOURCE,									// Plugin type
 	"Spout Memoryshare receiver",				// Plugin description
 	#endif
-	"- - - - - - Vers 3.000 - - - - - -"		// About
+	"- - - - - - Vers 3.001 - - - - - -"		// About
 );
 
 /////////////////////////////////
@@ -329,7 +330,6 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 	unsigned int width, height;
 	HANDLE dxShareHandle;
 	DWORD dwFormat;
-	
 
 	if (pParam != NULL) {
 
@@ -367,7 +367,7 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 								}
 							}
 							else {
-								// warning - sender does not exist
+								// warning - same name
 								// printf("warning - same name\n", UserSenderName);
 								// receiver.SelectSenderPanel("warning - same name");
 							}
