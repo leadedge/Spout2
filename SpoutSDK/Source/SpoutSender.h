@@ -34,7 +34,7 @@
 
 #include "spoutSDK.h"
 
-class SpoutSender {
+class SPOUT_DLLEXP SpoutSender {
 
 	public:
 

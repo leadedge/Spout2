@@ -36,6 +36,7 @@
 #ifndef __spoutGLDXinterop__ // standard way as well
 #define __spoutGLDXinterop__
 
+#include "SpoutCommon.h"
 #include "spoutGLextensions.h"
 #include "spoutDirectX.h"
 #include "spoutSenderNames.h"
@@ -45,7 +46,7 @@
 #include <d3d11.h>	// DX11
 #include <gl/gl.h>
 
-class spoutGLDXinterop {
+class SPOUT_DLLEXP spoutGLDXinterop {
 
 	public:
 
