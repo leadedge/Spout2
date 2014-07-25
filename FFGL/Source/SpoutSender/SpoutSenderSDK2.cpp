@@ -17,6 +17,9 @@
 	08-07-14 - Version 3.000
 	14.07-14 - changed to fixed SpoutSender object
 	16.07.14 - restored host fbo binding after writetexture
+	25.07.14 - Version 3.001
+			 - changed option to true DX9 mode rather than just compatible format
+			 - recompiled with latest SDK
 
 */
 #include "SpoutSenderSDK2.h"
@@ -25,7 +28,6 @@
 
 // To force memoryshare
 // #define MemoryShareMode
-
 #ifndef MemoryShareMode
 	#define FFPARAM_SharingName		(0)
 	#define FFPARAM_Update			(1)
@@ -58,7 +60,7 @@ static CFFGLPluginInfo PluginInfo (
 	FF_EFFECT,								// Plugin type
 	"Spout Memoryshare sender",				// Plugin description - uses strdup
 	#endif
-	"- - - - - - Vers 3.000 - - - - - -"	// About - uses strdup
+	"- - - - - - Vers 3.001 - - - - - -"	// About - uses strdup
 );
 
 
@@ -103,8 +105,12 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	}
 
 	// Set DirectX texture format depending on DX9 compatibility flag
-	if(bDX9compatible) sender.SetDX9compatible(true);
-	else sender.SetDX9compatible(false);
+	// if(bDX9compatible) sender.SetDX9compatible(true);
+	// else sender.SetDX9compatible(false);
+
+	// changed to DX9 mode rather than just compatible format
+	if(bDX9compatible) sender.SetDX9(true);
+	else sender.SetDX9(false);
 
 }
 
@@ -240,6 +246,7 @@ DWORD SpoutSenderSDK2::SetParameter(const SetParameterStruct* pParam)
 				break;
 
 			// Set DirectX 11 texture format
+			// 25.07.14 - changed to DX9 mode rather than just compatible format
 			case FFPARAM_DX11format :
 				if(pParam->NewParameterValue > 0)
 					bDX9 = false;
@@ -249,10 +256,10 @@ DWORD SpoutSenderSDK2::SetParameter(const SetParameterStruct* pParam)
 				// Any change ?
 				if(bDX9 != bDX9compatible) {
 					bDX9compatible = bDX9;
-					sender.SetDX9compatible(bDX9compatible);
+					// sender.SetDX9compatible(bDX9compatible);
+					sender.SetDX9(bDX9compatible);
 					// Create a new sender
-					if(bInitialized) 
-						sender.ReleaseSender();
+					if(bInitialized) sender.ReleaseSender();
 					bInitialized = false;
 				}
 
