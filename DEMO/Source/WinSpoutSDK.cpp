@@ -13,6 +13,7 @@
 				- allowed user resizeable window
 				- included option for preserving the aspect ratio of the sender
 	19-07-14	- corrected rasterpos coords for text
+	22-07-14	- added option for DX9 or DX11
 
 */
 #define MAX_LOADSTRING 100
@@ -24,8 +25,21 @@
 	// x86 32-bit
 #endif
 
+
 #include "stdafx.h"
 #include "WinSpoutSDK.h"
+
+// leak checking
+// http://www.codeproject.com/Articles/9815/Visual-Leak-Detector-Enhanced-Memory-Leak-Detectio
+//
+#include "vld.h"
+//
+// http://msdn.microsoft.com/en-us/library/x98tx3cf%28VS.71%29.aspx
+//
+#define CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
 
 #include "..\..\SpoutSDK\Spout.h"
 
@@ -1106,14 +1120,12 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	MSG		msg;									// Windows Message Structure
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
 
-	/*
 	// Debug console window so printf works
 	AllocConsole();
 	freopen("CONIN$",  "r", stdin);
 	freopen("CONOUT$", "w", stdout);
 	freopen("CONOUT$", "w", stderr);
 	printf("\nWinSpoutSDK\n");
-	*/
 
 
 	// Create Our OpenGL Window
@@ -1255,6 +1267,11 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 
 	// Shutdown
 	KillGLWindow();			// Kill The OpenGL Window
+
+	// MS Leak checking
+	// _CrtDumpMemoryLeaks();
+	// MessageBoxA(NULL, "Exit", "WinSpout", MB_OK);
+	OutputDebugStringA("**** WinSpout Finished ****\n");
 
 	return (int) msg.wParam;
 }
