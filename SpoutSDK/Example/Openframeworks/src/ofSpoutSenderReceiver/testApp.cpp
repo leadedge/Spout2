@@ -91,13 +91,14 @@ void testApp::draw() {
 	//
 	// INITIALIZE A RECEIVER
 	//
-
-	// The receiver will attempt to connect to the name it is sent, but if that does not 
-	// exist it will connect to the active sender. If the receiver does not find any senders
-	// the initialization will fail and it can be called repeatedly until a sender is found
-	// "CreateReceiver" will return the receiving name, and dimensions
+	// The receiver will attempt to connect to the name it is sent.
+	// Alternatively set the optional bUseActive flag to attempt to connect to the active sender. 
+	// If the sender name is not initialized it will attempt to find the active sender
+	// If the receiver does not find any senders the initialization will fail
+	// and "CreateReceiver" can be called repeatedly until a sender is found.
+	// "CreateReceiver" will update the passed name, and dimensions.
 	if(!bReceverInitialized) {
-		if(spoutreceiver->CreateReceiver(receiverName, width, height)) {
+		if(spoutreceiver->CreateReceiver(receiverName, width, height, true)) {
 			// Is the size of the detected sender different ?
 			if(width != receiverWidth || height != receiverWidth ) {
 				// The sender dimensions have changed so update the global width and height

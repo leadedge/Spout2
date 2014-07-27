@@ -14,6 +14,7 @@
 //		25-07-14	- Malcolm Bechard mods to header to enable compilation as a dll
 //					- ReceiveTexture - release receiver if the sender no longer exists
 //					- ReceiveImage same change - to be tested
+//		27-07-14	- CreateReceiver - bUseActive flag instead of null name
 //
 // ================================================================
 /*
@@ -55,6 +56,7 @@ Spout::Spout()
 	bMemory				= false;	// user memoryshare override
 	bInitialized		= false;
 	bChangeRequested	= true;		// set for initial
+	bUseActive			= false;	// Use the active sender for CreateReceiver
 	bSpoutPanelOpened	= false;	// Selection panel "spoutpanel.exe" opened
 }
 
@@ -115,9 +117,6 @@ bool Spout::UpdateSender(char *sendername, unsigned int width, unsigned int heig
 		// printf("Spout::UpdateSender (%s) %dx%d\n", g_SharedMemoryName, g_Width, g_Height);
 		return true;
 	}
-	else {
-		// printf("Spout::UpdateSender could not get sender (%s) info\n", sendername);
-	}
 
 	return false;
 		
@@ -141,17 +140,40 @@ void Spout::ReleaseSender(DWORD dwMsec)
 
 }
 
-// LJ DEBUG - redundancy
-bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height)
+// 27.07-14 - change logic to allow an optional user flag to use the active sender
+bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height, bool bActive)
 {
-	return OpenReceiver (sendername, width, height);
+
+	char UserName[256];
+	UserName[0] = 0; // OK to do this internally
+
+	// printf("Spout::CreateReceiver - bActive = %d, bUseActive = %d\n", bActive, bUseActive);
+
+	// Use the active sender if the user wants it or the sender name is not set
+	if(bActive || sendername[0] == 0) {
+		bUseActive = true;
+		// printf("    No passed sender name - bActive = %d, bUseActive = %d\n", bActive, bUseActive);
+	}
+	else {
+		// Try to find the sender with the name sent or over-ride with user flag
+		strcpy_s(UserName, 256, sendername);
+		bUseActive = bActive; // set global flag to use the active sender or not
+		// printf("    Sender name (%s), bActive = %d bUseActive = %d\n", UserName, bActive, bUseActive);
+	}
+
+	if(OpenReceiver(UserName, width, height)) {
+		strcpy_s(sendername, 256, UserName); // pass back the sendername used
+		return true;
+	}
+	
+	return false;
 }
 
 
 void Spout::ReleaseReceiver() 
 {
 	// can be done without a check here if(bDxInitOK || bMemoryShareInitOK)
-		SpoutCleanUp();
+	SpoutCleanUp();
 }
 
 
@@ -167,7 +189,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 		// width, g_Width should all be the same
 		// But it is the responsibility of the application to reset any texture that is being sent out.
 		if(width != g_Width || height != g_Height) {
-			// printf("Spout::SendTexture - size changed\n    from %dx%d\n    to %dx%d\n", g_Width, g_Height, width, height);
+			printf("Spout::SendTexture - size changed\n    from %dx%d\n    to %dx%d\n", g_Width, g_Height, width, height);
 			return(UpdateSender(g_SharedMemoryName, width, height));
 		}
 		return(interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert));
@@ -306,7 +328,8 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 
 	// Has it initialized yet ?
 	if(!bInitialized) {
-		// The name passed is the name to try to connect to unless the name is null
+		// The name passed is the name to try to connect to 
+		// unless the bUseActive flag is set or the name is not initialized
 		// in which case it will try to find the active sender
 		// Width and height are passed back as well
 		if(OpenReceiver(name, newWidth, newHeight)) {
@@ -825,7 +848,8 @@ bool Spout::SetVerticalSync(bool bSync)
 // ========================================================== //
 
 // Find if the sender exists
-// Or if a null name is given, return the active sender name if that exists
+// If the name begins with a null character, or the bUseActive flag has been set
+// return the active sender name if that exists
 bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& theHeight)
 {
 
@@ -835,12 +859,15 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	unsigned int height;
 	bool bMemoryMode = true;
 
-	if(theName[0]) {
-		// printf("Spout::OpenReceiver (%s) %dx%d)\n", theName, theWidth, theHeight);
+	// printf("Spout::OpenReceiver\n");
+
+	// A valid name is sent and the user does not want to use the active sender
+	if(theName[0] && !bUseActive) {
+		// printf("    (%s) %dx%d - bUseActive = %d\n", theName, theWidth, theHeight, bUseActive);
 		strcpy_s(Sendername, 256, theName);
 	}
 	else {
-		// printf("Spout::OpenReceiver (no name) %dx%d)\n", theWidth, theHeight);
+		// printf("Spout::OpenReceiver (use active sender) %dx%d -  - bUseActive = %d\n", theWidth, theHeight, bUseActive);
 		Sendername[0] = 0;
 	}
 
@@ -1110,6 +1137,9 @@ void Spout::SpoutCleanUp(bool bExit)
 
 	// important - we no longer want the global shared memory name and need to reset it
 	g_SharedMemoryName[0] = 0; 
+
+	// Set default for CreateReceiver
+	bUseActive = false;
 
 	// Important - everything is reset (see ReceiveTexture)
 	bInitialized = false;

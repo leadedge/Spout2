@@ -94,13 +94,16 @@ void SpoutBoxApp::update()
 	if(!bInitialized) {
 
 		// This is a receiver, so the initialization is a little more complex than a sender
-
-		// You can pass a sender name to try to find and connect to 
-		// Otherwise send a NULL name and it will connect to the active sender when that is running
+		// The receiver will attempt to connect to the name it is sent.
+		// Alternatively set the optional bUseActive flag to attempt to connect to the active sender. 
+		// If the sender name is not initialized it will attempt to find the active sender
+		// If the receiver does not find any senders the initialization will fail
+		// and "CreateReceiver" can be called repeatedly until a sender is found.
+		// "CreateReceiver" will update the passed name, and dimensions.
 		SenderName[0] = NULL; // the name will be filled when the receiver connects to a sender
 		width  = g_Width; // pass the initial width and height (they will be adjusted if necessary)
 		height = g_Height;
-		if(spoutreceiver.CreateReceiver(SenderName, width, height)) {
+		if(spoutreceiver.CreateReceiver(SenderName, width, height, true)) { // true to find the active sender
 			// Optionally test for texture share compatibility
 			// bMemoryMode informs us whether Spout initialized for texture share or memory share
 			bMemoryMode = spoutreceiver.GetMemoryShareMode();

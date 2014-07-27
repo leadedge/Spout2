@@ -66,7 +66,7 @@ class SPOUT_DLLEXP Spout {
 	bool SendImage(unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert=true);
 
 	// Receiver
-	bool CreateReceiver(char* name, unsigned int &width, unsigned int &height);
+	bool CreateReceiver(char* name, unsigned int &width, unsigned int &height, bool bUseActive = false);
 	void ReleaseReceiver(); 
 	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0);
 	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, int glFormat);
@@ -145,7 +145,7 @@ DXGI_FORMAT_R8G8B8A8_TYPELESS				= 27,
 	bool bInitialized;
 	bool bChangeRequested;
 	bool bSpoutPanelOpened;
-	bool bSenderChanged;
+	bool bUseActive; // Use the active sender for CreateReceiver
 	SHELLEXECUTEINFOA ShExecInfo;
 
 	bool GLDXcompatible();

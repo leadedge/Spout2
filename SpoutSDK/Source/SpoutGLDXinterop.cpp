@@ -187,8 +187,13 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	}
 
 	// Create a local opengl texture that will be linked to a shared DirectX texture
-	if(m_glTexture) glDeleteTextures(1, &m_glTexture);
+	if(m_glTexture) {
+		// printf("GLDXinterop - deleting m_glTexture (%d)\n", m_glTexture);
+		glDeleteTextures(1, &m_glTexture);
+	}
 	glGenTextures(1, &m_glTexture);
+
+	// printf("GLDXinterop - m_glTexture = %d\n", m_glTexture);
 
 	// Create textures and GLDX interop objects
 	if(bUseDX9)	bRet = CreateDX9interop(sendername, width, height, format, bReceive);
@@ -354,6 +359,71 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 
 }
 
+// LJ DEBUG - not working
+// Re-link a gl texture to the shared directX texture
+bool spoutGLDXinterop::LinkGLtexture(GLuint glTexture) 
+{
+
+	printf("LinkGLtexture(%d)\n", glTexture);
+
+	if(g_pd3dDevice == NULL || g_pSharedTexture == NULL || m_dxShareHandle == NULL) {
+		printf("    null handles\n");
+		return false;
+	}
+
+	if(m_hInteropDevice != NULL &&  m_hInteropObject != NULL) {
+		printf("    unregister\n");
+		wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
+		m_hInteropObject = NULL;
+	}
+	printf("    unregister OK\n");
+
+	if (m_hInteropDevice != NULL) {
+		wglDXCloseDeviceNV(m_hInteropDevice);
+	}
+
+	printf("    close device OK\n");
+	m_hInteropDevice = NULL;
+	m_hInteropObject = NULL;
+
+
+	m_hInteropDevice = wglDXOpenDeviceNV(g_pd3dDevice);
+	if (m_hInteropDevice == NULL) {
+		printf("    open device fail\n");
+		return false;
+	}
+	printf("    open device OK\n");
+
+	// prepare shared resource
+	// wglDXSetResourceShareHandle does not need to be called for DirectX
+	// version 10 and 11 resources. Calling this function for DirectX 10
+	// and 11 resources is not an error but has no effect.
+	/*
+	if (!wglDXSetResourceShareHandleNV(g_pSharedTexture, m_dxShareHandle)) {
+		printf("   wglDXSetResourceShareHandleNV fail\n");
+		return false;
+	}
+	printf("   wglDXSetResourceShareHandleNV OK\n");
+	*/
+
+	// Prepare the DirectX texture for use by OpenGL
+	// register for interop and associate the opengl texture with the dx texture
+	m_hInteropObject = wglDXRegisterObjectNV(g_pd3dDevice, 
+											 g_pSharedTexture,		// DX texture
+											 glTexture,				// OpenGL texture
+											 GL_TEXTURE_2D,			// Must be TEXTURE_2D
+											 WGL_ACCESS_READ_WRITE_NV); // We will write and the receiver will read
+
+	if(!m_hInteropObject) {
+		printf("    null InteropObject\n");
+		return false;
+	}
+
+	printf("    InteropObject OK\n");
+
+	return true;
+
+}
 
 void spoutGLDXinterop::CleanupDirectX()
 {
@@ -913,9 +983,10 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 				// unbind the texture
 				glBindTexture(TextureTarget, 0);
 			}
-			// else {
+			else {
 				// printf("spoutGLDXinterop::ReadTexture - fbo not complete\n");
-			// }
+			}
+
 			// Unbind our fbo
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); 
 

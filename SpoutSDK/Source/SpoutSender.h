@@ -58,10 +58,11 @@ class SPOUT_DLLEXP SpoutSender {
 
 	bool SenderDebug(char *Sendername, int size);
 
+	Spout spout;
 
 protected :
 
-	Spout spout;
+	// Spout spout;
 
 };
 

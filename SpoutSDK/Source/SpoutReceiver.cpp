@@ -3,6 +3,12 @@
 //
 //		Wrapper class so that a receiver object can be created independent of a sender
 //
+// ====================================================================================
+//		Revisions :
+//
+//		27-07-14	- CreateReceiver - bUseActive flag instead of null name
+//
+// ====================================================================================
 /*
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
 
@@ -25,6 +31,7 @@
 		INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 		LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 */
 #include "SpoutReceiver.h"
 
@@ -63,9 +70,9 @@ bool SpoutReceiver::GetImageSize(char* name, unsigned int &width, unsigned int &
 
 
 //---------------------------------------------------------
-bool SpoutReceiver::CreateReceiver(char* name, unsigned int &width, unsigned int &height)
+bool SpoutReceiver::CreateReceiver(char* name, unsigned int &width, unsigned int &height, bool bUseActive)
 {
-	return spout.CreateReceiver(name, width, height);
+	return spout.CreateReceiver(name, width, height, bUseActive);
 }
 
 //---------------------------------------------------------

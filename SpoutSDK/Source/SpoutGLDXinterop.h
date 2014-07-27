@@ -96,6 +96,9 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		HANDLE LinkGLDXtextures(void* pDXdevice, void* pSharedTexture, HANDLE dxShareHandle, GLuint glTextureID);
 		void CleanupDirectX();
 
+		// LJ DEBUG - not working
+		bool LinkGLtexture(GLuint glTexture) ;
+
 		// Utilities
 		bool GLDXcompatible();
 		bool GetVerticalSync();

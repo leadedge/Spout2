@@ -14,6 +14,8 @@
 				- included option for preserving the aspect ratio of the sender
 	19-07-14	- corrected rasterpos coords for text
 	22-07-14	- added option for DX9 or DX11
+	26-07-14	- recompiled Win32 binaries
+	27-07-14	- CreateReceiver - bUseActive flag instead of null name
 
 */
 #define MAX_LOADSTRING 100
@@ -53,7 +55,7 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 bool bReceiver      = false; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
-bool bDX9compatible = false; // For DX11 only - compatible DX9 format for DX11 senders
+bool bDX9compatible = true;  // For DX11 only - compatible DX9 format for DX11 senders
 // =============================================================
 
 
@@ -388,7 +390,7 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	// set initial values
 	g_Width  = width;
 	g_Height = height;
-	// null name to begin so that createreceiever finds the active sender
+	// Non-alphanumeric name to begin so that CreateReceiever finds the active sender
 	g_SenderName[0] = 0; 
 
 	// Update the local texture
@@ -408,7 +410,14 @@ bool OpenReceiver()
 	// width, height			- width and height of the sender
 	// Returns true for success or false for initialisation failure.
 	//
-	if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height)) {
+
+	// LJ DEBUG
+	// Testing of finding a given sender name - tested OK
+	// strcpy_s(g_SenderName, 256,	"Spout SDK DX11 Sender 32bit");
+	// Test of null name, original method - tested OK
+	// if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height)) {
+	// Test of user specify finding the active sender - tested OK
+	if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height, true)) {
 		// Update the local texture
 		InitTexture(g_Width, g_Height);
 		// LJ DEBUG !!!
@@ -1126,7 +1135,6 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	freopen("CONOUT$", "w", stdout);
 	freopen("CONOUT$", "w", stderr);
 	printf("\nWinSpoutSDK\n");
-
 
 	// Create Our OpenGL Window
 
