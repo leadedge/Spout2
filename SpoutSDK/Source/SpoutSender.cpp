@@ -134,6 +134,8 @@ bool SpoutSender::GetDX9compatible()
 
 bool SpoutSender::SenderDebug(char *Sendername, int size)
 {
-	return spout.senders.SenderDebug(Sendername, size);
+	// LJ DEBUG return spout.senders.SenderDebug(Sendername, size);
+
+	return true;
 
 }

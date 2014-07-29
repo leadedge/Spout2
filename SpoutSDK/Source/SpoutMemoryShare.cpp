@@ -293,7 +293,7 @@ bool spoutMemoryShare::GetImageSizeFromSharedMemory(unsigned int &width, unsigne
 		pbmih->biWidth = 0;
 		pbmih->biHeight = 0;
 
-		int i = sizeof(BITMAPINFOHEADER);
+		// int i = sizeof(BITMAPINFOHEADER);
 
 		if(ReadFromMemory((unsigned char *)pbmih, sizeof(BITMAPINFOHEADER))) {
 			if(pbmih->biWidth > 0 && pbmih->biHeight > 0) {

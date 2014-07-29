@@ -65,7 +65,8 @@ bool SpoutReceiver::ReceiveImage(char* name, unsigned int &width, unsigned int &
 //---------------------------------------------------------
 bool SpoutReceiver::GetImageSize(char* name, unsigned int &width, unsigned int &height, bool &bMemoryMode)
 {
-	return spout.senders.GetImageSize(name, width, height, bMemoryMode);
+	// LJ DEBUG return spout.senders.GetImageSize(name, width, height, bMemoryMode);
+	return true;
 }
 
 

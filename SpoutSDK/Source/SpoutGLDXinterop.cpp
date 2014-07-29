@@ -93,7 +93,7 @@ bool spoutGLDXinterop::OpenDirectX(HWND hWnd, bool bDX9)
 	else {
 		bUseDX9 = false;
 		// printf("OpenDirectX - DirectX 11\n");
-		return (OpenDirectX11(hWnd));
+		return (OpenDirectX11());
 	}
 }
 
@@ -116,13 +116,13 @@ bool spoutGLDXinterop::OpenDirectX9(HWND hWnd)
 }
 
 // this function initializes and prepares Direct3D
-bool spoutGLDXinterop::OpenDirectX11(HWND hWnd)
+bool spoutGLDXinterop::OpenDirectX11()
 {
 	// Quit if already initialized
 	if(g_pd3dDevice != NULL)	return true;
 
 	// Create a DirectX 11 device
-	if(!g_pd3dDevice) g_pd3dDevice = spoutdx.CreateDX11device(hWnd);
+	if(!g_pd3dDevice) g_pd3dDevice = spoutdx.CreateDX11device();
 	if(g_pd3dDevice == NULL) return false;
 
 	return true;
@@ -196,13 +196,17 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// printf("GLDXinterop - m_glTexture = %d\n", m_glTexture);
 
 	// Create textures and GLDX interop objects
-	if(bUseDX9)	bRet = CreateDX9interop(sendername, width, height, format, bReceive);
-	else bRet = CreateDX11interop(sendername, width, height, format, bReceive);
+	if(bUseDX9)	bRet = CreateDX9interop(width, height, format, bReceive);
+	else bRet = CreateDX11interop(width, height, format, bReceive);
 	if(!bRet) return false;
 
 	// Now the global shared texture handle - m_dxShareHandle - has been set so a sender can be created
 	// this creates the sender shared memory map and registers the sender
-	if (!bReceive) senders.CreateSender(sendername, width, height, m_dxShareHandle, format);
+	if (!bReceive) {
+		// Quit if sender creation failed - i.e. trying to create the same sender
+		if(!senders.CreateSender(sendername, width, height, m_dxShareHandle, format))
+			return false;
+	}
 
 	// Set up local values for this instance
 	// Needed for texture read and write size checks
@@ -246,7 +250,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 //		bReceive		when receiving a texture from a DX application this must be set to true (default)
 //						when sending a texture from GL to the DX application, set to false
 //
-bool spoutGLDXinterop::CreateDX9interop(char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive) 
+bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive) 
 {
 
 	// The shared texture handle of the Sender texture "m_dxShareHandle" 
@@ -290,7 +294,7 @@ bool spoutGLDXinterop::CreateDX9interop(char* sendername, unsigned int width, un
 //
 // =================== DX11 ==============================
 //
-bool spoutGLDXinterop::CreateDX11interop(char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive ) 
+bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive ) 
 {
 	// Create or use a shared DirectX texture that will be linked to the OpenGL texture
 	// and get it's share handle for sharing textures
@@ -547,9 +551,11 @@ bool spoutGLDXinterop::setSharedTextureInfo(char* sharedMemoryName) {
 	char* pBuf;
 	// HANDLE hLock;
 
+	// LJ DEBUG - has sender been created yet ?
 	// Create or open shared memory - allocate enough for the texture info
-	m_hSharedMemory = senders.CreateMap(sharedMemoryName, sizeof(SharedTextureInfo));
-	if(m_hSharedMemory == NULL) return false;
+	// m_hSharedMemory = senders.CreateMap(sharedMemoryName, sizeof(SharedTextureInfo));
+	// if(m_hSharedMemory == NULL) return false;
+	pBuf = senders.CreateMap(sharedMemoryName, sizeof(SharedTextureInfo), hMap );
 
 	// Lock the shared memory map with it's mutex - wait 4 frames for access
 	// if(!(hLock = senders.LockMap(sharedMemoryName))) return false;
@@ -652,7 +658,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 		// try to set up directx and open the GL/DX interop
 		// printf("Calling OpenDirectX(%d)\n", bUseDX9);
 		if(OpenDirectX(hWnd, bUseDX9)) {
-			// if(OpenDirectX11(hWnd, g_pd3dDevice, m_hInteropDevice)) { // if it passes here all is well
+			// if it passes here all is well
 			return true;
 		}
 	} // end hardware compatibility test

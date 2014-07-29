@@ -79,7 +79,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		void UseDX9(bool bDX9);
 		bool isDX9();
 
-		bool CreateDX9interop(char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
+		bool CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
 		bool OpenDirectX9(HWND hWnd); // Initialize and prepare DirectX9
 		void CleanupDX9();
 
@@ -87,8 +87,8 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		DXGI_FORMAT	DX11format; // the DX11 texture format to be used
 		void SetDX11format(DXGI_FORMAT textureformat); // set format by user
 
-		bool CreateDX11interop(char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive);
-		bool OpenDirectX11(HWND hWnd); // Initialize and prepare DirectX11
+		bool CreateDX11interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive);
+		bool OpenDirectX11(); // Initialize and prepare DirectX11
 		void CleanupDX11();
 
 		// Common

@@ -172,7 +172,7 @@ bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned 
 // and 11 resources is not an error but has no effect.
 
 // Create DX11 device
-ID3D11Device* spoutDirectX::CreateDX11device(HWND hWnd)
+ID3D11Device* spoutDirectX::CreateDX11device()
 {
 	ID3D11Device* pd3dDevice = NULL;
 	HRESULT hr = S_OK;

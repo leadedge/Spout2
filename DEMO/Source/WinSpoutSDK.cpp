@@ -16,6 +16,7 @@
 	22-07-14	- added option for DX9 or DX11
 	26-07-14	- recompiled Win32 binaries
 	27-07-14	- CreateReceiver - bUseActive flag instead of null name
+	28-07-14	- memory leak and map lock testing
 
 */
 #define MAX_LOADSTRING 100
@@ -52,7 +53,7 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // ================= CHANGE COMPILE FLAGS HERE =================
 // Rename the executable as necessary to get a sender/receiver pair
 //
-bool bReceiver      = false; // Compile for receiver (true) or sender (false)
+bool bReceiver      = true; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
 bool bDX9compatible = true;  // For DX11 only - compatible DX9 format for DX11 senders
@@ -114,6 +115,8 @@ double lastFrameTime, diff, timeThen, timeNow, fps, frameRate, startTime;
 int				MouseXpos = 0;
 int				MouseYpos = 0;
 bool			bClicked = false;
+
+int debugCounter = 0;
 
 LRESULT	CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);	// Declaration For WndProc
 
@@ -285,8 +288,8 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	HGLRC glContext;
 
 	// A render window must be visible for Spout initialization to work
-	HDC	GLhdc = wglGetCurrentDC();
-	HWND hwnd = WindowFromDC(GLhdc); 
+	// HDC	GLhdc = wglGetCurrentDC();
+	// HWND hwnd = WindowFromDC(GLhdc); 
 
 	// Open Spout and remove the sender selection option for memorymode
 	if(bMemoryMode) {
@@ -311,8 +314,8 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 			receiver.SetDX9(false);
 			// Here the sender DX11 texure format can be set to be DX9 compatible or not
 			// printf("setting DX11 sender bDX9compatible = (%d)\n", bDX9compatible);
+			// LJ DEBUG	sender.interop.SetDX11format(DXGI_FORMAT_B8G8R8A8_UNORM);
 			sender.SetDX9compatible(bDX9compatible);
-			receiver.SetDX9compatible(bDX9compatible);
 		}
 	}
 
@@ -411,7 +414,6 @@ bool OpenReceiver()
 	// Returns true for success or false for initialisation failure.
 	//
 
-	// LJ DEBUG
 	// Testing of finding a given sender name - tested OK
 	// strcpy_s(g_SenderName, 256,	"Spout SDK DX11 Sender 32bit");
 	// Test of null name, original method - tested OK
@@ -458,6 +460,19 @@ bool OpenSender()
 	// Returns true for success or false for initialisation failure.
 	return(sender.CreateSender(g_SenderName, g_Width, g_Height));
 
+	/*
+	// LJ DEBUG
+	for(int i = 0; i<1000; i++) {
+		printf("CreateSender (%d)\n", debugCounter);
+		sender.CreateSender(g_SenderName, g_Width, g_Height);
+		printf("ReleaseSender (%d)\n", debugCounter);
+		sender.ReleaseSender();
+		debugCounter++;
+	}
+	*/
+
+	return true;
+
 } // end OpenSender
 
 
@@ -500,7 +515,6 @@ int DrawGLScene(GLvoid)
 	
 			// Received OK at the current size
 
-			// LJ DEBUG
 			SaveOpenGLstate(); // Aspect ratio control
 
 			// METHOD 1 - use the local received texture
@@ -555,8 +569,7 @@ int DrawGLScene(GLvoid)
 		if(!bInitialized) {
 			bInitialized = OpenSender();
 			if(!bInitialized) {
-				// Failure is final
-				MessageBoxA(NULL, "Cannot open demo sender\nIs one already running?", "WinSpout", MB_OK);
+				// Failure is final so quit the whole program
 				return FALSE;
 			}
 			return TRUE;
@@ -625,6 +638,7 @@ int DrawGLScene(GLvoid)
 		glBindTexture(GL_TEXTURE_2D, 0);
 
 		// Send the texture
+		// LJ DEBUG
 		sender.SendTexture(myTexture, GL_TEXTURE_2D, g_Width, g_Height);
 	
 		ShowSenderInfo();
@@ -839,21 +853,22 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 	AdjustWindowRectEx(&WindowRect, dwStyle, FALSE, dwExStyle);	// Adjust Window To True Requested Size
 
 	// Create The Window
-	if (!(hWnd=CreateWindowExA(	dwExStyle,							// Extended Style For The Window
-								"OpenGL",							// Class Name
-								title,								// Window Title
-								dwStyle |							// Defined Window Style
-								WS_CLIPSIBLINGS |					// Required Window Style
-								WS_CLIPCHILDREN,					// Required Window Style
-								// SPOUT - give it a position instead of zero
-								WindowPosLeft, WindowPosTop,		// Window Position
-								WindowRect.right-WindowRect.left,	// Calculate Window Width
-								WindowRect.bottom-WindowRect.top,	// Calculate Window Height
-								NULL,								// No Parent Window
-								NULL,								// No Menu
-								hInstance,							// Instance
-								NULL)))								// Dont Pass Anything To WM_CREATE
-	{
+	hWnd=CreateWindowExA(	dwExStyle,							// Extended Style For The Window
+							"OpenGL",							// Class Name
+							title,								// Window Title
+							dwStyle |							// Defined Window Style
+							WS_CLIPSIBLINGS |					// Required Window Style
+							WS_CLIPCHILDREN,					// Required Window Style
+							// SPOUT - give it a position instead of zero
+							WindowPosLeft, WindowPosTop,		// Window Position
+							WindowRect.right-WindowRect.left,	// Calculate Window Width
+							WindowRect.bottom-WindowRect.top,	// Calculate Window Height
+							NULL,								// No Parent Window
+							NULL,								// No Menu
+							hInstance,							// Instance
+							NULL);
+	
+	if (!hWnd) {
 		KillGLWindow();								// Reset The Display
 		MessageBoxA(NULL,"Window Creation Error.","ERROR",MB_OK|MB_ICONEXCLAMATION);
 		return FALSE;								// Return FALSE
@@ -873,7 +888,8 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 
 	int bitsPerPixel = bits; // default passed int
 	// If there is a DC get the current pixel depth
-	if ((hDC=GetDC(hWnd))) {
+	hDC=GetDC(hWnd);
+	if (hDC) {
 		bitsPerPixel = GetDeviceCaps(hDC, BITSPIXEL); //to get current system's color depth
 	}
 
@@ -887,7 +903,7 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 		PFD_DOUBLEBUFFER,							// Must Support Double Buffering
 		PFD_TYPE_RGBA,								// Request An RGBA Format
 		// bits,									// Select Our Color Depth
-		bitsPerPixel,								// Select Our Color Depth
+		(BYTE)bitsPerPixel,							// Select Our Color Depth
 		0, 0, 0, 0, 0, 0,							// Color Bits Ignored
 		0,											// No Alpha Buffer
 		0,											// Shift Bit Ignored
@@ -901,13 +917,15 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 		0, 0, 0										// Layer Masks Ignored
 	};
 	
-	if (!(hDC=GetDC(hWnd)))	{						// Did We Get A Device Context?
+	hDC=GetDC(hWnd);
+	if (!hDC)	{						// Did We Get A Device Context?
 		KillGLWindow();								// Reset The Display
 		MessageBoxA(NULL,"Can't Create A GL Device Context.","ERROR",MB_OK|MB_ICONEXCLAMATION);
 		return FALSE;								// Return FALSE
 	}
 
-	if (!(PixelFormat=ChoosePixelFormat(hDC,&pfd))) {	// Did Windows Find A Matching Pixel Format?
+	PixelFormat=ChoosePixelFormat(hDC,&pfd);
+	if (!PixelFormat) {	// Did Windows Find A Matching Pixel Format?
 		KillGLWindow();								// Reset The Display
 		MessageBoxA(NULL,"Can't Find A Suitable PixelFormat.","ERROR",MB_OK|MB_ICONEXCLAMATION);
 		return FALSE;								// Return FALSE
@@ -919,7 +937,8 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 		return FALSE;								// Return FALSE
 	}
 
-	if (!(hRC=wglCreateContext(hDC))) {				// Are We Able To Get A Rendering Context?
+	hRC=wglCreateContext(hDC);
+	if (!hRC) {				// Are We Able To Get A Rendering Context?
 		KillGLWindow();								// Reset The Display
 		MessageBoxA(NULL,"Can't Create A GL Rendering Context.","ERROR",MB_OK|MB_ICONEXCLAMATION);
 		return FALSE;								// Return FALSE
@@ -947,14 +966,15 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 }
 
 
-// LJ DEBUG - does windows support alpha ?
+// DEBUG - does windows support alpha ?
 int FindPixelType() {
 
 	PIXELFORMATDESCRIPTOR  pfd;
 	HDC  hdc;
 	int  iPixelFormat;
 
-	if (!(hdc=GetDC(hWnd)))
+	hdc=GetDC(hWnd);
+	if (!hdc)
 		return -1;
 
 	// get the current pixel format index  
@@ -1126,6 +1146,9 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
+	UNREFERENCED_PARAMETER(hInstance);
+	UNREFERENCED_PARAMETER(nCmdShow);
+
 	MSG		msg;									// Windows Message Structure
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
 
@@ -1135,6 +1158,9 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	freopen("CONOUT$", "w", stdout);
 	freopen("CONOUT$", "w", stderr);
 	printf("\nWinSpoutSDK\n");
+
+	// suppress warnings
+	msg.wParam = 0;
 
 	// Create Our OpenGL Window
 
@@ -1159,7 +1185,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 			strcat_s(WindowTitle, 256, "Sender 32bit"); // Sender name
 	#endif
 	
-	HDC	GLhdc = wglGetCurrentDC();
+	// HDC	GLhdc = wglGetCurrentDC();
 	if (!CreateGLWindow(WindowTitle, g_Width, g_Height, 16))	{
 		return 0;										// Quit If Window Was Not Created
 	}
@@ -1209,7 +1235,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 					keys[VK_SPACE]=FALSE;
 
 					// LJ DEBUG - test
-					// sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
+					sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
 					
 					/*
 					if(bFullscreen) {
@@ -1279,9 +1305,13 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	// MS Leak checking
 	// _CrtDumpMemoryLeaks();
 	// MessageBoxA(NULL, "Exit", "WinSpout", MB_OK);
-	OutputDebugStringA("**** WinSpout Finished ****\n");
+	// OutputDebugStringA("**** WinSpout Finished ****\n");
 
-	return (int) msg.wParam;
+	// LJ DEBUG
+	// sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
+	// MessageBoxA(NULL, "Finished", "WinSpout", MB_OK);
+
+	return (int)msg.wParam;
 }
 
 void doFullScreen(bool bFullscreen)
@@ -1481,6 +1511,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 // Message handler for caps dialog
 LRESULT CALLBACK Capabilities(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	UNREFERENCED_PARAMETER(lParam); // suppress warning
 
 	switch (message) {
 		

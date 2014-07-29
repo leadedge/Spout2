@@ -72,7 +72,7 @@ Spout::~Spout()
 // Public functions
 bool Spout::CreateSender(char* sendername, unsigned int width, unsigned int height, DWORD dwFormat)
 {
-	bool bRet = false;
+	// bool bRet = false;
 	bool bMemoryMode = true;
 
 	// Make sure it has initialized
@@ -131,6 +131,7 @@ void Spout::ReleaseSender(DWORD dwMsec)
 	}
 
 	if(g_SharedMemoryName[0] > 0) {
+		printf("Spout::ReleaseSender (%s)\n", g_SharedMemoryName);
 		senders.ReleaseSenderName(g_SharedMemoryName); // if not registered it does not matter
 	}
 	SpoutCleanUp();
@@ -316,7 +317,7 @@ bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int he
 //
 bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget)
 {
-	bool bRet = false;
+	// bool bRet = false;
 	char newname[256];
 	unsigned int newWidth, newHeight;
 	DWORD dwFormat;
@@ -440,7 +441,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 				}
 
 				// check the size received to see if it matches the size passed in
-				if(pbmih->biWidth != width || pbmih->biHeight != height) {
+				if((unsigned int)pbmih->biWidth != width || (unsigned int)pbmih->biHeight != height) {
 					// return changed width and height
 					width  = (unsigned int)pbmih->biWidth;
 					height = (unsigned int)pbmih->biHeight;
@@ -471,7 +472,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 // Note was RGB only. Format passed should go through now and work.
 bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, unsigned char* pixels, int glFormat)
 {
-	bool bRet = false;
+	// bool bRet = false;
 	char newname[256];
 	unsigned int newWidth, newHeight;
 	DWORD dwFormat;
@@ -628,7 +629,7 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 					return false;
 				}
 				// check the size received to see if it matches the size passed in
-				if(pbmih->biWidth != width || pbmih->biHeight != height) {
+				if((unsigned int)pbmih->biWidth != width || (unsigned int)pbmih->biHeight != height) {
 					// return changed width and height
 					width  = (unsigned int)pbmih->biWidth;
 					height = (unsigned int)pbmih->biHeight;
@@ -959,7 +960,10 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 	if(bGLDXcompatible && !bMemoryMode) {
 		
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
-		interop.CreateInterop(g_hWnd, theSendername, theWidth, theHeight, dwFormat, false); // False for a sender
+		if(!interop.CreateInterop(hwnd, theSendername, theWidth, theHeight, dwFormat, false)) {  // False for a sender
+			// printf("Spout::InitSender - CreateInterop failed\n");
+			return false;
+		}
 
 		// Set global name
 		strcpy_s(g_SharedMemoryName, 256, theSendername);
