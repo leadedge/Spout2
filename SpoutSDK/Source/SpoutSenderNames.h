@@ -64,6 +64,7 @@ struct SharedTextureInfo {
 	unsigned __int32 partnerId; // Wyphon id of partner that shared it with us (not unused)
 };
 
+
 using namespace std;
 
 class SPOUT_DLLEXP spoutSenderNames {
@@ -84,8 +85,8 @@ class SPOUT_DLLEXP spoutSenderNames {
 
 		// ------------------------------------------------------------
 		// Functions to retrieve info about the sender set map and the senders in it
-		int  GetSenderCount();
 		bool GetSenderNames	   (std::set<string> *Sendernames);
+		int  GetSenderCount();
 		bool GetSenderNameInfo (int index, char* sendername, int sendernameMaxSize, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle);
 		bool GetImageSize      (char* sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);
 
@@ -99,70 +100,34 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool SetActiveSender     (const char* Sendername);
 		bool GetActiveSender     (char* Sendername);
 		bool GetActiveSenderInfo (SharedTextureInfo* info);
+		bool FindActiveSender    (char *activename, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 
 		// ------------------------------------------------------------
 		// Functions to Create, Find, Update and Close a sender without initializing DirectX or the GL/DX interop functions
 		bool CreateSender (const char *sendername, unsigned int width = 0, unsigned int height = 0, HANDLE hSharehandle = NULL, DWORD dwFormat = 0);
 		bool UpdateSender (const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
 		bool CloseSender  (const char* sendername);
-		
 		bool FindSender       (char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 		bool CheckSender      (const char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
-		bool FindActiveSender (char *activename, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 		// ------------------------------------------------------------
 
-		// Utility functions
-		bool SenderChanged (const char *sendername, unsigned int width, unsigned int height, DWORD dwFormat, HANDLE hShareHandle);
+		// Memory map management
+		char* CreateMap	(const char* MapName, int MapSize, HANDLE &hMap);
+		char* OpenMap   (const char* MapName, int MapSize, HANDLE &hMap);
+		void  CloseMap  (const char* MapBuffer, HANDLE hMap);
 
-		// Access event locks
+		// Access event locks (unused)
 		bool InitEvents	 (const char *eventname, HANDLE &hReadEvent, HANDLE &hWriteEvent);
 		void CloseEvents (HANDLE &hReadEvent, HANDLE &hWriteEvent);
 		bool CheckAccess (HANDLE hEvent);
 		void AllowAccess (HANDLE hReadEvent, HANDLE hWriteEvent);
 
-		char* CreateMap	(const char* MapName, int MapSize, HANDLE &hMap);
-		char* OpenMap   (const char* MapName, int MapSize, HANDLE &hMap);
-		void  CloseMap  (const char* MapBuffer, HANDLE hMap);
-
+		// Debug function
 		bool SenderDebug (const char *Sendername, int size);
 
 protected:
 
 		spoutMemoryShare MemoryShare;	// Shared memory method
-
-		// ------------------------------------------------------------
-		// Functions to manage shared memory map creation and access
-		//
-		// Shared memory map management
-		//
-		// The way it works :
-		//
-		//			Creating the map
-		// A map with a given name and size is created (CreateMap) and a handle to the map is returned. 
-		// The creation handle is saved in a std::map keyed by the map name
-		// This map is local to this instance and each instance will manage it's own list of senders
-		// Within this function a matching named mutex is created (CreateMapLock) to lock and unlock access to the map
-		//
-		//			Using the map
-		// The required, named map is locked (LockMap). Within this function the map mutex is checked  and if it
-		// does not exist, the function returns NULL. If it does exist there is a wait of 4 frames for access.
-		// The map is then opened (OpenMap) and a handle and pointer to the map buffer are returned for either
-		// read or write to the map.
-		// After map access it is closed (CloseMap), which closes it but does not release it.
-		// Finally it is unlocked (UnlockMap)
-		//
-		//			Releasing the map
-		// At term ination of this instance maps are closed if there is no open view
-		// i.e. if another sender has an open view the map is not closed.
-		//
-		HANDLE CreateMemoryMap  (const char *MapName, int MapSize);
-		void   ReleaseMemoryMap (HANDLE hMap);
-
-		// Memory map mutex locks
-		bool CreateMapLock  (const char *mapname, HANDLE &hMutex);
-		void ReleaseMapLock (HANDLE hMutex);
-		bool LockMap        (const char *mapname, HANDLE &hMutex);
-		void UnlockMap      (HANDLE hMutex);
 
 		// Sender name set management
 		bool CreateSenderSet();
@@ -176,10 +141,51 @@ protected:
 		// Generic sender map info retrieval
 		bool getSharedInfo (const char* SenderName, SharedTextureInfo* info);
 
+		// ------------------------------------------------------------
+		// Functions to manage shared memory map access
+		//
+		// The way it works :
+		//
+		//			Creating the map
+		// A map with a given name and size is created (CreateMap)
+		// This map is local to this instance and each instance will manage it's own list of senders
+		// Within this function a matching named mutex is created (CreateMapLock) to lock and unlock access to the map
+		//
+		//			Using the map
+		// The required, named map is locked (LockMap). Within this function the map mutex is checked  and if it
+		// does not exist, the function returns NULL. If it does exist there is a wait of 4 frames for access.
+		// The map is then opened (OpenMap) and a handle and pointer to the map buffer are returned for either
+		// read or write to the map.
+		// After map access it is closed (CloseMap), which closes it but does not release it.
+		// Finally it is unlocked (UnlockMap)
+		//
+		//			Releasing the map
+		// At termination of this instance all maps are closed if there is no open view
+		// i.e. if another sender has an open view, the map is not closed.
+		//
+
+		// Memory map mutex locks
+		bool CreateMapLock  (const char *mapname, HANDLE &hMutex);
+		void ReleaseMapLock (HANDLE hMutex);
+		bool LockMap        (const char *mapname, HANDLE &hMutex);
+		void UnlockMap      (HANDLE hMutex);
+
+
+		// Pointers for memory maps
+		// char* m_pSenderMap;
+		// char* m_pActiveSenderMap;
+		// char* m_pSenderNamesMap;
+
+		// LJ DEBUG - not used
+		// Handles for memory maps
+		HANDLE m_hSenderMap;
+		HANDLE m_hActiveSenderMap;
+		HANDLE m_hSenderNamesMap;
+
 		// Handles for mutex map locks
-		HANDLE hSenderMutex;
-		HANDLE hActiveSenderMutex;
-		HANDLE hSenderNamesMutex;
+		HANDLE m_hSenderMutex;
+		HANDLE m_hActiveSenderMutex;
+		HANDLE m_hSenderNamesMutex;
 
 };
 

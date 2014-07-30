@@ -65,8 +65,7 @@ bool SpoutReceiver::ReceiveImage(char* name, unsigned int &width, unsigned int &
 //---------------------------------------------------------
 bool SpoutReceiver::GetImageSize(char* name, unsigned int &width, unsigned int &height, bool &bMemoryMode)
 {
-	// LJ DEBUG return spout.senders.GetImageSize(name, width, height, bMemoryMode);
-	return true;
+	return spout.senders.GetImageSize(name, width, height, bMemoryMode);
 }
 
 
@@ -200,3 +199,18 @@ bool SpoutReceiver::GetDX9compatible()
 		return false;
 	
 }
+
+
+//---------------------------------------------------------
+bool SpoutReceiver::SetVerticalSync(bool bSync)
+{
+
+	return spout.interop.SetVerticalSync(bSync);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetVerticalSync()
+{
+	return spout.interop.GetVerticalSync();
+}
+

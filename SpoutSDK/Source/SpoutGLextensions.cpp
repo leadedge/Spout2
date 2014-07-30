@@ -306,17 +306,21 @@ unsigned int loadGLextensions() {
 	
 	unsigned int caps = 0; // as per elio glextensions
 
+	// printf("spoutGLextensions - loadGLextensions()\n");
+
 	#ifdef USE_GLEW
 	InitializeGlew(); // probably needs failure check
 	#endif
 
 	// Check for FBO extensions first - no use continuing without them
 	if(!loadFBOextensions()) {
+		// printf("    loadFBOextensions fail\n");
 		return 0;
 	}
 
 	// Load wgl interop extensions - return if fail
 	if (!loadInteropExtensions()) {
+		// printf("    loadInteropExtensions fail\n");
 		return 0;
 	}
 

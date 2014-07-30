@@ -131,7 +131,7 @@ void Spout::ReleaseSender(DWORD dwMsec)
 	}
 
 	if(g_SharedMemoryName[0] > 0) {
-		printf("Spout::ReleaseSender (%s)\n", g_SharedMemoryName);
+		// printf("Spout::ReleaseSender (%s)\n", g_SharedMemoryName);
 		senders.ReleaseSenderName(g_SharedMemoryName); // if not registered it does not matter
 	}
 	SpoutCleanUp();
@@ -190,7 +190,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 		// width, g_Width should all be the same
 		// But it is the responsibility of the application to reset any texture that is being sent out.
 		if(width != g_Width || height != g_Height) {
-			printf("Spout::SendTexture - size changed\n    from %dx%d\n    to %dx%d\n", g_Width, g_Height, width, height);
+			// printf("Spout::SendTexture - size changed\n    from %dx%d\n    to %dx%d\n", g_Width, g_Height, width, height);
 			return(UpdateSender(g_SharedMemoryName, width, height));
 		}
 		return(interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert));
@@ -511,47 +511,6 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 		// Check to see if SpoutPanel has been opened 
 		// the globals are reset if it has been
 		CheckSpoutPanel();
-
-		/*
-		// Test to see whether the current sender is still there
-		if(!interop.getSharedInfo(g_SharedMemoryName, &TextureInfo)) {
-			return false;
-		}
-		
-		// Has the current sender name, width, height, texture format or sharehandle changed
-		// Important - this function is just a test and does not pass back anything
-		if(senders.SenderChanged(g_SharedMemoryName, 
-								 g_Width, 
-								 g_Height, 
-								 g_Format, 
-								 (HANDLE)TextureInfo.shareHandle)
-			// || TextureID != g_TexID // allow for texture ID change (?? for Jitter ??)
-			|| strcmp(name, g_SharedMemoryName) != 0 ) {
-
-			// Sender has changed so get the info
-			GetSenderInfo(name, newWidth, newHeight, hShareHandle, dwFormat);
-
-			// Re-initialize the receiver
-			if(OpenReceiver(name, newWidth, newHeight)) {				
-				// OpenReceiver will set the global name, width, height and texture format
-				// Set the global texture ID here
-				// g_TexID = TextureID;
-				// Pass back the new current name and size
-				strcpy_s(name, 256, g_SharedMemoryName);
-				width  = g_Width;
-				height = g_Height;
-				// Return the new sender name and dimensions
-				// The change has to be detected by the application
-				return true;
-			}
-			else {
-				// initialization failure
-				// LJ DEBUG ?? ReleaseReceiver() 
-				return false;
-			}
-		} // endif sender has changed
-		*/
-
 		// To be tested - receivetexture works OK
 		// Test to see whether the current sender is still there
 		if(senders.CheckSender(g_SharedMemoryName, newWidth, newHeight, hShareHandle, dwFormat)) {

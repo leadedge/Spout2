@@ -119,6 +119,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 	protected:
 
 		bool m_bInitialized;	// this instance initialized flag
+		bool bExtensionsLoaded; // extensions have been loaded
 		bool bFBOavailable;		// fbo extensions available
 		bool bBLITavailable;	// fbo blit extensions available
 		bool bPBOavailable;		// pbo extensions available

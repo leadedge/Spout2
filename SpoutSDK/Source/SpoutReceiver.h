@@ -67,6 +67,9 @@ class SPOUT_DLLEXP SpoutReceiver {
 	void SetDX9compatible(bool bCompatible = true);
 	bool GetDX9compatible();
 
+	bool SetVerticalSync(bool bSync);
+	bool GetVerticalSync();
+
 	protected :
 
 	Spout spout;

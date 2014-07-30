@@ -56,6 +56,9 @@ class SPOUT_DLLEXP SpoutSender {
 	void SetDX9compatible(bool bCompatible = true); // DirectX 11 format compatible with DirectX 9
 	bool GetDX9compatible();
 
+	bool SetVerticalSync(bool bSync);
+	bool GetVerticalSync();
+
 	bool SenderDebug(char *Sendername, int size);
 
 	Spout spout;

@@ -36,6 +36,7 @@
 					  texture functions due to problems with Max / Jitter
 		22-07-14	- added option for DX9 or DX11
 		23-07-14	- cleanup of DX9 / DX11 functions
+		29-07-14	- pass format 0 for DX9 sender
 
 */
 
@@ -67,6 +68,7 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	DX11format			= DXGI_FORMAT_B8G8R8A8_UNORM; // Default compatible with DX9
 
 	m_bInitialized		= false;
+	bExtensionsLoaded	= false;
 	bFBOavailable		= false;
 	bBLITavailable		= false;
 	bPBOavailable		= false;
@@ -143,16 +145,21 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	}
 
 	if(bUseDX9) {
+		// printf("CreateInterop - DX9 format %d \n", DX9format);
 		// DirectX 9
 		format = (DWORD)DX9format;
 	}
 	else {
 		// DirectX 11
 		// Is this a DX11 texture or a DX9 sender texture?
-		if(dwFormat > 0) 
+		if(dwFormat > 0) {
+			// printf("CreateInterop - DX11 default compatible format %d \n", dwFormat);
 			format = (DXGI_FORMAT)dwFormat;
-		else
+		}
+		else {
+			// printf("CreateInterop - DX11 format %d \n", DX11format);
 			format = (DWORD)DX11format;
+		}
 	}
 
 	// Formats
@@ -204,7 +211,12 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// this creates the sender shared memory map and registers the sender
 	if (!bReceive) {
 		// Quit if sender creation failed - i.e. trying to create the same sender
-		if(!senders.CreateSender(sendername, width, height, m_dxShareHandle, format))
+		// LJ DEBUG - modify SpoutPanel to detect format 21 ? How to know it is DX11 ?
+		if(bUseDX9)
+			bRet = senders.CreateSender(sendername, width, height, m_dxShareHandle);
+		else
+			bRet = senders.CreateSender(sendername, width, height, m_dxShareHandle, format);
+		if(!bRet)
 			return false;
 	}
 
@@ -252,6 +264,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 //
 bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive) 
 {
+	// printf("CreateDX9interop\n");
 
 	// The shared texture handle of the Sender texture "m_dxShareHandle" 
 	// is already set by getSharedTextureInfo, but should be NULL for a sender
@@ -296,6 +309,8 @@ bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height,
 //
 bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive ) 
 {
+	// printf("CreateDX11interop\n");
+
 	// Create or use a shared DirectX texture that will be linked to the OpenGL texture
 	// and get it's share handle for sharing textures
 	if (bReceive) {
@@ -368,35 +383,35 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 bool spoutGLDXinterop::LinkGLtexture(GLuint glTexture) 
 {
 
-	printf("LinkGLtexture(%d)\n", glTexture);
+	// printf("LinkGLtexture(%d)\n", glTexture);
 
 	if(g_pd3dDevice == NULL || g_pSharedTexture == NULL || m_dxShareHandle == NULL) {
-		printf("    null handles\n");
+		// printf("    null handles\n");
 		return false;
 	}
 
 	if(m_hInteropDevice != NULL &&  m_hInteropObject != NULL) {
-		printf("    unregister\n");
+		// printf("    unregister\n");
 		wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
 		m_hInteropObject = NULL;
 	}
-	printf("    unregister OK\n");
+	// printf("    unregister OK\n");
 
 	if (m_hInteropDevice != NULL) {
 		wglDXCloseDeviceNV(m_hInteropDevice);
 	}
 
-	printf("    close device OK\n");
+	// printf("    close device OK\n");
 	m_hInteropDevice = NULL;
 	m_hInteropObject = NULL;
 
 
 	m_hInteropDevice = wglDXOpenDeviceNV(g_pd3dDevice);
 	if (m_hInteropDevice == NULL) {
-		printf("    open device fail\n");
+		// printf("    open device fail\n");
 		return false;
 	}
-	printf("    open device OK\n");
+	// printf("    open device OK\n");
 
 	// prepare shared resource
 	// wglDXSetResourceShareHandle does not need to be called for DirectX
@@ -404,10 +419,10 @@ bool spoutGLDXinterop::LinkGLtexture(GLuint glTexture)
 	// and 11 resources is not an error but has no effect.
 	/*
 	if (!wglDXSetResourceShareHandleNV(g_pSharedTexture, m_dxShareHandle)) {
-		printf("   wglDXSetResourceShareHandleNV fail\n");
+		// printf("   wglDXSetResourceShareHandleNV fail\n");
 		return false;
 	}
-	printf("   wglDXSetResourceShareHandleNV OK\n");
+	// printf("   wglDXSetResourceShareHandleNV OK\n");
 	*/
 
 	// Prepare the DirectX texture for use by OpenGL
@@ -419,11 +434,11 @@ bool spoutGLDXinterop::LinkGLtexture(GLuint glTexture)
 											 WGL_ACCESS_READ_WRITE_NV); // We will write and the receiver will read
 
 	if(!m_hInteropObject) {
-		printf("    null InteropObject\n");
+		// printf("    null InteropObject\n");
 		return false;
 	}
 
-	printf("    InteropObject OK\n");
+	// printf("    InteropObject OK\n");
 
 	return true;
 
@@ -506,6 +521,8 @@ bool spoutGLDXinterop::LoadGLextensions()
 	_itoa_s(caps, buffer, 2);
 
 	if(caps == 0) return false;
+
+	// printf("spoutGLDXinterop::LoadGLextensions - caps = %d [%x]\n", caps, caps);
 
 	if(caps & GLEXT_SUPPORT_FBO) bFBOavailable = true;
 	if(caps & GLEXT_SUPPORT_FBO_BLIT) bBLITavailable = true;
@@ -653,7 +670,8 @@ bool spoutGLDXinterop::GLDXcompatible()
 		return false;
 	}
 	HWND hWnd = WindowFromDC(hdc); // can be null though
-	if(LoadGLextensions()) {
+	if(!bExtensionsLoaded) bExtensionsLoaded = LoadGLextensions();
+	if(bExtensionsLoaded) {
 		// all OK and not debug memoryshare
 		// try to set up directx and open the GL/DX interop
 		// printf("Calling OpenDirectX(%d)\n", bUseDX9);
@@ -1229,6 +1247,10 @@ void spoutGLDXinterop::SetDX11format(DXGI_FORMAT textureformat)
 
 bool spoutGLDXinterop::GetVerticalSync()
 {
+	// printf("spoutGLDXinterop::GetVerticalSync\n");
+
+	if(!bExtensionsLoaded) bExtensionsLoaded = LoadGLextensions();
+
 	// needed for both sender and receiver
 	if(bSWAPavailable) {
 		if(wglGetSwapIntervalEXT()) {
@@ -1244,7 +1266,13 @@ bool spoutGLDXinterop::GetVerticalSync()
 
 bool spoutGLDXinterop::SetVerticalSync(bool bSync)
 {
+	// printf("spoutGLDXinterop::SetVerticalSync(%d)\n", bSync);
+
+	if(!bExtensionsLoaded) bExtensionsLoaded = LoadGLextensions();
+
 	if(bSWAPavailable) {
+
+		// printf("    SetVerticalSync(%d)\n", bSync);
 
 		if(bSync)
 			wglSwapIntervalEXT(1); // lock to monitor vsync
@@ -1253,6 +1281,8 @@ bool spoutGLDXinterop::SetVerticalSync(bool bSync)
 
 		return true;
 	}
+
+	// printf("spoutGLDXinterop - swap extensions not available\n");
 
 	return false;
 

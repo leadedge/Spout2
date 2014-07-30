@@ -16,6 +16,9 @@
 	28-07-14 - major change
 			 - remove handle management
 			 - changed map creation and release
+	30-07-14 - Map locks and cleanup
+
+
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -46,6 +49,15 @@
 
 spoutSenderNames::spoutSenderNames() {
 
+	// LJ DEBUG - not used
+	m_hSenderMutex = NULL;
+	m_hActiveSenderMutex = NULL;
+	m_hSenderNamesMutex = NULL;
+	
+	m_hSenderMap = NULL;
+	m_hActiveSenderMap = NULL;
+	m_hSenderNamesMap = NULL;
+
 }
 
 spoutSenderNames::~spoutSenderNames() {
@@ -64,10 +76,11 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 	std::pair<std::set<string>::iterator, bool> ret;
 	std::set<string> SenderNames; // set of names
 	HANDLE hMap;
-
 	// Create the shared memory for the sender name set if it does not exist
 	if(!GetSenderSet(SenderNames)) {
-		if(!CreateSenderSet()) return false;
+		if(!CreateSenderSet()) {
+			return false;
+		}
 		// The new memory map is empty so we don't need to get it
 	}
 
@@ -83,17 +96,17 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 		// Set as the active Sender if it is the first one registered
 		// Thereafter the user can select an active Sender using SpoutPanel or SpoutSenders
 		if(SenderNames.size() == 1) {
-
-			// printf("    *** FIRST SENDER ***\n");
 			
+			// printf("    *** FIRST SENDER ***\n");
+
 			// Create a memory map to set the active Sender name to shared memory
 			// This is a separate small shared memory with a fixed sharing name
 			// that Receivers can use to retrieve the current active Sender
-			// CreateMemoryMap will either create a new map or open the map if it exists
-			CreateMemoryMap("ActiveSenderName", 256);
-			
+			// CreateMap will either create a new map or open the map if it exists
+			CreateMap("ActiveSenderName", 256, m_hActiveSenderMap);
+
 			// Create a named mutex for map locks
-			CreateMapLock("ActiveSenderName", hActiveSenderMutex);
+			CreateMapLock("ActiveSenderName", m_hActiveSenderMutex);
 
 			// Set the current sender name as active
 			SetActiveSender(Sendername);  
@@ -101,7 +114,7 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 		}
 		else {
 			// If it is not the first sender, open a view of the maps 
-			// so they do not get closed by the other instance
+			// so they do not get closed by another instance
 			OpenMap("ActiveSenderName", 256, hMap);
 			OpenMap("SpoutSenderNames", MaxSenders*256, hMap);
 		}
@@ -128,10 +141,9 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 	// Get the current list to update the passed list
 	if(GetSenderSet(SenderNames)) {
 		if (SenderNames.size() > 0) {
-			// ReleaseSenderName deletes the sender from the name set
+			// RemoveSender deletes the sender from the name set
 			// deletes it's shared memory map and removes it from the handles map
 			if (RemoveSender(Sendername)) { 
-
 				// The name existed when it was removed from the list
 				// its shared memory map is now also removed
 				// and if it was the active sender, that is updated if more senders exist.
@@ -155,6 +167,79 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 
 } // end ReleaseSenderName
 
+//
+// Removes a Sender from the set of Sender names
+//
+bool spoutSenderNames::RemoveSender(const char* Sendername) 
+{
+	std::set<string> SenderNames;
+	std::set<string>::iterator iter;
+	string namestring;
+	char name[256];
+
+	// Discovered that the project properties had been set to CLI
+	// Properties -> General -> Common Language Runtime Support
+	// and this caused the set "find" function not to work.
+	// It also disabled intellisense.
+	// printf("spoutSenderNames::ReleaseSenderName(%s)\n", Sendername);
+
+	// Get the current map to update the list
+	if(GetSenderSet(SenderNames)) {
+		if(SenderNames.find(Sendername) != SenderNames.end() ) {
+			// printf("Releasing sender [%s]\n", Sendername);
+			SenderNames.erase(Sendername); // erase the matching Sender
+
+			// The sender is created by this instance
+			// On close, the memory map is released as long as there are no active views
+
+			// Close the named mutex for this sender
+			ReleaseMapLock(m_hSenderMutex);
+
+			// Must be here otherwise the set is retrieved again if there was only one sender
+			SetSenderSet(SenderNames); // set the map back to shared memory again
+
+			// Is there a set left ?
+			if(SenderNames.size() > 0) {
+				// This should be OK because the user selects the active sender
+				// Was it the active sender ?
+				if( (getActiveSenderName(name) && strcmp(name, Sendername) == 0) || SenderNames.size() == 1) { 
+					// It was, so choose the first in the list
+					iter = SenderNames.begin();
+					namestring = *iter;
+					strcpy_s(name, 256, namestring.c_str());
+					// Set it as the active sender
+					setActiveSenderName(name);
+				}
+			}
+			return true;
+		}
+	}
+
+	return false; // Sender name not in the set or no set in shared mempry
+
+} // end RemoveSender
+
+
+
+// Test to see if the Sender name exists
+bool spoutSenderNames::FindSenderName(const char* Sendername)
+{
+	string namestring;
+	std::set<string> SenderNames;
+	
+	if(Sendername[0]) { // was a valid name passed
+		// Get the current list to update the passed list
+		if(GetSenderSet(SenderNames)) {
+			// Does the name exist
+			if(SenderNames.find(Sendername) != SenderNames.end() ) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 
 // Function to return the set of Sender names in shared memory.
 bool spoutSenderNames::GetSenderNames(std::set<string> *Sendernames)
@@ -175,60 +260,6 @@ bool spoutSenderNames::GetSenderNames(std::set<string> *Sendernames)
 
 	return false;
 }
-
-
-// This retrieves the info from the requested sender and fails if the sender does not exist
-// Possible redundancy with getSharedInfo 
-bool spoutSenderNames::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
-{
-	SharedTextureInfo info;
-
-	if(getSharedInfo(sendername, &info)) {
-		width		  = (unsigned int)info.width;
-		height		  = (unsigned int)info.height;
-		dxShareHandle = (HANDLE)info.shareHandle;
-		dwFormat      = info.format;
-		return true;
-	}
-	return false;
-}
-
-
-//
-// Set texture info to a sender shared memory map without affecting the 
-// interop class globals used for GL/DX interop texture sharing
-//
-bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat) 
-{
-	SharedTextureInfo info;
-	HANDLE hMap; // handle to the shared memory map
-	char* pBuf; // pointer to the memory map
-	HANDLE hLock;
-
-	LockMap(sendername, hLock);
-	
-	info.width			= (unsigned __int32)width;
-	info.height			= (unsigned __int32)height;
-	info.shareHandle	= (unsigned __int32)dxShareHandle; 
-	info.format			= (unsigned __int32)dwFormat;
-	// Usage not used
-
-	// Open the named memory map for the sender and return a pointer to the memory
-	pBuf = OpenMap(sendername, sizeof(SharedTextureInfo), hMap );
-	if(hMap == NULL || pBuf == NULL) {
-		UnlockMap(hLock);
-		return false;
-	}
-	memcpy((void *)pBuf, (void *)&info, sizeof(SharedTextureInfo) );
-	
-	CloseMap(pBuf, hMap);
-	
-	UnlockMap(hLock);
-
-	return true;
-
-} // end SetSenderInfo
-
 
 
 int spoutSenderNames::GetSenderCount() {
@@ -362,25 +393,57 @@ bool spoutSenderNames::GetImageSize(char* name, unsigned int &width, unsigned in
 } // end GetImageSize
 
 
-
-// Test to see if the Sender name exists
-bool spoutSenderNames::FindSenderName(const char* Sendername)
+// This retrieves the info from the requested sender and fails if the sender does not exist
+// For external access to getSharedInfo - redundancy
+bool spoutSenderNames::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
 {
-	string namestring;
-	std::set<string> SenderNames;
-	
-	if(Sendername[0]) { // was a valid name passed
-		// Get the current list to update the passed list
-		if(GetSenderSet(SenderNames)) {
-			// Does the name exist
-			if(SenderNames.find(Sendername) != SenderNames.end() ) {
-				return true;
-			}
-		}
-	}
+	SharedTextureInfo info;
 
+	if(getSharedInfo(sendername, &info)) {
+		width		  = (unsigned int)info.width;
+		height		  = (unsigned int)info.height;
+		dxShareHandle = (HANDLE)info.shareHandle;
+		dwFormat      = info.format;
+		return true;
+	}
 	return false;
 }
+
+
+//
+// Set texture info to a sender shared memory map without affecting the 
+// interop class globals used for GL/DX interop texture sharing
+//
+bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat) 
+{
+	SharedTextureInfo info;
+	HANDLE hMap; // handle to the shared memory map
+	char* pBuf; // pointer to the memory map
+	HANDLE hLock;
+
+	LockMap(sendername, hLock);
+	
+	info.width			= (unsigned __int32)width;
+	info.height			= (unsigned __int32)height;
+	info.shareHandle	= (unsigned __int32)dxShareHandle; 
+	info.format			= (unsigned __int32)dwFormat;
+	// Usage not used
+
+	// Open the named memory map for the sender and return a pointer to the memory
+	pBuf = OpenMap(sendername, sizeof(SharedTextureInfo), hMap );
+	if(hMap == NULL || pBuf == NULL) {
+		UnlockMap(hLock);
+		return false;
+	}
+	memcpy((void *)pBuf, (void *)&info, sizeof(SharedTextureInfo) );
+	
+	CloseMap(pBuf, hMap);
+	UnlockMap(hLock);
+
+	return true;
+
+} // end SetSenderInfo
+
 
 
 // Functions to set or get the active Sender name
@@ -427,6 +490,7 @@ bool spoutSenderNames::GetActiveSender(char* Sendername)
 } // end GetActiveSender
 
 
+
 // Function for clients to get the shared info of the active Sender
 bool spoutSenderNames::GetActiveSenderInfo(SharedTextureInfo* info)
 {
@@ -443,6 +507,29 @@ bool spoutSenderNames::GetActiveSenderInfo(SharedTextureInfo* info)
 
 
 
+//
+// Retrieve the texture info of the active sender
+// - redunancy 
+bool spoutSenderNames::FindActiveSender(char *sendername, unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
+{
+    SharedTextureInfo TextureInfo;
+	char sname[256];
+
+    if(GetActiveSender(sname)) { // there is an active sender
+		if(getSharedInfo(sname, &TextureInfo)) {
+			strcpy_s(sendername, 256, sname); // pass back sender name
+			theWidth        = (unsigned int)TextureInfo.width;
+			theHeight       = (unsigned int)TextureInfo.height;
+			hSharehandle	= (HANDLE)TextureInfo.shareHandle;
+			dwFormat        = (DWORD)TextureInfo.format;
+			return true;
+		}
+	}
+
+    return false;
+
+} // end FindActiveSender
+
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Functions to Create, Update and Close a sender and retrieve sender texture info //
@@ -455,6 +542,10 @@ bool spoutSenderNames::GetActiveSenderInfo(SharedTextureInfo* info)
 //		1) Create a new named sender shared memory map
 //		2) Set the sender texture info to the map
 //		3) Register the sender name in the list of Spout senders
+//
+//	This sender is specific to this instance. 
+//	There cannot be more than one sender per object.
+//
 // ---------------------------------------------------------
 bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
@@ -462,28 +553,26 @@ bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, 
 	HANDLE hMap;
 	char *pBuf;
 
-	printf("CreateSender - %s, %dx%d, [%x] [%d]\n", sendername, width, height, hSharehandle, dwFormat);
+	// printf("CreateSender - %s, %dx%d, [%x] [%d]\n", sendername, width, height, hSharehandle, dwFormat);
 
 	// Is the sender of the same name already running ?
 	pBuf = OpenMap(sendername, 256, hMap);
 	if(pBuf) {
 		char temp[512];
 		// Serious enough for a messagebox
-		sprintf(temp, "Cannot create sender\n(%s)\nIs one already running?", sendername);
+		sprintf_s(temp, "Cannot create sender\n(%s)\nIs one already running?", 512, sendername);
 		MessageBoxA(NULL, temp, "Spout", MB_OK);
 		CloseMap(pBuf, hMap);
 		return false;
 	}
 
-	printf("Creating sender [%s]\n", sendername);
-
 	// Create or open a shared memory map for this sender - allocate enough for the texture info
-	if(!CreateMemoryMap(sendername, sizeof(SharedTextureInfo))) {
+	if(!CreateMap(sendername, sizeof(SharedTextureInfo), m_hSenderMap)) {
 		return false;
 	}
 
 	// Create a named mutex for map locks
-	CreateMapLock(sendername, hSenderMutex);
+	CreateMapLock(sendername, m_hSenderMutex);
 
 	// Register the sender name in the list of spout senders
 	RegisterSenderName(sendername);
@@ -517,9 +606,10 @@ bool spoutSenderNames::UpdateSender(const char *sendername, unsigned int width, 
 } // end UpdateSender
 
 
+
 // ---------------------------------------------------------
 //	Close a sender - for external access
-//	See - ReleaseSenderName
+//	See - ReleaseSenderName - redundancy
 // ---------------------------------------------------------
 bool spoutSenderNames::CloseSender(const char* sendername)
 {
@@ -539,7 +629,6 @@ bool spoutSenderNames::CloseSender(const char* sendername)
 //		DX9  - D3DUSAGE_RENDERTARGET
 //		DX11 - D3D11_USAGE_DEFAULT 
 // ===============================================================================
-
 
 // Find a sender and return the name, width and height, sharhandle and format
 bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat)
@@ -575,35 +664,6 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 
 } // end FindSender
 
-
-//
-// Retrieve the texture info of the active sender
-//
-bool spoutSenderNames::FindActiveSender(char *sendername, unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
-{
-    SharedTextureInfo TextureInfo;
-	char sname[256];
-
-    if(GetActiveSender(sname)) { // there is an active sender
-		if(getSharedInfo(sname, &TextureInfo)) {
-			strcpy_s(sendername, 256, sname); // pass back sender name
-			theWidth        = (unsigned int)TextureInfo.width;
-			theHeight       = (unsigned int)TextureInfo.height;
-			hSharehandle	= (HANDLE)TextureInfo.shareHandle;
-			dwFormat        = (DWORD)TextureInfo.format;
-			return true;
-		}
-	}
-
-    return false;
-
-} // end FindActiveSender
-// ===============================================================================
-
-
-// ======================
-// DirectX texture access
-// ======================
 
 //
 //	Check the details of an existing sender
@@ -648,6 +708,8 @@ bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidt
 	return false;
 
 } // end CheckSender
+// ===============================================================================
+
 
 
 //
@@ -682,10 +744,10 @@ char* spoutSenderNames::CreateMap(const char* MapName, int MapSize, HANDLE &hMap
 	}
 
 	if(errnum == ERROR_ALREADY_EXISTS) {
-		printf("	CreateMap [%s][%x] already exists\n", MapName, hMapFile);
+		// printf("	CreateMap [%s][%x] already exists\n", MapName, hMapFile);
 	}
 	else {
-		printf("	CreateMap [%s][%x] NEW MAP\n", MapName, hMapFile);
+		// printf("	CreateMap [%s][%x] NEW MAP\n", MapName, hMapFile);
 	}
 
 	pBuf = (char *) MapViewOfFile(hMapFile,				// handle to map object
@@ -722,7 +784,7 @@ char* spoutSenderNames::OpenMap(const char* MapName, int MapSize, HANDLE &hMap)
 								 MapName);			  // name of mapping object
 
 	if (hMapFile == NULL) {
-		// no map file means no sender is active
+		// no map file means no sender is present
 		return NULL;
 	}
 	pBuf = (char *) MapViewOfFile(hMapFile,				// handle to map object
@@ -749,7 +811,7 @@ char* spoutSenderNames::OpenMap(const char* MapName, int MapSize, HANDLE &hMap)
 
 
 
-// Here we can unmap the view of the map but not close the handle by sending a null hanlde
+// Here we can unmap the view of the map but not close the handle by sending a null handle
 // or close the map by sending a valid handle but NULL buffer pointer
 void spoutSenderNames::CloseMap(const char* MapBuffer, HANDLE hMap)
 {
@@ -764,127 +826,6 @@ void spoutSenderNames::CloseMap(const char* MapBuffer, HANDLE hMap)
 	}
 
 }  // end CloseMap
-
-
-// Creates a map and opens a view
-HANDLE spoutSenderNames::CreateMemoryMap(const char *MapName, int MapSize)
-{
-	HANDLE hMap;
-	char* pBuf;
-		
-	// Create or open a shared memory map depending on whether it exists
-	pBuf = CreateMap(MapName, MapSize, hMap);
-	if (hMap == NULL) {
-		return NULL;
-	}
-
-	// Leave the handle to shared memory open so that the map is not closed
-	// It will be closed when the last handle to the map (this one) is closed
-	return hMap;
-
-}
-
-
-// =====================================
-//	Mutex locks for shared memory :
-//		1) Sender name map
-//		2) Active sender info structure
-//		3) Sender info structure
-// ======================================
-bool spoutSenderNames::CreateMapLock(const char *mapname, HANDLE &hMutex)
-{
-	char mutexname[256];
-
-	// If the mutex is a named mutex and the object existed before this function call, 
-	// the return value is a handle to the existing object, GetLastError returns ERROR_ALREADY_EXISTS
-	// so make the mutex name different to the mapname, but connected so it can be opened and released
-
-	if(hMutex) return true;
-
-	// Create a Mutex to control access to the name map
-	sprintf_s(mutexname, "%s_mutex", mapname);
-	hMutex = CreateMutexA(NULL, 0, mutexname); // Creates or opens existing
-	if (hMutex == NULL) { 
-		return false;
-	}
-
-	return true;
-}
-
-
-// Waits for 4 frames before deciding the lock has failed
-// if it does, a receiver will assume the information has not changed
-// LockMap returns false if the mutex does not exist - i.e. the sender has closed
-bool spoutSenderNames::LockMap(const char *mapname, HANDLE &hLock)
-{
-	HANDLE hMutex;
-	DWORD dwWaitResult;
-	char mutexname[256];
-
-	// LJ DEBUG - locks do not seem to be necessary probably because
-	// most operations are read and write operations are infrequent.
-	// Needs careful testing to determine whether they will stop an operation
-	// and failsafe for functions if they do - timeout duration ?
-
-	// Check the name map mutex, if it does not exist just quit
-	sprintf_s(mutexname, "%s_mutex", mapname);
-	hMutex = OpenMutexA(MUTEX_ALL_ACCESS, FALSE, mutexname);
-	if(!hMutex) {
-		// printf("LockMap(%s) -  NO MUTEX\n", mapname);
-		hLock = NULL;
-		return false;
-	}
-
-	// If the mutex exists, wait until it is clear
-	dwWaitResult = WaitForSingleObject(hMutex, 67); // 4 frames at 16.6msec each - DEBUG
-	// dwWaitResult = WaitForSingleObject(hMutex, 0); // LJ DEBUG
-    if(dwWaitResult != WAIT_OBJECT_0) { // The mutex wait failed so just exit
-		printf("LockMap(%s) - TIMEOUT\n", mapname);
-		ReleaseMutex(hMutex);
-		hLock = NULL; // LJ DEBUG
-		return false;
-	}
-
-	// Now ownership is achieved
-	hLock = hMutex;
-
-	return true;
-}
-
-
-void spoutSenderNames::UnlockMap(HANDLE hMutex)
-{
-	if(hMutex) ReleaseMutex(hMutex);
-
-}
-
-
-// void spoutSenderNames::ReleaseMapLock(const char *mapname)
-void spoutSenderNames::ReleaseMapLock(HANDLE hMutex)
-{
-
-	/*
-	HANDLE hMutex;
-	char mutexname[256];
-
-	// LJ DEBUG - 28.07.14
-	//
-	// http://msdn.microsoft.com/en-us/library/windows/desktop/ms682411%28v=vs.85%29.aspx
-	//
-	// Use the CloseHandle function to close the handle. 
-	// The system closes the handle automatically when the process terminates. 
-	// The mutex object is destroyed when its last handle has been closed.
-	//
-	// Problem - how to close all handles
-	// Creating a handle locked to the name
-	sprintf_s(mutexname, "%s_mutex", mapname);
-	// hMutex = OpenMutexA(MUTEX_ALL_ACCESS, FALSE, mutexname);
-	// 28.07.14 - Use Create here and not Open ?
-	hMutex = CreateMutexA(NULL, 0, mutexname);
-	*/
-	if(hMutex) CloseHandle(hMutex);
-
-}
 
 
 
@@ -1032,13 +973,14 @@ void spoutSenderNames::AllowAccess(HANDLE hReadEvent, HANDLE hWriteEvent)
 	}
 
 }
-
 // ==================================================================================
 
 
 ///////////////////////////////////////////////////
 // Private functions for multiple Sender support //
 ///////////////////////////////////////////////////
+
+
 
 //
 //  Functions to read and write the list of Sender names to/from shared memory
@@ -1050,12 +992,12 @@ bool spoutSenderNames::CreateSenderSet()
 {
 
 	// Set up Shared Memory for all the sender names
-	if(!CreateMemoryMap("SpoutSenderNames", MaxSenders*256)) {
+	if(!CreateMap("SpoutSenderNames", MaxSenders*256, m_hSenderNamesMap)) {
 		return false;
 	}
 
 	// create a map lock mutex for the name set
-	CreateMapLock("SpoutSenderNames", hSenderNamesMutex); 
+	CreateMapLock("SpoutSenderNames", m_hSenderNamesMutex); 
 
 	return true;
 
@@ -1075,8 +1017,6 @@ bool spoutSenderNames::GetSenderSet(std::set<string>& SenderNames) {
 	char *buf;			// pointer within the buffer
 	std::set<string>::iterator iter;
 
-	// printf("GetSenderSet\n");
-
 	// Lock the map
 	LockMap("SpoutSenderNames", hLock);
 
@@ -1086,7 +1026,7 @@ bool spoutSenderNames::GetSenderSet(std::set<string>& SenderNames) {
 		UnlockMap(hLock);
 		return false;
 	}
-	// printf("    Sender set found\n");
+	// printf("    Sender set found OK\n");
 
 	// The data has been stored with 256 bytes reserved for each Sender name
 	// and nothing will have changed with the map yet
@@ -1157,6 +1097,7 @@ bool spoutSenderNames::SetSenderSet(std::set<string>& SenderNames)
 		UnlockMap(hLock);
 		return false;
 	}
+
 	// printf("    Sender set found\n");
 
 	// transfer the Sender name set to shared memory
@@ -1184,9 +1125,8 @@ bool spoutSenderNames::SetSenderSet(std::set<string>& SenderNames)
 
 	// Cleanup
 	free((void *)buffer);
+	
 	CloseMap(pBuf, hMap);
-
-	// Unlock the map
 	UnlockMap(hLock);
 
 	return true;
@@ -1194,59 +1134,6 @@ bool spoutSenderNames::SetSenderSet(std::set<string>& SenderNames)
 } // end SetSenderSet
 
 
-//
-// Removes a Sender from the set of Sender names
-//
-bool spoutSenderNames::RemoveSender(const char* Sendername) 
-{
-	std::set<string> SenderNames;
-	std::set<string>::iterator iter;
-	string namestring;
-	char name[256];
-
-	// Discovered that the project properties had been set to CLI
-	// Properties -> General -> Common Language Runtime Support
-	// and this caused the set "find" function not to work.
-	// It also disabled intellisense.
-	// printf("spoutSenderNames::ReleaseSenderName(%s)\n", Sendername);
-
-	// Get the current map to update the list
-	if(GetSenderSet(SenderNames)) {
-		if(SenderNames.find(Sendername) != SenderNames.end() ) {
-
-			printf("Releasing sender [%s]\n", Sendername);
-
-			SenderNames.erase(Sendername); // erase the matching Sender
-
-			// The sender is created by this instance
-			// On close, the memory map is released as long as there are no active views
-
-			// Close the named mutex for this sender
-			ReleaseMapLock(hSenderMutex);
-
-			// Must be here otherwise the set is retrieved again if there was only one sender
-			SetSenderSet(SenderNames); // set the map back to shared memory again
-
-			// Is there a set left ?
-			if(SenderNames.size() > 0) {
-				// This should be OK because the user selects the active sender
-				// Was it the active sender ?
-				if( (getActiveSenderName(name) && strcmp(name, Sendername) == 0) || SenderNames.size() == 1) { 
-					// It was, so choose the first in the list
-					iter = SenderNames.begin();
-					namestring = *iter;
-					strcpy_s(name, 256, namestring.c_str());
-					// Set it as the active sender
-					setActiveSenderName(name);
-				}
-			}
-			return true;
-		}
-	}
-
-	return false; // Sender name not in the set or no set in shared mempry
-
-} // end RemoveSender
 
 
 // Create a shared memory map to set the active Sender name to shared memory
@@ -1261,7 +1148,7 @@ bool spoutSenderNames::setActiveSenderName(const char* SenderName)
 
 	if(strlen(SenderName) == 0)	return false;
 
-	LockMap(SenderName, hLock);
+	LockMap("ActiveSenderName", hLock);
 
 	// Open shared memory for the active sender name to access it
 	pBuf = OpenMap("ActiveSenderName", 256, hMap);
@@ -1275,9 +1162,8 @@ bool spoutSenderNames::setActiveSenderName(const char* SenderName)
 	memcpy( (void *)pBuf, (void *)SenderName, 256 ); // write the Sender name string to the shared memory
 	
 	// Close the map, but it can be accessed again
-	CloseMap(pBuf, hMap);
 	// The map is not released until the last sender is unregistered
-
+	CloseMap(pBuf, hMap);
 	UnlockMap(hLock);
 
 	return true;
@@ -1302,11 +1188,11 @@ bool spoutSenderNames::getActiveSenderName(const char* SenderName)
 		UnlockMap(hLock);
 		return false;
 	}
+
 	memcpy( (void *)SenderName, (void *)pBuf, 256 ); // get the name string from shared memory
 	
 	
 	CloseMap(pBuf, hMap);
-
 	UnlockMap(hLock);
 
 	return true;
@@ -1335,43 +1221,141 @@ bool spoutSenderNames::getSharedInfo(const char* sharedMemoryName, SharedTexture
 	memcpy((void *)info, (void *)pBuf, sizeof(SharedTextureInfo) );
 	
 	CloseMap(pBuf, hMap);
-	
 	UnlockMap(hLock);
 
 	return true;
 
 } // end getSharedInfo
 
-//
-// Utility functions
-//
 
-//
-//	SenderChanged
-//
-// Check to see if the Sender has changed anything - does not depend on directx being initialized
-bool spoutSenderNames::SenderChanged(const char *theSendername, unsigned int theWidth, unsigned int theHeight, DWORD theFormat, HANDLE theShareHandle) 
+// =====================================
+//	Mutex locks for shared memory :
+//		1) Sender name map
+//		2) Active sender info structure
+//		3) Sender info structure
+// ======================================
+bool spoutSenderNames::CreateMapLock(const char *mapname, HANDLE &hMutex)
 {
-		unsigned int width, height;
-		HANDLE sharehandle;
-		DWORD format;
+	char mutexname[256];
 
-		// Test to see if the image size or sharehandle has changed
-		// even though the name is the same or the sender could have closed
-		if(GetSenderInfo(theSendername, width, height, sharehandle, format)) {
-			if(width > 0 || height > 0) {
-				if(width		!= theWidth 
-				|| height		!= theHeight
-				|| format		!= theFormat
-				|| sharehandle	!= theShareHandle) {
-					return true;
-				}
-			} // endif sender changed
-		} // This sender has closed
+	// If the mutex is a named mutex and the object existed before this function call, 
+	// the return value is a handle to the existing object, GetLastError returns ERROR_ALREADY_EXISTS
+	// so make the mutex name different to the mapname, but connected so it can be opened and released
 
+	if(hMutex) return true;
+
+	// Create a Mutex to control access to the name map
+	sprintf_s(mutexname, "%s_mutex", mapname);
+	hMutex = CreateMutexA(NULL, 0, mutexname); // Creates or opens existing
+	if (hMutex == NULL) { 
 		return false;
+	}
 
-} // end SenderChanged
+	return true;
+}
+
+
+// Waits for 4 frames before deciding the lock has failed
+// if it does, a receiver will assume the information has not changed
+// LockMap returns false if the mutex does not exist - i.e. the sender has closed
+// Sender mutex existence checked and works OK
+bool spoutSenderNames::LockMap(const char *mapname, HANDLE &hLock)
+{
+	HANDLE hMutex;
+	DWORD dwWaitResult;
+	char mutexname[256];
+
+	// DWORD dwStartTime, dwInterval;
+
+	// LJ DEBUG - locks do not seem to be necessary probably because
+	// most operations are read, and write operations are infrequent.
+	// Needs careful testing to determine whether they will stop an operation
+	// and failsafe for functions if they do - timeout duration ?
+	// Can the writer be starved?
+
+	// Check the name map mutex, if it does not exist just quit
+	sprintf_s(mutexname, "%s_mutex", mapname);
+	hMutex = OpenMutexA(MUTEX_ALL_ACCESS, FALSE, mutexname);
+	if(!hMutex) {
+		// printf("LockMap(%s) -  NO MUTEX\n", mapname);
+		hLock = NULL;
+		return false;
+	}
+
+	// printf("LockMap(%s) OK\n", mapname);
+	// dwStartTime = timeGetTime();
+
+	// If the mutex exists, wait until it is clear
+	dwWaitResult = WaitForSingleObject(hMutex, 67); // 4 frames at 16.6msec each - DEBUG
+	// If dwMilliseconds is zero, the function does not
+	// enter a wait state if the object is not signaled
+	// it always returns immediately. If dwMilliseconds is INFINITE,
+	// the function will return only when the object is signaled.
+	// dwWaitResult = WaitForSingleObject(hMutex, 0); // Return immediately
+    if(dwWaitResult != WAIT_OBJECT_0) { // The mutex wait failed so just exit
+		// printf("LockMap(%s) - TIMEOUT\n", mapname);
+		ReleaseMutex(hMutex);
+		hLock = NULL; // LJ DEBUG
+		return false; // Check for consequence - read failure ?
+	}
+
+	// Sleep here is vsync related
+
+	// Sleep(1); // to check interval calc
+	//
+	// Sleep 1 16	1 frame
+	// Sleep 2 16
+	// Sleep 3 16
+	// Sleep 8 16
+	//   -
+	// Sleep 15 16
+	// Sleep 16 32	2 frames
+	//   -
+	// Sleep 31 32	2 frames
+	// Sleep 32 48	3 frames
+	//   -
+	// Sleep 48 63	4 frames
+	// Sleep 56 63	4 frames
+	//   -
+	// Sleep 64 78	5 frames
+	//
+	// linked to Vsync but not affected by wglSwapIntervalEXT or GLfinish();
+	// Conclusion - wait time of 1 msec (maybe less) will skip a frame
+	// Wait time of 4 frames is unacceptable performance but is obvious is map locks are waiting
+	// Fail on wait needs checking as to the return values of other functions
+	// i.e. has the sender closed or is it just a lockout problem.
+	//
+	// dwInterval = timeGetTime() - dwStartTime;
+	// printf("Lock wait = %d\n", dwInterval);
+
+	// Now ownership is achieved
+	hLock = hMutex;
+
+	return true;
+}
+
+
+void spoutSenderNames::UnlockMap(HANDLE hMutex)
+{
+	if(hMutex) ReleaseMutex(hMutex);
+
+}
+
+
+// void spoutSenderNames::ReleaseMapLock(const char *mapname)
+void spoutSenderNames::ReleaseMapLock(HANDLE hMutex)
+{
+	//
+	// http://msdn.microsoft.com/en-us/library/windows/desktop/ms682411%28v=vs.85%29.aspx
+	//
+	// Use the CloseHandle function to close the handle. 
+	// The system closes the handle automatically when the process terminates. 
+	// The mutex object is destroyed when its last handle has been closed.
+
+	if(hMutex) CloseHandle(hMutex);
+
+}
+
 
 
 //---------------------------------------------------------
@@ -1384,30 +1368,30 @@ bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 	std::set<string>::iterator iter;
 	string namestring;
 
-	printf("**** SENDER DEBUG ****\n");
+	// printf("**** SENDER DEBUG ****\n");
 
 	// Check the sender names
-	printf("GetSenderSet\n");
+	// printf("    GetSenderSet\n");
 	if(GetSenderSet(SenderNames)) {
-		printf("    SenderNames size = [%d]\n", SenderNames.size());
+		// printf("        SenderNames size = [%d]\n", SenderNames.size());
 		if (SenderNames.size() > 0) {
 			for(iter = SenderNames.begin(); iter != SenderNames.end(); iter++) {
 				namestring = *iter;
-				printf("        Sender : [%s]\n", namestring.c_str());
+				// printf("            Sender : [%s]\n", namestring.c_str());
 			}
 		}
 	}
 	else {
-		printf("    GetSenderSet failed\n");
+		// printf("    GetSenderSet failed\n");
 	}
 
-	printf("GetSenderNames\n");
+	// printf("    GetSenderNames\n");
 	if(GetSenderNames(&SenderNames)) {
-		// printf("    SenderNames size = [%d]\n", SenderNames.size());
+		// printf("        SenderNames size = [%d]\n", SenderNames.size());
 		if (SenderNames.size() > 0) {
 			for(iter = SenderNames.begin(); iter != SenderNames.end(); iter++) {
 				namestring = *iter;
-				// printf("        Sender : [%s]\n", namestring.c_str());
+				// printf("            Sender : [%s]\n", namestring.c_str());
 			}
 		}
 		else {
@@ -1418,8 +1402,9 @@ bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 		// printf("    GetSenderSet failed\n");
 	}
 
+	// printf("    hSenderNamesMap = [%x]\n", m_hSenderNamesMap);
 
-	// LJ DEBUG Try to open the tests map directly
+	// LJ DEBUG Try to open the names map directly
 	hMap2 = OpenFileMappingA (FILE_MAP_ALL_ACCESS, FALSE, "SpoutSenderNames");
 	if(hMap2) {
 		// printf("    Opened sendernames map [%x] OK\n", hMap2);

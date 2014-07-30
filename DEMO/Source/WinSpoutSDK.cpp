@@ -17,6 +17,12 @@
 	26-07-14	- recompiled Win32 binaries
 	27-07-14	- CreateReceiver - bUseActive flag instead of null name
 	28-07-14	- memory leak and map lock testing
+	29-07-14	- major change to Spout SDK
+					- remove handle management
+					- changed map creation and release
+				- fixed /DX9 compatible flag for SpoutPanel call
+	30-07-14	- added vsync option, cleanup and recompile demos
+				
 
 */
 #define MAX_LOADSTRING 100
@@ -53,10 +59,11 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // ================= CHANGE COMPILE FLAGS HERE =================
 // Rename the executable as necessary to get a sender/receiver pair
 //
-bool bReceiver      = true; // Compile for receiver (true) or sender (false)
+bool bReceiver      = false; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
-bool bDX9compatible = true;  // For DX11 only - compatible DX9 format for DX11 senders
+bool bDX9compatible = false; // For DX11 only - compatible DX9 format for DX11 senders
+bool bVsync			= true; // OpenGL wglSwapIntervalEXT lock to monitor sync
 // =============================================================
 
 
@@ -140,7 +147,7 @@ void GLerror() {
 	GLenum err;
 
 	while ((err = glGetError()) != GL_NO_ERROR) {
-		// printf("GL error = %d (0x%x) %s\n", err, err, gluErrorString(err));
+		// printf("("GL error = %d (0x%x) %s\n", err, err, gluErrorString(err));
 	}
 }	
 
@@ -304,19 +311,28 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	else {
 		// Set whether to use DirectX 9 or DirectX 11
 		if(bDX9mode) {
-			// printf("setting DX9 mode true\n");
+			// printf("("setting DX9 mode true\n");
 			sender.SetDX9(true);
 			receiver.SetDX9(true); // Must be set independently for each object
 		}
 		else {
-			// printf("setting DX9 mode false\n");
+			// printf("("setting DX9 mode false\n");
 			sender.SetDX9(false);
 			receiver.SetDX9(false);
 			// Here the sender DX11 texure format can be set to be DX9 compatible or not
-			// printf("setting DX11 sender bDX9compatible = (%d)\n", bDX9compatible);
+			// printf("("setting DX11 sender bDX9compatible = (%d)\n", bDX9compatible);
 			// LJ DEBUG	sender.interop.SetDX11format(DXGI_FORMAT_B8G8R8A8_UNORM);
 			sender.SetDX9compatible(bDX9compatible);
 		}
+	}
+
+	if(bVsync) {
+		sender.SetVerticalSync(true);
+		receiver.SetVerticalSync(true);
+	}
+	else {
+		sender.SetVerticalSync(false);
+		receiver.SetVerticalSync(false);
 	}
 
 	// Determine hardware capabilities now, not later when all is initialized
@@ -345,7 +361,7 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 			// It is possible that the extensions load OK, but that initialization will still fail
 			// This occurs when wglDXOpenDeviceNV fails - noted on dual graphics machines with NVIDIA Optimus
 			// Directx initialization seems OK with null hwnd, but in any case we will not use it.
-			// printf("GetMemoryShareMode\n");
+			// printf("("GetMemoryShareMode\n");
 			bool bMem;
 			if(bReceiver) 
 				bMem = receiver.GetMemoryShareMode();
@@ -463,9 +479,9 @@ bool OpenSender()
 	/*
 	// LJ DEBUG
 	for(int i = 0; i<1000; i++) {
-		printf("CreateSender (%d)\n", debugCounter);
+		// printf("("CreateSender (%d)\n", debugCounter);
 		sender.CreateSender(g_SenderName, g_Width, g_Height);
-		printf("ReleaseSender (%d)\n", debugCounter);
+		// printf("("ReleaseSender (%d)\n", debugCounter);
 		sender.ReleaseSender();
 		debugCounter++;
 	}
@@ -487,7 +503,7 @@ int DrawGLScene(GLvoid)
 
 		if(!bInitialized) {
 			bInitialized = OpenReceiver();
-			// printf("OpenReceiver returned %d\n", bInitialized);
+			// printf("("OpenReceiver returned %d\n", bInitialized);
 			ShowReceiverInfo();
 			return TRUE;
 		}
@@ -1085,10 +1101,14 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,			// Handle For This Window
 						// This application is DX11 and will receive from all formats
 						// Texture compatibility argument /DX9
 						// Tells spoutpanel to only list senders with DX9 compatible format
-						if(!bDX9mode && bDX9compatible)
+						if(bDX9mode || bDX9compatible) {
+							// printf("("SelectSenderPanel DX9 mode\n");
 							receiver.SelectSenderPanel("/DX9");
-						else
+						}
+						else {
+							// printf("("SelectSenderPanel DX11 mode\n");
 							receiver.SelectSenderPanel();
+						}
 					}
 					break;
 
@@ -1152,12 +1172,14 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	MSG		msg;									// Windows Message Structure
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
 
-	// Debug console window so printf works
+	/*
+	// Debug console window so // printf(" works
 	AllocConsole();
 	freopen("CONIN$",  "r", stdin);
 	freopen("CONOUT$", "w", stdout);
 	freopen("CONOUT$", "w", stderr);
-	printf("\nWinSpoutSDK\n");
+	// printf("("\nWinSpoutSDK\n");
+	*/
 
 	// suppress warnings
 	msg.wParam = 0;
@@ -1214,7 +1236,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 					// This application is DX11 and will receive from all formats
 					// Texture compatibility argument /DX9
 					// Tells spoutpanel to only list senders with DX9 compatible format
-					if(!bDX9mode && bDX9compatible)
+					if(bDX9mode || bDX9compatible)
 						receiver.SelectSenderPanel("/DX9");
 					else
 						receiver.SelectSenderPanel();
@@ -1234,8 +1256,10 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 				else if (keys[VK_SPACE]) {					// Is the space bar Being Pressed?
 					keys[VK_SPACE]=FALSE;
 
+					// printf("SPACE\n");
+
 					// LJ DEBUG - test
-					sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
+					// sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
 					
 					/*
 					if(bFullscreen) {
@@ -1290,7 +1314,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 					// SwapBuffers() combined with glFinish() is the only method supported on
 					// modern hardware to perfectly achieve vertical synchronization (vsync).
 					//
-					// LJ DEBUG
+					// LJ DEBUG - has no discernable effect on sync
 					glFinish();
 
 				}

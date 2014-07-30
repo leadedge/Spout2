@@ -132,10 +132,24 @@ bool SpoutSender::GetDX9compatible()
 	
 }
 
+//---------------------------------------------------------
+bool SpoutSender::SetVerticalSync(bool bSync)
+{
+	return spout.interop.SetVerticalSync(bSync);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::GetVerticalSync()
+{
+	return spout.interop.GetVerticalSync();
+}
+
+
+
+
+
 bool SpoutSender::SenderDebug(char *Sendername, int size)
 {
-	// LJ DEBUG return spout.senders.SenderDebug(Sendername, size);
-
-	return true;
+	return spout.senders.SenderDebug(Sendername, size);
 
 }
