@@ -1173,13 +1173,13 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
 
 
-	// Debug console window so // printf(" works
+	/*
+	// Debug console window so printf works
+	FILE* pCout; // should really be freed 
 	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
+	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("\nWinSpoutSDK\n");
-
+	*/
 
 	// suppress warnings
 	msg.wParam = 0;
