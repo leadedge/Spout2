@@ -37,13 +37,7 @@
 
 SpoutReceiver::SpoutReceiver()
 {
-	/*
-	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
-	printf("SpoutReceiver::SpoutReceiver()\n");
-	*/
+
 }
 
 
@@ -71,7 +65,7 @@ bool SpoutReceiver::ReceiveImage(char* name, unsigned int &width, unsigned int &
 //---------------------------------------------------------
 bool SpoutReceiver::GetImageSize(char* name, unsigned int &width, unsigned int &height, bool &bMemoryMode)
 {
-	return spout.interop.GetImageSize(name, width, height, bMemoryMode);
+	return spout.GetImageSize(name, width, height, bMemoryMode);
 }
 
 
@@ -104,9 +98,9 @@ bool SpoutReceiver::UnBindSharedTexture()
 
 
 //---------------------------------------------------------
-bool SpoutReceiver::DrawSharedTexture(float max_x, float max_y)
+bool SpoutReceiver::DrawSharedTexture(float max_x, float max_y, float aspect)
 {
-	return spout.DrawSharedTexture(max_x, max_y);
+	return spout.DrawSharedTexture(max_x, max_y, aspect);
 }
 
 

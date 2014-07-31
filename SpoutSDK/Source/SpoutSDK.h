@@ -70,10 +70,11 @@ class SPOUT_DLLEXP Spout {
 	void ReleaseReceiver(); 
 	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0);
 	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, int glFormat);
-	
-	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0);
+	bool GetImageSize (char* sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);	
+
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
+	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0);
 	
 	int  GetSenderCount();
 	bool GetSenderName(int index, char* sendername, int MaxSize = 256);

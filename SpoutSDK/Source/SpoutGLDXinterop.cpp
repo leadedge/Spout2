@@ -37,20 +37,12 @@
 		22-07-14	- added option for DX9 or DX11
 		23-07-14	- cleanup of DX9 / DX11 functions
 		29-07-14	- pass format 0 for DX9 sender
-
+		31-07-14	- Corrected DrawTexture aspect argument
 */
 
 #include "spoutGLDXinterop.h"
 
 spoutGLDXinterop::spoutGLDXinterop() {
-
-	/*
-	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
-	printf("spoutGLDXinterop::spoutGLDXinterop()\n");
-	*/
 
 	m_hWnd				= NULL;
 	m_glTexture			= 0;
@@ -90,55 +82,6 @@ spoutGLDXinterop::~spoutGLDXinterop() {
 	// This is becasue it can crash on exit - see cleanup for details
 }
 
-// LJ DEBUG
-// Can be used without OpenGL context
-bool spoutGLDXinterop::GetImageSize(char* name, unsigned int &width, unsigned int &height, bool &bMemoryMode)
-{
-	char newname[256];
-	SharedTextureInfo TextureInfo;
-	BITMAPINFOHEADER * pbmih;
-	unsigned char * rgbBuffer;
-
-	// Was initialized so get the sender details
-	// Test to see whether the current sender is still there
-	if(!getSharedInfo(newname, &TextureInfo)) {
-		// Try the active sender
-		if(senders.GetActiveSender(newname)) {
-			if(getSharedInfo(newname, &TextureInfo)) {
-				// Pass back the new name and size
-				strcpy_s(name, 256, newname);
-				width  = TextureInfo.width;
-				height = TextureInfo.height;
-				bMemoryMode = false;
-				return true;
-			}
-		}
-	} // texture mode sender was running
-	
-	// Try for Memoryshare mode - read the image header into an RGB buffer
-	rgbBuffer = (unsigned char *)malloc(sizeof(BITMAPINFOHEADER));
-	if(rgbBuffer) {
-		MemoryShare.Initialize();
-		if(MemoryShare.ReadFromMemory(rgbBuffer, sizeof(BITMAPINFOHEADER))) {
-			pbmih = (BITMAPINFOHEADER *)rgbBuffer;
-			// return for zero width and height
-			if(pbmih->biWidth == 0 || pbmih->biHeight == 0) {
-				free((void *)rgbBuffer);
-				return false;
-			}
-			// return the size received
-			width  = (unsigned int)pbmih->biWidth;
-			height = (unsigned int)pbmih->biHeight;
-			MemoryShare.DeInitialize(); 
-			free((void *)rgbBuffer);
-			bMemoryMode = true;
-			return true;
-		} // endif MemoryShare.ReadFromMemory
-		free((void *)rgbBuffer);
-	} // end buffer alloc OK
-
-	return false;
-} // end GetImageSize
 
 // For external access so that the local global variables are used
 bool spoutGLDXinterop::OpenDirectX(HWND hWnd, bool bDX9)

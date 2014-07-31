@@ -15,7 +15,7 @@
 //					- ReceiveTexture - release receiver if the sender no longer exists
 //					- ReceiveImage same change - to be tested
 //		27-07-14	- CreateReceiver - bUseActive flag instead of null name
-//
+//		31-07-14	- Corrected DrawTexture aspect argument
 // ================================================================
 /*
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
@@ -44,15 +44,6 @@
 
 Spout::Spout()
 {
-
-	/*
-	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
-	printf("Spout::Spout()\n");
-	*/
-
 	g_Width				= 0;
 	g_Height			= 0;
 	g_ShareHandle		= 0;
@@ -615,6 +606,57 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 	return false;
 }
 
+
+// Can be used without OpenGL context
+bool Spout::GetImageSize(char* name, unsigned int &width, unsigned int &height, bool &bMemoryMode)
+{
+	char newname[256];
+	SharedTextureInfo TextureInfo;
+	BITMAPINFOHEADER * pbmih;
+	unsigned char * rgbBuffer;
+
+	// Was initialized so get the sender details
+	// Test to see whether the current sender is still there
+	if(!interop.getSharedInfo(newname, &TextureInfo)) {
+		// Try the active sender
+		if(interop.senders.GetActiveSender(newname)) {
+			if(interop.getSharedInfo(newname, &TextureInfo)) {
+				// Pass back the new name and size
+				strcpy_s(name, 256, newname);
+				width  = TextureInfo.width;
+				height = TextureInfo.height;
+				bMemoryMode = false;
+				return true;
+			}
+		}
+	} // texture mode sender was running
+	
+	// Try for Memoryshare mode - read the image header into an RGB buffer
+	rgbBuffer = (unsigned char *)malloc(sizeof(BITMAPINFOHEADER));
+	if(rgbBuffer) {
+		interop.MemoryShare.Initialize();
+		if(interop.MemoryShare.ReadFromMemory(rgbBuffer, sizeof(BITMAPINFOHEADER))) {
+			pbmih = (BITMAPINFOHEADER *)rgbBuffer;
+			// return for zero width and height
+			if(pbmih->biWidth == 0 || pbmih->biHeight == 0) {
+				free((void *)rgbBuffer);
+				return false;
+			}
+			// return the size received
+			width  = (unsigned int)pbmih->biWidth;
+			height = (unsigned int)pbmih->biHeight;
+			interop.MemoryShare.DeInitialize(); 
+			free((void *)rgbBuffer);
+			bMemoryMode = true;
+			return true;
+		} // endif MemoryShare.ReadFromMemory
+		free((void *)rgbBuffer);
+	} // end buffer alloc OK
+
+	return false;
+} // end GetImageSize
+
+
 //---------------------------------------------------------
 bool Spout::BindSharedTexture()
 {
@@ -630,9 +672,9 @@ bool Spout::UnBindSharedTexture()
 
 
 //---------------------------------------------------------
-bool Spout::DrawSharedTexture(float max_x, float max_y)
+bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect)
 {
-	return interop.DrawSharedTexture(max_x, max_y);
+	return interop.DrawSharedTexture(max_x, max_y, aspect);
 }
 
 

@@ -47,7 +47,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
-	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0);
+	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0);
 	
 	int  GetSenderCount();
 	bool GetSenderName(int index, char* Sendername, int MaxSize = 256);
