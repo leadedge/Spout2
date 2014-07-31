@@ -176,7 +176,6 @@ protected:
 		char* m_pActiveSenderMap;
 		char* m_pSenderNamesMap;
 
-		// LJ DEBUG - not used
 		// Handles for memory maps
 		HANDLE m_hSenderMap;
 		HANDLE m_hActiveSenderMap;

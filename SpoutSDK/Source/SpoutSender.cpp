@@ -32,13 +32,6 @@
 
 SpoutSender::SpoutSender()
 {
-	/*
-	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
-	printf("SpoutSender::SpoutSender()\n");
-	*/
 
 }
 

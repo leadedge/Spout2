@@ -62,14 +62,6 @@
 //----------------------------------------
 spoutMemoryShare::spoutMemoryShare()
 {
-	/*
-	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
-	printf("spoutMemoryShare::spoutMemoryShare()\n");
-	*/
-
 	setSharedMemoryName("ofxMemoryShare"); // can be set externally
 }
 

@@ -49,15 +49,7 @@
 
 spoutSenderNames::spoutSenderNames() {
 
-	/*
-	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
-	printf("spoutSenderNames::spoutSenderNames()\n");
-	*/
 
-	// LJ DEBUG - not used
 	m_hSenderMutex = NULL;
 	m_hActiveSenderMutex = NULL;
 	m_hSenderNamesMutex = NULL;
