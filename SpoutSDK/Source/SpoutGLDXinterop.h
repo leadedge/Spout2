@@ -53,6 +53,9 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		spoutGLDXinterop();
 		~spoutGLDXinterop();
 
+		// LJ DEBUG
+		bool GetImageSize (char* sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);
+
 		// Initialization functions
 		bool LoadGLextensions(); // Load required opengl extensions
 		bool CreateInterop(HWND hWnd, char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
@@ -104,6 +107,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool GetVerticalSync();
 		bool SetVerticalSync(bool bSync = true);
 
+		spoutMemoryShare MemoryShare;	// Shared memory method
 		spoutSenderNames senders;	// Sender management
 		spoutDirectX spoutdx;	// DirectX class
 

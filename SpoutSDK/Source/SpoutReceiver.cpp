@@ -37,7 +37,13 @@
 
 SpoutReceiver::SpoutReceiver()
 {
-
+	/*
+	AllocConsole();
+	freopen("CONIN$",  "r", stdin);
+	freopen("CONOUT$", "w", stdout);
+	freopen("CONOUT$", "w", stderr);
+	printf("SpoutReceiver::SpoutReceiver()\n");
+	*/
 }
 
 
@@ -65,7 +71,7 @@ bool SpoutReceiver::ReceiveImage(char* name, unsigned int &width, unsigned int &
 //---------------------------------------------------------
 bool SpoutReceiver::GetImageSize(char* name, unsigned int &width, unsigned int &height, bool &bMemoryMode)
 {
-	return spout.senders.GetImageSize(name, width, height, bMemoryMode);
+	return spout.interop.GetImageSize(name, width, height, bMemoryMode);
 }
 
 

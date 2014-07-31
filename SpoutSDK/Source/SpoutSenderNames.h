@@ -88,7 +88,7 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool GetSenderNames	   (std::set<string> *Sendernames);
 		int  GetSenderCount();
 		bool GetSenderNameInfo (int index, char* sendername, int sendernameMaxSize, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle);
-		bool GetImageSize      (char* sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);
+		// bool GetImageSize      (char* sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);
 
 		// ------------------------------------------------------------
 		// Functions to read and write info to a sender memory map
@@ -127,7 +127,7 @@ class SPOUT_DLLEXP spoutSenderNames {
 
 protected:
 
-		spoutMemoryShare MemoryShare;	// Shared memory method
+		// spoutMemoryShare MemoryShare;	// Shared memory method
 
 		// Sender name set management
 		bool CreateSenderSet();
@@ -172,9 +172,9 @@ protected:
 
 
 		// Pointers for memory maps
-		// char* m_pSenderMap;
-		// char* m_pActiveSenderMap;
-		// char* m_pSenderNamesMap;
+		char* m_pSenderMap;
+		char* m_pActiveSenderMap;
+		char* m_pSenderNamesMap;
 
 		// LJ DEBUG - not used
 		// Handles for memory maps

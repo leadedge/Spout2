@@ -92,8 +92,8 @@ class SPOUT_DLLEXP Spout {
 	bool SelectSenderPanel(char* message = NULL);
 
 	spoutGLDXinterop interop;		// Opengl/directx interop texture sharing
-	spoutSenderNames senders;		// Spout sender management
-	spoutMemoryShare MemoryShare;	// Shared memory method
+	// spoutSenderNames senders;		// Spout sender management
+	// spoutMemoryShare MemoryShare;	// Shared memory method
 
 /*
 //
@@ -125,6 +125,10 @@ DXGI_FORMAT_R8G8B8A8_TYPELESS				= 27,
 */
 
 	protected :
+
+	// spoutGLDXinterop interop;		// Opengl/directx interop texture sharing
+	// spoutSenderNames senders;		// Spout sender management
+	// spoutMemoryShare MemoryShare;	// Shared memory method
 
 	// ================================= //
 	//  PRIVATE VARIABLES AND FUNCTIONS  //

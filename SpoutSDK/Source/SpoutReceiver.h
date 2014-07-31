@@ -70,7 +70,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	bool SetVerticalSync(bool bSync);
 	bool GetVerticalSync();
 
-	protected :
+protected :
 
 	Spout spout;
 

@@ -32,6 +32,14 @@
 
 spoutDirectX::spoutDirectX() {
 
+	/*
+	AllocConsole();
+	freopen("CONIN$",  "r", stdin);
+	freopen("CONOUT$", "w", stdout);
+	freopen("CONOUT$", "w", stderr);
+	printf("spoutDirectX::spoutDirectX()\n");
+	*/
+
 	// DX11
 	g_pImmediateContext = NULL;
 	g_driverType		= D3D_DRIVER_TYPE_NULL;

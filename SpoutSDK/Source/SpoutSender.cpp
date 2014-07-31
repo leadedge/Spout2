@@ -32,6 +32,13 @@
 
 SpoutSender::SpoutSender()
 {
+	/*
+	AllocConsole();
+	freopen("CONIN$",  "r", stdin);
+	freopen("CONOUT$", "w", stdout);
+	freopen("CONOUT$", "w", stderr);
+	printf("SpoutSender::SpoutSender()\n");
+	*/
 
 }
 
@@ -150,6 +157,6 @@ bool SpoutSender::GetVerticalSync()
 
 bool SpoutSender::SenderDebug(char *Sendername, int size)
 {
-	return spout.senders.SenderDebug(Sendername, size);
+	return spout.interop.senders.SenderDebug(Sendername, size);
 
 }
