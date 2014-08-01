@@ -70,9 +70,11 @@ class SPOUT_DLLEXP SpoutReceiver {
 	bool SetVerticalSync(bool bSync);
 	bool GetVerticalSync();
 
+	Spout spout; // for debug
+
 protected :
 
-	Spout spout;
+	// Spout spout;
 
 
 };

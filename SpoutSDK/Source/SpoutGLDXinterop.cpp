@@ -138,9 +138,11 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	DWORD format;
 	D3DFORMAT DX9format = D3DFMT_A8R8G8B8; // fixed format for DX9 (21)
 
+	// printf("spoutGLDXinterop::CreateInterop (%s) %dx%d\n", sendername, width, height);
+
 	// Needs an openGL context to work
 	if(!wglGetCurrentContext()) {
-		// MessageBoxA(NULL, "CreateInterop - no GL context", "Warning", MB_OK);
+		MessageBoxA(NULL, "CreateInterop - no GL context", "Warning", MB_OK);
 		return false;
 	}
 
@@ -169,8 +171,9 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// Quit now if the receiver can't access the shared memory info of the sender
 	// Otherwise m_dxShareHandle is set by getSharedTextureInfo and is the
 	// shared texture handle of the Sender texture
-	if (bReceive && !getSharedTextureInfo(sendername))
+	if (bReceive && !getSharedTextureInfo(sendername)) {
 		return false;
+	}
 
 	// Check the sender format for a DX9 receiver
 	// It can only be from a DX9 sender (format 0)
@@ -184,8 +187,9 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 
 	// Make sure DirectX has been initialized
 	// Creates a global pointer to the DirectX device (DX11 g_pd3dDevice or DX9 m_pDevice)
-	if(!OpenDirectX(hWnd, bUseDX9)) 
+	if(!OpenDirectX(hWnd, bUseDX9)) {
 		return false;
+	}
 
 	// Allow for sender updates
 	if(m_hInteropDevice != NULL &&  m_hInteropObject != NULL) {
@@ -198,6 +202,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 		// printf("GLDXinterop - deleting m_glTexture (%d)\n", m_glTexture);
 		glDeleteTextures(1, &m_glTexture);
 	}
+
 	glGenTextures(1, &m_glTexture);
 
 	// printf("GLDXinterop - m_glTexture = %d\n", m_glTexture);
@@ -210,6 +215,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// Now the global shared texture handle - m_dxShareHandle - has been set so a sender can be created
 	// this creates the sender shared memory map and registers the sender
 	if (!bReceive) {
+
 		// Quit if sender creation failed - i.e. trying to create the same sender
 		// LJ DEBUG - modify SpoutPanel to detect format 21 ? How to know it is DX11 ?
 		if(bUseDX9)

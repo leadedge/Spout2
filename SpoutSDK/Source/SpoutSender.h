@@ -61,9 +61,11 @@ class SPOUT_DLLEXP SpoutSender {
 
 	bool SenderDebug(char *Sendername, int size);
 
+	Spout spout; // LJ DEBUG - for testing
+
 protected :
 
-	Spout spout;
+	// Spout spout;
 
 };
 

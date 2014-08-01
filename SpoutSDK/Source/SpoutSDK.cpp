@@ -16,6 +16,7 @@
 //					- ReceiveImage same change - to be tested
 //		27-07-14	- CreateReceiver - bUseActive flag instead of null name
 //		31-07-14	- Corrected DrawTexture aspect argument
+//		01-08-14	- TODO - work on OpenReceiver for memoryshare
 // ================================================================
 /*
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
@@ -44,6 +45,15 @@
 
 Spout::Spout()
 {
+
+	/*
+	// Debug console window so printf works
+	FILE* pCout; // should really be freed on exit 
+	AllocConsole();
+	freopen_s(&pCout, "CONOUT$", "w", stdout); 
+	printf("Spout::Spout()\n");
+	*/
+
 	g_Width				= 0;
 	g_Height			= 0;
 	g_ShareHandle		= 0;
@@ -75,9 +85,12 @@ bool Spout::CreateSender(char* sendername, unsigned int width, unsigned int heig
 	// bool bRet = false;
 	bool bMemoryMode = true;
 
+	// printf("Spout::CreateSender (%s) %dx%d\n", sendername, width, height);
+
 	// Make sure it has initialized
 	// A render window must be visible for initSharing to work
 	if(!OpenSpout()) {
+		printf("    CreateSender error 1\n");
 		return false;
 	}
 	if(bDxInitOK) {
@@ -86,6 +99,7 @@ bool Spout::CreateSender(char* sendername, unsigned int width, unsigned int heig
 	}
 	
 	// Initialize as a sender in either memory or texture mode
+	// printf("    Calling InitSender\n");
 	return(InitSender(g_hWnd, sendername, width, height, dwFormat, bMemoryMode));
 
 
@@ -337,7 +351,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 			// OpenReceiver will also set the global name, width, height and format
 			// Pass back the new name, width and height to the caller
 			strcpy_s(name, 256, newname);
-			// Check the width and height passed against the sneder detected
+			// Check the width and height passed against the sender detected
 			if(width != g_Width || height != g_Height) {
 				// Return the new sender name and dimensions
 				// The change has to be detected by the application
@@ -353,8 +367,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 		}
 	} // endif not initialized
 
-	if(bDxInitOK) {
-
+	if(bDxInitOK && !bMemoryShareInitOK) {
 		// Check to see if SpoutPanel has been opened 
 		// the globals are reset if it has been
 		// And the sender name will be different to that passed
@@ -412,11 +425,9 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 		if(TextureID > 0 && TextureTarget > 0) {
 
 			if(interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height)) {
-				// printf("Spout::ReceiveTexture - return 3\n");
 				return true;
 			}
 			else {
-				// printf("Spout::ReceiveTexture - error 3\n");
 				return false;
 			}
 		}
@@ -424,6 +435,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 		return true;
 	} // was initialized in texture mode
 	else {
+
 		// Memoryshare mode - problem for reading the size beforehand is that
 		// the framerate is halved. Reading the whole image assumes that the sender
 		// does not reduce in size, but it has worked successfully so far.
@@ -433,13 +445,11 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 		if(rgbBuffer) {
 			if(interop.MemoryShare.ReadFromMemory(rgbBuffer, (sizeof(BITMAPINFOHEADER) + imagesize))) {
 				pbmih = (BITMAPINFOHEADER *)rgbBuffer;
-
 				// return for zero width and height
 				if(pbmih->biWidth == 0 || pbmih->biHeight == 0) {
 					free((void *)rgbBuffer);
 					return false;
 				}
-
 				// check the size received to see if it matches the size passed in
 				if((unsigned int)pbmih->biWidth != width || (unsigned int)pbmih->biHeight != height) {
 					// return changed width and height
@@ -457,12 +467,8 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 			free((void *)rgbBuffer);
 			return true;
 		} // end buffer alloc OK
-
 		return true;
-
 	}
-
-	// printf("Spout::ReceiveTexture - error 4\n");
 
 	return false;
 
@@ -608,6 +614,8 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 
 
 // Can be used without OpenGL context
+// NOTE : initializes and then de-initiaize memoryshare
+// use before OpenReceiver and should not be called repeatedly
 bool Spout::GetImageSize(char* name, unsigned int &width, unsigned int &height, bool &bMemoryMode)
 {
 	char newname[256];
@@ -630,7 +638,7 @@ bool Spout::GetImageSize(char* name, unsigned int &width, unsigned int &height, 
 			}
 		}
 	} // texture mode sender was running
-	
+
 	// Try for Memoryshare mode - read the image header into an RGB buffer
 	rgbBuffer = (unsigned char *)malloc(sizeof(BITMAPINFOHEADER));
 	if(rgbBuffer) {
@@ -642,18 +650,25 @@ bool Spout::GetImageSize(char* name, unsigned int &width, unsigned int &height, 
 				free((void *)rgbBuffer);
 				return false;
 			}
+			
+			// Send back a name
+			strcpy_s(name, 256, "memoryshare");
+			
 			// return the size received
 			width  = (unsigned int)pbmih->biWidth;
 			height = (unsigned int)pbmih->biHeight;
+
 			interop.MemoryShare.DeInitialize(); 
 			free((void *)rgbBuffer);
 			bMemoryMode = true;
+
 			return true;
 		} // endif MemoryShare.ReadFromMemory
 		free((void *)rgbBuffer);
 	} // end buffer alloc OK
 
 	return false;
+
 } // end GetImageSize
 
 
@@ -870,8 +885,6 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	unsigned int height;
 	bool bMemoryMode = true;
 
-	// printf("Spout::OpenReceiver\n");
-
 	// A valid name is sent and the user does not want to use the active sender
 	if(theName[0] && !bUseActive) {
 		// printf("    (%s) %dx%d - bUseActive = %d\n", theName, theWidth, theHeight, bUseActive);
@@ -933,10 +946,122 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		g_Height = height;
 		g_Format = dwFormat;
 
+	}
+	// printf("Spout::OpenReceiver found (%s) %dx%d)\n", Sendername, width, height);
 
+	// Initialize a receiver in either memoryshare or texture mode
+	if(InitReceiver(g_hWnd, Sendername, width, height, bMemoryMode)) {
+		// Pass back the sender name and size now that the global
+		// width and height have been set
+		strcpy_s(theName, 256, Sendername); // LJ DEBUG global?
+		theWidth  = g_Width;
+		theHeight = g_Height;
+		return true;
 	}
 
-	// printf("Spout::OpenReceiver found (%s) %dx%d)\n", Sendername, width, height);
+	return false;
+
+} // end OpenReceiver
+
+
+/*
+01.08.14 - unfinished - memoryshare work
+bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& theHeight)
+{
+
+	char Sendername[256]; // user entered Sender name
+	DWORD dwFormat;
+	unsigned int width;
+	unsigned int height;
+	bool bMemoryMode = true;
+
+	printf("Spout::OpenReceiver\n");
+
+	// A valid name is sent and the user does not want to use the active sender
+	if(theName[0] && !bUseActive) {
+		// printf("    (%s) %dx%d - bUseActive = %d\n", theName, theWidth, theHeight, bUseActive);
+		strcpy_s(Sendername, 256, theName);
+	}
+	else {
+		// printf("Spout::OpenReceiver (use active sender) %dx%d -  - bUseActive = %d\n", theWidth, theHeight, bUseActive);
+		Sendername[0] = 0;
+	}
+
+	// Set initial size to that passed in
+	width  = theWidth;
+	height = theHeight;
+
+	// Make sure it has been initialized
+	if(!OpenSpout()) {
+		printf("    Spout::OpenReceiver error 1\n");
+		return false;
+	}
+
+	printf("    bMemoryShareInitOK = %d bDxInitOK = %d\n", bMemoryShareInitOK, bDxInitOK);
+
+	// No senders for texture mode - just return false
+	if(!bMemoryShareInitOK && bDxInitOK && GetSenderCount() == 0) {
+		printf("    Spout::OpenReceiver error 2\n");
+		return false;
+	}
+
+	// Render window must be visible for initSharing to work
+	g_hWnd = WindowFromDC(wglGetCurrentDC()); 
+
+	// Check the user memoryshare override as well as whether it initialized memoryshare
+	if(!bMemory && !bMemoryShareInitOK && bDxInitOK) {
+		bMemoryMode = false;
+		// Find if the sender exists
+		// Or if a null name given return the active sender if that exists
+		if(!interop.senders.FindSender(Sendername, width, height, g_ShareHandle, dwFormat)) {
+
+			// Given name not found ? - has SpoutPanel been opened ?
+			// the globals are reset if it has been
+			if(CheckSpoutPanel()) {
+				// set vars for below
+				strcpy_s(Sendername, 256, g_SharedMemoryName);
+				width    = g_Width;
+				height   = g_Height;
+				dwFormat = g_Format;
+			}
+			else {
+				printf("    Spout::OpenReceiver error 3\n");
+			    return false;
+			}
+		}
+	}
+	else if(bMemoryShareInitOK) {
+		printf("    Spout::OpenReceiver memoryshare\n");
+		// Find a memoryshare sender if running
+		if(interop.MemoryShare.GetImageSizeFromSharedMemory(width, height)) {
+				// global width and height have now been set
+		// if(GetImageSize(Sendername, width, height, bMemoryMode)) {
+			// Set the globals
+			strcpy_s(g_SharedMemoryName, 256, "memoryshare");
+			g_Width  = width;
+			g_Height = height;	
+
+			strcpy_s(theName, 256, g_SharedMemoryName);
+			theWidth  = g_Width;
+			theHeight = g_Height;
+			printf("  memoryshare sender found (%s) %dx%d\n", g_SharedMemoryName, width, height);
+			bInitialized = true;
+
+			return true;
+		}
+		else {
+			printf("  memoryshare sender not found\n"); 
+			return false;
+		}
+	}
+
+	// Set the globals
+	strcpy_s(g_SharedMemoryName, 256, Sendername);
+	g_Width  = width;
+	g_Height = height;
+	g_Format = dwFormat;
+
+	printf("Spout::OpenReceiver found (%s) %dx%d)\n", Sendername, width, height);
 
 	// Initialize a receiver in either memoryshare or texture mode
 	if(InitReceiver(g_hWnd, Sendername, width, height, bMemoryMode)) {
@@ -953,10 +1078,12 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	return false;
 
 } // end OpenReceiver
+*/
 
 
 bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, unsigned int theHeight, DWORD dwFormat, bool bMemoryMode) 
 {
+	// printf("Spout::InitSender (%s) %dx%d\n", theSendername, theWidth, theHeight);
 
 	// Texture share mode quit if there is no image size to initialize with
 	// Memoryshare can detect a Sender while the receiver is running
@@ -971,7 +1098,7 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 		
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
 		if(!interop.CreateInterop(hwnd, theSendername, theWidth, theHeight, dwFormat, false)) {  // False for a sender
-			// printf("Spout::InitSender - CreateInterop failed\n");
+			// printf("    CreateInterop failed\n");
 			return false;
 		}
 
@@ -1112,6 +1239,7 @@ bool Spout::InitMemoryShare(bool bReceiver)
 				return true;
 			}
 			else {
+				// LJ DEBUG - Do we want this - or just wait ?
 				interop.MemoryShare.DeInitialize();
 				return false;
 			}
