@@ -22,7 +22,7 @@
 					- changed map creation and release
 				- fixed /DX9 compatible flag for SpoutPanel call
 	30-07-14	- added vsync option, cleanup and recompile demos
-				
+	31-07-14	- used freopen_s for console outout			
 
 */
 #define MAX_LOADSTRING 100
@@ -61,7 +61,7 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 //
 bool bReceiver      = false; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
-bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
+bool bDX9mode       = true; // Use DirectX 9 instead of DirectX 11
 bool bDX9compatible = false; // For DX11 only - compatible DX9 format for DX11 senders
 bool bVsync			= true; // OpenGL wglSwapIntervalEXT lock to monitor sync
 // =============================================================
@@ -478,7 +478,8 @@ bool OpenSender()
 
 	/*
 	// LJ DEBUG
-	for(int i = 0; i<1000; i++) {
+	debugCounter = 0;
+	for(int i = 0; i<5; i++) {
 		// printf("CreateSender (%d)\n", debugCounter);
 		sender.CreateSender(g_SenderName, g_Width, g_Height);
 		// printf("ReleaseSender (%d)\n", debugCounter);
@@ -486,6 +487,7 @@ bool OpenSender()
 		debugCounter++;
 	}
 	*/
+
 
 	return true;
 
@@ -654,7 +656,6 @@ int DrawGLScene(GLvoid)
 		glBindTexture(GL_TEXTURE_2D, 0);
 
 		// Send the texture
-		// LJ DEBUG
 		sender.SendTexture(myTexture, GL_TEXTURE_2D, g_Width, g_Height);
 	
 		ShowSenderInfo();
@@ -1173,13 +1174,12 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
 
 
-	/*
 	// Debug console window so printf works
-	FILE* pCout; // should really be freed 
+	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("\nWinSpoutSDK\n");
-	*/
+
 
 	// suppress warnings
 	msg.wParam = 0;
@@ -1256,7 +1256,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 				else if (keys[VK_SPACE]) {					// Is the space bar Being Pressed?
 					keys[VK_SPACE]=FALSE;
 
-					// printf("SPACE\n");
+					printf("SPACE\n");
 
 					// LJ DEBUG - test
 					sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
@@ -1332,8 +1332,8 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	// OutputDebugStringA("**** WinSpout Finished ****\n");
 
 	// LJ DEBUG
-	sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
-	MessageBoxA(NULL, "Finished", "WinSpout", MB_OK);
+	// sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
+	// MessageBoxA(NULL, "Finished", "WinSpout", MB_OK);
 
 	return (int)msg.wParam;
 }
