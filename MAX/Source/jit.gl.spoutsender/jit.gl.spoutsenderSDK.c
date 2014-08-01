@@ -4,16 +4,38 @@
     
 	Based on :
 		jit.gl.simple by Cycling74
-		and jit.gl.syphonSender.m
+		and jjit.gl.syphonclient.m
 	    Copyright 2010 bangnoise (Tom Butterworth) & vade (Anton Marini).
 
-	// =================== SPOUT 2 ===================
-	//	28-06-14 - major change to use Spout SDK
-	//			 - cleanup - debug comments saved in backup 28-06-14
-	//	03-07-14 - saved OpenGL debugging in backup - cleanup
-	//			 - used jitter texture directly for send - no difference to errors
-	//	08.07-14 - cleanup
-	//
+	=================== SPOUT 2 ===================
+	01.08.14 - rebuilt with Spout SDK
+	02-08-14 - compiled /MT
+	02-08-14 - Fixed dest_changed error	
+
+		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
+
+		Redistribution and use in source and binary forms, with or without modification, 
+		are permitted provided that the following conditions are met:
+
+		1. Redistributions of source code must retain the above copyright notice, 
+		   this list of conditions and the following disclaimer.
+
+		2. Redistributions in binary form must reproduce the above copyright notice, 
+		   this list of conditions and the following disclaimer in the documentation 
+		   and/or other materials provided with the distribution.
+
+		THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"	AND ANY 
+		EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
+		OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE	ARE DISCLAIMED. 
+		IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
+		INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+		PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+		INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+		LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
  */
 
 #include "jit.common.h"
@@ -37,6 +59,8 @@ typedef struct _jit_gl_spout_sender
 		
 	// internal jit.gl.texture object, which we use to handle matrix input.
 	t_symbol	*texture;
+
+	long		dim[2];			// texture size
 	
 	// the name of the texture we should draw from - our internal one (for matrix input) or an external one
 	t_symbol	*textureSource;
@@ -49,31 +73,29 @@ typedef struct _jit_gl_spout_sender
 	SpoutSender * mySender;
 
 	bool bInitialized;
+	bool bDestChanged;
+	// long counter;
 	GLuint g_texId;			// jitter texture ID
-	GLuint g_texTarget;		// jitter texture target
-	GLuint m_fbo;			// local fbo used for texture transfers
-	GLuint m_fbo_texture;	// local texture used for transfers
 	int g_Width;			// width
 	int g_Height;			// height
 	char g_SenderName[256]; // sender name - link with sendername
-	float dim[4];			// for saving viewport dimensions
+
 
 } t_jit_gl_spout_sender;
 
 
 void *_jit_gl_spout_sender_class;
 
-#pragma mark -
-#pragma mark Function Declarations
+//
+// Function Declarations
+//
 
 // init/constructor/free
 t_jit_err jit_gl_spout_sender_init(void);
-
 t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name);
-
 void jit_gl_spout_sender_free(t_jit_gl_spout_sender *x);
 
-// handle context changes - need to rebuild spoutsender & textures here.
+// handle context changes - need to rebuild spoutsender here.
 t_jit_err jit_gl_spout_sender_dest_closing(t_jit_gl_spout_sender *x);
 t_jit_err jit_gl_spout_sender_dest_changed(t_jit_gl_spout_sender *x);
 
@@ -86,12 +108,8 @@ t_jit_err jit_gl_spout_sender_jit_gl_texture(t_jit_gl_spout_sender *x, t_symbol 
 // handle input matrix
 t_jit_err jit_gl_spout_sender_jit_matrix(t_jit_gl_spout_sender *x, t_symbol *s, int argc, t_atom *argv);
 
-// Utility
-void SendTexture(t_jit_gl_spout_sender *x);
-void glErrorText(char *intext);
-
 //attributes
-// @sendername, for sender human readable name
+// @sendername, for sender name
 t_jit_err jit_gl_spout_sender_sendername(t_jit_gl_spout_sender *x, void *attr, long argc, t_atom *argv);
 
 // @memoryshare 0 / 1 force memoryshare
@@ -111,19 +129,19 @@ t_symbol *ps_jit_gl_texture; // our internal texture for matrix input
 // Function implementations
 //
 
-#pragma mark -
-#pragma mark Init, New, Cleanup, Context changes
+//
+// Init, New, Cleanup, Context changes
+//
 
 t_jit_err jit_gl_spout_sender_init(void) 
 {
 
 	/*
 	// Debug console window so printf works
+	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
-	printf("\njit_gl_spout_sender\n");
+	freopen_s(&pCout, "CONOUT$", "w", stdout); 
+	printf("jit_gl_spout_sender_init\n");
 	*/
 
 	// create our class
@@ -157,21 +175,17 @@ t_jit_err jit_gl_spout_sender_init(void)
 	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"memoryshare", _jit_sym_long, attrflags,
 		(method)0L, (method)jit_gl_spout_sender_memoryshare, calcoffset(_jit_gl_spout_sender, memoryshare));	
 	jit_class_addattr(_jit_gl_spout_sender_class,attr);	
-	
+
+
+	// define our OB3D draw method.  called in automatic mode by 
+	jit_class_addmethod(_jit_gl_spout_sender_class, (method)jit_gl_spout_sender_draw, "ob3d_draw", A_CANT, 0L);
+
 	// define our dest_closing and dest_changed methods. 
-	// these methods are called by jit.gl.render when the 
-	// destination context closes or changes: for example, when 
-	// the user moves the window from one monitor to another. Any 
-	// resources your object keeps in the OpenGL machine 
-	// (e.g. textures, display lists, vertex shaders, etc.) 
-	// will need to be freed when closing, and rebuilt when it has changed.
 	jit_class_addmethod(_jit_gl_spout_sender_class, (method)jit_gl_spout_sender_dest_closing, "dest_closing", A_CANT, 0L);
 	jit_class_addmethod(_jit_gl_spout_sender_class, (method)jit_gl_spout_sender_dest_changed, "dest_changed", A_CANT, 0L);
 	
-	// OB3D methods
 	// must register for ob3d use
 	jit_class_addmethod(_jit_gl_spout_sender_class, (method)jit_object_register, "register", A_CANT, 0L);
-	jit_class_addmethod(_jit_gl_spout_sender_class, (method)jit_gl_spout_sender_draw, "ob3d_draw", A_CANT, 0L);
 	
 	// handle texture input - we need to explictly handle jit_gl_texture messages
 	// so we can set our internal texture reference
@@ -206,14 +220,13 @@ t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name)
 		jit_ob3d_new(x, dest_name);
 
 		// Initialize variables
-		x->bInitialized			= false;
-		x->g_Width				= 0;
-		x->g_Height				= 0;
-		x->g_texId				= 0;
-		x->g_texTarget			= 0;
-		x->m_fbo				= 0;
-		x->m_fbo_texture		= 0;
-		x->mySender				= NULL;
+		x->bInitialized  = false;
+		x->bDestChanged  = false;
+		// x->counter       = false; // debug counter
+		x->g_Width       = 0;
+		x->g_Height      = 0;
+		x->g_texId       = 0;
+		x->mySender      = NULL;
 
 		// Create a new Spout sender
 		x->mySender = new SpoutSender;
@@ -234,7 +247,7 @@ t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name)
 			jit_attr_setlong(x->texture,gensym("rectangle"), 1);
 			jit_attr_setsym(x->texture, gensym("mode"),gensym("dynamic"));	
 			jit_attr_setsym(x, ps_texture, name);
-			x->textureSource = name;
+			x->textureSource = name; // init of texture
 		} 
 		else {
 			jit_object_error((t_object *)x,"jit.gl.spoutsender: could not create texture");
@@ -250,6 +263,7 @@ t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name)
 
 void jit_gl_spout_sender_free(t_jit_gl_spout_sender *x)
 {
+
 	// free our internal texture
 	if(x->texture) jit_object_free(x->texture);
 
@@ -267,50 +281,48 @@ void jit_gl_spout_sender_free(t_jit_gl_spout_sender *x)
 
 t_jit_err jit_gl_spout_sender_dest_closing(t_jit_gl_spout_sender *x)
 {
-	// Don't seem to need to do anything here
-	// because dest-changed happens as well
+
+	// In case we have dest-closing without dest_changed
+	// or dest_changed without dest_closing - allow for both.
+	// Release sender if initialized
+	if(x->bInitialized) {
+		x->mySender->ReleaseSender();
+		x->bInitialized = false; // Initialize again in draw
+	}
+
+	// same as dest-changed
+	x->bDestChanged = true;
+
 	return JIT_ERR_NONE;
 }
 
 
 t_jit_err jit_gl_spout_sender_dest_changed(t_jit_gl_spout_sender *x)
 {	
-	// try and find a context.
-	t_jit_gl_context jit_ctx = 0;
-	jit_ctx = jit_gl_get_context();
-
-	if(jit_ctx) {
-		if(x->textureSource) {
-			// get our latest texture info.
-			t_jit_object *texture = (t_jit_object*)jit_object_findregistered(x->textureSource);
-			GLuint texId = jit_attr_getlong(texture, ps_glid);			
-			// Syphon comment : our texture has to be bound in the new context before we can use it
-			// http://cycling74.com/forums/topic.php?id=29197
-			t_jit_gl_drawinfo drawInfo;
-			jit_gl_drawinfo_setup(x, &drawInfo);
-			jit_gl_bindtexture(&drawInfo, x->textureSource, 0); // bind the jitter texure
-			jit_gl_unbindtexture(&drawInfo, x->textureSource, 0); // unbind it
-		}
+	//
+	// Release sender if initialized
+	//
+	// IMPORTANT : do not re-initialize here but do so next round in draw
+	// also allow one cycle for the new texture to be received
+	//
+	if(x->bInitialized) {
+		x->mySender->ReleaseSender();
+		x->bInitialized = false; // Initialize again in draw
 	}
 
-	// Release sender if initialized
-	x->mySender->ReleaseSender();
-	x->bInitialized = false; // Initialize again in draw
-
-	// Tried releaseing and re-creating the entire sender object
-	// to avoid jitter OpenGL errors with fullscreen but no effect
+	x->bDestChanged = true;
 
 	return JIT_ERR_NONE;
 }
 
-#pragma mark -
-#pragma mark Input Imagery, Texture/ Matrix
+//
+// Input Imagery, Texture/ Matrix
+//
 
 
 // handle matrix input
 t_jit_err jit_gl_spout_sender_jit_matrix(t_jit_gl_spout_sender *x, t_symbol *s, int argc, t_atom *argv)
 {
-	
 	t_symbol *name;
 	void *m;
 
@@ -321,13 +333,13 @@ t_jit_err jit_gl_spout_sender_jit_matrix(t_jit_gl_spout_sender *x, t_symbol *s, 
 			return JIT_ERR_GENERIC;
 		}
 	}
-	
+
 	if (x->texture)	{				
 		jit_object_method(x->texture,s,s,argc,argv);
 		// add texture to ob3d texture list
 		t_symbol *texName = jit_attr_getsym(x->texture, _jit_sym_name);
 		jit_attr_setsym(x,ps_texture,texName);
-		x->textureSource = texName;
+		x->textureSource = texName; // out texture is matrix input
 	}
 
 	return JIT_ERR_NONE;
@@ -349,13 +361,28 @@ t_jit_err jit_gl_spout_sender_jit_gl_texture(t_jit_gl_spout_sender *x, t_symbol 
 	return JIT_ERR_NONE;
 }
 
-#pragma mark -
-#pragma mark Draw
 
+//
+// Draw
+//
 
 t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
 {
 	if (!x)	return JIT_ERR_INVALID_PTR;
+
+	float vpdim[4]; // for saving the viewport dimensions
+	GLint previousFBO;
+	GLint previousReadFBO;
+	GLint previousDrawFBO;
+    GLint previousMatrixMode;
+	GLint previousActiveTexture;
+
+	// IMPORTANT : Allow one cycle for the incoming texture to be updated or there
+	// is a size or ID mis-match and subsequent fbo error and jitter fbo and texture errors
+	if(x->bDestChanged) {
+		x->bDestChanged = false;
+		return JIT_ERR_NONE;
+	}
 
 	if(x->textureSource) {
 
@@ -368,121 +395,105 @@ t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
 
 		// all of these must be > 0
 		if(texId > 0 && texWidth > 0 && texHeight > 0)	{
+
+			// =========================================
+			// 
+			//		Save OpenGL state
+			//
+			glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
+			glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING_EXT, &previousReadFBO);
+			glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING_EXT, &previousDrawFBO);
+			glGetIntegerv(GL_MATRIX_MODE, &previousMatrixMode);
+			glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture);
+
+			glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+
+			// Syphon note :
+			// Jitter uses multiple texture coordinate arrays on different units
+			// http://s-musiclab.jp/mmj_docs/max5/develop/MaxSDK-5.1.1_J/html/jit_8gl_8texture_8c_source.html
+			// We need to ensure we set this before changing our texture matrix
+			// glActiveTexture selects which texture unit subsequent texture state calls will affect.
+			glClientActiveTexture(GL_TEXTURE0);
+
+			glMatrixMode(GL_TEXTURE);
+			glPushMatrix();
+			glLoadIdentity();
+
+			glPushAttrib(GL_TRANSFORM_BIT);
+			glGetFloatv(GL_VIEWPORT, vpdim);
+			glViewport(0, 0, x->g_Width, x->g_Height);
+					
+			glMatrixMode(GL_PROJECTION);
+			glPushMatrix();
+			glLoadIdentity();
+			glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0f, 1.0f);
+
+			glMatrixMode(GL_MODELVIEW);
+			glPushMatrix();
+			glLoadIdentity();
+			// =========================================
+
 			// --- Create a sender if it is not initialized ---
 			if(!x->bInitialized) {
 				x->g_texId	= texId;
 				x->g_Width	= texWidth;
 				x->g_Height	= texHeight;
 				x->mySender->CreateSender(x->g_SenderName, x->g_Width, x->g_Height);
+				// post("Draw CreateSender (%d) : texId = %d Spout ID = %d", x->counter, texId, x->mySender->spout.interop.m_glTexture);
+				// x->counter++;
 				x->bInitialized = true;
 			}
-			// --- Check for change of width and height or texture ID ---
-			else if(texWidth != x->g_Width || texHeight != x->g_Height || texId != x->g_texId) {
-				// Set globals for sender create next round
-				x->g_texId	= texId;
-				x->g_Width	= texWidth;
-				x->g_Height	= texHeight;
-				x->mySender->ReleaseSender(0);
-				x->bInitialized = false; // Initialize again the next time round
+			// --- Check for change of name, width and height or texture ID ---
+			else if(texWidth != x->g_Width 
+				 || texHeight != x->g_Height
+				 || texId != x->g_texId
+				 || strncmp(x->sendername->s_name, x->g_SenderName, 256) != 0) {
+				// post("size change %dx%d to %dx%d ReleaseSender : texId = %d", x->g_Width, x->g_Height, texWidth, texHeight, texId);
+				// Reset and initialize again the next time round
+				x->mySender->ReleaseSender();
+				x->bInitialized = false; 
 			} // endif texture has changed
 			// --- otherwise it is initialized OK so send the frame out ---
 			else {
 				// No actual rendering is done here, this is just sending out a texture
-				SendTexture(x); // Saves OpenGL state - no apparent difference
+				if(x->bInitialized)	x->mySender->SendTexture(texId, texTarget, texWidth, texHeight);
 			} // end if size was OK and normal draw
+
+			// =========================================
+			// Restore everything
+			glMatrixMode(GL_MODELVIEW);
+			glPopMatrix();
+
+			glMatrixMode(GL_PROJECTION);
+			glPopMatrix();
+
+			glPopAttrib();
+			glViewport(vpdim[0], vpdim[1], vpdim[2], vpdim[3]);
+		
+			glMatrixMode(GL_TEXTURE);
+			glPopMatrix();
+			glMatrixMode(previousMatrixMode);
+
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);
+			glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, previousReadFBO);
+			glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, previousDrawFBO); 
+
+			glActiveTexture(previousActiveTexture);
+
+			// ensure we act on the proper client texture as well
+			glPopClientAttrib();
+			glClientActiveTexture(previousActiveTexture);
+			// =========================================
+
 		} // endif texId && width > 0 && height > 0
 	} // endif x->textureSource
 	return JIT_ERR_NONE;
 }
 
-void SendTexture(t_jit_gl_spout_sender *x)
-{
-	// get our latest texture info.
-	t_jit_object *texture = (t_jit_object*)jit_object_findregistered(x->textureSource);
-	GLuint texId		= jit_attr_getlong(texture, ps_glid);
-	GLuint texWidth		= jit_attr_getlong(texture, ps_width);
-	GLuint texHeight	= jit_attr_getlong(texture, ps_height);
-	GLuint texTarget	= jit_attr_getlong(texture, ps_gltarget);
-
-	// Syphon note :
-	// Jitter uses multuple texture coordinate arrays on different units, and we (Syphon) erronously do not re-set  
-	// our internal Client Active Texture in the framework to GL_TEXTURE0, thus our texture coord array is not set.
-	// glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
-	// glClientActiveTexture(GL_TEXTURE0);
-	// http://s-musiclab.jp/mmj_docs/max5/develop/MaxSDK-5.1.1_J/html/jit_8gl_8texture_8c_source.html
-	//
-	// make sure we pop out to the right FBO
-	// LJ performance penalty for getting an restoring read and draw fbo's
-	GLint previousFBO;
-	// GLint previousReadFBO;
-	// GLint previousDrawFBO;
-    GLint previousMatrixMode;
-	GLint previousActiveTexture;
-
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO); // 8CA6
-	// glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING_EXT, &previousReadFBO); // 8CAA
-	// glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING_EXT, &previousDrawFBO); // 8CA6
-	glGetIntegerv(GL_MATRIX_MODE, &previousMatrixMode);
-	glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture);
-
-	// save texture state, client state, etc.
-	glPushAttrib(GL_ALL_ATTRIB_BITS);
-	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
-
-	// We need to ensure we set this before changing our texture matrix
-	// glActiveTexture selects which texture unit subsequent texture state calls will affect.
-	glActiveTexture(GL_TEXTURE0);
-
-	// ensure we act on the proper client texture as well
-	glClientActiveTexture(GL_TEXTURE0);
-
-	glMatrixMode(GL_TEXTURE);
-	glPushMatrix();
-	glLoadIdentity();
-                               
-    glViewport(0, 0,  x->g_Width, x->g_Height);
-	glMatrixMode(GL_PROJECTION);
-
-    glPushMatrix();
-	glLoadIdentity();
-	glOrtho(0.0, x->g_Width,  0.0,  x->g_Height, -1, 1);              
-                               
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-
-	// Do stuff
-	x->mySender->SendTexture(texId, texTarget,  texWidth, texHeight);
-
-	glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-	
-	glMatrixMode(GL_TEXTURE);
-	glPopMatrix();
-	glMatrixMode(previousMatrixMode);
-						
-	glPopAttrib();
-    glPopClientAttrib();  
-
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);
-	// glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, previousReadFBO);
-    // glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, previousDrawFBO); 
-
-	// RestoreOpenGLstate(x);
-	glActiveTexture(previousActiveTexture);
-	// ensure we act on the proper client texture as well
-	glClientActiveTexture(previousActiveTexture);
-
-}
-
-
-#pragma mark -
-#pragma mark Attributes
-
-
+//
 // attributes
+//
+
 // @sendername
 t_jit_err jit_gl_spout_sender_sendername(t_jit_gl_spout_sender *x, void *attr, long argc, t_atom *argv)
 {
@@ -497,33 +508,28 @@ t_jit_err jit_gl_spout_sender_sendername(t_jit_gl_spout_sender *x, void *attr, l
 		else {
 			// no args, set to zero
 			x->sendername = gensym("jit.gl.spoutSender");
+			strcpy_s(x->g_SenderName, "jit.gl.spoutSender");
 		}
 		// set the name for this sender
-		strcpy(x->g_SenderName, x->sendername->s_name);
+		strcpy_s(x->g_SenderName, 256, x->sendername->s_name);
 	}
 
 	return JIT_ERR_NONE;
 }
 
-
-// force memory share flag (default is off - then is automatic dependent on hardware)
+// @memoryshare
+// force memory share flag (default is 0 off - then is automatic dependent on hardware)
 t_jit_err jit_gl_spout_sender_memoryshare(t_jit_gl_spout_sender *x, void *attr, long argc, t_atom *argv)
 {
 	long c = jit_atom_getlong(argv);
 
+	// Bypass compiler warning
+	bool bC = true;
+	if(c == 0) bC = false;
+
 	x->memoryshare = c; // 0 off or 1 on
-	x->mySender->SetMemoryShareMode((bool)c); // LJ DEBUG Memoryshare on or off
+	x->mySender->SetMemoryShareMode(bC); // Memoryshare on or off
 
 	return JIT_ERR_NONE;
 }
 
-
-void glErrorText(char *intext)
-{
-	GLenum myError;
-	do {
-		myError = glGetError(); // GetLastError();
-		if(myError != 0) post("    %s - error : [%d][0x%x][%s]", intext, myError, myError, gluErrorString( myError ) );
-	} while(myError != 0);
-
-}

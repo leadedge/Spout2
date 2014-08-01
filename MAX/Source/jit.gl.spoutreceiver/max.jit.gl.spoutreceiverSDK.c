@@ -1,25 +1,43 @@
 /*
+
     max.jit.gl.spoutreceiver.c
 
 	Based on :
-		max.jit.gl.syphonclient- Copyright 2010 bangnoise (Tom Butterworth) & vade (Anton Marini).
+		max.jit.gl.syphonclient
+		Copyright 2010 bangnoise (Tom Butterworth) & vade (Anton Marini).
 
-		TODO : change getavailableservers to getavailablesenders
+		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
+
+		Redistribution and use in source and binary forms, with or without modification, 
+		are permitted provided that the following conditions are met:
+
+		1. Redistributions of source code must retain the above copyright notice, 
+		   this list of conditions and the following disclaimer.
+
+		2. Redistributions in binary form must reproduce the above copyright notice, 
+		   this list of conditions and the following disclaimer in the documentation 
+		   and/or other materials provided with the distribution.
+
+		THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"	AND ANY 
+		EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
+		OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE	ARE DISCLAIMED. 
+		IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
+		INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+		PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+		INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+		LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 
  */
 #include "jit.common.h"
 #include "jit.gl.h"
 #include "ext_obex.h"
+
 #include "../../SpoutSDK/Spout.h"
-//
-// NVidia Optimus force to high performance graphics
-// http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
-// A value of 0x00000001 indicates that rendering should be performed using High Performance Graphics.
-// Doesn't seem to work
-//
-extern "C" {
-	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-}
+
 
 typedef struct _max_jit_gl_spout_receiver 
 {
@@ -41,7 +59,7 @@ void max_jit_gl_spout_receiver_bang(t_max_jit_gl_spout_receiver *x);
 void max_jit_gl_spout_receiver_draw(t_max_jit_gl_spout_receiver *x, t_symbol *s, long argc, t_atom *argv);
 
 //custom list outof available Senders via the dumpout outlet.
-void max_jit_gl_spout_receiver_getavailableservers(t_max_jit_gl_spout_receiver *x);
+void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *x);
 
 t_class *max_jit_gl_spout_receiver_class;
 
@@ -53,15 +71,13 @@ void main(void)
 	void *classex, *jitclass;
 	
 	/*
-	// LJ debug console window so printf works
+	// Debug console window so printf works
+	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
-	printf("jit_gl_spout_receiver\n");
-	// =================================
+	freopen_s(&pCout, "CONOUT$", "w", stdout); 
+	printf("jit_gl_spout_receiverSDK\n");
 	*/
-	
+
 	// initialize our Jitter class
 	jit_gl_spout_receiver_init();	
 	
@@ -86,7 +102,7 @@ void main(void)
 	addbang((method)max_jit_gl_spout_receiver_bang);
 	max_addmethod_defer_low((method)max_jit_gl_spout_receiver_draw, "draw");  
 	
-    max_addmethod_defer_low((method)max_jit_gl_spout_receiver_getavailableservers, "getavailableservers");
+    max_addmethod_defer_low((method)max_jit_gl_spout_receiver_getavailablesenders, "getavailablesenders");
     
    	// use standard ob3d assist method
     addmess((method)max_jit_ob3d_assist, "assist", A_CANT,0);  
@@ -143,14 +159,14 @@ void max_jit_gl_spout_receiver_draw(t_max_jit_gl_spout_receiver *x, t_symbol *s,
 
 }
 
-void max_jit_gl_spout_receiver_getavailableservers(t_max_jit_gl_spout_receiver *x)
+void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *x)
 {
 	int nSenders;
 	t_atom atomName; // to send out
 	string namestring; // sender name string in the list of names
 	char sendername[256]; // array to clip a passed name if > 256 bytes
 
-	// post("max_jit_gl_spout_receiver_getavailableservers");
+	// post("max_jit_gl_spout_receiver_getavailablesenders");
 	
 	SpoutReceiver * myReceiver;
 	myReceiver = new SpoutReceiver;
@@ -169,30 +185,6 @@ void max_jit_gl_spout_receiver_getavailableservers(t_max_jit_gl_spout_receiver *
 	delete myReceiver;
 	myReceiver = NULL;
 
-	/*
-	Syphon code
-
-	t_atom atomName;
-    t_atom atomHostName;
-    
-    // send a clear first.
-    outlet_anything(max_jit_obex_dumpout_get(x), ps_clear, 0, 0); 
-
-    for(NSDictionary* SenderDict in [[SyphonSenderDirectory sharedDirectory] Senders])
-    {
-        NSString* SenderName = [SenderDict valueForKey:SyphonSenderDescriptionNameKey];
-        NSString* SenderAppName = [SenderDict valueForKey:SyphonSenderDescriptionAppNameKey];
-        
-        const char* name = [SenderName cStringUsingEncoding:NSUTF8StringEncoding];
-        const char* hostName = [SenderAppName cStringUsingEncoding:NSUTF8StringEncoding];
-                
-        atom_setsym(&atomName, gensym((char*)name));
-        atom_setsym(&atomHostName, gensym((char*)hostName));
-
-        outlet_anything(x->dumpout, ps_Sendername, 1, &atomName); 
-        outlet_anything(x->dumpout, ps_appname, 1, &atomHostName); 
-    }  
-	*/
 }
 
 void *max_jit_gl_spout_receiver_new(t_symbol *s, long argc, t_atom *argv)
