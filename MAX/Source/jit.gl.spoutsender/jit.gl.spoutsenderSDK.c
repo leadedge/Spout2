@@ -9,8 +9,9 @@
 
 	=================== SPOUT 2 ===================
 	01.08.14 - rebuilt with Spout SDK
-	02-08-14 - compiled /MT
-	02-08-14 - Fixed dest_changed error	
+			 - compiled /MT
+			 - Fixed dest_changed error	
+			 - enabled memoryshare for sender creation
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -438,7 +439,13 @@ t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
 				x->g_texId	= texId;
 				x->g_Width	= texWidth;
 				x->g_Height	= texHeight;
+				
+				// Set memoryshare mode if the user requested it
+				if(x->memoryshare == 1) x->mySender->SetMemoryShareMode(true);
+
+				// Create a sender
 				x->mySender->CreateSender(x->g_SenderName, x->g_Width, x->g_Height);
+
 				// post("Draw CreateSender (%d) : texId = %d Spout ID = %d", x->counter, texId, x->mySender->spout.interop.m_glTexture);
 				// x->counter++;
 				x->bInitialized = true;
