@@ -35,6 +35,8 @@
 #include <windows.h>
 #include <set>
 #include <string>
+#include <iostream>
+#include <fstream>
 #include "Shellapi.h"
 
 #include "SpoutCommon.h"

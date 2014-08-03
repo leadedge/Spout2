@@ -17,6 +17,7 @@
 //		27-07-14	- CreateReceiver - bUseActive flag instead of null name
 //		31-07-14	- Corrected DrawTexture aspect argument
 //		01-08-14	- TODO - work on OpenReceiver for memoryshare
+//		03-08-14	- CheckSpoutPanel allow for unregistered sender
 // ================================================================
 /*
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
@@ -181,6 +182,7 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 		return true;
 	}
 	
+
 	return false;
 }
 
@@ -904,11 +906,23 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		// printf("    Spout::OpenReceiver error 1\n");
 		return false;
 	}
+
+	/*
 	// No senders for texture mode - just return false
 	if(!bMemoryShareInitOK && bDxInitOK && GetSenderCount() == 0) {
-		// printf("    Spout::OpenReceiver error 2\n");
-		return false;
+		// The active sender might be unregistered
+		if(bUseActive) {
+			if(!GetActiveSender(tempname)) {
+				printf("    Spout::OpenReceiver error 2\n");
+				return false;
+			}
+		}
+		else {
+			printf("    Spout::OpenReceiver error 3\n");
+			return false;
+		}
 	}
+	*/
 
 	// Render window must be visible for initSharing to work
 	g_hWnd = WindowFromDC(wglGetCurrentDC()); 
@@ -921,7 +935,7 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		// Find if the sender exists
 		// Or if a null name given return the active sender if that exists
 		if(!interop.senders.FindSender(Sendername, width, height, g_ShareHandle, dwFormat)) {
-
+			// printf("Spout::OpenReceiver FindSender failed\n");
 			// Given name not found ? - has SpoutPanel been opened ?
 			// the globals are reset if it has been
 			if(CheckSpoutPanel()) {
@@ -947,6 +961,7 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		g_Format = dwFormat;
 
 	}
+	
 	// printf("Spout::OpenReceiver found (%s) %dx%d)\n", Sendername, width, height);
 
 	// Initialize a receiver in either memoryshare or texture mode
@@ -1313,19 +1328,39 @@ bool Spout::CheckSpoutPanel()
 					GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
 					// Only act if exit code = 0 (OK)
 					if(dwExitCode == 0) {
-						// get the active sender
+						// printf("SpoutPanel has been activated\n");
+						// get the active sender which is set by spoutpanel
 						if(interop.senders.GetActiveSender(newname)) { // returns the active sender name
 							if(interop.getSharedInfo(newname, &TextureInfo)) {
 								strcpy_s(g_SharedMemoryName, 256, newname);
 								g_Width  = (unsigned int)TextureInfo.width;
 								g_Height = (unsigned int)TextureInfo.height;
 								g_Format = TextureInfo.format;
-								// printf("CheckSpoutPanel(%s), %dx%d\n", g_SharedMemoryName, g_Width, g_Height);
+								// printf("CheckSpoutPanel active sender (%s), %dx%d\n", g_SharedMemoryName, g_Width, g_Height);
 								bRet = true; // will pass on next call to receivetexture
 							}
 						}
 						else {
-							// printf("CheckSpoutPanel no active sender\n");
+							// File method for an unregistered sender
+							string line;
+							ifstream infile("spoutpanel.txt", ios::in);
+							if (infile.is_open()) {
+								if(getline(infile, line)) {
+									// Does the sender exist ?
+									strcpy_s(newname, 256, line.c_str());
+									if(interop.senders.getSharedInfo(newname, &TextureInfo)) {
+										interop.senders.RegisterSenderName(newname);
+										strcpy_s(g_SharedMemoryName, 256, newname);
+										g_Width  = (unsigned int)TextureInfo.width;
+										g_Height = (unsigned int)TextureInfo.height;
+										g_Format = TextureInfo.format;
+										// printf("CheckSpoutPanel external sender (%s), %dx%d\n", g_SharedMemoryName, g_Width, g_Height);
+										bRet = true; // will pass on next call to receivetexture
+									}
+								}
+								infile.close();
+								remove("spoutpanel.txt");
+							} // no text file
 						}
 					}
 				}
