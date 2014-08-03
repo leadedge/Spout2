@@ -94,6 +94,9 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool GetSenderInfo (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
 		bool SetSenderInfo (const char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat);
 
+		// Generic sender map info retrieval
+		bool getSharedInfo (const char* SenderName, SharedTextureInfo* info);
+
 		// ------------------------------------------------------------
 		// Functions to maintain the active sender
 		bool SetActiveSender     (const char* Sendername);
@@ -136,7 +139,7 @@ protected:
 		bool getActiveSenderName (const char* SenderName);
 
 		// Generic sender map info retrieval
-		bool getSharedInfo (const char* SenderName, SharedTextureInfo* info);
+		// bool getSharedInfo (const char* SenderName, SharedTextureInfo* info);
 
 		// ------------------------------------------------------------
 		// Functions to manage shared memory map access
