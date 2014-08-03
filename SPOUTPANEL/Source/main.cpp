@@ -24,47 +24,32 @@
 //	27-06-14 - added arguments via SelectSenderPanel(char* message);
 //			 - compile /MT and embedded manifest
 //	28-06-14 - added args for messagebox and /DX9 flag
+//	01.08.14 - Version 2
 //	01.08.14 - converted to Spout SDK - used only the sendernames class
+//			 - uploaded to GitHub
+//			 - cleanup
+//	03.08.14 - work on unregistered sender
 //
+
 #include <windows.h>
+#include <vector>
 #include "resource.h"
-// #include "spxConnector.h"
+#include <iostream>
+#include <fstream>
+using namespace std;
 
 #include "../../../../SpoutSDK/SpoutSenderNames.h"
 
-#include <vector>
 
-#define MaxSenders 10 // Max for list of Sender names
-
-#if defined(__x86_64__) || defined(_M_X64)
-	#define is64bit
-#elif defined(__i386) || defined(_M_IX86)
-	// x86 32-bit
-#endif
-// Probably don't need this, but in case we ever need common controls in the Sender dialog.
-#pragma comment(linker, \
-  "\"/manifestdependency:type='Win32' "\
-  "name='Microsoft.Windows.Common-Controls' "\
-  "version='6.0.0.0' "\
-  "processorArchitecture='*' "\
-  "publicKeyToken='6595b64144ccf1df' "\
-  "language='*'\"")
-
-#pragma comment(lib, "ComCtl32.lib")
-
-char SpoutSenderName[256];				// global Sender name to retrieve from the dialog
-bool bDX9compatible = false;			// Only list DX9 compatible senders - needs /DX9 arg passed
-// spxConnector dxConnector;
+char SpoutSenderName[256]; // global Sender name to retrieve from the dialog
+bool bDX9compatible = false; // Only list DX9 compatible senders - needs /DX9 arg passed
 bool GetSenderDialog(HINSTANCE hInst);
 int ParseCommandline();
 char **argv = NULL;
+spoutSenderNames sendernames; // Names class functions
 
-spoutSenderNames sendernames;
-
-
+// The one and only dialog
 INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-
-using namespace std;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -73,36 +58,39 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	char windowname[512];
 	int w, h;
 	int i, argc;
-	bool bRet;
+	bool bRet = false;
+
+	UNREFERENCED_PARAMETER(hPrevInstance);
+	UNREFERENCED_PARAMETER(lpCmdLine);
+	UNREFERENCED_PARAMETER(nCmdShow);
+
 
 	/*
 	// Debug console window so printf works
-	FILE* pCout; // should really be freed on exit 
+	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("SpoutPanel\n");
 	*/
 
+	// Remove any temporary file
+	remove("spoutpanel.txt");
 
-	// Argument /DX11
 	// Check for arguments
 	argc = ParseCommandline();
 	if( argc > 1) { // 0 = "SpoutPanel"
 		hWnd = GetActiveWindow();
 		EnableWindow(hWnd, FALSE);
 		for( i=1; i <argc; i++ ) {
-			// printf("Arg[%d] (%s)\n", i, argv[i]);
-			// Arg 1 - 
+			// Argument /DX11
 			if ( strcmp(argv[i], "/DX11") == 0) {
-				// MessageBoxA(NULL, "DirectX 11", "Spout", MB_OK);
 				bDX9compatible = false;
 			}
+			// Argument /DX9
 			else if(strcmp(argv[i], "/DX9") == 0) {
-				// MessageBoxA(NULL, "DirectX 9", "Spout", MB_OK);
 				bDX9compatible = true;
 			}
 			else {
-				// MessageBoxA(NULL, lpCmdLine, "Spout", MB_OK); // show the whole command line
 				EnableWindow(hWnd, TRUE);
 				return 1; // Cancel so no action is taken			
 			}
@@ -110,20 +98,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		EnableWindow(hWnd, TRUE);
 	}
 
-	// printf("SpoutPanel bDX9compatible = %d\n", bDX9compatible);
-
-
 	// Try to open the application mutex.
     HANDLE hMutex = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 
 	if (!hMutex) {
 		hMutex = CreateMutexA(0, 0, "SpoutPanel");
 		bRet = (bool)GetSenderDialog(hInstance); // activate the dialog to select the active Sender
-	
-		// char temp[512];
-	    // sprintf(temp, "SpoutPanel exit = %d", bRet);
-	    // MessageBoxA(NULL, temp, "Info", MB_OK);
-
 		// This is modal so the mutex remains until it closes
 		if(hMutex) {
 			ReleaseMutex(hMutex);
@@ -160,14 +140,8 @@ bool GetSenderDialog(HINSTANCE hInst)
 	INT_PTR nRet;
 	string namestring;
 		
-	// create a modal dialog box
 	// This is a modal dialog so will stop this application at this point
 	nRet = DialogBoxParamA(hInst, MAKEINTRESOURCEA(IDD_DIALOG1), 0, SenderListDlgProc, 0);
-
-		// char temp[512];
-	    // sprintf(temp, "nRet = %d, name = %s", nRet, SpoutSenderName);
-	    // MessageBoxA(NULL, temp, "Info", MB_OK);
-
 	if(nRet == 1) { // OK and not CANCEL
 		if(strlen(SpoutSenderName) > 0 && strcmp(SpoutSenderName, "SpoutSenderName") != 0) {
 			return true;
@@ -189,7 +163,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 	char temp[512];
 	char activename[512];
 	char itemstring[512];
-	HWND hwndList;
+	HWND hwndList = NULL;
 	RECT rect;
 	int w, h, pos,	lbItem, item;
 	int SenderItem = -1;
@@ -198,15 +172,18 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 	string namestring;
 	SharedTextureInfo info;
 
+	UNREFERENCED_PARAMETER(lParam);
+
 	switch (message) {
 		
 		case WM_INITDIALOG:
 
 			int x, y;
 			POINT p;
+
 			// prevent other windows from hiding the dialog
+			// and open the window wherever the user clicked
 			GetWindowRect(hDlg, &rect);
-			
 			if (GetCursorPos(&p)) {
 				//cursor position now in p.x and p.y
 				x = p.x;
@@ -216,7 +193,6 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 				x = rect.left;
 				y = rect.top;
 			}
-
 			w = rect.right - rect.left; h = rect.bottom - rect.top;
 			SetWindowPos(hDlg, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW);
 
@@ -250,12 +226,20 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 			// Get the active Sender name
 			// and set the name into the editbox
 			if(sendernames.GetActiveSender(activename)) {
+
+				printf("Active sender (%s) found\n", activename);
+				
+				// Is it registered e.g. VVVV which has been accessed ?
+				if(!sendernames.FindSenderName(activename)) {
+					if(sendernames.getSharedInfo(activename, &info)) {
+						sendernames.RegisterSenderName(activename);
+					}
+				}
+				// Now it should be in the name set
+
 				if(sendernames.FindSenderName(activename)) {
-					// printf("SpoutPanel: active sender (%s)\n", activename);
 					SetDlgItemTextA(hDlg, IDC_ACTIVE, (LPCSTR)activename);
-
 					sendernames.getSharedInfo(activename, &info);
-
 					if(info.format == 0) {
 						sprintf_s(temp, 512, "DirectX 9 : %dx%d", info.width, info.height);
 					}
@@ -270,6 +254,10 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 					SetDlgItemTextA(hDlg, IDC_INFO, (LPCSTR)temp);
 				}
 			}
+			else {
+				// printf("Active sender not found\n");
+			}
+
 			// Add all the Sender names as items to the dialog list.
 			if(Senders.size() > 0) {
 				hwndList = GetDlgItem(hDlg, IDC_LIST1);  
@@ -278,13 +266,9 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 					namestring = *iter; // the string to copy
 					strcpy_s(name, namestring.c_str());
 					if(sendernames.getSharedInfo(name, &info)) {
-
 						sprintf_s(itemstring, "%s : (%dx%d)", name, info.width, info.height);
 						pos = (int)SendMessageA(hwndList, LB_ADDSTRING, 0, (LPARAM)itemstring); 
 						SendMessageA(hwndList, LB_SETITEMDATA, pos, (LPARAM)item);
-
-						// printf("Adding (%s) item %d, pos %d\n", name, item, pos);
-
 						// Was it the active Sender
 						// Listbox cannot be sorted to do this
 						if(strcmp(name, activename) == 0) {
@@ -294,7 +278,6 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 					}
 				}
 			}
-
 			
             //  Select all text in the edit field
             SendDlgItemMessage (hDlg, IDC_ACTIVE, EM_SETSEL, 0, 0x7FFF0000L);
@@ -314,62 +297,65 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 			switch (LOWORD(wParam)) {
 
-				case IDOK:		// 1
-
-					// printf("SpoutPanel Dialog OK\n");
+				case IDOK: // 1
 
 					// Get contents of edit field into the global char string
 					GetDlgItemTextA(hDlg, IDC_ACTIVE, (LPSTR)SpoutSenderName, 256);
-
 					if(strlen(SpoutSenderName) > 0) {
-
-						// printf("IDC_ACTIVE (%s)\n", SpoutSenderName);
-
-						// ==========================================================
 						// Does it have any shared info
 						if(sendernames.getSharedInfo(SpoutSenderName, &info)) {
+							// printf("(%s) - %dx%d\n", SpoutSenderName, info.width, info.height);
 							// Check the DirectX texture format
 							// If it is 0 or 87 the sender is DX9 compatible
 							if(bDX9compatible) { // Specify DX9 compatible senders
 								// Is it dx9 compatible
 								if(info.format != 0 && info.format != 87) {
+									// printf("Not DX9 compatible\n");
 									EndDialog(hDlg, LOWORD(wParam));
 									return TRUE;
 								}
 							}
-							
 							// Allow for a Sender which is not registered - e.g. VVVV
-							// LJ DEBUG this will not work because the instance 
-							// of spoutSenderNames for spoutpanel will erase the sender map
-							sendernames.RegisterSenderName(SpoutSenderName);
+							// LJ DEBUG this will only work if another sender is running
+							// and "SpoutTray" is present and has been activated to show
+							// the sender list after this sender has been registered, 
+							// because this instance of spoutSenderNames for spoutpanel
+							// will close and erase the active name map and the sender map
+							// and any map handle in this app will be closed
+							// sendernames.RegisterSenderName(SpoutSenderName);
 
+							// Last resort - open a text file and write to it
+							// Then delete it with the app when it is read
+							// or when SpoutPanel opens again
+							// TODO = path ?
+							ofstream myfile;
+							myfile.open ("spoutpanel.txt", ios::out | ios::app);
+							if (myfile.is_open()) {
+								// printf("writing (%s) to spoutpanel.txt\n", SpoutSenderName);
+								myfile.write(SpoutSenderName, strlen(SpoutSenderName));
+								myfile.close();
+							}
+							else {
+								// printf("cannot create spoutpanel.txt\n");
+							}
 						}
 						else {
 							// Serious enough for a messagebox
-							// printf("Sender [%s] does not exist\n", SpoutSenderName);
 							sprintf_s(name, "Sender [%s] does not exist", SpoutSenderName);
-							MessageBoxA(hDlg, name, "Spout", 0);
+							MessageBoxA(hDlg, name, "SpoutPanel", 0);
 							EndDialog(hDlg, LOWORD(wParam));
 							return TRUE;
 						}
-						// =============================================================
 
 						// Set the selected name as the active Sender
-						// Any client can then query the active Sender name
+						// Any receiver can then query the active Sender name
 						// printf("Setting active sender to (%s)\n", SpoutSenderName);
-
-						// sprintf(temp, "setting active to (%s)", SpoutSenderName);
-						// MessageBoxA(NULL, temp, "Info", MB_OK);
 						sendernames.SetActiveSender(SpoutSenderName);
+						// MessageBoxA(hDlg, "End", "SpoutPanel", 0);
 
 					}
 				
-				case IDCANCEL:	// 2
-
-					// sprintf(temp, "SpoutPanel Dialog exit = %d", LOWORD(wParam));
-					// MessageBoxA(NULL, temp, "Info", MB_OK);
-					// printf("SpoutPanel Dialog exit = %d\n", LOWORD(wParam));
-
+				case IDCANCEL: // 2
 					EndDialog(hDlg, LOWORD(wParam));
 					return TRUE;
 
@@ -383,20 +369,16 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							sendernames.GetSenderNames(&Senders);
 							// Get selected list item
 	                        lbItem = (int)SendMessageA(hwndList, LB_GETCURSEL, 0, 0); 
-							// printf("Selected Item = %d\n", lbItem);
 							if(lbItem != LB_ERR) {
 								// Get the saved index
 								SendMessageA(hwndList, LB_GETTEXT, lbItem, (LPARAM)SpoutSenderName);
 		                        pos = (int)SendMessageA(hwndList, LB_GETITEMDATA, lbItem, 0);
-								// printf("Selected Item pos = %d\n", pos);
 								// Get the details of the Sender
 								if(Senders.size() > 0) {
 									iter = std::next(Senders.begin(), pos);
 									namestring = *iter; // the selected Sender in the list
 									strcpy_s(name, namestring.c_str());
 									SetDlgItemTextA(hDlg, IDC_ACTIVE, (LPCSTR)name);
-
-									// ===============================================
 									sendernames.getSharedInfo(name, &info);
 									if(info.format == 0) {
 										sprintf_s(temp, "DirectX 9 : %dx%d", info.width, info.height);
@@ -410,8 +392,6 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 										}
 									}
 									SetDlgItemTextA(hDlg, IDC_INFO, (LPCSTR)temp);
-									// ===============================================
-
 								}
 							}
 			                return TRUE; 
@@ -421,8 +401,6 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 		// end case case WM_COMMAND:
 		return TRUE;
 	} // end switch (message)
-
-	// printf("SpoutPanel Dialog End\n");
 
 	return FALSE;
 
