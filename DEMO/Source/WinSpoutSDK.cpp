@@ -23,6 +23,7 @@
 				- fixed /DX9 compatible flag for SpoutPanel call
 	30-07-14	- added vsync option, cleanup and recompile demos
 	31-07-14	- used freopen_s for console outout			
+	03-08-14	- update
 
 */
 #define MAX_LOADSTRING 100
@@ -41,7 +42,7 @@
 // leak checking
 // http://www.codeproject.com/Articles/9815/Visual-Leak-Detector-Enhanced-Memory-Leak-Detectio
 //
-#include "vld.h"
+// #include "vld.h"
 //
 // http://msdn.microsoft.com/en-us/library/x98tx3cf%28VS.71%29.aspx
 //
@@ -61,7 +62,7 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 //
 bool bReceiver      = false; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
-bool bDX9mode       = true; // Use DirectX 9 instead of DirectX 11
+bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
 bool bDX9compatible = false; // For DX11 only - compatible DX9 format for DX11 senders
 bool bVsync			= true; // OpenGL wglSwapIntervalEXT lock to monitor sync
 // =============================================================
@@ -432,6 +433,7 @@ bool OpenReceiver()
 
 	// Testing of finding a given sender name - tested OK
 	// strcpy_s(g_SenderName, 256,	"Spout SDK DX11 Sender 32bit");
+	// strcpy_s(g_SenderName, 256,	"videoshare");
 	// Test of null name, original method - tested OK
 	// if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height)) {
 	// Test of user specify finding the active sender - tested OK
@@ -1174,12 +1176,13 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
 
 
+	/*
 	// Debug console window so printf works
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("\nWinSpoutSDK\n");
-
+	*/
 
 	// suppress warnings
 	msg.wParam = 0;
