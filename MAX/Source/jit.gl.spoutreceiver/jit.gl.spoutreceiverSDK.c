@@ -1,5 +1,6 @@
 ﻿/*
 
+
     jit.gl.spoutreceiver.c
 
 	Based on :
@@ -10,7 +11,10 @@
 	=================== SPOUT 2 ===================
 	03-07-14 - major change to use Spout SDK
 	02-08-14 - compiled /MT
-	02-08-14 - Fixed dest_changed error
+			 - Fixed dest_changed error
+			 - enabled memoryshare for receiver creation
+			 - TODO : memoryshare needs a local texture for it to be returned into
+	04-08-14 - Compiled for DX9
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -37,13 +41,16 @@
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
  */
+
+// Temporary debugging define for ableton test 
+// patch needing servers instead of senders
+#define UseSenders
+
 #include "jit.common.h"
 #include "jit.gl.h"
 #include "jit.gl.ob3d.h"
 #include "ext_obex.h"
-
 #include "string"
-
 #include "../../SpoutSDK/Spout.h"
 
 t_jit_err jit_ob3d_dest_name_set(t_jit_object *x, void *attr, long argc, t_atom *argv);
@@ -57,11 +64,17 @@ typedef struct _jit_gl_spout_receiver
 	void *ob3d;
 		
 	// attributes
+	#ifdef UseSenders
 	t_symbol *sendername; // Use for sharing name
+	#else
+	t_symbol *servername; // Use for sharing name
+	#endif
+
 	t_symbol *texturename;	
 
 	long update; // update to the active sender
 	long aspect; // retain aspect ratio of input texture
+	long memoryshare; // memory share instead of interop directx texture share
 	long dim[2]; // output dim
 
 	// Our Spout receiver object
@@ -72,7 +85,6 @@ typedef struct _jit_gl_spout_receiver
 	bool         bInitialized;
 	bool         bDestChanged;
 	long         counter;
-	// bool     bMemoryMode; // force memory share mode - needs an attribute
 
 	// internal jit.gl.texture object
 	t_jit_object *output;
@@ -101,13 +113,21 @@ t_jit_err jit_gl_spout_receiver_drawto(t_jit_gl_spout_receiver *x, t_symbol *s, 
 
 // attributes
 // @sendername, for Sender name
+#ifdef UseSenders
 t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
+#else
+t_jit_err jit_gl_spout_receiver_servername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
+#endif
+
 
 // @update  update to active Sender
 t_jit_err jit_gl_spout_receiver_update(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv); 
 
 // @aspect to retain shared texture aspect ratio
 t_jit_err jit_gl_spout_receiver_aspect(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv); 
+
+// @memoryshare 0 / 1 force memoryshare
+t_jit_err jit_gl_spout_receiver_memoryshare(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
 
 // @texturename to read a named texture.
 t_jit_err jit_gl_spout_receiver_texturename(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
@@ -120,7 +140,11 @@ t_jit_err jit_gl_spout_receiver_setattr_dim(t_jit_gl_spout_receiver *x, void *at
 
 
 // symbols
+#ifdef UseSenders
 t_symbol *ps_sendername;
+#else
+t_symbol *ps_servername;
+#endif
 t_symbol *ps_texture;
 t_symbol *ps_width;
 t_symbol *ps_height;
@@ -205,11 +229,20 @@ t_jit_err jit_gl_spout_receiver_init(void)
     jit_class_addattr(_jit_gl_spout_receiver_class,attr);	
 	
 	// Enter a sender name
+	#ifdef UseSenders
 	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"sendername",
 										  _jit_sym_symbol,attrflags,
 										   (method)0L,
 										   jit_gl_spout_receiver_sendername, 
-										   calcoffset(t_jit_gl_spout_receiver, sendername));	
+										   calcoffset(t_jit_gl_spout_receiver, sendername));
+	#else
+	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"servername",
+										  _jit_sym_symbol,attrflags,
+										   (method)0L,
+										   jit_gl_spout_receiver_servername, 
+										   calcoffset(t_jit_gl_spout_receiver, servername));
+	#endif
+
 	jit_class_addattr(_jit_gl_spout_receiver_class, attr);
 	
 	// Update to latest sender
@@ -231,6 +264,12 @@ t_jit_err jit_gl_spout_receiver_init(void)
 	jit_attr_addfilterset_clip(attr, 0, 1, TRUE, TRUE);	// Must be 0 to 1
 	jit_class_addattr(_jit_gl_spout_receiver_class, attr);
 
+	// force memory share
+	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"memoryshare", _jit_sym_long, attrflags,
+		(method)0L, (method)jit_gl_spout_receiver_memoryshare, calcoffset(_jit_gl_spout_receiver, memoryshare));	
+	jit_class_addattr(_jit_gl_spout_receiver_class,attr);
+
+
 	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"texturename",_jit_sym_symbol,attrflags,
 						  (method)0L,(method)jit_gl_spout_receiver_texturename,calcoffset(t_jit_gl_spout_receiver, texturename));		
 	jit_class_addattr(_jit_gl_spout_receiver_class,attr);	
@@ -244,7 +283,12 @@ t_jit_err jit_gl_spout_receiver_init(void)
 	jit_class_addattr(_jit_gl_spout_receiver_class,attr);
 
 	//symbols
+	#ifdef UseSenders
 	ps_sendername = gensym("sendername");
+	#else
+	ps_servername = gensym("servername");
+	#endif
+
 	ps_texture = gensym("texture");
 	ps_width = gensym("width");
 	ps_height = gensym("height");
@@ -270,20 +314,27 @@ t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name)
 		// Initialize variables
 		x->update          = 0; // update to active Sender
 		x->aspect          = 0; // preserve aspect ratio of incoming texture
+		x->memoryshare     = false; // user memory mode flag
 		x->g_Width         = 320;
 		x->g_Height        = 240;   // give it an initial image size
 		x->g_SenderName[0] = 0;     // means it will try to find the active sender when it starts
 		x->bInitialized    = false; // not initialized yet
 		x->bDestChanged    = false;
 		x->counter         = false; // debug counter
-		// x->bMemoryMode  = false; // memory mode flag
 
 		// Create a new Spout receiver
 		x->myReceiver      = new SpoutReceiver;
 
+		// Set to DX9 for compatibility with Version 1 apps
+		x->myReceiver->SetDX9(true);
+
 		// Syphon comment : TODO : is this right ?  LJ not sure
 		// set up attributes
+		#ifdef UseSenders
 		jit_attr_setsym(x->sendername, _jit_sym_name, gensym("sendername"));
+		#else
+		jit_attr_setsym(x->servername, _jit_sym_name, gensym("servername"));
+		#endif
 
 		// instantiate a single internal jit.gl.texture for output
 		x->output = (t_jit_object *)jit_object_new(ps_jit_gl_texture, dest_name);
@@ -429,7 +480,13 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 	// If sendername is null it will pick up the active sender
 	// Otherwise it will wait for the correct name to be entered
 	if(!x->bInitialized) {
+		
+		// Set memoryshare mode if the user requested it
+		// TODO needs local texture to receive the memoryshare result
+		// if(x->memoryshare == 1) x->myReceiver->SetMemoryShareMode(true);
+
 		if(x->myReceiver->CreateReceiver(x->g_SenderName, senderWidth, senderHeight)) {
+			
 			x->g_Width	= senderWidth;
 			x->g_Height	= senderHeight;
 			// x->counter++; // debug
@@ -437,6 +494,7 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 			newdim[0] = x->g_Width;
 			newdim[1] = x->g_Height;
 			jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);
+
 			x->bInitialized = true;
 		}
 		return JIT_ERR_NONE;
@@ -567,6 +625,11 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, previousDrawFBO); 
 
 	} // Received texture OK
+	else {
+		// If it doesn't get a texture, the sender is closed
+		x->myReceiver->ReleaseReceiver();
+		x->bInitialized = false; // Try to find another
+	}
 
     // clean up
 	glDeleteFramebuffersEXT(1, &tempFBO);
@@ -585,7 +648,11 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 //
 
 // @Senderuuid
+#ifdef UseSenders
 t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
+#else
+t_jit_err jit_gl_spout_receiver_servername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
+#endif
 {
 	t_symbol *srvname;
 	char name[256];
@@ -593,8 +660,13 @@ t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *att
 	if(x) {	
 		if (argc && argv) {
 			srvname = jit_atom_getsym(argv);
+			#ifdef UseSenders
 			x->sendername = srvname;
 			strcpy_s(name, 256, x->sendername->s_name);
+			#else
+			x->servername = srvname;
+			strcpy_s(name, 256, x->servername->s_name);
+			#endif
 			if(strcmp(x->g_SenderName, name) != 0) { // different name
 				strcpy_s(x->g_SenderName, 256, name);
 				x->myReceiver->ReleaseReceiver();
@@ -604,7 +676,11 @@ t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *att
 		} 
 		else {
 			// no args, set to zero
+			#ifdef UseSenders
 			x->sendername = _jit_sym_nothing;
+			#else
+			x->servername = _jit_sym_nothing;
+			#endif
 			x->g_SenderName[0] = 0;
 		}
 	}
@@ -626,7 +702,7 @@ t_jit_err jit_gl_spout_receiver_texturename(t_jit_gl_spout_receiver *x, void *at
 	return JIT_ERR_NONE;
 }
 
-// @update - to get active Sender
+// @update - activate SpoutPanel to get the active Sender
 t_jit_err jit_gl_spout_receiver_update(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 {
 	long c = jit_atom_getlong(argv);
@@ -645,6 +721,23 @@ t_jit_err jit_gl_spout_receiver_aspect(t_jit_gl_spout_receiver *x, void *attr, l
 	long c = jit_atom_getlong(argv);
 
 	x->aspect = c;
+
+	return JIT_ERR_NONE;
+}
+
+
+// @memoryshare
+// force memory share flag (default is 0 off - then is automatic dependent on hardware)
+t_jit_err jit_gl_spout_receiver_memoryshare(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
+{
+	long c = jit_atom_getlong(argv);
+
+	// Bypass compiler warning
+	bool bC = true;
+	if(c == 0) bC = false;
+
+	x->memoryshare = c; // 0 off or 1 on
+	x->myReceiver->SetMemoryShareMode(bC); // Memoryshare on or off
 
 	return JIT_ERR_NONE;
 }

@@ -30,7 +30,6 @@
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
  */
 #include "jit.common.h"
 #include "jit.gl.h"
@@ -38,6 +37,9 @@
 
 #include "../../SpoutSDK/Spout.h"
 
+// Temporary debugging define for ableton test 
+// patch needing servers instead of senders
+#define UseSenders
 
 typedef struct _max_jit_gl_spout_receiver 
 {
@@ -59,7 +61,12 @@ void max_jit_gl_spout_receiver_bang(t_max_jit_gl_spout_receiver *x);
 void max_jit_gl_spout_receiver_draw(t_max_jit_gl_spout_receiver *x, t_symbol *s, long argc, t_atom *argv);
 
 //custom list outof available Senders via the dumpout outlet.
+#ifdef UseSenders
 void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *x);
+#else
+void max_jit_gl_spout_receiver_getavailableservers(t_max_jit_gl_spout_receiver *x);
+#endif
+
 
 t_class *max_jit_gl_spout_receiver_class;
 
@@ -102,7 +109,11 @@ void main(void)
 	addbang((method)max_jit_gl_spout_receiver_bang);
 	max_addmethod_defer_low((method)max_jit_gl_spout_receiver_draw, "draw");  
 	
-    max_addmethod_defer_low((method)max_jit_gl_spout_receiver_getavailablesenders, "getavailablesenders");
+    #ifdef UseSenders
+	max_addmethod_defer_low((method)max_jit_gl_spout_receiver_getavailablesenders, "getavailablesenders");
+	#else
+	max_addmethod_defer_low((method)max_jit_gl_spout_receiver_getavailableservers, "getavailableservers");
+	#endif
     
    	// use standard ob3d assist method
     addmess((method)max_jit_ob3d_assist, "assist", A_CANT,0);  
@@ -132,18 +143,13 @@ void max_jit_gl_spout_receiver_free(t_max_jit_gl_spout_receiver *x)
 
 void max_jit_gl_spout_receiver_bang(t_max_jit_gl_spout_receiver *x)
 {
-	// post("max_jit_gl_spout_receiver_bang");
-	// typedmess((t_object *)x, ps_draw, 0, NULL);
 	max_jit_gl_spout_receiver_draw(x, ps_maxdraw, 0, NULL);
-
 }
 
 void max_jit_gl_spout_receiver_draw(t_max_jit_gl_spout_receiver *x, t_symbol *s, long argc, t_atom *argv)
 {
 
 	t_atom a;
-
-	// post("max_jit_gl_spout_receiver_draw");
 
 	// get the jitter object
 	t_jit_object *jitob = (t_jit_object*)max_jit_obex_jitob_get(x);
@@ -159,15 +165,17 @@ void max_jit_gl_spout_receiver_draw(t_max_jit_gl_spout_receiver *x, t_symbol *s,
 
 }
 
+#ifdef UseSenders
 void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *x)
+#else
+void max_jit_gl_spout_receiver_getavailableservers(t_max_jit_gl_spout_receiver *x)
+#endif
 {
 	int nSenders;
 	t_atom atomName; // to send out
 	string namestring; // sender name string in the list of names
 	char sendername[256]; // array to clip a passed name if > 256 bytes
 
-	// post("max_jit_gl_spout_receiver_getavailablesenders");
-	
 	SpoutReceiver * myReceiver;
 	myReceiver = new SpoutReceiver;
 
@@ -177,6 +185,7 @@ void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *
 		outlet_anything(max_jit_obex_dumpout_get(x), ps_clear, 0, 0); 
 		for(int i=0; i<nSenders; i++) {
 			myReceiver->GetSenderName(i, sendername);
+			printf("%s\n", sendername);
 			atom_setsym(&atomName, gensym((char*)sendername));
 			outlet_anything(x->dumpout, ps_spoutsendername, 1, &atomName); 
 		}
@@ -216,13 +225,9 @@ void *max_jit_gl_spout_receiver_new(t_symbol *s, long argc, t_atom *argv)
 			x->dumpout = outlet_new(x,NULL);
 			max_jit_obex_dumpout_set(x, x->dumpout);
 
-			// Syphon comment !!! - this outlet is used to shit out textures! yay!
+			// Texture outlet
 			x->texout = outlet_new(x, "jit_gl_texture");
 			
-			// LJ DEBUG - create new proxy inlet for update bang.
-			// max_jit_obex_proxy_new(x, 0);
-
-
 		} 
 		else {
 			error("jit_gl_spout_receiver : could not allocate object");

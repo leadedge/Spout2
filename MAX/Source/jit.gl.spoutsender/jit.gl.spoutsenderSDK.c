@@ -11,7 +11,8 @@
 	01.08.14 - rebuilt with Spout SDK
 			 - compiled /MT
 			 - Fixed dest_changed error	
-			 - enabled memoryshare for sender creation
+			 - enabled memoryshare for sender creation - tested OK
+	04-08-14 - Compiled for DX9
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -75,7 +76,6 @@ typedef struct _jit_gl_spout_sender
 
 	bool bInitialized;
 	bool bDestChanged;
-	// long counter;
 	GLuint g_texId;			// jitter texture ID
 	int g_Width;			// width
 	int g_Height;			// height
@@ -223,7 +223,6 @@ t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name)
 		// Initialize variables
 		x->bInitialized  = false;
 		x->bDestChanged  = false;
-		// x->counter       = false; // debug counter
 		x->g_Width       = 0;
 		x->g_Height      = 0;
 		x->g_texId       = 0;
@@ -231,6 +230,7 @@ t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name)
 
 		// Create a new Spout sender
 		x->mySender = new SpoutSender;
+		x->mySender->SetDX9(true);
 
 		// set up attributes
 		x->memoryshare = 0; // default is texture share
@@ -446,8 +446,6 @@ t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
 				// Create a sender
 				x->mySender->CreateSender(x->g_SenderName, x->g_Width, x->g_Height);
 
-				// post("Draw CreateSender (%d) : texId = %d Spout ID = %d", x->counter, texId, x->mySender->spout.interop.m_glTexture);
-				// x->counter++;
 				x->bInitialized = true;
 			}
 			// --- Check for change of name, width and height or texture ID ---
@@ -455,7 +453,6 @@ t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
 				 || texHeight != x->g_Height
 				 || texId != x->g_texId
 				 || strncmp(x->sendername->s_name, x->g_SenderName, 256) != 0) {
-				// post("size change %dx%d to %dx%d ReleaseSender : texId = %d", x->g_Width, x->g_Height, texWidth, texHeight, texId);
 				// Reset and initialize again the next time round
 				x->mySender->ReleaseSender();
 				x->bInitialized = false; 
