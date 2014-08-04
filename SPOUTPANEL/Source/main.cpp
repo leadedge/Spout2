@@ -29,17 +29,14 @@
 //			 - uploaded to GitHub
 //			 - cleanup
 //	03.08.14 - work on unregistered sender
-//
+//	04.08.14 - text file access for unregistered sender
 
 #include <windows.h>
 #include <vector>
-#include "resource.h"
-#include <iostream>
 #include <fstream>
-using namespace std;
+#include "resource.h"
 
 #include "../../../../SpoutSDK/SpoutSenderNames.h"
-
 
 char SpoutSenderName[256]; // global Sender name to retrieve from the dialog
 bool bDX9compatible = false; // Only list DX9 compatible senders - needs /DX9 arg passed
@@ -227,8 +224,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 			// and set the name into the editbox
 			if(sendernames.GetActiveSender(activename)) {
 
-				printf("Active sender (%s) found\n", activename);
-				
+				// printf("Active sender (%s) found\n", activename);
 				// Is it registered e.g. VVVV which has been accessed ?
 				if(!sendernames.FindSenderName(activename)) {
 					if(sendernames.getSharedInfo(activename, &info)) {
@@ -316,7 +312,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 								}
 							}
 							// Allow for a Sender which is not registered - e.g. VVVV
-							// LJ DEBUG this will only work if another sender is running
+							// Registering the sender here will only work if another sender is running
 							// and "SpoutTray" is present and has been activated to show
 							// the sender list after this sender has been registered, 
 							// because this instance of spoutSenderNames for spoutpanel
@@ -324,19 +320,15 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							// and any map handle in this app will be closed
 							// sendernames.RegisterSenderName(SpoutSenderName);
 
-							// Last resort - open a text file and write to it
-							// Then delete it with the app when it is read
-							// or when SpoutPanel opens again
-							// TODO = path ?
+							// Failsafe method - open a text file and write to it
+							// Then delete it with the app when it is read or when
+							// SpoutPanel opens again. The path in calling app has to be 
+							// the same as for SpoutPanel.exe
 							ofstream myfile;
 							myfile.open ("spoutpanel.txt", ios::out | ios::app);
 							if (myfile.is_open()) {
-								// printf("writing (%s) to spoutpanel.txt\n", SpoutSenderName);
 								myfile.write(SpoutSenderName, strlen(SpoutSenderName));
 								myfile.close();
-							}
-							else {
-								// printf("cannot create spoutpanel.txt\n");
 							}
 						}
 						else {
@@ -349,10 +341,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 						// Set the selected name as the active Sender
 						// Any receiver can then query the active Sender name
-						// printf("Setting active sender to (%s)\n", SpoutSenderName);
 						sendernames.SetActiveSender(SpoutSenderName);
-						// MessageBoxA(hDlg, "End", "SpoutPanel", 0);
-
 					}
 				
 				case IDCANCEL: // 2
