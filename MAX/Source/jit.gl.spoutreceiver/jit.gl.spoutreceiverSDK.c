@@ -1,6 +1,5 @@
 ﻿/*
 
-
     jit.gl.spoutreceiver.c
 
 	Based on :
@@ -15,6 +14,8 @@
 			 - enabled memoryshare for receiver creation
 			 - TODO : memoryshare needs a local texture for it to be returned into
 	04-08-14 - Compiled for DX9
+			 - Included local OpenGL texture for memoryshare mode
+	05-08-14 - Memoryshare working
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -44,7 +45,10 @@
 
 // Temporary debugging define for ableton test 
 // patch needing servers instead of senders
-#define UseSenders
+// #define UseServers
+
+// Compile for DX9 instead of DX11 (default)
+#define UseD3D9
 
 #include "jit.common.h"
 #include "jit.gl.h"
@@ -64,10 +68,10 @@ typedef struct _jit_gl_spout_receiver
 	void *ob3d;
 		
 	// attributes
-	#ifdef UseSenders
-	t_symbol *sendername; // Use for sharing name
-	#else
+	#ifdef UseServers
 	t_symbol *servername; // Use for sharing name
+	#else
+	t_symbol *sendername; // Use for sharing name
 	#endif
 
 	t_symbol *texturename;	
@@ -82,6 +86,7 @@ typedef struct _jit_gl_spout_receiver
 
 	unsigned int g_Width, g_Height;
 	char         g_SenderName[256];
+	GLuint       g_GLtexture; // local utility texture
 	bool         bInitialized;
 	bool         bDestChanged;
 	long         counter;
@@ -113,10 +118,10 @@ t_jit_err jit_gl_spout_receiver_drawto(t_jit_gl_spout_receiver *x, t_symbol *s, 
 
 // attributes
 // @sendername, for Sender name
-#ifdef UseSenders
-t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
-#else
+#ifdef UseServers
 t_jit_err jit_gl_spout_receiver_servername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
+#else
+t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
 #endif
 
 
@@ -140,10 +145,10 @@ t_jit_err jit_gl_spout_receiver_setattr_dim(t_jit_gl_spout_receiver *x, void *at
 
 
 // symbols
-#ifdef UseSenders
-t_symbol *ps_sendername;
-#else
+#ifdef UseServers
 t_symbol *ps_servername;
+#else
+t_symbol *ps_sendername;
 #endif
 t_symbol *ps_texture;
 t_symbol *ps_width;
@@ -229,18 +234,18 @@ t_jit_err jit_gl_spout_receiver_init(void)
     jit_class_addattr(_jit_gl_spout_receiver_class,attr);	
 	
 	// Enter a sender name
-	#ifdef UseSenders
-	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"sendername",
-										  _jit_sym_symbol,attrflags,
-										   (method)0L,
-										   jit_gl_spout_receiver_sendername, 
-										   calcoffset(t_jit_gl_spout_receiver, sendername));
-	#else
+	#ifdef UseServers
 	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"servername",
 										  _jit_sym_symbol,attrflags,
 										   (method)0L,
 										   jit_gl_spout_receiver_servername, 
 										   calcoffset(t_jit_gl_spout_receiver, servername));
+	#else
+	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"sendername",
+										  _jit_sym_symbol,attrflags,
+										   (method)0L,
+										   jit_gl_spout_receiver_sendername, 
+										   calcoffset(t_jit_gl_spout_receiver, sendername));
 	#endif
 
 	jit_class_addattr(_jit_gl_spout_receiver_class, attr);
@@ -283,10 +288,10 @@ t_jit_err jit_gl_spout_receiver_init(void)
 	jit_class_addattr(_jit_gl_spout_receiver_class,attr);
 
 	//symbols
-	#ifdef UseSenders
-	ps_sendername = gensym("sendername");
-	#else
+	#ifdef UseServers
 	ps_servername = gensym("servername");
+	#else
+	ps_sendername = gensym("sendername");
 	#endif
 
 	ps_texture = gensym("texture");
@@ -312,28 +317,33 @@ t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name)
 	if ((x = (t_jit_gl_spout_receiver *)jit_object_alloc(_jit_gl_spout_receiver_class))) {
 		
 		// Initialize variables
-		x->update          = 0; // update to active Sender
-		x->aspect          = 0; // preserve aspect ratio of incoming texture
+		x->update          = 0;     // update to active Sender
+		x->aspect          = 0;     // preserve aspect ratio of incoming texture
 		x->memoryshare     = false; // user memory mode flag
-		x->g_Width         = 320;
-		x->g_Height        = 240;   // give it an initial image size
+		x->g_Width         = 320;   // give it an initial image size
+		x->g_Height        = 240;
 		x->g_SenderName[0] = 0;     // means it will try to find the active sender when it starts
+		x->g_GLtexture     = NULL;  // local OpenGL texture for memoryshare mode
 		x->bInitialized    = false; // not initialized yet
-		x->bDestChanged    = false;
+		x->bDestChanged    = false; // to avoid context change problem
 		x->counter         = false; // debug counter
 
 		// Create a new Spout receiver
 		x->myReceiver      = new SpoutReceiver;
 
 		// Set to DX9 for compatibility with Version 1 apps
+		#ifdef UseD3D9
 		x->myReceiver->SetDX9(true);
+		#else
+		x->myReceiver->SetDX9(false);
+		#endif
 
 		// Syphon comment : TODO : is this right ?  LJ not sure
 		// set up attributes
-		#ifdef UseSenders
-		jit_attr_setsym(x->sendername, _jit_sym_name, gensym("sendername"));
-		#else
+		#ifdef UseServers
 		jit_attr_setsym(x->servername, _jit_sym_name, gensym("servername"));
+		#else
+		jit_attr_setsym(x->sendername, _jit_sym_name, gensym("sendername"));
 		#endif
 
 		// instantiate a single internal jit.gl.texture for output
@@ -370,6 +380,9 @@ t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name)
 
 void jit_gl_spout_receiver_free(t_jit_gl_spout_receiver *x)
 {
+
+	// Free the memoryshare input texture if there is one
+	if(x->g_GLtexture) glDeleteTextures(1, &x->g_GLtexture);
 
 	// free our internal texture
 	if(x->output) jit_object_free(x->output);
@@ -482,23 +495,30 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 	if(!x->bInitialized) {
 		
 		// Set memoryshare mode if the user requested it
-		// TODO needs local texture to receive the memoryshare result
-		// if(x->memoryshare == 1) x->myReceiver->SetMemoryShareMode(true);
+		// Needs a local texture to receive the memoryshare result
+		if(x->memoryshare == 1) x->myReceiver->SetMemoryShareMode(true);
 
 		if(x->myReceiver->CreateReceiver(x->g_SenderName, senderWidth, senderHeight)) {
-			
+
 			x->g_Width	= senderWidth;
 			x->g_Height	= senderHeight;
-			// x->counter++; // debug
+			
+			// For memoryshare create a local OpenGL texture of the same size
+			if(x->memoryshare == 1) InitTexture(x);
+			
 			// Update output texture dim to the new size
 			newdim[0] = x->g_Width;
 			newdim[1] = x->g_Height;
 			jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);
-
+			
 			x->bInitialized = true;
 		}
 		return JIT_ERR_NONE;
 	}
+
+	// DEBUG
+	// DWORD dwStartTime, dwInterval;
+	// dwStartTime = timeGetTime();
 
 	// An FBO for render to texture
 	GLuint tempFBO;
@@ -579,25 +599,61 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
     glLoadIdentity();
 
 	// Receive a shared texture and return it's width and height
-	if(x->myReceiver->ReceiveTexture(x->g_SenderName, senderWidth, senderHeight)) {
+	// For MemoryShare there will be a valid texture, otherwise it will be NULL
+
+	// Necessary for memoryshare size change check
+	senderWidth = x->g_Width;
+	senderHeight = x->g_Height;
+	
+	if(x->myReceiver->ReceiveTexture(x->g_SenderName, senderWidth, senderHeight, x->g_GLtexture, GL_TEXTURE_2D)) {
+
 		// Test for change of texture size
 		if(senderWidth != x->g_Width || senderHeight != x->g_Height) {
+
 			// Set global width and height
 			x->g_Width	= senderWidth;
 			x->g_Height	= senderHeight;
+			
+			// For memoryshare create a local OpenGL texture of the same size
+			if(x->memoryshare == 1) InitTexture(x);
+
 			// Update output dim to the new size
 			newdim[0] = x->g_Width;
 			newdim[1] = x->g_Height;
 			jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);
+
 		}
 		else {
-			// We have a shared texture and can render into the jitter texture
+
+			// We have a texture and can render into the jitter texture
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, tempFBO); 
+
 			// Attach the jitter texture (destination) to the color buffer in our frame buffer  
 			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, texname, 0);
 			if(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
-				// Draw the shared texture into it
-				x->myReceiver->DrawSharedTexture();
+
+				// If memoryshare, draw the local OpenGL texture into it
+				if(x->memoryshare == 1) {
+					glEnable(GL_TEXTURE_2D);
+					glBindTexture(GL_TEXTURE_2D, x->g_GLtexture);
+					glColor3f(1.0,  1.0, 1.0);
+					glBegin(GL_QUADS);
+					glTexCoord2d(0, 0);
+					glVertex2d(-1,  1); // lower left
+					glTexCoord2d(0, 1);	
+					glVertex2d(-1, -1); // upper left
+					glTexCoord2d(1, 1);	
+					glVertex2d( 1, -1); // upper right
+					glTexCoord2d(1, 0);	
+					glVertex2d( 1,  1); // lower right
+					glEnd();
+					glBindTexture(GL_TEXTURE_2D, 0);
+					glDisable(GL_TEXTURE_2D);
+				}
+				else {
+					// Othewise draw the shared texture straight into it
+					x->myReceiver->DrawSharedTexture();
+				}
 			}
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); 
 		}
@@ -638,6 +694,11 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 	// Restore context necessary ?
 	jit_gl_set_context(ctx);
 
+	// DEBUG
+	// dwInterval = timeGetTime() - dwStartTime;
+	// if(dwInterval > 2)	printf("Draw interval = %d\n", dwInterval);
+
+
 	return JIT_ERR_NONE;
 
 }
@@ -648,10 +709,10 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 //
 
 // @Senderuuid
-#ifdef UseSenders
-t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
-#else
+#ifdef UseServers
 t_jit_err jit_gl_spout_receiver_servername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
+#else
+t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 #endif
 {
 	t_symbol *srvname;
@@ -660,12 +721,12 @@ t_jit_err jit_gl_spout_receiver_servername(t_jit_gl_spout_receiver *x, void *att
 	if(x) {	
 		if (argc && argv) {
 			srvname = jit_atom_getsym(argv);
-			#ifdef UseSenders
-			x->sendername = srvname;
-			strcpy_s(name, 256, x->sendername->s_name);
-			#else
+			#ifdef UseServers
 			x->servername = srvname;
 			strcpy_s(name, 256, x->servername->s_name);
+			#else
+			x->sendername = srvname;
+			strcpy_s(name, 256, x->sendername->s_name);
 			#endif
 			if(strcmp(x->g_SenderName, name) != 0) { // different name
 				strcpy_s(x->g_SenderName, 256, name);
@@ -676,10 +737,10 @@ t_jit_err jit_gl_spout_receiver_servername(t_jit_gl_spout_receiver *x, void *att
 		} 
 		else {
 			// no args, set to zero
-			#ifdef UseSenders
-			x->sendername = _jit_sym_nothing;
-			#else
+			#ifdef UseServers
 			x->servername = _jit_sym_nothing;
+			#else
+			x->sendername = _jit_sym_nothing;
 			#endif
 			x->g_SenderName[0] = 0;
 		}
@@ -739,6 +800,16 @@ t_jit_err jit_gl_spout_receiver_memoryshare(t_jit_gl_spout_receiver *x, void *at
 	x->memoryshare = c; // 0 off or 1 on
 	x->myReceiver->SetMemoryShareMode(bC); // Memoryshare on or off
 
+	// Set requested memoryshare mode and start again
+	if(c == 0) {
+		// If turning off, make sure the local OpenGL texture is erased
+		if(x->g_GLtexture) glDeleteTextures(1, &x->g_GLtexture);
+		x->g_GLtexture = NULL;
+	}
+	
+	x->myReceiver->ReleaseReceiver();
+	x->bInitialized = false;
+
 	return JIT_ERR_NONE;
 }
 
@@ -794,4 +865,23 @@ t_jit_err jit_ob3d_dest_name_set(t_jit_object *x, void *attr, long argc, t_atom 
 
 }
 
+// Create a local RGB texture for memoryshare transfers
+bool InitTexture(t_jit_gl_spout_receiver *x)
+{
+	if(x->g_Width == 0 || x->g_Height == 0) {
+		return JIT_ERR_INVALID_PTR;
+	}
 
+	if(x->g_GLtexture) glDeleteTextures(1, &x->g_GLtexture);
+	glGenTextures(1, &x->g_GLtexture);
+
+	glBindTexture(GL_TEXTURE_2D, x->g_GLtexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x->g_Width, x->g_Height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL); 
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return JIT_ERR_NONE;
+}

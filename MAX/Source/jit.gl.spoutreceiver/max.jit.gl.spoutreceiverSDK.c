@@ -39,7 +39,7 @@
 
 // Temporary debugging define for ableton test 
 // patch needing servers instead of senders
-#define UseSenders
+#define UseServers
 
 typedef struct _max_jit_gl_spout_receiver 
 {
@@ -61,10 +61,10 @@ void max_jit_gl_spout_receiver_bang(t_max_jit_gl_spout_receiver *x);
 void max_jit_gl_spout_receiver_draw(t_max_jit_gl_spout_receiver *x, t_symbol *s, long argc, t_atom *argv);
 
 //custom list outof available Senders via the dumpout outlet.
-#ifdef UseSenders
-void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *x);
-#else
+#ifdef UseServers
 void max_jit_gl_spout_receiver_getavailableservers(t_max_jit_gl_spout_receiver *x);
+#else
+void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *x);
 #endif
 
 
@@ -77,13 +77,11 @@ void main(void)
 {	
 	void *classex, *jitclass;
 	
-	/*
 	// Debug console window so printf works
 	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("jit_gl_spout_receiverSDK\n");
-	*/
 
 	// initialize our Jitter class
 	jit_gl_spout_receiver_init();	
@@ -109,10 +107,10 @@ void main(void)
 	addbang((method)max_jit_gl_spout_receiver_bang);
 	max_addmethod_defer_low((method)max_jit_gl_spout_receiver_draw, "draw");  
 	
-    #ifdef UseSenders
-	max_addmethod_defer_low((method)max_jit_gl_spout_receiver_getavailablesenders, "getavailablesenders");
-	#else
+    #ifdef UseServers
 	max_addmethod_defer_low((method)max_jit_gl_spout_receiver_getavailableservers, "getavailableservers");
+	#else
+	max_addmethod_defer_low((method)max_jit_gl_spout_receiver_getavailablesenders, "getavailablesenders");
 	#endif
     
    	// use standard ob3d assist method
@@ -165,10 +163,10 @@ void max_jit_gl_spout_receiver_draw(t_max_jit_gl_spout_receiver *x, t_symbol *s,
 
 }
 
-#ifdef UseSenders
-void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *x)
-#else
+#ifdef UseServers
 void max_jit_gl_spout_receiver_getavailableservers(t_max_jit_gl_spout_receiver *x)
+#else
+void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *x)
 #endif
 {
 	int nSenders;
