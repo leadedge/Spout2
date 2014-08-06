@@ -24,6 +24,9 @@
 	30-07-14	- added vsync option, cleanup and recompile demos
 	31-07-14	- used freopen_s for console outout			
 	03-08-14	- update
+	04-08-14	- Lock cube rotation to cycle speed rather than a fixed rotation amount
+				- testing with SpoutPanel external sender entry
+				- fixed fit to window after fullscreen restore if not checked
 
 */
 #define MAX_LOADSTRING 100
@@ -64,65 +67,65 @@ bool bReceiver      = false; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
 bool bDX9compatible = false; // For DX11 only - compatible DX9 format for DX11 senders
-bool bVsync			= true; // OpenGL wglSwapIntervalEXT lock to monitor sync
+bool bVsync			= false; // OpenGL wglSwapIntervalEXT lock to monitor vertical sync
 // =============================================================
 
 
 //
 // Global Variables:
 //
-bool			bInitialized	= false;	// Do-once intialization flag
-bool			bTextureShare	= false;	// Texture share compatibility flag
-char			g_SenderName[256];			// Globel sender name
-unsigned int	g_Width, g_Height;			// Global width and height
-unsigned int	width, height;				// Width and height returned by receivetexture
-char			gldxcaps[1024];				// capability info
+bool         bInitialized	= false; // Do-once intialization flag
+bool         bTextureShare	= false; // Texture share compatibility flag
+char         g_SenderName[256];      // Global sender name
+unsigned int g_Width, g_Height;      // Global width and height
+unsigned int width, height;          // Width and height returned by receivetexture
+char         gldxcaps[1024];         // capability info
 
-HINSTANCE		hInst;						// current instance
-HWND			hwndMain;
-HMENU			hMenu;
-HDC				hDC=NULL;					// Private GDI Device Context
-HGLRC			hRC=NULL;					// Permanent Rendering Context
-HWND			hWnd=NULL;					// Holds Our Window Handle
-HINSTANCE		hInstance;					// Holds The Instance Of The Application
+HINSTANCE    hInst;                  // current instance
+HWND         hwndMain;
+HMENU        hMenu;
+HDC          hDC=NULL;               // Private GDI Device Context
+HGLRC        hRC=NULL;               // Permanent Rendering Context
+HWND         hWnd=NULL;              // Holds Our Window Handle
+HINSTANCE    hInstance;              // Holds The Instance Of The Application
 
-bool			keys[256];					// Array Used For The Keyboard Routine
-bool			active		= true;			// Window Active Flag Set To TRUE By Default
-bool			bFullscreen	= false;		// Windowed Mode
-bool			bFsmenubar	= false;		// Space bar to show the taskbar when fullscreen
-bool			bTopmost	= false;		// Set as topmost window
-bool			bFitWindow	= true;			// Fit to window or preserve aspect ratio of the sender for a receiver
+bool         keys[256];              // Array Used For The Keyboard Routine
+bool         active = true;          // Window Active Flag Set To TRUE By Default
+bool         bFullscreen = false;    // Windowed Mode
+bool         bFsmenubar = false;     // Space bar to show the taskbar when fullscreen
+bool         bTopmost = false;       // Set as topmost window
+bool         bFitWindow	= true;      // Fit to window or preserve aspect ratio of the sender for a receiver
 
-HWND			g_hwnd=NULL;				// global handle to the OpenGL render window
-RECT			windowRect;					// Render window rectangle
-RECT			clientRect;					// Render window client rectangle
-LONG_PTR		dwStyle;					// original window style
-int				nonFullScreenX;				// original window position
-int				nonFullScreenY;
-int				WindowPosLeft = 0;
-int				WindowPosTop = 0;			// default window start position
-unsigned int	AddX, AddY;					// adjustment to client rect for reset of window size
-RECT			WorkArea;
-HWND			hwndForeground1;			// foreground window before setting topmost
-HWND			hwndForeground2;			// foreground window before setting full screen
-char			WindowTitle[256];			// Title of the window - also used for the sender name
+HWND         g_hwnd = NULL;          // global handle to the OpenGL render window
+RECT         windowRect;             // Render window rectangle
+RECT         clientRect;             // Render window client rectangle
+LONG_PTR     dwStyle;                // original window style
+int          nonFullScreenX;         // original window position
+int          nonFullScreenY;
+int          WindowPosLeft = 0;
+int          WindowPosTop = 0;       // default window start position
+unsigned int AddX, AddY;             // adjustment to client rect for reset of window size
+RECT         WorkArea;
+HWND         hwndForeground1;        // foreground window before setting topmost
+HWND         hwndForeground2;        // foreground window before setting full screen
+char         WindowTitle[256];       // Title of the window - also used for the sender name
 
-GLuint			base;						// Base Display List For The Font Set
+GLuint       base;                   // Base Display List For The Font Set
 
 // Cube rotation and drawing setup
-GLfloat			rotx = PI/4.0f;				// x rotation amount
-GLfloat			roty = PI/4.0f;				// y rotation amount
+GLfloat      rotx = 0;               // x rotation amount
+GLfloat      roty = 0;               // y rotation amount
 
-GLuint			cubeTexture;				// Cube texture
-GLuint			myTexture;					// Local texture
+GLuint       cubeTexture;            // Cube texture
+GLuint       myTexture;              // Local texture
 
 // FPS calcs
 double lastFrameTime, diff, timeThen, timeNow, fps, frameRate, startTime;
 
 // Mouse position
-int				MouseXpos = 0;
-int				MouseYpos = 0;
-bool			bClicked = false;
+int         MouseXpos = 0;
+int         MouseYpos = 0;
+bool        bClicked = false;
 
 int debugCounter = 0;
 
@@ -662,9 +665,6 @@ int DrawGLScene(GLvoid)
 	
 		ShowSenderInfo();
 
-		rotx += 0.5;
-		roty += 0.5;
-
 	} // end sender
 
 	// FPS calculations
@@ -678,6 +678,11 @@ int DrawGLScene(GLvoid)
 	}
 	lastFrameTime	= diff;
 	timeThen		= timeNow;
+
+	// Lock cube rotation to cycle speed rather than
+	// a fixed rotation amount and relying on frame rate
+	rotx += 33*(float)diff;
+	roty += 33*(float)diff;
 
 	return TRUE;										// Keep Going
 }
@@ -1175,13 +1180,12 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	MSG		msg;									// Windows Message Structure
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
 
-
 	/*
 	// Debug console window so printf works
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("\nWinSpoutSDK\n");
+	printf("WinSpoutSDK\n");
 	*/
 
 	// suppress warnings
@@ -1414,6 +1418,8 @@ void doFullScreen(bool bFullscreen)
 		if(bReceiver) {
 			if(bFitWindow) 
 				CheckMenuItem (hMenu, IDM_FITWINDOW, MF_BYCOMMAND | MF_CHECKED);
+			else
+				CheckMenuItem (hMenu, IDM_FITWINDOW, MF_BYCOMMAND | MF_UNCHECKED);
 		}
 
 		// Restore our window
