@@ -29,7 +29,8 @@
 //			 - uploaded to GitHub
 //			 - cleanup
 //	03.08.14 - work on unregistered sender
-//	04.08.14 - text file access for unregistered sender
+//	04.08.14 - text file for unregistered sender
+//			 - refine text file method
 
 #include <windows.h>
 #include <vector>
@@ -55,12 +56,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	char windowname[512];
 	int w, h;
 	int i, argc;
+	HMODULE module;
+	char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
 	bool bRet = false;
 
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 	UNREFERENCED_PARAMETER(nCmdShow);
-
 
 	/*
 	// Debug console window so printf works
@@ -70,8 +72,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	printf("SpoutPanel\n");
 	*/
 
+
 	// Remove any temporary file
-	remove("spoutpanel.txt");
+	module = GetModuleHandle(NULL);
+	GetModuleFileNameA(module, path, MAX_PATH);
+	_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
+	_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
+	if(remove(path) == 0) {
+		// printf("[%s] removed\n", path);
+	}
+	else {
+		// printf("[%s] not found\n", path);
+	}
 
 	// Check for arguments
 	argc = ParseCommandline();
@@ -121,6 +133,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 		CloseHandle(hMutex);
 	}
+
+	// MessageBoxA(NULL, "End", "SpoutPanel", MB_OK);
 
 	// quit when selected or cancelled - the dll does it all
 	// return an exit code for the opening app to detect
@@ -228,6 +242,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 				// Is it registered e.g. VVVV which has been accessed ?
 				if(!sendernames.FindSenderName(activename)) {
 					if(sendernames.getSharedInfo(activename, &info)) {
+						// printf("Registering unlisted active sender\n");
 						sendernames.RegisterSenderName(activename);
 					}
 				}
@@ -301,35 +316,51 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 						// Does it have any shared info
 						if(sendernames.getSharedInfo(SpoutSenderName, &info)) {
 							// printf("(%s) - %dx%d\n", SpoutSenderName, info.width, info.height);
-							// Check the DirectX texture format
-							// If it is 0 or 87 the sender is DX9 compatible
+							// Check the DirectX texture format and quit if not
+							// compatible if in Dr=irectX 11 and compatibility mode
 							if(bDX9compatible) { // Specify DX9 compatible senders
-								// Is it dx9 compatible
+								// If it is 0 or 87 the sender is DX9 compatible
 								if(info.format != 0 && info.format != 87) {
 									// printf("Not DX9 compatible\n");
 									EndDialog(hDlg, LOWORD(wParam));
 									return TRUE;
 								}
 							}
-							// Allow for a Sender which is not registered - e.g. VVVV
-							// Registering the sender here will only work if another sender is running
-							// and "SpoutTray" is present and has been activated to show
-							// the sender list after this sender has been registered, 
-							// because this instance of spoutSenderNames for spoutpanel
-							// will close and erase the active name map and the sender map
-							// and any map handle in this app will be closed
-							// sendernames.RegisterSenderName(SpoutSenderName);
 
-							// Failsafe method - open a text file and write to it
-							// Then delete it with the app when it is read or when
-							// SpoutPanel opens again. The path in calling app has to be 
-							// the same as for SpoutPanel.exe
-							ofstream myfile;
-							myfile.open ("spoutpanel.txt", ios::out | ios::app);
-							if (myfile.is_open()) {
-								myfile.write(SpoutSenderName, strlen(SpoutSenderName));
-								myfile.close();
-							}
+							// Is it registered ?
+							if(!sendernames.FindSenderName(SpoutSenderName)) {
+								
+								// Allow for a Sender which is not registered - e.g. VVVV
+
+								// Registering the sender here will only work if another sender
+								// is running or "SpoutTray" is present and has been activated 
+								// to show the sender list after this sender has been registered, 
+								// because this instance of spoutSenderNames for spoutpanel
+								// will close and erase the active name map and the sender map
+								// and any map handle in this app will be closed
+
+								// Failsafe method - open a text file and write to it,
+								// then delete it with the app when it is read or when
+								// SpoutPanel opens again. The path in calling app has to be 
+								// the same as for SpoutPanel.exe
+
+								ofstream myfile;
+								HMODULE module;
+								char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
+								module = GetModuleHandle(NULL);
+								GetModuleFileNameA(module, path, MAX_PATH);
+								_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
+								_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
+								myfile.open (path, ios::out | ios::app);
+								if (myfile.is_open()) {
+									// printf("write [%s]\n", path);
+									myfile.write(SpoutSenderName, strlen(SpoutSenderName));
+									myfile.close();
+									// printf("Unlisted sender [%s]\n", SpoutSenderName);
+									// Register with the calling app
+								}
+							} // endif was not registered
+							// drop through
 						}
 						else {
 							// Serious enough for a messagebox
