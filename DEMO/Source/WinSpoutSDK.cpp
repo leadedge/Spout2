@@ -27,6 +27,7 @@
 	04-08-14	- Lock cube rotation to cycle speed rather than a fixed rotation amount
 				- testing with SpoutPanel external sender entry
 				- fixed fit to window after fullscreen restore if not checked
+	07-08-14	- Framerate independent of driver vsync
 
 */
 #define MAX_LOADSTRING 100
@@ -63,11 +64,10 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // ================= CHANGE COMPILE FLAGS HERE =================
 // Rename the executable as necessary to get a sender/receiver pair
 //
-bool bReceiver      = false; // Compile for receiver (true) or sender (false)
-bool bMemoryMode    = false; // Use memory share specifically (default is false)
+bool bReceiver      = true; // Compile for receiver (true) or sender (false)
+bool bMemoryMode    = true; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
 bool bDX9compatible = false; // For DX11 only - compatible DX9 format for DX11 senders
-bool bVsync			= false; // OpenGL wglSwapIntervalEXT lock to monitor vertical sync
 // =============================================================
 
 
@@ -121,6 +121,13 @@ GLuint       myTexture;              // Local texture
 
 // FPS calcs
 double lastFrameTime, diff, timeThen, timeNow, fps, frameRate, startTime;
+
+// Sleep sync control
+bool bVsync = false;
+double diffMillis = 0;
+double prevMillis = 0;
+double waitMillis = 0;
+double millisForFrame = 16.667; // 60fps default
 
 // Mouse position
 int         MouseXpos = 0;
@@ -330,13 +337,19 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 		}
 	}
 
-	if(bVsync) {
-		sender.SetVerticalSync(true);
-		receiver.SetVerticalSync(true);
+	// Setting swap interval is not useful because the driver settings over-ride and it has no effect
+	// but swap interval is returned OK depending on the NVIDAI control panel settings
+
+	// Check driver vsync - either Sender or receiver object will do
+	if(sender.GetVerticalSync() == 0) {
+		bVsync = false; 
+		printf("wglGetSwapIntervalEXT() = 0\nUsing sleep sync\n");
+		// no driver swap interval set; 
+		// Use sleep sync to avoid ultra fast frame rates
 	}
 	else {
-		sender.SetVerticalSync(false);
-		receiver.SetVerticalSync(false);
+		printf("wglGetSwapIntervalEXT() > 0\nUsing monitor vsync\n");
+		bVsync = true;
 	}
 
 	// Determine hardware capabilities now, not later when all is initialized
@@ -667,22 +680,42 @@ int DrawGLScene(GLvoid)
 
 	} // end sender
 
+	// Sleep sync control if the driver is set to disable vsync
+	// From openframeworks ofAppGlutWindow
+	// jorge's fix for idle / setFrameRate()
+	// https://github.com/openframeworks/openFrameworks/blob/master/CHANGELOG.md
+	//
+	timeNow = ofGetElapsedTimef(); // in seconds
+	if(!bVsync) {
+		diffMillis = timeNow*1000.0 - prevMillis;
+		if (diffMillis > millisForFrame){
+			; // we do nothing, we are already slower than target frame rate
+		} else {
+			waitMillis = millisForFrame - diffMillis;
+			Sleep((DWORD)waitMillis); //windows sleep in milliseconds
+		}
+	}
+	timeNow = ofGetElapsedTimef();
+	prevMillis = timeNow*1000.0; // you have to measure here
+
 	// FPS calculations
-	timeNow = ofGetElapsedTimef();		// in seconds
-	double diff = timeNow-timeThen;		// seconds per frame
+	double diff = timeNow-timeThen; // seconds per frame
 	if( diff  > 0.00001 ) {
 		fps	= 1.0 / diff;
+		// printf("frame time = %f, fps = %f\n", diff*1000, fps);
 		// damping
-		frameRate	*= 0.98f;
-		frameRate	+= 0.02f*fps;
+		frameRate *= 0.98f;
+		frameRate += 0.02f*fps;
 	}
-	lastFrameTime	= diff;
-	timeThen		= timeNow;
+	lastFrameTime = diff;
+	timeThen = timeNow;
 
 	// Lock cube rotation to cycle speed rather than
 	// a fixed rotation amount and relying on frame rate
 	rotx += 33*(float)diff;
 	roty += 33*(float)diff;
+	// rotx += PI/4;
+	// roty += PI/4;
 
 	return TRUE;										// Keep Going
 }
@@ -1323,7 +1356,6 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 					//
 					// LJ DEBUG - has no discernable effect on sync
 					glFinish();
-
 				}
 
 			} // endif active
