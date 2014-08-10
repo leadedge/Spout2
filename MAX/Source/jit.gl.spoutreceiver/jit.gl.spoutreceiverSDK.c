@@ -16,6 +16,7 @@
 	04-08-14 - Compiled for DX9
 			 - Included local OpenGL texture for memoryshare mode
 	05-08-14 - Memoryshare working
+	10-08-14 - Updated for testing - DX9 mode
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -45,9 +46,12 @@
 
 // Temporary debugging define for ableton test 
 // patch needing servers instead of senders
+// ** Must be changed in Max file as well **
 // #define UseServers
 
 // Compile for DX9 instead of DX11 (default)
+// A DX11 receiver can receive from both DX9 and DX11 senders
+// so compiling for DX9 is not necessary dependent on NVIDIA driver bug (10-08-14)
 #define UseD3D9
 
 #include "jit.common.h"

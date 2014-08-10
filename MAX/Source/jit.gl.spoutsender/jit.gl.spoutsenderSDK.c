@@ -13,6 +13,7 @@
 			 - Fixed dest_changed error	
 			 - enabled memoryshare for sender creation - tested OK
 	04-08-14 - Compiled for DX9
+	10-08-14 - Updated for testing - DX9 mode
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -39,6 +40,8 @@
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
  */
+// Compile for DX9 instead of DX11 (default)
+#define UseD3D9
 
 #include "jit.common.h"
 #include "jit.gl.h"
@@ -230,7 +233,13 @@ t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name)
 
 		// Create a new Spout sender
 		x->mySender = new SpoutSender;
+		
+		// Set to DX9 for compatibility with Version 1 apps
+		#ifdef UseD3D9
 		x->mySender->SetDX9(true);
+		#else
+		x->mySender->SetDX9(false);
+		#endif
 
 		// set up attributes
 		x->memoryshare = 0; // default is texture share
