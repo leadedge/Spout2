@@ -28,6 +28,7 @@
 				- testing with SpoutPanel external sender entry
 				- fixed fit to window after fullscreen restore if not checked
 	07-08-14	- Framerate independent of driver vsync
+	10-08-14	- Revised framerate control
 
 */
 #define MAX_LOADSTRING 100
@@ -64,8 +65,8 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // ================= CHANGE COMPILE FLAGS HERE =================
 // Rename the executable as necessary to get a sender/receiver pair
 //
-bool bReceiver      = true; // Compile for receiver (true) or sender (false)
-bool bMemoryMode    = true; // Use memory share specifically (default is false)
+bool bReceiver      = false; // Compile for receiver (true) or sender (false)
+bool bMemoryMode    = false; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
 bool bDX9compatible = false; // For DX11 only - compatible DX9 format for DX11 senders
 // =============================================================
@@ -120,7 +121,8 @@ GLuint       cubeTexture;            // Cube texture
 GLuint       myTexture;              // Local texture
 
 // FPS calcs
-double lastFrameTime, diff, timeThen, timeNow, fps, frameRate, startTime;
+double startTime, timeThen, timeNow, elapsedTime, frameTime;
+double frameRate, fps;
 
 // Sleep sync control
 bool bVsync = false;
@@ -146,6 +148,7 @@ void doFullScreen(bool bFullscreen);
 void SaveOpenGLstate();
 void RestoreOpenGLstate();
 float ofGetElapsedTimef();
+float ofGetElapsedTimeMsecf();
 void GLerror();
 bool OpenSender();
 bool OpenReceiver();
@@ -163,9 +166,20 @@ void GLerror() {
 }	
 
 float ofGetElapsedTimef() {
-	return ((float) ((int)(timeGetTime() - startTime)) / 1000.0f);
+	// return ((float) ((int)(timeGetTime() - startTime)) / 1000.0f);
+	DWORD nowTime = timeGetTime();
+
+	printf("start = %d, now = %d, elapsed = %d\n", (DWORD)startTime, nowTime, (nowTime - (DWORD)startTime) );
+
+	// return ((float) ((timeGetTime() - (DWORD)startTime)) / 1000.0f);
+	return ((float) ((nowTime - (DWORD)startTime)) / 1000.0f);
 }
 
+/*
+int ofGetElapsedTimeMillis(){
+	return (int)(ofGetSystemTime() - startTime);
+}
+*/
 
 GLvoid BuildFont(GLvoid)								// Build Our Bitmap Font
 {
@@ -343,12 +357,12 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	// Check driver vsync - either Sender or receiver object will do
 	if(sender.GetVerticalSync() == 0) {
 		bVsync = false; 
-		printf("wglGetSwapIntervalEXT() = 0\nUsing sleep sync\n");
+		// printf("wglGetSwapIntervalEXT() = 0\nUsing sleep sync\n");
 		// no driver swap interval set; 
 		// Use sleep sync to avoid ultra fast frame rates
 	}
 	else {
-		printf("wglGetSwapIntervalEXT() > 0\nUsing monitor vsync\n");
+		// printf("wglGetSwapIntervalEXT() > 0\nUsing monitor vsync\n");
 		bVsync = true;
 	}
 
@@ -420,7 +434,6 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	// Initialize timing variables
 	fps					= 60.0; //give a realistic starting value - win32 issues
 	frameRate			= 60.0;
-	lastFrameTime = diff = timeThen = timeNow = 0.0;
 	startTime = (double)timeGetTime();
 
 	// set initial values
@@ -518,7 +531,7 @@ int DrawGLScene(GLvoid)
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// Clear The Screen And The Depth Buffer
 	glLoadIdentity(); // Reset The View
-	
+
 	if(bReceiver) {
 
 		if(!bInitialized) {
@@ -616,7 +629,8 @@ int DrawGLScene(GLvoid)
 		//
 
 		// glClearColor(0.039f, 0.392f, 0.549f, 1.0f); // Background 10, 100, 140
-		glClearColor(0.000f, 0.300f, 0.500f, 1.0f); // deep blue
+		// glClearColor(0.000f, 0.300f, 0.500f, 1.0f); // deep blue
+		glClearColor(0.000f, 0.200f, 0.400f, 1.0f); // deeper blue
 		// glClearColor(0.39f, 0.025f, 0.000f, 1.0f); // red/brown
 
 		glPushMatrix();
@@ -681,44 +695,43 @@ int DrawGLScene(GLvoid)
 	} // end sender
 
 	// Sleep sync control if the driver is set to disable vsync
-	// From openframeworks ofAppGlutWindow
+	// Adapted from openframeworks ofAppGlutWindow
 	// jorge's fix for idle / setFrameRate()
 	// https://github.com/openframeworks/openFrameworks/blob/master/CHANGELOG.md
 	//
-	timeNow = ofGetElapsedTimef(); // in seconds
-	if(!bVsync) {
-		diffMillis = timeNow*1000.0 - prevMillis;
-		if (diffMillis > millisForFrame){
+
+	timeNow = (double)timeGetTime();
+	elapsedTime = (timeNow-timeThen)+1; // +1 to allow for integer truncation
+
+	// FPS calculations
+	frameTime = elapsedTime/1000.0; // seconds per frame
+	if( frameTime  > 0.01) {
+		fps	= 1.0 / frameTime;
+		// printf("frame time = %f, fps = %f\n", frameTime, fps);
+		// damping
+		frameRate *= 0.99f;
+		frameRate += 0.01f*fps;
+	}
+	timeThen = timeNow;
+
+	if(!bVsync && elapsedTime > 1) {
+		if (elapsedTime > millisForFrame){
 			; // we do nothing, we are already slower than target frame rate
 		} else {
-			waitMillis = millisForFrame - diffMillis;
+			waitMillis = millisForFrame - elapsedTime;
+			// printf("Sleep : elapsed = %f wait = %d msec\n", elapsedTime, (DWORD)waitMillis);
 			Sleep((DWORD)waitMillis); //windows sleep in milliseconds
 		}
 	}
-	timeNow = ofGetElapsedTimef();
-	prevMillis = timeNow*1000.0; // you have to measure here
-
-	// FPS calculations
-	double diff = timeNow-timeThen; // seconds per frame
-	if( diff  > 0.00001 ) {
-		fps	= 1.0 / diff;
-		// printf("frame time = %f, fps = %f\n", diff*1000, fps);
-		// damping
-		frameRate *= 0.98f;
-		frameRate += 0.02f*fps;
-	}
-	lastFrameTime = diff;
-	timeThen = timeNow;
 
 	// Lock cube rotation to cycle speed rather than
 	// a fixed rotation amount and relying on frame rate
-	rotx += 33*(float)diff;
-	roty += 33*(float)diff;
-	// rotx += PI/4;
-	// roty += PI/4;
+	rotx += 33*(float)frameTime;
+	roty += 33*(float)frameTime;
 
 	return TRUE;										// Keep Going
 }
+
 
 void ShowReceiverInfo()
 {
@@ -1212,6 +1225,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 
 	MSG		msg;									// Windows Message Structure
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
+
 
 	/*
 	// Debug console window so printf works
