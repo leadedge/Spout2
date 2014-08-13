@@ -101,21 +101,16 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 
 		// Utilities
 		bool GLDXcompatible();
-		bool GetVerticalSync();
+		int GetVerticalSync();
 		bool SetVerticalSync(bool bSync = true);
 
 		spoutMemoryShare MemoryShare;	// Shared memory method
 		spoutSenderNames senders;	// Sender management
 		spoutDirectX spoutdx;	// DirectX class
 
-		// 21.07.14 - made public for debugging
-		GLuint	m_glTexture;		// the linked OpenGL texture
-		HANDLE	m_hInteropDevice;	// handle to the DX/GL interop device
-		HANDLE	m_hInteropObject;	// handle to the DX/GL interop object (the shared texture)
 		// Locks for gl/dx interop functions
 		HRESULT LockInteropObject(HANDLE hDevice, HANDLE *hObject);
 		HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE *hObject);
-
 
 	protected:
 
@@ -143,11 +138,10 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		LPDIRECT3DTEXTURE9		m_dxTexture; // the shared DX9 texture
 
 		
-		// GLuint	m_glTexture;		// the OpneGL texture linked to it
-		// GLuint	m_fbo;				// a local frame buffer object used for texture transfers
-		// HANDLE	m_hInteropDevice;	// handle to the DX/GL interop device
-		// HANDLE	m_hInteropObject;	// handle to the DX/GL interop object (the shared texture)
+		HANDLE	m_hInteropDevice;	// handle to the DX/GL interop device
+		HANDLE	m_hInteropObject;	// handle to the DX/GL interop object (the shared texture)
 		HANDLE	m_dxShareHandle;	// shared DX texture handle
+		GLuint	m_glTexture;		// the OpenGL texture linked to it
 
 		bool getSharedTextureInfo(char* sharedMemoryName);
 		bool setSharedTextureInfo(char* sharedMemoryName);
@@ -159,6 +153,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		// Texture access event lock handles
 		HANDLE	m_hReadEvent;  // this instance handle to read event
 		HANDLE	m_hWriteEvent; // this instance handle to write event
+
 
 };
 

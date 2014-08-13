@@ -38,6 +38,7 @@
 		23-07-14	- cleanup of DX9 / DX11 functions
 		29-07-14	- pass format 0 for DX9 sender
 		31-07-14	- Corrected DrawTexture aspect argument
+		13-08-14	- OpenGL texture retained on cleanup
 */
 
 #include "spoutGLDXinterop.h"
@@ -77,6 +78,8 @@ spoutGLDXinterop::spoutGLDXinterop() {
 }
 
 spoutGLDXinterop::~spoutGLDXinterop() {
+	
+	if (m_glTexture > 0) glDeleteTextures(1, &m_glTexture);
 	m_bInitialized = false;
 	// Because cleanup is not here it has to be specifically called
 	// This is becasue it can crash on exit - see cleanup for details
@@ -134,7 +137,7 @@ bool spoutGLDXinterop::OpenDirectX11()
 //
 bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive)
 {
-	bool bRet;
+	bool bRet = true;
 	DWORD format;
 	D3DFORMAT DX9format = D3DFMT_A8R8G8B8; // fixed format for DX9 (21)
 
@@ -192,6 +195,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	}
 
 	// Allow for sender updates
+	// TOD - check. Redundant - done in likGLDXtextures
 	if(m_hInteropDevice != NULL &&  m_hInteropObject != NULL) {
 		wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
 		m_hInteropObject = NULL;
@@ -202,15 +206,22 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 		// printf("GLDXinterop - deleting m_glTexture (%d)\n", m_glTexture);
 		glDeleteTextures(1, &m_glTexture);
 	}
-
 	glGenTextures(1, &m_glTexture);
 
-	// printf("GLDXinterop - m_glTexture = %d\n", m_glTexture);
+	if(bReceive) {
+		// printf("Receiver - m_GLtexture = %d\n", m_glTexture);
+	}
+	else {
+		// printf("Sender - m_GLtexture = %d\n", m_glTexture);
+	}
+	
 
 	// Create textures and GLDX interop objects
 	if(bUseDX9)	bRet = CreateDX9interop(width, height, format, bReceive);
 	else bRet = CreateDX11interop(width, height, format, bReceive);
 	if(!bRet) return false;
+
+
 
 	// Now the global shared texture handle - m_dxShareHandle - has been set so a sender can be created
 	// this creates the sender shared memory map and registers the sender
@@ -304,6 +315,7 @@ bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height,
 	// (the shared texture) (m_hInteropObject)
 	m_hInteropObject = LinkGLDXtextures(m_pDevice, m_dxTexture, m_dxShareHandle, m_glTexture); 
 	if(!m_hInteropObject) return false;
+
 
 	return true;
 }
@@ -484,7 +496,6 @@ void spoutGLDXinterop::CleanupDX11()
 // The exit flag is a fix - trouble is with wglDXUnregisterObjectNV
 // which crashes on exit to the program but not if called
 // while the program is running. Likely due to no GL context on exit
-// but a double chack for safety.
 void spoutGLDXinterop::CleanupInterop(bool bExit)
 {
 	// Some of these things need an opengl context so check
@@ -492,19 +503,20 @@ void spoutGLDXinterop::CleanupInterop(bool bExit)
 		// Problem here on exit, but not on change of resolution while the program is running !?
 		// On exit there may be no openGL context but while the program is running there is
 		if(!bExit && m_hInteropDevice != NULL && m_hInteropObject != NULL) {
+			// printf("wglDXUnregisterObjectNV\n");
 			wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
 			m_hInteropObject = NULL;
 		}
 		if (m_hInteropDevice != NULL) {
+			// printf("wglDXCloseDeviceNV\n");
 			wglDXCloseDeviceNV(m_hInteropDevice);
+			m_hInteropDevice = NULL;
 		}
-		if (m_glTexture > 0) glDeleteTextures(1, &m_glTexture);
-		m_glTexture = 0;
-	} // endif there is an opengl contex
 
-	m_hInteropDevice = NULL;
-	m_hInteropObject = NULL;
-	m_glTexture = 0;
+	} // endif there is an opengl context
+	else {
+		// printf("CleanupInterop NO OPENGL CONTEXT\n");
+	}
 
 	CleanupDirectX();
 
@@ -1251,44 +1263,32 @@ void spoutGLDXinterop::SetDX11format(DXGI_FORMAT textureformat)
 }
 
 
-bool spoutGLDXinterop::GetVerticalSync()
+int spoutGLDXinterop::GetVerticalSync()
 {
-	// printf("spoutGLDXinterop::GetVerticalSync\n");
-
 	if(!bExtensionsLoaded) bExtensionsLoaded = LoadGLextensions();
 
 	// needed for both sender and receiver
 	if(bSWAPavailable) {
-		if(wglGetSwapIntervalEXT()) {
-			return true;
-		}
-		else {
-			return false;
-		}
+		return(wglGetSwapIntervalEXT());
 	}
-	return false;
+
+	return 0;
 }
 
 
 bool spoutGLDXinterop::SetVerticalSync(bool bSync)
 {
-	// printf("spoutGLDXinterop::SetVerticalSync(%d)\n", bSync);
-
 	if(!bExtensionsLoaded) bExtensionsLoaded = LoadGLextensions();
 
 	if(bSWAPavailable) {
-
-		// printf("    SetVerticalSync(%d)\n", bSync);
-
-		if(bSync)
+		if(bSync) {
 			wglSwapIntervalEXT(1); // lock to monitor vsync
-		else
+		}
+		else {
 			wglSwapIntervalEXT(0); // unlock from monitor vsync
-
+		}
 		return true;
 	}
-
-	// printf("spoutGLDXinterop - swap extensions not available\n");
 
 	return false;
 
