@@ -30,8 +30,9 @@
 //			 - cleanup
 //	03.08.14 - work on unregistered sender
 //	04.08.14 - text file for unregistered sender
-//			 - refine text file method
-
+//			 - refine text file method for unregistered sender - needs path work
+//  13.08.14 - updated for Isadora testing
+//
 #include <windows.h>
 #include <vector>
 #include <fstream>
@@ -40,7 +41,7 @@
 #include "../../../../SpoutSDK/SpoutSenderNames.h"
 
 char SpoutSenderName[256]; // global Sender name to retrieve from the dialog
-bool bDX9compatible = false; // Only list DX9 compatible senders - needs /DX9 arg passed
+bool bDX9compatible = false; // Only list DX9 compatible senders - modified by /DX9 arg
 bool GetSenderDialog(HINSTANCE hInst);
 int ParseCommandline();
 char **argv = NULL;
