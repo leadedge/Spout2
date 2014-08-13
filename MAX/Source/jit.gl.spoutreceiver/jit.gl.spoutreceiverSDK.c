@@ -17,6 +17,7 @@
 			 - Included local OpenGL texture for memoryshare mode
 	05-08-14 - Memoryshare working
 	10-08-14 - Updated for testing - DX9 mode
+	13-08-14 - corrected context change texture handle leak
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -469,13 +470,11 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 	float fx, fy, as, vpScaleX, vpScaleY, vpWidth, vpHeight;
 	int vpx, vpy;
 	long newdim[2];	// output dim
-	char sendername[256];
-	unsigned int senderWidth, senderHeight;
-	GLint previousFBO;      
-	GLint previousReadFBO;
-	GLint previousDrawFBO;
-	GLint previousMatrixMode;
-	GLint previousActiveTexture;
+	unsigned int senderWidth = 0;
+	unsigned int senderHeight = 0;
+	GLint previousFBO = 0;      
+	GLint previousMatrixMode = 0;
+	GLint previousActiveTexture = 0;
 
 	if (!x) {
 		return JIT_ERR_INVALID_PTR;
@@ -488,66 +487,31 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 		return JIT_ERR_NONE;
 	}
 
+	// We need the Jitter texture ID, width and height.
+	GLuint texname	= jit_attr_getlong(x->output, ps_glid);
+	GLuint width	= jit_attr_getlong(x->output, ps_width);
+	GLuint height	= jit_attr_getlong(x->output, ps_height);
+
 	// TODO: necessary ? JKC says no unless context changed above? should be set during draw for you. 
-	// LJ seems un-necessary but does not hurt if it stays
+	// LJ - seems necessary
 	t_jit_gl_context ctx = jit_gl_get_context();
 	jit_ob3d_set_context(x);
-
-	// Try to create a receiver if not initialized
-	// If sendername is null it will pick up the active sender
-	// Otherwise it will wait for the correct name to be entered
-	if(!x->bInitialized) {
-		
-		// Set memoryshare mode if the user requested it
-		// Needs a local texture to receive the memoryshare result
-		if(x->memoryshare == 1) x->myReceiver->SetMemoryShareMode(true);
-
-		if(x->myReceiver->CreateReceiver(x->g_SenderName, senderWidth, senderHeight)) {
-
-			x->g_Width	= senderWidth;
-			x->g_Height	= senderHeight;
-			
-			// For memoryshare create a local OpenGL texture of the same size
-			if(x->memoryshare == 1) InitTexture(x);
-			
-			// Update output texture dim to the new size
-			newdim[0] = x->g_Width;
-			newdim[1] = x->g_Height;
-			jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);
-			
-			x->bInitialized = true;
-		}
-		return JIT_ERR_NONE;
-	}
 
 	// DEBUG
 	// DWORD dwStartTime, dwInterval;
 	// dwStartTime = timeGetTime();
 
-	// An FBO for render to texture
-	GLuint tempFBO;
-	glGenFramebuffersEXT(1, &tempFBO);
-
-	//
-	// Now it is initialized so try to receive a texture
-	//
-	
-	// make sure we pop out to the right FBO
+	// Save FBO etc
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
-	glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING_EXT, &previousReadFBO);
-	glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING_EXT, &previousDrawFBO);
 	glGetIntegerv(GL_MATRIX_MODE, &previousMatrixMode);
 	glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture);
 	
-	// save texture state, client state, etc.
+	// find the viewport size in order to scale to the aspect ratio
+	glGetFloatv(GL_VIEWPORT, vpdim);
+
+	// Save texture state, client state, etc.
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
 	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
-
-	// We need the texture ID, width/height.
-	GLuint texname	= jit_attr_getlong(x->output, ps_glid);
-	GLuint target	= jit_attr_getlong(x->output, ps_target);
-	GLuint width	= jit_attr_getlong(x->output, ps_width);
-	GLuint height	= jit_attr_getlong(x->output, ps_height);
 
 	// Syphon note :
 	// Jitter uses multiple texture coordinate arrays on different units
@@ -563,7 +527,6 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 	glPushMatrix();
 	glLoadIdentity();
 
-	// =========================================================
 	// find the viewport size in order to scale to the aspect ratio
 	glGetFloatv(GL_VIEWPORT, vpdim);
 
@@ -590,118 +553,147 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 		}
 	}
 	glViewport((int)vpx, (int)vpy, (int)vpWidth, (int)vpHeight);
-	// =========================================================
 
 	glMatrixMode(GL_PROJECTION);
     glPushMatrix();
 	glLoadIdentity();
-
 	glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0f, 1.0f);
                                
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
     glLoadIdentity();
 
-	// Receive a shared texture and return it's width and height
-	// For MemoryShare there will be a valid texture, otherwise it will be NULL
+	// Try to create a receiver if not initialized
+	// If sendername is null it will pick up the active sender
+	// Otherwise it will wait for the correct name to be entered
+	if(!x->bInitialized) {
 
-	// Necessary for memoryshare size change check
-	senderWidth = x->g_Width;
-	senderHeight = x->g_Height;
-	
-	if(x->myReceiver->ReceiveTexture(x->g_SenderName, senderWidth, senderHeight, x->g_GLtexture, GL_TEXTURE_2D)) {
+		// Set memoryshare mode if the user requested it
+		// Needs a local texture to receive the memoryshare result
+		if(x->memoryshare == 1) x->myReceiver->SetMemoryShareMode(true);
 
-		// Test for change of texture size
-		if(senderWidth != x->g_Width || senderHeight != x->g_Height) {
+		if(x->myReceiver->CreateReceiver(x->g_SenderName, senderWidth, senderHeight)) {
 
-			// Set global width and height
 			x->g_Width	= senderWidth;
 			x->g_Height	= senderHeight;
 			
 			// For memoryshare create a local OpenGL texture of the same size
 			if(x->memoryshare == 1) InitTexture(x);
-
-			// Update output dim to the new size
+			
+			// Update output texture dim to the new size
 			newdim[0] = x->g_Width;
 			newdim[1] = x->g_Height;
 			jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);
-
+			
+			x->bInitialized = true;
 		}
-		else {
+	} // endif not initialized
 
-			// We have a texture and can render into the jitter texture
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, tempFBO); 
+	// Did it initialize ?
+	if(x->bInitialized) {
 
-			// Attach the jitter texture (destination) to the color buffer in our frame buffer  
-			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, texname, 0);
-			if(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
+		// Receive a shared texture and return it's width and height
+		// For MemoryShare there will be a valid texture, otherwise it will be NULL
 
-				// If memoryshare, draw the local OpenGL texture into it
-				if(x->memoryshare == 1) {
-					glEnable(GL_TEXTURE_2D);
-					glBindTexture(GL_TEXTURE_2D, x->g_GLtexture);
-					glColor3f(1.0,  1.0, 1.0);
-					glBegin(GL_QUADS);
-					glTexCoord2d(0, 0);
-					glVertex2d(-1,  1); // lower left
-					glTexCoord2d(0, 1);	
-					glVertex2d(-1, -1); // upper left
-					glTexCoord2d(1, 1);	
-					glVertex2d( 1, -1); // upper right
-					glTexCoord2d(1, 0);	
-					glVertex2d( 1,  1); // lower right
-					glEnd();
-					glBindTexture(GL_TEXTURE_2D, 0);
-					glDisable(GL_TEXTURE_2D);
-				}
-				else {
-					// Othewise draw the shared texture straight into it
-					x->myReceiver->DrawSharedTexture();
-				}
-			}
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); 
-		}
-
-		glMatrixMode(GL_MODELVIEW);
-		glPopMatrix();
-
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
+		// Necessary for memoryshare size change check
+		senderWidth = x->g_Width;
+		senderHeight = x->g_Height;
 	
-		glMatrixMode(GL_TEXTURE);
-		glPopMatrix();
-		glMatrixMode(previousMatrixMode);
+		if(x->myReceiver->ReceiveTexture(x->g_SenderName, senderWidth, senderHeight, x->g_GLtexture, GL_TEXTURE_2D)) {
 
-		glActiveTexture(previousActiveTexture);
+			// Test for change of texture size
+			if(senderWidth != x->g_Width || senderHeight != x->g_Height) {
 
-		// ensure we act on the proper client texture as well
-		glPopClientAttrib();
-		glClientActiveTexture(previousActiveTexture);
+				// Set global width and height
+				x->g_Width	= senderWidth;
+				x->g_Height	= senderHeight;
+			
+				// For memoryshare create a local OpenGL texture of the same size
+				if(x->memoryshare == 1) InitTexture(x);
 
-		glPopAttrib();
+				// Update output dim to the new size
+				newdim[0] = x->g_Width;
+				newdim[1] = x->g_Height;
+				jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);
 
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);
-		glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, previousReadFBO);
-		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, previousDrawFBO); 
+			}
+			else {
 
-	} // Received texture OK
-	else {
-		// If it doesn't get a texture, the sender is closed
-		x->myReceiver->ReleaseReceiver();
-		x->bInitialized = false; // Try to find another
-	}
+				// We have a shared texture and can render into the jitter texture
 
-    // clean up
-	glDeleteFramebuffersEXT(1, &tempFBO);
-	tempFBO = 0;
+				// An FBO for render to texture
+				GLuint tempFBO;
+				glGenFramebuffersEXT(1, &tempFBO);
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, tempFBO); 
 
-	// Restore context necessary ?
+				// Attach the jitter texture (destination) to the color buffer in our frame buffer  
+				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, texname, 0);
+				if(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
+
+					// If memoryshare, draw the local OpenGL texture into it
+					if(x->memoryshare == 1) {
+						glEnable(GL_TEXTURE_2D);
+						glBindTexture(GL_TEXTURE_2D, x->g_GLtexture);
+						glColor3f(1.0,  1.0, 1.0);
+						glBegin(GL_QUADS);
+						glTexCoord2d(0, 0);
+						glVertex2d(-1,  1); // lower left
+						glTexCoord2d(0, 1);	
+						glVertex2d(-1, -1); // upper left
+						glTexCoord2d(1, 1);	
+						glVertex2d( 1, -1); // upper right
+						glTexCoord2d(1, 0);	
+						glVertex2d( 1,  1); // lower right
+						glEnd();
+						glBindTexture(GL_TEXTURE_2D, 0);
+						glDisable(GL_TEXTURE_2D);
+					}
+					else {
+						// Othewise draw the shared texture straight into it
+						x->myReceiver->DrawSharedTexture();
+					}
+				}
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+				glDeleteFramebuffersEXT(1, &tempFBO);
+				tempFBO = 0;
+			}
+		} // Received texture OK
+		else {
+			// If it doesn't get a texture, the sender is closed
+			x->myReceiver->ReleaseReceiver();
+			x->bInitialized = false; // Try to find another
+		}
+	} // endif intialized
+
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+
+	glMatrixMode(GL_TEXTURE);
+	glPopMatrix();
+	glMatrixMode(previousMatrixMode);
+
+	glActiveTexture(previousActiveTexture);
+
+	// ensure we act on the proper client texture as well
+	glPopClientAttrib();
+	glClientActiveTexture(previousActiveTexture);
+
+	glPopAttrib();
+
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);
+
+	// Restore the viewport
+	glViewport(vpdim[0], vpdim[1], vpdim[2], vpdim[3]);
+
+	// Restore context
 	jit_gl_set_context(ctx);
 
 	// DEBUG
 	// dwInterval = timeGetTime() - dwStartTime;
 	// if(dwInterval > 2)	printf("Draw interval = %d\n", dwInterval);
-
 
 	return JIT_ERR_NONE;
 

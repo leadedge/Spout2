@@ -78,6 +78,7 @@ void main(void)
 {	
 	void *classex, *jitclass;
 	
+
 	/*
 	// Debug console window so printf works
 	FILE* pCout; // should really be freed on exit 
@@ -177,8 +178,11 @@ void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *
 	string namestring; // sender name string in the list of names
 	char sendername[256]; // array to clip a passed name if > 256 bytes
 
+
 	SpoutReceiver * myReceiver;
 	myReceiver = new SpoutReceiver;
+
+	// post("max_jit_gl_spout_receiver_getavailablesenders");
 
 	nSenders = myReceiver->GetSenderCount();
 	if(nSenders > 0) {
@@ -186,7 +190,7 @@ void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *
 		outlet_anything(max_jit_obex_dumpout_get(x), ps_clear, 0, 0); 
 		for(int i=0; i<nSenders; i++) {
 			myReceiver->GetSenderName(i, sendername);
-			// printf("%s\n", sendername);
+			// post("    %s", sendername);
 			atom_setsym(&atomName, gensym((char*)sendername));
 			outlet_anything(x->dumpout, ps_spoutsendername, 1, &atomName); 
 		}
@@ -194,6 +198,7 @@ void max_jit_gl_spout_receiver_getavailablesenders(t_max_jit_gl_spout_receiver *
 
 	delete myReceiver;
 	myReceiver = NULL;
+
 
 }
 

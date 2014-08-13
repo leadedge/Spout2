@@ -14,6 +14,7 @@
 			 - enabled memoryshare for sender creation - tested OK
 	04-08-14 - Compiled for DX9
 	10-08-14 - Updated for testing - DX9 mode
+	13-08-14 - corrected context change texture handle leak
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -382,8 +383,6 @@ t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
 
 	float vpdim[4]; // for saving the viewport dimensions
 	GLint previousFBO;
-	GLint previousReadFBO;
-	GLint previousDrawFBO;
     GLint previousMatrixMode;
 	GLint previousActiveTexture;
 
@@ -411,8 +410,6 @@ t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
 			//		Save OpenGL state
 			//
 			glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
-			glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING_EXT, &previousReadFBO);
-			glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING_EXT, &previousDrawFBO);
 			glGetIntegerv(GL_MATRIX_MODE, &previousMatrixMode);
 			glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture);
 
@@ -488,8 +485,6 @@ t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
 			glMatrixMode(previousMatrixMode);
 
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);
-			glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, previousReadFBO);
-			glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, previousDrawFBO); 
 
 			glActiveTexture(previousActiveTexture);
 
