@@ -39,6 +39,7 @@
 		29-07-14	- pass format 0 for DX9 sender
 		31-07-14	- Corrected DrawTexture aspect argument
 		13-08-14	- OpenGL texture retained on cleanup
+		14-08-14	- Corrected texture delete without context
 */
 
 #include "spoutGLDXinterop.h"
@@ -79,25 +80,23 @@ spoutGLDXinterop::spoutGLDXinterop() {
 
 spoutGLDXinterop::~spoutGLDXinterop() {
 	
-	if (m_glTexture > 0) glDeleteTextures(1, &m_glTexture);
 	m_bInitialized = false;
 	// Because cleanup is not here it has to be specifically called
-	// This is becasue it can crash on exit - see cleanup for details
+	// This is because it can crash on exit - see cleanup for details
 }
 
 
 // For external access so that the local global variables are used
 bool spoutGLDXinterop::OpenDirectX(HWND hWnd, bool bDX9)
 {
-
 	if(bDX9) {
-		// printf("OpenDirectX - DirectX 9\n");
+		printf("OpenDirectX - DirectX 9\n");
 		bUseDX9 = true;
 		return (OpenDirectX9(hWnd));
 	}
 	else {
 		bUseDX9 = false;
-		// printf("OpenDirectX - DirectX 11\n");
+		printf("OpenDirectX - DirectX 11\n");
 		return (OpenDirectX11());
 	}
 }
@@ -141,7 +140,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	DWORD format;
 	D3DFORMAT DX9format = D3DFMT_A8R8G8B8; // fixed format for DX9 (21)
 
-	// printf("spoutGLDXinterop::CreateInterop (%s) %dx%d\n", sendername, width, height);
+	printf("spoutGLDXinterop::CreateInterop (%s) %dx%d - format = %d\n", sendername, width, height, dwFormat);
 
 	// Needs an openGL context to work
 	if(!wglGetCurrentContext()) {
@@ -150,7 +149,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	}
 
 	if(bUseDX9) {
-		// printf("CreateInterop - DX9 format %d \n", DX9format);
+		printf("CreateInterop - DX9 mode - format D3DFMT_A8R8G8B8 (%d) \n", DX9format);
 		// DirectX 9
 		format = (DWORD)DX9format;
 	}
@@ -158,11 +157,11 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 		// DirectX 11
 		// Is this a DX11 texture or a DX9 sender texture?
 		if(dwFormat > 0) {
-			// printf("CreateInterop - DX11 default compatible format %d \n", dwFormat);
+			printf("CreateInterop - DX11 mode - default compatible format %d \n", dwFormat);
 			format = (DXGI_FORMAT)dwFormat;
 		}
 		else {
-			// printf("CreateInterop - DX11 format %d \n", DX11format);
+			printf("CreateInterop - DX11 mode - format %d \n", DX11format);
 			format = (DWORD)DX11format;
 		}
 	}
@@ -175,6 +174,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// Otherwise m_dxShareHandle is set by getSharedTextureInfo and is the
 	// shared texture handle of the Sender texture
 	if (bReceive && !getSharedTextureInfo(sendername)) {
+		printf("    error 1\n");
 		return false;
 	}
 
@@ -183,7 +183,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// or from a compatible DX11 sender (format 87)
 	if(bReceive && bUseDX9) {
 		if(!(m_TextureInfo.format == 0 || m_TextureInfo.format == 87)) {
-			// printf("Incompatible format %d \n", m_TextureInfo.format);
+			printf("Incompatible format %d \n", m_TextureInfo.format);
 			return false;
 		}
 	}
@@ -191,6 +191,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// Make sure DirectX has been initialized
 	// Creates a global pointer to the DirectX device (DX11 g_pd3dDevice or DX9 m_pDevice)
 	if(!OpenDirectX(hWnd, bUseDX9)) {
+		printf("    error 2\n");
 		return false;
 	}
 
@@ -219,7 +220,10 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// Create textures and GLDX interop objects
 	if(bUseDX9)	bRet = CreateDX9interop(width, height, format, bReceive);
 	else bRet = CreateDX11interop(width, height, format, bReceive);
-	if(!bRet) return false;
+	if(!bRet) {
+		printf("    error 3\n");
+		return false;
+	}
 
 
 
@@ -229,12 +233,22 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 
 		// Quit if sender creation failed - i.e. trying to create the same sender
 		// LJ DEBUG - modify SpoutPanel to detect format 21 ? How to know it is DX11 ?
-		if(bUseDX9)
+		if(bUseDX9) {
+			
+			printf("Creating DX9 sender (%s) %dx%d [%x] [%x]\n", sendername, width, height, m_dxShareHandle);
+
 			bRet = senders.CreateSender(sendername, width, height, m_dxShareHandle);
-		else
+		}
+		else {
+			
+			printf("Creating DX11 sender (%s) %dx%d [%x] [%x]\n", sendername, width, height, m_dxShareHandle, format);
+
 			bRet = senders.CreateSender(sendername, width, height, m_dxShareHandle, format);
-		if(!bRet)
+		}
+		if(!bRet) {
+			printf("    error 4\n");
 			return false;
+		}
 	}
 
 	// Set up local values for this instance
@@ -281,7 +295,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 //
 bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive) 
 {
-	// printf("CreateDX9interop\n");
+	printf("CreateDX9interop\n");
 
 	// The shared texture handle of the Sender texture "m_dxShareHandle" 
 	// is already set by getSharedTextureInfo, but should be NULL for a sender
@@ -327,7 +341,7 @@ bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height,
 //
 bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive ) 
 {
-	// printf("CreateDX11interop\n");
+	printf("CreateDX11interop\n");
 
 	// Create or use a shared DirectX texture that will be linked to the OpenGL texture
 	// and get it's share handle for sharing textures
@@ -692,7 +706,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 	if(bExtensionsLoaded) {
 		// all OK and not debug memoryshare
 		// try to set up directx and open the GL/DX interop
-		// printf("Calling OpenDirectX(%d)\n", bUseDX9);
+		printf("Calling OpenDirectX(%d)\n", bUseDX9);
 		if(OpenDirectX(hWnd, bUseDX9)) {
 			// if it passes here all is well
 			return true;
@@ -1247,7 +1261,8 @@ HRESULT spoutGLDXinterop::UnlockInteropObject(HANDLE hDevice, HANDLE *hObject)
 void spoutGLDXinterop::UseDX9(bool bDX9)
 {
 	bUseDX9 = bDX9;
-	// printf("spoutGLDXinterop::UseDX9(%d)\n", bUseDX9);
+	printf("spoutGLDXinterop::UseDX9 = %d\n", bUseDX9);
+
 }
 
 bool spoutGLDXinterop::isDX9()
