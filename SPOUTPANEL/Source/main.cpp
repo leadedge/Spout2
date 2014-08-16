@@ -31,7 +31,8 @@
 //	03.08.14 - work on unregistered sender
 //	04.08.14 - text file for unregistered sender
 //			 - refine text file method for unregistered sender - needs path work
-//  13.08.14 - updated for Isadora testing
+//  13.08.14 - Updated for Isadora testing
+//  16.08.14 - tested with Isadora and Version 1 sender dll OK
 //
 #include <windows.h>
 #include <vector>
@@ -65,12 +66,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	UNREFERENCED_PARAMETER(lpCmdLine);
 	UNREFERENCED_PARAMETER(nCmdShow);
 
+
 	/*
 	// Debug console window so printf works
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutPanel\n");
+	// printf("SpoutPanel\n");
 	*/
 
 
@@ -94,10 +96,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		for( i=1; i <argc; i++ ) {
 			// Argument /DX11
 			if ( strcmp(argv[i], "/DX11") == 0) {
+				// printf("DX11 mode\n");
 				bDX9compatible = false;
 			}
 			// Argument /DX9
 			else if(strcmp(argv[i], "/DX9") == 0) {
+				// printf("DX9 mode\n");
 				bDX9compatible = true;
 			}
 			else {
@@ -316,7 +320,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 					if(strlen(SpoutSenderName) > 0) {
 						// Does it have any shared info
 						if(sendernames.getSharedInfo(SpoutSenderName, &info)) {
-							// printf("(%s) - %dx%d\n", SpoutSenderName, info.width, info.height);
+							// printf("(%s) - %dx%d [%x]\n", SpoutSenderName, info.width, info.height, info.format);
 							// Check the DirectX texture format and quit if not
 							// compatible if in Dr=irectX 11 and compatibility mode
 							if(bDX9compatible) { // Specify DX9 compatible senders
@@ -401,6 +405,9 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 									strcpy_s(name, namestring.c_str());
 									SetDlgItemTextA(hDlg, IDC_ACTIVE, (LPCSTR)name);
 									sendernames.getSharedInfo(name, &info);
+									
+									// printf("(%s) - %dx%d [%x]\n", name, info.width, info.height, info.format);
+
 									if(info.format == 0) {
 										sprintf_s(temp, "DirectX 9 : %dx%d", info.width, info.height);
 									}
