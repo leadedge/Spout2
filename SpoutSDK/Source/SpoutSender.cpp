@@ -66,16 +66,21 @@ void SpoutSender::ReleaseSender(DWORD dwMsec)
 
 
 //---------------------------------------------------------
+bool SpoutSender::SendImage(unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert)
+{
+	return spout.SendImage(pixels, width, height, bInvert);
+}
+
+//---------------------------------------------------------
 bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height, bool bInvert) //DWORD dwFormat, bool bInvert)
 {
 	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert);
 }
 
-
 //---------------------------------------------------------
-bool SpoutSender::SendImage(unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert)
+bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert)
 {
-	return spout.SendImage(pixels, width, height, bInvert);
+	return spout.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert);
 }
 
 
@@ -96,6 +101,7 @@ bool SpoutSender::SetMemoryShareMode(bool bMemoryMode)
 //---------------------------------------------------------
 void SpoutSender::SetDX9(bool bDX9)
 {
+	// printf("SpoutSender::SetDX9(%d)\n", bDX9);
 	spout.SetDX9(bDX9);
 }
 
@@ -139,7 +145,7 @@ bool SpoutSender::SetVerticalSync(bool bSync)
 }
 
 //---------------------------------------------------------
-bool SpoutSender::GetVerticalSync()
+int SpoutSender::GetVerticalSync()
 {
 	return spout.interop.GetVerticalSync();
 }

@@ -20,6 +20,9 @@
 	25.07.14 - Version 3.001
 			 - changed option to true DX9 mode rather than just compatible format
 			 - recompiled with latest SDK
+	16.08.14 - used DrawToSharedTexture
+			 - Version 3.002
+	18.08.14 - recompiled for testing and copied to GitHub
 
 */
 #include "SpoutSenderSDK2.h"
@@ -29,9 +32,9 @@
 // To force memoryshare
 // #define MemoryShareMode
 #ifndef MemoryShareMode
-	#define FFPARAM_SharingName		(0)
-	#define FFPARAM_Update			(1)
-	#define FFPARAM_DX11format		(2)
+	#define FFPARAM_SharingName (0)
+	#define FFPARAM_Update      (1)
+	#define FFPARAM_DX11        (2)
 #endif
 
 
@@ -60,7 +63,7 @@ static CFFGLPluginInfo PluginInfo (
 	FF_EFFECT,								// Plugin type
 	"Spout Memoryshare sender",				// Plugin description - uses strdup
 	#endif
-	"- - - - - - Vers 3.001 - - - - - -"	// About - uses strdup
+	"- - - - - - Vers 3.002 - - - - - -"	// About - uses strdup
 );
 
 
@@ -73,14 +76,23 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	SetMinInputs(1);
 	SetMaxInputs(1);
 
+
+	/*
+	// Debug console window so printf works
+	FILE* pCout;
+	AllocConsole();
+	freopen_s(&pCout, "CONOUT$", "w", stdout); 
+	printf("\nSpoutSender2 Vers 3.002\n");
+	*/
+
 	// initial values
-	bMemoryMode			= false;
-	bInitialized		= false;
-	bDX9compatible		= true; // DX11 texture format compatible with DX9
-	m_Width				= 0;
-	m_Height			= 0;
-	UserSenderName[0]	= 0;
-	SenderName[0]		= 0;
+	bMemoryMode       = false;
+	bInitialized      = false;
+	bDX9mode          = true; // DirectX 9 mode rather than DirectX 11
+	m_Width           = 0;
+	m_Height          = 0;
+	UserSenderName[0] = 0;
+	SenderName[0]     = 0;
 
 	// Compilation memoryshare
 	#ifdef MemoryShareMode
@@ -91,9 +103,9 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 
 	// Set parameters if not memoryshare mode
 	#ifndef MemoryShareMode
-	SetParamInfo(FFPARAM_SharingName,	"Sender Name",		FF_TYPE_TEXT,		"");
-	SetParamInfo(FFPARAM_Update,		"Update",			FF_TYPE_EVENT,		false );
-	SetParamInfo(FFPARAM_DX11format,	"DX11 format",		FF_TYPE_BOOLEAN,	false );
+	SetParamInfo(FFPARAM_SharingName,   "Sender Name",      FF_TYPE_TEXT,    "");
+	SetParamInfo(FFPARAM_Update,        "Update",           FF_TYPE_EVENT,   false );
+	SetParamInfo(FFPARAM_DX11,          "DirectX 11",       FF_TYPE_BOOLEAN, false );
 	#endif
 
 	// For memory mode, tell Spout to use memoryshare 
@@ -104,13 +116,12 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 		strcpy_s(UserSenderName, 256, "MemoryShare"); 
 	}
 
-	// Set DirectX texture format depending on DX9 compatibility flag
-	// if(bDX9compatible) sender.SetDX9compatible(true);
-	// else sender.SetDX9compatible(false);
+	// Set DirectX mode depending on DX9 flag
+	if(bDX9mode) 
+		sender.SetDX9(true);
+	else 
+	    sender.SetDX9(false);
 
-	// changed to DX9 mode rather than just compatible format
-	if(bDX9compatible) sender.SetDX9(true);
-	else sender.SetDX9(false);
 
 }
 
@@ -172,6 +183,7 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		m_Height = (unsigned int)InputTexture.Height;
 
 		// Create a new sender
+		// printf("Creating (%s) %dx%d\n", SenderName, m_Width, m_Height);
 		bInitialized = sender.CreateSender(SenderName, m_Width, m_Height);
 
 		return FF_SUCCESS; // give it one frame to initialize
@@ -180,6 +192,7 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	else if(m_Width  != (unsigned int)InputTexture.Width 
 		 || m_Height != (unsigned int)InputTexture.Height
 		 || strcmp(SenderName, UserSenderName) != 0 ) {
+
 			// Release existing sender
 			sender.ReleaseSender();
 			bInitialized = false;
@@ -187,9 +200,14 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	}
 
 	// Now we can send the FFGL texture
-	sender.SendTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height);
+	SaveOpenGLstate();
 
-	// Important - Restore the FFGL host FBO binding becasue Spout uses a local fbo
+	// Render the Freeframe texture into the shared texture
+	sender.DrawToSharedTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height, (float)maxCoords.s, (float)maxCoords.t);
+
+	RestoreOpenGLstate();
+
+	// Important - Restore the FFGL host FBO binding because Spout uses a local fbo
 	if(pGL->HostFBO) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, pGL->HostFBO);
 
 	return FF_SUCCESS;
@@ -237,27 +255,24 @@ DWORD SpoutSenderSDK2::SetParameter(const SetParameterStruct* pParam)
 					// Is it different to the current sender name ?
 					if(strcmp(SenderName, UserSenderName) != 0) {
 						// Create a new sender
-						if(bInitialized) 
-							sender.ReleaseSender();
+						if(bInitialized) sender.ReleaseSender();
 						// ProcessOpenGL will pick up the change
 						bInitialized = false; 
 					}
 				}
 				break;
 
-			// Set DirectX 11 texture format
-			// 25.07.14 - changed to DX9 mode rather than just compatible format
-			case FFPARAM_DX11format :
+			// Set DirectX 11 mode
+			case FFPARAM_DX11 :
 				if(pParam->NewParameterValue > 0)
 					bDX9 = false;
 				else
 					bDX9 = true;
 
 				// Any change ?
-				if(bDX9 != bDX9compatible) {
-					bDX9compatible = bDX9;
-					// sender.SetDX9compatible(bDX9compatible);
-					sender.SetDX9(bDX9compatible);
+				if(bDX9 != bDX9mode) {
+					bDX9mode = bDX9;
+					sender.SetDX9(bDX9mode);
 					// Create a new sender
 					if(bInitialized) sender.ReleaseSender();
 					bInitialized = false;
@@ -288,7 +303,8 @@ void SpoutSenderSDK2::DrawTexture(GLuint TextureHandle, FFGLTexCoords maxCoords)
 	glBegin(GL_QUADS);
 
 	glTexCoord2f(0.0, 0.0);	
-	glVertex2f(-1, -1);
+	glVertex2f(-1.0, -1.0);
+
 	glTexCoord2f(0.0, (float)maxCoords.t);
 	glVertex2f(-1.0, 1.0);
 
@@ -305,3 +321,49 @@ void SpoutSenderSDK2::DrawTexture(GLuint TextureHandle, FFGLTexCoords maxCoords)
 
 }
 
+
+void SpoutSenderSDK2::SaveOpenGLstate()
+{
+
+	// save texture state, client state, etc.
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+
+	glMatrixMode(GL_TEXTURE);
+	glPushMatrix();
+	glLoadIdentity();
+
+	glPushAttrib(GL_TRANSFORM_BIT);
+	glPushAttrib(GL_TRANSFORM_BIT);
+	glGetFloatv(GL_VIEWPORT, vpdim);
+	glViewport(0, 0, m_Width, m_Height);
+	
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity(); // reset the current matrix back to its default state
+	glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0f, 1.0f);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+}
+
+
+void SpoutSenderSDK2::RestoreOpenGLstate()
+{
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+		
+	glPopAttrib();
+	glViewport((int)vpdim[0], (int)vpdim[1], (int)vpdim[2], (int)vpdim[3]);
+		
+	glMatrixMode(GL_TEXTURE);
+	glPopMatrix();
+
+	glPopClientAttrib();			
+	glPopAttrib();
+
+}

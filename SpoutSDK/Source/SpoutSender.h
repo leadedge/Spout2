@@ -44,8 +44,10 @@ class SPOUT_DLLEXP SpoutSender {
 	bool CreateSender(char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
 	bool UpdateSender(char *Sendername, unsigned int width, unsigned int height);
 	void ReleaseSender(DWORD dwMsec = 0);
-	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true);
+
 	bool SendImage(unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert=true);
+	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true);
+	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true);
 
 	bool SetMemoryShareMode(bool bMemoryMode = true);
 	bool GetMemoryShareMode();
@@ -56,8 +58,8 @@ class SPOUT_DLLEXP SpoutSender {
 	void SetDX9compatible(bool bCompatible = true); // DirectX 11 format compatible with DirectX 9
 	bool GetDX9compatible();
 
-	bool SetVerticalSync(bool bSync);
-	bool GetVerticalSync();
+	bool SetVerticalSync(bool bSync = true);
+	int GetVerticalSync();
 
 	bool SenderDebug(char *Sendername, int size);
 

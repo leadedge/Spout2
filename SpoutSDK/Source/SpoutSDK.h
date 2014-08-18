@@ -70,14 +70,18 @@ class SPOUT_DLLEXP Spout {
 	// Receiver
 	bool CreateReceiver(char* name, unsigned int &width, unsigned int &height, bool bUseActive = false);
 	void ReleaseReceiver(); 
+
 	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0);
 	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, int glFormat);
+	
 	bool GetImageSize (char* sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);	
 
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
-	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0);
 	
+	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0);
+	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true);
+
 	int  GetSenderCount();
 	bool GetSenderName(int index, char* sendername, int MaxSize = 256);
 	bool GetSenderInfo(char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
@@ -90,13 +94,11 @@ class SPOUT_DLLEXP Spout {
 
 	bool GetMemoryShareMode();
 	bool SetMemoryShareMode(bool bMemory = true);
-	bool GetVerticalSync();
+	int  GetVerticalSync();
 	bool SetVerticalSync(bool bSync = true);
 	bool SelectSenderPanel(char* message = NULL);
 
 	spoutGLDXinterop interop;		// Opengl/directx interop texture sharing
-	// spoutSenderNames senders;		// Spout sender management
-	// spoutMemoryShare MemoryShare;	// Shared memory method
 
 /*
 //
@@ -129,16 +131,11 @@ DXGI_FORMAT_R8G8B8A8_TYPELESS				= 27,
 
 	protected :
 
-	// spoutGLDXinterop interop;		// Opengl/directx interop texture sharing
-	// spoutSenderNames senders;		// Spout sender management
-	// spoutMemoryShare MemoryShare;	// Shared memory method
-
 	// ================================= //
 	//  PRIVATE VARIABLES AND FUNCTIONS  //
 	// ================================= //
 	char g_SharedMemoryName[256];
 	char UserSenderName[256]; // used for the sender selection dialog
-	// char temp[1024];
 	unsigned int g_Width;
 	unsigned int g_Height;
 	HANDLE g_ShareHandle;
