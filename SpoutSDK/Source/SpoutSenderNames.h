@@ -138,9 +138,6 @@ protected:
 		bool setActiveSenderName (const char* SenderName);
 		bool getActiveSenderName (const char* SenderName);
 
-		// Generic sender map info retrieval
-		// bool getSharedInfo (const char* SenderName, SharedTextureInfo* info);
-
 		// ------------------------------------------------------------
 		// Functions to manage shared memory map access
 		//

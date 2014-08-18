@@ -562,7 +562,7 @@ bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, 
 	// HANDLE hMap;
 	// char *pBuf;
 
-	// printf("CreateSender - %s, %dx%d, [%x] [%d]\n", sendername, width, height, hSharehandle, dwFormat);
+	// printf("spoutSenderNames::CreateSender - %s, %dx%d, [%x] [%d]\n", sendername, width, height, hSharehandle, dwFormat);
 	/*
 	// Is the sender of the same name already running ?
 	// Problem here with Max sender if there has been a context
@@ -582,6 +582,7 @@ bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, 
 	// Create or open a shared memory map for this sender - allocate enough for the texture info
 	m_pSenderMap = CreateMap(sendername, sizeof(SharedTextureInfo), m_hSenderMap);
 	if(!m_pSenderMap) {
+		printf("    could not create sender (%s) map\n", sendername);
 		return false;
 	}
 
@@ -595,6 +596,9 @@ bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, 
 	if(width > 0 && height > 0) {
 		// Save the info for this sender in the shared memory map
 		if(!SetSenderInfo(sendername, width, height, hSharehandle, dwFormat)) {
+
+			printf("    could not SetSenderInfo (%s) %dx%d [%x] [%x]\n", sendername, width, height, hSharehandle, dwFormat);
+
 			return false;
 		}
 	}
@@ -756,14 +760,17 @@ char* spoutSenderNames::CreateMap(const char* MapName, int MapSize, HANDLE &hMap
 								MapSize,					// The low-order DWORD - dwMaximumSizeLow - buffer size  
 								(LPCSTR)MapName);			// name of mapping object
 	
+	errnum = GetLastError();
+	// printf("	CreateMap (%s) GetLastError = %d\n", MapName, errnum);
+	// ERROR_INVALID_HANDLE 6 (0x6) The handle is invalid.
+
 	if (hMapFile == NULL) {
-		// printf("	CreateMap null handle (%s)\n", MapName);
+		// printf("	CreateMap (%s) null handle\n", MapName);
 		hMap = NULL;
 		return NULL;
 	}
 
-	errnum = GetLastError();
-	// printf("	CreateMap (%s) GetLastError = %d\n", MapName, errnum);
+
 
 	if(errnum == ERROR_INVALID_HANDLE) {
 		// printf("	CreateMap (%s) invalid handle\n", MapName);
@@ -947,6 +954,10 @@ bool spoutSenderNames::CheckAccess(HANDLE hEvent)
 {
 	DWORD dwWaitResult;
 
+	// LJ DEBUG
+	// Disabled here pending testing but in place inside the funtions
+	return true;
+
 	if(hEvent == NULL) {
 		return false;
 	}
@@ -954,7 +965,7 @@ bool spoutSenderNames::CheckAccess(HANDLE hEvent)
 	dwWaitResult = WaitForSingleObject(hEvent, SPOUT_WAIT_TIMEOUT );
 	if(dwWaitResult == SPOUT_WAIT_TIMEOUT) { // Timeout problem
 		// The time-out interval elapsed, and the object's state is nonsignaled.
-		// printf("CheckAccess : Timeout waiting for event\n");
+		printf("CheckAccess : Timeout waiting for event\n");
 		return false;
 	}
 	else if (dwWaitResult == WAIT_OBJECT_0 ) {
@@ -964,13 +975,13 @@ bool spoutSenderNames::CheckAccess(HANDLE hEvent)
 	else {
 		switch(dwWaitResult) {
 			case WAIT_ABANDONED : // Could return here
-				// printf("CheckAccess : WAIT_ABANDONED\n");
+				printf("CheckAccess : WAIT_ABANDONED\n");
 				break;
 			case SPOUT_WAIT_TIMEOUT : // The time-out interval elapsed, and the object's state is nonsignaled.
-				// printf("CheckAccess : SPOUT_WAIT_TIMEOUT\n");
+				printf("CheckAccess : SPOUT_WAIT_TIMEOUT\n");
 				break;
 			case WAIT_FAILED : // Could use call GetLastError
-				// printf("CheckAccess : WAIT_FAILED\n");
+				printf("CheckAccess : WAIT_FAILED\n");
 				break;
 			default :
 				break;
@@ -983,6 +994,11 @@ bool spoutSenderNames::CheckAccess(HANDLE hEvent)
 
 void spoutSenderNames::AllowAccess(HANDLE hReadEvent, HANDLE hWriteEvent)
 {
+
+	// LJ DEBUG
+	// Disabled here pending testing but in place inside the funtions
+	return;
+
 	// Set the Write Event to signal readers to read
 	if(hWriteEvent != NULL) {
 		SetEvent(hWriteEvent);
@@ -1282,6 +1298,10 @@ bool spoutSenderNames::LockMap(const char *mapname, HANDLE &hLock)
 	// Needs careful testing to determine whether they will stop an operation
 	// and failsafe for functions if they do - timeout duration ?
 
+	// LJ DEBUG
+	// hLock = NULL;
+	// return true;
+
 	// Check the name map mutex, if it does not exist just quit
 	sprintf_s(mutexname, "%s_mutex", mapname);
 	hMutex = OpenMutexA(MUTEX_ALL_ACCESS, FALSE, mutexname);
@@ -1387,7 +1407,7 @@ void spoutSenderNames::CloseMapLock(HANDLE hMutex)
 bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 {
 	HANDLE hMap1 = NULL;
-	HANDLE hMap2 = NULL;
+	// HANDLE hMap2 = NULL;
 	HANDLE hMap3 = NULL;
 	std::set<string> SenderNames;
 	std::set<string>::iterator iter;
