@@ -72,6 +72,8 @@ bool SpoutReceiver::GetImageSize(char* name, unsigned int &width, unsigned int &
 //---------------------------------------------------------
 bool SpoutReceiver::CreateReceiver(char* name, unsigned int &width, unsigned int &height, bool bUseActive)
 {
+	// printf("SpoutReceiver::CreateReceiver (%s) %dx%d\n", name, width, height); 
+
 	return spout.CreateReceiver(name, width, height, bUseActive);
 }
 
@@ -96,18 +98,16 @@ bool SpoutReceiver::UnBindSharedTexture()
 }
 
 
+//---------------------------------------------------------
+int  SpoutReceiver::GetSenderCount()
+{
+	return spout.GetSenderCount();
+}
 
 //---------------------------------------------------------
 bool SpoutReceiver::DrawSharedTexture(float max_x, float max_y, float aspect)
 {
 	return spout.DrawSharedTexture(max_x, max_y, aspect);
-}
-
-
-//---------------------------------------------------------
-int  SpoutReceiver::GetSenderCount()
-{
-	return spout.GetSenderCount();
 }
 
 
@@ -209,8 +209,7 @@ bool SpoutReceiver::SetVerticalSync(bool bSync)
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::GetVerticalSync()
+int SpoutReceiver::GetVerticalSync()
 {
 	return spout.interop.GetVerticalSync();
 }
-

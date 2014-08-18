@@ -15,6 +15,9 @@
 	16.07.14 - restored host fbo binding after readtexture otherwise texture draw does not work
 			 - used a local texture for both textureshare and memoryshare
 	25.07.14 - Version 3.001 - corrected ReceiveTexture in SpoutSDK.cpp for reset if the sender was closed
+	01.08.14 - Version 3.002 - external sender registration
+	13.08.14 - Version 3.003 - restore viewport
+	18.08.14 - recompiled for testing and copied to GitHub
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -65,7 +68,7 @@ static CFFGLPluginInfo PluginInfo (
 	FF_SOURCE,									// Plugin type
 	"Spout Memoryshare receiver",				// Plugin description
 	#endif
-	"- - - - - - Vers 3.001 - - - - - -"		// About
+	"- - - - - - Vers 3.003 - - - - - -"		// About
 );
 
 /////////////////////////////////
@@ -79,12 +82,12 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 
 	/*
 	// Debug console window so printf works
+	FILE* pCout;
 	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
-	printf("\nSpoutReceiverSDK2 Vers 3.000\n");
+	freopen_s(&pCout, "CONOUT$", "w", stdout); 
+	// printf("\nSpoutReceiver2 Vers 3.003\n");
 	*/
+
 
 	// Input properties - this is a source and has no inputs
 	SetMinInputs(0);
@@ -99,39 +102,43 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	// and it connects as memory share and there is no user option to select
 	// default is false (automatic)
 	#ifdef MemoryShareMode
-	bMemoryMode			= true;
+	bMemoryMode = true;
 	#else
-	bMemoryMode			= false;
+	bMemoryMode = false;
 	#endif
 	
-	g_Width				= 0;
-	g_Height			= 0; // zero initial image size
-	myTexture			= NULL; // only used for memoryshare mode
+	g_Width	= 0;
+	g_Height = 0;          // zero initial image size
+	myTexture = NULL;      // only used for memoryshare mode
 
-	bInitialized		= false;
-	bMemoryMode			= false; // default mode is texture rather than memory
-	bInitialized		= false; // not initialized yet by either means
-	bAspect				= false; // preserve aspect ratio of received texture in draw
-	UserSenderName[0]	= 0;
+	bInitialized = false;
+	bMemoryMode = false;   // default mode is texture rather than memory
+	bInitialized = false;  // not initialized yet by either means
+	bAspect = false;       // preserve aspect ratio of received texture in draw
+	UserSenderName[0] = 0;
 
 	//
 	// Parameters
 	//
 	#ifndef MemoryShareMode
-	SetParamInfo(FFPARAM_SharingName,	"Sender Name",		FF_TYPE_TEXT, "");
-	SetParamInfo(FFPARAM_Update,		"Update",			FF_TYPE_EVENT, false );
-	SetParamInfo(FFPARAM_Select,		"Select Sender",	FF_TYPE_EVENT, false );
+	SetParamInfo(FFPARAM_SharingName, "Sender Name",   FF_TYPE_TEXT, "");
+	SetParamInfo(FFPARAM_Update,      "Update",        FF_TYPE_EVENT, false );
+	SetParamInfo(FFPARAM_Select,      "Select Sender", FF_TYPE_EVENT, false );
 	bMemoryMode = false;
 	#else
 	bMemoryMode = true;
 	#endif
-	SetParamInfo(FFPARAM_Aspect,		"Aspect",			FF_TYPE_BOOLEAN, false );
+	SetParamInfo(FFPARAM_Aspect,       "Aspect",       FF_TYPE_BOOLEAN, false );
 
 	// For memory mode, tell Spout to use memoryshare
 	if(bMemoryMode) {
 		receiver.SetMemoryShareMode();
 		// Give it a user name for ProcessOpenGL
 		strcpy_s(UserSenderName, 256, "MemoryShare"); 
+	}
+	else {
+		// LJ DEBUG Set to DX9 mode for version 1 release ?
+		// receiver.SetDX9(true);
 	}
 	
 	// mouse hook - Resolume polls parameters all the time, so this is needed
@@ -143,11 +150,15 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 
 SpoutReceiverSDK2::~SpoutReceiverSDK2()
 {
-	// ReleaseReceiver does nothing if there is no receiver
-	receiver.ReleaseReceiver();
 
-	if(myTexture != 0) glDeleteTextures(1, &myTexture);
-	myTexture = 0;
+	// OpenGL context required
+	if(wglGetCurrentContext()) {
+		// printf("SpoutReceiverSDK2::~SpoutReceiverSDK2\n");
+		// ReleaseReceiver does nothing if there is no receiver
+		receiver.ReleaseReceiver();
+		if(myTexture != 0) glDeleteTextures(1, &myTexture);
+		myTexture = 0;
+	}
 
 	// Free mouse hook
 	if(g_hMouseHook) {
@@ -167,9 +178,11 @@ DWORD SpoutReceiverSDK2::InitGL(const FFGLViewportStruct *vp)
 		// If it is given some value it will keep trying to connect
 		// until the user enters a name of a sender that exists
 		//
-		// This is the behaviour required, so give it the first part of the 
+		// If this is the behaviour required, so give it the first part of the 
 		// SpoutCam CLSID for an arbitrary name that will never be entered
+		// LJ DEBUG 
 		strcpy_s(UserSenderName, 256, "0x8e14549a");
+
 	}
 
 	return FF_SUCCESS;
@@ -177,6 +190,15 @@ DWORD SpoutReceiverSDK2::InitGL(const FFGLViewportStruct *vp)
 
 DWORD SpoutReceiverSDK2::DeInitGL()
 {
+	// OpenGL context required
+	if(wglGetCurrentContext()) {
+		// printf("SpoutReceiverSDK2::DeInitGL\n");
+		// ReleaseReceiver does nothing if there is no receiver
+		receiver.ReleaseReceiver();
+		if(myTexture != 0) glDeleteTextures(1, &myTexture);
+		myTexture = 0;
+	}
+
 	return FF_SUCCESS;
 }
 
@@ -194,13 +216,21 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	//
 	if(!bInitialized) {
 		if(receiver.CreateReceiver(UserSenderName, g_Width, g_Height)) {
+
+			// printf("SpoutReceiverSDK2 Created (%s) %dx%d\n", UserSenderName, g_Width, g_Height);
+
 			strcpy_s(SenderName, UserSenderName);
 			// Did it initialized in Memory share mode ?
 			bMemoryMode = receiver.GetMemoryShareMode();
+			
+			// LJ DEBUG
+			if(bMemoryMode) {
+				// printf("Memoryshare mode\n");
+			}
+
 			// Initialize a texture - Memorymode RGB or Texturemode RGBA
 			InitTexture();
 			bInitialized = true;
-			return FF_SUCCESS;
 		}
 		return FF_SUCCESS;
 	}
@@ -213,18 +243,20 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	//
 	SaveOpenGLstate(); // Aspect ratio control
 	bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D);
-	// Important - Restore the FFGL host FBO binding before the draw
+	// Important - Restore the FFGL host FBO binding BEFORE the draw
 	if(pGL->HostFBO) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, pGL->HostFBO);
 	if(bRet) {
 		// Received the texture OK, but the sender or texture dimensions could have changed
 		// Reset the global width and height so that the viewport can be set for aspect ratio control
 		if(width != g_Width || height != g_Height) {
+			// printf("Size change from %dx%d to %dx%d\n", g_Width, g_Height, width, height);
 			g_Width  = width;
 			g_Height = height;
 			// Reset the local texture
 			InitTexture();
 			return FF_SUCCESS;
 		} // endif sender has changed
+
 		// All matches so draw the texture
 		DrawTexture(myTexture);
 	}
@@ -236,7 +268,6 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 
 void SpoutReceiverSDK2::SaveOpenGLstate()
 {
-	float dim[4];
 	float fx, fy, aspect, vpScaleX, vpScaleY, vpWidth, vpHeight;
 	int vpx, vpy;
 
@@ -250,12 +281,13 @@ void SpoutReceiverSDK2::SaveOpenGLstate()
 
 	glPushAttrib(GL_TRANSFORM_BIT);
 
-	// find the current viewport dimensions in order to scale to the aspect ratio required
-	glGetFloatv(GL_VIEWPORT, dim);
+	// find the current viewport dimensions to scale to the aspect ratio required
+	// and to restore the viewport afterwards
+	glGetIntegerv(GL_VIEWPORT, vpdim);
 
 	// Scale width and height to the current viewport size
-	vpScaleX = dim[2]/(float)g_Width;
-	vpScaleY = dim[3]/(float)g_Height;
+	vpScaleX = (float)vpdim[2]/(float)g_Width;
+	vpScaleY = (float)vpdim[3]/(float)g_Height;
 	vpWidth  = (float)g_Width  * vpScaleX;
 	vpHeight = (float)g_Height * vpScaleY;
 	vpx = vpy = 0;
@@ -275,7 +307,7 @@ void SpoutReceiverSDK2::SaveOpenGLstate()
 			vpWidth = fx;
 		}
 	}
-	glViewport((int)vpx, (int)vpy, (int)vpWidth, (int)vpHeight);
+	glViewport(vpx, vpy, (int)vpWidth, (int)vpHeight);
 				
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
@@ -296,6 +328,7 @@ void SpoutReceiverSDK2::RestoreOpenGLstate()
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
 		
+	glViewport(vpdim[0], vpdim[1], vpdim[2], vpdim[3]);
 	glPopAttrib();
 		
 	glMatrixMode(GL_TEXTURE);
@@ -338,47 +371,55 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 		// These parameters will not exist for memoryshare mode
 		#ifndef MemoryShareMode
 
-			case FFPARAM_SharingName:
+		case FFPARAM_SharingName:
 			if(pParam->NewParameterValue && strlen((char*)pParam->NewParameterValue) > 0) {
 				strcpy_s(UserSenderName, 256, (char*)pParam->NewParameterValue);
+				// If there is anything already in this field at startup
+				// it is set by a saved composition
 			}
 			break;
 
 		// Update user entered name with a click - same as above when a name is entered
 		case FFPARAM_Update :
-			if (pParam->NewParameterValue) { 
-				// If there is anything already in this field at startup, it is set by a saved composition
-				if(bClicked) { // check mouse hook
-					if(bInitialized) {
-						// Is there a  user entered name ?
-						if(UserSenderName[0]) {
-							// Is it different to the current sender name ?
-							if(strcmp(SenderName, UserSenderName) != 0) {
-								// Does the sender exist ?
-								if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
-									// Start again with the new user sender name
-									receiver.ReleaseReceiver();
-									bInitialized = false;
-								}
-								else {
-									// warning - sender does not exist - desirable to have a popup ??
-									// printf("warning - sender (%s) does not exist\n", UserSenderName);
-									// receiver.SelectSenderPanel("Warning\nSender does not exist");
-								}
-							}
-							else {
-								// warning - same name
-								// printf("warning - same name\n", UserSenderName);
-								// receiver.SelectSenderPanel("warning - same name");
-							}
-						}
-						else {
-							// warning - no entry
-							// printf("warning - no entry\n");
-							// receiver.SelectSenderPanel("warning - no entry");
-						}
 
-					} // endif Initialized
+			if (pParam->NewParameterValue) { 
+				// User entry
+				if(bClicked) { // check mouse hook
+					// Is there a  user entered name ?
+					if(UserSenderName[0]) {
+						// Is it different to the current sender name ?
+						// if(strcmp(SenderName, UserSenderName) != 0) {
+							// Does the sender exist ?
+							if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
+								// Is it an external unregistered sender - e.g. VVVV ?
+								if(!receiver.spout.interop.senders.FindSenderName(UserSenderName) ) {
+									// register it
+									receiver.spout.interop.senders.RegisterSenderName(UserSenderName);
+								}
+
+								// LJ DEBUG - The user has selected it, so make it the active sender
+								
+								// Start again with the new user sender name
+								if(bInitialized) receiver.ReleaseReceiver();
+								bInitialized = false;
+							}
+							// else {
+								// warning - sender does not exist - desirable to have a popup ??
+								// printf("warning - sender (%s) does not exist\n", UserSenderName);
+								// receiver.SelectSenderPanel("Warning\nSender does not exist");
+							// }
+						// }
+						// else {
+							// warning - same name
+							// printf("warning - same name\n", UserSenderName);
+							// receiver.SelectSenderPanel("warning - same name");
+						// }
+					} // endif user name entered
+					// else {
+						// warning - no entry
+						// printf("warning - no entry\n");
+						// receiver.SelectSenderPanel("warning - no entry");
+					// }
 					bClicked = false; // reset by button up
 				} // end if clicked
 			} // endif new parameter
@@ -416,6 +457,8 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 }
 
 
+
+
 // Initialize a local texture
 void SpoutReceiverSDK2::InitTexture()
 {
@@ -439,6 +482,7 @@ void SpoutReceiverSDK2::InitTexture()
 // Draw a texture
 void SpoutReceiverSDK2::DrawTexture(GLuint TextureID)
 {
+	
 	glPushMatrix();
 	glColor4f(1.f, 1.f, 1.f, 1.f);
 	glEnable(GL_TEXTURE_2D);
@@ -452,6 +496,7 @@ void SpoutReceiverSDK2::DrawTexture(GLuint TextureID)
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable(GL_TEXTURE_2D);
 	glPopMatrix();
+
 }
 
 //
