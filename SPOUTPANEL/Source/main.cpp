@@ -32,7 +32,9 @@
 //	04.08.14 - text file for unregistered sender
 //			 - refine text file method for unregistered sender - needs path work
 //  13.08.14 - Updated for Isadora testing
-//  16.08.14 - tested with Isadora and Version 1 sender dll OK
+//  16.08.14 - Tested with Isadora and Version 1 SpoutSender dll OK
+//	20.08.14 - recompile and copied to GitHub for Isadora testing
+//
 //
 #include <windows.h>
 #include <vector>
