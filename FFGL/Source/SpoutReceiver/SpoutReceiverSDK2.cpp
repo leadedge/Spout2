@@ -18,6 +18,11 @@
 	01.08.14 - Version 3.002 - external sender registration
 	13.08.14 - Version 3.003 - restore viewport
 	18.08.14 - recompiled for testing and copied to GitHub
+	20.08.14 - activated event locks
+			 - included DX9 mode compile flag (default true for Version 1 compatibility)
+			 - included DX9 arg for SelectSenderPanel
+			 - Version 3.004
+			 - recompiled for testing and copied to GitHub
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -68,7 +73,7 @@ static CFFGLPluginInfo PluginInfo (
 	FF_SOURCE,									// Plugin type
 	"Spout Memoryshare receiver",				// Plugin description
 	#endif
-	"- - - - - - Vers 3.003 - - - - - -"		// About
+	"- - - - - - Vers 3.004 - - - - - -"		// About
 );
 
 /////////////////////////////////
@@ -85,7 +90,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	// printf("\nSpoutReceiver2 Vers 3.003\n");
+	// printf("SpoutReceiver2 Vers 3.004\n");
 	*/
 
 
@@ -112,6 +117,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	myTexture = NULL;      // only used for memoryshare mode
 
 	bInitialized = false;
+	bDX9mode = true; // DirectX 9 mode rather than DirectX 11
 	bMemoryMode = false;   // default mode is texture rather than memory
 	bInitialized = false;  // not initialized yet by either means
 	bAspect = false;       // preserve aspect ratio of received texture in draw
@@ -140,7 +146,13 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 		// LJ DEBUG Set to DX9 mode for version 1 release ?
 		// receiver.SetDX9(true);
 	}
-	
+
+	// Set DirectX mode depending on DX9 flag
+	if(bDX9mode) 
+		receiver.SetDX9(true);
+	else 
+	    receiver.SetDX9(false);
+
 	// mouse hook - Resolume polls parameters all the time, so this is needed
 	if(g_hMouseHook == NULL)
 		g_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, NULL, 0);
@@ -429,7 +441,10 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 		case FFPARAM_Select :
 			if (pParam->NewParameterValue) { 
 				if(bClicked) { // check mouse hook
-					receiver.SelectSenderPanel();
+					if(bDX9mode)
+						receiver.SelectSenderPanel("/DX9");
+					else
+						receiver.SelectSenderPanel(); // default DX11 compatible
 					bClicked = false; // reset by button up
 				} // end clicked
 			} // endif new parameter
