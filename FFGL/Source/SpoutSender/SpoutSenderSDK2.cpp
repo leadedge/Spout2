@@ -23,6 +23,10 @@
 	16.08.14 - used DrawToSharedTexture
 			 - Version 3.002
 	18.08.14 - recompiled for testing and copied to GitHub
+	20.08.14 - sender name existence check
+			 - activated event locks
+			 - Version 3.003
+			 - recompiled for testing and copied to GitHub
 
 */
 #include "SpoutSenderSDK2.h"
@@ -63,7 +67,7 @@ static CFFGLPluginInfo PluginInfo (
 	FF_EFFECT,								// Plugin type
 	"Spout Memoryshare sender",				// Plugin description - uses strdup
 	#endif
-	"- - - - - - Vers 3.002 - - - - - -"	// About - uses strdup
+	"- - - - - - Vers 3.003 - - - - - -"	// About - uses strdup
 );
 
 
@@ -82,8 +86,9 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("\nSpoutSender2 Vers 3.002\n");
+	printf("SpoutSender2 Vers 3.003\n");
 	*/
+
 
 	// initial values
 	bMemoryMode       = false;
@@ -183,8 +188,13 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		m_Height = (unsigned int)InputTexture.Height;
 
 		// Create a new sender
-		// printf("Creating (%s) %dx%d\n", SenderName, m_Width, m_Height);
 		bInitialized = sender.CreateSender(SenderName, m_Width, m_Height);
+		if(!bInitialized) {
+			char temp[256];
+			sprintf(temp,"Could not create sender\n%s\nTry another name", SenderName);
+			MessageBox(NULL, temp, "Spout", MB_OK);
+			UserSenderName[0] = 0; // wait for another name to be entered
+		}
 
 		return FF_SUCCESS; // give it one frame to initialize
 	}
