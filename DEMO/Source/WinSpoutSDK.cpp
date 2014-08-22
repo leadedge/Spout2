@@ -29,6 +29,9 @@
 				- fixed fit to window after fullscreen restore if not checked
 	07-08-14	- Framerate independent of driver vsync
 	10-08-14	- Revised framerate control
+	17-08-14	- Further revised framerate control
+	19-08-14	- Activated event locks - More work on framerate.
+	22.08.14	- recompile with event locks for GitHub
 
 */
 #define MAX_LOADSTRING 100
@@ -68,7 +71,7 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 bool bReceiver      = false; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
-bool bDX9compatible = false; // For DX11 only - compatible DX9 format for DX11 senders
+bool bDX9compatible = true; // For DX11 only - compatible DX9 format for DX11 senders
 // =============================================================
 
 
@@ -117,19 +120,21 @@ GLuint       base;                   // Base Display List For The Font Set
 GLfloat      rotx = 0;               // x rotation amount
 GLfloat      roty = 0;               // y rotation amount
 
+GLfloat offset = -0.48f; // LJ DEBUG
+
 GLuint       cubeTexture;            // Cube texture
 GLuint       myTexture;              // Local texture
 
 // FPS calcs
 double startTime, timeThen, timeNow, elapsedTime, frameTime;
 double frameRate, fps;
+double PCFreq = 0.0;
+__int64 CounterStart = 0;
 
 // Sleep sync control
 bool bVsync = false;
-double diffMillis = 0;
-double prevMillis = 0;
 double waitMillis = 0;
-double millisForFrame = 16.667; // 60fps default
+double millisForFrame = 16.66667; // 60fps default
 
 // Mouse position
 int         MouseXpos = 0;
@@ -147,13 +152,15 @@ int FindPixelType();
 void doFullScreen(bool bFullscreen);
 void SaveOpenGLstate();
 void RestoreOpenGLstate();
-float ofGetElapsedTimef();
-float ofGetElapsedTimeMsecf();
+// float ofGetElapsedTimef();
+// float ofGetElapsedTimeMsecf();
 void GLerror();
 bool OpenSender();
 bool OpenReceiver();
 void ShowSenderInfo();
 void ShowReceiverInfo();
+void StartCounter();
+double GetCounter();
 
 
 void GLerror() {
@@ -165,15 +172,15 @@ void GLerror() {
 	}
 }	
 
+/*
 float ofGetElapsedTimef() {
 	// return ((float) ((int)(timeGetTime() - startTime)) / 1000.0f);
 	DWORD nowTime = timeGetTime();
-
-	printf("start = %d, now = %d, elapsed = %d\n", (DWORD)startTime, nowTime, (nowTime - (DWORD)startTime) );
-
+	// printf("start = %d, now = %d, elapsed = %d\n", (DWORD)startTime, nowTime, (nowTime - (DWORD)startTime) );
 	// return ((float) ((timeGetTime() - (DWORD)startTime)) / 1000.0f);
 	return ((float) ((nowTime - (DWORD)startTime)) / 1000.0f);
 }
+*/
 
 /*
 int ofGetElapsedTimeMillis(){
@@ -357,12 +364,16 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	// Check driver vsync - either Sender or receiver object will do
 	if(sender.GetVerticalSync() == 0) {
 		bVsync = false; 
-		// printf("wglGetSwapIntervalEXT() = 0\nUsing sleep sync\n");
+		// LJ DEBUG
+		printf("wglGetSwapIntervalEXT() = 0\nUsing sleep sync\n");
 		// no driver swap interval set; 
 		// Use sleep sync to avoid ultra fast frame rates
+		// LJ DEBUG
+		sender.SetVerticalSync();
 	}
 	else {
-		// printf("wglGetSwapIntervalEXT() > 0\nUsing monitor vsync\n");
+		// LJ DEBUG
+		printf("wglGetSwapIntervalEXT() > 0\nUsing monitor vsync\n");
 		bVsync = true;
 	}
 
@@ -472,7 +483,11 @@ bool OpenReceiver()
 		// LJ DEBUG !!!
 		width  = 0;
 		height = 0;
+		// printf("Winspout : CreateReceiver (%s) %dx%d\n", g_SenderName, g_Width, g_Height);
 		return true;
+	}
+	else {
+		// printf("Winspout : CreateReceiver failed\n");
 	}
 
 	return false;
@@ -528,15 +543,18 @@ bool OpenSender()
 // Here's Where We Do All The Drawing
 int DrawGLScene(GLvoid)
 {
+	// char sendername[256];
+
+	StartCounter(); // High resolution counter for calculating frame time
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// Clear The Screen And The Depth Buffer
 	glLoadIdentity(); // Reset The View
-
+	
 	if(bReceiver) {
 
 		if(!bInitialized) {
 			bInitialized = OpenReceiver();
-			// printf("OpenReceiver returned %d\n", bInitialized);
+			// printf("Winspout : OpenReceiver returned %d\n", bInitialized);
 			ShowReceiverInfo();
 			return TRUE;
 		}
@@ -553,6 +571,7 @@ int DrawGLScene(GLvoid)
 			// Received the texture OK, but the sender or texture dimensions could have changed
 			// The global name is already changed but the width and height also may be changed
 			if(width != g_Width || height != g_Height) {
+				printf("Winspout - receivetexture %dx%d to %dxd\n", g_Width, g_Height, width, height); 
 				// Reset the global width and height
 				g_Width  = width;
 				g_Height = height;
@@ -563,7 +582,9 @@ int DrawGLScene(GLvoid)
 			} // endif sender has changed
 	
 			// Received OK at the current size
+			// printf("Winspout - receivetexture (%s) %dx%d\n", g_SenderName, g_Width, g_Height);
 
+			/*
 			SaveOpenGLstate(); // Aspect ratio control
 
 			// METHOD 1 - use the local received texture
@@ -582,14 +603,15 @@ int DrawGLScene(GLvoid)
 			glPopMatrix();
 
 			RestoreOpenGLstate();
+			*/
 
-			/*
 			// METHOD 2 - Draw the shared texture
 			glPushMatrix();
 			glColor4f(1.f, 1.f, 1.f, 1.f);
 			receiver.DrawSharedTexture();
 			glPopMatrix();
 
+			/*
 			// METHOD 3 - use the shared texture
 			glPushMatrix();
 			glColor4f(1.f, 1.f, 1.f, 1.f);
@@ -604,17 +626,18 @@ int DrawGLScene(GLvoid)
 			receiver.UnBindSharedTexture();
 			glDisable(GL_TEXTURE_2D);
 			*/
-			ShowReceiverInfo();
+
 		} // endif received OK
 		else {
-			receiver.ReleaseReceiver();
+			// printf("Winspout - receivetexture failed\n");
+			if(bInitialized) receiver.ReleaseReceiver();
 			bInitialized = false; // reset for next round
 		}
 		ShowReceiverInfo();
-		return TRUE; // Return for the next round
+		// LJ DEBUG receiver FPS debugging
+		// return TRUE; // Return for the next round
 	} // endif receiver
 	else {
-
 		if(!bInitialized) {
 			bInitialized = OpenSender();
 			if(!bInitialized) {
@@ -628,6 +651,30 @@ int DrawGLScene(GLvoid)
 		// Sender demo graphics
 		//
 
+		// debugging
+		/*
+		glPushMatrix();
+
+		glShadeModel(GL_FLAT);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+		// float offset = -0.48; // 2.48;
+		glTranslatef(offset, 0.0f, -3.0f);
+		glColor3f(1.0, 1.0, 1.0);
+
+		glBegin(GL_POLYGON);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(-0.99f, -1.0f,  1.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(-0.99f,  1.0f,  1.0f);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
+		glEnd();
+		
+		glPopMatrix();
+
+		offset += 0.001;
+		if(offset > 2.48) offset = -0.48;
+		*/
+
 		// glClearColor(0.039f, 0.392f, 0.549f, 1.0f); // Background 10, 100, 140
 		// glClearColor(0.000f, 0.300f, 0.500f, 1.0f); // deep blue
 		glClearColor(0.000f, 0.200f, 0.400f, 1.0f); // deeper blue
@@ -635,6 +682,7 @@ int DrawGLScene(GLvoid)
 
 		glPushMatrix();
 
+		// Rotating cube
 		glTranslatef(0.0f, 0.0f, -5.0f);
 		glRotatef(rotx,1.0f,0.0f,0.0f);
 		glRotatef(roty,0.0f,1.0f,0.0f);
@@ -694,44 +742,74 @@ int DrawGLScene(GLvoid)
 
 	} // end sender
 
+// done :
+
+	//
+	// fps
+	//
 	// Sleep sync control if the driver is set to disable vsync
 	// Adapted from openframeworks ofAppGlutWindow
 	// jorge's fix for idle / setFrameRate()
 	// https://github.com/openframeworks/openFrameworks/blob/master/CHANGELOG.md
 	//
-
-	timeNow = (double)timeGetTime();
-	elapsedTime = (timeNow-timeThen)+1; // +1 to allow for integer truncation
-
-	// FPS calculations
-	frameTime = elapsedTime/1000.0; // seconds per frame
-	if( frameTime  > 0.01) {
-		fps	= 1.0 / frameTime;
-		// printf("frame time = %f, fps = %f\n", frameTime, fps);
-		// damping
-		frameRate *= 0.99f;
-		frameRate += 0.01f*fps;
-	}
-	timeThen = timeNow;
-
-	if(!bVsync && elapsedTime > 1) {
+	// timeNow = (double)timeGetTime();
+	// elapsedTime = (timeNow-timeThen)+0.5; // +1; // to allow for integer truncation ?
+	elapsedTime = GetCounter(); // higher resolution than timeGetTime()
+	waitMillis = 0.0;
+	frameTime = elapsedTime/1000.0; // in seconds
+	if(!bVsync) {
 		if (elapsedTime > millisForFrame){
 			; // we do nothing, we are already slower than target frame rate
 		} else {
 			waitMillis = millisForFrame - elapsedTime;
-			// printf("Sleep : elapsed = %f wait = %d msec\n", elapsedTime, (DWORD)waitMillis);
-			Sleep((DWORD)waitMillis); //windows sleep in milliseconds
+			// printf("Sleep : elapsed = %f wait = %f (%d) msec\n", elapsedTime, waitMillis, (DWORD)waitMillis);
+			frameTime = (elapsedTime + waitMillis)/1000.0; // seconds per frame
+			Sleep((DWORD)waitMillis); // windows sleep in milliseconds
 		}
+		// printf("sleep frame time = %f msec\n", frameTime*1000.0);
+	}
+	else {
+		// frameTime = GetCounter()/1000.0; // seconds per frame;
+		// printf("vsync frame time = %f\n", frameTime*1000.0);
+	}
+	// printf("frame time = %f\n", frameTime*1000.0);
+	// timeThen = timeNow;
+
+	// FPS calculations
+	if( frameTime  > 0.01) {
+		fps	= 1.0 / frameTime;
+		// printf("frame time = %f, fps = %f\n", frameTime*1000.0, fps);
+		// damping
+		frameRate *= 0.99f;
+		frameRate += 0.01f*fps;
+		// frameRate *= 0.999f;
+		// frameRate += 0.001f*fps;
 	}
 
-	// Lock cube rotation to cycle speed rather than
-	// a fixed rotation amount and relying on frame rate
-	rotx += 33*(float)frameTime;
-	roty += 33*(float)frameTime;
+	rotx += 0.5;
+	roty += 0.5;
 
-	return TRUE;										// Keep Going
+	return TRUE; // Keep Going
 }
 
+void StartCounter()
+{
+    LARGE_INTEGER li;
+    if(!QueryPerformanceFrequency(&li))
+	printf("QueryPerformanceFrequency failed!\n");
+
+    PCFreq = double(li.QuadPart)/1000.0;
+
+    QueryPerformanceCounter(&li);
+    CounterStart = li.QuadPart;
+}
+
+double GetCounter()
+{
+    LARGE_INTEGER li;
+    QueryPerformanceCounter(&li);
+    return double(li.QuadPart-CounterStart)/PCFreq;
+}
 
 void ShowReceiverInfo()
 {
@@ -740,7 +818,7 @@ void ShowReceiverInfo()
 	int height = clientRect.bottom - clientRect.top;
 
 	// Show what a receiver is receiving
-	if(!bFullscreen) {
+	// if(!bFullscreen) {
 
 		glMatrixMode( GL_PROJECTION );
 		glPushMatrix();
@@ -758,6 +836,11 @@ void ShowReceiverInfo()
 			}
 			else {
 				glRasterPos2i( 20, height-30 );
+				
+				// LJ DEBUG
+				// bool bSync = false;
+				// if(sender.GetVerticalSync() == 1) bSync = true;
+				// glPrint("Receiving from : [%s] - fps %2.0f (sync = %d)", g_SenderName, frameRate, bSync, 0.0f);
 				glPrint("Receiving from : [%s] - fps %2.0f", g_SenderName, frameRate, 0.0f);
 				glRasterPos2i( 20, 40 );
 				glPrint("RH click to select  a sender", 0.0f);
@@ -776,7 +859,9 @@ void ShowReceiverInfo()
 				glPrint("Textureshare receiver", 0.0f);
 			}
 			glRasterPos2i( 20, height-50 );
-			glPrint("No sender detected", 0.0f);
+			// LJ DEBUG
+			// glPrint("No sender detected", 0.0f);
+			glPrint("No sender detected - fps %2.0f", frameRate, 0.0f);
 		}
 
 		glPopMatrix();
@@ -784,7 +869,7 @@ void ShowReceiverInfo()
 		glPopMatrix();
 		glMatrixMode( GL_MODELVIEW );
 
-	}
+	// }
 
 } // end ShowReceiverInfo
 
@@ -1030,8 +1115,6 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 		MessageBoxA(NULL,"Initialization Failed.","ERROR",MB_OK|MB_ICONEXCLAMATION);
 		return FALSE;								// Return FALSE
 	}
-
-
 	return TRUE;									// Success
 }
 
@@ -1226,10 +1309,9 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	MSG		msg;									// Windows Message Structure
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
 
-
 	/*
 	// Debug console window so printf works
-	FILE* pCout; // should really be freed on exit
+	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("WinSpoutSDK\n");
@@ -1361,7 +1443,8 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 					//
 					// The CPU thread can be synchronized with the buffer swap by calling glFinish() 
 					// after issuing the swap. This introduces a penalty as it kills throughput advantages
-					// offered by the GL pipeline when the video card is under consistent activity. Video latency becomes the same as the vertical refresh period
+					// offered by the GL pipeline when the video card is under consistent activity.
+					// Video latency becomes the same as the vertical refresh period
 					//
 					// also see : http://www.opengl.org/wiki/Talk:Swap_Interval
 					//
@@ -1369,7 +1452,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 					// modern hardware to perfectly achieve vertical synchronization (vsync).
 					//
 					// LJ DEBUG - has no discernable effect on sync
-					glFinish();
+					// glFinish();
 				}
 
 			} // endif active
