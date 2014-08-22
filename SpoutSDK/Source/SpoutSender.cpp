@@ -39,6 +39,15 @@ SpoutSender::SpoutSender()
 //---------------------------------------------------------
 SpoutSender::~SpoutSender()
 {
+	/*
+	printf("SpoutSender::~SpoutSender\n");
+	if(!wglGetCurrentContext()) {
+		printf("no GL context\n");
+	}
+	else {
+		printf("GL context available\n");
+	}
+	*/
 
 }
 
@@ -61,6 +70,7 @@ bool SpoutSender::UpdateSender(char *name, unsigned int width, unsigned int heig
 //---------------------------------------------------------
 void SpoutSender::ReleaseSender(DWORD dwMsec)
 {
+	// printf("SpoutSender::ReleaseSender\n");
 	spout.ReleaseSender(dwMsec);
 }
 

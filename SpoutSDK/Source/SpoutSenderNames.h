@@ -45,7 +45,8 @@
 #include "SpoutCommon.h"
 #include "spoutMemoryShare.h"
 
-#define SPOUT_WAIT_TIMEOUT 100 // 100 msec wait for events
+// #define SPOUT_WAIT_TIMEOUT 100 // 100 msec wait for events
+#define SPOUT_WAIT_TIMEOUT 67 // LJ DEBUG 4 frame wait for events
 #define MaxSenders 10 // Max for list of Sender names
 
 // The texture information structure that is saved to shared memory

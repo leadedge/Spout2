@@ -42,6 +42,7 @@
 		14-08-14	- Corrected texture delete without context
 		16-08-14	- created DrawToSharedTexture
 		18-08-14	- debugging with WriteTexture method
+		19-08-14	- activated event locks
 					
 
 */
@@ -243,15 +244,11 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 		// Quit if sender creation failed - i.e. trying to create the same sender
 		// LJ DEBUG - modify SpoutPanel to detect format 21 ? How to know it is DX11 ?
 		if(bUseDX9) {
-			
 			// printf("Creating DX9 sender (%s) %dx%d [%x] [%x]\n", sendername, width, height, m_dxShareHandle);
-
 			bRet = senders.CreateSender(sendername, width, height, m_dxShareHandle);
 		}
 		else {
-			
 			// printf("Creating DX11 sender (%s) %dx%d [%x] [%x]\n", sendername, width, height, m_dxShareHandle, format);
-
 			bRet = senders.CreateSender(sendername, width, height, m_dxShareHandle, format);
 		}
 		if(!bRet) {
@@ -731,7 +728,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 //		Access to texture using DX/GL interop functions
 // ----------------------------------------------------------
 
-// DRAW A TEXTURE INTO THE THE SHARED TEXTURE VIA AN FBO
+// DRAW A TEXTURE INTO THE SHARED TEXTURE VIA AN FBO
 bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert)
 {
 	GLuint tempFBO;
@@ -921,12 +918,12 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 	GLuint tempFBO;
 
 	if(m_hInteropDevice == NULL || m_hInteropObject == NULL) {
-		printf("WriteTexture error 1\n");
+		// printf("WriteTexture error 1\n");
 		return false;
 	}
 
 	if(width != (unsigned  int)m_TextureInfo.width || height != (unsigned  int)m_TextureInfo.height) {
-		printf("WriteTexture error 2\n");
+		// printf("WriteTexture error 2\n");
 		return false;
 	}
 
@@ -1014,22 +1011,19 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
-	
-		// Allow readers and writers access
-		senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
-
-		glDeleteFramebuffersEXT(1, &tempFBO);
-		tempFBO = 0;
-
-		// glFlush(); // 0.80 - 0.90
-		// glFinish(); // 1.4 ms / frame - adds approx 0.5 - 0.7 ms / frame
-
-		return true;
+	}
+	else {
+		// printf("WriteTexture lock failed\n");
 	}
 
-	// There is no reader
+	// Allow readers and writers access
 	senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
-	return false;
+	glDeleteFramebuffersEXT(1, &tempFBO);
+	tempFBO = 0;
+
+	// glFlush(); // 0.80 - 0.90
+	// glFinish(); // 1.4 ms / frame - adds approx 0.5 - 0.7 ms / frame
+	return true;
 
 
 } // end WriteTexture
@@ -1084,21 +1078,17 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 	}
 
 	glGenFramebuffersEXT(1, &tempFBO);
-
 	// printf("spoutGLDXinterop::ReadTexture [%d][%x] %dx%d\n", TextureID, TextureTarget, width, height);
 
 	// Wait for writer to signal ready to read
 	if(senders.CheckAccess(m_hWriteEvent)) { // Read the shared texture
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
-
 			// Bind our local fbo
-			// glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, tempFBO); 
 			// Attach the shared texture to the color buffer in our frame buffer
 			// needs GL_TEXTURE_2D as a target for our shared texture
 			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
-			// LJ DEBUG
 			if(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
 				// bind output texture (destination)
 				glBindTexture(TextureTarget, TextureID);
@@ -1117,9 +1107,11 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
 	}
-	
+	else {
+		// printf("ReadTexture lock failed\n");
+	}
+
 	// Allow readers and writers access
-	
 	senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
 	glDeleteFramebuffersEXT(1, &tempFBO);
 	tempFBO = 0;
@@ -1265,21 +1257,21 @@ HRESULT spoutGLDXinterop::LockInteropObject(HANDLE hDevice, HANDLE *hObject)
 		switch (dwError) {
 			case ERROR_BUSY :			// One or more of the objects in <hObjects> was already locked.
 				hr = E_ACCESSDENIED;	// General access denied error
-				printf("	spoutGLDXinterop::LockInteropObject ERROR_BUSY\n");
+				// printf("	spoutGLDXinterop::LockInteropObject ERROR_BUSY\n");
 				break;
 			case ERROR_INVALID_DATA :	// One or more of the objects in <hObjects>
 										// does not belong to the interop device
 										// specified by <hDevice>.
 				hr = E_ABORT;			// Operation aborted
-				printf("	spoutGLDXinterop::LockInteropObject ERROR_INVALID_DATA\n");
+				// printf("	spoutGLDXinterop::LockInteropObject ERROR_INVALID_DATA\n");
 				break;
 			case ERROR_LOCK_FAILED :	// One or more of the objects in <hObjects> failed to 
 				hr = E_ABORT;			// Operation aborted
-				printf("	spoutGLDXinterop::LockInteropObject ERROR_LOCK_FAILED\n");
+				// printf("	spoutGLDXinterop::LockInteropObject ERROR_LOCK_FAILED\n");
 				break;
 			default:
 				hr = E_FAIL;			// unspecified error
-				printf("	spoutGLDXinterop::LockInteropObject UNKNOWN_ERROR\n");
+				// printf("	spoutGLDXinterop::LockInteropObject UNKNOWN_ERROR\n");
 				break;
 		} // end switch
 	} // end false

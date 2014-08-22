@@ -22,7 +22,7 @@
 //		04-08-14	- revise CheckSpoutPanel
 //		05-08-14	- default true for setverticalsync in sender and receiver classes
 //		11-08-14	- fixed incorrect name arg in OpenReceiver for ReceiveTexture / ReceiveImage
-//
+//		22-08-14	- Update before names class revision
 // ================================================================
 /*
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
@@ -103,7 +103,70 @@ bool Spout::CreateSender(char* sendername, unsigned int width, unsigned int heig
 		bMemoryMode = false;
 		strcpy_s(g_SharedMemoryName, 256, sendername);
 	}
-	
+
+	/*
+	// LJ DEBUG
+	// Test for a unique name
+	// http://msdn.microsoft.com/en-us/library/windows/desktop/aa366537%28v=vs.85%29.aspx
+	// CreateFileMapping
+	// If lpName matches the name of an existing event, semaphore, mutex, waitable timer,
+	// or job object, the function fails, and the GetLastError function returns ERROR_INVALID_HANDLE.
+	// This occurs because these objects share the same namespace.
+	HANDLE hMap = CreateFileMappingA (INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 256, (LPCSTR)sendername);
+	if(hMap != NULL) {
+		// printf("%s map created or found OK\n", sendername);
+		CloseHandle(hMap);
+	}
+	else {
+		DWORD errnum = GetLastError();
+		// printf("%s map not found - error %d\n", sendername, errnum);
+		if(errnum == 6) {
+			char temp[256];
+			sprintf(temp,"Could not create sender\n%s\nTry another name", sendername);
+			MessageBox(NULL, temp, "Spout", MB_OK);
+			return false;
+		}
+	}
+	*/
+
+	/*
+	//
+	// Debugging to find what it actually is
+	//
+	// Is there a mutex
+	HANDLE hMutex = CreateMutexA(NULL, 0, sendername); // Creates or opens existing
+	if (hMutex != NULL) { 
+		// printf("%s mutex created or found\n", sendername);
+		CloseHandle(hMutex);
+	}
+	else {
+		errnum = GetLastError();
+		// printf("%s mutex not found - error %d\n", sendername, errnum);
+	}
+
+	// Is there a Semaphore ?
+	HANDLE hSemaphore = CreateSemaphoreA (NULL, 1, 1, (LPSTR)sendername);
+	if (hSemaphore != NULL) { 
+		// printf("%s semaphore created or found\n", sendername);
+		CloseHandle(hSemaphore);
+	}
+	else {
+		errnum = GetLastError();
+		// printf("%s semaphore not found - error %d\n", sendername, errnum);
+	}
+
+	// Is there a waitable timer
+	HANDLE hTimer = CreateWaitableTimer(NULL, TRUE, sendername);
+	if (hTimer != NULL) { 
+		// printf("%s Timer created or found\n", sendername);
+		CloseHandle(hTimer);
+	}
+	else {
+		errnum = GetLastError();
+		// printf("%s timer not found - error %d\n", sendername, errnum);
+	}
+	*/
+
 	// Initialize as a sender in either memory or texture mode
 	// printf("    Calling InitSender\n");
 	return(InitSender(g_hWnd, sendername, width, height, dwFormat, bMemoryMode));
@@ -168,8 +231,6 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 	char UserName[256];
 	UserName[0] = 0; // OK to do this internally
 
-	// printf("Spout::CreateReceiver (%s) %dx%d - bActive = %d, bUseActive = %d\n", sendername, width, height, bActive, bUseActive);
-
 	// Use the active sender if the user wants it or the sender name is not set
 	if(bActive || sendername[0] == 0) {
 		bUseActive = true;
@@ -184,9 +245,10 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 
 	if(OpenReceiver(UserName, width, height)) {
 		strcpy_s(sendername, 256, UserName); // pass back the sendername used
+		// printf("Spout::CreateReceiver (%s) %dx%d - bActive = %d, bUseActive = %d\n", sendername, width, height, bActive, bUseActive);
 		return true;
 	}
-	
+
 
 	return false;
 }
@@ -214,7 +276,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 		// width, g_Width should all be the same
 		// But it is the responsibility of the application to reset any texture that is being sent out.
 		if(width != g_Width || height != g_Height) {
-			printf("    size changed\n    from %dx%d\n    to %dx%d\n", g_Width, g_Height, width, height);
+			// printf("    size changed\n    from %dx%d\n    to %dx%d\n", g_Width, g_Height, width, height);
 			return(UpdateSender(g_SharedMemoryName, width, height));
 		}
 
@@ -226,7 +288,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 			// printf("    interop.WriteTexture OK\n");
 		}
 		else {
-			printf("    interop.WriteTexture failed\n");
+			// printf("    interop.WriteTexture failed\n");
 		}
 
 		return bRet;
@@ -363,6 +425,8 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 	BITMAPINFOHEADER * pbmih; // pointer to it
 	unsigned int imagesize;
 	unsigned char * rgbBuffer;
+
+	// printf("Spout::ReceiveTexture [%d][%x] %dx%d\n", TextureID, TextureTarget, width, height);
 
 	// Has it initialized yet ?
 	if(!bInitialized) {
@@ -966,7 +1030,6 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		// Find if the sender exists
 		// Or if a null name given return the active sender if that exists
 		if(!interop.senders.FindSender(Sendername, width, height, g_ShareHandle, dwFormat)) {
-			// printf("Spout::OpenReceiver FindSender failed\n");
 			// Given name not found ? - has SpoutPanel been opened ?
 			// the globals are reset if it has been
 			if(CheckSpoutPanel()) {
@@ -992,7 +1055,6 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		g_Format = dwFormat;
 
 	}
-	
 	// printf("Spout::OpenReceiver found (%s) %dx%d)\n", Sendername, width, height);
 
 	// Initialize a receiver in either memoryshare or texture mode

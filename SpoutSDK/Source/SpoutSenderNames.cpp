@@ -582,7 +582,7 @@ bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, 
 	// Create or open a shared memory map for this sender - allocate enough for the texture info
 	m_pSenderMap = CreateMap(sendername, sizeof(SharedTextureInfo), m_hSenderMap);
 	if(!m_pSenderMap) {
-		printf("    could not create sender (%s) map\n", sendername);
+		// printf("    could not create sender (%s) map\n", sendername);
 		return false;
 	}
 
@@ -597,7 +597,7 @@ bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, 
 		// Save the info for this sender in the shared memory map
 		if(!SetSenderInfo(sendername, width, height, hSharehandle, dwFormat)) {
 
-			printf("    could not SetSenderInfo (%s) %dx%d [%x] [%x]\n", sendername, width, height, hSharehandle, dwFormat);
+			// printf("    could not SetSenderInfo (%s) %dx%d [%x] [%x]\n", sendername, width, height, hSharehandle, dwFormat);
 
 			return false;
 		}
@@ -624,6 +624,7 @@ bool spoutSenderNames::UpdateSender(const char *sendername, unsigned int width, 
 
 
 
+/*
 // ---------------------------------------------------------
 //	Close a sender - for external access
 //	See - ReleaseSenderName - redundancy or reorganise
@@ -633,6 +634,7 @@ bool spoutSenderNames::CloseSender(const char* sendername)
 	ReleaseSenderName(sendername);
 	return true;
 }
+*/
 
 
 
@@ -817,6 +819,7 @@ char* spoutSenderNames::OpenMap(const char* MapName, int MapSize, HANDLE &hMap)
 								 MapName);			  // name of mapping object
 
 	if (hMapFile == NULL) {
+		// printf("spoutSenderNames::OpenMap failed\n");
 		// no map file means no sender is present
 		hMap = NULL;
 		return NULL;
@@ -875,6 +878,8 @@ bool spoutSenderNames::InitEvents(const char *eventname, HANDLE &hReadEvent, HAN
 	DWORD errnum;
 	char szReadEventName[256];	// name of the read event
 	char szWriteEventName[256];	// name of the write event
+
+	// printf("spoutSenderNames::InitEvents (%s)\n", eventname);
 
 	// Create or open events to control access to the shared texture
 	sprintf_s((char*)szReadEventName,  256, "%s_SpoutReadEvent", eventname);
@@ -956,7 +961,7 @@ bool spoutSenderNames::CheckAccess(HANDLE hEvent)
 
 	// LJ DEBUG
 	// Disabled here pending testing but in place inside the funtions
-	return true;
+	// return true;
 
 	if(hEvent == NULL) {
 		return false;
@@ -965,7 +970,7 @@ bool spoutSenderNames::CheckAccess(HANDLE hEvent)
 	dwWaitResult = WaitForSingleObject(hEvent, SPOUT_WAIT_TIMEOUT );
 	if(dwWaitResult == SPOUT_WAIT_TIMEOUT) { // Timeout problem
 		// The time-out interval elapsed, and the object's state is nonsignaled.
-		printf("CheckAccess : Timeout waiting for event\n");
+		// printf("CheckAccess : Timeout waiting for event\n");
 		return false;
 	}
 	else if (dwWaitResult == WAIT_OBJECT_0 ) {
@@ -975,13 +980,13 @@ bool spoutSenderNames::CheckAccess(HANDLE hEvent)
 	else {
 		switch(dwWaitResult) {
 			case WAIT_ABANDONED : // Could return here
-				printf("CheckAccess : WAIT_ABANDONED\n");
+				// printf("CheckAccess : WAIT_ABANDONED\n");
 				break;
 			case SPOUT_WAIT_TIMEOUT : // The time-out interval elapsed, and the object's state is nonsignaled.
-				printf("CheckAccess : SPOUT_WAIT_TIMEOUT\n");
+				// printf("CheckAccess : SPOUT_WAIT_TIMEOUT\n");
 				break;
 			case WAIT_FAILED : // Could use call GetLastError
-				printf("CheckAccess : WAIT_FAILED\n");
+				// printf("CheckAccess : WAIT_FAILED\n");
 				break;
 			default :
 				break;
@@ -997,7 +1002,7 @@ void spoutSenderNames::AllowAccess(HANDLE hReadEvent, HANDLE hWriteEvent)
 
 	// LJ DEBUG
 	// Disabled here pending testing but in place inside the funtions
-	return;
+	// return;
 
 	// Set the Write Event to signal readers to read
 	if(hWriteEvent != NULL) {
@@ -1217,7 +1222,7 @@ bool spoutSenderNames::getActiveSenderName(const char* SenderName)
 	}
 
 	memcpy( (void *)SenderName, (void *)pBuf, 256 ); // get the name string from shared memory
-	
+
 	CloseMap(pBuf, hMap);
 	UnlockMap(hLock);
 
@@ -1416,9 +1421,9 @@ bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 	UNREFERENCED_PARAMETER(Sendername);
 	UNREFERENCED_PARAMETER(size);
 
-	printf("**** SENDER DEBUG ****\n");
+	// printf("**** SENDER DEBUG ****\n");
 
-	printf("1) hSenderNamesMap = [%x], pSenderNamesMap = [%x]\n", m_hSenderNamesMap, m_pSenderNamesMap);
+	// printf("1) hSenderNamesMap = [%x], pSenderNamesMap = [%x]\n", m_hSenderNamesMap, m_pSenderNamesMap);
 
 	// Check the sender names
 	/*
@@ -1437,31 +1442,31 @@ bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 	}
 	*/
 
-	printf("    GetSenderNames\n");
+	// printf("    GetSenderNames\n");
 	if(GetSenderNames(&SenderNames)) {
-		printf("        SenderNames size = [%d]\n", SenderNames.size());
+		// printf("        SenderNames size = [%d]\n", SenderNames.size());
 		if (SenderNames.size() > 0) {
 			for(iter = SenderNames.begin(); iter != SenderNames.end(); iter++) {
 				namestring = *iter;
-				printf("            Sender : [%s]\n", namestring.c_str());
+				// printf("            Sender : [%s]\n", namestring.c_str());
 			}
 		}
 		else {
-			printf("    SenderNames size = 0\n");
+			// printf("    SenderNames size = 0\n");
 		}
 	}
 	else {
-		printf("    GetSenderSet failed\n");
+		// printf("    GetSenderSet failed\n");
 	}
 
 	// LJ DEBUG Try to open the names map directly
 	hMap1 = OpenFileMappingA (FILE_MAP_ALL_ACCESS, FALSE, "SpoutSenderNames");
 	if(hMap1) {
-		printf("    Opened sendernames map [%x] - m_hSenderNamesMap = [%x]\n", hMap1, m_hSenderNamesMap);
+		// printf("    Opened sendernames map [%x] - m_hSenderNamesMap = [%x]\n", hMap1, m_hSenderNamesMap);
 		CloseHandle(hMap1);
 	}
 	else {
-		printf("    Could not open sendernames map\n");
+		// printf("    Could not open sendernames map\n");
 	}
 	
 	/*
@@ -1485,11 +1490,11 @@ bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 	// Open shared memory for the active sender name to access it
 	hMap3 = OpenFileMappingA (FILE_MAP_ALL_ACCESS, FALSE, "ActiveSenderName");
 	if(hMap3) {
-		printf("    Opened active sender map [%x] - m_hActiveSenderMap = [%x]\n", hMap3, m_hActiveSenderMap);
+		// printf("    Opened active sender map [%x] - m_hActiveSenderMap = [%x]\n", hMap3, m_hActiveSenderMap);
 		CloseHandle(hMap3);
 	}
 	else {
-		printf("    Active sender map is closed\n");
+		// printf("    Active sender map is closed\n");
 	}
 
 	return true;
