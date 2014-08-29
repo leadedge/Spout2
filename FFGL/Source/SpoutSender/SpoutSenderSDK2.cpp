@@ -27,6 +27,12 @@
 			 - activated event locks
 			 - Version 3.003
 			 - recompiled for testing and copied to GitHub
+	================================================
+	22.08.14 - Rebuild with MB sendernames class
+			 - Version 3.004
+	25.08.14 - GitHub update
+	29.08.14 - user messages for revised SpoutPanel instead of MessageBox
+			 - Version 3.005
 
 */
 #include "SpoutSenderSDK2.h"
@@ -67,7 +73,7 @@ static CFFGLPluginInfo PluginInfo (
 	FF_EFFECT,								// Plugin type
 	"Spout Memoryshare sender",				// Plugin description - uses strdup
 	#endif
-	"- - - - - - Vers 3.003 - - - - - -"	// About - uses strdup
+	"- - - - - - Vers 3.004 - - - - - -"	// About - uses strdup
 );
 
 
@@ -80,15 +86,13 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	SetMinInputs(1);
 	SetMaxInputs(1);
 
-
 	/*
 	// Debug console window so printf works
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutSender2 Vers 3.003\n");
+	printf("SpoutSender2 Vers 3.004\n");
 	*/
-
 
 	// initial values
 	bMemoryMode       = false;
@@ -190,9 +194,7 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		// Create a new sender
 		bInitialized = sender.CreateSender(SenderName, m_Width, m_Height);
 		if(!bInitialized) {
-			char temp[256];
-			sprintf(temp,"Could not create sender\n%s\nTry another name", SenderName);
-			MessageBox(NULL, temp, "Spout", MB_OK);
+			sender.spout.SelectSenderPanel("Could not create sender\nTry another name");
 			UserSenderName[0] = 0; // wait for another name to be entered
 		}
 
@@ -257,17 +259,29 @@ DWORD SpoutSenderSDK2::SetParameter(const SetParameterStruct* pParam)
 				if(pParam->NewParameterValue && strlen((char*)pParam->NewParameterValue) > 0) {
 					strcpy_s(UserSenderName, (char*)pParam->NewParameterValue);
 				}
+				else {
+					UserSenderName[0] = 0;
+				}
 				break;
 
 			// Update user entered name
 			case FFPARAM_Update :
 				if (pParam->NewParameterValue) { 
+					// Is there any name entered ?
+					if(!UserSenderName[0]) {
+						sender.spout.SelectSenderPanel("No sender name entered");
+					}
 					// Is it different to the current sender name ?
-					if(strcmp(SenderName, UserSenderName) != 0) {
-						// Create a new sender
-						if(bInitialized) sender.ReleaseSender();
-						// ProcessOpenGL will pick up the change
-						bInitialized = false; 
+					else {
+						if(strcmp(SenderName, UserSenderName) != 0) {
+							// Create a new sender
+							if(bInitialized) sender.ReleaseSender();
+							// ProcessOpenGL will pick up the change
+							bInitialized = false; 
+						}
+						else {
+							sender.spout.SelectSenderPanel("Sender already created\nTry another name");
+						}
 					}
 				}
 				break;
