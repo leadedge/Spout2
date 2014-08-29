@@ -31,7 +31,10 @@
 	10-08-14	- Revised framerate control
 	17-08-14	- Further revised framerate control
 	19-08-14	- Activated event locks - More work on framerate.
-	22.08.14	- recompile with event locks for GitHub
+	22.08.14	- Recompile with event locks and vsync mods for GitHub
+	22.08.14	- Rebuild with new sendernames class
+	25.08.14	- Used sleep-based vsync exclusively due to problems with full screen
+	29.08.14	- updated executables and source to GitHub
 
 */
 #define MAX_LOADSTRING 100
@@ -126,13 +129,12 @@ GLuint       cubeTexture;            // Cube texture
 GLuint       myTexture;              // Local texture
 
 // FPS calcs
-double startTime, timeThen, timeNow, elapsedTime, frameTime;
+double startTime, elapsedTime, frameTime;
 double frameRate, fps;
 double PCFreq = 0.0;
 __int64 CounterStart = 0;
 
 // Sleep sync control
-bool bVsync = false;
 double waitMillis = 0;
 double millisForFrame = 16.66667; // 60fps default
 
@@ -358,25 +360,6 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 		}
 	}
 
-	// Setting swap interval is not useful because the driver settings over-ride and it has no effect
-	// but swap interval is returned OK depending on the NVIDAI control panel settings
-
-	// Check driver vsync - either Sender or receiver object will do
-	if(sender.GetVerticalSync() == 0) {
-		bVsync = false; 
-		// LJ DEBUG
-		printf("wglGetSwapIntervalEXT() = 0\nUsing sleep sync\n");
-		// no driver swap interval set; 
-		// Use sleep sync to avoid ultra fast frame rates
-		// LJ DEBUG
-		sender.SetVerticalSync();
-	}
-	else {
-		// LJ DEBUG
-		printf("wglGetSwapIntervalEXT() > 0\nUsing monitor vsync\n");
-		bVsync = true;
-	}
-
 	// Determine hardware capabilities now, not later when all is initialized
 	glContext = wglGetCurrentContext(); // should check if opengl context creation succeed
 	if(glContext) {
@@ -443,8 +426,8 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 
 	// Set start time for FPS calculation
 	// Initialize timing variables
-	fps					= 60.0; //give a realistic starting value - win32 issues
-	frameRate			= 60.0;
+	fps       = 60.0; //give a realistic starting value - win32 issues
+	frameRate = 60.0;
 	startTime = (double)timeGetTime();
 
 	// set initial values
@@ -742,48 +725,33 @@ int DrawGLScene(GLvoid)
 
 	} // end sender
 
-// done :
-
 	//
 	// fps
 	//
-	// Sleep sync control if the driver is set to disable vsync
+	// Sleep sync control regardless of whether the driver is set to disable vsync
 	// Adapted from openframeworks ofAppGlutWindow
 	// jorge's fix for idle / setFrameRate()
 	// https://github.com/openframeworks/openFrameworks/blob/master/CHANGELOG.md
+	// Setting swap interval is not useful because the driver settings over-ride and it has no effect
+	// Swap interval is returned OK depending on the NVIDAI control panel settings
+	// but has no effect full screen
 	//
-	// timeNow = (double)timeGetTime();
-	// elapsedTime = (timeNow-timeThen)+0.5; // +1; // to allow for integer truncation ?
 	elapsedTime = GetCounter(); // higher resolution than timeGetTime()
 	waitMillis = 0.0;
 	frameTime = elapsedTime/1000.0; // in seconds
-	if(!bVsync) {
-		if (elapsedTime > millisForFrame){
-			; // we do nothing, we are already slower than target frame rate
-		} else {
-			waitMillis = millisForFrame - elapsedTime;
-			// printf("Sleep : elapsed = %f wait = %f (%d) msec\n", elapsedTime, waitMillis, (DWORD)waitMillis);
-			frameTime = (elapsedTime + waitMillis)/1000.0; // seconds per frame
-			Sleep((DWORD)waitMillis); // windows sleep in milliseconds
-		}
-		// printf("sleep frame time = %f msec\n", frameTime*1000.0);
+	if (elapsedTime > millisForFrame){
+		; // we do nothing, we are already slower than target frame rate
+	} else {
+		waitMillis = millisForFrame - elapsedTime;
+		frameTime = (elapsedTime + waitMillis)/1000.0; // seconds per frame
+		Sleep((DWORD)waitMillis); // windows sleep in milliseconds
 	}
-	else {
-		// frameTime = GetCounter()/1000.0; // seconds per frame;
-		// printf("vsync frame time = %f\n", frameTime*1000.0);
-	}
-	// printf("frame time = %f\n", frameTime*1000.0);
-	// timeThen = timeNow;
-
 	// FPS calculations
 	if( frameTime  > 0.01) {
 		fps	= 1.0 / frameTime;
-		// printf("frame time = %f, fps = %f\n", frameTime*1000.0, fps);
 		// damping
 		frameRate *= 0.99f;
 		frameRate += 0.01f*fps;
-		// frameRate *= 0.999f;
-		// frameRate += 0.001f*fps;
 	}
 
 	rotx += 0.5;
@@ -1392,10 +1360,9 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 				else if (keys[VK_SPACE]) {					// Is the space bar Being Pressed?
 					keys[VK_SPACE]=FALSE;
 
-					printf("SPACE\n");
-
 					// LJ DEBUG - test
-					sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
+					// printf("SPACE\n");
+					// sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
 					
 					/*
 					if(bFullscreen) {
