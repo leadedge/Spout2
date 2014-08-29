@@ -18,6 +18,7 @@ public:
 	///////////////////////////////////////////////////
 	DWORD	SetParameter(const SetParameterStruct* pParam);		
 	DWORD	GetParameter(DWORD dwIndex);
+	// char*	GetParameterDisplay(DWORD dwIndex);
 	DWORD	ProcessOpenGL(ProcessOpenGLStruct* pGL);
 	DWORD   InitGL(const FFGLViewportStruct *vp);
 	DWORD   DeInitGL();
@@ -40,7 +41,6 @@ protected:
 	int m_initResources;
 	GLint m_maxCoordsLocation;
 
-	// SpoutReceiver * receiver;
 	SpoutReceiver receiver;
 
 	unsigned int g_Width, g_Height;
@@ -50,11 +50,15 @@ protected:
 
 	char SenderName[256];
 	char UserSenderName[256];
+	char InitialSenderName[256];
+	char HostName[MAX_PATH];
 	
 	bool bInitialized;
 	bool bDX9mode; // Use DirectX 9 instead of DirectX 11
 	bool bMemoryMode; // force memory share mode
 	bool bAspect; // preserve aspect ratio of received texture in draw
+	// bool bUseSpoutPanel;
+	bool bStarted;
 
 	void SaveOpenGLstate();
 	void RestoreOpenGLstate();

@@ -23,11 +23,23 @@
 			 - included DX9 arg for SelectSenderPanel
 			 - Version 3.004
 			 - recompiled for testing and copied to GitHub
+	=======================================================================================================
+	24.08.14 - recompiled with MB sendernames class revision
+			 - disabled mouse hook for SpoutPanel
+			 - Version 3.005
+	26.08.14 - removed mouse hook
+			 - detect existing sender name on restart after Magic full screen.
+			   Version 3.006
+	29.08.14 - detect host name and dll start
+			 - user messages for revised SpoutPanel instead of MessageBox
+			 - Version 3.007
 
 */
 #include "SpoutReceiverSDK2.h"
 #include <FFGL.h>
 #include <FFGLLib.h>
+
+// #include <windows.h>
 
 // To force memoryshare, enable the define in below
 // #define MemoryShareMode
@@ -37,18 +49,11 @@
 	#define FFPARAM_Update			(1)
 	#define FFPARAM_Select			(2)
 	#define FFPARAM_Aspect			(3)
+
 #else
 	#define FFPARAM_Aspect			(0)
 #endif
-
-
-//
-// Mouse hook used for "Update" button to prevent multiple calls while the mouse 
-// button is pressed down, otherwise many calls may be made even for a short click.
-static HHOOK g_hMouseHook = NULL;
-static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
-static bool bClicked = false;
-
+        
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //  Plugin information
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +78,7 @@ static CFFGLPluginInfo PluginInfo (
 	FF_SOURCE,									// Plugin type
 	"Spout Memoryshare receiver",				// Plugin description
 	#endif
-	"- - - - - - Vers 3.004 - - - - - -"		// About
+	"- - - - - - Vers 3.007 - - - - - -"		// About
 );
 
 /////////////////////////////////
@@ -85,14 +90,16 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
  m_maxCoordsLocation(-1)
 {
 
+	HMODULE module;
+	char path[MAX_PATH];
+
 	/*
 	// Debug console window so printf works
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	// printf("SpoutReceiver2 Vers 3.004\n");
+	printf("SpoutReceiver2 Vers 3.007\n");
 	*/
-
 
 	// Input properties - this is a source and has no inputs
 	SetMinInputs(0);
@@ -117,11 +124,13 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	myTexture = NULL;      // only used for memoryshare mode
 
 	bInitialized = false;
-	bDX9mode = true; // DirectX 9 mode rather than DirectX 11
+	bDX9mode = true;       // DirectX 9 mode rather than DirectX 11
 	bMemoryMode = false;   // default mode is texture rather than memory
 	bInitialized = false;  // not initialized yet by either means
 	bAspect = false;       // preserve aspect ratio of received texture in draw
-	UserSenderName[0] = 0;
+	bStarted = false;
+	UserSenderName[0] = 0; // User entered sender name
+	strcpy_s(InitialSenderName, "0x8e14549a"); // Start of the SpoutCam CLSID for an arbitrary name that will never be entered
 
 	//
 	// Parameters
@@ -130,6 +139,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	SetParamInfo(FFPARAM_SharingName, "Sender Name",   FF_TYPE_TEXT, "");
 	SetParamInfo(FFPARAM_Update,      "Update",        FF_TYPE_EVENT, false );
 	SetParamInfo(FFPARAM_Select,      "Select Sender", FF_TYPE_EVENT, false );
+
 	bMemoryMode = false;
 	#else
 	bMemoryMode = true;
@@ -140,11 +150,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	if(bMemoryMode) {
 		receiver.SetMemoryShareMode();
 		// Give it a user name for ProcessOpenGL
-		strcpy_s(UserSenderName, 256, "MemoryShare"); 
-	}
-	else {
-		// LJ DEBUG Set to DX9 mode for version 1 release ?
-		// receiver.SetDX9(true);
+		strcpy_s(UserSenderName, 256, InitialSenderName); 
 	}
 
 	// Set DirectX mode depending on DX9 flag
@@ -153,30 +159,30 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	else 
 	    receiver.SetDX9(false);
 
-	// mouse hook - Resolume polls parameters all the time, so this is needed
-	if(g_hMouseHook == NULL)
-		g_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, NULL, 0);
+	// Find the host executable name
+	module = GetModuleHandle(NULL);
+	GetModuleFileNameA(module, path, MAX_PATH);
+	_splitpath_s(path, NULL, 0, NULL, 0, HostName, MAX_PATH, NULL, 0);
+	// printf("%s\n", HostName);
+	// Magic reacts on button-up, so when the dll loads
+	// the parameters are not activated. Isadora and Resolume act on
+	// button down and Isadora activates all parameters on plugin load
+	if(strcmp(HostName, "Magic") == 0) bStarted = true;
 
 }
 
 
 SpoutReceiverSDK2::~SpoutReceiverSDK2()
 {
-
 	// OpenGL context required
 	if(wglGetCurrentContext()) {
-		// printf("SpoutReceiverSDK2::~SpoutReceiverSDK2\n");
 		// ReleaseReceiver does nothing if there is no receiver
 		receiver.ReleaseReceiver();
 		if(myTexture != 0) glDeleteTextures(1, &myTexture);
 		myTexture = 0;
 	}
 
-	// Free mouse hook
-	if(g_hMouseHook) {
-		UnhookWindowsHookEx(g_hMouseHook);
-		g_hMouseHook = NULL; // static - so this is important
-	}
+
 }
 
 
@@ -186,25 +192,23 @@ SpoutReceiverSDK2::~SpoutReceiverSDK2()
 DWORD SpoutReceiverSDK2::InitGL(const FFGLViewportStruct *vp)
 {
 	if(UserSenderName[0] == 0) {
-		// For detection of the active sender leave UserSenderName NULL
+		// For detection of the active sender leave UserSenderName empty
 		// If it is given some value it will keep trying to connect
 		// until the user enters a name of a sender that exists
-		//
-		// If this is the behaviour required, so give it the first part of the 
-		// SpoutCam CLSID for an arbitrary name that will never be entered
-		// LJ DEBUG 
-		strcpy_s(UserSenderName, 256, "0x8e14549a");
+		// If this is the behaviour required give it an initial name
+		// Otherwise do not and it will start with the active sender
+		// strcpy_s(UserSenderName, 256, InitialSenderName);
 
 	}
-
 	return FF_SUCCESS;
 }
 
+
 DWORD SpoutReceiverSDK2::DeInitGL()
 {
+
 	// OpenGL context required
 	if(wglGetCurrentContext()) {
-		// printf("SpoutReceiverSDK2::DeInitGL\n");
 		// ReleaseReceiver does nothing if there is no receiver
 		receiver.ReleaseReceiver();
 		if(myTexture != 0) glDeleteTextures(1, &myTexture);
@@ -222,61 +226,55 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	//
 	// Initialize a receiver
 	//
-	// If UserSenderName is already set, CreateReceiver will attempt to connect to
-	// that sender otherwise if UserSenderName is NULL the active sender will be used.
-	// CreateReceiver will return true only if it finds a sender running.
 	//
 	if(!bInitialized) {
-		if(receiver.CreateReceiver(UserSenderName, g_Width, g_Height)) {
 
-			// printf("SpoutReceiverSDK2 Created (%s) %dx%d\n", UserSenderName, g_Width, g_Height);
+		// If UserSenderName is already set, CreateReceiver will attempt to connect to
+		// that sender otherwise if UserSenderName is NULL the active sender will be used.
+		if(UserSenderName[0]) strcpy_s(SenderName, UserSenderName);
 
-			strcpy_s(SenderName, UserSenderName);
+		// CreateReceiver will return true only if it finds a sender running.
+		if(receiver.CreateReceiver(SenderName, g_Width, g_Height)) {
 			// Did it initialized in Memory share mode ?
 			bMemoryMode = receiver.GetMemoryShareMode();
-			
-			// LJ DEBUG
-			if(bMemoryMode) {
-				// printf("Memoryshare mode\n");
-			}
-
 			// Initialize a texture - Memorymode RGB or Texturemode RGBA
 			InitTexture();
 			bInitialized = true;
 		}
+
 		return FF_SUCCESS;
 	}
-
-	//
-	// Receive a shared texture
-	//
-	//	Success : Returns the sender name, width and height
-	//	Failure : No sender detected
-	//
-	SaveOpenGLstate(); // Aspect ratio control
-	bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D);
-	// Important - Restore the FFGL host FBO binding BEFORE the draw
-	if(pGL->HostFBO) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, pGL->HostFBO);
-	if(bRet) {
-		// Received the texture OK, but the sender or texture dimensions could have changed
-		// Reset the global width and height so that the viewport can be set for aspect ratio control
-		if(width != g_Width || height != g_Height) {
-			// printf("Size change from %dx%d to %dx%d\n", g_Width, g_Height, width, height);
-			g_Width  = width;
-			g_Height = height;
-			// Reset the local texture
-			InitTexture();
-			return FF_SUCCESS;
-		} // endif sender has changed
-
-		// All matches so draw the texture
-		DrawTexture(myTexture);
+	else {
+		//
+		// Receive a shared texture
+		//
+		//	Success : Returns the sender name, width and height
+		//	Failure : No sender detected
+		//
+		SaveOpenGLstate(); // Aspect ratio control
+		bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D);
+		// Important - Restore the FFGL host FBO binding BEFORE the draw
+		if(pGL->HostFBO) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, pGL->HostFBO);
+		if(bRet) {
+			// Received the texture OK, but the sender or texture dimensions could have changed
+			// Reset the global width and height so that the viewport can be set for aspect ratio control
+			if(width != g_Width || height != g_Height) {
+				g_Width  = width;
+				g_Height = height;
+				// Reset the local texture
+				InitTexture();
+				return FF_SUCCESS;
+			} // endif sender has changed
+			// All matches so draw the texture
+			DrawTexture(myTexture);
+		}
+		RestoreOpenGLstate();
 	}
-	RestoreOpenGLstate();
 
 	return FF_SUCCESS;
 
 }
+
 
 void SpoutReceiverSDK2::SaveOpenGLstate()
 {
@@ -305,6 +303,7 @@ void SpoutReceiverSDK2::SaveOpenGLstate()
 	vpx = vpy = 0;
 
 	// User option "Aspect" to preserve aspect ratio
+	// Note - width is primary
 	if(bAspect) {
 		// back to original aspect ratio
 		aspect = (float)g_Width/(float)g_Height;
@@ -358,8 +357,9 @@ DWORD SpoutReceiverSDK2::GetParameter(DWORD dwIndex)
 
 	#ifndef MemoryShareMode
 	switch (dwIndex) {
+
 		case FFPARAM_SharingName:
-			if(!bMemoryMode) dwRet = (DWORD)UserSenderName;
+			dwRet = (DWORD)UserSenderName;
 			return dwRet;
 		default:
 			return FF_FAIL;
@@ -386,67 +386,58 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 		case FFPARAM_SharingName:
 			if(pParam->NewParameterValue && strlen((char*)pParam->NewParameterValue) > 0) {
 				strcpy_s(UserSenderName, 256, (char*)pParam->NewParameterValue);
-				// If there is anything already in this field at startup
-				// it is set by a saved composition
+				// If there is anything already in this field at startup, it is set by a saved composition
+			}
+			else {
+				// Reset to an empty string so that the active sender 
+				// is used and SelectSenderPanel works
+				UserSenderName[0] = 0;
 			}
 			break;
 
-		// Update user entered name with a click - same as above when a name is entered
 		case FFPARAM_Update :
-
-			if (pParam->NewParameterValue) { 
-				// User entry
-				if(bClicked) { // check mouse hook
-					// Is there a  user entered name ?
-					if(UserSenderName[0]) {
-						// Is it different to the current sender name ?
-						// if(strcmp(SenderName, UserSenderName) != 0) {
-							// Does the sender exist ?
-							if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
-								// Is it an external unregistered sender - e.g. VVVV ?
-								if(!receiver.spout.interop.senders.FindSenderName(UserSenderName) ) {
-									// register it
-									receiver.spout.interop.senders.RegisterSenderName(UserSenderName);
-								}
-
-								// LJ DEBUG - The user has selected it, so make it the active sender
-								
-								// Start again with the new user sender name
-								if(bInitialized) receiver.ReleaseReceiver();
-								bInitialized = false;
+			// Update the user entered name
+			if(pParam->NewParameterValue) { // name entry toggle is on
+				// Is there a  user entered name
+				if(UserSenderName[0] != 0) {
+					if(!(bInitialized && strcmp(UserSenderName, SenderName) == 0)) {
+						// Does the sender exist ?
+						if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
+							// Is it an external unregistered sender - e.g. VVVV ?
+							if(!receiver.spout.interop.senders.FindSenderName(UserSenderName) ) {
+								// register it
+								receiver.spout.interop.senders.RegisterSenderName(UserSenderName);
 							}
-							// else {
-								// warning - sender does not exist - desirable to have a popup ??
-								// printf("warning - sender (%s) does not exist\n", UserSenderName);
-								// receiver.SelectSenderPanel("Warning\nSender does not exist");
-							// }
-						// }
-						// else {
-							// warning - same name
-							// printf("warning - same name\n", UserSenderName);
-							// receiver.SelectSenderPanel("warning - same name");
-						// }
-					} // endif user name entered
-					// else {
-						// warning - no entry
-						// printf("warning - no entry\n");
-						// receiver.SelectSenderPanel("warning - no entry");
-					// }
-					bClicked = false; // reset by button up
-				} // end if clicked
-			} // endif new parameter
+							// The user has typed it in, so make it the active sender
+							receiver.spout.interop.senders.SetActiveSender(UserSenderName);
+							// Start again
+							if(bInitialized) receiver.ReleaseReceiver();
+							bInitialized = false;
+						}
+					} // endif not already initialized and the same name
+				} // endif user name entered
+			} // endif Update
 			break;
 
-		// SpoutPanel active sender selection
+		// SpoutPanel sender selection
 		case FFPARAM_Select :
-			if (pParam->NewParameterValue) { 
-				if(bClicked) { // check mouse hook
-					if(bDX9mode)
-						receiver.SelectSenderPanel("/DX9");
-					else
-						receiver.SelectSenderPanel(); // default DX11 compatible
-					bClicked = false; // reset by button up
-				} // end clicked
+			if (pParam->NewParameterValue) {
+				if(bStarted) {
+					if(UserSenderName[0]) {
+						char temp[512];
+						receiver.SelectSenderPanel("Using 'Sender Name' entry\nClear the name entry first");
+					}
+					else {
+						if(bDX9mode)
+							receiver.SelectSenderPanel("/DX9");
+						else
+							receiver.SelectSenderPanel(); // default DX11 compatible
+					}
+				}
+				else {
+					// printf("not started\n");
+					bStarted = true;
+				}
 			} // endif new parameter
 			break;
 
@@ -459,9 +450,8 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 				bAspect = false;
 			break;
 
-
 		default:
-				break;
+			break;
 
 		}
 		return FF_SUCCESS;
@@ -470,8 +460,6 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 	return FF_FAIL;
 
 }
-
-
 
 
 // Initialize a local texture
@@ -512,35 +500,4 @@ void SpoutReceiverSDK2::DrawTexture(GLuint TextureID)
 	glDisable(GL_TEXTURE_2D);
 	glPopMatrix();
 
-}
-
-//
-// Callback-Function for mouse hook
-//
-static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
-{
-    // < 0 doesn't concern us
-	// If nCode is less than zero, the hook procedure must return the value returned by CallNextHookEx
-    if(nCode < 0) return CallNextHookEx(g_hMouseHook, nCode, wParam, lParam);
-
-	// If nCode is greater than or equal to zero, and the hook procedure did not process the message, 
-	// it is highly recommended that you call CallNextHookEx and return the value it returns; 
-	// otherwise, other applications that have installed WH_MOUSE_LL hooks will not receive
-	// hook notifications and may behave incorrectly as a result. 
-	// If the hook procedure processed the message, it may return a nonzero value
-	// to prevent the system from passing the message to the rest of the hook chain
-	// or the target window procedure. 
-    if(nCode == HC_ACTION) {
-		// Look for button down then button up
-		if(wParam == WM_LBUTTONDOWN) {
-				bClicked = true;
-			}
-		}
-		else {
-			if(wParam == WM_LBUTTONDOWN) {
-				bClicked = false;
-		}
-    }    
-
-    return CallNextHookEx(g_hMouseHook, nCode, wParam, lParam);
 }
