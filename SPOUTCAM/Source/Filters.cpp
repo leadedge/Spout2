@@ -102,6 +102,8 @@
 			   VLC still needs strict timing control - simple method freezes
 	05-07-14 - major change to use Spout SDK
 	14-07-14 - used copymemory in FlipVertical instead of memcpy
+	24.08.14 - recompiled with MB sendernames class revision
+	29.08.14 - recompiled after changes with FFGL plugins
 
 */
 
@@ -125,12 +127,14 @@ CUnknown * WINAPI CVCam::CreateInstance(LPUNKNOWN lpunk, HRESULT *phr)
 {
     ASSERT(phr);
 
+	/*
 	// debug console window
 	AllocConsole();
-	freopen("CONIN$",  "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);
-	printf("SpoutCam - 05-07-14\n");
+	FILE* pCout; // should really be freed on exit 
+	AllocConsole();
+	freopen_s(&pCout, "CONOUT$", "w", stdout); 
+	printf("SpoutCam - 24-08-14\n");
+	*/
 
     CUnknown *punk = new CVCam(lpunk, phr);
 
