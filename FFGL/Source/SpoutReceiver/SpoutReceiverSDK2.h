@@ -57,7 +57,6 @@ protected:
 	bool bDX9mode; // Use DirectX 9 instead of DirectX 11
 	bool bMemoryMode; // force memory share mode
 	bool bAspect; // preserve aspect ratio of received texture in draw
-	// bool bUseSpoutPanel;
 	bool bStarted;
 
 	void SaveOpenGLstate();

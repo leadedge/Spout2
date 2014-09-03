@@ -33,6 +33,10 @@
 	29.08.14 - detect host name and dll start
 			 - user messages for revised SpoutPanel instead of MessageBox
 			 - Version 3.007
+	31.08.14 - changed from quad to vertex array for draw
+	01.09.14 - leak test and some changes made to SpoutGLDXinterop
+	02.09.14 - added more information in plugin Description and About
+			 - Version 3.008
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -67,7 +71,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout SDK DX11 receiver",					// Plugin description
+	"Spout Receiver - Vers 3.008\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -78,7 +82,7 @@ static CFFGLPluginInfo PluginInfo (
 	FF_SOURCE,									// Plugin type
 	"Spout Memoryshare receiver",				// Plugin description
 	#endif
-	"- - - - - - Vers 3.007 - - - - - -"		// About
+	"S P O U T - Version 2\nspout.zeal.co"		// About
 );
 
 /////////////////////////////////
@@ -98,8 +102,9 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.007\n");
+	printf("SpoutReceiver2 Vers 3.008\n");
 	*/
+
 
 	// Input properties - this is a source and has no inputs
 	SetMinInputs(0);
@@ -119,9 +124,9 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	bMemoryMode = false;
 	#endif
 	
-	g_Width	= 0;
-	g_Height = 0;          // zero initial image size
-	myTexture = NULL;      // only used for memoryshare mode
+	g_Width	= 512;
+	g_Height = 512;        // arbitrary initial image size
+	myTexture = 0;         // only used for memoryshare mode
 
 	bInitialized = false;
 	bDX9mode = true;       // DirectX 9 mode rather than DirectX 11
@@ -163,10 +168,11 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	module = GetModuleHandle(NULL);
 	GetModuleFileNameA(module, path, MAX_PATH);
 	_splitpath_s(path, NULL, 0, NULL, 0, HostName, MAX_PATH, NULL, 0);
-	// printf("%s\n", HostName);
 	// Magic reacts on button-up, so when the dll loads
-	// the parameters are not activated. Isadora and Resolume act on
-	// button down and Isadora activates all parameters on plugin load
+	// the parameters are not activated. 
+	// Isadora and Resolume act on button down and 
+	// Isadora activates all parameters on plugin load.
+	// So allow one cycle for starting.
 	if(strcmp(HostName, "Magic") == 0) bStarted = true;
 
 }
@@ -181,7 +187,6 @@ SpoutReceiverSDK2::~SpoutReceiverSDK2()
 		if(myTexture != 0) glDeleteTextures(1, &myTexture);
 		myTexture = 0;
 	}
-
 
 }
 
@@ -198,7 +203,6 @@ DWORD SpoutReceiverSDK2::InitGL(const FFGLViewportStruct *vp)
 		// If this is the behaviour required give it an initial name
 		// Otherwise do not and it will start with the active sender
 		// strcpy_s(UserSenderName, 256, InitialSenderName);
-
 	}
 	return FF_SUCCESS;
 }
@@ -206,7 +210,6 @@ DWORD SpoutReceiverSDK2::InitGL(const FFGLViewportStruct *vp)
 
 DWORD SpoutReceiverSDK2::DeInitGL()
 {
-
 	// OpenGL context required
 	if(wglGetCurrentContext()) {
 		// ReleaseReceiver does nothing if there is no receiver
@@ -214,7 +217,6 @@ DWORD SpoutReceiverSDK2::DeInitGL()
 		if(myTexture != 0) glDeleteTextures(1, &myTexture);
 		myTexture = 0;
 	}
-
 	return FF_SUCCESS;
 }
 
@@ -424,18 +426,16 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 			if (pParam->NewParameterValue) {
 				if(bStarted) {
 					if(UserSenderName[0]) {
-						char temp[512];
 						receiver.SelectSenderPanel("Using 'Sender Name' entry\nClear the name entry first");
 					}
 					else {
 						if(bDX9mode)
 							receiver.SelectSenderPanel("/DX9");
 						else
-							receiver.SelectSenderPanel(); // default DX11 compatible
+							receiver.SelectSenderPanel("/DX11"); // default DX11 compatible
 					}
 				}
 				else {
-					// printf("not started\n");
 					bStarted = true;
 				}
 			} // endif new parameter
@@ -465,7 +465,10 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 // Initialize a local texture
 void SpoutReceiverSDK2::InitTexture()
 {
-	if(myTexture != 0) glDeleteTextures(1, &myTexture);
+	if(myTexture != 0) {
+		glDeleteTextures(1, &myTexture);
+		myTexture = 0;
+	}
 
 	glGenTextures(1, &myTexture);
 	glBindTexture(GL_TEXTURE_2D, myTexture);
@@ -485,17 +488,32 @@ void SpoutReceiverSDK2::InitTexture()
 // Draw a texture
 void SpoutReceiverSDK2::DrawTexture(GLuint TextureID)
 {
-	
+
+	GLfloat tex_coords[] = {
+						 0.0, 1.0,
+						 0.0, 0.0,
+						 1.0, 0.0,
+						 1.0, 1.0 };
+
+	GLfloat verts[] =  {
+						-1.0, -1.0,
+						-1.0,  1.0,
+						 1.0,  1.0,
+						 1.0, -1.0 };
+
 	glPushMatrix();
 	glColor4f(1.f, 1.f, 1.f, 1.f);
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, TextureID); // bind our local texture
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.0, 1.0);	glVertex2f(-1.0,-1.0); // lower left
-	glTexCoord2f(0.0, 0.0);	glVertex2f(-1.0, 1.0); // upper left
-	glTexCoord2f(1.0, 0.0);	glVertex2f( 1.0, 1.0); // upper right
-	glTexCoord2f(1.0, 1.0);	glVertex2f( 1.0,-1.0); // lower right
-	glEnd();
+
+	glEnableClientState( GL_TEXTURE_COORD_ARRAY );
+	glTexCoordPointer(2, GL_FLOAT, 0, tex_coords );
+	glEnableClientState(GL_VERTEX_ARRAY);		
+	glVertexPointer(2, GL_FLOAT, 0, verts );
+	glDrawArrays( GL_TRIANGLE_FAN, 0, 4 );
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable(GL_TEXTURE_2D);
 	glPopMatrix();

@@ -33,6 +33,10 @@
 	25.08.14 - GitHub update
 	29.08.14 - user messages for revised SpoutPanel instead of MessageBox
 			 - Version 3.005
+	01.09.14 - leak test and some changes made to SpoutGLDXinterop
+			 - changed to vertex array draw for DrawToSharedTexture
+	02.09.14 - added more information in plugin Description and About
+			 - Version 3.006
 
 */
 #include "SpoutSenderSDK2.h"
@@ -62,7 +66,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,										// Plugin major version number
 	001,									// Plugin minor version number
 	FF_EFFECT,								// Plugin type
-	"Spout SDK DX11 sender",				// Plugin description - uses strdup
+	"Spout Sender - Vers 3.006\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry\nDirectX 11 : toggle DirectX 11 or DirectX 9 mode", // Plugin description
 	#else
 	"OF47",									// Plugin unique ID - LJ note 4 chars only
 	"SpoutSender2M",						// Plugin name - LJ note 16 chars only ! see freeframe.h
@@ -73,7 +77,7 @@ static CFFGLPluginInfo PluginInfo (
 	FF_EFFECT,								// Plugin type
 	"Spout Memoryshare sender",				// Plugin description - uses strdup
 	#endif
-	"- - - - - - Vers 3.004 - - - - - -"	// About - uses strdup
+	"S P O U T - Version 2\nspout.zeal.co"		// About
 );
 
 
@@ -91,7 +95,7 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutSender2 Vers 3.004\n");
+	printf("SpoutSender2 Vers 3.006\n");
 	*/
 
 	// initial values
@@ -137,8 +141,11 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 
 SpoutSenderSDK2::~SpoutSenderSDK2()
 {
-	// ReleaseSender does nothing if there is no sender
-	sender.ReleaseSender();
+	// OpenGL context required
+	if(wglGetCurrentContext()) {
+		// ReleaseSender does nothing if there is no sender
+		if(bInitialized) sender.ReleaseSender();
+	}
 
 }
 
@@ -157,6 +164,12 @@ DWORD SpoutSenderSDK2::InitGL(const FFGLViewportStruct *vp)
 
 DWORD SpoutSenderSDK2::DeInitGL()
 {
+	// OpenGL context required
+	if(wglGetCurrentContext()) {
+		if(bInitialized) sender.ReleaseSender();
+	}
+	bInitialized = false;
+
 	return FF_SUCCESS;
 }
 
@@ -181,6 +194,7 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	if(!UserSenderName[0]) {
 		return FF_SUCCESS; // keep waiting for a name
 	}
+	
 	// Otherwise create a sender if not initialized yet
 	else if(!bInitialized) {
 
@@ -190,21 +204,19 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		// Set global width and height so any change can be tested
 		m_Width  = (unsigned int)InputTexture.Width;
 		m_Height = (unsigned int)InputTexture.Height;
-
 		// Create a new sender
+		// printf("Creating sender [%s] %dx%d\n", SenderName, m_Width, m_Height);
 		bInitialized = sender.CreateSender(SenderName, m_Width, m_Height);
 		if(!bInitialized) {
 			sender.spout.SelectSenderPanel("Could not create sender\nTry another name");
 			UserSenderName[0] = 0; // wait for another name to be entered
 		}
-
 		return FF_SUCCESS; // give it one frame to initialize
 	}
 	// Has the texture size or user entered sender name changed
 	else if(m_Width  != (unsigned int)InputTexture.Width 
-		 || m_Height != (unsigned int)InputTexture.Height
-		 || strcmp(SenderName, UserSenderName) != 0 ) {
-
+	 || m_Height != (unsigned int)InputTexture.Height
+	 || strcmp(SenderName, UserSenderName) != 0 ) {
 			// Release existing sender
 			sender.ReleaseSender();
 			bInitialized = false;
@@ -265,22 +277,20 @@ DWORD SpoutSenderSDK2::SetParameter(const SetParameterStruct* pParam)
 				break;
 
 			// Update user entered name
+			// Not needed if the host updates the sender name after user entry
 			case FFPARAM_Update :
 				if (pParam->NewParameterValue) { 
 					// Is there any name entered ?
 					if(!UserSenderName[0]) {
 						sender.spout.SelectSenderPanel("No sender name entered");
 					}
-					// Is it different to the current sender name ?
 					else {
+						// Is it different to the current sender name ?
 						if(strcmp(SenderName, UserSenderName) != 0) {
 							// Create a new sender
 							if(bInitialized) sender.ReleaseSender();
 							// ProcessOpenGL will pick up the change
 							bInitialized = false; 
-						}
-						else {
-							sender.spout.SelectSenderPanel("Sender already created\nTry another name");
 						}
 					}
 				}
@@ -319,29 +329,34 @@ DWORD SpoutSenderSDK2::SetParameter(const SetParameterStruct* pParam)
 void SpoutSenderSDK2::DrawTexture(GLuint TextureHandle, FFGLTexCoords maxCoords)
 {
 
+	GLfloat tex_coords[] = {
+				0.0,                0.0,
+				0.0,                (float)maxCoords.t,
+				(float)maxCoords.s, (float)maxCoords.t,
+				(float)maxCoords.s, 0.0 };
+
+	GLfloat verts[] =  {
+						-1.0, -1.0,
+						-1.0,  1.0,
+						 1.0,  1.0,
+						 1.0, -1.0 };
+
+	glPushMatrix();
 	glColor4f(1.f, 1.f, 1.f, 1.f);
-
 	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, TextureHandle);
+	glBindTexture(GL_TEXTURE_2D, TextureHandle); // bind the FFGL texture
 
-	glBegin(GL_QUADS);
-
-	glTexCoord2f(0.0, 0.0);	
-	glVertex2f(-1.0, -1.0);
-
-	glTexCoord2f(0.0, (float)maxCoords.t);
-	glVertex2f(-1.0, 1.0);
-
-	glTexCoord2f((float)maxCoords.s, (float)maxCoords.t);
-	glVertex2f(1.0, 1.0);
-	
-	glTexCoord2f((float)maxCoords.s, 0.0);
-	glVertex2f(1.0, -1.0);
-
-	glEnd();
+	glEnableClientState( GL_TEXTURE_COORD_ARRAY );
+	glTexCoordPointer(2, GL_FLOAT, 0, tex_coords );
+	glEnableClientState(GL_VERTEX_ARRAY);		
+	glVertexPointer(2, GL_FLOAT, 0, verts );
+	glDrawArrays( GL_TRIANGLE_FAN, 0, 4 );
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable(GL_TEXTURE_2D);
+	glPopMatrix();
 
 }
 
