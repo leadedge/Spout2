@@ -36,7 +36,8 @@
 //	20.08.14 - recompile and copied to GitHub for Isadora testing
 //	29.08.14 - added user message dialog
 //			 - removed existence bring to top - handled by Spout SDK
-//			 - restored foreground window
+//			 - restore foreground window on exit
+//	03.09.14 - GitHub update
 //
 #include <windows.h>
 #include <vector>
@@ -109,6 +110,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				// printf("DX9 mode\n");
 				bArgFound = true;
 				bDX9compatible = true;
+			}
+			else {
+				bArgFound = false;
 			}
 		}
 
