@@ -38,6 +38,7 @@
 #include <iostream>
 #include <fstream>
 #include "Shellapi.h"
+#include <Mmsystem.h>		// for timegettime
 
 #include "SpoutCommon.h"
 #include "spoutMemoryShare.h"
@@ -96,8 +97,11 @@ class SPOUT_DLLEXP Spout {
 	bool SetMemoryShareMode(bool bMemory = true);
 	int  GetVerticalSync();
 	bool SetVerticalSync(bool bSync = true);
-	bool SelectSenderPanel(char* message = NULL);
+	bool SelectSenderPanel(const char* message = NULL);
 
+	// Public for debugging
+	bool CheckSpoutPanel();
+	
 	spoutGLDXinterop interop;		// Opengl/directx interop texture sharing
 
 /*
@@ -161,9 +165,15 @@ DXGI_FORMAT_R8G8B8A8_TYPELESS				= 27,
 	bool ReleaseMemoryShare();
 	void SpoutCleanUp(bool bExit = false);
 	bool FlipVertical(unsigned char *src, unsigned int width, unsigned int height);
-	bool CheckSpoutPanel();
+	// bool CheckSpoutPanel();
 	bool CheckSpoutDialog();
 
+	// FPS calcs - TODO cleanup
+	double timeNow, timeThen, elapsedTime, frameTime, lastFrameTime, frameRate, fps, PCFreq, waitMillis, millisForFrame;
+	__int64 CounterStart;
+	// TODO - used ? cleanup
+	void StartCounter();
+	double GetCounter();
 
 };
 

@@ -327,7 +327,6 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	// The shared Direct3D 9 handle is then passed to OpenSharedResource in the hResource argument.
 	hr = pDevice->OpenSharedResource(dxShareHandle, __uuidof(ID3D11Resource), (void**)(pSharedTexture));
 	if(hr != S_OK) {
-		// printf("OpenDX11shareHandle error 1\n");
 		return false;
 	}
 	

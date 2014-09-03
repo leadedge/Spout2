@@ -58,7 +58,7 @@
 
 #define GLEW_STATIC // to use glew32s.lib instead of glew32.lib
 
-// set this to use GLEW instead of dynamic load of extensions
+// set this to use GLEW instead of dynamic load of extensions - used for SpoutCam and SpoutTray
 // #define USE_GLEW	
 
 // *** Load of FBO extensions conflicts with FFGL or Jitter, disable them here ***

@@ -7,6 +7,7 @@
 //		Revisions :
 //
 //		27-07-14	- CreateReceiver - bUseActive flag instead of null name
+//		03.09.14	- Cleanup
 //
 // ====================================================================================
 /*
@@ -72,8 +73,6 @@ bool SpoutReceiver::GetImageSize(char* name, unsigned int &width, unsigned int &
 //---------------------------------------------------------
 bool SpoutReceiver::CreateReceiver(char* name, unsigned int &width, unsigned int &height, bool bUseActive)
 {
-	// printf("SpoutReceiver::CreateReceiver (%s) %dx%d\n", name, width, height); 
-
 	return spout.CreateReceiver(name, width, height, bUseActive);
 }
 
@@ -174,16 +173,11 @@ bool SpoutReceiver::GetDX9()
 //---------------------------------------------------------
 void SpoutReceiver::SetDX9compatible(bool bCompatible)
 {
-
-	// printf("SpoutReceiver compat (%d)\n", bCompatible);
-
 	if(bCompatible) {
-		// printf("DX9 compat : Setting format to DXGI_FORMAT_B8G8R8A8_UNORM\n");
 		// DX11 -> DX9 only works if the DX11 format is set to DXGI_FORMAT_B8G8R8A8_UNORM
 		spout.interop.SetDX11format(DXGI_FORMAT_B8G8R8A8_UNORM);
 	}
 	else {
-		// printf("DX11 compat : Setting format to DXGI_FORMAT_R8G8B8A8_UNORM\n");
 		// DX11 -> DX11 only
 		spout.interop.SetDX11format(DXGI_FORMAT_R8G8B8A8_UNORM);
 	}
@@ -197,14 +191,12 @@ bool SpoutReceiver::GetDX9compatible()
 		return true;
 	else
 		return false;
-	
 }
 
 
 //---------------------------------------------------------
 bool SpoutReceiver::SetVerticalSync(bool bSync)
 {
-
 	return spout.interop.SetVerticalSync(bSync);
 }
 

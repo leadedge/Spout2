@@ -40,6 +40,7 @@
 #include "spoutGLextensions.h"
 #include "spoutDirectX.h"
 #include "spoutSenderNames.h"
+#include "SpoutMemoryShare.h"
 
 #include <windowsx.h>
 #include <d3d9.h>	// DX9
@@ -116,7 +117,14 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		HRESULT LockInteropObject(HANDLE hDevice, HANDLE *hObject);
 		HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE *hObject);
 
-	protected:
+		// LJ DEBUG
+		// FPS calcs
+		double timeNow, timeThen, elapsedTime, frameTime, lastFrameTime, frameRate, fps, PCFreq, waitMillis, millisForFrame;
+
+		GLuint m_glTexture;		// the OpenGL texture linked to it
+		GLuint m_fbo;
+
+protected:
 
 		bool m_bInitialized;	// this instance initialized flag
 		bool bExtensionsLoaded; // extensions have been loaded
@@ -145,7 +153,8 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		HANDLE	m_hInteropDevice;	// handle to the DX/GL interop device
 		HANDLE	m_hInteropObject;	// handle to the DX/GL interop object (the shared texture)
 		HANDLE	m_dxShareHandle;	// shared DX texture handle
-		GLuint	m_glTexture;		// the OpenGL texture linked to it
+		// GLuint	m_glTexture;		// the OpenGL texture linked to it
+		// GLuint	m_fbo;              // common frame buffer object used for copying textures
 
 		bool getSharedTextureInfo(char* sharedMemoryName);
 		bool setSharedTextureInfo(char* sharedMemoryName);

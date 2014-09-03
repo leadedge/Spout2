@@ -22,10 +22,14 @@
 //		04-08-14	- revise CheckSpoutPanel
 //		05-08-14	- default true for setverticalsync in sender and receiver classes
 //		11-08-14	- fixed incorrect name arg in OpenReceiver for ReceiveTexture / ReceiveImage
-//		22-08-14	- Update before names class revision
+//		24-08-14	- changed back to WM_PAINT message instead of RedrawWindow due to FFGL receiver bug appearing again
+//		27-08-14	- removed texture init chech from SelectSenderPanel
+//		29-08-14	- changed SelectSenderPanel to use revised SpoutPanel with user message support
+//		03.09.14	- cleanup
+//		
 // ================================================================
 /*
-		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -57,9 +61,8 @@ Spout::Spout()
 	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	// printf("Spout::Spout()\n");
+	printf("Spout::Spout()\n");
 	*/
-
 	g_Width				= 0;
 	g_Height			= 0;
 	g_ShareHandle		= 0;
@@ -74,6 +77,15 @@ Spout::Spout()
 	bChangeRequested	= true;		// set for initial
 	bUseActive			= false;	// Use the active sender for CreateReceiver
 	bSpoutPanelOpened	= false;	// Selection panel "spoutpanel.exe" opened
+
+	// LJ DEBUG
+	// FPS calcs
+	timeNow = timeThen = elapsedTime = frameTime = lastFrameTime = PCFreq = waitMillis = 0.0;
+	fps = 60.0;
+	frameRate = 60.0;
+	CounterStart = 0;
+	millisForFrame = 16.66667; // 60fps default
+
 }
 
 
@@ -82,95 +94,26 @@ Spout::~Spout()
 {
 	// This is the end, so cleanup and close directx or memoryshare
 	SpoutCleanUp(true);
-
 }
 
 // Public functions
 bool Spout::CreateSender(char* sendername, unsigned int width, unsigned int height, DWORD dwFormat)
 {
-	// bool bRet = false;
 	bool bMemoryMode = true;
-
-	// printf("Spout::CreateSender (%s) %dx%d\n", sendername, width, height);
 
 	// Make sure it has initialized
 	// A render window must be visible for initSharing to work
 	if(!OpenSpout()) {
-		// printf("    CreateSender error 1\n");
 		return false;
 	}
+
 	if(bDxInitOK) {
 		bMemoryMode = false;
 		strcpy_s(g_SharedMemoryName, 256, sendername);
 	}
-
-	/*
-	// LJ DEBUG
-	// Test for a unique name
-	// http://msdn.microsoft.com/en-us/library/windows/desktop/aa366537%28v=vs.85%29.aspx
-	// CreateFileMapping
-	// If lpName matches the name of an existing event, semaphore, mutex, waitable timer,
-	// or job object, the function fails, and the GetLastError function returns ERROR_INVALID_HANDLE.
-	// This occurs because these objects share the same namespace.
-	HANDLE hMap = CreateFileMappingA (INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 256, (LPCSTR)sendername);
-	if(hMap != NULL) {
-		// printf("%s map created or found OK\n", sendername);
-		CloseHandle(hMap);
-	}
-	else {
-		DWORD errnum = GetLastError();
-		// printf("%s map not found - error %d\n", sendername, errnum);
-		if(errnum == 6) {
-			char temp[256];
-			sprintf(temp,"Could not create sender\n%s\nTry another name", sendername);
-			MessageBox(NULL, temp, "Spout", MB_OK);
-			return false;
-		}
-	}
-	*/
-
-	/*
-	//
-	// Debugging to find what it actually is
-	//
-	// Is there a mutex
-	HANDLE hMutex = CreateMutexA(NULL, 0, sendername); // Creates or opens existing
-	if (hMutex != NULL) { 
-		// printf("%s mutex created or found\n", sendername);
-		CloseHandle(hMutex);
-	}
-	else {
-		errnum = GetLastError();
-		// printf("%s mutex not found - error %d\n", sendername, errnum);
-	}
-
-	// Is there a Semaphore ?
-	HANDLE hSemaphore = CreateSemaphoreA (NULL, 1, 1, (LPSTR)sendername);
-	if (hSemaphore != NULL) { 
-		// printf("%s semaphore created or found\n", sendername);
-		CloseHandle(hSemaphore);
-	}
-	else {
-		errnum = GetLastError();
-		// printf("%s semaphore not found - error %d\n", sendername, errnum);
-	}
-
-	// Is there a waitable timer
-	HANDLE hTimer = CreateWaitableTimer(NULL, TRUE, sendername);
-	if (hTimer != NULL) { 
-		// printf("%s Timer created or found\n", sendername);
-		CloseHandle(hTimer);
-	}
-	else {
-		errnum = GetLastError();
-		// printf("%s timer not found - error %d\n", sendername, errnum);
-	}
-	*/
-
+	
 	// Initialize as a sender in either memory or texture mode
-	// printf("    Calling InitSender\n");
 	return(InitSender(g_hWnd, sendername, width, height, dwFormat, bMemoryMode));
-
 
 } // end CreateSender
 
@@ -197,7 +140,6 @@ bool Spout::UpdateSender(char *sendername, unsigned int width, unsigned int heig
 		interop.CreateInterop(g_hWnd, sendername, width, height, dwFormat, false);
 		// Get the new sender width, height and share handle into local copy
 		interop.senders.GetSenderInfo(g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
-		// printf("Spout::UpdateSender (%s) %dx%d\n", g_SharedMemoryName, g_Width, g_Height);
 		return true;
 	}
 
@@ -214,13 +156,12 @@ void Spout::ReleaseSender(DWORD dwMsec)
 	}
 
 	if(g_SharedMemoryName[0] > 0) {
-		// printf("Spout::ReleaseSender (%s)\n", g_SharedMemoryName);
 		interop.senders.ReleaseSenderName(g_SharedMemoryName); // if not registered it does not matter
 	}
 	SpoutCleanUp();
-	bInitialized = false; // LJ DEBUG - needs tracing
+	bInitialized = false; // DEBUG - needs tracing
 	
-	Sleep(dwMsec); // LJ DEBUG - not needed - debugging aid only
+	Sleep(dwMsec); // DEBUG - not needed - debugging aid only
 
 }
 
@@ -234,21 +175,17 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 	// Use the active sender if the user wants it or the sender name is not set
 	if(bActive || sendername[0] == 0) {
 		bUseActive = true;
-		// printf("    No passed sender name - bActive = %d, bUseActive = %d\n", bActive, bUseActive);
 	}
 	else {
 		// Try to find the sender with the name sent or over-ride with user flag
 		strcpy_s(UserName, 256, sendername);
 		bUseActive = bActive; // set global flag to use the active sender or not
-		// printf("    Sender name (%s), bActive = %d bUseActive = %d\n", UserName, bActive, bUseActive);
 	}
 
 	if(OpenReceiver(UserName, width, height)) {
 		strcpy_s(sendername, 256, UserName); // pass back the sendername used
-		// printf("Spout::CreateReceiver (%s) %dx%d - bActive = %d, bUseActive = %d\n", sendername, width, height, bActive, bUseActive);
 		return true;
 	}
-
 
 	return false;
 }
@@ -268,31 +205,14 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 	unsigned char * pBits;
 	unsigned char * rgbBuffer;
 	BITMAPINFOHEADER * pbmih; // pointer to it
-	bool bRet = false;
-
-	// printf("Spout::SendTexture\n");
 
 	if(bDxInitOK) {
 		// width, g_Width should all be the same
 		// But it is the responsibility of the application to reset any texture that is being sent out.
 		if(width != g_Width || height != g_Height) {
-			// printf("    size changed\n    from %dx%d\n    to %dx%d\n", g_Width, g_Height, width, height);
 			return(UpdateSender(g_SharedMemoryName, width, height));
 		}
-
-		// printf("    WriteTexture [%d] [%d] %dx%d\n", TextureID, TextureTarget, width, height);
-
-		bRet = interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert);
-
-		if(bRet) {
-			// printf("    interop.WriteTexture OK\n");
-		}
-		else {
-			// printf("    interop.WriteTexture failed\n");
-		}
-
-		return bRet;
-
+		return(interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert));
 	}
 	else if(bMemoryShareInitOK) {
 		// Memoryshare mode has to get the texture pixels into a bitmap and and write them to shared memory
@@ -336,6 +256,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 		}
 	}
 	return false;
+
 } // end SendTexture
 
 
@@ -416,7 +337,6 @@ bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int he
 //
 bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget)
 {
-	// bool bRet = false;
 	char newname[256];
 	unsigned int newWidth, newHeight;
 	DWORD dwFormat;
@@ -425,8 +345,6 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 	BITMAPINFOHEADER * pbmih; // pointer to it
 	unsigned int imagesize;
 	unsigned char * rgbBuffer;
-
-	// printf("Spout::ReceiveTexture [%d][%x] %dx%d\n", TextureID, TextureTarget, width, height);
 
 	// Has it initialized yet ?
 	if(!bInitialized) {
@@ -465,7 +383,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 		if(interop.senders.CheckSender(g_SharedMemoryName, newWidth, newHeight, hShareHandle, dwFormat)) {
 			// Current sender still exists
 			// Has the width, height, texture format changed
-			// LJ DEBUG no global sharehandle
+			// DEBUG no global sharehandle
 			if(newWidth > 0 && newHeight > 0) {
 				if(newWidth  != g_Width 
 				|| newHeight != g_Height
@@ -474,7 +392,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 					// Re-initialize the receiver
 					if(OpenReceiver(g_SharedMemoryName, newWidth, newHeight)) {				
 						// OpenReceiver will set the global name, width, height and texture format
-						// Set the global texture ID here
+						// TODO - Set the global texture ID here
 						// g_TexID = TextureID;
 						// Pass back the new current name and size
 						strcpy_s(name, 256, g_SharedMemoryName);
@@ -564,7 +482,6 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 // Note was RGB only. Format passed should go through now and work.
 bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, unsigned char* pixels, int glFormat)
 {
-	// bool bRet = false;
 	char newname[256];
 	unsigned int newWidth, newHeight;
 	DWORD dwFormat;
@@ -610,7 +527,7 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 		if(interop.senders.CheckSender(g_SharedMemoryName, newWidth, newHeight, hShareHandle, dwFormat)) {
 			// Current sender still exists
 			// Has the width, height, texture format changed
-			// LJ DEBUG no global sharehandle
+			// DEBUG no global sharehandle
 			if(newWidth > 0 && newHeight > 0) {
 				if(newWidth  != g_Width 
 				|| newHeight != g_Height
@@ -619,7 +536,7 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 					// Re-initialize the receiver
 					if(OpenReceiver(g_SharedMemoryName, newWidth, newHeight)) {				
 						// OpenReceiver will set the global name, width, height and texture format
-						// Set the global texture ID here
+						// TODO - set the global texture ID here
 						// g_TexID = TextureID;
 						// Pass back the new current name and size
 						strcpy_s(name, 256, g_SharedMemoryName);
@@ -784,7 +701,7 @@ bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect)
 //---------------------------------------------------------
 bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert)
 {
-	return interop.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert);
+	return(interop.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert));
 }
 
 
@@ -827,15 +744,17 @@ bool Spout::SetMemoryShareMode(bool bMemoryMode)
 //
 // selectSenderPanel - used by a receiver
 // Optional message argument
-bool Spout::SelectSenderPanel(char *message)
+bool Spout::SelectSenderPanel(const char *message)
 {
 	HANDLE hMutex1;
 	HMODULE module;
+	char UserMessage[512];
 	char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
 
-	if(!bDxInitOK) {
-		// MessageBoxA(NULL, "Spout running in memoryshare mode\nThere can only be one sender\nno sender selection available", "Spout", MB_OK);
-		return false;
+	strcpy_s(UserMessage, 512, message); // could be an arg or a user message
+
+	if(bMemory || bMemoryShareInitOK) {
+		sprintf_s(UserMessage, 512, "Spout running in memoryshare mode\nThere can only be one sender\nno sender selection available");
 	}
 
 	// For a texture share receiver pop up SpoutPanel to allow the user to select a sender
@@ -847,7 +766,6 @@ bool Spout::SelectSenderPanel(char *message)
 	// First check whether the panel is already running
 	// Try to open the application mutex.
 	hMutex1 = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
-
 	if (!hMutex1) {
 		// No mutex, so not running, so can open it
 		// Find the path of the host program where SpoutPanel should have been copied
@@ -866,8 +784,7 @@ bool Spout::SelectSenderPanel(char *message)
 		ShExecInfo.hwnd = NULL;
 		ShExecInfo.lpVerb = NULL;
 		ShExecInfo.lpFile = path;
-		// ShExecInfo.lpParameters = "";
-		ShExecInfo.lpParameters = message;
+		ShExecInfo.lpParameters = UserMessage;
 		ShExecInfo.lpDirectory = NULL;
 		ShExecInfo.nShow = SW_SHOW;
 		ShExecInfo.hInstApp = NULL;	
@@ -882,8 +799,12 @@ bool Spout::SelectSenderPanel(char *message)
 		// Then when the selection panel closes, sender name is tested
 		bSpoutPanelOpened = true;
 		return true;
-	} // The mutex exists, so another instance is already running	
-	CloseHandle(hMutex1);		
+	} // The mutex exists, so another instance is already running
+	else {
+		// The mutex exists, so another instance is already running
+		CloseHandle(hMutex1);
+	}
+
 	return false;
 } // end selectSenderPanel
 
@@ -898,9 +819,9 @@ int Spout::GetSenderCount() {
 
 //
 // Get a sender name given an index and knowing the sender count
-// index						- in
-// sendername					- out
-// sendernameMaxSize			- in
+// index             - in
+// sendername        - out
+// sendernameMaxSize - in
 bool Spout::GetSenderName(int index, char* sendername, int sendernameMaxSize)
 {
 	std::set<string> SenderNameSet;
@@ -929,7 +850,7 @@ bool Spout::GetSenderName(int index, char* sendername, int sendernameMaxSize)
 }
 
 
-// Alll of these redundant - can be directly in the Receiver class . Change/Test
+// All of these redundant - can be directly in the Receiver class . TODO - Change/Test
 //---------------------------------------------------------
 bool Spout::GetActiveSender(char* Sendername)
 {
@@ -980,15 +901,11 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	unsigned int height;
 	bool bMemoryMode = true;
 
-	// printf("Spout::OpenReceiver (%s) %dx%d\n", theName, theWidth, theHeight);
-
 	// A valid name is sent and the user does not want to use the active sender
 	if(theName[0] != 0 && !bUseActive) {
-		// printf("    (%s) %dx%d - bUseActive = %d\n", theName, theWidth, theHeight, bUseActive);
 		strcpy_s(Sendername, 256, theName);
 	}
 	else {
-		// printf("Spout::OpenReceiver (use active sender) %dx%d -  - bUseActive = %d\n", theWidth, theHeight, bUseActive);
 		Sendername[0] = 0;
 	}
 
@@ -998,26 +915,8 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 
 	// Make sure it has been initialized
 	if(!OpenSpout()) {
-		// printf("    Spout::OpenReceiver error 1\n");
 		return false;
 	}
-
-	/*
-	// No senders for texture mode - just return false
-	if(!bMemoryShareInitOK && bDxInitOK && GetSenderCount() == 0) {
-		// The active sender might be unregistered
-		if(bUseActive) {
-			if(!GetActiveSender(tempname)) {
-				// printf("    Spout::OpenReceiver error 2\n");
-				return false;
-			}
-		}
-		else {
-			// printf("    Spout::OpenReceiver error 3\n");
-			return false;
-		}
-	}
-	*/
 
 	// Render window must be visible for initSharing to work
 	g_hWnd = WindowFromDC(wglGetCurrentDC()); 
@@ -1040,7 +939,6 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 				dwFormat = g_Format;
 			}
 			else {
-				// printf("    Spout::OpenReceiver error 3\n");
 			    return false;
 			}
 		}
@@ -1055,7 +953,6 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		g_Format = dwFormat;
 
 	}
-	// printf("Spout::OpenReceiver found (%s) %dx%d)\n", Sendername, width, height);
 
 	// Initialize a receiver in either memoryshare or texture mode
 	if(InitReceiver(g_hWnd, Sendername, width, height, bMemoryMode)) {
@@ -1064,11 +961,8 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		strcpy_s(theName, 256, Sendername); // LJ DEBUG global?
 		theWidth  = g_Width;
 		theHeight = g_Height;
-		// printf("Spout::OpenReceiver OK\n");
 		return true;
 	}
-
-	// printf("Spout::OpenReceiver FAILED\n");
 
 	return false;
 
@@ -1194,12 +1088,9 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 
 bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, unsigned int theHeight, DWORD dwFormat, bool bMemoryMode) 
 {
-	// printf("Spout::InitSender (%s) %dx%d\n", theSendername, theWidth, theHeight);
-
 	// Texture share mode quit if there is no image size to initialize with
 	// Memoryshare can detect a Sender while the receiver is running
 	if(!bMemoryMode && (theWidth == 0 || theHeight == 0)) {
-		// printf("    zero width and height\n");
 		return false;
 	}
 
@@ -1207,10 +1098,8 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 	//	- the user memory mode flag is not set
 	//	- Hardware is compatible
 	if(bGLDXcompatible && !bMemoryMode) {
-		
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
 		if(!interop.CreateInterop(hwnd, theSendername, theWidth, theHeight, dwFormat, false)) {  // False for a sender
-			// printf("    CreateInterop failed\n");
 			return false;
 		}
 
@@ -1220,7 +1109,7 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 		// Get the sender width, height and share handle into local copy
 		interop.senders.GetSenderInfo(g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
 
-		bDxInitOK			= true;
+		bDxInitOK = true;
 		bMemoryShareInitOK	= false;
 		bInitialized = true;
 
@@ -1236,13 +1125,11 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 		g_Height = theHeight;
 		bMemoryShareInitOK = InitMemoryShare(false); // sender
 		if(bMemoryShareInitOK) {
-			bDxInitOK	 = false;
+			bDxInitOK = false;
 			bInitialized = true;
 			return true;
 		}
 	}
-
-	// printf("    InitSender failed\n");
 
 	return false;
 
@@ -1275,7 +1162,6 @@ bool Spout::InitReceiver (HWND hwnd, char* theSendername, unsigned int theWidth,
 	// bChangeRequested is set when the Sender name, image size or share handle changes
 	// or the user selects another Sender - everything has to be reset if already initialized
 	if(bChangeRequested) {
-		// ReleaseMemoryShare(); // done in spoutcleanup
 		SpoutCleanUp();
 		bDxInitOK			= false;
 		bMemoryShareInitOK	= false;
@@ -1298,7 +1184,6 @@ bool Spout::InitReceiver (HWND hwnd, char* theSendername, unsigned int theWidth,
 
 		// Initialize the receiver interop (this will create globals local to the interop class)
 		if(!interop.CreateInterop(hwnd, sendername, width, height, format, true)) { // true meaning receiver
-			// printf("Spout::InitReceiver - CreateInterop failed\n");
 			return false;
 		}
 
@@ -1308,7 +1193,6 @@ bool Spout::InitReceiver (HWND hwnd, char* theSendername, unsigned int theWidth,
 		g_ShareHandle = sharehandle;
 		g_Format = format;
 		strcpy_s(g_SharedMemoryName, 256, sendername);
-		
 
 		bDxInitOK = true;
 		bMemoryShareInitOK = false;
@@ -1354,7 +1238,7 @@ bool Spout::InitMemoryShare(bool bReceiver)
 				return true;
 			}
 			else {
-				// LJ DEBUG - Do we want this - or just wait ?
+				// DEBUG - Do we want this - or just wait ?
 				interop.MemoryShare.DeInitialize();
 				return false;
 			}
@@ -1428,8 +1312,7 @@ bool Spout::CheckSpoutPanel()
 					GetExitCodeProcess(ShExecInfo.hProcess, &dwExitCode);
 					// Only act if exit code = 0 (OK)
 					if(dwExitCode == 0) {
-						// printf("SpoutPanel has been activated\n");
-						
+						// SpoutPanel has been activated
 						string line;
 						HMODULE module;
 						char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
@@ -1444,7 +1327,6 @@ bool Spout::CheckSpoutPanel()
 						// this will not have been set as active yet
 
 						// Try to open the SpoutPanel text file to see if it exists
-						// printf("Try to open [%s]\n", path);
 						// Find the path of the host program where SpoutPanel should have been copied
 						module = GetModuleHandle(NULL);
 						GetModuleFileNameA(module, path, MAX_PATH);
@@ -1456,14 +1338,12 @@ bool Spout::CheckSpoutPanel()
 							if(getline(infile, line)) {
 								// Does the sender exist ?
 								strcpy_s(newname, 256, line.c_str());
-								// printf("File exists [%s]\n", newname);
 								if(interop.senders.getSharedInfo(newname, &TextureInfo)) {
 									interop.senders.RegisterSenderName(newname);
 									strcpy_s(g_SharedMemoryName, 256, newname);
 									g_Width  = (unsigned int)TextureInfo.width;
 									g_Height = (unsigned int)TextureInfo.height;
 									g_Format = TextureInfo.format;
-									// printf("CheckSpoutPanel external sender (%s), %dx%d\n", g_SharedMemoryName, g_Width, g_Height);
 
 									// Register in the list of senders and make it the active sender
 									interop.senders.RegisterSenderName(newname);
@@ -1473,15 +1353,9 @@ bool Spout::CheckSpoutPanel()
 								}
 							}
 							infile.close();
-							if(remove(path) == 0) {
-								// printf("[%s] removed\n", path);
-							}
-							else {
-								// printf("[%s] not found\n", path);
-							}
+							remove(path);
 						} // no text file
 						else {
-							// printf("Text file does not exist\n");
 							// get the active sender which is set by spoutpanel
 							if(interop.senders.GetActiveSender(newname)) { // returns the active sender name
 								if(interop.getSharedInfo(newname, &TextureInfo)) {
@@ -1489,12 +1363,7 @@ bool Spout::CheckSpoutPanel()
 									g_Width  = (unsigned int)TextureInfo.width;
 									g_Height = (unsigned int)TextureInfo.height;
 									g_Format = TextureInfo.format;
-									if(remove(path) == 0) {
-										// printf("[%s] removed\n", path);
-									}
-									else {
-										// printf("[%s] not found\n", path);
-									}
+									remove(path);
 									bRet = true; // will pass on next call to receivetexture
 								}
 							} // no active sender
@@ -1531,11 +1400,6 @@ bool Spout::FlipVertical(unsigned char *src, unsigned int width, unsigned int he
 			CopyMemory(Mid, From + line_s, pitch);
 			CopyMemory(From + line_s, From + line_t, pitch);
 			CopyMemory(From + line_t, Mid, pitch);
-			/*
-			memcpy(Mid, From + line_s, pitch);
-			memcpy(From + line_s, From + line_t, pitch);
-			memcpy(From + line_t, Mid, pitch);
-			*/
 			line_s += pitch;
 			line_t -= pitch;
 		}
@@ -1562,17 +1426,14 @@ bool Spout::OpenSpout()
 			// MessageBoxA(NULL, "    Cannot get GL device context", "OpenSpout", MB_OK);
 			return false;
 		}
+
 		g_hWnd = WindowFromDC(hdc); // can be null though
 		if(interop.LoadGLextensions()) { // did the extensions load OK ?
-
-			// printf("OpenSpout() - GetDX9() = %d\n", GetDX9());
-
 			// Initialize DirectX and prepare GLDX interop
 			if(interop.OpenDirectX(g_hWnd, GetDX9())) { // did the NVIDIA open interop extension work ?
 				bDxInitOK = true; // DirectX initialization OK
 				bMemoryShareInitOK = false;
 				bGLDXcompatible = true; // Set global compatibility flag as well
-				RedrawWindow(g_hWnd, NULL, NULL, RDW_ERASENOW | RDW_ALLCHILDREN); // DirectX init needs a window redraw
 				return true; 
 			}
 		}
@@ -1592,14 +1453,32 @@ bool Spout::OpenSpout()
 
 void Spout::SetDX9(bool bDX9)
 {
-	// printf("Spout::SetDX9(%d)\n", bDX9);
 	interop.UseDX9(bDX9);
 }
 
 
 bool Spout::GetDX9()
 {
-	// printf("Spout::GetDX9() = %d\n",interop.isDX9());
-
 	return interop.isDX9();
 }
+
+// High resolution counter
+void Spout::StartCounter()
+{
+    LARGE_INTEGER li;
+    if(!QueryPerformanceFrequency(&li)) {
+		printf("QueryPerformanceFrequency failed!\n");
+	}
+    PCFreq = double(li.QuadPart)/1000.0;
+
+    QueryPerformanceCounter(&li);
+    CounterStart = li.QuadPart;
+}
+
+double Spout::GetCounter()
+{
+    LARGE_INTEGER li;
+    QueryPerformanceCounter(&li);
+    return double(li.QuadPart-CounterStart)/PCFreq;
+}
+

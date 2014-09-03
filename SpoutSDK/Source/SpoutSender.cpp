@@ -39,15 +39,6 @@ SpoutSender::SpoutSender()
 //---------------------------------------------------------
 SpoutSender::~SpoutSender()
 {
-	/*
-	printf("SpoutSender::~SpoutSender\n");
-	if(!wglGetCurrentContext()) {
-		printf("no GL context\n");
-	}
-	else {
-		printf("GL context available\n");
-	}
-	*/
 
 }
 
@@ -70,7 +61,6 @@ bool SpoutSender::UpdateSender(char *name, unsigned int width, unsigned int heig
 //---------------------------------------------------------
 void SpoutSender::ReleaseSender(DWORD dwMsec)
 {
-	// printf("SpoutSender::ReleaseSender\n");
 	spout.ReleaseSender(dwMsec);
 }
 
@@ -111,7 +101,6 @@ bool SpoutSender::SetMemoryShareMode(bool bMemoryMode)
 //---------------------------------------------------------
 void SpoutSender::SetDX9(bool bDX9)
 {
-	// printf("SpoutSender::SetDX9(%d)\n", bDX9);
 	spout.SetDX9(bDX9);
 }
 
@@ -126,13 +115,11 @@ bool SpoutSender::GetDX9()
 void SpoutSender::SetDX9compatible(bool bCompatible)
 {
 	if(bCompatible) {
-		// printf("Setting : DXGI_FORMAT_B8G8R8A8_UNORM\n");
 		// DX11 -> DX9 only works if the DX11 format is set to DXGI_FORMAT_B8G8R8A8_UNORM
 		spout.interop.SetDX11format(DXGI_FORMAT_B8G8R8A8_UNORM);
 	}
 	else {
 		// DX11 -> DX11 only
-		// printf("Setting : DXGI_FORMAT_R8G8B8A8_UNORM\n");
 		spout.interop.SetDX11format(DXGI_FORMAT_R8G8B8A8_UNORM);
 	}
 }
@@ -160,10 +147,7 @@ int SpoutSender::GetVerticalSync()
 	return spout.interop.GetVerticalSync();
 }
 
-
-
-
-
+//------------------ debugging aid only --------------------
 bool SpoutSender::SenderDebug(char *Sendername, int size)
 {
 	return spout.interop.senders.SenderDebug(Sendername, size);
