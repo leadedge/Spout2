@@ -102,8 +102,11 @@
 			   VLC still needs strict timing control - simple method freezes
 	05-07-14 - major change to use Spout SDK
 	14-07-14 - used copymemory in FlipVertical instead of memcpy
+	--------------------------------------------------------
 	24.08.14 - recompiled with MB sendernames class revision
 	29.08.14 - recompiled after changes with FFGL plugins
+	03.09.14 - used DrawSharedTexture in render to local texture in FillBuffer
+			 - update after SDK testing
 
 */
 
@@ -206,11 +209,6 @@ CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
     CSourceStream(NAME("Spout Cam"), phr, pParent, pPinName), m_pParent(pParent)
 {
 
-	// char Sendername[256];
-	// unsigned int width, height;
-	// DWORD format;
-	// HANDLE sharehandle;
-
 	bMemoryMode		= false; // Default mode is texture, true means memoryshare
 	bInitialized	= false; 
 	bGLinitialized	= false;
@@ -244,58 +242,6 @@ CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
 		g_Height = senderHeight;
 	}
 
-	/*
-	if(receiver.GetActiveSender(Sendername)) {
-		strcpy_s(SharedMemoryName, Sendername);
-		if(receiver.GetSenderInfo(SharedMemoryName, width, height, sharehandle, format)) {
-			// Set the global width and height
-			g_Width  = width;
-			g_Height = height;
-			ShareHandle = sharehandle;
-			bMemoryMode = false;
-		}
-	}
-	else {
-		// Check is to see if a memoryshare Sender is running
-		// If no sender is running, SpoutCam fails
-		receiver.SetMemoryShareMode(true);
-		if(receiver.GetImageSize(SharedMemoryName, senderWidth, senderHeight, bMemoryMode)) {
-			bMemoryMode = true;
-		// bMemoryMode = MemoryShare.Initialize(); // has to be initialized to get memory info
-		// if(bMemoryMode) {
-			// check to see that the Sender is running and if so, set the bitmap size
-			// if(MemoryShare.GetImageSizeFromSharedMemory(senderWidth, senderHeight)) {
-				// Set MemoryShare mode from now on
-				receiver.SetMemoryShareMode(true);
-				SharedMemoryName[0] = 0;
-				g_Width  = senderWidth;
-				g_Height = senderHeight;
-				printf("memoryshare %dx%d\n", g_Width, g_Height);
-			}
-		// } // endif bMemoryShareInitOK
-		// MemoryShare.DeInitialize();
-		*/
-
-		/*
-		// Check is to see if a memoryshare Sender is running
-		// If no sender is running, SpoutCam fails
-		bMemoryMode = MemoryShare.Initialize(); // has to be initialized to get memory info
-		if(bMemoryMode) {
-			// check to see that the Sender is running and if so, set the bitmap size
-			if(MemoryShare.GetImageSizeFromSharedMemory(senderWidth, senderHeight)) {
-				// Set MemoryShare mode from now on
-				receiver.SetMemoryShareMode(true);
-				SharedMemoryName[0] = 0;
-				g_Width  = senderWidth;
-				g_Height = senderHeight;
-				printf("memoryshare %dx%d\n", g_Width, g_Height);
-			}
-		} // endif bMemoryShareInitOK
-		MemoryShare.DeInitialize();
-		*/
-
-	// } // end no memoryshare Sender running
-
 	// Set mediatype to shared width and height or if it did not connect set defaults
 	GetMediaType(&m_mt);
 
@@ -312,14 +258,10 @@ CVCamStream::~CVCamStream()
 	// (needs modification to connector cleanup as in jit.gl.spoutSender)
 	HGLRC ctx = wglGetCurrentContext();
 	if(ctx != NULL) {
+		if(bInitialized) receiver.ReleaseReceiver();
 		if(glContext != NULL) { // global context handle
 			wglDeleteContext(glContext); // try to prevent initgl twice
 		}
-	}
-
-	// if already initialized
-	if(bInitialized) {
-		receiver.ReleaseReceiver(); // LJ DEBUG - check for gl context in release functions
 	}
 
 } 
@@ -352,8 +294,6 @@ HRESULT CVCamStream::QueryInterface(REFIID riid, void **ppv)
 //////////////////////////////////////////////////////////////////////////
 HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 {
-
-	// BITMAPINFOHEADER * pbmih;
 	unsigned char *buffer;
 	unsigned char *src;
 	unsigned char *dst;
@@ -490,9 +430,6 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 		// everything matches so go ahead with the shared texture read
 		if(!bDisconnected) {
 			if(bMemoryMode) {
-
-				// printf("bMemoryMode read\n");
-
 				//
 				// Memoryshare instead of interop texture share
 				//
@@ -555,25 +492,11 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 				glPushMatrix();
 				glLoadIdentity();
 
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, g_fbo); 
-
 				// Attach the local texture (desination) to the color buffer in our frame buffer  
+				// and draw into it with the shared texture
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, g_fbo); 
 				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, g_fbo_texture, 0);
-
-				// draw into it with the shared texture
-				glColor3f(1.0,  1.0, 1.0);
-				glEnable(GL_TEXTURE_2D);
-
-				receiver.BindSharedTexture();			// bind the shared texture for the draw
-				glBegin(GL_QUADS);
-				glTexCoord2d(0, 0);	glVertex2f(-1,  1); // lower left
-				glTexCoord2d(0, 1);	glVertex2f(-1, -1); // upper left
-				glTexCoord2d(1, 1);	glVertex2f( 1, -1); // upper right
-				glTexCoord2d(1, 0);	glVertex2f( 1,  1); // lower right
-				glEnd();
-				receiver.UnBindSharedTexture();			// unbind the shared texture
-
-				glDisable(GL_TEXTURE_2D);
+				receiver.DrawSharedTexture();
 				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); 
 					
 				glMatrixMode(GL_MODELVIEW);
@@ -1045,9 +968,6 @@ bool CVCamStream::FlipVertical(unsigned char *src, unsigned int width, unsigned 
 			CopyMemory(Mid, From + line_s, pitch);	
 			CopyMemory(From + line_s, From + line_t, pitch);
 			CopyMemory(From + line_t, Mid, pitch);
-			// memcpy(Mid, From + line_s, pitch);
-			// memcpy(From + line_s, From + line_t, pitch);
-			// memcpy(From + line_t, Mid, pitch);
 			line_s += pitch;
 			line_t -= pitch;
 		}
