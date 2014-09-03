@@ -18,8 +18,14 @@
 	05-08-14 - Memoryshare working
 	10-08-14 - Updated for testing - DX9 mode
 	13-08-14 - corrected context change texture handle leak
+	14-08-14 - interop class corrected texture delete without context
+	24.08.14 - recompiled with MB sendernames class revision
+	01.09.14 - changes to Interop class to ensure texture and fbo are deleted and set to zero
+	03.09.14 - dest changed cycle delay removed
+			 - error due to not setting texture and fbo ids to zero after release
+			 - subsequent release failed and caused Jitter errors.
 
-		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
@@ -93,8 +99,6 @@ typedef struct _jit_gl_spout_receiver
 	char         g_SenderName[256];
 	GLuint       g_GLtexture; // local utility texture
 	bool         bInitialized;
-	bool         bDestChanged;
-	long         counter;
 
 	// internal jit.gl.texture object
 	t_jit_object *output;
@@ -330,8 +334,6 @@ t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name)
 		x->g_SenderName[0] = 0;     // means it will try to find the active sender when it starts
 		x->g_GLtexture     = NULL;  // local OpenGL texture for memoryshare mode
 		x->bInitialized    = false; // not initialized yet
-		x->bDestChanged    = false; // to avoid context change problem
-		x->counter         = false; // debug counter
 
 		// Create a new Spout receiver
 		x->myReceiver      = new SpoutReceiver;
@@ -408,13 +410,8 @@ t_jit_err jit_gl_spout_receiver_dest_closing(t_jit_gl_spout_receiver *x)
 	// In case we have dest-closing without dest_changed
 	// or dest_changed without dest_closing - allow for both.
 	// Release sender if initialized
-	if(x->bInitialized) {
-		x->myReceiver->ReleaseReceiver();
-		x->bInitialized = false; // Initialize again in draw
-	}
-
-	// same as dest-changed
-	x->bDestChanged = true;
+	if(x->bInitialized)	x->myReceiver->ReleaseReceiver();
+	x->bInitialized = false; // Initialize again in draw
 
 	return JIT_ERR_NONE;
 }
@@ -426,12 +423,9 @@ t_jit_err jit_gl_spout_receiver_dest_changed(t_jit_gl_spout_receiver *x)
 	// Release receiver if initialized
 	//
 	// IMPORTANT : do not re-initialize here but do so next round in draw
-	// also allow one cycle for the new texture to be received
 	//
-	if(x->bInitialized) {
-		x->myReceiver->ReleaseReceiver();
-		x->bInitialized = false; // Initialize again in draw
-	}
+	if(x->bInitialized) x->myReceiver->ReleaseReceiver();
+	x->bInitialized = false; // Initialize again in draw
 
 	// Syphon comment : our texture has to be bound in the new context before we can use it
 	// http://cycling74.com/forums/topic.php?id=29197
@@ -446,7 +440,6 @@ t_jit_err jit_gl_spout_receiver_dest_changed(t_jit_gl_spout_receiver *x)
 		jit_gl_bindtexture(&drawInfo, texName, 0);
 		jit_gl_unbindtexture(&drawInfo, texName, 0);
 	}
-	x->bDestChanged = true;
 
 	return JIT_ERR_NONE;
 }
@@ -480,13 +473,6 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 		return JIT_ERR_INVALID_PTR;
 	}
 
-	// IMPORTANT : Allow one cycle for the incoming texture to be updated or there
-	// is a size or ID mis-match and subsequent fbo error and jitter fbo and texture errors
-	if(x->bDestChanged) {
-		x->bDestChanged = false;
-		return JIT_ERR_NONE;
-	}
-
 	// We need the Jitter texture ID, width and height.
 	GLuint texname	= jit_attr_getlong(x->output, ps_glid);
 	GLuint width	= jit_attr_getlong(x->output, ps_width);
@@ -496,10 +482,6 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 	// LJ - seems necessary
 	t_jit_gl_context ctx = jit_gl_get_context();
 	jit_ob3d_set_context(x);
-
-	// DEBUG
-	// DWORD dwStartTime, dwInterval;
-	// dwStartTime = timeGetTime();
 
 	// Save FBO etc
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
@@ -690,10 +672,6 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 
 	// Restore context
 	jit_gl_set_context(ctx);
-
-	// DEBUG
-	// dwInterval = timeGetTime() - dwStartTime;
-	// if(dwInterval > 2)	printf("Draw interval = %d\n", dwInterval);
 
 	return JIT_ERR_NONE;
 

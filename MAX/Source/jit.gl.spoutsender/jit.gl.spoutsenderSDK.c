@@ -15,8 +15,14 @@
 	04-08-14 - Compiled for DX9
 	10-08-14 - Updated for testing - DX9 mode
 	13-08-14 - corrected context change texture handle leak
+	14-08-14 - interop class corrected texture delete without context
+	24.08.14 - recompiled with MB sendernames class revision
+	01.09.14 - changes to Interop class to ensure texture and fbo are deleted and set to zero
+	03.09.14 - dest chnaged cycle delay removed
+			 - error due to not setting texture and fbo ids to zero after release
+			 - subsequent release failed and caused Jitter errors.
 
-		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
@@ -79,7 +85,6 @@ typedef struct _jit_gl_spout_sender
 	SpoutSender * mySender;
 
 	bool bInitialized;
-	bool bDestChanged;
 	GLuint g_texId;			// jitter texture ID
 	int g_Width;			// width
 	int g_Height;			// height
@@ -226,7 +231,6 @@ t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name)
 
 		// Initialize variables
 		x->bInitialized  = false;
-		x->bDestChanged  = false;
 		x->g_Width       = 0;
 		x->g_Height      = 0;
 		x->g_texId       = 0;
@@ -296,13 +300,8 @@ t_jit_err jit_gl_spout_sender_dest_closing(t_jit_gl_spout_sender *x)
 	// In case we have dest-closing without dest_changed
 	// or dest_changed without dest_closing - allow for both.
 	// Release sender if initialized
-	if(x->bInitialized) {
-		x->mySender->ReleaseSender();
-		x->bInitialized = false; // Initialize again in draw
-	}
-
-	// same as dest-changed
-	x->bDestChanged = true;
+	if(x->bInitialized)	x->mySender->ReleaseSender();
+	x->bInitialized = false; // Initialize again in draw
 
 	return JIT_ERR_NONE;
 }
@@ -314,14 +313,9 @@ t_jit_err jit_gl_spout_sender_dest_changed(t_jit_gl_spout_sender *x)
 	// Release sender if initialized
 	//
 	// IMPORTANT : do not re-initialize here but do so next round in draw
-	// also allow one cycle for the new texture to be received
 	//
-	if(x->bInitialized) {
-		x->mySender->ReleaseSender();
-		x->bInitialized = false; // Initialize again in draw
-	}
-
-	x->bDestChanged = true;
+	if(x->bInitialized)	x->mySender->ReleaseSender();
+	x->bInitialized = false; // Initialize again in draw
 
 	return JIT_ERR_NONE;
 }
@@ -386,21 +380,15 @@ t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
     GLint previousMatrixMode;
 	GLint previousActiveTexture;
 
-	// IMPORTANT : Allow one cycle for the incoming texture to be updated or there
-	// is a size or ID mis-match and subsequent fbo error and jitter fbo and texture errors
-	if(x->bDestChanged) {
-		x->bDestChanged = false;
-		return JIT_ERR_NONE;
-	}
 
 	if(x->textureSource) {
 
 		// get our latest texture info.
 		t_jit_object *texture = (t_jit_object*)jit_object_findregistered(x->textureSource);
-		GLuint texId		= jit_attr_getlong(texture, ps_glid);
-		GLuint texWidth		= jit_attr_getlong(texture, ps_width);
-		GLuint texHeight	= jit_attr_getlong(texture, ps_height);
-		GLuint texTarget	= jit_attr_getlong(texture, ps_gltarget);
+		GLuint texId     = jit_attr_getlong(texture, ps_glid);
+		GLuint texWidth  = jit_attr_getlong(texture, ps_width);
+		GLuint texHeight = jit_attr_getlong(texture, ps_height);
+		GLuint texTarget = jit_attr_getlong(texture, ps_gltarget);
 
 		// all of these must be > 0
 		if(texId > 0 && texWidth > 0 && texHeight > 0)	{
