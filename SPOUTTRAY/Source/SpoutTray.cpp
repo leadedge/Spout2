@@ -21,7 +21,9 @@
 //		15.04.14 - used revised spxConnector
 //				 - changed all Sender to Sender
 //		03.08.14 - converted to Spout SDK - Version 2.00
-//		30.08.14 - recompiled suing MB sendernames revision
+//		30.08.14 - recompiled using MB sendernames revision
+//		03.09.14 - update after SDK testing
+//				 - Version 2.01
 //
 #define GLEW_STATIC // to use glew32s.lib instead of glew32.lib otherwise there is a redefinition error
 
@@ -438,7 +440,7 @@ LRESULT CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		
 		case WM_INITDIALOG:
 			// Changeable text here
-			sprintf_s(temp,  1024, "SpoutTray - Version 2.00\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
+			sprintf_s(temp,  1024, "SpoutTray - Version 2.01\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
 			SetDlgItemTextA(hDlg, IDC_ABOUTBOXTEXT, (LPCSTR)temp);
 			return TRUE;
 
