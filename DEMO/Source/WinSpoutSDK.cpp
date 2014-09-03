@@ -9,6 +9,10 @@
 
 	Licence : http://www.gamedev.net/page/resources/_/gdnethelp/gamedevnet-open-license-r2956
 
+	Also spinning cube vertex array example - Author: Kevin Harris :
+	http://www.codesampler.com/oglsrc/oglsrc_1.htm
+	http://www.codesampler.com/source/ogl_vertex_data.zip
+
 	16-07-14	- removed resize of window to sender size for receiver
 				- allowed user resizeable window
 				- included option for preserving the aspect ratio of the sender
@@ -35,6 +39,10 @@
 	22.08.14	- Rebuild with new sendernames class
 	25.08.14	- Used sleep-based vsync exclusively due to problems with full screen
 	29.08.14	- updated executables and source to GitHub
+	31.08.14	- used vertex array draw instead of quad
+				- mod to sleep msec calcs to avoid hesitation
+	01.09.14	- added name entry for sender
+	03.09.14	- GitHub update
 
 */
 #define MAX_LOADSTRING 100
@@ -61,7 +69,6 @@
 #include <stdlib.h>
 #include <crtdbg.h>
 
-
 #include "..\..\SpoutSDK\Spout.h"
 
 SpoutSender sender;		// Create a Spout sender object
@@ -74,9 +81,8 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 bool bReceiver      = false; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
-bool bDX9compatible = true; // For DX11 only - compatible DX9 format for DX11 senders
+bool bDX9compatible = true;  // For DX11 only - compatible DX9 format for DX11 senders
 // =============================================================
-
 
 //
 // Global Variables:
@@ -123,10 +129,51 @@ GLuint       base;                   // Base Display List For The Font Set
 GLfloat      rotx = 0;               // x rotation amount
 GLfloat      roty = 0;               // y rotation amount
 
-GLfloat offset = -0.48f; // LJ DEBUG
+// GLfloat offset = -0.48f; // LJ DEBUG
 
 GLuint       cubeTexture;            // Cube texture
 GLuint       myTexture;              // Local texture
+
+
+// http://www.codesampler.com/oglsrc/oglsrc_1.htm
+struct Vertex
+{
+    float tu, tv;
+    float x, y, z;
+};
+
+Vertex g_cubeVertices[] =
+{
+	{ 0.0f,0.0f, -1.0f,-1.0f, 1.0f },
+	{ 1.0f,0.0f,  1.0f,-1.0f, 1.0f },
+	{ 1.0f,1.0f,  1.0f, 1.0f, 1.0f },
+	{ 0.0f,1.0f, -1.0f, 1.0f, 1.0f },
+
+	{ 1.0f,0.0f, -1.0f,-1.0f,-1.0f },
+	{ 1.0f,1.0f, -1.0f, 1.0f,-1.0f },
+	{ 0.0f,1.0f,  1.0f, 1.0f,-1.0f },
+	{ 0.0f,0.0f,  1.0f,-1.0f,-1.0f },
+
+	{ 0.0f,1.0f, -1.0f, 1.0f,-1.0f },
+	{ 0.0f,0.0f, -1.0f, 1.0f, 1.0f },
+	{ 1.0f,0.0f,  1.0f, 1.0f, 1.0f },
+	{ 1.0f,1.0f,  1.0f, 1.0f,-1.0f },
+
+	{ 1.0f,1.0f, -1.0f,-1.0f,-1.0f },
+	{ 0.0f,1.0f,  1.0f,-1.0f,-1.0f },
+	{ 0.0f,0.0f,  1.0f,-1.0f, 1.0f },
+	{ 1.0f,0.0f, -1.0f,-1.0f, 1.0f },
+
+	{ 1.0f,0.0f,  1.0f,-1.0f,-1.0f },
+	{ 1.0f,1.0f,  1.0f, 1.0f,-1.0f },
+	{ 0.0f,1.0f,  1.0f, 1.0f, 1.0f },
+	{ 0.0f,0.0f,  1.0f,-1.0f, 1.0f },
+
+	{ 0.0f,0.0f, -1.0f,-1.0f,-1.0f },
+	{ 1.0f,0.0f, -1.0f,-1.0f, 1.0f },
+	{ 1.0f,1.0f, -1.0f, 1.0f, 1.0f },
+	{ 0.0f,1.0f, -1.0f, 1.0f,-1.0f }
+};
 
 // FPS calcs
 double startTime, elapsedTime, frameTime;
@@ -148,14 +195,16 @@ int debugCounter = 0;
 LRESULT	CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);	// Declaration For WndProc
 
 // Forward declarations of functions included in this code module:
-INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
-LRESULT CALLBACK Capabilities(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM); // The old about
+LRESULT CALLBACK Capabilities(HWND, UINT, WPARAM, LPARAM);// Show GL/DX capabilities
+LRESULT CALLBACK UserSenderName(HWND, UINT, WPARAM, LPARAM); // enter a sender name 
+static PSTR szText;
+bool EnterSenderName(char *SenderName);
+
 int FindPixelType();
 void doFullScreen(bool bFullscreen);
 void SaveOpenGLstate();
 void RestoreOpenGLstate();
-// float ofGetElapsedTimef();
-// float ofGetElapsedTimeMsecf();
 void GLerror();
 bool OpenSender();
 bool OpenReceiver();
@@ -166,29 +215,11 @@ double GetCounter();
 
 
 void GLerror() {
-
 	GLenum err;
-
 	while ((err = glGetError()) != GL_NO_ERROR) {
 		// printf("GL error = %d (0x%x) %s\n", err, err, gluErrorString(err));
 	}
 }	
-
-/*
-float ofGetElapsedTimef() {
-	// return ((float) ((int)(timeGetTime() - startTime)) / 1000.0f);
-	DWORD nowTime = timeGetTime();
-	// printf("start = %d, now = %d, elapsed = %d\n", (DWORD)startTime, nowTime, (nowTime - (DWORD)startTime) );
-	// return ((float) ((timeGetTime() - (DWORD)startTime)) / 1000.0f);
-	return ((float) ((nowTime - (DWORD)startTime)) / 1000.0f);
-}
-*/
-
-/*
-int ofGetElapsedTimeMillis(){
-	return (int)(ofGetSystemTime() - startTime);
-}
-*/
 
 GLvoid BuildFont(GLvoid)								// Build Our Bitmap Font
 {
@@ -243,6 +274,7 @@ GLvoid glPrint(const char *fmt, ...)					// Custom GL "Print" Routine
 	glPopAttrib();										// Pops The Display List Bits
 }
 
+
 // 
 // Load a bitmap from the resources and convert to a texture
 // http://nehe.gamedev.net/tutorial/loading_textures_from_a_resource_file__texturing_triangles/26001/
@@ -269,9 +301,7 @@ int LoadCubeTexture()
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mipmap Linear Filtering
  		// Generate Mipmapped Texture (3 Bytes, Width, Height And Data From The BMP)
-		// gluBuild2DMipmaps(GL_TEXTURE_2D, 3, BMP.bmWidth, BMP.bmHeight, GL_BGR_EXT, GL_UNSIGNED_BYTE, BMP.bmBits);
-		// LJ Mod to support alpha
-		gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, BMP.bmWidth, BMP.bmHeight, GL_BGR_EXT, GL_UNSIGNED_BYTE, BMP.bmBits);
+		gluBuild2DMipmaps(GL_TEXTURE_2D, 3, BMP.bmWidth, BMP.bmHeight, GL_BGR_EXT, GL_UNSIGNED_BYTE, BMP.bmBits);
 		DeleteObject(hBMP);// Delete The Bitmap Object
 	}
 
@@ -327,30 +357,26 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 {
 
 	HGLRC glContext;
+	hMenu = GetMenu(hWnd);
+	HMENU hSubMenu;
 
 	// A render window must be visible for Spout initialization to work
-	// HDC	GLhdc = wglGetCurrentDC();
-	// HWND hwnd = WindowFromDC(GLhdc); 
-
 	// Open Spout and remove the sender selection option for memorymode
 	if(bMemoryMode) {
 		sender.SetMemoryShareMode();	// Force memoryshare
 		receiver.SetMemoryShareMode();	// Must be set independently for each object
-		hMenu = GetMenu(hWnd);
-		HMENU hSubMenu;
 		hSubMenu = GetSubMenu(hMenu, 0); // File
+		RemoveMenu(hSubMenu,  IDM_SENDERNAME, MF_BYCOMMAND);
 		RemoveMenu(hSubMenu,  IDM_SPOUTSENDERS, MF_BYCOMMAND);
 		RemoveMenu(hSubMenu,  0, MF_BYPOSITION); // and the separator
 	}
 	else {
 		// Set whether to use DirectX 9 or DirectX 11
 		if(bDX9mode) {
-			// printf("setting DX9 mode true\n");
 			sender.SetDX9(true);
 			receiver.SetDX9(true); // Must be set independently for each object
 		}
 		else {
-			// printf("setting DX9 mode false\n");
 			sender.SetDX9(false);
 			receiver.SetDX9(false);
 			// Here the sender DX11 texure format can be set to be DX9 compatible or not
@@ -426,7 +452,7 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 
 	// Set start time for FPS calculation
 	// Initialize timing variables
-	fps       = 60.0; //give a realistic starting value - win32 issues
+	fps       = 60.0; // give a realistic starting value
 	frameRate = 60.0;
 	startTime = (double)timeGetTime();
 
@@ -463,14 +489,10 @@ bool OpenReceiver()
 	if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height, true)) {
 		// Update the local texture
 		InitTexture(g_Width, g_Height);
-		// LJ DEBUG !!!
+		// DEBUG
 		width  = 0;
 		height = 0;
-		// printf("Winspout : CreateReceiver (%s) %dx%d\n", g_SenderName, g_Width, g_Height);
 		return true;
-	}
-	else {
-		// printf("Winspout : CreateReceiver failed\n");
 	}
 
 	return false;
@@ -505,30 +527,13 @@ bool OpenSender()
 	// Returns true for success or false for initialisation failure.
 	return(sender.CreateSender(g_SenderName, g_Width, g_Height));
 
-	/*
-	// LJ DEBUG
-	debugCounter = 0;
-	for(int i = 0; i<5; i++) {
-		// printf("CreateSender (%d)\n", debugCounter);
-		sender.CreateSender(g_SenderName, g_Width, g_Height);
-		// printf("ReleaseSender (%d)\n", debugCounter);
-		sender.ReleaseSender();
-		debugCounter++;
-	}
-	*/
-
-
-	return true;
-
 } // end OpenSender
 
 
 // Here's Where We Do All The Drawing
 int DrawGLScene(GLvoid)
 {
-	// char sendername[256];
-
-	StartCounter(); // High resolution counter for calculating frame time
+	StartCounter();
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// Clear The Screen And The Depth Buffer
 	glLoadIdentity(); // Reset The View
@@ -537,7 +542,6 @@ int DrawGLScene(GLvoid)
 
 		if(!bInitialized) {
 			bInitialized = OpenReceiver();
-			// printf("Winspout : OpenReceiver returned %d\n", bInitialized);
 			ShowReceiverInfo();
 			return TRUE;
 		}
@@ -554,7 +558,6 @@ int DrawGLScene(GLvoid)
 			// Received the texture OK, but the sender or texture dimensions could have changed
 			// The global name is already changed but the width and height also may be changed
 			if(width != g_Width || height != g_Height) {
-				printf("Winspout - receivetexture %dx%d to %dxd\n", g_Width, g_Height, width, height); 
 				// Reset the global width and height
 				g_Width  = width;
 				g_Height = height;
@@ -565,11 +568,10 @@ int DrawGLScene(GLvoid)
 			} // endif sender has changed
 	
 			// Received OK at the current size
-			// printf("Winspout - receivetexture (%s) %dx%d\n", g_SenderName, g_Width, g_Height);
 
-			/*
 			SaveOpenGLstate(); // Aspect ratio control
 
+			/*
 			// METHOD 1 - use the local received texture
 			glPushMatrix();
 			glColor4f(1.f, 1.f, 1.f, 1.f);
@@ -584,8 +586,6 @@ int DrawGLScene(GLvoid)
 			glBindTexture(GL_TEXTURE_2D, 0);
 			glDisable(GL_TEXTURE_2D);
 			glPopMatrix();
-
-			RestoreOpenGLstate();
 			*/
 
 			// METHOD 2 - Draw the shared texture
@@ -610,15 +610,16 @@ int DrawGLScene(GLvoid)
 			glDisable(GL_TEXTURE_2D);
 			*/
 
+			RestoreOpenGLstate();
+
 		} // endif received OK
 		else {
-			// printf("Winspout - receivetexture failed\n");
 			if(bInitialized) receiver.ReleaseReceiver();
 			bInitialized = false; // reset for next round
 		}
 		ShowReceiverInfo();
 		// LJ DEBUG receiver FPS debugging
-		// return TRUE; // Return for the next round
+		return TRUE; // Return for the next round
 	} // endif receiver
 	else {
 		if(!bInitialized) {
@@ -633,30 +634,6 @@ int DrawGLScene(GLvoid)
 		//
 		// Sender demo graphics
 		//
-
-		// debugging
-		/*
-		glPushMatrix();
-
-		glShadeModel(GL_FLAT);
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-
-		// float offset = -0.48; // 2.48;
-		glTranslatef(offset, 0.0f, -3.0f);
-		glColor3f(1.0, 1.0, 1.0);
-
-		glBegin(GL_POLYGON);
-		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-		glTexCoord2f(1.0f, 0.0f); glVertex3f(-0.99f, -1.0f,  1.0f);
-		glTexCoord2f(1.0f, 1.0f); glVertex3f(-0.99f,  1.0f,  1.0f);
-		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
-		glEnd();
-		
-		glPopMatrix();
-
-		offset += 0.001;
-		if(offset > 2.48) offset = -0.48;
-		*/
 
 		// glClearColor(0.039f, 0.392f, 0.549f, 1.0f); // Background 10, 100, 140
 		// glClearColor(0.000f, 0.300f, 0.500f, 1.0f); // deep blue
@@ -675,38 +652,8 @@ int DrawGLScene(GLvoid)
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, cubeTexture);
 
-		glBegin(GL_QUADS);
-		// Front Face
-		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-		glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
-		glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
-		// Back Face
-		glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-		glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
-		glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
-		glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
-		// Top Face
-		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
-		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
-		glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-		glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
-		// Bottom Face
-		glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-		glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
-		glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
-		glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-		// Right face
-		glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
-		glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
-		glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-		glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
-		// Left Face
-		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-		glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-		glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
-		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
-		glEnd();
+	    glInterleavedArrays( GL_T2F_V3F, 0, g_cubeVertices );
+		glDrawArrays( GL_QUADS, 0, 24 );
 
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glDisable(GL_TEXTURE_2D);
@@ -736,16 +683,20 @@ int DrawGLScene(GLvoid)
 	// Swap interval is returned OK depending on the NVIDAI control panel settings
 	// but has no effect full screen
 	//
-	elapsedTime = GetCounter(); // higher resolution than timeGetTime()
+	elapsedTime = GetCounter(); // Higher resolution than timeGetTime()
 	waitMillis = 0.0;
-	frameTime = elapsedTime/1000.0; // in seconds
+	frameTime = elapsedTime/1000.0; // In seconds
 	if (elapsedTime > millisForFrame){
-		; // we do nothing, we are already slower than target frame rate
+		; // We do nothing, we are already slower than target frame rate
 	} else {
 		waitMillis = millisForFrame - elapsedTime;
-		frameTime = (elapsedTime + waitMillis)/1000.0; // seconds per frame
-		Sleep((DWORD)waitMillis); // windows sleep in milliseconds
+		frameTime = (elapsedTime + waitMillis)/1000.0; // Seconds per frame
+		int iSleep = (int)waitMillis-1; // Prevents hesitation.
+		if(iSleep < 0) iSleep = 0;
+		Sleep((DWORD)iSleep);
+
 	}
+
 	// FPS calculations
 	if( frameTime  > 0.01) {
 		fps	= 1.0 / frameTime;
@@ -763,8 +714,9 @@ int DrawGLScene(GLvoid)
 void StartCounter()
 {
     LARGE_INTEGER li;
-    if(!QueryPerformanceFrequency(&li))
-	printf("QueryPerformanceFrequency failed!\n");
+    if(!QueryPerformanceFrequency(&li)) {
+		printf("QueryPerformanceFrequency failed!\n");
+	}
 
     PCFreq = double(li.QuadPart)/1000.0;
 
@@ -786,7 +738,7 @@ void ShowReceiverInfo()
 	int height = clientRect.bottom - clientRect.top;
 
 	// Show what a receiver is receiving
-	// if(!bFullscreen) {
+	if(!bFullscreen) {
 
 		glMatrixMode( GL_PROJECTION );
 		glPushMatrix();
@@ -804,11 +756,6 @@ void ShowReceiverInfo()
 			}
 			else {
 				glRasterPos2i( 20, height-30 );
-				
-				// LJ DEBUG
-				// bool bSync = false;
-				// if(sender.GetVerticalSync() == 1) bSync = true;
-				// glPrint("Receiving from : [%s] - fps %2.0f (sync = %d)", g_SenderName, frameRate, bSync, 0.0f);
 				glPrint("Receiving from : [%s] - fps %2.0f", g_SenderName, frameRate, 0.0f);
 				glRasterPos2i( 20, 40 );
 				glPrint("RH click to select  a sender", 0.0f);
@@ -827,9 +774,7 @@ void ShowReceiverInfo()
 				glPrint("Textureshare receiver", 0.0f);
 			}
 			glRasterPos2i( 20, height-50 );
-			// LJ DEBUG
-			// glPrint("No sender detected", 0.0f);
-			glPrint("No sender detected - fps %2.0f", frameRate, 0.0f);
+			glPrint("No sender detected", 0.0f);
 		}
 
 		glPopMatrix();
@@ -837,7 +782,7 @@ void ShowReceiverInfo()
 		glPopMatrix();
 		glMatrixMode( GL_MODELVIEW );
 
-	// }
+	}
 
 } // end ShowReceiverInfo
 
@@ -947,7 +892,6 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 	wc.hCursor			= LoadCursor(NULL, IDC_ARROW);			// Load The Arrow Pointer
 	wc.hbrBackground	= NULL;									// No Background Required For GL
 	wc.lpszMenuName		= MAKEINTRESOURCE(IDC_WINSPOUT);		// The menu
-	// wc.lpszMenuName		= NULL;		// For no menu
 	wc.lpszClassName	= L"OpenGL";							// Set The Class Name
 
 	if (!RegisterClass(&wc)) {									// Attempt To Register The Window Class
@@ -964,7 +908,7 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 
 	dwStyle = WS_OVERLAPPEDWINDOW; // default style
 
-	// Remove maximixe and minimize for a sender
+	// Remove maximize and minimize for a sender
 	if(!bReceiver) {
 		dwStyle ^= WS_THICKFRAME; // Not resizeable
 		dwStyle ^= WS_MAXIMIZEBOX;
@@ -998,15 +942,18 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 	}
 
 	// Remove the sender selection option for a sender
-	if(!bReceiver) {
-		hMenu = GetMenu(hWnd);
-		HMENU hSubMenu;
-		hSubMenu = GetSubMenu(hMenu, 0); // File
+	hMenu = GetMenu(hWnd);
+	HMENU hSubMenu;
+	hSubMenu = GetSubMenu(hMenu, 0); // File
+	if(!bReceiver) { // sender
 		RemoveMenu(hSubMenu,  IDM_SPOUTSENDERS, MF_BYCOMMAND);
-		RemoveMenu(hSubMenu,  0, MF_BYPOSITION); // and the separator
+		// Remove full screen
 		hSubMenu = GetSubMenu(hMenu, 1); // Window
 		RemoveMenu(hSubMenu, IDM_FULLSCREEN, MF_BYCOMMAND);
 		RemoveMenu(hSubMenu, IDM_FITWINDOW, MF_BYCOMMAND);
+	}
+	else {
+		RemoveMenu(hSubMenu,  IDM_SENDERNAME, MF_BYCOMMAND);
 	}
 
 	int bitsPerPixel = bits; // default passed int
@@ -1200,7 +1147,7 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,			// Handle For This Window
 				break;
 
 				// File
-				case IDM_SPOUTSENDERS: // removed for a sender
+				case IDM_SPOUTSENDERS: // Receiver select a sender
 					if(bReceiver) {
 						// The following is debug to simulate DX9 receivers
 						// This application is DX11 and will receive from all formats
@@ -1213,6 +1160,21 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,			// Handle For This Window
 						else {
 							// printf("SelectSenderPanel DX11 mode\n");
 							receiver.SelectSenderPanel();
+						}
+					}
+					break;
+
+				case IDM_SENDERNAME: // Sender name entry using a text dialog (for a sender)
+					if(!bReceiver) {
+						char sendername[256];
+						strcpy_s(sendername, g_SenderName);
+						if(EnterSenderName(sendername)) {
+							if(strcmp(sendername, g_SenderName) != 0) {
+								// Release the current sender and start again
+								strcpy_s(g_SenderName, 256, sendername);
+								sender.ReleaseSender();
+								sender.CreateSender(g_SenderName, g_Width, g_Height);
+							}
 						}
 					}
 					break;
@@ -1501,6 +1463,15 @@ void doFullScreen(bool bFullscreen)
 		// Restore the menu
 		hMenu = LoadMenuA(hInstance, MAKEINTRESOURCEA(IDC_WINSPOUT));
 		SetMenu(g_hwnd, hMenu);
+		// Remove the relevant selection option
+		HMENU hSubMenu;
+		hSubMenu = GetSubMenu(hMenu, 0); // File
+		if(bReceiver) { // receiver
+			RemoveMenu(hSubMenu,  IDM_SENDERNAME, MF_BYCOMMAND);
+		}
+		else { // sender
+			RemoveMenu(hSubMenu,  IDM_SPOUTSENDERS, MF_BYCOMMAND);
+		}
 
 		if(bTopmost) {
 			hWndMode = HWND_TOPMOST;  // topmost was selected
@@ -1510,7 +1481,7 @@ void doFullScreen(bool bFullscreen)
 			hWndMode = HWND_TOP;
 			CheckMenuItem (hMenu, IDM_TOPMOST, MF_BYCOMMAND | MF_UNCHECKED);
 		}
-
+		
 		if(bReceiver) {
 			if(bFitWindow) 
 				CheckMenuItem (hMenu, IDM_FITWINDOW, MF_BYCOMMAND | MF_CHECKED);
@@ -1687,3 +1658,58 @@ LRESULT CALLBACK Capabilities(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 	return FALSE;
 }
 
+// Message handler for sender name entry for a sender
+LRESULT CALLBACK UserSenderName(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam); // suppress warning
+
+	switch (message) {
+		
+		case WM_INITDIALOG:
+            // Fill text entry box with passed string
+            SetDlgItemTextA(hDlg, IDC_NAMETEXT, szText);
+            //  Select all text in the edit field
+            SendDlgItemMessage (hDlg, IDC_NAMETEXT, EM_SETSEL, 0, 0x7FFF0000L);
+			return TRUE;
+
+		case WM_COMMAND:
+			switch(LOWORD(wParam)) {
+				case IDOK :
+					// Get contents of edit field into static 256 char string
+                    GetDlgItemTextA(hDlg, IDC_NAMETEXT, szText, 256);
+                    EndDialog (hDlg, 1);
+                    break;
+				case IDCANCEL :
+                    // User pressed cancel.  Just take down dialog box.
+					EndDialog(hDlg, 0);
+					return TRUE;
+				default:
+					return FALSE;
+			}
+			break;
+	}
+
+	return FALSE;
+}
+
+
+bool EnterSenderName(char *SenderName)
+{
+  int retvalue;
+  unsigned char textin[256];
+
+  strcpy_s(szText = (PSTR)textin, 256, SenderName); // move to a static string for the dialog
+
+  // Show the dialog box 
+  retvalue = DialogBoxA(hInstance, MAKEINTRESOURCEA(IDD_NAMEBOX), hWnd, (DLGPROC)UserSenderName);
+
+  // OK - sender name has been entered
+  if (retvalue != 0) {
+		strcpy_s (SenderName, 256, szText); // Return the entered name
+		return true;
+  }
+
+  // Cancel
+  return false;
+
+}

@@ -8,12 +8,13 @@
 
 // Menu
 #define IDM_EXIT				200
-#define IDM_SPOUTSENDERS		201
-#define IDM_TOPMOST				202
-#define IDM_FULLSCREEN			203
-#define IDM_FITWINDOW			204
-#define IDM_CAPS				205
-#define IDM_ABOUT				206
+#define IDM_SENDERNAME			201
+#define IDM_SPOUTSENDERS		202
+#define IDM_TOPMOST				203
+#define IDM_FULLSCREEN			204
+#define IDM_FITWINDOW			205
+#define IDM_CAPS				206
+#define IDM_ABOUT				207
 
 // Icon and bitmaps
 #define IDI_SPOUTICON			300
@@ -26,10 +27,12 @@
 #define IDC_INFOTEXT            401
 #define IDC_CAPSTEXT            402
 #define IDC_COPY				403
+#define IDC_NAMETEXT			404
 
 // Dialogs
 #define IDD_ABOUTBOX			500
 #define IDD_CAPSBOX             501
+#define IDD_NAMEBOX             502
 
 #ifndef IDC_STATIC
 #define IDC_STATIC				-1
