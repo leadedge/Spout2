@@ -26,6 +26,7 @@
 //		27-08-14	- removed texture init chech from SelectSenderPanel
 //		29-08-14	- changed SelectSenderPanel to use revised SpoutPanel with user message support
 //		03.09.14	- cleanup
+//		15.09.14	- protect against null string copy in SelectSenderPanel
 //		
 // ================================================================
 /*
@@ -751,7 +752,7 @@ bool Spout::SelectSenderPanel(const char *message)
 	char UserMessage[512];
 	char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
 
-	strcpy_s(UserMessage, 512, message); // could be an arg or a user message
+	if(message) strcpy_s(UserMessage, 512, message); // could be an arg or a user message
 
 	if(bMemory || bMemoryShareInitOK) {
 		sprintf_s(UserMessage, 512, "Spout running in memoryshare mode\nThere can only be one sender\nno sender selection available");
