@@ -51,6 +51,8 @@
 					- Removed PAINT message from OpenDirectX9 due to crash of sender in Magic
 		03.09.14	- Replaced with UpdateWindow and limited to Resolume only.
 					- Cleanup
+		15.09.14	- corrected access lock for DrawToSharedTexture and ReadTexturePixels
+
 
 */
 
@@ -771,7 +773,7 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect)
 	}
 
 	// Wait for writer to stop writing
-	if(senders.CheckAccess(m_hReadEvent)) {
+	if(senders.CheckAccess(m_hWriteEvent)) {
 
 		// go ahead and access the shared texture to draw it
 		// lock dx object
@@ -1107,7 +1109,7 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels, unsigned int wid
 	// retrieve opengl texture data directly to image pixels rather than via an fbo and texture
 
 	// Wait for writer to stop writing
-	if(senders.CheckAccess(m_hReadEvent)) {
+	if(senders.CheckAccess(m_hWriteEvent)) {
 		// go ahead and read the shared texture
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
