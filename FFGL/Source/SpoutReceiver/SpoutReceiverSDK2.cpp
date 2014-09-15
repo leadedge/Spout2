@@ -37,6 +37,10 @@
 	01.09.14 - leak test and some changes made to SpoutGLDXinterop
 	02.09.14 - added more information in plugin Description and About
 			 - Version 3.008
+			 - Uploaded to GitHub
+	15-09-14 - added RestoreOpenGLstate before return for sender size change
+			 - Version 3.009
+
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -71,7 +75,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.008\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.009\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -102,7 +106,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.008\n");
+	printf("SpoutReceiver2 Vers 3.009\n");
 	*/
 
 
@@ -255,6 +259,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		//
 		SaveOpenGLstate(); // Aspect ratio control
 		bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D);
+
 		// Important - Restore the FFGL host FBO binding BEFORE the draw
 		if(pGL->HostFBO) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, pGL->HostFBO);
 		if(bRet) {
@@ -265,6 +270,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 				g_Height = height;
 				// Reset the local texture
 				InitTexture();
+				RestoreOpenGLstate();
 				return FF_SUCCESS;
 			} // endif sender has changed
 			// All matches so draw the texture
