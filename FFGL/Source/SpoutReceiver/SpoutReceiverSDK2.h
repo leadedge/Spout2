@@ -59,8 +59,8 @@ protected:
 	bool bAspect; // preserve aspect ratio of received texture in draw
 	bool bStarted;
 
-	void SaveOpenGLstate();
-	void RestoreOpenGLstate();
+	void SetViewport();
+	void RestoreViewport();
 	void InitTexture();
 	void DrawTexture(GLuint TextureHandle);
 

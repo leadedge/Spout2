@@ -40,6 +40,8 @@
 			 - Uploaded to GitHub
 	15-09-14 - added RestoreOpenGLstate before return for sender size change
 			 - Version 3.009
+	16-09-14 - change from saving state matrices to just saving the viewport
+			 - Version 3.010
 
 
 */
@@ -75,7 +77,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.009\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.010\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -106,7 +108,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.009\n");
+	printf("SpoutReceiver2 Vers 3.010\n");
 	*/
 
 
@@ -257,7 +259,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		//	Success : Returns the sender name, width and height
 		//	Failure : No sender detected
 		//
-		SaveOpenGLstate(); // Aspect ratio control
+		SetViewport(); // Aspect ratio control changes the viewport
 		bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D);
 
 		// Important - Restore the FFGL host FBO binding BEFORE the draw
@@ -270,13 +272,13 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 				g_Height = height;
 				// Reset the local texture
 				InitTexture();
-				RestoreOpenGLstate();
+				RestoreViewport(); // don't forget this
 				return FF_SUCCESS;
 			} // endif sender has changed
 			// All matches so draw the texture
 			DrawTexture(myTexture);
 		}
-		RestoreOpenGLstate();
+		RestoreViewport(); // back to what it was
 	}
 
 	return FF_SUCCESS;
@@ -284,20 +286,13 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 }
 
 
-void SpoutReceiverSDK2::SaveOpenGLstate()
+void SpoutReceiverSDK2::SetViewport()
 {
 	float fx, fy, aspect, vpScaleX, vpScaleY, vpWidth, vpHeight;
 	int vpx, vpy;
 
-	// save texture state, client state, etc.
-	glPushAttrib(GL_ALL_ATTRIB_BITS);
-	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
-
-	glMatrixMode(GL_TEXTURE);
-	glPushMatrix();
-	glLoadIdentity();
-
-	glPushAttrib(GL_TRANSFORM_BIT);
+	// Push current viewport attributes
+	glPushAttrib(GL_VIEWPORT_BIT );
 
 	// find the current viewport dimensions to scale to the aspect ratio required
 	// and to restore the viewport afterwards
@@ -327,35 +322,14 @@ void SpoutReceiverSDK2::SaveOpenGLstate()
 		}
 	}
 	glViewport(vpx, vpy, (int)vpWidth, (int)vpHeight);
-				
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity(); // reset the current matrix back to its default state
-	glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0f, 1.0f);
 
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	glLoadIdentity();
 }
 
 
-void SpoutReceiverSDK2::RestoreOpenGLstate()
+void SpoutReceiverSDK2::RestoreViewport()
 {
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
-
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-		
 	glViewport(vpdim[0], vpdim[1], vpdim[2], vpdim[3]);
 	glPopAttrib();
-		
-	glMatrixMode(GL_TEXTURE);
-	glPopMatrix();
-
-	glPopClientAttrib();			
-	glPopAttrib();
-
 }
 
 
