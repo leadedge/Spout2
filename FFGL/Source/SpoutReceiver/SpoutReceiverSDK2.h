@@ -45,7 +45,6 @@ protected:
 
 	unsigned int g_Width, g_Height;
 	unsigned int width, height;
-	int vpdim[4]; // for saving viewport dimensions
 	GLuint myTexture;
 
 	char SenderName[256];
@@ -62,7 +61,7 @@ protected:
 	void SetViewport();
 	void RestoreViewport();
 	void InitTexture();
-	void DrawTexture(GLuint TextureHandle);
+	void DrawTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height);
 
 };
 

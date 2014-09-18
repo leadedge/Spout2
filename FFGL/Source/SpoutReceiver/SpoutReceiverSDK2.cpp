@@ -40,16 +40,15 @@
 			 - Uploaded to GitHub
 	15-09-14 - added RestoreOpenGLstate before return for sender size change
 			 - Version 3.009
-	16-09-14 - change from saving state matrices to just saving the viewport
+	16-09-14 - change from saving state matrices to just the viewport
 			 - Version 3.010
-
+	17-09-14 - change from viewport to vertex for aspect control
+			 - Version 3.011
 
 */
 #include "SpoutReceiverSDK2.h"
 #include <FFGL.h>
 #include <FFGLLib.h>
-
-// #include <windows.h>
 
 // To force memoryshare, enable the define in below
 // #define MemoryShareMode
@@ -77,7 +76,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.010\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.011\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -108,9 +107,8 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.010\n");
+	printf("SpoutReceiver2 Vers 3.011\n");
 	*/
-
 
 	// Input properties - this is a source and has no inputs
 	SetMinInputs(0);
@@ -120,23 +118,12 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	// ======== initial values ========
 	//
 
-	// Memoryshare define
-	// if set to true (memory share only) this over-rides bMemoryMode below
-	// and it connects as memory share and there is no user option to select
-	// default is false (automatic)
-	#ifdef MemoryShareMode
-	bMemoryMode = true;
-	#else
-	bMemoryMode = false;
-	#endif
-	
 	g_Width	= 512;
 	g_Height = 512;        // arbitrary initial image size
 	myTexture = 0;         // only used for memoryshare mode
 
 	bInitialized = false;
 	bDX9mode = true;       // DirectX 9 mode rather than DirectX 11
-	bMemoryMode = false;   // default mode is texture rather than memory
 	bInitialized = false;  // not initialized yet by either means
 	bAspect = false;       // preserve aspect ratio of received texture in draw
 	bStarted = false;
@@ -146,11 +133,14 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	//
 	// Parameters
 	//
+	// Memoryshare define
+	// if set to true (memory share only), it connects as memory share
+	// and there is no user option to select a sender
+	// default is false (automatic)
 	#ifndef MemoryShareMode
 	SetParamInfo(FFPARAM_SharingName, "Sender Name",   FF_TYPE_TEXT, "");
 	SetParamInfo(FFPARAM_Update,      "Update",        FF_TYPE_EVENT, false );
 	SetParamInfo(FFPARAM_Select,      "Select Sender", FF_TYPE_EVENT, false );
-
 	bMemoryMode = false;
 	#else
 	bMemoryMode = true;
@@ -210,6 +200,9 @@ DWORD SpoutReceiverSDK2::InitGL(const FFGLViewportStruct *vp)
 		// Otherwise do not and it will start with the active sender
 		// strcpy_s(UserSenderName, 256, InitialSenderName);
 	}
+
+	// Viewport dimensions here not guaranteed to be right
+
 	return FF_SUCCESS;
 }
 
@@ -259,11 +252,11 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		//	Success : Returns the sender name, width and height
 		//	Failure : No sender detected
 		//
-		SetViewport(); // Aspect ratio control changes the viewport
 		bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D);
 
 		// Important - Restore the FFGL host FBO binding BEFORE the draw
 		if(pGL->HostFBO) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, pGL->HostFBO);
+
 		if(bRet) {
 			// Received the texture OK, but the sender or texture dimensions could have changed
 			// Reset the global width and height so that the viewport can be set for aspect ratio control
@@ -272,64 +265,15 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 				g_Height = height;
 				// Reset the local texture
 				InitTexture();
-				RestoreViewport(); // don't forget this
 				return FF_SUCCESS;
 			} // endif sender has changed
 			// All matches so draw the texture
-			DrawTexture(myTexture);
+			DrawTexture(myTexture, GL_TEXTURE_2D,  g_Width, g_Height);
 		}
-		RestoreViewport(); // back to what it was
 	}
 
 	return FF_SUCCESS;
 
-}
-
-
-void SpoutReceiverSDK2::SetViewport()
-{
-	float fx, fy, aspect, vpScaleX, vpScaleY, vpWidth, vpHeight;
-	int vpx, vpy;
-
-	// Push current viewport attributes
-	glPushAttrib(GL_VIEWPORT_BIT );
-
-	// find the current viewport dimensions to scale to the aspect ratio required
-	// and to restore the viewport afterwards
-	glGetIntegerv(GL_VIEWPORT, vpdim);
-
-	// Scale width and height to the current viewport size
-	vpScaleX = (float)vpdim[2]/(float)g_Width;
-	vpScaleY = (float)vpdim[3]/(float)g_Height;
-	vpWidth  = (float)g_Width  * vpScaleX;
-	vpHeight = (float)g_Height * vpScaleY;
-	vpx = vpy = 0;
-
-	// User option "Aspect" to preserve aspect ratio
-	// Note - width is primary
-	if(bAspect) {
-		// back to original aspect ratio
-		aspect = (float)g_Width/(float)g_Height;
-		if(g_Width > g_Height) {
-			fy = vpWidth/aspect;
-			vpy = (int)(vpHeight-fy)/2;
-			vpHeight = fy;
-		}
-		else {
-			fx = vpHeight/aspect;
-			vpx = (int)(vpWidth-fx)/2;
-			vpWidth = fx;
-		}
-	}
-	glViewport(vpx, vpy, (int)vpWidth, (int)vpHeight);
-
-}
-
-
-void SpoutReceiverSDK2::RestoreViewport()
-{
-	glViewport(vpdim[0], vpdim[1], vpdim[2], vpdim[3]);
-	glPopAttrib();
 }
 
 
@@ -465,37 +409,67 @@ void SpoutReceiverSDK2::InitTexture()
 }
 
 
-// Draw a texture
-void SpoutReceiverSDK2::DrawTexture(GLuint TextureID)
+void SpoutReceiverSDK2::DrawTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height)
 {
+	float image_aspect, vp_aspect;
+	int vpdim[4];
+	
+	// Default offsets
+	float vx = 1.0;
+	float vy = 1.0;
 
-	GLfloat tex_coords[] = {
-						 0.0, 1.0,
-						 0.0, 0.0,
-						 1.0, 0.0,
-						 1.0, 1.0 };
+	// find the current viewport dimensions to scale to the aspect ratio required
+	glGetIntegerv(GL_VIEWPORT, vpdim);
+
+	// Calculate aspect ratios
+	vp_aspect = (float)vpdim[2]/(float)vpdim[3];
+	image_aspect = (float)width/(float)height;
+
+	// Preserve image aspect ratio for draw
+	if(bAspect) {
+		if(image_aspect > vp_aspect) {
+			// Calculate the offset in Y
+			vy = 1.0/image_aspect;
+			// Adjust to the viewport aspect ratio
+			vy = vy*vp_aspect;
+			vx = 1.0;
+		}
+		else { // Otherwise adjust the horizontal offset
+			// Calculate the offset in X
+			vx = image_aspect;
+			// Adjust to the viewport aspect ratio
+			vx = vx/vp_aspect;
+			vy = 1.0;
+		}
+	}
+
+	GLfloat tc[] = {
+			 0.0,  0.0,
+			 0.0,  1.0,
+			 1.0, 1.0,
+			 1.0, 0.0 };
 
 	GLfloat verts[] =  {
-						-1.0, -1.0,
-						-1.0,  1.0,
-						 1.0,  1.0,
-						 1.0, -1.0 };
+			-vx, -vy,   // bottom left
+			-vx,  vy,   // top left
+			 vx,  vy,   // top right
+			 vx, -vy }; // bottom right
 
 	glPushMatrix();
 	glColor4f(1.f, 1.f, 1.f, 1.f);
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, TextureID); // bind our local texture
+	glEnable(TextureTarget);
+	glBindTexture(TextureTarget, TextureID);
 
 	glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-	glTexCoordPointer(2, GL_FLOAT, 0, tex_coords );
+	glTexCoordPointer(2, GL_FLOAT, 0, tc );
 	glEnableClientState(GL_VERTEX_ARRAY);		
 	glVertexPointer(2, GL_FLOAT, 0, verts );
 	glDrawArrays( GL_TRIANGLE_FAN, 0, 4 );
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glDisable(GL_TEXTURE_2D);
+	glBindTexture(TextureTarget, 0);
+	glDisable(TextureTarget);
 	glPopMatrix();
 
 }
