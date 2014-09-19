@@ -44,6 +44,9 @@
 			 - Version 3.010
 	17-09-14 - change from viewport to vertex for aspect control
 			 - Version 3.011
+	19-09-14 - Recompiled for DirectX 11
+			   A receiver should be compatible with all apps, but a sender will not
+			 - Version 3.012
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -76,7 +79,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.011\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.012\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -107,7 +110,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.011\n");
+	printf("SpoutReceiver2 Vers 3.012\n");
 	*/
 
 	// Input properties - this is a source and has no inputs
@@ -123,7 +126,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	myTexture = 0;         // only used for memoryshare mode
 
 	bInitialized = false;
-	bDX9mode = true;       // DirectX 9 mode rather than DirectX 11
+	bDX9mode = false;       // DirectX 9 mode rather than DirectX 11
 	bInitialized = false;  // not initialized yet by either means
 	bAspect = false;       // preserve aspect ratio of received texture in draw
 	bStarted = false;
