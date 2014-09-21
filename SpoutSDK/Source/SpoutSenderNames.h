@@ -117,12 +117,6 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool CheckSender      (const char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 		// ------------------------------------------------------------
 
-		// Access event locks (unused)
-		bool InitEvents	 (const char *eventname, HANDLE &hReadEvent, HANDLE &hWriteEvent);
-		void CloseEvents (HANDLE &hReadEvent, HANDLE &hWriteEvent);
-		bool CheckAccess (HANDLE hEvent);
-		void AllowAccess (HANDLE hReadEvent, HANDLE hWriteEvent);
-
 		// Debug function
 		bool SenderDebug (const char *Sendername, int size);
 

@@ -43,6 +43,7 @@
 				- mod to sleep msec calcs to avoid hesitation
 	01.09.14	- added name entry for sender
 	03.09.14	- GitHub update
+	21.09.14	- recompiled for mutex texture access locks
 
 */
 #define MAX_LOADSTRING 100
@@ -81,7 +82,7 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 bool bReceiver      = false; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
-bool bDX9compatible = true;  // For DX11 only - compatible DX9 format for DX11 senders
+bool bDX9compatible = true; // For DX11 senders only - compatible DX9 format for DX11 senders (default true)
 // =============================================================
 
 //
@@ -128,8 +129,6 @@ GLuint       base;                   // Base Display List For The Font Set
 // Cube rotation and drawing setup
 GLfloat      rotx = 0;               // x rotation amount
 GLfloat      roty = 0;               // y rotation amount
-
-// GLfloat offset = -0.48f; // LJ DEBUG
 
 GLuint       cubeTexture;            // Cube texture
 GLuint       myTexture;              // Local texture
@@ -370,7 +369,7 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 		RemoveMenu(hSubMenu,  IDM_SPOUTSENDERS, MF_BYCOMMAND);
 		RemoveMenu(hSubMenu,  0, MF_BYPOSITION); // and the separator
 	}
-	else {
+	else { 
 		// Set whether to use DirectX 9 or DirectX 11
 		if(bDX9mode) {
 			sender.SetDX9(true);
@@ -380,8 +379,7 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 			sender.SetDX9(false);
 			receiver.SetDX9(false);
 			// Here the sender DX11 texure format can be set to be DX9 compatible or not
-			// printf("setting DX11 sender bDX9compatible = (%d)\n", bDX9compatible);
-			// LJ DEBUG	sender.interop.SetDX11format(DXGI_FORMAT_B8G8R8A8_UNORM);
+			// Spout SDK default is a compatible format
 			sender.SetDX9compatible(bDX9compatible);
 		}
 	}
@@ -490,8 +488,8 @@ bool OpenReceiver()
 		// Update the local texture
 		InitTexture(g_Width, g_Height);
 		// DEBUG
-		width  = 0;
-		height = 0;
+		// width  = 0;
+		// height = 0;
 		return true;
 	}
 
@@ -694,7 +692,6 @@ int DrawGLScene(GLvoid)
 		int iSleep = (int)waitMillis-1; // Prevents hesitation.
 		if(iSleep < 0) iSleep = 0;
 		Sleep((DWORD)iSleep);
-
 	}
 
 	// FPS calculations
@@ -1149,9 +1146,6 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,			// Handle For This Window
 				// File
 				case IDM_SPOUTSENDERS: // Receiver select a sender
 					if(bReceiver) {
-						// The following is debug to simulate DX9 receivers
-						// This application is DX11 and will receive from all formats
-						// Texture compatibility argument /DX9
 						// Tells spoutpanel to only list senders with DX9 compatible format
 						if(bDX9mode || bDX9compatible) {
 							// printf("SelectSenderPanel DX9 mode\n");
@@ -1159,7 +1153,7 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,			// Handle For This Window
 						}
 						else {
 							// printf("SelectSenderPanel DX11 mode\n");
-							receiver.SelectSenderPanel();
+							receiver.SelectSenderPanel(); // "/DX11" is optional default
 						}
 					}
 					break;
@@ -1239,8 +1233,8 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	MSG		msg;									// Windows Message Structure
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
 
-	/*
 	// Debug console window so printf works
+	/*
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 

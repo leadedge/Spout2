@@ -153,19 +153,19 @@ protected:
 		HANDLE	m_hInteropDevice;	// handle to the DX/GL interop device
 		HANDLE	m_hInteropObject;	// handle to the DX/GL interop object (the shared texture)
 		HANDLE	m_dxShareHandle;	// shared DX texture handle
-		// GLuint	m_glTexture;		// the OpenGL texture linked to it
-		// GLuint	m_fbo;              // common frame buffer object used for copying textures
 
 		bool getSharedTextureInfo(char* sharedMemoryName);
 		bool setSharedTextureInfo(char* sharedMemoryName);
 
-		// Locks for gl/dx interop functions
-		// HRESULT LockInteropObject(HANDLE hDevice, HANDLE *hObject);
-		// HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE *hObject);
-		
-		// Texture access event lock handles
-		HANDLE	m_hReadEvent;  // this instance handle to read event
-		HANDLE	m_hWriteEvent; // this instance handle to write event
+		// Mutex locks for DirectX 9 shared textures
+		bool CreateAccessMutex(const char *name);
+		void CloseAccessMutex();
+		bool CheckAccess();
+		void AllowAccess();
+
+		// Texture access mutex lock handle
+		HANDLE m_hAccessMutex;
+		unsigned int m_AccessLockCount;
 
 };
 

@@ -3,7 +3,7 @@
 			spoutDirectX.cpp
 
 
-		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -26,6 +26,8 @@
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 		22-07-14	- added option for DX9 or DX11
+		21.09.14	- included keyed mutex texture access locks in CreateSharedDX11Texture
+
 */
 
 #include "spoutDirectX.h"
@@ -269,7 +271,17 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	desc.Width				= width;
 	desc.Height				= height;
 	desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-	desc.MiscFlags			= D3D11_RESOURCE_MISC_SHARED; // This texture will be shared
+	// desc.MiscFlags			= D3D11_RESOURCE_MISC_SHARED; // This texture will be shared
+
+	// desc.MiscFlags          = D3D11_RESOURCE_MISC_SHARED; // This texture will be shared
+	
+	// A DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not compatible with DirectX 9
+	// so if the format is set to be compatible (default) do not use this lock
+	if(format == DXGI_FORMAT_B8G8R8A8_UNORM)
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+	else
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+
 	desc.Format				= format;
 	desc.Usage				= D3D11_USAGE_DEFAULT;
 	desc.SampleDesc.Quality = 0;
@@ -334,6 +346,74 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 
 	return true;
 
+}
+
+
+
+//
+// Keyed Mutex locks for shared DirectX 11 textures (not applicable for DirectX 9)
+//
+bool spoutDirectX::IsKeyedMutexTexture(ID3D11Texture2D* pD3D11Texture)
+{
+	IDXGIKeyedMutex* pDXGIKeyedMutex;
+	if(pD3D11Texture == NULL) {
+		return false;
+	}
+	
+	pD3D11Texture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
+	if (pDXGIKeyedMutex) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+
+bool spoutDirectX::LockD3D11Texture(ID3D11Texture2D* pD3D11Texture)
+{
+	DWORD dwWaitResult;
+	IDXGIKeyedMutex* pDXGIKeyedMutex;
+
+	if(pD3D11Texture == NULL) return false;
+
+	pD3D11Texture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
+	if (pDXGIKeyedMutex) {
+		dwWaitResult = (DWORD)pDXGIKeyedMutex->AcquireSync(0, 67); // TODO - link with SPOUT_WAIT_TIMEOUT
+		if (dwWaitResult == WAIT_OBJECT_0 ) {
+			// The state of the object is signaled.
+			return true;
+		}
+		else {
+			switch(dwWaitResult) {
+				case WAIT_ABANDONED : // Could return here
+					printf("LockD3D11Texture : WAIT_ABANDONED\n");
+					break;
+				case WAIT_TIMEOUT : // The time-out interval elapsed, and the object's state is nonsignaled.
+					printf("LockD3D11Texture : SPOUT_WAIT_TIMEOUT\n");
+					break;
+				default :
+					break;
+			}
+		}
+	}
+	return false;
+}
+
+
+void spoutDirectX::UnlockD3D11Texture(ID3D11Texture2D* pD3D11Texture)
+{
+  if(pD3D11Texture == NULL) return;
+
+  IDXGIKeyedMutex* pDXGIKeyedMutex;
+
+  pD3D11Texture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
+  if (pDXGIKeyedMutex) {
+    HRESULT hr = pDXGIKeyedMutex->ReleaseSync(0);
+    if (FAILED(hr)) {
+      // printf("Failed to unlock the shared texture");
+    }
+  }
 }
 
 
