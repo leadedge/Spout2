@@ -38,6 +38,7 @@
 //			 - removed existence bring to top - handled by Spout SDK
 //			 - restore foreground window on exit
 //	03.09.14 - GitHub update
+//	21.09.14 - Changed default compatibility for /DX9 arg
 //
 #include <windows.h>
 #include <vector>
@@ -99,17 +100,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		hWnd = GetActiveWindow();
 		EnableWindow(hWnd, FALSE);
 		for( i=1; i <argc; i++ ) {
-			// Argument /DX11
-			if ( strcmp(argv[i], "/DX11") == 0) {
-				// printf("DX11 mode\n");
-				bArgFound = true;
-				bDX9compatible = false;
-			}
 			// Argument /DX9
-			else if(strcmp(argv[i], "/DX9") == 0) {
+			if(strcmp(argv[i], "/DX9") == 0) {
 				// printf("DX9 mode\n");
 				bArgFound = true;
 				bDX9compatible = true;
+			}
+			// Argument /DX11 or default
+			else if ( strcmp(argv[i], "/DX11") == 0) {
+				// printf("DX11 mode\n");
+				bArgFound = true;
+				bDX9compatible = false;
 			}
 			else {
 				bArgFound = false;
@@ -129,7 +130,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	if (!hMutex) {
 		hMutex = CreateMutexA(0, 0, "SpoutPanel");
-		if(UserMessage[0]) {
+		if(UserMessage[0] != 0) {
 			// Pop out a message dialog instead of a sender list
 			DialogBoxParamA(hInstance, MAKEINTRESOURCEA(IDD_DIALOG2), 0, TextDlgProc, 0);
 			bRet = false; // take no action
