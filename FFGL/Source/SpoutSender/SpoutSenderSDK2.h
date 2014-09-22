@@ -51,7 +51,6 @@ protected:
 
 	unsigned int m_Width;
 	unsigned int m_Height;
-	float vpdim[4]; // for saving viewport dimensions
 	char SenderName[256];
 	char UserSenderName[256];
 	bool bInitialized;
@@ -59,9 +58,6 @@ protected:
 	bool bDX9mode;
 
 	void DrawTexture(GLuint TextureHandle, FFGLTexCoords maxCoords);
-	void SaveOpenGLstate();
-	void RestoreOpenGLstate();
-
 
 };
 
