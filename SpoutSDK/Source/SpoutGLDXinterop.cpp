@@ -725,6 +725,7 @@ bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarge
 		glBindTexture(TextureTarget, TextureID);
 
 		GLfloat tc[4][2] = {0};
+
 		if(bInvert) {
 			tc[0][0] = 0.0;   tc[0][1] = max_y;
 			tc[1][0] = 0.0;   tc[1][1] = 0.0;
@@ -763,7 +764,7 @@ bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarge
 	return true;
 }
 
-
+ 
 // DRAW THE SHARED TEXTURE
 bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect)
 {
@@ -803,8 +804,6 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect)
 		} // if lock failed just keep going
 	}
 
-	// Allow readers and writers access
-	// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
 	AllowAccess(); // Allow access to the texture
 
 	return true;
@@ -994,15 +993,12 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
 	
-		// Allow readers and writers access
-		// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
 		AllowAccess(); // Allow access to the texture
 
 		return true;
 	}
 
 	// There is no reader
-	// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
 	AllowAccess(); // Allow access to the texture
 
 
@@ -1036,8 +1032,6 @@ bool spoutGLDXinterop::WriteTexturePixels(unsigned char *pixels, unsigned int wi
 		} // if lock failed just keep going
 	}
 
-	// Allow readers and writers access
-	// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
 	AllowAccess(); // Allow access to the texture
 
 
@@ -1100,8 +1094,6 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 		}
 	}
 	
-	// Allow readers and writers access
-	// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
 	AllowAccess(); // Allow access to the texture
 
 
@@ -1131,8 +1123,6 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels, unsigned int wid
 		} // if lock failed just keep going
 	}
 
-	// Allow readers and writers access
-	// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
 	AllowAccess(); // Allow access to the texture
 
 
@@ -1164,7 +1154,6 @@ bool spoutGLDXinterop::BindSharedTexture()
 		}
 	}
 	else {
-	// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
 		AllowAccess(); // Allow access to the texture
 	}
 
@@ -1184,8 +1173,7 @@ bool spoutGLDXinterop::UnBindSharedTexture()
 	glBindTexture(GL_TEXTURE_2D,0);
 	// unlock dx object
 	UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-	// Allow readers and writers access
-	// senders.AllowAccess(m_hReadEvent, m_hWriteEvent);
+
 	AllowAccess(); // Allow access to the texture
 	
 	return true;

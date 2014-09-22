@@ -27,6 +27,7 @@
 //		29-08-14	- changed SelectSenderPanel to use revised SpoutPanel with user message support
 //		03.09.14	- cleanup
 //		15.09.14	- protect against null string copy in SelectSenderPanel
+//		22.09.14	- checking of bUseAspect function in CreateReceiver
 //		
 // ================================================================
 /*
@@ -64,6 +65,7 @@ Spout::Spout()
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("Spout::Spout()\n");
 	*/
+
 	g_Width				= 0;
 	g_Height			= 0;
 	g_ShareHandle		= 0;
@@ -173,18 +175,23 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 	char UserName[256];
 	UserName[0] = 0; // OK to do this internally
 
+	// printf("Spout::CreateReceiver(%s, %d, %d, %d)\n", sendername, width, height, bActive);
+
 	// Use the active sender if the user wants it or the sender name is not set
 	if(bActive || sendername[0] == 0) {
+		// printf("Use active sender\n");
 		bUseActive = true;
 	}
 	else {
 		// Try to find the sender with the name sent or over-ride with user flag
 		strcpy_s(UserName, 256, sendername);
-		bUseActive = bActive; // set global flag to use the active sender or not
+		bUseActive = false; // set global flag to use the active sender or not
+		// printf("Use sender [%s]\n", UserName);
 	}
 
 	if(OpenReceiver(UserName, width, height)) {
 		strcpy_s(sendername, 256, UserName); // pass back the sendername used
+		// printf("OpenReceiver returned [%s]\n", UserName);
 		return true;
 	}
 
