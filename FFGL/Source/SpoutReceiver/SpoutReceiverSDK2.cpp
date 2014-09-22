@@ -47,6 +47,10 @@
 	19-09-14 - Recompiled for DirectX 11
 			   A receiver should be compatible with all apps, but a sender will not
 			 - Version 3.012
+	21-09-14 - recompiled for DirectX 11 mutex texture access locks
+			 - Introduced bUseActive flag instead of empty name
+			 - Corrected inverted draw
+			 - Version 3.013
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -79,7 +83,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.012\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.013\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -110,7 +114,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.012\n");
+	printf("SpoutReceiver2 Vers 3.013\n");
 	*/
 
 	// Input properties - this is a source and has no inputs
@@ -126,12 +130,12 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	myTexture = 0;         // only used for memoryshare mode
 
 	bInitialized = false;
-	bDX9mode = false;       // DirectX 9 mode rather than DirectX 11
+	bDX9mode = false;      // DirectX 9 mode rather than default DirectX 11
 	bInitialized = false;  // not initialized yet by either means
 	bAspect = false;       // preserve aspect ratio of received texture in draw
-	bStarted = false;
+	bUseActive = true;     // connect to the active sender
+	bStarted = false;      // Do not allow a starting cycle
 	UserSenderName[0] = 0; // User entered sender name
-	strcpy_s(InitialSenderName, "0x8e14549a"); // Start of the SpoutCam CLSID for an arbitrary name that will never be entered
 
 	//
 	// Parameters
@@ -153,8 +157,8 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	// For memory mode, tell Spout to use memoryshare
 	if(bMemoryMode) {
 		receiver.SetMemoryShareMode();
-		// Give it a user name for ProcessOpenGL
-		strcpy_s(UserSenderName, 256, InitialSenderName); 
+		// Give it an arbitrary user name for ProcessOpenGL
+		strcpy_s(UserSenderName, 256, "0x8e14549a"); 
 	}
 
 	// Set DirectX mode depending on DX9 flag
@@ -195,17 +199,7 @@ SpoutReceiverSDK2::~SpoutReceiverSDK2()
 ////////////////////////////////////////////////////////////
 DWORD SpoutReceiverSDK2::InitGL(const FFGLViewportStruct *vp)
 {
-	if(UserSenderName[0] == 0) {
-		// For detection of the active sender leave UserSenderName empty
-		// If it is given some value it will keep trying to connect
-		// until the user enters a name of a sender that exists
-		// If this is the behaviour required give it an initial name
-		// Otherwise do not and it will start with the active sender
-		// strcpy_s(UserSenderName, 256, InitialSenderName);
-	}
-
-	// Viewport dimensions here not guaranteed to be right
-
+	// Viewport dimensions might not be supplied by the host here
 	return FF_SUCCESS;
 }
 
@@ -232,13 +226,18 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	//
 	//
 	if(!bInitialized) {
-
-		// If UserSenderName is already set, CreateReceiver will attempt to connect to
-		// that sender otherwise if UserSenderName is NULL the active sender will be used.
-		if(UserSenderName[0]) strcpy_s(SenderName, UserSenderName);
+	
+		// If UserSenderName is set, use it otherwise find the active sender
+		if(UserSenderName[0]) {
+			strcpy_s(SenderName, UserSenderName);
+			bUseActive = false;
+		}
+		else {
+			bUseActive = true;
+		}
 
 		// CreateReceiver will return true only if it finds a sender running.
-		if(receiver.CreateReceiver(SenderName, g_Width, g_Height)) {
+		if(receiver.CreateReceiver(SenderName, g_Width, g_Height, bUseActive)) {
 			// Did it initialized in Memory share mode ?
 			bMemoryMode = receiver.GetMemoryShareMode();
 			// Initialize a texture - Memorymode RGB or Texturemode RGBA
@@ -271,7 +270,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 				return FF_SUCCESS;
 			} // endif sender has changed
 			// All matches so draw the texture
-			DrawTexture(myTexture, GL_TEXTURE_2D,  g_Width, g_Height);
+			DrawReceivedTexture(myTexture, GL_TEXTURE_2D,  g_Width, g_Height);
 		}
 	}
 
@@ -412,7 +411,7 @@ void SpoutReceiverSDK2::InitTexture()
 }
 
 
-void SpoutReceiverSDK2::DrawTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height)
+void SpoutReceiverSDK2::DrawReceivedTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height)
 {
 	float image_aspect, vp_aspect;
 	int vpdim[4];
@@ -446,17 +445,19 @@ void SpoutReceiverSDK2::DrawTexture(GLuint TextureID, GLuint TextureTarget,  uns
 		}
 	}
 
+	// Invert the texture coords from DirectX to OpenGL
 	GLfloat tc[] = {
-			 0.0,  0.0,
-			 0.0,  1.0,
-			 1.0, 1.0,
-			 1.0, 0.0 };
+			 0.0, 1.0,
+			 0.0, 0.0,
+			 1.0, 0.0,
+			 1.0, 1.0 };
 
 	GLfloat verts[] =  {
-			-vx, -vy,   // bottom left
-			-vx,  vy,   // top left
-			 vx,  vy,   // top right
-			 vx, -vy }; // bottom right
+			-vx,  -vy,   // bottom left
+			-vx,   vy,   // top left
+			 vx,   vy,   // top right
+			 vx,  -vy }; // bottom right
+
 
 	glPushMatrix();
 	glColor4f(1.f, 1.f, 1.f, 1.f);

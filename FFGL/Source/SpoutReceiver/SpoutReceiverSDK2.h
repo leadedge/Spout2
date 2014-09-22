@@ -18,7 +18,6 @@ public:
 	///////////////////////////////////////////////////
 	DWORD	SetParameter(const SetParameterStruct* pParam);		
 	DWORD	GetParameter(DWORD dwIndex);
-	// char*	GetParameterDisplay(DWORD dwIndex);
 	DWORD	ProcessOpenGL(ProcessOpenGLStruct* pGL);
 	DWORD   InitGL(const FFGLViewportStruct *vp);
 	DWORD   DeInitGL();
@@ -34,7 +33,6 @@ public:
 		return FF_FAIL;
 	}
 
-
 protected:
 
 	// Parameters
@@ -49,19 +47,17 @@ protected:
 
 	char SenderName[256];
 	char UserSenderName[256];
-	char InitialSenderName[256];
 	char HostName[MAX_PATH];
 	
 	bool bInitialized;
 	bool bDX9mode; // Use DirectX 9 instead of DirectX 11
 	bool bMemoryMode; // force memory share mode
 	bool bAspect; // preserve aspect ratio of received texture in draw
-	bool bStarted;
+	bool bUseActive; // connect to the active sender
+	bool bStarted; // Allow one cylce for initialization for certain apps
 
-	void SetViewport();
-	void RestoreViewport();
 	void InitTexture();
-	void DrawTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height);
+	void DrawReceivedTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height);
 
 };
 
