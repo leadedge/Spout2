@@ -28,6 +28,7 @@
 //		03.09.14	- cleanup
 //		15.09.14	- protect against null string copy in SelectSenderPanel
 //		22.09.14	- checking of bUseAspect function in CreateReceiver
+//		23.09.14	- test for DirectX 11 support in SetDX9 and GetDX9
 //		
 // ================================================================
 /*
@@ -1459,9 +1460,9 @@ bool Spout::OpenSpout()
 	return false;
 }
 
-void Spout::SetDX9(bool bDX9)
+bool Spout::SetDX9(bool bDX9)
 {
-	interop.UseDX9(bDX9);
+	return interop.UseDX9(bDX9);
 }
 
 

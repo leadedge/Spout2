@@ -3,6 +3,12 @@
 //
 //		Wrapper class so that a sender object can be created independent of a receiver
 //
+// ====================================================================================
+//		Revisions :
+//
+//		23.09.14	- return DirectX 11 capability in SetDX9
+//
+// ====================================================================================
 /*
 
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
@@ -99,9 +105,9 @@ bool SpoutSender::SetMemoryShareMode(bool bMemoryMode)
 
 
 //---------------------------------------------------------
-void SpoutSender::SetDX9(bool bDX9)
+bool SpoutSender::SetDX9(bool bDX9)
 {
-	spout.SetDX9(bDX9);
+	return spout.SetDX9(bDX9);
 }
 
 

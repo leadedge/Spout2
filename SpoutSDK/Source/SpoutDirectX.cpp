@@ -1,7 +1,20 @@
-/**
+//
+//
+//			spoutDirectX.cpp
+//
+//		DirectX functions to manage DirectX 11 texture sharing
+//
+// ====================================================================================
+//		Revisions :
+//
+//		22.07.14	- added option for DX9 or DX11
+//		21.09.14	- included keyed mutex texture access lock in CreateSharedDX11Texture
+//		23.09.14	- moved general mutex texture access lock to this class
+//		23.09.14	- added DX11available() to verify operating system support for DirectX 11
+//
+// ====================================================================================
 
-			spoutDirectX.cpp
-
+/*
 
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
 
@@ -24,9 +37,6 @@
 		INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 		LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-		22-07-14	- added option for DX9 or DX11
-		21.09.14	- included keyed mutex texture access locks in CreateSharedDX11Texture
 
 */
 
@@ -330,14 +340,14 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 }
 
-bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** pSharedTexture, HANDLE dxShareHandle)
+bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle)
 {
 	HRESULT hr;
 
 	// To share a resource between a Direct3D 9 device and a Direct3D 11 device 
 	// the texture must have been created using the pSharedHandle argument of CreateTexture.
 	// The shared Direct3D 9 handle is then passed to OpenSharedResource in the hResource argument.
-	hr = pDevice->OpenSharedResource(dxShareHandle, __uuidof(ID3D11Resource), (void**)(pSharedTexture));
+	hr = pDevice->OpenSharedResource(dxShareHandle, __uuidof(ID3D11Resource), (void**)(ppSharedTexture));
 	if(hr != S_OK) {
 		return false;
 	}
@@ -350,8 +360,120 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 
 
 
+// =================================================================
+// Texture access mutex locks
 //
-// Keyed Mutex locks for shared DirectX 11 textures (not applicable for DirectX 9)
+// 1) A general mutex lock for DirectX 9 and for DirectX11 where the tetxure foramt is compatible
+// 2) A texture keyed mutex lock for DirectX 11 textures otherwise where the receiver could be DirectX 9
+//
+// =================================================================
+bool spoutDirectX::CreateAccessMutex(const char *name, HANDLE &hAccessMutex)
+{
+	DWORD errnum;
+	char szMutexName[256]; // name of the mutex
+
+	// Create the mutex name to control access to the shared texture
+	sprintf_s((char*)szMutexName,  256, "%s_SpoutAccessMutex", name);
+
+	// Create or open mutex depending, on whether it already exists or not
+    hAccessMutex = CreateMutexA ( NULL,   // default security
+						  FALSE,  // No initial owner
+						  (LPCSTR)szMutexName);
+
+	if (hAccessMutex == NULL) {
+		// printf("CreateAccessMutex : failed\n");
+        return false;
+	}
+	else {
+		errnum = GetLastError();
+		// printf("read event GetLastError() = %d\n", errnum);
+		if(errnum == ERROR_INVALID_HANDLE) {
+			// printf("access mutex [%s] invalid handle\n", szMutexName);
+		}
+		if(errnum == ERROR_ALREADY_EXISTS) {
+			// printf("access mutex [%s] already exists\n", szMutexName);
+		}
+		else {
+			// printf("access mutex [%s] created\n", szMutexName);
+		}
+	}
+
+	return true;
+
+}
+
+void spoutDirectX::CloseAccessMutex(HANDLE &hAccessMutex)
+{
+	// printf("CloseAccessMutex [%x]\n", m_hAccessMutex);
+	if(hAccessMutex) CloseHandle(hAccessMutex);
+	hAccessMutex = NULL; // makes sure the passed handle is set to NULL
+}
+
+
+//
+// Checks whether any other process is holding the lock and waits for access for 4 frames if so.
+// For receiving from Version 1 apps with no mutex lock, a reader will have created the mutex and
+// will have sole access and rely on the interop locks
+bool spoutDirectX::CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture)
+{
+	DWORD dwWaitResult;
+
+	// DirectX 9 uses a general mutex lock
+	// DirectX 11 uses texture keyed mutex lock except where it is sending to a DirectX 9 receiver
+	// with the default compatible texture format (DXGI_FORMAT_B8G8R8A8_UNORM).
+	// In that case the keyed mutex is not set (see CreateSharedDX11Texture)
+	// TODO - allow for use of this format
+	if(!IsKeyedMutexTexture(pSharedTexture) ) {
+		// Ignore if no mutex but this instance will have either
+		// picked one up from a sender or created one anyway
+		if(!hAccessMutex) return true; 
+
+		// printf("Mutex lock\n");
+		dwWaitResult = WaitForSingleObject(hAccessMutex, 67); // 4 frames at 60fps
+		if (dwWaitResult == WAIT_OBJECT_0 ) {
+			// The state of the object is signalled.
+			return true;
+		}
+		else {
+			switch(dwWaitResult) {
+				case WAIT_ABANDONED : // Could return here
+					printf("CheckAccess : WAIT_ABANDONED\n");
+					break;
+				case WAIT_TIMEOUT : // The time-out interval elapsed, and the object's state is nonsignaled.
+					printf("CheckAccess : WAIT_TIMEOUT\n");
+					break;
+				case WAIT_FAILED : // Could use call GetLastError
+					printf("CheckAccess : WAIT_FAILED\n");
+					break;
+				default :
+					printf("CheckAccess : unknown error\n");
+					break;
+			}
+		}
+		return false;
+	}
+	else {
+		// Lock using DirectX 11 texture keyed mutex
+		// printf("Keyed lock\n");
+		return(LockD3D11Texture(pSharedTexture));
+	}
+
+}
+
+
+void spoutDirectX::AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture)
+{
+	if(!IsKeyedMutexTexture(pSharedTexture) ) {
+		if(hAccessMutex) ReleaseMutex(hAccessMutex);
+	}
+	else {
+		// Unlock using DirectX 11 texture keyed mutex
+		return(UnlockD3D11Texture(pSharedTexture));
+	}
+}
+
+//
+// Keyed Mutex lock for shared DirectX 11 textures (not applicable for DirectX 9)
 //
 bool spoutDirectX::IsKeyedMutexTexture(ID3D11Texture2D* pD3D11Texture)
 {
@@ -390,7 +512,7 @@ bool spoutDirectX::LockD3D11Texture(ID3D11Texture2D* pD3D11Texture)
 					printf("LockD3D11Texture : WAIT_ABANDONED\n");
 					break;
 				case WAIT_TIMEOUT : // The time-out interval elapsed, and the object's state is nonsignaled.
-					printf("LockD3D11Texture : SPOUT_WAIT_TIMEOUT\n");
+					printf("LockD3D11Texture : WAIT_TIMEOUT\n");
 					break;
 				default :
 					break;
@@ -424,5 +546,42 @@ void spoutDirectX::CloseDX11()
 		g_pImmediateContext->Release();
 	}
 	g_pImmediateContext = NULL;
+
+}
+
+//
+// Verifying the System Version
+// http://msdn.microsoft.com/en-us/library/windows/desktop/ms725491%28v=vs.85%29.aspx
+// GetVersion function
+// http://msdn.microsoft.com/en-us/library/windows/desktop/ms724439%28v=vs.85%29.aspx
+// Version Helper functions
+// http://msdn.microsoft.com/en-us/library/windows/desktop/dn424972%28v=vs.85%29.aspx
+//
+bool spoutDirectX::DX11available()
+{
+	DWORD dwVersion = 0; 
+    DWORD dwMajorVersion = 0;
+    DWORD dwMinorVersion = 0; 
+    DWORD dwBuild = 0;
+
+    dwVersion = GetVersion();
+ 
+    // Get the Windows version.
+    dwMajorVersion = (DWORD)(LOBYTE(LOWORD(dwVersion)));
+    dwMinorVersion = (DWORD)(HIBYTE(LOWORD(dwVersion)));
+
+    // Get the build number.
+    if (dwVersion < 0x80000000) dwBuild = (DWORD)(HIWORD(dwVersion));
+
+    // printf("Version is %d.%d Build (%d)\n", dwMajorVersion, dwMinorVersion, dwBuild);
+	// DirectX only available for Windows 7 (6.1) and higher
+	if(dwMajorVersion >= 6 && dwMinorVersion >= 1) {
+		// printf("DirectX 11 available\n");
+		return true;
+	}
+	else {
+		// printf("No DirectX 11\n");
+		return false;
+	}
 
 }

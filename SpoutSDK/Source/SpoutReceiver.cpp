@@ -8,6 +8,7 @@
 //
 //		27-07-14	- CreateReceiver - bUseActive flag instead of null name
 //		03.09.14	- Cleanup
+//		23.09.14	- return DirectX 11 capability in SetDX9
 //
 // ====================================================================================
 /*
@@ -157,9 +158,9 @@ bool SpoutReceiver::SetMemoryShareMode(bool bMemory)
 }
 
 //---------------------------------------------------------
-void SpoutReceiver::SetDX9(bool bDX9)
+bool SpoutReceiver::SetDX9(bool bDX9)
 {
-	spout.interop.UseDX9(bDX9);
+	return spout.interop.UseDX9(bDX9);
 }
 
 

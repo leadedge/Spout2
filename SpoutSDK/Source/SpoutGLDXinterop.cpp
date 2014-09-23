@@ -53,7 +53,8 @@
 					- Cleanup
 		15.09.14	- corrected access lock for DrawToSharedTexture and ReadTexturePixels
 		21.09.14	- mutex texture access locks
-
+		23.09.14	- moved general mutex texture access lock to the SpoutDirectX class
+		23.09.14	- test for DirectX 11 support in UseDX9, IsDX9 and OpenDirectX
 
 */
 
@@ -110,7 +111,8 @@ spoutGLDXinterop::~spoutGLDXinterop() {
 // For external access so that the local global variables are used
 bool spoutGLDXinterop::OpenDirectX(HWND hWnd, bool bDX9)
 {
-	if(bDX9) {
+	// Check for DirectX availability as well
+	if(bDX9 || !spoutdx.DX11available()) {
 		bUseDX9 = true;
 		return (OpenDirectX9(hWnd));
 	}
@@ -299,8 +301,8 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	m_TextureInfo.shareHandle	= (unsigned __int32)m_dxShareHandle;
 	m_TextureInfo.format		= format;
 
-	// Initialize texture transfer sync mutex - either sender or receiver can do this
-	CreateAccessMutex(sendername);
+	// Initialize general texture transfer sync mutex - either sender or receiver can do this
+	spoutdx.CreateAccessMutex(sendername, m_hAccessMutex);
 
 	// Now it has initialized OK
 	m_bInitialized = true;
@@ -523,7 +525,7 @@ void spoutGLDXinterop::CleanupDX11()
 {
 	if(g_pSharedTexture != NULL) g_pSharedTexture->Release();
 	if(g_pd3dDevice != NULL) g_pd3dDevice->Release();
-	g_pSharedTexture = NULL;
+	g_pSharedTexture = NULL; // Important because mutex locks check for NULL
 	g_pd3dDevice = NULL;
 	
 	spoutdx.CloseDX11();
@@ -564,7 +566,9 @@ void spoutGLDXinterop::CleanupInterop(bool bExit)
 
 	CleanupDirectX();
 
-	CloseAccessMutex();
+	// Close general texture access mutex
+	spoutdx.CloseAccessMutex(m_hAccessMutex);
+	m_hAccessMutex = NULL; // Double check that the global handle is NULL
 
 	m_bInitialized = false;
 
@@ -713,54 +717,60 @@ bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarge
 		return false;
 	}
 
-	if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+	// Wait for access to the texture
+	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
 
-		// Draw the input texture into the shared texture via an fbo
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-		glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
-		glBindTexture(GL_TEXTURE_2D, m_glTexture);
+		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 
-		glColor4f(1.f, 1.f, 1.f, 1.f);
-		glEnable(TextureTarget);
-		glBindTexture(TextureTarget, TextureID);
+			// Draw the input texture into the shared texture via an fbo
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+			glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
+			glBindTexture(GL_TEXTURE_2D, m_glTexture);
 
-		GLfloat tc[4][2] = {0};
+			glColor4f(1.f, 1.f, 1.f, 1.f);
+			glEnable(TextureTarget);
+			glBindTexture(TextureTarget, TextureID);
 
-		if(bInvert) {
-			tc[0][0] = 0.0;   tc[0][1] = max_y;
-			tc[1][0] = 0.0;   tc[1][1] = 0.0;
-			tc[2][0] = max_x; tc[2][1] = 0.0;
-			tc[3][0] = max_x; tc[3][1] = max_y;
+			GLfloat tc[4][2] = {0};
+
+			if(bInvert) {
+				tc[0][0] = 0.0;   tc[0][1] = max_y;
+				tc[1][0] = 0.0;   tc[1][1] = 0.0;
+				tc[2][0] = max_x; tc[2][1] = 0.0;
+				tc[3][0] = max_x; tc[3][1] = max_y;
+			}
+			else {
+				tc[0][0] = 0.0;   tc[0][1] = 0.0;
+				tc[1][0] = 0.0;   tc[1][1] = max_y;
+				tc[2][0] = max_x; tc[2][1] = max_y;
+				tc[3][0] = max_x; tc[3][1] = 0.0;
+			}
+
+			GLfloat verts[] =  {
+							-aspect, -1.0,   // bottom left
+							-aspect,  1.0,   // top left
+							 aspect,  1.0,   // top right
+							 aspect, -1.0 }; // bottom right
+
+			glEnableClientState( GL_TEXTURE_COORD_ARRAY );
+			glTexCoordPointer(2, GL_FLOAT, 0, tc );
+			glEnableClientState(GL_VERTEX_ARRAY);		
+			glVertexPointer(2, GL_FLOAT, 0, verts );
+			glDrawArrays( GL_TRIANGLE_FAN, 0, 4 );
+			glDisableClientState(GL_VERTEX_ARRAY);
+			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
+			glBindTexture(TextureTarget, 0);
+			glDisable(TextureTarget);
+
+			glBindTexture(GL_TEXTURE_2D, 0);	
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
-		else {
-			tc[0][0] = 0.0;   tc[0][1] = 0.0;
-			tc[1][0] = 0.0;   tc[1][1] = max_y;
-			tc[2][0] = max_x; tc[2][1] = max_y;
-			tc[3][0] = max_x; tc[3][1] = 0.0;
-		}
-
-		GLfloat verts[] =  {
-						-aspect, -1.0,   // bottom left
-						-aspect,  1.0,   // top left
-						 aspect,  1.0,   // top right
-						 aspect, -1.0 }; // bottom right
-
-		glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-		glTexCoordPointer(2, GL_FLOAT, 0, tc );
-		glEnableClientState(GL_VERTEX_ARRAY);		
-		glVertexPointer(2, GL_FLOAT, 0, verts );
-		glDrawArrays( GL_TRIANGLE_FAN, 0, 4 );
-		glDisableClientState(GL_VERTEX_ARRAY);
-		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-		glBindTexture(TextureTarget, 0);
-		glDisable(TextureTarget);
-
-		glBindTexture(GL_TEXTURE_2D, 0);	
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
-		UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 	}
+	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
+
 	return true;
 }
 
@@ -773,7 +783,7 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect)
 	}
 
 	// Wait for access to the texture
-	if(CheckAccess()) {
+	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
 
 		// go ahead and access the shared texture to draw it
 		// lock dx object
@@ -803,8 +813,7 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect)
 			// drop through to manage events and return true;
 		} // if lock failed just keep going
 	}
-
-	AllowAccess(); // Allow access to the texture
+	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
 
 	return true;
 
@@ -931,7 +940,7 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 
 	// Original blit method with checks - 0.75 - 0.85 msec
 	// Wait for access to the texture
-	if(CheckAccess()) {
+	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
 
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
@@ -992,18 +1001,14 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
-	
-		AllowAccess(); // Allow access to the texture
-
+		spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
 		return true;
 	}
 
 	// There is no reader
-	AllowAccess(); // Allow access to the texture
-
+	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
 
 	return false;
-
 
 } // end WriteTexture
 
@@ -1020,7 +1025,7 @@ bool spoutGLDXinterop::WriteTexturePixels(unsigned char *pixels, unsigned int wi
 	}
 
 	// Wait for access to the texture
-	if(CheckAccess()) {
+	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
 
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 
@@ -1031,9 +1036,7 @@ bool spoutGLDXinterop::WriteTexturePixels(unsigned char *pixels, unsigned int wi
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		} // if lock failed just keep going
 	}
-
-	AllowAccess(); // Allow access to the texture
-
+	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
 
 	return true;
 
@@ -1068,7 +1071,7 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 	*/
 
 	// Wait for access to the texture
-	if(CheckAccess()) {
+	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
 
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
@@ -1093,9 +1096,7 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
 	}
-	
-	AllowAccess(); // Allow access to the texture
-
+	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
 
 	return true;
 
@@ -1112,7 +1113,7 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels, unsigned int wid
 	// retrieve opengl texture data directly to image pixels rather than via an fbo and texture
 
 	// Wait for access to the texture
-	if(CheckAccess()) {
+	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 			glBindTexture(GL_TEXTURE_2D, m_glTexture);
@@ -1122,9 +1123,7 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels, unsigned int wid
 			// drop through to manage events and return true;
 		} // if lock failed just keep going
 	}
-
-	AllowAccess(); // Allow access to the texture
-
+	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
 
 	return true;
 
@@ -1142,7 +1141,7 @@ bool spoutGLDXinterop::BindSharedTexture()
 		return false;
 
 	// Wait for access to the texture
-	if(CheckAccess()) {
+	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 			// Bind our shared OpenGL texture
@@ -1153,8 +1152,11 @@ bool spoutGLDXinterop::BindSharedTexture()
 			bRet = false;
 		}
 	}
-	else {
-		AllowAccess(); // Allow access to the texture
+
+	// Leave locked for succcess, release interop lock and allow texture access for fail
+	if(!bRet) {
+		UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+		spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
 	}
 
 	return bRet;
@@ -1173,120 +1175,12 @@ bool spoutGLDXinterop::UnBindSharedTexture()
 	glBindTexture(GL_TEXTURE_2D,0);
 	// unlock dx object
 	UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-
-	AllowAccess(); // Allow access to the texture
+	// Allow access to the texture
+	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture);
 	
 	return true;
 
 } // end BindSharedTexture
-
-
-// =================================================================
-// Texture access mutex locks
-// =================================================================
-bool spoutGLDXinterop::CreateAccessMutex(const char *name)
-{
-	DWORD errnum;
-	char szMutexName[256]; // name of the mutex
-
-	// Create the mutex name to control access to the shared texture
-	sprintf_s((char*)szMutexName,  256, "%s_SpoutAccessMutex", name);
-
-	// Create or open mutex depending, on whether it already exists or not
-    m_hAccessMutex = CreateMutexA ( NULL,   // default security
-						  FALSE,  // No initial owner
-						  (LPCSTR)szMutexName);
-
-	if (m_hAccessMutex == NULL) {
-		// printf("CreateAccessMutex : failed\n");
-        return false;
-	}
-	else {
-		errnum = GetLastError();
-		// printf("read event GetLastError() = %d\n", errnum);
-		if(errnum == ERROR_INVALID_HANDLE) {
-			// printf("access mutex [%s] invalid handle\n", szMutexName);
-		}
-		if(errnum == ERROR_ALREADY_EXISTS) {
-			// printf("access mutex [%s] already exists\n", szMutexName);
-		}
-		else {
-			// printf("access mutex [%s] created\n", szMutexName);
-		}
-	}
-
-	return true;
-
-}
-
-void spoutGLDXinterop::CloseAccessMutex()
-{
-	// printf("CloseAccessMutex [%x]\n", m_hAccessMutex);
-	if(m_hAccessMutex) CloseHandle(m_hAccessMutex);
-	m_hAccessMutex = NULL;
-}
-
-
-//
-// Checks whether any other process is holding the lock and waits for access for 4 frames if so.
-// For receiving from Version 1 apps with no mutex lock, a reader will have created the mutex and
-// will have sole access and rely on the interop locks
-bool spoutGLDXinterop::CheckAccess()
-{
-	DWORD dwWaitResult;
-
-	// DirectX 9 uses a mutex lock
-	// DirectX 11 uses texture keyed mutex locks except where it is sending to a DirectX 9 receiver
-	// with the default compatible texture format (DXGI_FORMAT_B8G8R8A8_UNORM).
-	// In that case the keyed mutex is not set (see SpoutDirectX.cpp CreateSharedDX11Texture)
-	// TODO - allow for use of this format
-	if(bUseDX9 || !spoutdx.IsKeyedMutexTexture(g_pSharedTexture) ) {
-		if(!m_hAccessMutex) return true; // Ignore if no mutex, but should not happen
-
-		// printf("Mutex lock\n");
-
-		dwWaitResult = WaitForSingleObject(m_hAccessMutex, 67); // 4 frames at 60fps
-		if (dwWaitResult == WAIT_OBJECT_0 ) {
-			// The state of the object is signalled.
-			return true;
-		}
-		else {
-			switch(dwWaitResult) {
-				case WAIT_ABANDONED : // Could return here
-					// printf("CheckAccess : WAIT_ABANDONED\n");
-					break;
-				case WAIT_TIMEOUT : // The time-out interval elapsed, and the object's state is nonsignaled.
-					// printf("CheckAccess : WAIT_TIMEOUT\n");
-					break;
-				case WAIT_FAILED : // Could use call GetLastError
-					// printf("CheckAccess : WAIT_FAILED\n");
-					break;
-				default :
-					break;
-			}
-		}
-		return false;
-	}
-	else {
-		// Lock using keyed mutex
-		// printf("Keyed lock\n");
-		return(spoutdx.LockD3D11Texture(g_pSharedTexture));
-	}
-
-}
-
-
-// TODO : integrate keyed mutex lock for DirecxX 11
-void spoutGLDXinterop::AllowAccess()
-{
-	if(bUseDX9 || !spoutdx.IsKeyedMutexTexture(g_pSharedTexture) ) {
-		if(m_hAccessMutex) ReleaseMutex(m_hAccessMutex);
-	}
-	else {
-		// Unlock using keyed mutex
-		return(spoutdx.UnlockD3D11Texture(g_pSharedTexture));
-	}
-}
 
 
 
@@ -1409,13 +1303,35 @@ HRESULT spoutGLDXinterop::UnlockInteropObject(HANDLE hDevice, HANDLE *hObject)
 } // end UnlockInteropObject
 
 
-void spoutGLDXinterop::UseDX9(bool bDX9)
+bool spoutGLDXinterop::UseDX9(bool bDX9)
 {
-	bUseDX9 = bDX9;
+	if(bDX9) {
+		// Set to DirectX 9
+		// DirectX 11 is the default but is checked by OpenDirectX.
+		bUseDX9 = bDX9;
+		return true;
+	}
+	else {
+		// Check for DirectX 11 availability if the user requested it
+		if(spoutdx.DX11available()) {
+			bUseDX9 = false;
+			return true;
+		}
+		else {
+			// Set to use DirectX 9 if DirectX 11 is not available
+			bUseDX9 = true;
+			return false;
+		}
+	}
 }
 
 bool spoutGLDXinterop::isDX9()
 {
+	// Check for DirectX availability.
+	// It is checked with OpenDirectX but this might not have been called yet.
+	// The user can call this after the Spout SetDX9 call to check if it succeeded.
+	if(!spoutdx.DX11available()) bUseDX9 = true;
+
 	return bUseDX9;
 }
 

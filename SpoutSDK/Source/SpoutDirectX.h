@@ -56,8 +56,15 @@ class SPOUT_DLLEXP spoutDirectX {
 		// DX11
 		ID3D11Device* CreateDX11device(); // Create a DX11 device
 		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pSharedTexture, HANDLE &dxShareHandle);
-		bool OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** pSharedTexture, HANDLE dxShareHandle);
+		bool OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle);
 		void CloseDX11();
+		bool DX11available(); // Verify that the operating system supports DirectX 11
+
+		// Mutex locks for DirectX 9 shared texture access
+		bool CreateAccessMutex(const char *name, HANDLE &hAccessMutex);
+		void CloseAccessMutex(HANDLE &hAccessMutex);
+		bool CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture);
+		void AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture);
 
 		// Keyed mutex locks for D3D11 shared texture access
 		bool IsKeyedMutexTexture(ID3D11Texture2D* pD3D11Texture);
@@ -69,7 +76,6 @@ class SPOUT_DLLEXP spoutDirectX {
 		ID3D11DeviceContext*	g_pImmediateContext;
 		D3D_DRIVER_TYPE			g_driverType;
 		D3D_FEATURE_LEVEL		g_featureLevel;
-		ID3D11Texture2D*		g_pSharedTexture; // The shared DX11 texture
 
 
 };

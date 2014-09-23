@@ -52,7 +52,7 @@ class SPOUT_DLLEXP SpoutSender {
 	bool SetMemoryShareMode(bool bMemoryMode = true);
 	bool GetMemoryShareMode();
 
-	void SetDX9(bool bDX9 = true); // set to use DirectX 9 (default is DirectX 11)
+	bool SetDX9(bool bDX9 = true); // set to use DirectX 9 (default is DirectX 11)
 	bool GetDX9();
 
 	void SetDX9compatible(bool bCompatible = true); // DirectX 11 format compatible with DirectX 9

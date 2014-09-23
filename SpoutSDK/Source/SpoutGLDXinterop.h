@@ -81,7 +81,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 
 		// DX9
 		bool bUseDX9; // Use DX9 or DX11 (default)
-		void UseDX9(bool bDX9);
+		bool UseDX9(bool bDX9);
 		bool isDX9();
 
 		bool CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
@@ -121,52 +121,41 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		// FPS calcs
 		double timeNow, timeThen, elapsedTime, frameTime, lastFrameTime, frameRate, fps, PCFreq, waitMillis, millisForFrame;
 
-		GLuint m_glTexture;		// the OpenGL texture linked to it
+		GLuint m_glTexture;		// the OpenGL texture linked to the shared DX texture
 		GLuint m_fbo;
 
 protected:
 
-		bool m_bInitialized;	// this instance initialized flag
+		bool m_bInitialized;    // this instance initialized flag
 		bool bExtensionsLoaded; // extensions have been loaded
-		bool bFBOavailable;		// fbo extensions available
-		bool bBLITavailable;	// fbo blit extensions available
-		bool bPBOavailable;		// pbo extensions available
-		bool bSWAPavailable;	// swap extensions available
+		bool bFBOavailable;     // fbo extensions available
+		bool bBLITavailable;    // fbo blit extensions available
+		bool bPBOavailable;     // pbo extensions available
+		bool bSWAPavailable;    // swap extensions available
 
-		HWND					m_hWnd;				// parent window
-		HANDLE					m_hSharedMemory;	// handle to the texture info shared memory
-		SharedTextureInfo		m_TextureInfo;		// local texture info structure
+		HWND              m_hWnd;          // parent window
+		HANDLE            m_hSharedMemory; // handle to the texture info shared memory
+		SharedTextureInfo m_TextureInfo;   // local texture info structure
 
 		// DX11
-		ID3D11Device*			g_pd3dDevice;
-		ID3D11DeviceContext*	g_pImmediateContext;
-		D3D_DRIVER_TYPE			g_driverType;
-		D3D_FEATURE_LEVEL		g_featureLevel;
-		ID3D11Texture2D*		g_pSharedTexture; // The shared DX11 texture
+		ID3D11Device*        g_pd3dDevice;
+		ID3D11DeviceContext* g_pImmediateContext;
+		D3D_DRIVER_TYPE      g_driverType;
+		D3D_FEATURE_LEVEL    g_featureLevel;
+		ID3D11Texture2D*     g_pSharedTexture; // The shared DX11 texture
 
 		// DX9
-		IDirect3D9Ex*			m_pD3D;		 // DX9 object
-		IDirect3DDevice9Ex*		m_pDevice;	 // DX9 device
-		LPDIRECT3DTEXTURE9		m_dxTexture; // the shared DX9 texture
-
+		IDirect3D9Ex*       m_pD3D;      // DX9 object
+		IDirect3DDevice9Ex* m_pDevice;   // DX9 device
+		LPDIRECT3DTEXTURE9  m_dxTexture; // the shared DX9 texture
 		
-		HANDLE	m_hInteropDevice;	// handle to the DX/GL interop device
-		HANDLE	m_hInteropObject;	// handle to the DX/GL interop object (the shared texture)
-		HANDLE	m_dxShareHandle;	// shared DX texture handle
+		HANDLE m_hInteropDevice; // handle to the DX/GL interop device
+		HANDLE m_hInteropObject; // handle to the DX/GL interop object (the shared texture)
+		HANDLE m_dxShareHandle;  // shared DX texture handle
+		HANDLE m_hAccessMutex;   // Texture access mutex lock handle
 
 		bool getSharedTextureInfo(char* sharedMemoryName);
 		bool setSharedTextureInfo(char* sharedMemoryName);
-
-		// Mutex locks for DirectX 9 shared textures
-		bool CreateAccessMutex(const char *name);
-		void CloseAccessMutex();
-		bool CheckAccess();
-		void AllowAccess();
-
-		// Texture access mutex lock handle
-		HANDLE m_hAccessMutex;
-		unsigned int m_AccessLockCount;
-
 };
 
 #endif
