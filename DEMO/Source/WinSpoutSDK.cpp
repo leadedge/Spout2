@@ -44,6 +44,9 @@
 	01.09.14	- added name entry for sender
 	03.09.14	- GitHub update
 	21.09.14	- recompiled for mutex texture access locks
+	22.09.14	- included adapter name and bpp in diagnostics
+	23.09.14	- test for DirectX 11 support and include in diagnostics
+
 
 */
 #define MAX_LOADSTRING 100
@@ -81,7 +84,7 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 //
 bool bReceiver      = false; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
-bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
+bool bDX9mode       = true; // Use DirectX 9 instead of DirectX 11
 bool bDX9compatible = true; // For DX11 senders only - compatible DX9 format for DX11 senders (default true)
 // =============================================================
 
@@ -371,15 +374,24 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	}
 	else { 
 		// Set whether to use DirectX 9 or DirectX 11
+		// DirectX 11 is default, but compatibility is tested before initializing DirectX
+		// and DirectX 9 functions are used if the Operating system does not support DirectX 11
+		// This can be tested with GetDX9().
 		if(bDX9mode) {
 			sender.SetDX9(true);
 			receiver.SetDX9(true); // Must be set independently for each object
 		}
 		else {
+			// DirectX 11 is default so thes calls do not need to be made
+			// But if they are, DirectX 11 availability is tested
+			// and false is returned if it cannot be set
+			// so DirectX 11 compatibility can be checked here.
+			// Otherwise DirectX 9 functions are used and this call has no effect
 			sender.SetDX9(false);
 			receiver.SetDX9(false);
 			// Here the sender DX11 texure format can be set to be DX9 compatible or not
 			// Spout SDK default is a compatible format
+			// Has no effect for DirectX 9
 			sender.SetDX9compatible(bDX9compatible);
 		}
 	}
@@ -388,19 +400,41 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	glContext = wglGetCurrentContext(); // should check if opengl context creation succeed
 	if(glContext) {
 
+		if(bReceiver) {
+			sprintf_s(gldxcaps, 1024, "Spout Receiver\r\n");
+			if(receiver.spout.GetDX9()) strcat_s(gldxcaps, 1024, "DirectX 9 ");
+			else  strcat_s(gldxcaps, 1024, "DirectX 11 ");
+		}
+		else {
+			sprintf_s(gldxcaps, 1024, "Spout Sender\r\n");
+			if(sender.spout.GetDX9()) strcat_s(gldxcaps, 1024, "DirectX 9 ");
+			else strcat_s(gldxcaps, 1024, "DirectX 11 ");
+		}
+
 		// ======= Hardware compatibility test =======
 		#ifdef is64bit
-			if(bReceiver)
-				sprintf_s(gldxcaps, 1024, "Spout Receiver - 64bit\r\n");
-			else
-				sprintf_s(gldxcaps, 1024, "Spout Sender - 64bit\r\n");
+				strcat_s(gldxcaps, 1024, "64bit\r\n");
 		#else
-		if(bReceiver)
-			sprintf_s(gldxcaps, 1024, "Spout Receiver - 32bit\r\n");
-		else
-			sprintf_s(gldxcaps, 1024, "Spout Sender - 32bit\r\n");
+				strcat_s(gldxcaps, 1024, "32bit\r\n");
 		#endif
 
+		// Additional info
+		char output[256];
+		DISPLAY_DEVICE DisplayDevice;
+		DisplayDevice.cb = sizeof(DISPLAY_DEVICE);
+		if(EnumDisplayDevices(NULL, 0, &DisplayDevice, 0)) {
+			size_t charsConverted = 0;
+			wcstombs_s(&charsConverted, output, 129, DisplayDevice.DeviceString, 128);
+			printf("DeviceString = %s\n", output); // This is the name of the adapter
+			strcat_s(gldxcaps, 1024, output);
+			hDC=GetDC(hWnd);
+			if (hDC) {
+				int bitsPerPixel = GetDeviceCaps(hDC, BITSPIXEL); //to get current system's color depth
+				sprintf_s(output, 256, "- %d bpp", bitsPerPixel);
+				strcat_s(gldxcaps, 1024, output);
+			}
+			strcat_s(gldxcaps, 1024, "\r\n");
+		}
 
 		// Now we can call an initial hardware compatibilty check
 		// This checks for the NV_DX_interop extensions and will fail
@@ -433,6 +467,7 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 			else
 				strcat_s(gldxcaps, 1024,  "Hardware does not support NV_DX_interop extensions\r\nTexture sharing not available\r\nLimited to memory share mode");
 		}
+
 	}
 	else {
 		strcat_s(gldxcaps, 1024,  "No GL context");
@@ -635,8 +670,8 @@ int DrawGLScene(GLvoid)
 
 		// glClearColor(0.039f, 0.392f, 0.549f, 1.0f); // Background 10, 100, 140
 		// glClearColor(0.000f, 0.300f, 0.500f, 1.0f); // deep blue
-		glClearColor(0.000f, 0.200f, 0.400f, 1.0f); // deeper blue
-		// glClearColor(0.39f, 0.025f, 0.000f, 1.0f); // red/brown
+		// glClearColor(0.000f, 0.200f, 0.400f, 1.0f); // deeper blue
+		glClearColor(0.39f, 0.025f, 0.000f, 1.0f); // red/brown
 
 		glPushMatrix();
 
@@ -1233,13 +1268,14 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	MSG		msg;									// Windows Message Structure
 	BOOL	done=FALSE;								// Bool Variable To Exit Loop
 
-	// Debug console window so printf works
 	/*
+	// Debug console window so printf works
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("WinSpoutSDK\n");
 	*/
+
 
 	// suppress warnings
 	msg.wParam = 0;
