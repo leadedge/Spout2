@@ -29,6 +29,7 @@
 //		15.09.14	- protect against null string copy in SelectSenderPanel
 //		22.09.14	- checking of bUseAspect function in CreateReceiver
 //		23.09.14	- test for DirectX 11 support in SetDX9 and GetDX9
+//		24.09.14	- updated project file for DLL to include SpoutShareMemory class
 //		
 // ================================================================
 /*
@@ -176,18 +177,18 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 	char UserName[256];
 	UserName[0] = 0; // OK to do this internally
 
-	// printf("Spout::CreateReceiver(%s, %d, %d, %d)\n", sendername, width, height, bActive);
+	printf("Spout::CreateReceiver(%s, %d, %d, %d)\n", sendername, width, height, bActive);
 
 	// Use the active sender if the user wants it or the sender name is not set
 	if(bActive || sendername[0] == 0) {
-		// printf("Use active sender\n");
+		printf("Use active sender\n");
 		bUseActive = true;
 	}
 	else {
 		// Try to find the sender with the name sent or over-ride with user flag
 		strcpy_s(UserName, 256, sendername);
 		bUseActive = false; // set global flag to use the active sender or not
-		// printf("Use sender [%s]\n", UserName);
+		printf("Use sender [%s]\n", UserName);
 	}
 
 	if(OpenReceiver(UserName, width, height)) {

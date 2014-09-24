@@ -282,8 +282,6 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	desc.Height				= height;
 	desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 	// desc.MiscFlags			= D3D11_RESOURCE_MISC_SHARED; // This texture will be shared
-
-	// desc.MiscFlags          = D3D11_RESOURCE_MISC_SHARED; // This texture will be shared
 	
 	// A DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not compatible with DirectX 9
 	// so if the format is set to be compatible (default) do not use this lock

@@ -117,10 +117,6 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		HRESULT LockInteropObject(HANDLE hDevice, HANDLE *hObject);
 		HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE *hObject);
 
-		// LJ DEBUG
-		// FPS calcs
-		double timeNow, timeThen, elapsedTime, frameTime, lastFrameTime, frameRate, fps, PCFreq, waitMillis, millisForFrame;
-
 		GLuint m_glTexture;		// the OpenGL texture linked to the shared DX texture
 		GLuint m_fbo;
 
@@ -156,6 +152,14 @@ protected:
 
 		bool getSharedTextureInfo(char* sharedMemoryName);
 		bool setSharedTextureInfo(char* sharedMemoryName);
+
+		// LJ DEBUG
+		// Timing calcs
+		// __int64 CounterStart;
+		// double PCFreq;
+		// void StartCounter();
+		// double GetCounter();
+
 };
 
 #endif

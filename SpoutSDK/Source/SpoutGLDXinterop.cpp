@@ -55,6 +55,7 @@
 		21.09.14	- mutex texture access locks
 		23.09.14	- moved general mutex texture access lock to the SpoutDirectX class
 		23.09.14	- test for DirectX 11 support in UseDX9, IsDX9 and OpenDirectX
+		24.09.14	- save and restore fbo for read/write/drawto texture
 
 */
 
@@ -91,12 +92,6 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	bBLITavailable		= false;
 	bPBOavailable		= false;
 	bSWAPavailable		= false;
-
-	// LJ DEBUG
-	// FPS calcs
-	timeNow = timeThen = elapsedTime = frameTime = lastFrameTime = PCFreq = waitMillis = 0.0;
-	fps = 60.0; //give a realistic starting value - win32 issues
-	frameRate = 60.0;
 
 }
 
@@ -723,6 +718,12 @@ bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarge
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 
 			// Draw the input texture into the shared texture via an fbo
+
+			// Save any FBO currently bound
+			GLint previousFBO;
+			glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
+
+			// Bind our fbo
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 			glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
 			glBindTexture(GL_TEXTURE_2D, m_glTexture);
@@ -763,8 +764,10 @@ bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarge
 			glBindTexture(TextureTarget, 0);
 			glDisable(TextureTarget);
 
-			glBindTexture(GL_TEXTURE_2D, 0);	
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+			glBindTexture(GL_TEXTURE_2D, 0);
+
+			// restore the previous fbo
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);
 
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
@@ -910,10 +913,6 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 	}
 
 	/*
-	// glFlush(); // 0.80 - 0.90
-	// glFinish(); // 1.4 ms / frame - adds approx 0.5 - 0.7 ms / frame
-	// timeNow = (double)timeGetTime();
-	// timeThen = timeNow;
 	// Basic code for debugging 0.85 - 0.90 msec
 	wglDXLockObjectsNV(m_hInteropDevice, 1, &m_hInteropObject);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
@@ -924,17 +923,6 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	wglDXUnlockObjectsNV(m_hInteropDevice, 1, &m_hInteropObject);
-
-	// glFlush(); // 0.80 - 0.90
-	// glFinish();
-	timeNow = (double)timeGetTime();
-	elapsedTime = (timeNow-timeThen); // +0.5; // to allow for integer truncation ?
-	frameTime = elapsedTime/1000.0; // in seconds
-	if( frameTime  > 0.000001) {
-		fps	= 1.0 / frameTime;
-		printf("frame time = %f, fps = %f\n", frameTime*1000.0, fps);
-	}
-	timeThen = timeNow;
 	return true;
 	*/
 
@@ -947,6 +935,11 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 			// fbo is a  local FBO and width/height are the dimensions of the texture.
 			// "TextureID" is the source texture, and "m_glTexture" is destination texture
 			// which should have been already created
+
+			// Save any FBO currently bound
+			GLint previousFBO;
+			glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
+
 			// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 
@@ -993,8 +986,9 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 				glBindTexture(GL_TEXTURE_2D, 0);		
 			}
 
-			// unbind our frame buffer
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+			// restore the previous fbo
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);
+
 			// unbind the shared texture
 			glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -1075,9 +1069,14 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+
+			// Save any FBO currently bound
+			GLint previousFBO;
+			glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
+
 			// Bind our local fbo
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
-			// glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, tempFBO); 
+
 			// Attach the shared texture to the color buffer in our frame buffer
 			// needs GL_TEXTURE_2D as a target for our shared texture
 			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
@@ -1089,8 +1088,9 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 				// unbind the texture
 				glBindTexture(TextureTarget, 0);
 			}
-			// Unbind our fbo
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); 
+
+			// restore the previous fbo
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);
 
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
