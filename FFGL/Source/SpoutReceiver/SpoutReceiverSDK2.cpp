@@ -51,6 +51,8 @@
 			 - Introduced bUseActive flag instead of empty name
 			 - Corrected inverted draw
 			 - Version 3.013
+	23-09-14 - corrected User entered name reset for a saved entry
+			 - Version 3.014
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -83,7 +85,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.013\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.014\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -114,7 +116,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.013\n");
+	printf("SpoutReceiver2 Vers 3.014\n");
 	*/
 
 	// Input properties - this is a source and has no inputs
@@ -183,6 +185,9 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 
 SpoutReceiverSDK2::~SpoutReceiverSDK2()
 {
+
+	// printf("SpoutReceiverSDK2::~SpoutReceiverSDK2\n");
+
 	// OpenGL context required
 	if(wglGetCurrentContext()) {
 		// ReleaseReceiver does nothing if there is no receiver
@@ -224,12 +229,18 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	//
 	// Initialize a receiver
 	//
-	//
+
+	// If already initialized and the user has entered a different name, reset the receiver
+	if(bInitialized && UserSenderName[0] && strcmp(UserSenderName, SenderName) != 0) {
+		receiver.ReleaseReceiver();
+		bInitialized = false;
+	}
+
 	if(!bInitialized) {
-	
-		// If UserSenderName is set, use it otherwise find the active sender
+
+		// If UserSenderName is set, use it. Otherwise find the active sender
 		if(UserSenderName[0]) {
-			strcpy_s(SenderName, UserSenderName);
+			strcpy_s(SenderName, UserSenderName); // Create a receiver with this name
 			bUseActive = false;
 		}
 		else {
@@ -237,6 +248,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		}
 
 		// CreateReceiver will return true only if it finds a sender running.
+		// If a sender name is specified and does not exist it will return false.
 		if(receiver.CreateReceiver(SenderName, g_Width, g_Height, bUseActive)) {
 			// Did it initialized in Memory share mode ?
 			bMemoryMode = receiver.GetMemoryShareMode();
@@ -312,9 +324,9 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 		#ifndef MemoryShareMode
 
 		case FFPARAM_SharingName:
-			if(pParam->NewParameterValue && strlen((char*)pParam->NewParameterValue) > 0) {
-				strcpy_s(UserSenderName, 256, (char*)pParam->NewParameterValue);
+			if(pParam->NewParameterValue) {
 				// If there is anything already in this field at startup, it is set by a saved composition
+				strcpy_s(UserSenderName, 256, (char*)pParam->NewParameterValue);
 			}
 			else {
 				// Reset to an empty string so that the active sender 
@@ -328,6 +340,7 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 			if(pParam->NewParameterValue) { // name entry toggle is on
 				// Is there a  user entered name
 				if(UserSenderName[0] != 0) {
+					// Cant be both initialized ans the same name
 					if(!(bInitialized && strcmp(UserSenderName, SenderName) == 0)) {
 						// Does the sender exist ?
 						if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
