@@ -159,6 +159,7 @@
     <ClCompile Include="..\SpoutSDK.cpp" />
     <ClCompile Include="..\SpoutSender.cpp" />
     <ClCompile Include="..\SpoutSenderNames.cpp" />
+    <ClCompile Include="..\SpoutSharedMemory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Spout.h" />
@@ -171,6 +172,7 @@
     <ClInclude Include="..\SpoutSDK.h" />
     <ClInclude Include="..\SpoutSender.h" />
     <ClInclude Include="..\SpoutSenderNames.h" />
+    <ClInclude Include="..\SpoutSharedMemory.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
