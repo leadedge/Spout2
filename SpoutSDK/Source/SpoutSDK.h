@@ -65,15 +65,15 @@ class SPOUT_DLLEXP Spout {
 	bool CreateSender(char *name, unsigned int width, unsigned int height, DWORD dwFormat = 0);
 	bool UpdateSender(char* Sendername, unsigned int width, unsigned int height);
 	void ReleaseSender(DWORD dwMsec = 0);
-	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true);
-	bool SendImage(unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert=true);
+	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true, GLuint HostFBO=0);
+	bool SendImage(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bAlignment = true, bool bInvert=true);
 
 	// Receiver
 	bool CreateReceiver(char* name, unsigned int &width, unsigned int &height, bool bUseActive = false);
 	void ReleaseReceiver(); 
 
-	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0);
-	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, int glFormat);
+	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, GLuint HostFBO=0);
+	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA);
 	
 	bool GetImageSize (char* sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);	
 
@@ -81,7 +81,7 @@ class SPOUT_DLLEXP Spout {
 	bool UnBindSharedTexture();
 	
 	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0);
-	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true);
+	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
 
 	int  GetSenderCount();
 	bool GetSenderName(int index, char* sendername, int MaxSize = 256);
@@ -164,9 +164,7 @@ DXGI_FORMAT_R8G8B8A8_TYPELESS				= 27,
 	bool InitMemoryShare(bool bReceiver);
 	bool ReleaseMemoryShare();
 	void SpoutCleanUp(bool bExit = false);
-	bool FlipVertical(unsigned char *src, unsigned int width, unsigned int height);
-	// bool CheckSpoutPanel();
-	bool CheckSpoutDialog();
+	bool FlipVertical(unsigned char *src, unsigned int width, unsigned int height, GLenum glFormat = GL_RGB);
 
 	// FPS calcs - TODO cleanup
 	double timeNow, timeThen, elapsedTime, frameTime, lastFrameTime, frameRate, fps, PCFreq, waitMillis, millisForFrame;

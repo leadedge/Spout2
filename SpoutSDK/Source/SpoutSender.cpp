@@ -7,6 +7,9 @@
 //		Revisions :
 //
 //		23.09.14	- return DirectX 11 capability in SetDX9
+//		28.09.14	- Added GL format for SendImage
+//					- Added bAlignment (4 byte alignment) flag for SendImage
+//					- Added Host FBO for SendTexture, DrawToSharedTexture
 //
 // ====================================================================================
 /*
@@ -72,21 +75,21 @@ void SpoutSender::ReleaseSender(DWORD dwMsec)
 
 
 //---------------------------------------------------------
-bool SpoutSender::SendImage(unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert)
+bool SpoutSender::SendImage(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bAlignment, bool bInvert)
 {
-	return spout.SendImage(pixels, width, height, bInvert);
+	return spout.SendImage(pixels, width, height, glFormat, bAlignment, bInvert);
 }
 
 //---------------------------------------------------------
-bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height, bool bInvert) //DWORD dwFormat, bool bInvert)
+bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
-	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert);
+	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
 }
 
 //---------------------------------------------------------
-bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert)
+bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
 {
-	return spout.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert);
+	return spout.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO);
 }
 
 

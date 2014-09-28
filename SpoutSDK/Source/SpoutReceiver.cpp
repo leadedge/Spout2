@@ -9,6 +9,7 @@
 //		27-07-14	- CreateReceiver - bUseActive flag instead of null name
 //		03.09.14	- Cleanup
 //		23.09.14	- return DirectX 11 capability in SetDX9
+//		28.09.14	- Added Host FBO for ReceiveTexture
 //
 // ====================================================================================
 /*
@@ -51,9 +52,9 @@ SpoutReceiver::~SpoutReceiver()
 
 
 //---------------------------------------------------------
-bool SpoutReceiver::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget)
+bool SpoutReceiver::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, GLuint HostFBO)
 {
-	return spout.ReceiveTexture(name, width, height, TextureID, TextureTarget);
+	return spout.ReceiveTexture(name, width, height, TextureID, TextureTarget, HostFBO);
 }
 
 

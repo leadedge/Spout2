@@ -30,6 +30,11 @@
 //		22.09.14	- checking of bUseAspect function in CreateReceiver
 //		23.09.14	- test for DirectX 11 support in SetDX9 and GetDX9
 //		24.09.14	- updated project file for DLL to include SpoutShareMemory class
+//		28.09.14	- Added GL format for SendImage and FlipVertical
+//					- Added bAlignment  (4 byte alignment) flag for SendImage
+//					- Added Host FBO for SendTexture, DrawToSharedTexture
+//					- Added Host FBO for ReceiveTexture
+
 //		
 // ================================================================
 /*
@@ -209,7 +214,7 @@ void Spout::ReleaseReceiver()
 
 
 // If the local texure has changed dimensions this will return false
-bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert)
+bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
 	unsigned char * pDib;
 	unsigned char * pBits;
@@ -222,9 +227,13 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 		if(width != g_Width || height != g_Height) {
 			return(UpdateSender(g_SharedMemoryName, width, height));
 		}
-		return(interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert));
+		return(interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
 	}
 	else if(bMemoryShareInitOK) {
+
+		//
+		// *** Note RGB only ***
+		//
 		// Memoryshare mode has to get the texture pixels into a bitmap and and write them to shared memory
 		int imagesize = width*height*3+sizeof(BITMAPINFOHEADER); // RGB bitmap
 		rgbBuffer = (unsigned char *)malloc(imagesize*sizeof(unsigned char));
@@ -254,7 +263,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 			// Default invert flag is true so do the flip to get it the
 			// right way up unless the user has specifically indicated not to
 			// LJ DEBUG - needs tracing semder/receiver - possible double invert - default false?
-			if(bInvert) FlipVertical(pBits, width, height);
+			if(bInvert) FlipVertical(pBits, width, height, GL_RGB); // Default RGBA
 
 			// Write the header plus the image data to shared memory
 			interop.MemoryShare.WriteToMemory(pDib, imagesize);
@@ -271,15 +280,31 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 
 
 // If the local texure has changed dimensions this will return false
-bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert)
+bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bAlignment, bool bInvert)
 {
 	unsigned char * pDib;
 	unsigned char * pBits;
 	unsigned char * rgbBuffer;
-	BITMAPINFOHEADER * pbmih; // pointer to it
+	unsigned int imagesize, imagewidth;
+	BITMAPINFOHEADER * pbmih;
 
 	if(bDxInitOK) {
-		int imagesize = width*height*3; // RGB bitmap
+
+		// Check for 4-byte alignment (default) for 
+		if(bAlignment) {
+			imagewidth = ((width*24+31)/32)*4; // each line is 4-byte aligned in size
+		}
+		else {
+			imagewidth = width;
+		}
+
+		if(glFormat == GL_RGB) {
+			imagesize = imagewidth*height*3; // RGB
+		}
+		else {
+			imagesize = imagewidth*height*4; // RGBA
+		}
+
 		rgbBuffer = (unsigned char *)malloc(imagesize*sizeof(unsigned char));
 		if(!rgbBuffer) return false;
 
@@ -288,18 +313,23 @@ bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int he
 			UpdateSender(g_SharedMemoryName, g_Width, g_Height);
 		}
 		if(bInvert) {
-			CopyMemory(rgbBuffer, pixels, width*height*3); //format is RGB
-			FlipVertical(rgbBuffer, width, height);
-			interop.WriteTexturePixels(rgbBuffer, width, height);
+			CopyMemory(rgbBuffer, pixels, imagesize);
+			FlipVertical(rgbBuffer, width, height, glFormat); // Can be RGB or RGBA
+			interop.WriteTexturePixels(rgbBuffer, width, height, glFormat, bAlignment);
 		}
 		else {
-			interop.WriteTexturePixels(pixels, width, height);
+			interop.WriteTexturePixels(pixels, width, height, glFormat);
 		}
 		free((void *)rgbBuffer);
 
 		return true; // no checks for now
 	}
 	else if(bMemoryShareInitOK) {
+		//
+		// Memoryshare mode 
+		//
+		//		*** NOTE RGB ONLY ***
+		//
 		// Memoryshare mode has to get the texture pixels into a bitmap and and write them to shared memory
 		int imagesize = width*height*3+sizeof(BITMAPINFOHEADER); // RGB bitmap
 		rgbBuffer = (unsigned char *)malloc(imagesize*sizeof(unsigned char));
@@ -326,7 +356,7 @@ bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int he
 
 			// Default invert flag is true so do the flip to get it the
 			// right way up unless the user has specifically indicated not to
-			if(bInvert) FlipVertical(pBits, width, height);
+			if(bInvert) FlipVertical(pBits, width, height, GL_RGB); // Default is RGBA
 
 			// Write the header plus the image data to shared memory
 			interop.MemoryShare.WriteToMemory(pDib, imagesize);
@@ -345,7 +375,7 @@ bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int he
 //
 // ReceiveTexture
 //
-bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget)
+bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, GLuint HostFBO)
 {
 	char newname[256];
 	unsigned int newWidth, newHeight;
@@ -439,13 +469,18 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 
 		// If a valid texture was passed, read the shared texture into it
 		if(TextureID > 0 && TextureTarget > 0) {
-			if(!interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height))
+			if(!interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height, HostFBO))
 				return false;
 		}
 		// All OK
 		return true;
 	} // was initialized in texture mode
 	else {
+		//
+		// Memoryshare mode 
+		//
+		//		*** NOTE RGB ONLY ***
+		//
 		// Memoryshare mode - problem for reading the size beforehand is that
 		// the framerate is halved. Reading the whole image assumes that the sender
 		// does not reduce in size, but it has worked successfully so far.
@@ -486,18 +521,20 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 
 	return false;
 
-} // end ReceiveTexture (name, TextureID, TextureTarget)
+} // end ReceiveTexture
 
 
-// Note was RGB only. Format passed should go through now and work.
-bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, unsigned char* pixels, int glFormat)
+// Note was RGB only, but the format passed should go through now and work. 
+// Default format is now GL_RGBA but Memoryshare mode remains RGB only.
+// The host application must ensure a sufficient size for the pixel buffer
+bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat)
 {
 	char newname[256];
 	unsigned int newWidth, newHeight;
 	DWORD dwFormat;
 	HANDLE hShareHandle;
 	unsigned char *src;
-	BITMAPINFOHEADER * pbmih; // pointer to it
+	BITMAPINFOHEADER * pbmih;
 	unsigned int imagesize;
 	unsigned char * rgbBuffer;
 
@@ -583,7 +620,7 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 
 		// If a valid pixel pointer was passed, read the shared texture into it
 		if(pixels) {
-			// Default format is GL_RGB
+			// Default format is GL_RGBA
 			if(interop.ReadTexturePixels(pixels, g_Width, g_Height, glFormat)) {
 				return true;
 			}
@@ -594,7 +631,12 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 		return true;
 	} // was initialized in texture mode
 	else {
-		// Memoryshare mode - problem for reading the size beforehand is that
+		//
+		// Memoryshare mode 
+		//
+		//		*** NOTE RGB ONLY ***
+		//
+		// problem for reading the size beforehand is that
 		// the framerate is halved. Reading the whole image assumes that the sender
 		// does not reduce in size, but it has worked successfully so far.
 		// Only solution is to always allocate a buffer of the desktop size.
@@ -709,9 +751,9 @@ bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect)
 
 
 //---------------------------------------------------------
-bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert)
+bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
 {
-	return(interop.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert));
+	return(interop.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO));
 }
 
 
@@ -1390,12 +1432,17 @@ bool Spout::CheckSpoutPanel()
 
 // Adapted from FreeImage function
 // Flip the image vertically along the horizontal axis.
-bool Spout::FlipVertical(unsigned char *src, unsigned int width, unsigned int height) 
+// Default format is RGBA
+bool Spout::FlipVertical(unsigned char *src, unsigned int width, unsigned int height, GLenum glFormat) 
 {
 		BYTE *From, *Mid;
+		int pitch;
 
 		// swap the buffer
-		int pitch = width*3; // RGB
+		if(glFormat == GL_RGB) // not the default
+			pitch = width*3;
+		else
+			pitch = width*4; // RGBA assumed otherwise
 
 		// copy between aligned memories
 		Mid = (BYTE*)malloc(pitch * sizeof(BYTE));
