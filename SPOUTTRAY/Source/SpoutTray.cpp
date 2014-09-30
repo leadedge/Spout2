@@ -24,6 +24,9 @@
 //		30.08.14 - recompiled using MB sendernames revision
 //		03.09.14 - update after SDK testing
 //				 - Version 2.01
+//		29.09.14 - update with with SDK revision
+//		30.09.14 - Additional diagnositcs
+//				 - Version 2.02
 //
 #define GLEW_STATIC // to use glew32s.lib instead of glew32.lib otherwise there is a redefinition error
 
@@ -66,7 +69,6 @@ ULONGLONG			GetDllVersion(LPCTSTR lpszDllName);
 
 INT_PTR CALLBACK	DlgProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
-LRESULT CALLBACK	Capabilities(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -163,18 +165,145 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	// Only need to do this once
 	GLhdc = wglGetCurrentDC();
 	if(!GLhdc) {
+
+		// ======= Hardware compatibility test =======
+		// Get the Windows version.
+		DWORD dwVersion = 0; 
+		DWORD dwMajorVersion = 0;
+		DWORD dwMinorVersion = 0; 
+		DWORD dwBuild = 0;
+		DWORD dwPlatformId;
+		WORD wServicePackMajor = 0;
+	    WORD wServicePackMinor = 0;
+		WORD wSuiteMask = 0;
+		BYTE wProductType = 0;
+
+		bool bOsviX = true;
+		bool bCanDetect = true;
+		char output[256];
+		size_t charsConverted = 0;
+	
+		OSVERSIONINFOEX osvi;
+		ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+	    if(!GetVersionEx((OSVERSIONINFO *)&osvi)) {
+			bOsviX = false;
+			// If that fails, try using the OSVERSIONINFO structure.
+			osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+			if(!GetVersionEx((OSVERSIONINFO *)&osvi))
+				bCanDetect = false;
+
+		}
+
+		if(bCanDetect) {
+
+			dwBuild = osvi.dwBuildNumber;
+			dwMajorVersion = osvi.dwMajorVersion;
+			dwMinorVersion = osvi.dwMinorVersion;
+			dwPlatformId = osvi.dwPlatformId;
+			// printf("Version is %d.%d Build (%d)\n", dwMajorVersion, dwMinorVersion, dwBuild);
+			if(dwMajorVersion < 6) {
+				strcat_s(gldxcaps, 1024, "Windows XP - ");
+			}
+			else {
+				switch (dwMinorVersion) {
+					case 0 : // vista
+						strcat_s(gldxcaps, 1024, "Windows Vista - ");
+						break;
+					case 1 : // 7
+						strcat_s(gldxcaps, 1024, "Windows 7 - ");
+						break;
+					case 2 : // 8
+						strcat_s(gldxcaps, 1024, "Windows 8 - ");
+						break;
+					case 3 : // 8.1
+						strcat_s(gldxcaps, 1024, "Windows 8.1 - ");
+						break;
+					default : // Later than October 2013
+						strcat_s(gldxcaps, 1024, "Windows - ");
+						break;
+				}
+			}
+		}
+
+		/*
+		if(bOsviX) {
+			// Here we can get additional service pack and other information
+			wServicePackMajor = osvi.wServicePackMajor;
+			wServicePackMinor = osvi.wServicePackMinor;
+			sprintf_s(output, 256, "SP %d.%d - ", wServicePackMajor, wServicePackMinor);
+			strcat_s(gldxcaps, 1024, output);
+		}
+		*/
+
+		// DirectX 11 only available for Windows 7 (6.1) and higher
+
+		#ifdef is64bit
+				strcat_s(gldxcaps, 1024, "64bit\r\n");
+		#else
+				strcat_s(gldxcaps, 1024, "32bit\r\n");
+		#endif
+
+		// Additional info
+		DISPLAY_DEVICE DisplayDevice;
+		DisplayDevice.cb = sizeof(DISPLAY_DEVICE);
+		if(EnumDisplayDevices(NULL, 0, &DisplayDevice, 0)) {
+			wcstombs_s(&charsConverted, output, 129, DisplayDevice.DeviceKey, 128);
+	
+			HKEY hRegKey;
+			DWORD dwSize, dwKey;  
+			// Extract the subkey from the DeviceKey string
+			string SubKey = strstr(output, "System");
+
+			// Convert all slash to double slash using a C++ string function
+			// to get subkey string required to extract registry information
+			for (unsigned int i=0; i<SubKey.length(); i++) {
+				if (SubKey[i] == '\\') {
+					SubKey.insert(i, 1, '\\');
+					++i; // Skip inserted char
+				}
+			}
+
+			// Open the key to find the adapter details
+			if(RegOpenKeyExA(HKEY_LOCAL_MACHINE, SubKey.c_str(), NULL, KEY_READ, &hRegKey) == 0) { 
+				dwSize = MAX_PATH;
+				// Adapter name
+				if(RegQueryValueExA(hRegKey, "DriverDesc", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
+					strcat_s(gldxcaps, 1024, output);
+					strcat_s(gldxcaps, 1024, "\r\n");
+				}
+				if(RegQueryValueExA(hRegKey, "DriverVersion", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
+					strcat_s(gldxcaps, 1024, "Driver : ");
+					// Find the last 6 characters of the version string then
+					// convert to a float and multiply to get decimal in the right place
+					sprintf_s(output, 256, "%5.2f", atof(output + strlen(output)-6)*100.0);
+					strcat_s(gldxcaps, 1024, output);
+				} // endif DriverVersion
+				RegCloseKey(hRegKey);
+			} // endif RegOpenKey
+		} // endif EnumDisplayDevices
+
+		// Bits per pixel
+		HDC hDC=GetDC(hWnd);
+		if (hDC) {
+			int bitsPerPixel = GetDeviceCaps(hDC, BITSPIXEL); //to get current system's color depth
+			sprintf_s(output, 256, " (%d bpp)", bitsPerPixel);
+			strcat_s(gldxcaps, 1024, output);
+		}
+		strcat_s(gldxcaps, 1024, "\r\n");
+
+		// Now we can call an initial hardware compatibilty check
+		// This checks for the NV_DX_interop extensions and will fail
+		// if the graphics deliver does not support them, or fbos
+
 		// Initialize glew so that extensions can be found - only needed for this dialog
 		// You need to create a rendering context BEFORE calling glewInit()
 		// First you need to create a valid OpenGL rendering context and call glewInit() 
 		// to initialize the extension entry points, so create a window here but it will not show.
 		glutInit(&argc, vptr);
 		glutCreateWindow("SpoutSendersGL");
-		
 		HGLRC glContext = wglGetCurrentContext(); // should check if opengl context creation succeed
 		if(glContext) {
-			// Now we can call an initial hardware compatibilty check
-			// This checks for the NV_DX_interop extensions and will fail
-			// if the graphics deliver does not support them, or fbos
 			// ======================================================
 			if(wglGetProcAddress("wglDXOpenDeviceNV")) { // extensions loaded OK
 				// It is possible that the extensions load OK, but that initialization will still fail
@@ -405,6 +534,26 @@ INT_PTR CALLBACK DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				ShowWindow(hWnd, SW_HIDE);
 				break;
 
+			case IDC_COPY :
+
+				if(OpenClipboard(NULL)) {
+					HGLOBAL clipbuffer;
+					char* buffer;
+			        EmptyClipboard();
+					clipbuffer = GlobalAlloc(GMEM_DDESHARE, strlen(gldxcaps)+1);
+					buffer = (char*)GlobalLock(clipbuffer);
+					strcpy_s(buffer, strlen(gldxcaps)+1, LPCSTR(gldxcaps));
+					GlobalUnlock(clipbuffer);
+			        SetClipboardData(CF_TEXT, clipbuffer);
+					GlobalFree(clipbuffer);
+					CloseClipboard();
+					MessageBoxA(hWnd, "Diagnostics copied to the clipboard.", "Spout Demo", MB_OK);
+				}
+				else {
+					MessageBoxA(hWnd, "Unknown clipboard open error.", "Spout Demo", MB_OK);
+				}
+				return TRUE;
+
 			case SWM_EXIT:
 				DestroyWindow(hWnd);
 				break;
@@ -440,7 +589,7 @@ LRESULT CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		
 		case WM_INITDIALOG:
 			// Changeable text here
-			sprintf_s(temp,  1024, "SpoutTray - Version 2.01\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
+			sprintf_s(temp,  1024, "SpoutTray - Version 2.02\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
 			SetDlgItemTextA(hDlg, IDC_ABOUTBOXTEXT, (LPCSTR)temp);
 			return TRUE;
 
