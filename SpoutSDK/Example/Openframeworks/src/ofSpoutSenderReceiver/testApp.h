@@ -1,6 +1,6 @@
 /*
 
-	Spout Example - Sender / Receiver example
+	Spout - Sender / Receiver example
 
 	Copyright (C) 2014 Lynn Jarvis.
 
@@ -54,7 +54,5 @@ class testApp : public ofBaseApp {
 		char receiverName[256];							// Sender name that the receiver to connects to 
 		ofImage receiverImage;							// Texture image used by the receiver
 		unsigned int receiverWidth, receiverHeight;		// Width and height of the receiver
-
-
 
 };

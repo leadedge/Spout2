@@ -38,8 +38,8 @@ void testApp::setup(){
 	strcpy_s(senderName, "Spout Sender/Receiver");		// Set the sender name
 	strcpy_s(receiverName, "Spout Sender/Receiver");	// Sender name for the receiver to try to connect to
 
-	g_Width		 = 480;									// set starting global width and height for the sender
-	g_Height	 = 480;	
+	g_Width  = 480;										// set starting global width and height for the sender
+	g_Height = 480;	
 	InitGLtexture(senderTexture, g_Width, g_Height);	// Create an OpenGL texture for data transfers
 	senderImage.loadImage("SpoutBox1.png");				// Load a texture image for the sender demo
 	senderImage.mirror(false, true);					// correct orientation
@@ -93,7 +93,7 @@ void testApp::draw() {
 	//
 	// The receiver will attempt to connect to the name it is sent.
 	// Alternatively set the optional bUseActive flag to attempt to connect to the active sender. 
-	// If the sender name is not initialized it will attempt to find the active sender
+	// If the sender name is not initialized it will also attempt to find the active sender
 	// If the receiver does not find any senders the initialization will fail
 	// and "CreateReceiver" can be called repeatedly until a sender is found.
 	// "CreateReceiver" will update the passed name, and dimensions.
@@ -188,7 +188,7 @@ void testApp::draw() {
 void testApp::mousePressed(int x, int y, int button) {
 
 	if(button == 2) { // rh button
-		spoutreceiver->SelectSenderPanel();
+		spoutreceiver->SelectSenderPanel(); // Default DirectX 11
 	}
 
 }

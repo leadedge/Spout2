@@ -1,6 +1,6 @@
 /*
 
-	spoutExample - main.cpp
+	Spout receiver example - main.cpp
 
 	Example openFrameworks application for Spout inter-process communication
 

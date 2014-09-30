@@ -103,8 +103,9 @@ void testApp::draw() {
 		height = g_Height;
 		
 		// Try to receive into the local the texture at the current size 
-		// NOTE : if ReceiveTexture is called with a framebuffer object bound, that binding will be lost
-		// and has to be restored afterwards because Spout uses an fbo for intermediate rendering
+		// NOTE: If a host calls ReceiveTexture with a framebuffer object bound,
+		// include the FBO id in the ReceiveTexture call so that the binding is restored
+		// afterwards because Spout makes use of its own FBO for intermediate rendering.		
 		if(spoutreceiver->ReceiveTexture(SenderName, width, height, myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
 
 			//	width and height are changed. The local texture then has to be resized.
@@ -166,7 +167,8 @@ void testApp::exit() {
 void testApp::mousePressed(int x, int y, int button){
 
 	if(button == 2) { // rh button
-		spoutreceiver->SelectSenderPanel(); // SpoutPanel.exe must be in executable path
+		// SpoutPanel.exe must be in executable path
+		spoutreceiver->SelectSenderPanel(); // DirectX 11 by default
 	}
 
 }

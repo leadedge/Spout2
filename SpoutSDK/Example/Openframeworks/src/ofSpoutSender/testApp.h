@@ -1,6 +1,6 @@
 /*
 
-	spoutExample - Sender
+	Spout - Sender example
 
 	Copyright (C) 2014 Lynn Jarvis.
 
@@ -42,6 +42,5 @@ class testApp : public ofBaseApp {
 		bool bMemoryShare;				// Texture share compatibility
 		ofImage myTextureImage;			// Texture image for the 3D demo
 		unsigned int g_Width, g_Height;	// Global width and height
-
 
 };

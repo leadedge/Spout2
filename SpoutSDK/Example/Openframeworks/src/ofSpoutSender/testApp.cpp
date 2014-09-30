@@ -19,7 +19,6 @@
 
 	================================================================================================
 */
-
 #include "testApp.h"
 
 //--------------------------------------------------------------
@@ -99,9 +98,9 @@ void testApp::draw() {
 		// Send the texture out for all receivers to use
 		//
 		// Notes :
-		// (1)	If a host calls SendTexture with a framebuffer object actively bound
-		//		it must restore that binding afterwards because Spout makes use of its
-		//		own FBO for intermediate rendering.
+		// (1)	If a host calls SendTexture with a framebuffer object bound,
+		//		include the FBO id in the SendTexture call so that the binding is restored
+		//		afterwards because Spout makes use of its own FBO for intermediate rendering.
 		// (2)	openGL/DirectX coordinates make our texture come out inverted so the texture
 		//		is inverted	when transferring it to the shared texture. You can specify false
 		//		to disable this default then the result comes out apparently inverted.
@@ -150,7 +149,6 @@ void testApp::windowResized(int w, int h)
 
 bool testApp::InitGLtexture(GLuint &texID, unsigned int width, unsigned int height)
 {
-	// printf("testApp::InitGLtexture %dx%d\n", width, height);
 
 	if(texID != 0) glDeleteTextures(1, &texID);
 
