@@ -1,0 +1,133 @@
+<!DOCTYPE PATCH  SYSTEM "http://vvvv.org/versions/vvvv45beta32.0.dtd" >
+   <PATCH nodename="C:\DATA\PROGRAMMING\SPOUT\VVVV\DX11\SpoutCam\spoutcamIn.v4p" systemname="spoutcamIn" filename="C:\Users\bob\Dropbox\SPOUT\Spout_11-11-13\testing\spoutcamIn.v4p">
+   <BOUNDS type="Window" left="9195" top="1515" width="8595" height="7935">
+   </BOUNDS>
+   <NODE systemname="VideoIn (DShow9)" nodename="VideoIn (DShow9)" componentmode="Hidden" id="2">
+   <BOUNDS type="Node" left="720" top="2145" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Video" visible="1">
+   </PIN>
+   <PIN pinname="Driver">
+   </PIN>
+   <PIN pinname="Video Format" slicecount="1" values="RGB24">
+   </PIN>
+   <PIN pinname="Reference Clock" slicecount="1" values="Default">
+   </PIN>
+   <PIN pinname="Enabled" slicecount="1" values="1">
+   </PIN>
+   <PIN pinname="Framerate" slicecount="1" values="30">
+   </PIN>
+   <PIN pinname="Width" slicecount="1" visible="1" values="640">
+   </PIN>
+   <PIN pinname="Height" slicecount="1" visible="1" values="480">
+   </PIN>
+   </NODE>
+   <NODE systemname="VideoTexture (EX9.Texture VMR9)" nodename="VideoTexture (EX9.Texture VMR9)" componentmode="Hidden" id="3">
+   <BOUNDS type="Node" left="720" top="2580" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Video" visible="1">
+   </PIN>
+   <PIN pinname="Texture Out" visible="1">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="2" srcpinname="Video" dstnodeid="3" dstpinname="Video">
+   </LINK>
+   <NODE nodename="IOBox (Enumerations)" componentmode="InABox" id="4" systemname="IOBox (Enumerations)">
+   <BOUNDS type="Box" left="2037" top="1323" width="1668" height="276">
+   </BOUNDS>
+   <BOUNDS type="Node" left="2037" top="1323" width="0" height="0">
+   </BOUNDS>
+   <PIN pinname="Input Enum" slicecount="1" values="|Spout Cam|">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="Driver">
+   </PIN>
+   <PIN pinname="Size" slicecount="1" values="10">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="4" srcpinname="Output Enum" dstnodeid="2" dstpinname="Driver">
+   </LINK>
+   <NODE systemname="Renderer (EX9)" nodename="Renderer (EX9)" componentmode="InABox" id="5">
+   <BOUNDS type="Node" left="492" top="3405" width="1500" height="270">
+   </BOUNDS>
+   <BOUNDS type="Box" left="492" top="3405" width="2400" height="1800">
+   </BOUNDS>
+   <BOUNDS type="Window" left="18630" top="8265" width="6240" height="5010">
+   </BOUNDS>
+   <PIN pinname="Clip Device" slicecount="1" values="1">
+   </PIN>
+   <PIN pinname="Layers" visible="1">
+   </PIN>
+   </NODE>
+   <NODE systemname="Quad (DX9)" nodename="Quad (DX9)" componentmode="Hidden" id="6">
+   <BOUNDS type="Node" left="477" top="3000" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Texture" visible="1">
+   </PIN>
+   <PIN pinname="Layer" visible="1">
+   </PIN>
+   <PIN pinname="Transform" visible="1">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="3" srcpinname="Texture Out" dstnodeid="6" dstpinname="Texture">
+   </LINK>
+   <LINK srcnodeid="6" srcpinname="Layer" dstnodeid="5" dstpinname="Layers">
+   </LINK>
+   <NODE systemname="UniformScale (Transform)" nodename="UniformScale (Transform)" componentmode="Hidden" id="8">
+   <BOUNDS type="Node" left="615" top="1701" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Transform Out" visible="1">
+   </PIN>
+   <PIN pinname="XYZ" slicecount="1" values="2">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="8" srcpinname="Transform Out" dstnodeid="6" dstpinname="Transform">
+   </LINK>
+   <NODE nodename="IOBox (String)" componentmode="InABox" id="10" systemname="IOBox (String)">
+   <BOUNDS type="Node" left="684" top="360" width="660" height="270">
+   </BOUNDS>
+   <BOUNDS type="Box" left="684" top="360" width="2616" height="480">
+   </BOUNDS>
+   <PIN pinname="Input String" visible="0" slicecount="1" values="SpoutCam">
+   </PIN>
+   <PIN pinname="Output String" visible="0">
+   </PIN>
+   <PIN pinname="Show Grid" slicecount="1" values="1">
+   </PIN>
+   <PIN pinname="String Type" slicecount="1" values="MultiLine">
+   </PIN>
+   <PIN pinname="Size" slicecount="1" values="12">
+   </PIN>
+   </NODE>
+   <NODE nodename="IOBox (String)" componentmode="InABox" id="11" systemname="IOBox (String)">
+   <BOUNDS type="Node" left="3966" top="1290" width="435" height="270">
+   </BOUNDS>
+   <BOUNDS type="Box" left="3966" top="1290" width="2688" height="324">
+   </BOUNDS>
+   <PIN pinname="Input String" visible="0" slicecount="1" values="|&lt; RH click to select spoutcam|">
+   </PIN>
+   <PIN pinname="Output String" visible="0">
+   </PIN>
+   <PIN pinname="Show Grid" slicecount="1" values="0">
+   </PIN>
+   <PIN pinname="String Type" slicecount="1" values="MultiLine">
+   </PIN>
+   </NODE>
+   <NODE systemname="IOBox (String)" nodename="IOBox (String)" componentmode="InABox" id="12">
+   <BOUNDS type="Node" left="3120" top="3720" width="100" height="100">
+   </BOUNDS>
+   <BOUNDS type="Box" left="3120" top="3720" width="4248" height="1188">
+   </BOUNDS>
+   <PIN pinname="Input String" slicecount="1" values="|Start any Spout Sender before starting this patch. SpoutCam will be receiving the output of that sender and it&apos;s output will be shown here.|">
+   </PIN>
+   <PIN pinname="Size" slicecount="1" values="9">
+   </PIN>
+   </NODE>
+   <NODE systemname="IOBox (String)" nodename="IOBox (String)" componentmode="InABox" id="17">
+   <BOUNDS type="Node" left="2448" top="1980" width="100" height="100">
+   </BOUNDS>
+   <BOUNDS type="Box" left="2448" top="1980" width="2892" height="624">
+   </BOUNDS>
+   <PIN pinname="Input String" slicecount="1" values="|For other webcams set the width and height to match|">
+   </PIN>
+   </NODE>
+   </PATCH>
