@@ -36,6 +36,9 @@
 		20.08.14 - Changed back to pixel method for ReadTexture for testing
 		24.08.14 - recompiled with MB sendernames class revision
 		05.09.14 - compiled with revised SDK + cleanup
+		30.09.14 - Java_JSpout_ReadTexture uses "ReceiveImage"
+				 - to transfer shared texture to Processing image pixels
+				 - DirectX 11
 
 */
 #define GL_BGRA_EXT 0x80E1
@@ -61,6 +64,8 @@ JNIEXPORT jint JNICALL Java_JSpout_InitSender (JNIEnv *env, jclass c, jstring na
 	bool bRet = false;
 	jint sharing_mode = 0; // 1 - memory 0 - texture : dependent on compatibility
 
+	UNREFERENCED_PARAMETER(c);
+
 	const char *nativeString = env->GetStringUTFChars(name, 0);
 
 	// Set the global sender name, width and height
@@ -68,22 +73,22 @@ JNIEXPORT jint JNICALL Java_JSpout_InitSender (JNIEnv *env, jclass c, jstring na
 	g_Width = width;
 	g_Height = height;
 
-	if(memorymode == 1) { // user has selected memoryshare mode
-		sender.SetMemoryShareMode(true);
-	}
-	else {
-		// TODO - check DX11
-		// Create a DX9 sender for initial release
-		sender.SetDX9(true);
-	}
+	// user has selected memoryshare mode
+	if(memorymode == 1) sender.SetMemoryShareMode(true);
+
+	//
+	// Default settings are :
+	//		DirectX 11
+	//		Compatible texture format DXGI_FORMAT_B8G8R8A8_UNORM
+	//
 
 	// SPOUT CreateSender
 	// name						- name of this sender
 	// width, height			- width and height of this sender
 	// dwFormat					- optional DX11 texture format
-	// DXGI_FORMAT_R8G8B8A8_UNORM - DX11 < > DX11
-	// DXGI_FORMAT_B8G8R8A8_UNORM - DX11 < > DX9 (default)
-	// Also sender.SetDX9compatible(true / false);
+	//		DXGI_FORMAT_R8G8B8A8_UNORM - DX11 < > DX11
+	//		DXGI_FORMAT_B8G8R8A8_UNORM - DX11 < > DX9 (default)
+	// Also sender.SetDX9compatible(true / false); (true default)
 	// Returns true for success or false for initialisation failure.
 	bRet = sender.CreateSender(g_SenderName, g_Width, g_Height);
 	if(bRet) {
@@ -119,6 +124,8 @@ JNIEXPORT jint JNICALL Java_JSpout_InitReceiver (JNIEnv *env, jclass c, jstring 
 	char Sendername[256]; // user entered Sender name
 	jint sharing_mode = 1; // 0 - memory 1 - texture : dependent on compatibility
 
+	UNREFERENCED_PARAMETER(c);
+
 	jboolean isCopy = JNI_FALSE;
 	jint *dim = env->GetIntArrayElements(dimarray, &isCopy);
 	isCopy = JNI_FALSE;
@@ -132,14 +139,12 @@ JNIEXPORT jint JNICALL Java_JSpout_InitReceiver (JNIEnv *env, jclass c, jstring 
 	else
 		Sendername[0] = 0;
 
-	if(memorymode == 1) { // user has selected memoryshare mode
-		receiver.SetMemoryShareMode(true);
-	}
-	// TODO - test DX11
-	// create a DX9 receiver for initial release - 
-	else {
-		receiver.SetDX9(true);
-	}
+	// user has selected memoryshare mode
+	if(memorymode == 1) receiver.SetMemoryShareMode(true);
+	
+	//
+	// Default settings are	DirectX 11
+	//
 
 	//
 	// SPOUT CreateReceiver
@@ -197,6 +202,9 @@ JNIEXPORT jint JNICALL Java_JSpout_InitReceiver (JNIEnv *env, jclass c, jstring 
 
 JNIEXPORT jboolean JNICALL Java_JSpout_ReleaseSender (JNIEnv *env, jclass c) {
 
+	UNREFERENCED_PARAMETER(c);
+	UNREFERENCED_PARAMETER(env);
+
 	sender.ReleaseSender();
 	bInitialized = false;
 	return true;
@@ -204,6 +212,9 @@ JNIEXPORT jboolean JNICALL Java_JSpout_ReleaseSender (JNIEnv *env, jclass c) {
 }
 
 JNIEXPORT jboolean JNICALL Java_JSpout_ReleaseReceiver (JNIEnv *env, jclass c) {
+
+	UNREFERENCED_PARAMETER(c);
+	UNREFERENCED_PARAMETER(env);
 
 	receiver.ReleaseReceiver();
 	bInitialized = false;
@@ -217,6 +228,8 @@ JNIEXPORT jboolean JNICALL Java_JSpout_ReadFromSharedMemory (JNIEnv *env, jclass
 	bool bRet = true;
 	unsigned int width, height;
 	unsigned char *rgbBuffer = NULL;
+
+	UNREFERENCED_PARAMETER(c);
 
 	// Quit if memoryshare has not been initialized
 	if(!bMemoryMode) return false;
@@ -237,6 +250,7 @@ JNIEXPORT jboolean JNICALL Java_JSpout_ReadFromSharedMemory (JNIEnv *env, jclass
 
 	rgbBuffer = (unsigned char *)malloc(width*height*3*sizeof(unsigned char));
 
+	// Memorymode is RGB. Format argument is disregarded
 	if(receiver.ReceiveImage(g_SenderName, width, height, rgbBuffer)) {
 		// If the image size has changed, return now with the changed size and true to show a 
 		// or the buffer sizes will not match. Return true to show a successful read and 
@@ -285,6 +299,8 @@ JNIEXPORT jboolean JNICALL Java_JSpout_WriteToSharedMemory (JNIEnv *env, jclass 
 	unsigned char* rgbBuffer;
 	unsigned int pixel;
 	unsigned int red, grn, blu;	
+
+	UNREFERENCED_PARAMETER(c);
 	
 	jboolean isCopy = JNI_FALSE;
 
@@ -310,6 +326,7 @@ JNIEXPORT jboolean JNICALL Java_JSpout_WriteToSharedMemory (JNIEnv *env, jclass 
 		*rgbBuffer++ = (unsigned char)blu;
 	}
 
+	// Memorymode is RGB. Format, alignment and invert arguments are disregarded
 	sender.SendImage(rgbBuffer, width, height);
 
 	free((void *)rgbBuffer);
@@ -327,6 +344,9 @@ JNIEXPORT jboolean JNICALL Java_JSpout_WriteTexture (JNIEnv *env, jclass c, jint
 {
 	bool bInv;
 	
+	UNREFERENCED_PARAMETER(c);
+	UNREFERENCED_PARAMETER(env);
+
 	// Only use textureshare if it has initialized
 	if(!bInitialized) return false;
 
@@ -347,6 +367,8 @@ JNIEXPORT jboolean JNICALL Java_JSpout_ReadTexture (JNIEnv *env, jclass c, jintA
 	unsigned int width = 0;
 	unsigned int height = 0;
 
+	UNREFERENCED_PARAMETER(c);
+
 	// Quit if texture share has not been initialized
 	if(!bInitialized) return false;
 
@@ -365,7 +387,14 @@ JNIEXPORT jboolean JNICALL Java_JSpout_ReadTexture (JNIEnv *env, jclass c, jintA
 		goto exit;
 	}
 
-	if(receiver.ReceiveTexture(g_SenderName, width, height)) {
+	// ---------------------------------------------------------------
+	// retrieve opengl texture data directly to image pixels
+	// Java always operates on big-endian format so if C handles
+	// data in little-endian format, bytes need to be reversed.
+	// Transfer directly using a different GL format
+	// https://www.opengl.org/registry/specs/EXT/bgra.txt
+	// 
+	if(receiver.ReceiveImage(g_SenderName, width, height, (unsigned char *)pix, GL_BGRA_EXT)) {
 
 		bRet = true;
 
@@ -381,20 +410,6 @@ JNIEXPORT jboolean JNICALL Java_JSpout_ReadTexture (JNIEnv *env, jclass c, jintA
 		width  = dim[0];
 		height = dim[1];
 
-		// ---------------------------------------------------------------
-		// retrieve opengl texture data directly to image pixels rather than via an fbo and texture
-		// Java always operates on big-endian format so if C handles
-		// data in little-endian format, bytes need to be reversed.
-		// 16-03-14 - transfer directly using a different GL format
-		// https://www.opengl.org/registry/specs/EXT/bgra.txt
-		// EXT_bgra extends the list of host-memory color formats.
-		// Specifically, it provides formats which match the memory layout of
-		// Windows DIBs so that applications can use the same data in both
-		// Windows API calls and OpenGL pixel API calls.
-		receiver.BindSharedTexture();
-		glGetTexImage(GL_TEXTURE_2D, 0,  GL_BGRA_EXT,  GL_UNSIGNED_BYTE, pix);
-		receiver.UnBindSharedTexture();
-		// --------------------------------------------
 	}
 	else {
 		bRet = false;
@@ -423,6 +438,8 @@ JNIEXPORT jstring JNICALL Java_JSpout_GetSenderName (JNIEnv *env, jclass c)
 	DWORD dwFormat;
 	HANDLE dxShareHandle;
 
+	UNREFERENCED_PARAMETER(c);
+
 	if(receiver.GetMemoryShareMode()) {
 		strcpy_s(Sendername, 256, "Memory share");
 	}
@@ -449,6 +466,9 @@ JNIEXPORT jstring JNICALL Java_JSpout_GetSenderName (JNIEnv *env, jclass c)
 // Function to return a selected Sender name from a dialog showing the list in shared memory
 JNIEXPORT jboolean JNICALL Java_JSpout_SenderDialog (JNIEnv *env, jclass c)
 {
+	UNREFERENCED_PARAMETER(c);
+	UNREFERENCED_PARAMETER(env);
+
 	if(receiver.GetDX9()) {
 		return(receiver.SelectSenderPanel("/DX9"));
 	}
