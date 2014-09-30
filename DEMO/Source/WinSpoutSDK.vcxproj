@@ -84,7 +84,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
@@ -144,6 +144,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\Spout.h" />
+    <ClInclude Include="..\SpoutCommon.h" />
     <ClInclude Include="..\SpoutDirectX.h" />
     <ClInclude Include="..\SpoutGLDXinterop.h" />
     <ClInclude Include="..\SpoutGLextensions.h" />
@@ -152,6 +153,7 @@
     <ClInclude Include="..\SpoutSDK.h" />
     <ClInclude Include="..\SpoutSender.h" />
     <ClInclude Include="..\SpoutSenderNames.h" />
+    <ClInclude Include="..\SpoutSharedMemory.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="WinSpoutSDK.h" />
@@ -166,6 +168,7 @@
     <ClCompile Include="..\SpoutSDK.cpp" />
     <ClCompile Include="..\SpoutSender.cpp" />
     <ClCompile Include="..\SpoutSenderNames.cpp" />
+    <ClCompile Include="..\SpoutSharedMemory.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
