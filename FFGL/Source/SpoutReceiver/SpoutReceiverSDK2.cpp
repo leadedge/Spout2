@@ -53,6 +53,8 @@
 			 - Version 3.013
 	23-09-14 - corrected User entered name reset for a saved entry
 			 - Version 3.014
+	30-09-14 - Host fbo argument for ReceiveTexture
+			 - Version 3.015
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -85,7 +87,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.014\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.015\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -116,7 +118,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.014\n");
+	printf("SpoutReceiver2 Vers 3.015\n");
 	*/
 
 	// Input properties - this is a source and has no inputs
@@ -266,10 +268,8 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		//	Success : Returns the sender name, width and height
 		//	Failure : No sender detected
 		//
-		bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D);
-
-		// Important - Restore the FFGL host FBO binding BEFORE the draw
-		if(pGL->HostFBO) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, pGL->HostFBO);
+		// Important - pass the host FBO to restore the binding
+		bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D, pGL->HostFBO);
 
 		if(bRet) {
 			// Received the texture OK, but the sender or texture dimensions could have changed
@@ -444,7 +444,7 @@ void SpoutReceiverSDK2::DrawReceivedTexture(GLuint TextureID, GLuint TextureTarg
 	if(bAspect) {
 		if(image_aspect > vp_aspect) {
 			// Calculate the offset in Y
-			vy = 1.0/image_aspect;
+			vy = 1.0f/image_aspect;
 			// Adjust to the viewport aspect ratio
 			vy = vy*vp_aspect;
 			vx = 1.0;
