@@ -41,6 +41,8 @@
 			 - removed development DX11 parameter
 			 - removed OpenGL state save/restore due to receiver problmes. Not needed.
 			 - Version 3.007
+	30-09-14 - Host fbo argument for DrawToSharedTexture
+			 - Version 3.008
 
 */
 #include "SpoutSenderSDK2.h"
@@ -69,7 +71,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,										// Plugin major version number
 	001,									// Plugin minor version number
 	FF_EFFECT,								// Plugin type
-	"Spout Sender - Vers 3.007\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry\nDirectX 11 : toggle DirectX 11 or DirectX 9 mode", // Plugin description
+	"Spout Sender - Vers 3.008\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry\nDirectX 11 : toggle DirectX 11 or DirectX 9 mode", // Plugin description
 	#else
 	"OF47",									// Plugin unique ID - LJ note 4 chars only
 	"SpoutSender2M",						// Plugin name - LJ note 16 chars only ! see freeframe.h
@@ -98,7 +100,7 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutSender2 Vers 3.007\n");
+	printf("SpoutSender2 Vers 3.008\n");
 	*/
 
 	// initial values
@@ -207,7 +209,6 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		m_Width  = (unsigned int)InputTexture.Width;
 		m_Height = (unsigned int)InputTexture.Height;
 		// Create a new sender
-		// printf("Creating sender [%s] %dx%d\n", SenderName, m_Width, m_Height);
 		bInitialized = sender.CreateSender(SenderName, m_Width, m_Height);
 		if(!bInitialized) {
 			sender.spout.SelectSenderPanel("Could not create sender\nTry another name");
@@ -226,10 +227,9 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	}
 
 	// Render the Freeframe texture into the shared texture
-	sender.DrawToSharedTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height, (float)maxCoords.s, (float)maxCoords.t);
-
-	// Important - Restore the FFGL host FBO binding because Spout uses a local fbo
-	if(pGL->HostFBO) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, pGL->HostFBO);
+	// Important - pass the FFGL host FBO to restore the binding because Spout uses a local fbo
+	// Default aspect = 1.0, default invert flag = true
+	sender.DrawToSharedTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height, (float)maxCoords.s, (float)maxCoords.t, 1.0f, true, pGL->HostFBO);
 
 	return FF_SUCCESS;
 
