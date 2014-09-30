@@ -2,7 +2,7 @@
 				
 		Basic Spout receiver for Cinder
 
-		Uses the Spout dll
+		Uses the Spout SDK
 
 		Based on the RotatingBox CINDER example without much modification
 		Nothing fancy about this, just the basics.
@@ -31,6 +31,7 @@
 			 - added Update function
 			 - moved receiver initialization from Setup to Update for sender detection
 	11.07.14 - changed to Spout SDK instead of the dll
+	29.09.14 - update with with SDK revision
 
 */
 
@@ -138,7 +139,8 @@ void SpoutBoxApp::shutdown()
 void SpoutBoxApp::mouseDown(MouseEvent event)
 {
 	if( event.isRightDown() ) { // Select a sender
-		spoutreceiver.SelectSenderPanel(); // SpoutPanel.exe must be in the executable path
+		// SpoutPanel.exe must be in the executable path
+		spoutreceiver.SelectSenderPanel(); // DirectX 11 by default
 	}
 }
 // ----------------------------
@@ -162,8 +164,9 @@ void SpoutBoxApp::draw()
 	//
 	// Try to receive the texture at the current size 
 	//
-	// NOTE : if ReceiveTexture is called with a framebuffer object bound, that binding will be lost
-	// and has to be restored afterwards because Spout uses an fbo for intermediate rendering
+	// NOTE : if ReceiveTexture is called with a framebuffer object bound, 
+	// include the FBO id as an argument so that the binding is restored afterwards
+	// because Spout uses an fbo for intermediate rendering
 	if(bInitialized) {
 		if(spoutreceiver.ReceiveTexture(SenderName, width, height, spoutTexture.getId(), spoutTexture.getTarget())) {
 			//	Width and height are changed for sender change so the local texture has to be resized.

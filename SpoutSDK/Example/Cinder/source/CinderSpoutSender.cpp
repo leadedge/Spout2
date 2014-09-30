@@ -30,6 +30,7 @@
 	11.05.14 - used updated Spout Dll with host fbo option and rgba
 	04.06.14 - updated Spout dll 04/06 - host fbo option removed
 	11.07.14 - changed to Spout SDK instead of the dll
+	29.09.14 - updated to revised SDK
 
 */
 #include "cinder/app/AppBasic.h"
@@ -133,7 +134,8 @@ void SpoutBoxApp::update()
 void SpoutBoxApp::draw()
 {
 	
-	gl::clear( Color( 0.39f, 0.025f, 0.0f ) ); // red/brown to be different
+	// gl::clear( Color( 0.39f, 0.025f, 0.0f ) ); // red/brown
+	gl::clear( Color( 0.05f, 0.10f, 0.30f ) ); // dark blue
 	
 	if( ! cubeTexture )
 		return;
@@ -155,8 +157,9 @@ void SpoutBoxApp::draw()
 		spoutTexture.unbind();
 
 		// Send the texture for all receivers to use
-		// NOTE : if SendTexture is called with a framebuffer object bound, that binding will be lost
-		// and has to be restored afterwards because Spout uses an fbo for intermediate rendering
+		// NOTE : if SendTexture is called with a framebuffer object bound,
+		// include the FBO id as an argument so that the binding is restored afterwards
+		// because Spout uses an fbo for intermediate rendering
 		spoutsender.SendTexture(spoutTexture.getId(), spoutTexture.getTarget(), g_Width, g_Height);
 
 	}
@@ -171,8 +174,6 @@ void SpoutBoxApp::draw()
 	gl::drawString( txt, Vec2f(getWindowWidth() - toPixels( 100 ), toPixels( 20 ) ), Color( 1, 1, 1 ), Font( "Verdana", toPixels( 24 ) ) );
 	gl::disableAlphaBlending();
 	// ----------------------------
-
-	
 
 }
 
