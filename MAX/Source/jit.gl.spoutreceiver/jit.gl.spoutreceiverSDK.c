@@ -24,6 +24,7 @@
 	03.09.14 - dest changed cycle delay removed
 			 - error due to not setting texture and fbo ids to zero after release
 			 - subsequent release failed and caused Jitter errors.
+	30.09.14 - Updated for DirectX 11 and revised SDK
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -59,7 +60,7 @@
 // Compile for DX9 instead of DX11 (default)
 // A DX11 receiver can receive from both DX9 and DX11 senders
 // so compiling for DX9 is not necessary dependent on NVIDIA driver bug (10-08-14)
-#define UseD3D9
+// #define UseD3D9
 
 #include "jit.common.h"
 #include "jit.gl.h"

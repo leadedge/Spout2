@@ -18,9 +18,10 @@
 	14-08-14 - interop class corrected texture delete without context
 	24.08.14 - recompiled with MB sendernames class revision
 	01.09.14 - changes to Interop class to ensure texture and fbo are deleted and set to zero
-	03.09.14 - dest chnaged cycle delay removed
+	03.09.14 - dest_changed cycle delay removed
 			 - error due to not setting texture and fbo ids to zero after release
 			 - subsequent release failed and caused Jitter errors.
+	30.09.14 - Updated for DirectX 11 and revised SDK
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -48,7 +49,7 @@
 
  */
 // Compile for DX9 instead of DX11 (default)
-#define UseD3D9
+// #define UseD3D9
 
 #include "jit.common.h"
 #include "jit.gl.h"

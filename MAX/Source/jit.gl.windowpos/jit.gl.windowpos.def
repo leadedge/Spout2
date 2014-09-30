@@ -1,4 +1,0 @@
-LIBRARY jit.gl.windowpos.mxe
-
-EXPORTS
-	main
