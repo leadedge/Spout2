@@ -1,5 +1,5 @@
 <!DOCTYPE PATCH  SYSTEM "http://vvvv.org/versions/vvvv45beta32.0.dtd" >
-   <PATCH nodename="C:\DATA\PROGRAMMING\SPOUT\VVVV\DX11\SpoutCam\spoutcamIn.v4p" systemname="spoutcamIn" filename="C:\Users\bob\Dropbox\SPOUT\Spout_11-11-13\testing\spoutcamIn.v4p">
+   <PATCH nodename="spoutcamIn.v4p" systemname="spoutcamIn" filename="spoutcamIn.v4p">
    <BOUNDS type="Window" left="9195" top="1515" width="8595" height="7935">
    </BOUNDS>
    <NODE systemname="VideoIn (DShow9)" nodename="VideoIn (DShow9)" componentmode="Hidden" id="2">
@@ -33,9 +33,9 @@
    <LINK srcnodeid="2" srcpinname="Video" dstnodeid="3" dstpinname="Video">
    </LINK>
    <NODE nodename="IOBox (Enumerations)" componentmode="InABox" id="4" systemname="IOBox (Enumerations)">
-   <BOUNDS type="Box" left="2037" top="1323" width="1668" height="276">
+   <BOUNDS type="Box" left="2061" top="1347" width="1668" height="276">
    </BOUNDS>
-   <BOUNDS type="Node" left="2037" top="1323" width="0" height="0">
+   <BOUNDS type="Node" left="2061" top="1347" width="0" height="0">
    </BOUNDS>
    <PIN pinname="Input Enum" slicecount="1" values="|Spout Cam|">
    </PIN>
@@ -83,11 +83,11 @@
    <LINK srcnodeid="8" srcpinname="Transform Out" dstnodeid="6" dstpinname="Transform">
    </LINK>
    <NODE nodename="IOBox (String)" componentmode="InABox" id="10" systemname="IOBox (String)">
-   <BOUNDS type="Node" left="684" top="360" width="660" height="270">
+   <BOUNDS type="Node" left="297" top="528" width="660" height="270">
    </BOUNDS>
-   <BOUNDS type="Box" left="684" top="360" width="2616" height="480">
+   <BOUNDS type="Box" left="297" top="528" width="2793" height="384">
    </BOUNDS>
-   <PIN pinname="Input String" visible="0" slicecount="1" values="SpoutCam">
+   <PIN pinname="Input String" visible="0" slicecount="1" values="|SpoutCam demo patch|">
    </PIN>
    <PIN pinname="Output String" visible="0">
    </PIN>
@@ -99,11 +99,11 @@
    </PIN>
    </NODE>
    <NODE nodename="IOBox (String)" componentmode="InABox" id="11" systemname="IOBox (String)">
-   <BOUNDS type="Node" left="3966" top="1290" width="435" height="270">
+   <BOUNDS type="Node" left="3897" top="1335" width="435" height="270">
    </BOUNDS>
-   <BOUNDS type="Box" left="3966" top="1290" width="2688" height="324">
+   <BOUNDS type="Box" left="3897" top="1335" width="1536" height="276">
    </BOUNDS>
-   <PIN pinname="Input String" visible="0" slicecount="1" values="|&lt; RH click to select spoutcam|">
+   <PIN pinname="Input String" visible="0" slicecount="1" values="|&lt; select spoutcam|">
    </PIN>
    <PIN pinname="Output String" visible="0">
    </PIN>
@@ -115,7 +115,7 @@
    <NODE systemname="IOBox (String)" nodename="IOBox (String)" componentmode="InABox" id="12">
    <BOUNDS type="Node" left="3120" top="3720" width="100" height="100">
    </BOUNDS>
-   <BOUNDS type="Box" left="3120" top="3720" width="4248" height="1188">
+   <BOUNDS type="Box" left="3120" top="3720" width="2880" height="1284">
    </BOUNDS>
    <PIN pinname="Input String" slicecount="1" values="|Start any Spout Sender before starting this patch. SpoutCam will be receiving the output of that sender and it&apos;s output will be shown here.|">
    </PIN>
@@ -123,9 +123,9 @@
    </PIN>
    </NODE>
    <NODE systemname="IOBox (String)" nodename="IOBox (String)" componentmode="InABox" id="17">
-   <BOUNDS type="Node" left="2448" top="1980" width="100" height="100">
+   <BOUNDS type="Node" left="2472" top="1824" width="100" height="100">
    </BOUNDS>
-   <BOUNDS type="Box" left="2448" top="1980" width="2892" height="624">
+   <BOUNDS type="Box" left="2472" top="1824" width="1944" height="492">
    </BOUNDS>
    <PIN pinname="Input String" slicecount="1" values="|For other webcams set the width and height to match|">
    </PIN>

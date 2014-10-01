@@ -1,5 +1,5 @@
 <!DOCTYPE PATCH  SYSTEM "http://vvvv.org/versions/vvvv45beta32.0.dtd" >
-   <PATCH nodename="C:\DATA\PROGRAMMING\SPOUT\NEWEMKA\EXAMPLE\Spout_Receiver_DX11.v4p" systemname="Spout_Receiver_DX11" filename="C:\Users\newemka\Desktop\Spout_Receiver_DX11.v4p">
+   <PATCH nodename="Spout_Receiver_DX11.v4p" systemname="Spout_Receiver_DX11" filename="Spout_Receiver_DX11.v4p">
    <BOUNDS type="Window" left="13152" top="768" width="5352" height="10740">
    </BOUNDS>
    <NODE id="20" nodename="SharedMemory (Windows)" systemname="SharedMemory (Windows)">

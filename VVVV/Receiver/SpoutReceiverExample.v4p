@@ -1,5 +1,5 @@
 <!DOCTYPE PATCH  SYSTEM "http://vvvv.org/versions/vvvv45beta32.0.dtd" >
-   <PATCH nodename="C:\DATA\PROGRAMMING\SPOUT\VVVV\DirectX11\Receiver\DX11_ReceiverExample.v4p" systemname="Example" filename="E:\+ PORTABLES\+ dev\vvvv_45beta32.1_x86\vvvv_45beta32.1_x86\vvvv_contributions\modules\Spout\Example.v4p">
+   <PATCH nodename="SpoutReceiverExample.v4p" systemname="Example" filename="SpoutReceiverExample.v4p">
    <BOUNDS type="Window" left="5220" top="732" width="6372" height="4692">
    </BOUNDS>
    <NODE nodename="IOBox (String)" componentmode="InABox" id="3" systemname="IOBox (String)">
