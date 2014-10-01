@@ -144,8 +144,14 @@ void testApp::windowResized(int w, int h)
 	// Update the sender texture to receive the new dimensions
 	InitGLtexture(sendertexture, g_Width, g_Height);
 
+	// Release the sender so that it is re-created at the new size
+	if(bInitialized) {
+		spoutsender->ReleaseSender();
+		bInitialized = false;
+	}
 
 }
+
 
 bool testApp::InitGLtexture(GLuint &texID, unsigned int width, unsigned int height)
 {
