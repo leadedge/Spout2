@@ -9,16 +9,20 @@
 //
 //      See Spout.pde for function details
 //
+import java.awt.*; // needed for frame insets
+
+PImage img;
+Insets insets; // Frame caption and borders for resizing
 
 // DECLARE A SPOUT OBJECT HERE
 Spout spout;
 
-PImage img;
 
 void setup() {
   
   size(640, 360, P2D);
-  frame.setResizable(true); // to adapt to sender frame size
+  frame.setResizable(true); // Optionally adapt to sender frame size
+  insets = frame.getInsets(); // Get the caption and borders for frame resizing
   background(0);
   
   // Create an image to receive the data.
@@ -36,8 +40,16 @@ void setup() {
 } 
 
 void draw() {
+  
   // RECEIVE A SHARED TEXTURE HERE
   img = spout.receiveTexture(img);
+  
+  // If the image has been resized, optionally resize the frame to match.
+  if(img.width != width || img.height != height && img.width > 0 && img.height > 0) {
+      // Reset the frame size - include borders and caption
+      frame.setSize(img.width + (insets.left + insets.right), img.height + (insets.top + insets.bottom));      
+  }
+  
   // Draw the result
   image(img, 0, 0, width, height);
 }
