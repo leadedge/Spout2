@@ -215,12 +215,15 @@ void testApp::windowResized(int w, int h)
 	g_Width  = ofGetWidth();
 	g_Height = ofGetHeight();
 
-	// Update the sender to the new size
-	spoutsender->UpdateSender(senderName, g_Width, g_Height);
-
 	// Update the sender texture to the new dimensions
 	InitGLtexture(senderTexture, g_Width, g_Height);
 
+	// If initialized, release the sender so that
+	// it is re-initialized at the new size on the next draw
+	if(bSenderInitialized) {
+		spoutsender->ReleaseSender();
+		bSenderInitialized = false;
+	}
 
 }
 
