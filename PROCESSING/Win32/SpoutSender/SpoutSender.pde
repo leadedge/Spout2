@@ -30,7 +30,10 @@ void setup() {
   spout = new Spout();
 
   // INITIALIZE A SPOUT SENDER HERE
-  spout.initSender("Spout Processing", width, height);
+  if(!spout.initSender("Spout Processing", width, height)) {
+    println("InitSender failed");
+    exit(); // Sender initialisation failed
+  }
   
 } 
 

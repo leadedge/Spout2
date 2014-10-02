@@ -35,7 +35,7 @@ void setup() {
   // Give it the name of the sender you want to connect to
   // Otherwise it will connect to the active sender
   // img will be updated to the sender size
-  spout.initReceiver("", img);
+  if(!spout.initReceiver("", img)) exit();
   
 } 
 
