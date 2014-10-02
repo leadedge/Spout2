@@ -43,6 +43,9 @@
 			 - Version 3.007
 	30-09-14 - Host fbo argument for DrawToSharedTexture
 			 - Version 3.008
+	02-10.14 - Removed DirectX option from Help text
+			 - Version 3.009
+
 
 */
 #include "SpoutSenderSDK2.h"
@@ -71,7 +74,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,										// Plugin major version number
 	001,									// Plugin minor version number
 	FF_EFFECT,								// Plugin type
-	"Spout Sender - Vers 3.008\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry\nDirectX 11 : toggle DirectX 11 or DirectX 9 mode", // Plugin description
+	"Spout Sender - Vers 3.009\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
 	#else
 	"OF47",									// Plugin unique ID - LJ note 4 chars only
 	"SpoutSender2M",						// Plugin name - LJ note 16 chars only ! see freeframe.h
@@ -100,7 +103,7 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutSender2 Vers 3.008\n");
+	printf("SpoutSender2 Vers 3.009\n");
 	*/
 
 	// initial values
