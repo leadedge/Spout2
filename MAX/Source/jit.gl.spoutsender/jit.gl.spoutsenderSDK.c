@@ -22,6 +22,7 @@
 			 - error due to not setting texture and fbo ids to zero after release
 			 - subsequent release failed and caused Jitter errors.
 	30.09.14 - Updated for DirectX 11 and revised SDK
+	09.10-14 - Cleanup for release
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -513,6 +514,7 @@ t_jit_err jit_gl_spout_sender_sendername(t_jit_gl_spout_sender *x, void *attr, l
 
 	return JIT_ERR_NONE;
 }
+
 
 // @memoryshare
 // force memory share flag (default is 0 off - then is automatic dependent on hardware)

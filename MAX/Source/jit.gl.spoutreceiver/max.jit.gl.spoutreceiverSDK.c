@@ -78,7 +78,6 @@ void main(void)
 {	
 	void *classex, *jitclass;
 	
-
 	/*
 	// Debug console window so printf works
 	FILE* pCout; // should really be freed on exit 

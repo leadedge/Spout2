@@ -25,7 +25,8 @@
 			 - error due to not setting texture and fbo ids to zero after release
 			 - subsequent release failed and caused Jitter errors.
 	30.09.14 - Updated for DirectX 11 and revised SDK
-
+	09.10.14 - Cleanup for release
+	
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
 
@@ -370,7 +371,7 @@ t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name)
 			jit_attr_setlong_array(x->output, _jit_sym_dim, 2, x->dim);
         } 
 		else {
-			jit_object_error((t_object *)x,"jit.gl.syphonSender: could not create texture");
+			jit_object_error((t_object *)x,"jit.gl.spoutReceiver: could not create texture");
 			x->texturename = _jit_sym_nothing;		
 		}
 		
