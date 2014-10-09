@@ -3,7 +3,8 @@
     max.jit.gl.spoutsender.c
 
 	01-07-14	- started conversion to Max 6 - not working
-	
+	09-10-14	- added console post of version at start
+
  */
 #include "jit.common.h"
 #include "jit.gl.h"
@@ -25,6 +26,8 @@ t_class *max_jit_gl_spout_sender_class;
 void main(void)
 {	
 	void *classex, *jitclass;
+
+	post("jit_gl_spout_sender - SDK Vers 2.000");
 
 /*
 MAX 6

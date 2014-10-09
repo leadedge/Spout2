@@ -2,9 +2,16 @@
 
     max.jit.gl.spoutreceiver.c
 
+	----------------------------------------------------
+	09-10-14	- added console post of version at start
+
+	----------------------------------------------------
+		
 	Based on :
 		max.jit.gl.syphonclient
 		Copyright 2010 bangnoise (Tom Butterworth) & vade (Anton Marini).
+
+
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -85,6 +92,7 @@ void main(void)
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("jit_gl_spout_receiverSDK\n");
 	*/
+	post("jit_gl_spout_receiver - SDK Vers 2.000");
 
 	// initialize our Jitter class
 	jit_gl_spout_receiver_init();	
