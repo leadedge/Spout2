@@ -28,6 +28,8 @@
 	-- names class revision additions --
 	22-08-14 - activated event locks
 	03.09.14 - cleanup
+	10.10.14 - Restored CreateSender for use by DirectX apps
+
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -546,6 +548,25 @@ bool spoutSenderNames::FindActiveSender(char sendername[SpoutMaxSenderNameLen], 
 // Functions to Create, Update and Close a sender and retrieve sender texture info //
 // without initializing DirectX or the GL/DX interop functions                     //
 /////////////////////////////////////////////////////////////////////////////////////
+
+// ---------------------------------------------------------
+//	Create a sender
+// ---------------------------------------------------------
+bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
+{
+	string namestring = sendername;
+
+	// Register a new sender name
+	RegisterSenderName(sendername);
+
+	// Save the texture info for this sender
+	if(!UpdateSender(sendername, width, height, hSharehandle, dwFormat))
+		return false;
+
+	return true;
+		
+} // end CreateSender
+
 
 // ---------------------------------------------------------
 //	Update the texture info of a sender

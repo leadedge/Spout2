@@ -112,7 +112,8 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool FindActiveSender    (char activename[SpoutMaxSenderNameLen], unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 
 		// ------------------------------------------------------------
-		// Functions to Find or Update a sender without initializing DirectX or the GL/DX interop functions
+		// Functions to Create, Find or Update a sender without initializing DirectX or the GL/DX interop functions
+		bool CreateSender (const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
 		bool UpdateSender (const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
 		bool FindSender       (char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 		bool CheckSender      (const char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
