@@ -193,8 +193,6 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	// GL/DX interop Spec
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
 	// D3D11_CREATE_DEVICE_FLAG createDeviceFlags
-	// malcolm - derivative reported possible NVIDIA memory leak bug unless D3D11_CREATE_DEVICE_SINGLETHREADED is set
-	// but the spec requires multithreaded
 	D3D_DRIVER_TYPE driverTypes[] =	{
 		D3D_DRIVER_TYPE_HARDWARE,
 		D3D_DRIVER_TYPE_WARP,

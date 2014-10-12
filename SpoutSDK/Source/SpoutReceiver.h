@@ -56,7 +56,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	bool GetActiveSender(char* Sendername);
 	bool SetActiveSender(char* Sendername);
 		
-	bool SelectSenderPanel(char* message = NULL);
+	bool SelectSenderPanel(const char* message = NULL);
 
 	bool GetMemoryShareMode();
 	bool SetMemoryShareMode(bool bMemory = true);	

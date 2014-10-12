@@ -34,7 +34,10 @@
 //					- Added bAlignment  (4 byte alignment) flag for SendImage
 //					- Added Host FBO for SendTexture, DrawToSharedTexture
 //					- Added Host FBO for ReceiveTexture
-
+//		11.10.14	- Corrected UpdateSender to recreate sender using CreateInterop
+//					- Corrected SelectSenderpanel so that an un-initialized string is not used
+//		12.10.14	- Included SpoutPanel always bring to topmost in SelectSenderPanel
+//					- allowed for change of sender size in DrawToSharedTexture
 //		
 // ================================================================
 /*
@@ -129,8 +132,9 @@ bool Spout::CreateSender(char* sendername, unsigned int width, unsigned int heig
 
 
 // ------------------------------------------
-//	Update the texture info of a sender
+//	Update a sender
 //	Used when a sender's texture changes size
+//  The DirectX texture has to be re-created and the sender info updated
 // ------------------------------------------
 bool Spout::UpdateSender(char *sendername, unsigned int width, unsigned int height)
 {
@@ -142,14 +146,20 @@ bool Spout::UpdateSender(char *sendername, unsigned int width, unsigned int heig
 	if(!bInitialized || !bDxInitOK) return false;
 	if(strcmp(g_SharedMemoryName, sendername) != 0) return false;
 
-	// Retrieve the shared texture format first - the sender must exist
+	// Retrieve the shared texture sharehandle and format (not passed)
 	if(interop.senders.GetSenderInfo(sendername, w, h, hSharehandle, dwFormat)) {
-		// No need to free the interop or directx
-		// Initialize the GL/DX interop and create a new shared texture (false = sender)
-		// This will also re-create the sender and update the sender info
-		interop.CreateInterop(g_hWnd, sendername, width, height, dwFormat, false);
-		// Get the new sender width, height and share handle into local copy
+	
+		// Re-create the sender directX shared texture
+		// with the new dimensions and update the sender info
+		// No need to re-initialize DirectX, only the GLDX interop
+		// which is re-registered for the new texture
+		interop.CreateInterop(g_hWnd, sendername, width, height, dwFormat, false); // false means a sender
+
+		//
+		// Get the new sender width, height and share handle into local globals
+		//
 		interop.senders.GetSenderInfo(g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
+
 		return true;
 	}
 
@@ -182,23 +192,18 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 	char UserName[256];
 	UserName[0] = 0; // OK to do this internally
 
-	printf("Spout::CreateReceiver(%s, %d, %d, %d)\n", sendername, width, height, bActive);
-
 	// Use the active sender if the user wants it or the sender name is not set
 	if(bActive || sendername[0] == 0) {
-		printf("Use active sender\n");
 		bUseActive = true;
 	}
 	else {
 		// Try to find the sender with the name sent or over-ride with user flag
 		strcpy_s(UserName, 256, sendername);
 		bUseActive = false; // set global flag to use the active sender or not
-		printf("Use sender [%s]\n", UserName);
 	}
 
 	if(OpenReceiver(UserName, width, height)) {
 		strcpy_s(sendername, 256, UserName); // pass back the sendername used
-		// printf("OpenReceiver returned [%s]\n", UserName);
 		return true;
 	}
 
@@ -421,6 +426,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 
 		// Test to see whether the current sender is still there
 		if(interop.senders.CheckSender(g_SharedMemoryName, newWidth, newHeight, hShareHandle, dwFormat)) {
+
 			// Current sender still exists
 			// Has the width, height, texture format changed
 			// DEBUG no global sharehandle
@@ -429,11 +435,13 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 				|| newHeight != g_Height
 				|| dwFormat  != g_Format
 				|| strcmp(name, g_SharedMemoryName) != 0 ) {
+
 					// Re-initialize the receiver
 					if(OpenReceiver(g_SharedMemoryName, newWidth, newHeight)) {				
-						// OpenReceiver will set the global name, width, height and texture format
 						// TODO - Set the global texture ID here
 						// g_TexID = TextureID;
+						g_Width = newWidth;
+						g_Height = newHeight;
 						// Pass back the new current name and size
 						strcpy_s(name, 256, g_SharedMemoryName);
 						width  = g_Width;
@@ -469,8 +477,9 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 
 		// If a valid texture was passed, read the shared texture into it
 		if(TextureID > 0 && TextureTarget > 0) {
-			if(!interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height, HostFBO))
+			if(!interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height, HostFBO)) {
 				return false;
+			}
 		}
 		// All OK
 		return true;
@@ -751,9 +760,24 @@ bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect)
 
 
 //---------------------------------------------------------
+// 
 bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
 {
-	return(interop.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO));
+	//
+	// Allow for change of sender size, even though the draw is independent of the 
+	// shared texture size, otherwise receivers will get a constant size for this sender
+	//
+	if(bDxInitOK) {
+		// width, g_Width should all be the same
+		// But it is the responsibility of the application to reset any texture that is being sent out.
+		if(width != g_Width || height != g_Height) {
+			return(UpdateSender(g_SharedMemoryName, width, height));
+		}
+		return(interop.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO));
+	}
+
+	return false;
+
 }
 
 
@@ -803,7 +827,12 @@ bool Spout::SelectSenderPanel(const char *message)
 	char UserMessage[512];
 	char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
 
-	if(message) strcpy_s(UserMessage, 512, message); // could be an arg or a user message
+	if(message) {
+		strcpy_s(UserMessage, 512, message); // could be an arg or a user message
+	}
+	else {
+		UserMessage[0] = 0; // make sure SpoutPanel does not see an un-initialized string
+	}
 
 	if(bMemory || bMemoryShareInitOK) {
 		sprintf_s(UserMessage, 512, "Spout running in memoryshare mode\nThere can only be one sender\nno sender selection available");
@@ -850,14 +879,26 @@ bool Spout::SelectSenderPanel(const char *message)
 		// this process so will not affect any other receiver instance
 		// Then when the selection panel closes, sender name is tested
 		bSpoutPanelOpened = true;
-		return true;
-	} // The mutex exists, so another instance is already running
+	}
 	else {
-		// The mutex exists, so another instance is already running
+		// We opened it so close it, otherwise it is never released
 		CloseHandle(hMutex1);
 	}
 
-	return false;
+	// The mutex exists, so another instance is already running
+	// Find the dialog window and bring it to the top
+	// the spout dll dialog is opened as topmost anyway but pop it to
+	// the front in case anything else has stolen topmost
+	HWND hWnd = FindWindowA(NULL, (LPCSTR)"SpoutPanel");
+	if(IsWindow(hWnd)) {
+		SetForegroundWindow(hWnd); 
+		// prevent other windows from hiding the dialog
+		// and open the window wherever the user clicked
+		SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_ASYNCWINDOWPOS | SWP_SHOWWINDOW | SWP_NOSIZE | SWP_NOMOVE);
+	}
+
+	return true;
+
 } // end selectSenderPanel
 
 
@@ -1031,8 +1072,6 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	unsigned int width;
 	unsigned int height;
 	bool bMemoryMode = true;
-
-	// printf("Spout::OpenReceiver\n");
 
 	// A valid name is sent and the user does not want to use the active sender
 	if(theName[0] && !bUseActive) {

@@ -61,6 +61,8 @@
 					- Changed GLformat argument from int to GLenum in ReadTexturePixels
 					- Changed default GLformat from GL_RGB to GL_RGBA in ReadTexturePixels
 					- Added Host FBO argument for ReadTexture, DrawToSharedTexture, WriteTexture
+		12.10.14	- cleaned up CreateInterop for sender updates
+
 
 */
 
@@ -73,7 +75,7 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("spoutGLDXinterop\n");
+	// printf("spoutGLDXinterop\n");
 	*/
 
 
@@ -176,14 +178,14 @@ bool spoutGLDXinterop::OpenDirectX9(HWND hWnd)
 	// DWORD           WHQLLevel;
 
 	m_pD3D->GetAdapterIdentifier (D3DADAPTER_DEFAULT, 0, &adapterinfo);
-	printf("Driver = [%s]\n", adapterinfo.Driver);
-	printf("Description = [%s]\n", adapterinfo.Description);
-	printf("DeviceName = [%s]\n", adapterinfo.DeviceName);
-	printf("DriverVersion = [%d] [%x]\n", adapterinfo.DriverVersion, adapterinfo.DriverVersion);
-	printf("VendorId = [%d] [%x]\n", adapterinfo.VendorId, adapterinfo.VendorId);
-	printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
-	printf("SubSysId = [%d] [%x]\n", adapterinfo.SubSysId, adapterinfo.SubSysId);
-	printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
+	// printf("Driver = [%s]\n", adapterinfo.Driver);
+	// printf("Description = [%s]\n", adapterinfo.Description);
+	// printf("DeviceName = [%s]\n", adapterinfo.DeviceName);
+	// printf("DriverVersion = [%d] [%x]\n", adapterinfo.DriverVersion, adapterinfo.DriverVersion);
+	// printf("VendorId = [%d] [%x]\n", adapterinfo.VendorId, adapterinfo.VendorId);
+	// printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
+	// printf("SubSysId = [%d] [%x]\n", adapterinfo.SubSysId, adapterinfo.SubSysId);
+	// printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
 	*/
 
 
@@ -236,11 +238,11 @@ bool spoutGLDXinterop::OpenDirectX11()
 	size_t charsConverted = 0;
 	wcstombs_s(&charsConverted, output, 129, adapterinfo.Description, 128);
 
-	printf("Description = [%s]\n", output);
-	printf("VendorId = [%d] [%x]\n", adapterinfo.VendorId, adapterinfo.VendorId);
-	printf("SubSysId = [%d] [%x]\n", adapterinfo.SubSysId, adapterinfo.SubSysId);
-	printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
-	printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
+	// printf("Description = [%s]\n", output);
+	// printf("VendorId = [%d] [%x]\n", adapterinfo.VendorId, adapterinfo.VendorId);
+	// printf("SubSysId = [%d] [%x]\n", adapterinfo.SubSysId, adapterinfo.SubSysId);
+	// printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
+	// printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
 	*/
 
 
@@ -287,6 +289,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// Otherwise m_dxShareHandle is set by getSharedTextureInfo and is the
 	// shared texture handle of the Sender texture
 	if (bReceive && !getSharedTextureInfo(sendername)) {
+		// printf("CreateInterop error 1\n");
 		return false;
 	}
 
@@ -295,7 +298,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// or from a compatible DX11 sender (format 87)
 	if(bReceive && bUseDX9) {
 		if(!(m_TextureInfo.format == 0 || m_TextureInfo.format == 87)) {
-			// printf("Incompatible format %d \n", m_TextureInfo.format);
+			// printf("CreateInterop - Incompatible format %d \n", m_TextureInfo.format);
 			return false;
 		}
 	}
@@ -307,56 +310,50 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	}
 
 	// Allow for sender updates
-	// TOD - check. Redundant - done in likGLDXtextures
+	// When a sender size changes, the new texture has to be re-registered
 	if(m_hInteropDevice != NULL &&  m_hInteropObject != NULL) {
+		// printf("CreateInterop - wglDXUnregisterObjectNV\n");
 		wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
 		m_hInteropObject = NULL;
 	}
 
-	// Create a local opengl texture that will be linked to a shared DirectX texture
-	if(m_glTexture) {
-		glDeleteTextures(1, &m_glTexture);
-		m_glTexture = 0;
-	}
-	glGenTextures(1, &m_glTexture);
-
 	// Create an fbo for copying textures
 	if(m_fbo) {
+		// Delete the fbo before the texture so that any texture attachment is released
+		// printf("CreateInterop - deleting fbo\n");
 		glDeleteFramebuffersEXT(1, &m_fbo);
 		m_fbo = 0;
 	}
 	glGenFramebuffersEXT(1, &m_fbo); 
 
+	// Create a local opengl texture that will be linked to a shared DirectX texture
+	if(m_glTexture) {
+		// printf("CreateInterop - deleting texture\n");
+		glDeleteTextures(1, &m_glTexture);
+		m_glTexture = 0;
+	}
+	glGenTextures(1, &m_glTexture);
+
 
 	// Create textures and GLDX interop objects
-	if(bUseDX9)	{
-		bRet = CreateDX9interop(width, height, format, bReceive);
-	}
-	else {
-		bRet = CreateDX11interop(width, height, format, bReceive);
-	}
+	if(bUseDX9)	bRet = CreateDX9interop(width, height, format, bReceive);
+	else bRet = CreateDX11interop(width, height, format, bReceive);
 
 	if(!bRet) {
+		// printf("CreateInterop error 2\n");
 		return false;
 	}
 
 	// Now the global shared texture handle - m_dxShareHandle - has been set so a sender can be created
 	// this creates the sender shared memory map and registers the sender
 	if (!bReceive) {
-		// Quit if sender creation failed - i.e. trying to create the same sender
-		// TODO - modify SpoutPanel to detect format 21 ? How to know it is DX11 ?
-		if(!senders.RegisterSenderName(sendername))
+
+		// We are done with the format
+		// So for DirectX 9, set to zero to identify the sender as DirectX 9
+		if(bUseDX9) format = 0; 
+		if(!senders.CreateSender(sendername, width, height, m_dxShareHandle, format))
 			return false;
 
-		// Work out a better way of sending default format here
-		if(bUseDX9)
-			bRet = senders.UpdateSender(sendername, width, height, m_dxShareHandle);
-		else
-			bRet = senders.UpdateSender(sendername, width, height, m_dxShareHandle, format);
-		
-		if(!bRet) { // Did the update work ?
-			return false;
-		}
 	}
 
 	// Set up local values for this instance
@@ -447,13 +444,16 @@ bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height
 	if (bReceive) {
 		// Retrieve the shared texture pointer via the sharehandle
 		if(!spoutdx.OpenDX11shareHandle(g_pd3dDevice, &g_pSharedTexture, m_dxShareHandle)) {
+			// printf("CreateDX11interop - error 1\n");
 			return false;
 		}
 	} else {
+		// printf("CreateDX11interop - creating texture %dx%d\n", width, height);
 		// otherwise create a new shared DirectX resource g_pSharedTexture 
 		// with local handle m_dxShareHandle for a sender
 		m_dxShareHandle = NULL; // A sender creates a new texture with a new share handle
 		if(!spoutdx.CreateSharedDX11Texture(g_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &g_pSharedTexture, m_dxShareHandle)) {
+			// printf("CreateDX11interop - error 1\n");
 			return false;
 		}
 	}

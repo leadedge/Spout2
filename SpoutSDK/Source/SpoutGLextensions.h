@@ -17,10 +17,10 @@
 //
 //			Spout project									FBO		PBO		GLEW	SWAP	BLIT	GLDX
 //			FFGL - SpoutReceiver, SpoutSender				 -		 -		 -		 +		 +		 +
-//			MAX - jit.gl.spoutsender, jit.gl.spoutreceiver	 -		 +		 -		 +		 +		 +
+//			MAX - jit.gl.spoutsender, jit.gl.spoutreceiver	 -		 -		 -		 +		 +		 +
 //			PROCESSING - Jspout JNI dll						 +		 -		 -		 +		 +		 +
 //			SpoutCam										 -		 -		 +		 +		 +		 +
-//			SpoutPanel										 +		 +		 -		 +		 +		 +
+//			SpoutPanel										 +		 -		 -		 +		 +		 +
 //			SpoutTray										 -		 -		 +		 +		 +		 +
 //			Spout dll										 +		 +		 -		 +		 +		 +
 //			WinSpout										 +		 -		 -		 +		 +		 +

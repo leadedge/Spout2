@@ -87,19 +87,12 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 	std::set<string> SenderNames; // set of names
 
 	// Create the shared memory for the sender name set if it does not exist
-	if(!CreateSenderSet()) {
-		return false;
-	}
-
+	if(!CreateSenderSet())	return false;
 
 	char *pBuf = m_senderNames.Lock();
+	if (!pBuf) return false;
 
 	// Register the sender name in the list of spout senders
-
-	if (!pBuf) {
-		return false;
-	}
-
 	readSenderSetFromBuffer(pBuf, SenderNames);
 
 	//
@@ -107,31 +100,23 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 	//
 	ret = SenderNames.insert(Sendername);
 	if(!ret.second) {
-		// See if there are any dangling entries that arn't valid
-		// anymore
+		// See if there are any dangling entries that aren't valid anymore
 		cleanSenderSet();
-
 		readSenderSetFromBuffer(pBuf, SenderNames);
 		ret = SenderNames.insert(Sendername);
-
 	}
 
 	if(ret.second) {
 		// write the new map to shared memory
-
 		writeBufferFromSenderSet(SenderNames, pBuf);
-
 		// Set as the active Sender if it is the first one registered
 		// Thereafter the user can select an active Sender using SpoutPanel or SpoutSenders
 		m_activeSender.Create("ActiveSenderName", SpoutMaxSenderNameLen);
 		if(SenderNames.size() == 1) {
-			
 			// Set the current sender name as active
 			SetActiveSender(Sendername);  
-
 		}
 	}
-
 
 	m_senderNames.Unlock();
 
@@ -148,16 +133,10 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 	char name[SpoutMaxSenderNameLen];
 
 	// Create the shared memory for the sender name set if it does not exist
-	if(!CreateSenderSet()) {
-		return false;
-	}
-
+	if(!CreateSenderSet())	return false;
 
 	char *pBuf = m_senderNames.Lock();
-
-	if (!pBuf) {
-		return false;
-	}
+	if (!pBuf) return false;
 
 	namestring = Sendername;
 	auto foundSender = m_senders->find(namestring);
@@ -173,11 +152,9 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 	// Properties -> General -> Common Language Runtime Support
 	// and this caused the set "find" function not to work.
 	// It also disabled intellisense.
-	// printf("spoutSenderNames::ReleaseSenderName(%s)\n", Sendername);
 
 	// Get the current map to update the list
 	if(SenderNames.find(Sendername) != SenderNames.end() ) {
-		// printf("Releasing sender [%s]\n", Sendername);
 		SenderNames.erase(Sendername); // erase the matching Sender
 
 		writeBufferFromSenderSet(SenderNames, pBuf);
@@ -554,9 +531,8 @@ bool spoutSenderNames::FindActiveSender(char sendername[SpoutMaxSenderNameLen], 
 // ---------------------------------------------------------
 bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
-	string namestring = sendername;
-
-	// Register a new sender name
+	// Register the sender name
+	// The function is ignored if the sender already exists
 	RegisterSenderName(sendername);
 
 	// Save the texture info for this sender
@@ -576,9 +552,7 @@ bool spoutSenderNames::UpdateSender(const char *sendername, unsigned int width, 
 {
 	string namestring = sendername;
 
-
-	if (m_senders->find(namestring) == m_senders->end())
-	{
+	if (m_senders->find(namestring) == m_senders->end()) {
 		// Create or open a shared memory map for this sender - allocate enough for the texture info
 		SpoutSharedMemory *senderInfoMem = new SpoutSharedMemory();
 		SpoutCreateResult result = senderInfoMem->Create(sendername, sizeof(SharedTextureInfo));
@@ -591,8 +565,10 @@ bool spoutSenderNames::UpdateSender(const char *sendername, unsigned int width, 
 	}
 
 	// Save the info for this sender in the sender shared memory map
-	if(!SetSenderInfo(sendername, width, height, hSharehandle, dwFormat))
+	if(!SetSenderInfo(sendername, width, height, hSharehandle, dwFormat)) {
 		return false;
+	}
+
 
 	return true;
 		

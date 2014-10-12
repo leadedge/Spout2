@@ -10,7 +10,7 @@
 //		03.09.14	- Cleanup
 //		23.09.14	- return DirectX 11 capability in SetDX9
 //		28.09.14	- Added Host FBO for ReceiveTexture
-//
+//		12.10.14	- changed SelectSenderPanel arg to const char
 // ====================================================================================
 /*
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
@@ -140,7 +140,7 @@ bool SpoutReceiver::GetSenderInfo(char* sendername, unsigned int &width, unsigne
 
 
 //---------------------------------------------------------
-bool SpoutReceiver::SelectSenderPanel(char* message)
+bool SpoutReceiver::SelectSenderPanel(const char* message)
 {
 	return spout.SelectSenderPanel(message);
 }
