@@ -31,6 +31,7 @@
 	04.06.14 - updated Spout dll 04/06 - host fbo option removed
 	11.07.14 - changed to Spout SDK instead of the dll
 	29.09.14 - updated to revised SDK
+	12.10.14 - recompiled for release
 
 */
 #include "cinder/app/AppBasic.h"

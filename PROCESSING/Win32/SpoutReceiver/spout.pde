@@ -9,10 +9,10 @@
 //             - updated Jspout ReadTexture as well
 //    06.08-14 - updated for Spout SDK
 //    05.09.14 - update with revised SDK
-//    01.10.14 - put frame resizing in the main sketch
-//    02.10.14 - operating system check
+//    12.10.14 - recompiled for release
 //
 import processing.opengl.*;
+import java.awt.*; // needed for frame insets
 
 class Spout
 {
@@ -37,15 +37,7 @@ class Spout
   // Texture share initialization only succeeds if 
   // the graphic hardware is compatible, otherwise
   // it defaults to memoryshare mode
-  boolean initSender(String name, int Width, int Height) {
-    
-    // Spout requires Windows
-    String OS = System.getProperty("os.name").toLowerCase();
-    if(OS.indexOf("win") < 0) {
-        println("Spout requires Windows");
-        return false;
-    }
-      
+  void initSender(String name, int Width, int Height) {
     // Try Texture share (mode 0)
     // If texture init fails, the mode returned is memoryshare
     // unless that fails too, then it returns -1
@@ -54,15 +46,10 @@ class Spout
       print("Sender initialized texture sharing\n");
     else if(memorymode == 1)
       print("Sender texture sharing not supported - using memory sharing\n");
-    else if(memorymode == -1) {
+    else if(memorymode == -1)
       print("Sender sharing initialization failed\n");
-      return false;
-    }
     
-    return true;
-    
-  } // end InitSender
-  
+  }
   
   // Write the sketch drawing surface texture to 
   // an opengl/directx shared texture
@@ -80,7 +67,7 @@ class Spout
       // so we need to invert the texture
       JSpout.WriteTexture(tex.glWidth, tex.glHeight, tex.glName, tex.glTarget, true); // invert
       pgl.endPGL();
-  } // end sendTexture
+  }
   
 
   void closeSender() {
@@ -100,15 +87,8 @@ class Spout
   // or, if no sender has been selected, this will be
   // the first in the list if any are running.
   //
-  boolean initReceiver(String name, PImage img) {
+  void initReceiver(String name, PImage img) {
     
-    // Spout requires Windows
-    String OS = System.getProperty("os.name").toLowerCase();
-    if(OS.indexOf("win") < 0) {
-        println("Spout requires Windows");
-        return false;
-    }
-
     // Image size values passed in are modified and passed back
     // as the size of the sender that the receiver connects to.
     // Then the screen has to be reset. The same happens when 
@@ -119,7 +99,7 @@ class Spout
     // Already initialized ?
     if(memorymode > 0) {
       print("Receiver already initialized - teture sharing mode\n");
-      return true;
+      return;
     }
 
     // Try Texture share (mode 0)
@@ -129,28 +109,34 @@ class Spout
     // FAILURE
     if(memorymode == -1) {
       print("No sender running - start one and try again.\n");
-      return false;
+      return;
     }
     else if(memorymode == 0)
       print("Receiver initialized texture sharing\n");
     else if(memorymode == 1)
       print("Receiver texture sharing not supported - using memory sharing\n");
+      
     
     // Texture sharing succeeded and there was a sender running
     String newname = JSpout.GetSenderName();
     print("Receiver found sender : " + newname + " " + dim[0] + "x" + dim[1] + "\n");
-    
     // dim will be returned with ths size of the sender it connected to
-    // reset the image size to that of the sender if different
-    if(dim[0] != img.width || dim[1] != img.height && dim[0] > 0 && dim[1] > 0)
-        img.resize(dim[0], dim[1]);
-
-    return true;
     
-  } // end initReceiver
+    // Reset the screen size to the connected sender size if necessary
+    if(dim[0] != img.width || dim[1] != img.height && dim[0] > 0 && dim[1] > 0) {
+      // reset the image size to that of the sender
+      img.resize(dim[0], dim[1]);
+      // Reset the frame size - include borders and caption
+      Insets insets = frame.getInsets();
+      frame.setSize(dim[0] + (insets.left + insets.right), dim[1] + (insets.top + insets.bottom));            
+    }
+ 
+    img.updatePixels();
+    // All done
+    
+  } // end Receiver initialization
   
   
-   
    
   PImage receiveTexture(PImage img) {
   
@@ -165,18 +151,21 @@ class Spout
     
     img.loadPixels();
     if(JSpout.ReadTexture(dim, img.pixels)) {
-      
-      // If the sender read was OK, test the size returned
-      // and resize the image if it is different
-      if(dim[0] != img.width || dim[1] != img.height && dim[0] > 0 && dim[1] > 0)
-           img.resize(dim[0], dim[1]);
-
-      img.updatePixels();
+      // If the sender read was OK, test the image
+      // size returned and resize if it is different
+      // Otherwise update the image for return
+      if(dim[0] != img.width || dim[1] != img.height && dim[0] > 0 && dim[1] > 0) {
+         img.resize(dim[0], dim[1]);
+         // Include borders and caption
+         Insets insets = frame.getInsets();
+         frame.setSize(dim[0] + (insets.left + insets.right), dim[1] + (insets.top + insets.bottom));            
+      }
+      else {
+          img.updatePixels();
+      }
     }
-    
     return img;
-    
-  } // end receiveTexture
+  }
 
 
 

@@ -55,6 +55,9 @@
 			 - Version 3.014
 	30-09-14 - Host fbo argument for ReceiveTexture
 			 - Version 3.015
+	12-10-14 - recompiled for release
+			 - SpoutSDK.cpp - updated SelectSenderPanel to set SpoutPanel.exe topmost if it exists
+			 - Version 3.016
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -87,7 +90,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.015\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.016\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -118,7 +121,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.015\n");
+	printf("SpoutReceiver2 Vers 3.016\n");
 	*/
 
 	// Input properties - this is a source and has no inputs

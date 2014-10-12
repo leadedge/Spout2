@@ -45,6 +45,9 @@
 			 - Version 3.008
 	02-10.14 - Removed DirectX option from Help text
 			 - Version 3.009
+	12.10.14 - Recompile for release
+			 - SpoutSDK.cpp - allowed for change of texture size in DrawToSharedTexture
+			 - Version 3.010
 
 
 */
@@ -74,7 +77,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,										// Plugin major version number
 	001,									// Plugin minor version number
 	FF_EFFECT,								// Plugin type
-	"Spout Sender - Vers 3.009\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
+	"Spout Sender - Vers 3.010\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
 	#else
 	"OF47",									// Plugin unique ID - LJ note 4 chars only
 	"SpoutSender2M",						// Plugin name - LJ note 16 chars only ! see freeframe.h
@@ -103,7 +106,7 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutSender2 Vers 3.009\n");
+	printf("SpoutSender2 Vers 3.010\n");
 	*/
 
 	// initial values

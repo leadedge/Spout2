@@ -108,6 +108,7 @@
 	03.09.14 - used DrawSharedTexture in render to local texture in FillBuffer
 			 - update after SDK testing
 	30.08.14 - Recompiled with SDK update
+	12.10.14 - recompiled for release
 
 */
 

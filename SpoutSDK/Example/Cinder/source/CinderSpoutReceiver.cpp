@@ -32,6 +32,7 @@
 			 - moved receiver initialization from Setup to Update for sender detection
 	11.07.14 - changed to Spout SDK instead of the dll
 	29.09.14 - update with with SDK revision
+	12.10.14 - recompiled for release
 
 */
 

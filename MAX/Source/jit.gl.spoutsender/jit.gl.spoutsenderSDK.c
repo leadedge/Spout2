@@ -23,6 +23,8 @@
 			 - subsequent release failed and caused Jitter errors.
 	30.09.14 - Updated for DirectX 11 and revised SDK
 	09.10-14 - Cleanup for release
+	12.10.14 - Recompile for release
+			 - Vers 2.001
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.

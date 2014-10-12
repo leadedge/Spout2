@@ -25,8 +25,10 @@
 //		03.09.14 - update after SDK testing
 //				 - Version 2.01
 //		29.09.14 - update with with SDK revision
-//		30.09.14 - Additional diagnositcs
+//		30.09.14 - Additional diagnostics
 //				 - Version 2.02
+//		12.10.14 - recompiled for release
+//				 - Version 2.03
 //
 #define GLEW_STATIC // to use glew32s.lib instead of glew32.lib otherwise there is a redefinition error
 

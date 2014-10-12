@@ -47,6 +47,9 @@
 	22.09.14	- included adapter name and bpp in diagnostics
 	23.09.14	- test for DirectX 11 support and include in diagnostics
 	30.09.14	- Updated diagnostics
+	11.10.14	- changed back to empty name for createreceiver
+				  so that sender size change does not detect the active sender
+	12.10.14	- recompiled for release
 
 */
 #define MAX_LOADSTRING 100
@@ -61,6 +64,8 @@
 
 #include "stdafx.h"
 #include "WinSpoutSDK.h"
+
+#define SPOUT_IMPORT_DLL
 
 // leak checking
 // http://www.codeproject.com/Articles/9815/Visual-Leak-Detector-Enhanced-Memory-Leak-Detectio
@@ -82,7 +87,7 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // ================= CHANGE COMPILE FLAGS HERE =================
 // Rename the executable as necessary to get a sender/receiver pair
 //
-bool bReceiver      = false; // Compile for receiver (true) or sender (false)
+bool bReceiver      = true; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
 bool bDX9compatible = true; // For DX11 senders only - compatible DX9 format for DX11 senders (default true)
@@ -617,16 +622,13 @@ bool OpenReceiver()
 
 	// Testing of finding a given sender name - tested OK
 	// strcpy_s(g_SenderName, 256,	"Spout SDK DX11 Sender 32bit");
-	// strcpy_s(g_SenderName, 256,	"videoshare");
-	// Test of null name, original method - tested OK
+	// Test of empty name, original method - tested OK
 	// if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height)) {
 	// Test of user specify finding the active sender - tested OK
+
 	if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height, true)) {
 		// Update the local texture
 		InitTexture(g_Width, g_Height);
-		// DEBUG
-		// width  = 0;
-		// height = 0;
 		return true;
 	}
 
@@ -690,15 +692,18 @@ int DrawGLScene(GLvoid)
 		//		No sender detected
 		//
 		if(receiver.ReceiveTexture(g_SenderName, width, height, myTexture, GL_TEXTURE_2D)) {
+			
 			// Received the texture OK, but the sender or texture dimensions could have changed
 			// The global name is already changed but the width and height also may be changed
 			if(width != g_Width || height != g_Height) {
+
 				// Reset the global width and height
 				g_Width  = width;
 				g_Height = height;
+
 				//	METHOD 1 - the local texture has to be resized.
 				InitTexture(g_Width, g_Height);
-				bInitialized = true;
+				
 				return TRUE; // Return for the next round
 			} // endif sender has changed
 	
@@ -1285,12 +1290,10 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,			// Handle For This Window
 					if(bReceiver) {
 						// Tells spoutpanel to only list senders with DX9 compatible format
 						if(bDX9mode || bDX9compatible) {
-							// printf("SelectSenderPanel DX9 mode\n");
 							receiver.SelectSenderPanel("/DX9");
 						}
 						else {
-							// printf("SelectSenderPanel DX11 mode\n");
-							receiver.SelectSenderPanel(); // "/DX11" is optional default
+							receiver.SelectSenderPanel("/DX11"); // "/DX11" is optional default
 						}
 					}
 					break;
@@ -1436,7 +1439,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 					if(bDX9mode || bDX9compatible)
 						receiver.SelectSenderPanel("/DX9");
 					else
-						receiver.SelectSenderPanel();
+						receiver.SelectSenderPanel("/DX11");
 					
 					if(bFullscreen) ShowCursor(FALSE);
 					bClicked = false;
