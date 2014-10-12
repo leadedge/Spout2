@@ -39,6 +39,8 @@
 //			 - restore foreground window on exit
 //	03.09.14 - GitHub update
 //	21.09.14 - Changed default compatibility for /DX9 arg
+//	09.10.14 - included SWP_ASYNCWINDOWPOS for topmost
+//	12.10.14 - ensure messagestring is null if no commandline
 //
 #include <windows.h>
 #include <vector>
@@ -72,7 +74,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	bool bRet = false;
 
 	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
 	UNREFERENCED_PARAMETER(nCmdShow);
 
 	/*
@@ -118,9 +119,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 
 		if(!bArgFound && lpCmdLine) {
-			// Know listed args, so send a user message
+			// Know listed args, but a command line so send a user message
 			strcpy_s(UserMessage, 512, lpCmdLine); // Message to be shown instead of sender list
 		}
+		else
+			UserMessage[0] = 0; // make sure this is not an un-initialized string
 
 		EnableWindow(hWnd, TRUE);
 	}
@@ -144,22 +147,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 	}
 	else {
-		/*
-		// printf("Mutex exists\n");
-		// The mutex exists, so another instance is already running
-		// Find the dialog window and bring it to the top
-		// the spout dll dialog is topmost anyway but pop it to
-		// the front in case anything else has stolen topmost
-		hWnd = FindWindowA(NULL, (LPCSTR)"SpoutPanel");
-		GetWindowTextA(hWnd, windowname, 256);
-		if(IsWindow(hWnd)) {
-			// printf("SpoutPanel exists\n");
-			SetForegroundWindow(hWnd); 
-			GetWindowRect(hWnd, &rect);
-			w = rect.right - rect.left; h = rect.bottom - rect.top;
-			SetWindowPos(hWnd, HWND_TOPMOST, rect.left, rect.top, w, h, SWP_SHOWWINDOW);
-		}
-		*/
+		// Restore to top is now handled in SpoutSDK.cpp 
+		// We opened it so close it, otherwise it is never released
 		CloseHandle(hMutex);
 	}
 
@@ -207,8 +196,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 	char activename[512];
 	char itemstring[512];
 	HWND hwndList = NULL;
-	RECT rect;
-	int w, h, pos,	lbItem, item;
+	int pos, lbItem, item;
 	int SenderItem = -1;
 	std::set<string> Senders;
 	std::set<string>::iterator iter;
@@ -221,24 +209,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 		
 		case WM_INITDIALOG:
 
-			int x, y;
-			POINT p;
-
-			// prevent other windows from hiding the dialog
-			// and open the window wherever the user clicked
-			GetWindowRect(hDlg, &rect);
-			if (GetCursorPos(&p)) {
-				//cursor position now in p.x and p.y
-				x = p.x;
-				y = p.y;
-			}
-			else {
-				x = rect.left;
-				y = rect.top;
-			}
-			w = rect.right - rect.left; h = rect.bottom - rect.top;
-			SetWindowPos(hDlg, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW);
-
+	
 			// get the sender name list in shared memory into a local list
 			sendernames.GetSenderNames(&Senders);
 
@@ -321,6 +292,30 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 			// Set input focus to the list box.
 			SetFocus(hwndList); 
+
+			// prevent other windows from hiding the dialog
+			// and open the window wherever the user clicked
+			int x, y, w, h;
+			POINT p;
+			RECT rect;
+			GetWindowRect(hDlg, &rect);
+			if (GetCursorPos(&p)) {
+				//cursor position now in p.x and p.y
+				x = p.x;
+				y = p.y;
+			}
+			else {
+				x = rect.left;
+				y = rect.top;
+			}
+			w = rect.right - rect.left; h = rect.bottom - rect.top;
+
+			// SWP_ASYNCWINDOWPOS
+			// If the calling thread and the thread that owns the window are attached to different input queues,
+			// the system posts the request to the thread that owns the window. 
+			// This prevents the calling thread from blocking its execution while other threads
+			// process the request. 
+			SetWindowPos(hDlg, HWND_TOPMOST, x, y, w, h, SWP_ASYNCWINDOWPOS | SWP_SHOWWINDOW);
 
 			// for match with active Sender otherwise make the user choose
 			if(SenderItem >= 0) {
@@ -476,7 +471,8 @@ INT_PTR CALLBACK TextDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			}
 			w = rect.right - rect.left; 
 			h = rect.bottom - rect.top;
-			SetWindowPos(hDlg, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW);
+			// SetWindowPos(hDlg, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW);
+			SetWindowPos(hDlg, HWND_TOPMOST, x, y, w, h, SWP_ASYNCWINDOWPOS | SWP_SHOWWINDOW);
 
 			return TRUE;
 
