@@ -150,18 +150,19 @@ bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned 
 	// USAGE may also be D3DUSAGE_DYNAMIC and pay attention to format and resolution!!!
 	// USAGE, format and size for sender and receiver must all match
 	if ( res != D3D_OK ) {
+		printf("DX9 CreateTexture error : ");
 		switch (res) {
 			case D3DERR_INVALIDCALL:
-				// printf("    D3DERR_INVALIDCALL \n");
+				printf("    D3DERR_INVALIDCALL \n");
 				break;
 			case D3DERR_OUTOFVIDEOMEMORY:
-				// printf("    D3DERR_OUTOFVIDEOMEMORY \n");
+				printf("    D3DERR_OUTOFVIDEOMEMORY \n");
 				break;
 			case E_OUTOFMEMORY:
-				// printf("    E_OUTOFMEMORY \n");
+				printf("    E_OUTOFMEMORY \n");
 				break;
 			default :
-				// printf("    Unknown error\n");
+				printf("    Unknown error\n");
 				break;
 		}
 		return false;

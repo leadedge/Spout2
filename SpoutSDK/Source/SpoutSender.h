@@ -2,7 +2,6 @@
 
 					SpoutSender.h
  
-					TODO: SendImage - undocumented. Work in progress.
 
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
 

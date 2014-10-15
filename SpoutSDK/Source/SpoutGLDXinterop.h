@@ -84,6 +84,9 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool UseDX9(bool bDX9);
 		bool isDX9();
 
+		D3DFORMAT DX9format; // the DX9 texture format to be used
+		void SetDX9format(D3DFORMAT textureformat);
+
 		bool CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
 		bool OpenDirectX9(HWND hWnd); // Initialize and prepare DirectX9
 		void CleanupDX9();
