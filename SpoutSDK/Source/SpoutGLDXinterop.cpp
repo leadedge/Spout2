@@ -78,7 +78,6 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	// printf("spoutGLDXinterop\n");
 	*/
 
-
 	m_hWnd				= NULL;
 	m_glTexture			= 0;
 	m_fbo               = 0;
@@ -452,7 +451,10 @@ bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height
 		// otherwise create a new shared DirectX resource g_pSharedTexture 
 		// with local handle m_dxShareHandle for a sender
 		m_dxShareHandle = NULL; // A sender creates a new texture with a new share handle
-		if(!spoutdx.CreateSharedDX11Texture(g_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &g_pSharedTexture, m_dxShareHandle)) {
+		if(!spoutdx.CreateSharedDX11Texture(g_pd3dDevice,
+											width, height, 
+											(DXGI_FORMAT)dwFormat, // default is DXGI_FORMAT_B8G8R8A8_UNORM
+											&g_pSharedTexture, m_dxShareHandle)) {
 			// printf("CreateDX11interop - error 1\n");
 			return false;
 		}
@@ -533,7 +535,6 @@ bool spoutGLDXinterop::LinkGLtexture(GLuint glTexture)
 	// printf("    close device OK\n");
 	m_hInteropDevice = NULL;
 	m_hInteropObject = NULL;
-
 
 	m_hInteropDevice = wglDXOpenDeviceNV(g_pd3dDevice);
 	if (m_hInteropDevice == NULL) {
@@ -677,7 +678,6 @@ bool spoutGLDXinterop::getSharedTextureInfo(char* sharedMemoryName) {
 	m_TextureInfo.height = h;
 	m_TextureInfo.shareHandle = (__int32)handle;
 	m_TextureInfo.format = format;
-	// senders.UnlockMap(hLock);
 
 	return true;
 

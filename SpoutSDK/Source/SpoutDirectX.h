@@ -71,12 +71,14 @@ class SPOUT_DLLEXP spoutDirectX {
 		bool LockD3D11Texture(ID3D11Texture2D* pD3D11Texture);
 		void UnlockD3D11Texture(ID3D11Texture2D* pD3D11Texture);
 
+		// For debugging only - to toggle texture access locks disable/enable
+		bool bUseAccessLocks;
+
 	protected:
 
 		ID3D11DeviceContext*	g_pImmediateContext;
 		D3D_DRIVER_TYPE			g_driverType;
 		D3D_FEATURE_LEVEL		g_featureLevel;
-
 
 };
 

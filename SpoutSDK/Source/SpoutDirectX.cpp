@@ -11,6 +11,7 @@
 //		21.09.14	- included keyed mutex texture access lock in CreateSharedDX11Texture
 //		23.09.14	- moved general mutex texture access lock to this class
 //		23.09.14	- added DX11available() to verify operating system support for DirectX 11
+//		15.10.14	- added debugging aid for texture access locks
 //
 // ====================================================================================
 
@@ -48,6 +49,9 @@ spoutDirectX::spoutDirectX() {
 	g_pImmediateContext = NULL;
 	g_driverType		= D3D_DRIVER_TYPE_NULL;
 	g_featureLevel		= D3D_FEATURE_LEVEL_11_0;
+
+	// For debugging only - to toggle texture access locks disable/enable
+	bUseAccessLocks     = true; // use texture access locks by default
 
 }
 
@@ -377,20 +381,20 @@ bool spoutDirectX::CreateAccessMutex(const char *name, HANDLE &hAccessMutex)
 						  (LPCSTR)szMutexName);
 
 	if (hAccessMutex == NULL) {
-		// printf("CreateAccessMutex : failed\n");
+		printf("CreateAccessMutex : failed\n");
         return false;
 	}
 	else {
 		errnum = GetLastError();
 		// printf("read event GetLastError() = %d\n", errnum);
 		if(errnum == ERROR_INVALID_HANDLE) {
-			// printf("access mutex [%s] invalid handle\n", szMutexName);
+			printf("access mutex [%s] invalid handle\n", szMutexName);
 		}
 		if(errnum == ERROR_ALREADY_EXISTS) {
-			// printf("access mutex [%s] already exists\n", szMutexName);
+			printf("access mutex [%s] already exists\n", szMutexName);
 		}
 		else {
-			// printf("access mutex [%s] created\n", szMutexName);
+			printf("access mutex [%s] created\n", szMutexName);
 		}
 	}
 
@@ -413,6 +417,10 @@ void spoutDirectX::CloseAccessMutex(HANDLE &hAccessMutex)
 bool spoutDirectX::CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture)
 {
 	DWORD dwWaitResult;
+
+	// LJ DEBUG
+	if(!bUseAccessLocks) return true;
+
 
 	// DirectX 9 uses a general mutex lock
 	// DirectX 11 uses texture keyed mutex lock except where it is sending to a DirectX 9 receiver
@@ -459,6 +467,9 @@ bool spoutDirectX::CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedText
 
 void spoutDirectX::AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture)
 {
+	// LJ DEBUG
+	if(!bUseAccessLocks) return;
+
 	if(!IsKeyedMutexTexture(pSharedTexture) ) {
 		if(hAccessMutex) ReleaseMutex(hAccessMutex);
 	}
@@ -467,6 +478,7 @@ void spoutDirectX::AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedText
 		return(UnlockD3D11Texture(pSharedTexture));
 	}
 }
+
 
 //
 // Keyed Mutex lock for shared DirectX 11 textures (not applicable for DirectX 9)

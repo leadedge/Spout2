@@ -99,10 +99,13 @@ class SPOUT_DLLEXP Spout {
 	bool SetVerticalSync(bool bSync = true);
 	bool SelectSenderPanel(const char* message = NULL);
 
-	// Public for debugging
-	bool CheckSpoutPanel();
+	bool CheckSpoutPanel(); // Public for debugging
 	
-	spoutGLDXinterop interop;		// Opengl/directx interop texture sharing
+	spoutGLDXinterop interop; // Opengl/directx interop texture sharing
+
+	// For debugging only - to disable/enable texture access locks in SpoutDirectX.cpp
+	void UseAccessLocks(bool bUseLocks);
+
 
 /*
 //
@@ -118,7 +121,7 @@ class SPOUT_DLLEXP Spout {
 // Noted that DX11 -> DX9 only works if the DX11 format is set to DXGI_FORMAT_B8G8R8A8_UNORM
 // if the DX9 format is set to D3DFMT_A8B8G8R8
 
-DXGI_FORMAT_R8G8B8A8_TYPELESS				= 27,
+	DXGI_FORMAT_R8G8B8A8_TYPELESS			= 27,
     DXGI_FORMAT_R8G8B8A8_UNORM              = 28,
     DXGI_FORMAT_R8G8B8A8_UNORM_SRGB         = 29,
     DXGI_FORMAT_R8G8B8A8_UINT               = 30,

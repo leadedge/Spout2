@@ -38,6 +38,7 @@
 //					- Corrected SelectSenderpanel so that an un-initialized string is not used
 //		12.10.14	- Included SpoutPanel always bring to topmost in SelectSenderPanel
 //					- allowed for change of sender size in DrawToSharedTexture
+//		15.10.14	- added debugging aid for texture access locks
 //		
 // ================================================================
 /*
@@ -117,6 +118,7 @@ bool Spout::CreateSender(char* sendername, unsigned int width, unsigned int heig
 	// Make sure it has initialized
 	// A render window must be visible for initSharing to work
 	if(!OpenSpout()) {
+		printf("Spout::CreateSender error 1\n");
 		return false;
 	}
 
@@ -1182,6 +1184,7 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 	// Texture share mode quit if there is no image size to initialize with
 	// Memoryshare can detect a Sender while the receiver is running
 	if(!bMemoryMode && (theWidth == 0 || theHeight == 0)) {
+		// printf("Spout::InitSender error 1\n");
 		return false;
 	}
 
@@ -1191,6 +1194,7 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 	if(bGLDXcompatible && !bMemoryMode) {
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
 		if(!interop.CreateInterop(hwnd, theSendername, theWidth, theHeight, dwFormat, false)) {  // False for a sender
+			// printf("Spout::InitSender error 2\n");
 			return false;
 		}
 
@@ -1204,12 +1208,16 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 		bMemoryShareInitOK	= false;
 		bInitialized = true;
 
+		// printf("Spout::InitSender OK\n");
+
 		return true;
 	} 
 	// ================== end sender initialize ==============================
 
 	// if it did not initialize, try to set up for memory share transfer
 	if(!bInitialized) {
+
+		// printf("Spout::InitSender error 3\n");
 		
 		// Set globals - they will be reset by a receiver but are needed for a sender
 		g_Width  = theWidth;
@@ -1221,6 +1229,8 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 			return true;
 		}
 	}
+
+	// printf("Spout::InitSender error 4\n");
 
 	return false;
 
@@ -1578,3 +1588,9 @@ double Spout::GetCounter()
     return double(li.QuadPart-CounterStart)/PCFreq;
 }
 
+// For debugging only
+void Spout::UseAccessLocks(bool bUseLocks)
+{
+	interop.spoutdx.bUseAccessLocks = bUseLocks;
+
+}
