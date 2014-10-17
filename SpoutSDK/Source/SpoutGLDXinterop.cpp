@@ -63,7 +63,7 @@
 					- Added Host FBO argument for ReadTexture, DrawToSharedTexture, WriteTexture
 		12.10.14	- cleaned up CreateInterop for sender updates
 		15.10.14	- added safety release of texture in CreateDX9interop in case of previous application crash
-
+		17.10.14	- Directx 11 release context before device
 
 */
 
@@ -611,11 +611,10 @@ void spoutGLDXinterop::CleanupDX9()
 void spoutGLDXinterop::CleanupDX11()
 {
 	if(g_pSharedTexture != NULL) g_pSharedTexture->Release();
+	spoutdx.CloseDX11(); // release immediate context before releasing the device
 	if(g_pd3dDevice != NULL) g_pd3dDevice->Release();
 	g_pSharedTexture = NULL; // Important because mutex locks check for NULL
 	g_pd3dDevice = NULL;
-	
-	spoutdx.CloseDX11();
 
 }
 

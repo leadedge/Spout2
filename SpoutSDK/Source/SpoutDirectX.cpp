@@ -12,7 +12,7 @@
 //		23.09.14	- moved general mutex texture access lock to this class
 //		23.09.14	- added DX11available() to verify operating system support for DirectX 11
 //		15.10.14	- added debugging aid for texture access locks
-//
+//		17.10.14	- flush before release immediate context in CloseDX11
 // ====================================================================================
 
 /*
@@ -550,7 +550,9 @@ void spoutDirectX::UnlockD3D11Texture(ID3D11Texture2D* pD3D11Texture)
 
 void spoutDirectX::CloseDX11()
 {
+
 	if( g_pImmediateContext != NULL) {
+		g_pImmediateContext->Flush();
 		g_pImmediateContext->ClearState();
 		g_pImmediateContext->Release();
 	}
