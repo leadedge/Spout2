@@ -63,8 +63,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Mutex locks for DirectX 9 shared texture access
 		bool CreateAccessMutex(const char *name, HANDLE &hAccessMutex);
 		void CloseAccessMutex(HANDLE &hAccessMutex);
-		bool CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture);
-		void AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture);
+		bool CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture = NULL);
+		void AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture = NULL);
 
 		// Keyed mutex locks for D3D11 shared texture access
 		bool IsKeyedMutexTexture(ID3D11Texture2D* pD3D11Texture);

@@ -996,6 +996,7 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	unsigned int height;
 	bool bMemoryMode = true;
 
+	// printf("OpenReceiver\n");
 	// A valid name is sent and the user does not want to use the active sender
 	if(theName[0] != 0 && !bUseActive) {
 		strcpy_s(Sendername, 256, theName);

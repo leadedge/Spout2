@@ -13,6 +13,8 @@
 //		23.09.14	- added DX11available() to verify operating system support for DirectX 11
 //		15.10.14	- added debugging aid for texture access locks
 //		17.10.14	- flush before release immediate context in CloseDX11
+//		21.10.14	- removed keyed mutex lock due to reported driver problems
+//					  TODO - cleanup all functions using it
 // ====================================================================================
 
 /*
@@ -284,14 +286,13 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	desc.Width				= width;
 	desc.Height				= height;
 	desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-	// desc.MiscFlags			= D3D11_RESOURCE_MISC_SHARED; // This texture will be shared
+	desc.MiscFlags			= D3D11_RESOURCE_MISC_SHARED; // This texture will be shared
 	
 	// A DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not compatible with DirectX 9
 	// so if the format is set to be compatible (default) do not use this lock
-	if(format == DXGI_FORMAT_B8G8R8A8_UNORM)
-		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
-	else
-		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+	// 21.10.14 - removed due to reported problems
+	// if(format == DXGI_FORMAT_B8G8R8A8_UNORM) desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+	// else desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
 
 	desc.Format				= format;
 	desc.Usage				= D3D11_USAGE_DEFAULT;
@@ -373,6 +374,8 @@ bool spoutDirectX::CreateAccessMutex(const char *name, HANDLE &hAccessMutex)
 	DWORD errnum;
 	char szMutexName[256]; // name of the mutex
 
+	// printf("spoutDirectX::CreateAccessMutex\n");
+
 	// Create the mutex name to control access to the shared texture
 	sprintf_s((char*)szMutexName,  256, "%s_SpoutAccessMutex", name);
 
@@ -392,7 +395,7 @@ bool spoutDirectX::CreateAccessMutex(const char *name, HANDLE &hAccessMutex)
 			printf("access mutex [%s] invalid handle\n", szMutexName);
 		}
 		if(errnum == ERROR_ALREADY_EXISTS) {
-			printf("access mutex [%s] already exists\n", szMutexName);
+			// printf("access mutex [%s] already exists\n", szMutexName);
 		}
 		else {
 			printf("access mutex [%s] created\n", szMutexName);
@@ -405,7 +408,7 @@ bool spoutDirectX::CreateAccessMutex(const char *name, HANDLE &hAccessMutex)
 
 void spoutDirectX::CloseAccessMutex(HANDLE &hAccessMutex)
 {
-	// printf("CloseAccessMutex [%x]\n", m_hAccessMutex);
+	// printf("CloseAccessMutex [%x]\n", hAccessMutex);
 	if(hAccessMutex) CloseHandle(hAccessMutex);
 	hAccessMutex = NULL; // makes sure the passed handle is set to NULL
 }

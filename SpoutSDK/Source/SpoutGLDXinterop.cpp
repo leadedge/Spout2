@@ -64,6 +64,7 @@
 		12.10.14	- cleaned up CreateInterop for sender updates
 		15.10.14	- added safety release of texture in CreateDX9interop in case of previous application crash
 		17.10.14	- Directx 11 release context before device
+		21.10.14	- removed keyed mutex lock due to reported driver problems
 
 */
 
@@ -611,7 +612,8 @@ void spoutGLDXinterop::CleanupDX9()
 void spoutGLDXinterop::CleanupDX11()
 {
 	if(g_pSharedTexture != NULL) g_pSharedTexture->Release();
-	spoutdx.CloseDX11(); // release immediate context before releasing the device
+	// 21.10.14 - removed due to problems
+	// spoutdx.CloseDX11(); // release immediate context before releasing the device
 	if(g_pd3dDevice != NULL) g_pd3dDevice->Release();
 	g_pSharedTexture = NULL; // Important because mutex locks check for NULL
 	g_pd3dDevice = NULL;
@@ -803,7 +805,7 @@ bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarge
 	}
 
 	// Wait for access to the texture
-	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
+	if(spoutdx.CheckAccess(m_hAccessMutex)) {
 
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 
@@ -858,7 +860,7 @@ bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarge
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
 	}
-	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
+	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
 	return true;
 }
@@ -872,7 +874,7 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect)
 	}
 
 	// Wait for access to the texture
-	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
+	if(spoutdx.CheckAccess(m_hAccessMutex)) {
 
 		// go ahead and access the shared texture to draw it
 		// lock dx object
@@ -902,7 +904,7 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect)
 			// drop through to manage events and return true;
 		} // if lock failed just keep going
 	}
-	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
+	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
 	return true;
 
@@ -1014,7 +1016,7 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 
 	// Original blit method with checks - 0.75 - 0.85 msec
 	// Wait for access to the texture
-	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
+	if(spoutdx.CheckAccess(m_hAccessMutex)) {
 
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
@@ -1077,12 +1079,12 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
-		spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
+		spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 		return true;
 	}
 
 	// There is no reader
-	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
+	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
 	return false;
 
@@ -1101,7 +1103,7 @@ bool spoutGLDXinterop::WriteTexturePixels(unsigned char *pixels, unsigned int wi
 	}
 
 	// Wait for access to the texture
-	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
+	if(spoutdx.CheckAccess(m_hAccessMutex)) {
 
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 
@@ -1121,7 +1123,7 @@ bool spoutGLDXinterop::WriteTexturePixels(unsigned char *pixels, unsigned int wi
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		} // if lock failed just keep going
 	}
-	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
+	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
 	return true;
 
@@ -1156,7 +1158,7 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 	*/
 
 	// Wait for access to the texture
-	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
+	if(spoutdx.CheckAccess(m_hAccessMutex)) {
 
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
@@ -1183,7 +1185,7 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
 	}
-	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
+	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
 	return true;
 
@@ -1200,7 +1202,7 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels, unsigned int wid
 	// retrieve opengl texture data directly to image pixels rather than via an fbo and texture
 
 	// Wait for access to the texture
-	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
+	if(spoutdx.CheckAccess(m_hAccessMutex)) {
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 			glBindTexture(GL_TEXTURE_2D, m_glTexture);
@@ -1210,7 +1212,7 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels, unsigned int wid
 			// drop through to manage events and return true;
 		} // if lock failed just keep going
 	}
-	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
+	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
 	return true;
 
@@ -1228,7 +1230,7 @@ bool spoutGLDXinterop::BindSharedTexture()
 		return false;
 
 	// Wait for access to the texture
-	if(spoutdx.CheckAccess(m_hAccessMutex, g_pSharedTexture)) {
+	if(spoutdx.CheckAccess(m_hAccessMutex)) {
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 			// Bind our shared OpenGL texture
@@ -1243,7 +1245,7 @@ bool spoutGLDXinterop::BindSharedTexture()
 	// Leave locked for succcess, release interop lock and allow texture access for fail
 	if(!bRet) {
 		UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-		spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture); // Allow access to the texture
+		spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 	}
 
 	return bRet;
@@ -1263,7 +1265,7 @@ bool spoutGLDXinterop::UnBindSharedTexture()
 	// unlock dx object
 	UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 	// Allow access to the texture
-	spoutdx.AllowAccess(m_hAccessMutex, g_pSharedTexture);
+	spoutdx.AllowAccess(m_hAccessMutex);
 	
 	return true;
 
