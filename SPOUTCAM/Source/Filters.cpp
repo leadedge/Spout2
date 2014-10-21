@@ -109,6 +109,7 @@
 			 - update after SDK testing
 	30.08.14 - Recompiled with SDK update
 	12.10.14 - recompiled for release
+	21.10.14 - Recompile for update V 2.001 beta
 
 */
 

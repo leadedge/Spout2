@@ -40,7 +40,8 @@
 //	03.09.14 - GitHub update
 //	21.09.14 - Changed default compatibility for /DX9 arg
 //	09.10.14 - included SWP_ASYNCWINDOWPOS for topmost
-//	12.10.14 - ensure messagestring is null if no commandline
+//	12.10.14 - Ensure messagestring is null if no commandline
+//	21.10.14 - Change to format detection - SpoutPanel 2
 //
 #include <windows.h>
 #include <vector>
@@ -83,6 +84,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("SpoutPanel\n");
 	*/
+
 
 	// Find the current active window to restore to the top when SpoutPanel quits
 	hWnd = GetForegroundWindow();
@@ -247,21 +249,48 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 						sendernames.RegisterSenderName(activename);
 					}
 				}
+
 				// Now it should be in the name set
 				if(sendernames.FindSenderName(activename)) {
 					SetDlgItemTextA(hDlg, IDC_ACTIVE, (LPCSTR)activename);
 					sendernames.getSharedInfo(activename, &info);
-					if(info.format == 0) {
-						sprintf_s(temp, 512, "DirectX 9 : %dx%d", info.width, info.height);
+
+					switch(info.format) {
+						// DX9
+						case 0 : // default unknown
+							sprintf_s(temp, 512, "DirectX : %dx%d", info.width, info.height);
+							break;
+						case 21 : // D3DFMT_A8R8G8B8
+							sprintf_s(temp, 512, "DirectX 9 : %dx%d [ARGB]", info.width, info.height, info.format);
+							break;
+						case 22 : // D3DFMT_X8R8G8B8
+							sprintf_s(temp, 512, "DirectX 9 : %dx%d [XRGB]", info.width, info.height, info.format);
+							break;
+						// DX11
+						case 28 : // DXGI_FORMAT_R8G8B8A8_UNORM
+							sprintf_s(temp, 512, "DirectX 11 : %dx%d [RGBA]", info.width, info.height, info.format);
+							break;
+						case 87 : // DXGI_FORMAT_B8G8R8A8_UNORM
+							sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRA]", info.width, info.height, info.format);
+							break;
+						case 88 : // DXGI_FORMAT_B8G8R8AX_UNORM (untested)
+							sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRX]", info.width, info.height, info.format);
+							break;
+						default:
+							sprintf_s(temp, 512, "%dx%d :", info.width, info.height, info.format);
+							break;
 					}
-					else {
-						sprintf_s(temp, 512, "DirectX 11 : %dx%d : format [%d]", info.width, info.height, info.format);
-						if(bDX9compatible) {
-							if(info.format != 87) {
-								sprintf_s(temp, 512, "DirectX 11 : %dx%d : incompatible format [%d]", info.width, info.height, info.format);
-							}
+					if(bDX9compatible) { // Specify DX9 compatible senders
+						// Is the sender DX9 compatible
+						if(! ( info.format == 0  // default directX 9
+							|| info.format == 21 // DX9 ARGB
+							|| info.format == 22 // DX9 XRGB
+							|| info.format == 87 // compatible DX11
+							)) {
+							strcat_s(temp, 512, " incompatible format");
 						}
 					}
+
 					SetDlgItemTextA(hDlg, IDC_INFO, (LPCSTR)temp);
 				}
 			}
@@ -337,10 +366,14 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 						// Does it have any shared info
 						if(sendernames.getSharedInfo(SpoutSenderName, &info)) {
 							// Check the DirectX texture format and quit if not
-							// compatible if in Dr=irectX 11 and compatibility mode
+							// compatible if in compatibility mode
 							if(bDX9compatible) { // Specify DX9 compatible senders
 								// If it is 0 or 87 the sender is DX9 compatible
-								if(info.format != 0 && info.format != 87) {
+								if(! ( info.format == 0  // default directX 9
+									|| info.format == 87 // compatible DX11
+									|| info.format == 22 // DX9 XRGB
+									|| info.format == 21 // DX9 ARGB
+									)) {
 									EndDialog(hDlg, LOWORD(wParam));
 									return TRUE;
 								}
@@ -415,17 +448,32 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 									strcpy_s(name, namestring.c_str());
 									SetDlgItemTextA(hDlg, IDC_ACTIVE, (LPCSTR)name);
 									sendernames.getSharedInfo(name, &info);
+
 									// printf("(%s) - %dx%d [%x]\n", name, info.width, info.height, info.format);
-									if(info.format == 0) {
-										sprintf_s(temp, "DirectX 9 : %dx%d", info.width, info.height);
-									}
-									else {
-										sprintf_s(temp, "DirectX 11 : %dx%d : format [%d]", info.width, info.height, info.format);
-										if(bDX9compatible) {
-											if(info.format != 87) {
-												sprintf_s(temp, "DirectX 11 : %dx%d : incompatible format [%d]", info.width, info.height, info.format);
-											}
-										}
+									switch(info.format) {
+										// DX9
+										case 0 : // default unknown
+											sprintf_s(temp, 512, "DirectX : %dx%d", info.width, info.height);
+											break;
+										case 21 : // D3DFMT_A8R8G8B8
+											sprintf_s(temp, 512, "DirectX 9 : %dx%d [ARGB]", info.width, info.height, info.format);
+											break;
+										case 22 : // D3DFMT_X8R8G8B8
+											sprintf_s(temp, 512, "DirectX 9 : %dx%d [XRGB]", info.width, info.height, info.format);
+											break;
+										// DX11
+										case 28 : // DXGI_FORMAT_R8G8B8A8_UNORM
+											sprintf_s(temp, 512, "DirectX 11 : %dx%d [RGBA]", info.width, info.height, info.format);
+											break;
+										case 87 : // DXGI_FORMAT_B8G8R8A8_UNORM
+											sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRA]", info.width, info.height, info.format);
+											break;
+										case 88 : // DXGI_FORMAT_B8G8R8AX_UNORM (untested)
+											sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRX]", info.width, info.height, info.format);
+											break;
+										default:
+											sprintf_s(temp, 512, "%dx%d : incompatible format [%d]", info.width, info.height, info.format);
+											break;
 									}
 									SetDlgItemTextA(hDlg, IDC_INFO, (LPCSTR)temp);
 								}

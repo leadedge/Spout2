@@ -50,6 +50,10 @@
 	11.10.14	- changed back to empty name for createreceiver
 				  so that sender size change does not detect the active sender
 	12.10.14	- recompiled for release
+	17.10.14	- moved release of sender & receiver to just after destroywindow
+				  to avoid DX11 release crash
+	21.10.14	- Included DirectX version in capabilities dialog
+				- Recompile for update V 2.001 beta
 
 */
 #define MAX_LOADSTRING 100
@@ -87,7 +91,7 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // ================= CHANGE COMPILE FLAGS HERE =================
 // Rename the executable as necessary to get a sender/receiver pair
 //
-bool bReceiver      = true; // Compile for receiver (true) or sender (false)
+bool bReceiver      = false; // Compile for receiver (true) or sender (false)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
 bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
 bool bDX9compatible = true; // For DX11 senders only - compatible DX9 format for DX11 senders (default true)
@@ -407,11 +411,16 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	if(glContext) {
 
 		if(bReceiver) {
-			sprintf_s(gldxcaps, 1024, "Spout Receiver\r\n");
+			sprintf_s(gldxcaps, 1024, "Spout Receiver");
 		}
 		else {
-			sprintf_s(gldxcaps, 1024, "Spout Sender\r\n");
+			sprintf_s(gldxcaps, 1024, "Spout Sender");
 		}
+
+		if(bDX9mode)
+			strcat_s(gldxcaps, 1024, " - DirectX 9\r\n");
+		else
+			strcat_s(gldxcaps, 1024, " - DirectX 11\r\n");
 
 
 		// Get the Windows version.
@@ -625,12 +634,15 @@ bool OpenReceiver()
 	// Test of empty name, original method - tested OK
 	// if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height)) {
 	// Test of user specify finding the active sender - tested OK
-
+	// printf("OpenReceiver 1\n");
 	if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height, true)) {
 		// Update the local texture
 		InitTexture(g_Width, g_Height);
+		// Check whether DirectX 11 initialization succeeded
+		if(sender.GetDX9()) bDX9mode = true;
 		return true;
 	}
+	// printf("OpenReceiver 5\n");
 
 	return false;
 
@@ -662,6 +674,15 @@ bool OpenSender()
 	// DXGI_FORMAT_B8G8R8A8_UNORM - DX11 < > DX9 (default)
 	// Also sender.SetDX9compatible(true / false);
 	// Returns true for success or false for initialisation failure.
+	
+	// For success check whether DirectX 11 initialization succeeded
+	if(sender.CreateSender(g_SenderName, g_Width, g_Height)) {
+		if(sender.GetDX9()) bDX9mode = true; // TODO downgrade if DX11 did not initialize
+		return true;
+	}
+
+	return false;
+
 	return(sender.CreateSender(g_SenderName, g_Width, g_Height));
 
 } // end OpenSender
@@ -756,6 +777,7 @@ int DrawGLScene(GLvoid)
 		else {
 			if(bInitialized) receiver.ReleaseReceiver();
 			bInitialized = false; // reset for next round
+			g_SenderName[0] = 0; // LJ DEBUG
 		}
 		ShowReceiverInfo();
 		// LJ DEBUG receiver FPS debugging
@@ -967,9 +989,6 @@ void ShowSenderInfo()
 GLvoid KillGLWindow(GLvoid)
 {
 	
-	receiver.ReleaseReceiver();
-	sender.ReleaseSender();
-
 	if (hRC) {											// Do We Have A Rendering Context?
 		if (!wglMakeCurrent(NULL,NULL))	{				// Are We Able To Release The DC And RC Contexts?
 			MessageBoxA(NULL,"Release Of DC And RC Failed.","SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
@@ -1353,6 +1372,8 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,			// Handle For This Window
 			ReSizeGLScene(LOWORD(lParam), HIWORD(lParam));  // LoWord=Width, HiWord=Height
 			return 0;								// Jump Back
 		}
+
+
 	}
 
 	// Pass All Unhandled Messages To DefWindowProc
@@ -1391,9 +1412,9 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	g_Height = 360; 
 
 	if(bDX9mode)
-		strcpy_s(WindowTitle, 256, "Spout SDK DX9 ");
+		strcpy_s(WindowTitle, 256, "Spout ");
 	else
-		strcpy_s(WindowTitle, 256, "Spout SDK DX11 ");
+		strcpy_s(WindowTitle, 256, "Spout ");
 
 	#ifdef is64bit
 		if(bReceiver)
@@ -1529,6 +1550,9 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	// _CrtDumpMemoryLeaks();
 	// MessageBoxA(NULL, "Exit", "WinSpout", MB_OK);
 	// OutputDebugStringA("**** WinSpout Finished ****\n");
+
+	receiver.ReleaseReceiver();
+	sender.ReleaseSender();
 
 	// LJ DEBUG
 	// sender.SenderDebug(g_SenderName, sizeof(SharedTextureInfo) );
@@ -1847,3 +1871,5 @@ bool EnterSenderName(char *SenderName)
   return false;
 
 }
+
+

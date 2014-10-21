@@ -29,6 +29,8 @@
 //				 - Version 2.02
 //		12.10.14 - recompiled for release
 //				 - Version 2.03
+//		20.10.14 - Recompile for update V 2.001 beta with detection of DirectX 11 compatibility
+//				 - Version 2.04
 //
 #define GLEW_STATIC // to use glew32s.lib instead of glew32.lib otherwise there is a redefinition error
 
@@ -239,7 +241,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		*/
 
 		// DirectX 11 only available for Windows 7 (6.1) and higher
-
 		#ifdef is64bit
 				strcat_s(gldxcaps, 1024, "64bit\r\n");
 		#else
@@ -591,7 +592,7 @@ LRESULT CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		
 		case WM_INITDIALOG:
 			// Changeable text here
-			sprintf_s(temp,  1024, "SpoutTray - Version 2.02\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
+			sprintf_s(temp,  1024, "SpoutTray - Version 2.04\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
 			SetDlgItemTextA(hDlg, IDC_ABOUTBOXTEXT, (LPCSTR)temp);
 			return TRUE;
 

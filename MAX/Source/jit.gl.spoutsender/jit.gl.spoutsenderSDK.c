@@ -23,8 +23,9 @@
 			 - subsequent release failed and caused Jitter errors.
 	30.09.14 - Updated for DirectX 11 and revised SDK
 	09.10-14 - Cleanup for release
-	12.10.14 - Recompile for release
-			 - Vers 2.001
+	12.10.14 - Recompile for release - Vers 2.001
+	21.10.14 - Recompile for update V 2.001 beta
+			 - Vers 2.002
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -50,7 +51,7 @@
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
- */
+*/
 // Compile for DX9 instead of DX11 (default)
 // #define UseD3D9
 

@@ -39,6 +39,7 @@
 		30.09.14 - Java_JSpout_ReadTexture uses "ReceiveImage"
 				 - to transfer shared texture to Processing image pixels
 				 - DirectX 11
+		21.10.14 - Recompile for update V 2.001 beta
 
 */
 #define GL_BGRA_EXT 0x80E1
@@ -75,6 +76,7 @@ JNIEXPORT jint JNICALL Java_JSpout_InitSender (JNIEnv *env, jclass c, jstring na
 
 	// user has selected memoryshare mode
 	if(memorymode == 1) sender.SetMemoryShareMode(true);
+	// else sender.SetDX9(true);
 
 	//
 	// Default settings are :
@@ -141,6 +143,7 @@ JNIEXPORT jint JNICALL Java_JSpout_InitReceiver (JNIEnv *env, jclass c, jstring 
 
 	// user has selected memoryshare mode
 	if(memorymode == 1) receiver.SetMemoryShareMode(true);
+	// else receiver.SetDX9(true);
 	
 	//
 	// Default settings are	DirectX 11
