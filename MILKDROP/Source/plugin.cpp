@@ -488,6 +488,11 @@ Order of Function Calls
                                         auto-minimize thing in that case.
 
 
+========================================================================================================
+SPOUT NOTES :
+	22.10.14 - changed from Ctrl-Z on and off to default Spout output when the plugin starts
+			   and Ctrl-Z to disable and enable while it is running. Otherwise Spout has to be re-enabled
+			   every time another track is selected.
 
 */
 
@@ -1451,7 +1456,6 @@ int CPlugin::AllocateMyNonDx9Stuff()
     m_pNewState->Default();
 
 	//LoadRandomPreset(0.0f);   -avoid this here; causes some DX9 stuff to happen.
-
 
     return true;
 }
@@ -2453,7 +2457,12 @@ int CPlugin::AllocateMyDX9Stuff()
 	// If initialized already, update the sender to the new size
 	// There is no shared texture in this app but there will be in the 
 	// spoutsender object when we create a sender and we can send pixels to it
-	if(bInitialized) spoutsender.UpdateSender(WinampSenderName, m_nTexSizeX, m_nTexSizeY);
+	if(bInitialized) 
+		spoutsender.UpdateSender(WinampSenderName, m_nTexSizeX, m_nTexSizeY);
+	else
+		bInitialized = OpenSender(m_nTexSizeX, m_nTexSizeY);
+	// ==================================
+
 	// =========================================================
 
 
@@ -9790,9 +9799,13 @@ bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 
 	// And we also have to set the shared texture format as D3DFMT_X8R8G8B8 so that receivers know it
 	// because the default format argument is zero and that assumes D3DFMT_A8R8G8B8
-	bInitialized = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)D3DFMT_X8R8G8B8);    
+	if(spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)D3DFMT_X8R8G8B8)) {
+		m_bSpoutOut = true;
+		bInitialized = true;
+		return true;
+	}
 
-	return bInitialized;
+	return false;
 
 } // end OpenSender
 // =========================================================
