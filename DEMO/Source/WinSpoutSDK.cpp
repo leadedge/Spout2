@@ -54,6 +54,7 @@
 				  to avoid DX11 release crash
 	21.10.14	- Included DirectX version in capabilities dialog
 				- Recompile for update V 2.001 beta
+	24.10.14	- Capabilities check if OpenDirectX11 succeeded
 
 */
 #define MAX_LOADSTRING 100
@@ -410,10 +411,13 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	glContext = wglGetCurrentContext(); // should check if opengl context creation succeed
 	if(glContext) {
 
+		// 24.10.14 - check if OpenDirectX11 succeeded
 		if(bReceiver) {
+			bDX9mode = receiver.GetDX9();
 			sprintf_s(gldxcaps, 1024, "Spout Receiver");
 		}
 		else {
+			bDX9mode = sender.GetDX9();
 			sprintf_s(gldxcaps, 1024, "Spout Sender");
 		}
 

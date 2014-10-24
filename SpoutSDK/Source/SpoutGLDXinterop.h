@@ -46,6 +46,7 @@
 #include <d3d9.h>	// DX9
 #include <d3d11.h>	// DX11
 #include <gl/gl.h>
+#include <gl/glu.h> // For glerror
 
 class SPOUT_DLLEXP spoutGLDXinterop {
 
@@ -123,6 +124,15 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		GLuint m_glTexture;		// the OpenGL texture linked to the shared DX texture
 		GLuint m_fbo;
 
+		// ====================
+		// LJ DEBUG
+		// public for debugging
+		IDirect3DDevice9Ex* m_pDevice;   // DX9 device
+		LPDIRECT3DTEXTURE9  m_dxTexture; // the shared DX9 texture
+		void GLerror();
+		// ====================
+
+
 protected:
 
 		bool m_bInitialized;    // this instance initialized flag
@@ -145,8 +155,8 @@ protected:
 
 		// DX9
 		IDirect3D9Ex*       m_pD3D;      // DX9 object
-		IDirect3DDevice9Ex* m_pDevice;   // DX9 device
-		LPDIRECT3DTEXTURE9  m_dxTexture; // the shared DX9 texture
+		// IDirect3DDevice9Ex* m_pDevice;   // DX9 device
+		// LPDIRECT3DTEXTURE9  m_dxTexture; // the shared DX9 texture
 		
 		HANDLE m_hInteropDevice; // handle to the DX/GL interop device
 		HANDLE m_hInteropObject; // handle to the DX/GL interop object (the shared texture)

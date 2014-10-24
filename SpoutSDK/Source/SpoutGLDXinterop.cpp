@@ -65,6 +65,10 @@
 		15.10.14	- added safety release of texture in CreateDX9interop in case of previous application crash
 		17.10.14	- Directx 11 release context before device
 		21.10.14	- removed keyed mutex lock due to reported driver problems
+		21.10.14	- Allow for compatible texture formats
+					  DirectX 11 format 87, DirectX9 D3DFMT_X8R8G8B8, and the default D3DFMT_A8R8G8B8
+		21.10.14	- Allow DirectX texture formats to be registered in CreateInterop
+		24.10.14	- Fall back to DirectX 9 if DirectX11 init fails
 
 */
 
@@ -124,14 +128,22 @@ spoutGLDXinterop::~spoutGLDXinterop() {
 // For external access so that the local global variables are used
 bool spoutGLDXinterop::OpenDirectX(HWND hWnd, bool bDX9)
 {
-	// Check for DirectX availability as well
+	// Check for Operating system DirectX 11 availability as well
 	if(bDX9 || !spoutdx.DX11available()) {
 		bUseDX9 = true;
 		return (OpenDirectX9(hWnd));
 	}
 	else {
-		bUseDX9 = false;
-		return (OpenDirectX11());
+		// 24.10.14 - if DX11 init fails, fall back to directX 9
+		// return (OpenDirectX11());
+		if(OpenDirectX11()) {
+			bUseDX9 = false;
+			return true;
+		}
+		else {
+			bUseDX9 = true;
+			return (OpenDirectX9(hWnd));
+		}
 	}
 }
 
@@ -264,33 +276,50 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 		return false;
 	}
 
+	// printf("CreateInterop - %dx%d - format (%d) \n", width, height, dwFormat);
+
+	// Texture format tests
+	// Compatible formats
+	// DXGI_FORMAT_R8G8B8A8_UNORM; // default DX11 format - not compatible with DX9 (28)
+	// DXGI_FORMAT_B8G8R8A8_UNORM; // compatible DX11 format - works with DX9 (87)
+	// Allow for compatible DirectX 11 senders (format 87)
+	// And compatible DirectX9 senders D3DFMT_X8R8G8B8 - 22
+	// and the default D3DFMT_A8R8G8B8 - 21
 	if(bUseDX9) {
 		// DirectX 9
 		if(dwFormat > 0) {
-			// printf("CreateInterop - DX9 mode - User format (%d) \n", dwFormat);
-			format = (D3DFORMAT)dwFormat;
+			if(dwFormat == 87) {
+				// printf("CreateInterop - DX9 mode - compatible DX11 user format (%d) \n", dwFormat);
+				format = (DWORD)D3DFMT_A8R8G8B8; // (21)
+			}
+			else if(dwFormat == D3DFMT_X8R8G8B8 || dwFormat == D3DFMT_A8R8G8B8) {
+				// printf("CreateInterop - DX9 mode - compatible DX9 user format (%d) \n", dwFormat); 
+				format = (DWORD)dwFormat; // (22)
+			}
+			else {
+				// printf("CreateInterop - DX9 mode - incompatible user format (%d) \n", dwFormat);
+				return false;
+			}
 		}
-		else {
-			// printf("CreateInterop - DX9 mode - DX9format (%d) \n", DX9format);
+		else { // format is passed as zero so we assume a DX9 sender D3DFMT_A8R8G8B8
 			format = (DWORD)DX9format;
+			// printf("CreateInterop - DX9 mode - DX9format (%d) \n", format);
 		}
 	}
 	else {
 		// DirectX 11
-		// Is this a DX11 texture or a DX9 sender texture?
-		if(dwFormat > 0) {
-			// printf("CreateInterop - DX11 mode - user format %d \n", dwFormat);
+		// Is this a DX11 or a DX9 sender texture?
+		// A directX 11 receiver accepts DX9 formats
+		if(!bReceive && dwFormat > 0) {
+		// if(dwFormat > 0) {
+			// printf("CreateInterop - DX11 sender - user format %d \n", dwFormat);
 			format = (DXGI_FORMAT)dwFormat;
 		}
 		else {
-			// printf("CreateInterop - DX11 mode - DX11format %d \n", DX11format);
+			// printf("CreateInterop - DX11 mode - format passed = %d \n", dwFormat);
 			format = (DWORD)DX11format; // DXGI_FORMAT_B8G8R8A8_UNORM default compatible with DX9
 		}
 	}
-
-	// Formats
-	// DXGI_FORMAT_R8G8B8A8_UNORM; // default DX11 format - not compatible with DX9 (28)
-	// DXGI_FORMAT_B8G8R8A8_UNORM; // compatoble DX11 format - works with DX9 (87)
 
 	// Quit now if the receiver can't access the shared memory info of the sender
 	// Otherwise m_dxShareHandle is set by getSharedTextureInfo and is the
@@ -301,11 +330,14 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	}
 
 	// Check the sender format for a DX9 receiver
-	// It can only be from a DX9 sender (format 0)
+	// It can only be from a DX9 sender (format 0, 22, 21)
 	// or from a compatible DX11 sender (format 87)
 	if(bReceive && bUseDX9) {
-		if(!(m_TextureInfo.format == 0 || m_TextureInfo.format == 87)) {
-			printf("CreateInterop - Incompatible format %d \n", m_TextureInfo.format);
+		if(!(m_TextureInfo.format == 0 
+			|| m_TextureInfo.format == 22
+			|| m_TextureInfo.format == 21
+			|| m_TextureInfo.format == 87)) {
+			printf("Incompatible texture format %d \n", m_TextureInfo.format);
 			return false;
 		}
 	}
@@ -313,6 +345,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	// Make sure DirectX has been initialized
 	// Creates a global pointer to the DirectX device (DX11 g_pd3dDevice or DX9 m_pDevice)
 	if(!OpenDirectX(hWnd, bUseDX9)) {
+		printf("CreateInterop error 2\n");
 		return false;
 	}
 
@@ -346,20 +379,22 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int w
 	else bRet = CreateDX11interop(width, height, format, bReceive);
 
 	if(!bRet) {
-		printf("CreateInterop error 2\n");
+		printf("CreateInterop error 3\n");
 		return false;
 	}
 
 	// Now the global shared texture handle - m_dxShareHandle - has been set so a sender can be created
 	// this creates the sender shared memory map and registers the sender
 	if (!bReceive) {
-
 		// We are done with the format
 		// So for DirectX 9, set to zero to identify the sender as DirectX 9
-		if(bUseDX9) format = 0; 
-		if(!senders.CreateSender(sendername, width, height, m_dxShareHandle, format))
+		// LJ DEBUG - allow format to be registered becasue it is now tested
+		// by revised SpoutPanel 2 and by the texture formats above
+		// if(bUseDX9) format = 0; 
+		if(!senders.CreateSender(sendername, width, height, m_dxShareHandle, format)) {
+			printf("CreateInterop error 4\n");
 			return false;
-
+		}
 	}
 
 	// Set up local values for this instance
@@ -1123,6 +1158,7 @@ bool spoutGLDXinterop::WriteTexturePixels(unsigned char *pixels, unsigned int wi
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		} // if lock failed just keep going
 	}
+
 	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
 	return true;
@@ -1416,11 +1452,14 @@ bool spoutGLDXinterop::UseDX9(bool bDX9)
 
 bool spoutGLDXinterop::isDX9()
 {
-	// Check for DirectX availability.
+	// Check Operating system support for DirectX 11
 	// It is checked with OpenDirectX but this might not have been called yet.
 	// The user can call this after the Spout SetDX9 call to check if it succeeded.
 	if(!spoutdx.DX11available()) bUseDX9 = true;
 
+	// Otherwise return what has been set
+	// This can be checked after directX initialization
+	// to find out if DirectX 11 initialization failed
 	return bUseDX9;
 }
 
@@ -1463,3 +1502,9 @@ bool spoutGLDXinterop::SetVerticalSync(bool bSync)
 	return false;
 }
 
+void spoutGLDXinterop::GLerror() {
+	GLenum err;
+	while ((err = glGetError()) != GL_NO_ERROR) {
+		printf("GL error = %d (0x%x) %s\n", err, err, gluErrorString(err));
+	}
+}	
