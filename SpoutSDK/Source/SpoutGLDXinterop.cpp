@@ -1502,9 +1502,12 @@ bool spoutGLDXinterop::SetVerticalSync(bool bSync)
 	return false;
 }
 
+// For debugging only - needs glu32.lib
 void spoutGLDXinterop::GLerror() {
+	/*
 	GLenum err;
 	while ((err = glGetError()) != GL_NO_ERROR) {
 		printf("GL error = %d (0x%x) %s\n", err, err, gluErrorString(err));
 	}
+	*/
 }	
