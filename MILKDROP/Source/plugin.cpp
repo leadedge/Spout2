@@ -490,9 +490,17 @@ Order of Function Calls
 
 ========================================================================================================
 SPOUT NOTES :
+	
+	Credit to psilocin@openmailbox.org for the original idea to convert MilkDrop for Spout output
+
 	22.10.14 - changed from Ctrl-Z on and off to default Spout output when the plugin starts
 			   and Ctrl-Z to disable and enable while it is running. Otherwise Spout has to be re-enabled
 			   every time another track is selected.
+	30.10.14 - changed from Glut to pixelformat and OpenGL context creation
+	31.10.14 - changed initialization section to renderframe to ensure correct frame size
+			 - added Ctrl-D user selection of DirectX mode
+			 - flag bUseDX9 to select either DirectX 9 or DirectX 11
+			 - saved DX mode flag in configuration file
 
 */
 
@@ -934,18 +942,29 @@ void CPlugin::MyPreInitialize()
 	//
 	sprintf(WinampSenderName, "WinAmpSpoutSender");
 	bInitialized = false;
-	m_bSpoutOut = false;
-	
-	/*
+	bSpoutOut = true; // User on/off toggle
+	bUseDX9 = true; // Set false to use DirectX11 - DX9 by default - picked up from config file
+	bSpoutChanged = false; // set to write config on exit
+	// DirectX 11 mode uses a format that is incompatible with DirectX 9 receivers
+	// DirectX9 mode can fail with some drivers. Noted on Intel/NVIDIA laptop.
+	g_Width = 0;
+	g_Height = 0;
+	g_hwnd = NULL;
+	g_hdc = NULL;
+
 	// debug console window - remove for release
 	// Note that the app will crash if the console window is closed
 	// instead of the app window.
+	/*
 	AllocConsole();
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("MilkDrop 2\n");
 	*/
+
+
+
 
 	// =========================================================
 
@@ -1179,6 +1198,11 @@ void CPlugin::MyReadConfig()
 	int n=0;
     wchar_t *pIni = GetConfigIniFile();
 
+	// ======================================
+	// SPOUT - save whether in DirectX9 (true) or DirectX 11 (false) mode, default true
+	bUseDX9 = GetPrivateProfileBoolW(L"settings", L"bUseDX9", bUseDX9, pIni);
+	// ======================================
+
 	m_bFirstRun		= !GetPrivateProfileBoolW(L"settings",L"bConfigured" ,false,pIni);
 	m_bEnableRating = GetPrivateProfileBoolW(L"settings",L"bEnableRating",m_bEnableRating,pIni);
     //m_bInstaScan    = GetPrivateProfileBool("settings","bInstaScan",m_bInstaScan,pIni);
@@ -1287,7 +1311,13 @@ void CPlugin::MyWriteConfig()
 
 	wchar_t szSectionName[] = L"settings";
 
-	WritePrivateProfileIntW(m_bSongTitleAnims,		L"bSongTitleAnims",		pIni, L"settings");
+	// ================================
+	// SPOUT
+	WritePrivateProfileIntW(bUseDX9, L"bUseDX9", pIni, L"settings");
+	// ================================
+
+
+	WritePrivateProfileIntW(m_bSongTitleAnims,			L"bSongTitleAnims",		pIni, L"settings");
 	WritePrivateProfileIntW(m_bHardCutsDisabled,	    L"bHardCutsDisabled",	pIni, L"settings");
 	WritePrivateProfileIntW(m_bEnableRating,		    L"bEnableRating",		pIni, L"settings");
 	//WritePrivateProfileIntW(m_bInstaScan,            "bInstaScan",		    pIni, "settings");
@@ -1330,6 +1360,7 @@ void CPlugin::MyWriteConfig()
 	WritePrivateProfileFloatW(m_fSongTitleAnimDuration,  L"fSongTitleAnimDuration",   pIni, L"settings");
 	WritePrivateProfileFloatW(m_fTimeBetweenRandomSongTitles,L"fTimeBetweenRandomSongTitles",pIni, L"settings");
 	WritePrivateProfileFloatW(m_fTimeBetweenRandomCustomMsgs,L"fTimeBetweenRandomCustomMsgs",pIni, L"settings");
+
 }
 
 //----------------------------------------------------------------------
@@ -1489,16 +1520,21 @@ void CPlugin::CleanUpMyNonDx9Stuff()
     // This gets called only once, when your plugin exits.
     // Be sure to clean up any objects here that were 
     // created/initialized in AllocateMyNonDx9Stuff.
+	// printf("CPlugin::CleanUpMyNonDx9Stuff\n");
 
 	// =========================================================
 	// SPOUT cleanup on exit
 	//
+	spoutsender.ReleaseSender();
 	HGLRC ctx = wglGetCurrentContext();
 	if(ctx != NULL) {
-		spoutsender.ReleaseSender();
-		glutDestroyWindow(glutGetWindow());
+		wglMakeCurrent(NULL, NULL);
 		wglDeleteContext(ctx);
+		ReleaseDC(g_hwnd, g_hdc);
 	}
+	// If the DirectX mode has been changed, save the config file
+	// so it is started in the selected mode the next time
+	if(bSpoutChanged) MyWriteConfig();
 	// =========================================================
 
 
@@ -2449,22 +2485,6 @@ int CPlugin::AllocateMyDX9Stuff()
     }
     else
         LoadShaders(&m_shaders, m_pState, false);  // Also force-load the shaders - otherwise they'd only get compiled on a preset switch.
-
-	
-	// =========================================================
-	// SPOUT
-	//
-	// If initialized already, update the sender to the new size
-	// There is no shared texture in this app but there will be in the 
-	// spoutsender object when we create a sender and we can send pixels to it
-	if(bInitialized) 
-		spoutsender.UpdateSender(WinampSenderName, m_nTexSizeX, m_nTexSizeY);
-	else
-		bInitialized = OpenSender(m_nTexSizeX, m_nTexSizeY);
-	// ==================================
-
-	// =========================================================
-
 
 	return true;
 }
@@ -4170,6 +4190,7 @@ void CPlugin::DrawTooltip(wchar_t* str, int xR, int yB)
     m_text.DrawTextW(GetFont(TOOLTIP_FONT), str, -1, &r2, 0, 0xFFFFFFFF, false);
 }
 
+
 #define MTO_UPPER_RIGHT 0
 #define MTO_UPPER_LEFT  1
 #define MTO_LOWER_RIGHT 2
@@ -5641,7 +5662,7 @@ LRESULT CPlugin::MyWindowProc(HWND hWnd, unsigned uMsg, WPARAM wParam, LPARAM lP
 			return 0; // we processed (or absorbed) the key
 
         case VK_F9:
-			printf("F9\n");
+			// printf("F9\n");
             m_bShowShaderHelp = !m_bShowShaderHelp;
             return FALSE;
 
@@ -6375,29 +6396,63 @@ LRESULT CPlugin::MyWindowProc(HWND hWnd, unsigned uMsg, WPARAM wParam, LPARAM lP
 		case 'Z':
 			if (bCtrlHeldDown)
             {			
-	            m_bSpoutOut = !m_bSpoutOut;
-				if(m_bSpoutOut) {
+	            bSpoutOut = !bSpoutOut;
+				if(bSpoutOut) {
 					// Start spout
 					lstrcpyW(m_szSavedSongTitle, m_szSongTitle);
 					wsprintfW(m_szSongTitle, L"Spout output enabled.");
 					LaunchSongTitleAnim();
 					lstrcpyW(m_szSongTitle, m_szSavedSongTitle);
-
-					bInitialized = OpenSender(m_nTexSizeX, m_nTexSizeY);
 				}
 				else {
-					// Close the sender
+					// Stop Spout
 					lstrcpyW(m_szSavedSongTitle, m_szSongTitle);
 					wsprintfW(m_szSongTitle, L"Spout output disabled.");
 					LaunchSongTitleAnim();
 					lstrcpyW(m_szSongTitle, m_szSavedSongTitle);
-
-					if(bInitialized) spoutsender.ReleaseSender();
-					bInitialized = false;
+				}
+				if(bInitialized) {
+					spoutsender.ReleaseSender();
+					bInitialized = false; // Initialized next render frame
 				}
                 return 0;
 			}
 			break;
+
+		//
+		//		CTRL-D - change DirectX mode
+		//
+		// Note that becasue this has not been added to the control panel, a changed flag
+		// is set and the config written if this has been selected
+		//
+		case 'D':
+			if (bCtrlHeldDown)
+			{	
+				bSpoutChanged = true; // write config on exit
+				bUseDX9 = !bUseDX9;
+				if(bUseDX9) {
+					// Start spout in Directx 9 mode
+					lstrcpyW(m_szSavedSongTitle, m_szSongTitle);
+					wsprintfW(m_szSongTitle, L"Spout DirectX 9 mode.");
+					LaunchSongTitleAnim();
+					lstrcpyW(m_szSongTitle, m_szSavedSongTitle);
+				}
+				else {
+					// Start Spout in DirectX 11 mode
+					lstrcpyW(m_szSavedSongTitle, m_szSongTitle);
+					wsprintfW(m_szSongTitle, L"Spout DirectX 11 mode.");
+					LaunchSongTitleAnim();
+					lstrcpyW(m_szSongTitle, m_szSavedSongTitle);
+				}
+				if(bInitialized) {
+					spoutsender.ReleaseSender();
+					bInitialized = false; // Initialized next render frame
+				}
+				return 0;
+			}
+			break;
+
+
 		// ========================================
 
         case 'T':
@@ -9773,21 +9828,14 @@ void CPlugin::GenCompPShaderText(char *szShaderText, float brightness, float ve_
 bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 {
 
-	// Once created it seems stable and retained
-	// So this is only done once
-	if(wglGetCurrentContext() == NULL) {
-		// You need to create a rendering context BEFORE calling any Spout functions
-		int argc = 1;
-		char *argv = (char*)"MilkDrop";
-		char **vptr = &argv;
-		glutInit(&argc, vptr);
-		// In this case there is not to be a rendering context
-		// and we don't need to use a render window.
-		// So create a window here but it will not show.
-		// Noted that the window does show using FreeGlut
-		// so this method only works with the old glut.
-		glutCreateWindow("MilkDropGL");
-	} // end no glcontext 
+	if(!InitOpenGL()) {
+		return false;
+	}
+
+	if(bInitialized) {
+		spoutsender.ReleaseSender(); // safety
+		bInitialized = false;
+	}
 
 	// This is a sender so create one
 	// This can be DirectX 11 which is the default
@@ -9795,17 +9843,80 @@ bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 	// spoutsender.spout.interop.SetDX11format(DXGI_FORMAT_B8G8R8X8_UNORM);
 
 	// To use DirectX 9 we need to specify that first
-	spoutsender.SetDX9(true);
-
-	// And we also have to set the shared texture format as D3DFMT_X8R8G8B8 so that receivers know it
-	// because the default format argument is zero and that assumes D3DFMT_A8R8G8B8
-	if(spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)D3DFMT_X8R8G8B8)) {
-		m_bSpoutOut = true;
+	// Flag option for DX9 of DX11
+	bool bRet = false;
+	if(bUseDX9) {
+		spoutsender.SetDX9(true);
+		// printf("    Creating DX9 sender %dx%d\n", width, height);
+		// And we also have to set the shared texture format as D3DFMT_X8R8G8B8 so that receivers know it
+		// because the default format argument is zero and that assumes D3DFMT_A8R8G8B8
+		bRet = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)D3DFMT_X8R8G8B8);
+	}
+	else {
+		// printf("    Creating DX11 sender %dx%d\n", width, height);
+		spoutsender.SetDX9(false);
+		// Same here because the default is DXGI_FORMAT_B8G8R8A8_UNORM
+		bRet = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)DXGI_FORMAT_B8G8R8X8_UNORM );
+	}
+	
+	if(bRet) {
+		// printf("    Created sender %dx%d OK\n", width, height);
+		g_Width  = width;
+		g_Height = height;
+		bSpoutOut = true;
 		bInitialized = true;
 		return true;
 	}
+	
+	// printf("    Create sender failed\n");
 
 	return false;
 
 } // end OpenSender
+
+
+bool CPlugin::InitOpenGL()
+{
+
+	HGLRC hRC;
+
+	// We only need an OpenGL context with no window
+	// Once created it seems stable and retained
+	// So this is only done once
+	if(wglGetCurrentContext() == NULL) {
+		g_hwnd = GetForegroundWindow();
+		if(!g_hwnd)	return false;
+
+		g_hdc = GetDC(g_hwnd);
+		if(!g_hdc) 	return false;
+
+		PIXELFORMATDESCRIPTOR pfd;
+		ZeroMemory( &pfd, sizeof( pfd ) );
+		pfd.nSize = sizeof( pfd );
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 32;
+		pfd.cDepthBits = 16;
+		pfd.iLayerType = PFD_MAIN_PLANE;
+
+		int iFormat = ChoosePixelFormat(g_hdc, &pfd);
+		if(!iFormat) return false;
+
+		if(!SetPixelFormat(g_hdc, iFormat, &pfd)) return false;
+
+		hRC = wglCreateContext(g_hdc);
+		if(!hRC) return false;
+
+		wglMakeCurrent(g_hdc, hRC);
+
+		// did it work ?
+		if(wglGetCurrentContext() == NULL)	return false;
+
+		// Drop through to return true
+	}
+
+	return true;
+}
 // =========================================================
+

@@ -1245,10 +1245,12 @@ void CPlugin::RenderFrame(int bRedraw)
 	//
 	// Adapted from : https://gist.github.com/karlgluck/8467971
 	//
-	if(bInitialized) { // Spout is started or stopped with CTRL-Z
+	if(bSpoutOut) { // Spout is started or stopped with CTRL-Z
 
 		// Grab the backbuffer from the Direct3D device
 		HRESULT hr;
+		unsigned int width = 0;
+		unsigned int height = 0;
 		LPDIRECT3DDEVICE9 d3d_device = GetDevice();
 		LPDIRECT3DSURFACE9 back_buffer = NULL;
 		d3d_device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &back_buffer);
@@ -1262,6 +1264,29 @@ void CPlugin::RenderFrame(int bRedraw)
 		D3DSURFACE_DESC desc;
 		LPDIRECT3DSURFACE9 offscreen_surface = NULL;
 		back_buffer->GetDesc(&desc);
+
+		// Check backbuffer size against sender initialized size
+		if(bInitialized == false || g_Width != desc.Width || g_Height != desc.Height) {
+			g_Width  = desc.Width;
+			g_Height = desc.Height;
+			// If initialized already, update the sender to the new size
+			// There is no shared texture in this app but there will be in the 
+			// spoutsender object when we create a sender and we can send pixels to it
+			if(bInitialized) {
+				spoutsender.UpdateSender(WinampSenderName, g_Width, g_Height);
+			}
+			else {
+				bInitialized = OpenSender(g_Width, g_Height);
+			}
+			back_buffer->Release();
+			return;
+		}
+
+		if(!bInitialized) {
+			back_buffer->Release();
+			return; // safety
+		}
+
 		hr = d3d_device->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format, D3DPOOL_SYSTEMMEM, &offscreen_surface, NULL);
 		if(SUCCEEDED(hr)) {
 			// Copy from video memory to system memory
@@ -1270,43 +1295,20 @@ void CPlugin::RenderFrame(int bRedraw)
 				// Lock the surface using some flags for optimization
 				hr = offscreen_surface->LockRect(&d3dlr, NULL, D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_READONLY);
 				if(SUCCEEDED(hr)) {
-					// Find the backbuffer format
-					// Note that variable format isn't implemented yet so the user has to set up for X8R8G8B8
-					GLenum GLformat;
-					switch (desc.Format) {
-						case D3DFMT_R8G8B8:
-							// printf("Format R8G8B8\n"); 
-							GLformat = GL_RGB;
-							break;
-						case D3DFMT_X1R5G5B5:
-							GLformat = 0;
-							// printf("Format X1R5G5B5\n"); 
-							break;
-						case D3DFMT_R5G6B5:
-							GLformat = 0;
-							// printf("Format R5G6B5\n"); 
-							break;
-						case D3DFMT_A8R8G8B8:
-							GLformat = GL_BGRA_EXT;
-							// printf("Format A8R8G8B8\n"); 
-							break;
-						case D3DFMT_X8R8G8B8:
-							GLformat = GL_BGRA_EXT;
-							// printf("Format X8R8G8B8\n"); // ***
-							break;
-						default:
-							break;
-					}
+					
+					// Can find the backbuffer format here, but a variable format isn't implemented yet
+					// so the user has to set up for X8R8G8B8
 
 					// Pass the pixels to spout
+
+					// DX9 needs D3DFMT_X8R8G8B8
 					// If DX11, match with the DX11 format initialized - (DXGI_FORMAT_B8G8R8X8_UNORM)
-					// DX9 seems happy with D3DFMT_X8R8G8B8
 					//
 					// bool SendImage(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGB, bool bAlignment = true, bool bInvert=true);
 					//
 					// Disable 4-byte alignment, disable invert of texture because this is a DirectX source
-					if(desc.Format == D3DFMT_X8R8G8B8) { // We have initialized the sender for this format
-						spoutsender.SendImage((unsigned char *)d3dlr.pBits, desc.Width, desc.Height, GL_BGRA_EXT, false, false);
+					if(desc.Format == D3DFMT_X8R8G8B8) { // We needs to see this format
+						spoutsender.SendImage((unsigned char *)d3dlr.pBits, g_Width, g_Height, GL_BGRA_EXT, false, false);
 					}
 				}
 			}

@@ -1,4 +1,5 @@
 /*
+
   LICENSE
   -------
 Copyright 2005-2013 Nullsoft, Inc.
@@ -36,7 +37,6 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Include the entire SDK in the project because we initialize
 // OpenGL in this app and use the OpenGL functions of Spout
 #include "..\..\..\SpoutSDK\spout.h" // adjust for your path containing the Sppout SDK files
-#include <glut.h> // Used to initialize OpenGL
 // =========================================================
 
 
@@ -313,7 +313,16 @@ public:
 		char WinampSenderName[256]; // The sender name
 		bool bInitialized; // did it work ?
 		bool OpenSender(unsigned int width, unsigned int height);
-		bool m_bSpoutOut; // Spout output on or off
+		bool InitOpenGL();
+		bool bSpoutOut; // Spout output on or off
+
+		// 31.10.14
+		bool bUseDX9; // Spout DirectX mode
+		bool bSpoutChanged; // set to write config on exit
+		unsigned int g_Width;
+		unsigned int g_Height;
+		HWND g_hwnd;
+		HDC g_hdc;
 		wchar_t	m_szSavedSongTitle[512]; // for saving song tile with Spout on or off
 		// =========================================================
 
