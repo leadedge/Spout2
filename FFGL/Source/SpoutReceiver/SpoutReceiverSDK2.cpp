@@ -60,6 +60,9 @@
 			 - Version 3.016
 	21.10.14 - Recompile for update V 2.001 beta
 			 - Version 3.017
+	12.11.14 - fixed bug for ReceiveTexture passing host fbo	
+			 - change to default startup for button detection to button up
+			 - Version 3.018
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -92,7 +95,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.017\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.018\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -123,7 +126,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.017\n");
+	printf("SpoutReceiver2 Vers 3.018\n");
 	*/
 
 	// Input properties - this is a source and has no inputs
@@ -180,21 +183,23 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	module = GetModuleHandle(NULL);
 	GetModuleFileNameA(module, path, MAX_PATH);
 	_splitpath_s(path, NULL, 0, NULL, 0, HostName, MAX_PATH, NULL, 0);
-	// Magic reacts on button-up, so when the dll loads
-	// the parameters are not activated. 
-	// Isadora and Resolume act on button down and 
-	// Isadora activates all parameters on plugin load.
-	// So allow one cycle for starting.
-	if(strcmp(HostName, "Magic") == 0) bStarted = true;
+	
+	// Isadora and Resolume act on button down
+	// Isadora activates all parameters on plugin load, so allow one cycle for starting.
+	// Magic reacts on button-up, so when the dll loads the parameters are not activated. 
+	// Magic and default Windows apps act on button up so all is OK.
+	if(strstr(HostName, "Avenue") == 0 || strstr(HostName, "Arena") == 0 || strstr(HostName, "Isadora") == 0) {
+		bStarted = false;
+	}
+	else {
+		bStarted = true;
+	}
 
 }
 
 
 SpoutReceiverSDK2::~SpoutReceiverSDK2()
 {
-
-	// printf("SpoutReceiverSDK2::~SpoutReceiverSDK2\n");
-
 	// OpenGL context required
 	if(wglGetCurrentContext()) {
 		// ReleaseReceiver does nothing if there is no receiver
@@ -233,6 +238,8 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 {
 	bool bRet;
 
+	bStarted = true;
+	
 	//
 	// Initialize a receiver
 	//
@@ -263,7 +270,6 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 			InitTexture();
 			bInitialized = true;
 		}
-
 		return FF_SUCCESS;
 	}
 	else {
@@ -274,7 +280,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		//	Failure : No sender detected
 		//
 		// Important - pass the host FBO to restore the binding
-		bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D, pGL->HostFBO);
+		bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D, false, pGL->HostFBO);
 
 		if(bRet) {
 			// Received the texture OK, but the sender or texture dimensions could have changed
@@ -286,6 +292,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 				InitTexture();
 				return FF_SUCCESS;
 			} // endif sender has changed
+
 			// All matches so draw the texture
 			DrawReceivedTexture(myTexture, GL_TEXTURE_2D,  g_Width, g_Height);
 		}
@@ -367,31 +374,28 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 
 		// SpoutPanel sender selection
 		case FFPARAM_Select :
-			if (pParam->NewParameterValue) {
-				if(bStarted) {
-					if(UserSenderName[0]) {
-						receiver.SelectSenderPanel("Using 'Sender Name' entry\nClear the name entry first");
-					}
-					else {
-						if(bDX9mode)
-							receiver.SelectSenderPanel("/DX9");
-						else
-							receiver.SelectSenderPanel("/DX11"); // default DX11 compatible
-					}
+			// bStarted is set as soon as ProcessOpenGL is called
+			if (pParam->NewParameterValue && bStarted) {
+				if(UserSenderName[0]) {
+					receiver.SelectSenderPanel("Using 'Sender Name' entry\nClear the name entry first");
 				}
 				else {
-					bStarted = true;
+					if(bDX9mode)
+						receiver.SelectSenderPanel("/DX9");
+					else
+						receiver.SelectSenderPanel("/DX11"); // default DX11 compatible
 				}
-			} // endif new parameter
+			}
 			break;
-
 		#endif
 
 		case FFPARAM_Aspect:
-			if(pParam->NewParameterValue > 0)
-				bAspect = true;
-			else 
-				bAspect = false;
+			if(pParam->NewParameterValue) {
+				if(pParam->NewParameterValue > 0)
+					bAspect = true;
+				else 
+					bAspect = false;
+			}
 			break;
 
 		default:
