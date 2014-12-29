@@ -42,6 +42,8 @@
 //	09.10.14 - included SWP_ASYNCWINDOWPOS for topmost
 //	12.10.14 - Ensure messagestring is null if no commandline
 //	21.10.14 - Change to format detection - SpoutPanel 2
+//	17.12.14 - added file open common dialog "/FILEOPEN"
+//	29.12.14 - cleanup and commit Version 2.1
 //
 #include <windows.h>
 #include <vector>
@@ -55,7 +57,9 @@ char UserMessage[512]; // User message for the text dialog
 
 bool bDX9compatible = false; // Only list DX9 compatible senders - modified by /DX9 arg
 bool bArgFound = false;
+bool bFileOpen = false;
 bool GetSenderDialog(HINSTANCE hInst);
+bool OpenFile(char *filename, int maxchars);
 int ParseCommandline();
 char **argv = NULL;
 spoutSenderNames sendernames; // Names class functions
@@ -72,6 +76,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	int i, argc;
 	HMODULE module;
 	char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
+	char filename[MAX_PATH];
 	bool bRet = false;
 
 	UNREFERENCED_PARAMETER(hPrevInstance);
@@ -82,9 +87,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutPanel\n");
+	printf("SpoutPanel 2\n");
 	*/
-
 
 	// Find the current active window to restore to the top when SpoutPanel quits
 	hWnd = GetForegroundWindow();
@@ -95,14 +99,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
 	_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
 	remove(path);
+	// printf("Removed [%s]\n");
 
 	// Check for arguments
 	UserMessage[0] = 0;
 	argc = ParseCommandline();
 	if( argc > 1) { // 0 = "SpoutPanel"
+		bFileOpen = false;
+		bArgFound = false;
 		hWnd = GetActiveWindow();
 		EnableWindow(hWnd, FALSE);
 		for( i=1; i <argc; i++ ) {
+			// printf("Arg[%d] = [%s]\n", i, argv[i]);
 			// Argument /DX9
 			if(strcmp(argv[i], "/DX9") == 0) {
 				// printf("DX9 mode\n");
@@ -115,17 +123,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				bArgFound = true;
 				bDX9compatible = false;
 			}
+			// "/FILEOPEN" to activate a modal file selection dialog
+			else if ( strcmp(argv[i], "/FILEOPEN") == 0) {
+				// printf("FileOpen found\n");
+				bArgFound = true;
+				bFileOpen = true;
+			}
 			else {
+				// printf("No known arg found\n");
 				bArgFound = false;
+				bFileOpen = false;
 			}
 		}
 
 		if(!bArgFound && lpCmdLine) {
 			// Know listed args, but a command line so send a user message
 			strcpy_s(UserMessage, 512, lpCmdLine); // Message to be shown instead of sender list
+			// printf("text arg [%s]\n", lpCmdLine);
 		}
-		else
+		else {
+			// printf("No text arg\n");
 			UserMessage[0] = 0; // make sure this is not an un-initialized string
+		}
 
 		EnableWindow(hWnd, TRUE);
 	}
@@ -135,8 +154,32 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	if (!hMutex) {
 		hMutex = CreateMutexA(0, 0, "SpoutPanel");
-		if(UserMessage[0] != 0) {
+		// FileOpen common dialog
+		if(bFileOpen) {
+			bRet = OpenFile(filename, MAX_PATH); // returns a file path if successful
+
+			// Open a text file and write to it,
+			// then delete it with the app when it is read or when
+			// SpoutPanel opens again. The path in calling app has to be 
+			// the same as for SpoutPanel.exe
+			ofstream myfile;
+			HMODULE module;
+			char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
+			module = GetModuleHandle(NULL);
+			GetModuleFileNameA(module, path, MAX_PATH);
+			_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
+			_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
+			myfile.open (path, ios::out | ios::app);
+			if (myfile.is_open()) {
+				myfile.write(filename, strlen(filename));
+				myfile.close();
+				// Register with the calling app
+			}
+
+		}
+		else if(UserMessage[0] != 0) {
 			// Pop out a message dialog instead of a sender list
+			// printf("Opening text dialog\n");
 			DialogBoxParamA(hInstance, MAKEINTRESOURCEA(IDD_DIALOG2), 0, TextDlgProc, 0);
 			bRet = false; // take no action
 		}
@@ -245,7 +288,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 				// Is it registered e.g. VVVV which has been accessed ?
 				if(!sendernames.FindSenderName(activename)) {
 					if(sendernames.getSharedInfo(activename, &info)) {
-						// printf("Registering unlisted active sender\n");
+						// printf("Registering unlisted active sender (%s)\n", activename);
 						sendernames.RegisterSenderName(activename);
 					}
 				}
@@ -261,23 +304,23 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							sprintf_s(temp, 512, "DirectX : %dx%d", info.width, info.height);
 							break;
 						case 21 : // D3DFMT_A8R8G8B8
-							sprintf_s(temp, 512, "DirectX 9 : %dx%d [ARGB]", info.width, info.height, info.format);
+							sprintf_s(temp, 512, "DirectX 9 : %dx%d [ARGB]", info.width, info.height);
 							break;
 						case 22 : // D3DFMT_X8R8G8B8
-							sprintf_s(temp, 512, "DirectX 9 : %dx%d [XRGB]", info.width, info.height, info.format);
+							sprintf_s(temp, 512, "DirectX 9 : %dx%d [XRGB]", info.width, info.height);
 							break;
 						// DX11
 						case 28 : // DXGI_FORMAT_R8G8B8A8_UNORM
-							sprintf_s(temp, 512, "DirectX 11 : %dx%d [RGBA]", info.width, info.height, info.format);
+							sprintf_s(temp, 512, "DirectX 11 : %dx%d [RGBA]", info.width, info.height);
 							break;
 						case 87 : // DXGI_FORMAT_B8G8R8A8_UNORM
-							sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRA]", info.width, info.height, info.format);
+							sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRA]", info.width, info.height);
 							break;
 						case 88 : // DXGI_FORMAT_B8G8R8AX_UNORM (untested)
-							sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRX]", info.width, info.height, info.format);
+							sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRX]", info.width, info.height);
 							break;
 						default:
-							sprintf_s(temp, 512, "%dx%d :", info.width, info.height, info.format);
+							sprintf_s(temp, 512, "%dx%d :", info.width, info.height);
 							break;
 					}
 					if(bDX9compatible) { // Specify DX9 compatible senders
@@ -287,7 +330,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							|| info.format == 22 // DX9 XRGB
 							|| info.format == 87 // compatible DX11
 							)) {
-							strcat_s(temp, 512, " incompatible format");
+							strcat_s(temp, 512, " not DX9 compatible");
 						}
 					}
 
@@ -360,11 +403,23 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 				case IDOK: // 1
 
+					// printf("\nIDOK\n");
+
 					// Get contents of edit field into the global char string
 					GetDlgItemTextA(hDlg, IDC_ACTIVE, (LPSTR)SpoutSenderName, 256);
 					if(strlen(SpoutSenderName) > 0) {
+
+						// printf("    Sender  [%s]\n", SpoutSenderName);
+
 						// Does it have any shared info
 						if(sendernames.getSharedInfo(SpoutSenderName, &info)) {
+
+							// printf("    Width   %d\n", info.width);
+							// printf("    Height  %d\n", info.height);
+							// printf("    Format  %d\n", info.format);
+							// printf("    Handle  %u (%x)\n", info.shareHandle, info.shareHandle);
+
+
 							// Check the DirectX texture format and quit if not
 							// compatible if in compatibility mode
 							if(bDX9compatible) { // Specify DX9 compatible senders
@@ -374,6 +429,9 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 									|| info.format == 22 // DX9 XRGB
 									|| info.format == 21 // DX9 ARGB
 									)) {
+
+									// printf("Specified DX9 and the format (%d) is not compatible\n", info.format);
+
 									EndDialog(hDlg, LOWORD(wParam));
 									return TRUE;
 								}
@@ -381,6 +439,10 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 							// Is it registered ?
 							if(!sendernames.FindSenderName(SpoutSenderName)) {
+
+								// printf("    Not registerd\n");
+								
+
 								// Allow for a Sender which is not registered - e.g. VVVV
 								// Registering the sender here will only work if another sender
 								// is running or "SpoutTray" is present and has been activated 
@@ -420,7 +482,15 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 						// Set the selected name as the active Sender
 						// Any receiver can then query the active Sender name
+						// printf("    Setting as the active sender\n");
 						sendernames.SetActiveSender(SpoutSenderName);
+
+						// LJ DEBUG to halt for debugging
+						// sprintf_s(name, "Sender [%s] OK", SpoutSenderName);
+						// MessageBoxA(hDlg, name, "SpoutPanel", 0);
+
+
+
 					}
 				
 				case IDCANCEL: // 2
@@ -449,30 +519,36 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 									SetDlgItemTextA(hDlg, IDC_ACTIVE, (LPCSTR)name);
 									sendernames.getSharedInfo(name, &info);
 
-									// printf("(%s) - %dx%d [%x]\n", name, info.width, info.height, info.format);
+									// printf("(%s) - %dx%d [%d]\n", name, info.width, info.height, info.format);
+									// printf("\n    Sender  [%s]\n", SpoutSenderName);
+									// printf("    Width   %d\n", info.width);
+									// printf("    Height  %d\n", info.height);
+									// printf("    Format  %d\n", info.format);
+									// printf("    Handle  %u (%x)\n", info.shareHandle, info.shareHandle);
+
 									switch(info.format) {
 										// DX9
 										case 0 : // default unknown
 											sprintf_s(temp, 512, "DirectX : %dx%d", info.width, info.height);
 											break;
 										case 21 : // D3DFMT_A8R8G8B8
-											sprintf_s(temp, 512, "DirectX 9 : %dx%d [ARGB]", info.width, info.height, info.format);
+											sprintf_s(temp, 512, "DirectX 9 : %dx%d [ARGB]", info.width, info.height);
 											break;
 										case 22 : // D3DFMT_X8R8G8B8
-											sprintf_s(temp, 512, "DirectX 9 : %dx%d [XRGB]", info.width, info.height, info.format);
+											sprintf_s(temp, 512, "DirectX 9 : %dx%d [XRGB]", info.width, info.height);
 											break;
 										// DX11
 										case 28 : // DXGI_FORMAT_R8G8B8A8_UNORM
-											sprintf_s(temp, 512, "DirectX 11 : %dx%d [RGBA]", info.width, info.height, info.format);
+											sprintf_s(temp, 512, "DirectX 11 : %dx%d [RGBA]", info.width, info.height);
 											break;
 										case 87 : // DXGI_FORMAT_B8G8R8A8_UNORM
-											sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRA]", info.width, info.height, info.format);
+											sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRA]", info.width, info.height);
 											break;
 										case 88 : // DXGI_FORMAT_B8G8R8AX_UNORM (untested)
-											sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRX]", info.width, info.height, info.format);
+											sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRX]", info.width, info.height);
 											break;
 										default:
-											sprintf_s(temp, 512, "%dx%d : incompatible format [%d]", info.width, info.height, info.format);
+											sprintf_s(temp, 512, "%dx%d : incompatible format [%d]", info.width, info.height);
 											break;
 									}
 									SetDlgItemTextA(hDlg, IDC_INFO, (LPCSTR)temp);
@@ -499,49 +575,52 @@ INT_PTR CALLBACK TextDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 	switch (message) {
 		
 		case WM_INITDIALOG:
-			int x, y, w, h;
-			POINT p;
-			RECT rect;
-
 			SetDlgItemTextA(hDlg, IDC_USERTEXT, (LPCSTR)UserMessage);
-
 			// prevent other windows from hiding the dialog
-			// and open the window wherever the user clicked
-			GetWindowRect(hDlg, &rect);
-			if (GetCursorPos(&p)) {
-				//cursor position now in p.x and p.y
-				x = p.x;
-				y = p.y;
-			}
-			else {
-				x = rect.left;
-				y = rect.top;
-			}
-			w = rect.right - rect.left; 
-			h = rect.bottom - rect.top;
-			// SetWindowPos(hDlg, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW);
-			SetWindowPos(hDlg, HWND_TOPMOST, x, y, w, h, SWP_ASYNCWINDOWPOS | SWP_SHOWWINDOW);
-
+			SetWindowPos(hDlg, HWND_TOPMOST, 0, 0, 0, 0, SWP_ASYNCWINDOWPOS | SWP_NOSIZE | SWP_NOMOVE);
 			return TRUE;
 
 		case WM_COMMAND:
-
 			switch(LOWORD(wParam)) {
-
 				case IDOK :
 				case IDCANCEL :
 					EndDialog(hDlg, LOWORD(wParam));
 					return TRUE;
-
 				default:
 					return FALSE;
-
 			}
 			break;
 	}
 
 	return FALSE;
 }
+
+bool OpenFile(char *filename, int maxchars)
+{
+	OPENFILENAMEA ofn;
+    char szFileName[MAX_PATH] = "";
+
+	ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = NULL; // TODO hwnd;
+    ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0"; // TODO different file types as args
+    ofn.lpstrFile = szFileName;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+    ofn.lpstrDefExt = "txt";
+
+    if(GetOpenFileNameA(&ofn)) {
+		strcpy_s(filename, maxchars, szFileName);
+        // Do something useful with the filename stored in szFileName 
+		return true;
+    }
+
+	strcpy_s(filename, maxchars, "nothing entered");
+
+	return false;
+
+}
+
 
 //
 // http://www.codeguru.com/cpp/w-p/win32/article.php/c1427/A-Simple-Win32-CommandLine-Parser.htm
