@@ -44,13 +44,29 @@
 //	21.10.14 - Change to format detection - SpoutPanel 2
 //	17.12.14 - added file open common dialog "/FILEOPEN"
 //	29.12.14 - cleanup and commit Version 2.1
+//	02-01-15 - changed version numbering to Version 2.01
+//  04-01-15 - changed from text file to registry to save the path obtained from OpenFile
+//           - TODO - change in Spout programs
+//           - Version 2.02
+//  05-01-15 - added delay after file or registry write
+//  07-01-15 - replaced delay with registry flush on write
+//	10-01-15 - null for string passed to OpenFileName to empty initial entry
+//           - Version 2.03
+//	18-01-15 - added support for "glsl and "frag" extensions in OpenFile
+//           - Version 2.04
+//	30-01-15 - added version static text and caption icon
+//           - Version 2.05
 //
+
 #include <windows.h>
 #include <vector>
 #include <fstream>
+#include <Shlwapi.h> // for path functions
 #include "resource.h"
 
 #include "../../../../SpoutSDK/SpoutSenderNames.h"
+
+#pragma comment(lib, "Shlwapi") // for Path functions
 
 char SpoutSenderName[256]; // global Sender name to retrieve from the list dialog
 char UserMessage[512]; // User message for the text dialog
@@ -59,10 +75,14 @@ bool bDX9compatible = false; // Only list DX9 compatible senders - modified by /
 bool bArgFound = false;
 bool bFileOpen = false;
 bool GetSenderDialog(HINSTANCE hInst);
-bool OpenFile(char *filename, int maxchars);
+bool OpenFile(char *filename, const char *extension, int maxchars);
 int ParseCommandline();
+bool ReadPathFromRegistry(const char *filepath, const char *subkey, const char *valuename);
+bool WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename);
 char **argv = NULL;
 spoutSenderNames sendernames; // Names class functions
+HINSTANCE g_hInst = NULL;
+static HBRUSH hbrBkgnd = NULL;
 
 // The sender list dialog
 INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
@@ -82,12 +102,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(nCmdShow);
 
+	g_hInst = hInstance;
+
 	/*
 	// Debug console window so printf works
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutPanel 2\n");
+	printf("SpoutPanel 2.05\n");
 	*/
 
 	// Find the current active window to restore to the top when SpoutPanel quits
@@ -99,7 +121,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
 	_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
 	remove(path);
-	// printf("Removed [%s]\n");
+	// printf("Text file path is [%s]\n");
 
 	// Check for arguments
 	UserMessage[0] = 0;
@@ -156,30 +178,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		hMutex = CreateMutexA(0, 0, "SpoutPanel");
 		// FileOpen common dialog
 		if(bFileOpen) {
-			bRet = OpenFile(filename, MAX_PATH); // returns a file path if successful
+			// Get the current file path from the registry
+			ReadPathFromRegistry(filename, "Software\\Leading Edge\\SpoutPanel", "Filepath");
+			// printf("SpoutPanel read from registry\n[%s]\n", filename);
 
-			// Open a text file and write to it,
-			// then delete it with the app when it is read or when
-			// SpoutPanel opens again. The path in calling app has to be 
-			// the same as for SpoutPanel.exe
-			ofstream myfile;
-			HMODULE module;
-			char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
-			module = GetModuleHandle(NULL);
-			GetModuleFileNameA(module, path, MAX_PATH);
-			_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
-			_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
-			myfile.open (path, ios::out | ios::app);
-			if (myfile.is_open()) {
-				myfile.write(filename, strlen(filename));
-				myfile.close();
-				// Register with the calling app
+			// What file extension did the user last choose ?
+			char *extension = NULL;
+			extension = PathFindExtensionA(filename);
+			// if(extension) printf("extension is [%s]\n", extension);
+			bRet = OpenFile(filename, extension, MAX_PATH); // returns a file path if successful
+			// 04-01-15 - WritePathToRegistry
+			if(bRet) {
+				// printf("SpoutPanel write to registry\n[%s]\n", filename);
+				WritePathToRegistry(filename, "Software\\Leading Edge\\SpoutPanel", "Filepath");
 			}
-
+			// Give time before the app tries to access the file or the registry
+			// 07-01-15 - Now depends on registry flush
+			// Sleep(125);
 		}
 		else if(UserMessage[0] != 0) {
 			// Pop out a message dialog instead of a sender list
-			// printf("Opening text dialog\n");
 			DialogBoxParamA(hInstance, MAKEINTRESOURCEA(IDD_DIALOG2), 0, TextDlgProc, 0);
 			bRet = false; // take no action
 		}
@@ -192,7 +210,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 	}
 	else {
-		// Restore to top is now handled in SpoutSDK.cpp 
+		// Restore to top is handled in SpoutSDK.cpp 
 		// We opened it so close it, otherwise it is never released
 		CloseHandle(hMutex);
 	}
@@ -201,6 +219,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	if(IsWindow(hWnd)) {
 		SetForegroundWindow(hWnd); 
 	}
+
+	// MessageBoxA(NULL, "Spoutpanel end", "Message", MB_OK);
 
 	// quit when selected or cancelled - the dll does it all
 	// return an exit code for the opening app to detect
@@ -251,10 +271,38 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 	UNREFERENCED_PARAMETER(lParam);
 
 	switch (message) {
+
+		// Make Version infor light grey
+		case WM_CTLCOLORSTATIC:
+        {
+			HDC hdcStatic = (HDC)wParam;
+			// lParam is the handle to the control
+			if(GetDlgItem(hDlg, IDC_VERS) == (HWND)lParam) {
+				SetTextColor(hdcStatic, RGB(140, 140, 140));
+				SetBkColor(hdcStatic, RGB(240, 240, 240));
+				if (hbrBkgnd == NULL) {
+					hbrBkgnd = CreateSolidBrush(RGB(240, 240, 240));
+				}
+				return (INT_PTR)hbrBkgnd;
+			}
+        }
+		break;
+
 		
 		case WM_INITDIALOG:
+			{
+				HICON hIcon;
+				hIcon = (HICON)LoadImageA(	g_hInst,
+									MAKEINTRESOURCEA(IDI_ICON1),
+									IMAGE_ICON,
+									GetSystemMetrics(SM_CXSMICON),
+									GetSystemMetrics(SM_CYSMICON),
+									0);
+				if(hIcon) {
+					SendMessage(hDlg, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+				}
+			}
 
-	
 			// get the sender name list in shared memory into a local list
 			sendernames.GetSenderNames(&Senders);
 
@@ -298,6 +346,8 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 					SetDlgItemTextA(hDlg, IDC_ACTIVE, (LPCSTR)activename);
 					sendernames.getSharedInfo(activename, &info);
 
+					bool bUnKnown = false;
+
 					switch(info.format) {
 						// DX9
 						case 0 : // default unknown
@@ -321,9 +371,11 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							break;
 						default:
 							sprintf_s(temp, 512, "%dx%d :", info.width, info.height);
+							bUnKnown = true;
 							break;
 					}
-					if(bDX9compatible) { // Specify DX9 compatible senders
+
+					if(bDX9compatible && !bUnKnown) { // Specify DX9 compatible senders
 						// Is the sender DX9 compatible
 						if(! ( info.format == 0  // default directX 9
 							|| info.format == 21 // DX9 ARGB
@@ -331,6 +383,21 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							|| info.format == 87 // compatible DX11
 							)) {
 							strcat_s(temp, 512, " not DX9 compatible");
+
+							// Info
+							// unsigned __int32 shareHandle;
+							// unsigned __int32 width;
+							// unsigned __int32 height;
+							// DWORD format; // Texture pixel format
+							// DWORD usage; // not used
+							// wchar_t description[128]; // Wyhon compatible description (not used)
+							// unsigned __int32 partnerId; // Wyphon id of partner that shared it with us (not unused)
+							// 
+							printf("Sharehandle      [%x]\n", info.shareHandle);
+							printf("Width            [%d]\n", info.width);
+							printf("Height           [%d]\n", info.height);
+							printf("Format           [%d] (%x)\n", info.format, info.format);
+							printf("Usage            [%d]\n", info.usage);
 						}
 					}
 
@@ -488,9 +555,6 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 						// LJ DEBUG to halt for debugging
 						// sprintf_s(name, "Sender [%s] OK", SpoutSenderName);
 						// MessageBoxA(hDlg, name, "SpoutPanel", 0);
-
-
-
 					}
 				
 				case IDCANCEL: // 2
@@ -548,7 +612,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 											sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRX]", info.width, info.height);
 											break;
 										default:
-											sprintf_s(temp, 512, "%dx%d : incompatible format [%d]", info.width, info.height);
+											sprintf_s(temp, 512, "%dx%d : incompatible format [%d]", info.width, info.height, info.format);
 											break;
 									}
 									SetDlgItemTextA(hDlg, IDC_INFO, (LPCSTR)temp);
@@ -595,27 +659,43 @@ INT_PTR CALLBACK TextDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 	return FALSE;
 }
 
-bool OpenFile(char *filename, int maxchars)
+bool OpenFile(char *filepath, const char *extension, int maxchars)
 {
 	OPENFILENAMEA ofn;
-    char szFileName[MAX_PATH] = "";
+    char szFile[MAX_PATH] = "";
 
 	ZeroMemory(&ofn, sizeof(ofn));
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = NULL; // TODO hwnd;
+
+	// Set defaults
     ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0"; // TODO different file types as args
-    ofn.lpstrFile = szFileName;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
     ofn.lpstrDefExt = "txt";
 
+	// What extension did the user last use?
+	if(extension) {
+		// Known file types
+		// .glsl, .frag
+		if(strcmp(extension, ".glsl") == 0) {
+			ofn.lpstrFilter = "Shader Files (*.glsl)\0*.glsl\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+		    ofn.lpstrDefExt = "glsl";
+		}
+		else if(strcmp(extension, ".frag") == 0) {
+			ofn.lpstrFilter = "Shader Files (*.frag)\0*.frag\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+		    ofn.lpstrDefExt = "frag";
+		}
+	}
+
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = MAX_PATH;
+    // ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+	ofn.Flags = OFN_EXPLORER | OFN_HIDEREADONLY;
+
     if(GetOpenFileNameA(&ofn)) {
-		strcpy_s(filename, maxchars, szFileName);
-        // Do something useful with the filename stored in szFileName 
+		strcpy_s(filepath, maxchars, szFile);
+        // Do something useful with the filename stored in szFile 
 		return true;
     }
-
-	strcpy_s(filename, maxchars, "nothing entered");
 
 	return false;
 
@@ -652,4 +732,65 @@ int ParseCommandline()
 
 } // ParseCommandline()
 
+bool ReadPathFromRegistry(const char *filepath, const char *subkey, const char *valuename)
+{
+	HKEY  hRegKey;
+	LONG  regres;
+	DWORD  dwSize, dwKey;  
+
+	dwSize = MAX_PATH;
+
+	// Does the key exist
+	regres = RegOpenKeyExA(HKEY_CURRENT_USER, subkey, NULL, KEY_READ, &hRegKey);
+	if(regres == ERROR_SUCCESS) {
+		// Read the key Filepath value
+		regres = RegQueryValueExA(hRegKey, valuename, NULL, &dwKey, (BYTE*)filepath, &dwSize);
+		RegCloseKey(hRegKey);
+		if(regres == ERROR_SUCCESS)
+			return true;
+	}
+
+	// Just quit if the key does not exist
+	return false;
+
+}
+
+bool WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename)
+{
+	HKEY  hRegKey;
+	LONG  regres;
+	char  mySubKey[512];
+
+	// The required key
+	strcpy_s(mySubKey, 512, subkey);
+
+	// Does the key already exist ?
+	regres = RegOpenKeyExA(HKEY_CURRENT_USER, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
+	if(regres != ERROR_SUCCESS) {
+		printf("SpoutPanel - creating a new registry key (%s)\n", mySubKey);
+		// Create a new key
+		regres = RegCreateKeyExA(HKEY_CURRENT_USER, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
+	}
+
+	if(regres == ERROR_SUCCESS && hRegKey != NULL) {
+		printf("SpoutPanel writing the path to the registry\n[%s]\n", filepath);
+		// Write the path
+		regres = RegSetValueExA(hRegKey, valuename, 0, REG_SZ, (BYTE*)filepath, ((DWORD)strlen(filepath) + 1)*sizeof(unsigned char));
+		// For immediate read after write - necessary here becasue the app that opeded SpoutPanel
+		// will read the registry straight away and it might not be available yet
+		// The key must have been opened with the KEY_QUERY_VALUE access right (included in KEY_ALL_ACCESS)
+		RegFlushKey(hRegKey); // needs an open key
+		RegCloseKey(hRegKey); // Done with the key
+
+    }
+	else {
+		// printf("RegCreateKeyEx failed (%d)*%x)\n", regres);
+	}
+
+	if(regres == ERROR_SUCCESS)
+		return true;
+	else
+		return false;
+
+}
 
