@@ -63,11 +63,21 @@
 	12.11.14 - fixed bug for ReceiveTexture passing host fbo	
 			 - change to default startup for button detection to button up
 			 - Version 3.018
+	23.11.14 - fixed bug for FFPARAM_ASPECT which could be turned on but not off
+	24.11.14 - FFPARAM_SharingName - test for null string as well as null parameter address
+			 - Version 3.019
+	16.12.14 - included NvOptimusEnablement export
+			 - Version 3.020
 
 */
 #include "SpoutReceiverSDK2.h"
 #include <FFGL.h>
 #include <FFGLLib.h>
+
+// Might or might not work
+extern "C" {
+    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
 
 // To force memoryshare, enable the define in below
 // #define MemoryShareMode
@@ -95,7 +105,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,											// Plugin major version number
 	001,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.018\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.020\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#else
 	"OF49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
@@ -126,7 +136,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.018\n");
+	printf("SpoutReceiver2 Vers 3.019\n");
 	*/
 
 	// Input properties - this is a source and has no inputs
@@ -159,7 +169,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	#ifndef MemoryShareMode
 	SetParamInfo(FFPARAM_SharingName, "Sender Name",   FF_TYPE_TEXT, "");
 	SetParamInfo(FFPARAM_Update,      "Update",        FF_TYPE_EVENT, false );
-	SetParamInfo(FFPARAM_Select,      "Select Sender", FF_TYPE_EVENT, false );
+	SetParamInfo(FFPARAM_Select,      "Select",        FF_TYPE_EVENT, false );
 	bMemoryMode = false;
 	#else
 	bMemoryMode = true;
@@ -327,6 +337,7 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 	unsigned int width, height;
 	HANDLE dxShareHandle;
 	DWORD dwFormat;
+	char name[256];
 
 	if (pParam != NULL) {
 
@@ -336,9 +347,12 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 		#ifndef MemoryShareMode
 
 		case FFPARAM_SharingName:
-			if(pParam->NewParameterValue) {
+			if(pParam->NewParameterValue && (char*)pParam->NewParameterValue) {
 				// If there is anything already in this field at startup, it is set by a saved composition
-				strcpy_s(UserSenderName, 256, (char*)pParam->NewParameterValue);
+				strcpy_s(name, 256, (char*)pParam->NewParameterValue);
+				// If it is a different name, copy to the username
+				if(strcmp(name, UserSenderName) == 0)
+					strcpy_s(UserSenderName, 256, (char*)pParam->NewParameterValue);
 			}
 			else {
 				// Reset to an empty string so that the active sender 
@@ -352,7 +366,7 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 			if(pParam->NewParameterValue) { // name entry toggle is on
 				// Is there a  user entered name
 				if(UserSenderName[0] != 0) {
-					// Cant be both initialized ans the same name
+					// Cant be both initialized and the same name
 					if(!(bInitialized && strcmp(UserSenderName, SenderName) == 0)) {
 						// Does the sender exist ?
 						if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
@@ -380,22 +394,27 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 					receiver.SelectSenderPanel("Using 'Sender Name' entry\nClear the name entry first");
 				}
 				else {
-					if(bDX9mode)
+					if(bDX9mode) {
 						receiver.SelectSenderPanel("/DX9");
-					else
+					}
+					else {
 						receiver.SelectSenderPanel("/DX11"); // default DX11 compatible
+					}
 				}
 			}
 			break;
 		#endif
 
 		case FFPARAM_Aspect:
-			if(pParam->NewParameterValue) {
-				if(pParam->NewParameterValue > 0)
+			// Bug here - could turn on but not off
+			// if(pParam->NewParameterValue) {
+				if(pParam->NewParameterValue > 0) {
 					bAspect = true;
-				else 
+				}
+				else  {
 					bAspect = false;
-			}
+				}
+			// }
 			break;
 
 		default:
