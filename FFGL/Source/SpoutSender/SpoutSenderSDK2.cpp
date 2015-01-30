@@ -50,12 +50,19 @@
 			 - Version 3.010
 	21.10.14 - Recompile for update V 2.001 beta
 			 - Version 3.011
-
-
+	23.11.14 - Recompile to remove leftover print statements from SDK
+			 - Version 3.012
+	16.12.14 - included NvOptimusEnablement export
+			 - Version 3.013
 */
 #include "SpoutSenderSDK2.h"
 #include <FFGL.h>
 #include <FFGLLib.h>
+
+// Might or might not work
+extern "C" {
+    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
 
 // To force memoryshare
 // #define MemoryShareMode
@@ -79,7 +86,7 @@ static CFFGLPluginInfo PluginInfo (
 	2,										// Plugin major version number
 	001,									// Plugin minor version number
 	FF_EFFECT,								// Plugin type
-	"Spout Sender - Vers 3.011\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
+	"Spout Sender - Vers 3.013\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
 	#else
 	"OF47",									// Plugin unique ID - LJ note 4 chars only
 	"SpoutSender2M",						// Plugin name - LJ note 16 chars only ! see freeframe.h
@@ -108,9 +115,9 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutSender2 Vers 3.011\n");
+	printf("SpoutSender2 Vers 3.013\n");
 	*/
-
+	
 	// initial values
 	bMemoryMode       = false;
 	bInitialized      = false;
