@@ -5,13 +5,15 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <richedit.h>
-#include "WinSpoutSDKresource.h"
+#include "resource.h"
 
 //
 // Bitmap resources
 //
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 IDB_SPOUTBMP       BITMAP         "SpoutLogoMarble3.bmp"
+
+
 
 //
 // Menu resources
@@ -22,7 +24,7 @@ IDC_WINSPOUT MENU
     POPUP "&File"
     {
         MENUITEM "Sender &Name", IDM_SENDERNAME
-		MENUITEM "&Select Sender", IDM_SPOUTSENDERS
+        MENUITEM "&Select Sender", IDM_SPOUTSENDERS
         MENUITEM SEPARATOR
         MENUITEM "E&xit", IDM_EXIT
     }
@@ -31,6 +33,7 @@ IDC_WINSPOUT MENU
         MENUITEM "F&it to window", IDM_FITWINDOW, CHECKED
         MENUITEM "&Show on top", IDM_TOPMOST
         MENUITEM "&Full screen", IDM_FULLSCREEN
+        // MENUITEM "Capture window", IDM_CAPTUREWINDOW
     }
     POPUP "&Help"
     {
@@ -38,6 +41,7 @@ IDC_WINSPOUT MENU
         MENUITEM "&About ...", IDM_ABOUT
     }
 }
+
 
 
 //
@@ -71,6 +75,20 @@ FONT 8, "MS Shell Dlg", 0, 0, 1
 
 
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+IDD_CAPTUREBOX DIALOG 0, 0, 186, 95
+STYLE DS_3DLOOK | DS_CENTER | DS_MODALFRAME | DS_SHELLFONT | WS_CAPTION | WS_VISIBLE | WS_POPUP | WS_SYSMENU
+CAPTION "Capture Window"
+FONT 8, "Ms Shell Dlg"
+{
+    DEFPUSHBUTTON   "Select", IDC_CAPTURE, 39, 73, 34, 14, 0, WS_EX_LEFT
+    PUSHBUTTON      "Cancel", IDCANCEL, 122, 73, 35, 14, 0, WS_EX_LEFT
+    DEFPUSHBUTTON   "OK", IDOK, 80, 73, 36, 14, 0, WS_EX_LEFT
+    LTEXT           "", IDC_CAPTURETEXT, 29, 10, 130, 49, SS_LEFT, WS_EX_STATICEDGE
+}
+
+
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 IDD_NAMEBOX DIALOG 0, 0, 186, 57
 STYLE DS_3DLOOK | DS_CENTER | DS_MODALFRAME | DS_SHELLFONT | WS_CAPTION | WS_VISIBLE | WS_POPUP | WS_SYSMENU
 CAPTION "Sender name"
@@ -80,6 +98,7 @@ FONT 8, "Ms Shell Dlg"
     PUSHBUTTON      "Cancel", IDCANCEL, 98, 30, 50, 14, 0, WS_EX_LEFT
     DEFPUSHBUTTON   "OK", IDOK, 29, 30, 50, 14, 0, WS_EX_LEFT
 }
+
 
 
 //
@@ -93,6 +112,7 @@ STRINGTABLE
 }
 
 
+
 //
 // Accelerator resources
 //
@@ -102,6 +122,7 @@ IDC_WINSPOUT ACCELERATORS
     "?",            IDM_ABOUT, ASCII, ALT
     "/",            IDM_ABOUT, ASCII, ALT
 }
+
 
 
 //

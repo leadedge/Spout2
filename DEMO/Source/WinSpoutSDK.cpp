@@ -55,22 +55,28 @@
 	21.10.14	- Included DirectX version in capabilities dialog
 				- Recompile for update V 2.001 beta
 	24.10.14	- Capabilities check if OpenDirectX11 succeeded
+	31.10.14	- Changed capabilities to find the first adapter atached to the desktop
+	06.11.14	- Added display and render device detection in diagnostics
+				- added optimus enablement export
+	06.12.14	- recompiled receiver and sender for minor update and VVVV
+	30.01.15	- Changes to name, capabilities and about dialogs for first 2015 release
+
 
 */
 #define MAX_LOADSTRING 100
 #define PI 3.14159265358979323846f
 
+// Compile flag - is is for 32bit or 64bit
 #if defined(__x86_64__) || defined(_M_X64)
 	#define is64bit
 // #elif defined(__i386) || defined(_M_IX86)
 	// x86 32-bit
 #endif
 
-
 #include "stdafx.h"
 #include "WinSpoutSDK.h"
 
-#define SPOUT_IMPORT_DLL
+// #define SPOUT_IMPORT_DLL
 
 // leak checking
 // http://www.codeproject.com/Articles/9815/Visual-Leak-Detector-Enhanced-Memory-Leak-Detectio
@@ -82,8 +88,13 @@
 #define CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
-
 #include "..\..\SpoutSDK\Spout.h"
+
+
+// Might or might not work
+extern "C" {
+    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
 
 SpoutSender sender;		// Create a Spout sender object
 SpoutReceiver receiver;	// Create a Spout receiver object
@@ -136,6 +147,10 @@ RECT         WorkArea;
 HWND         hwndForeground1;        // foreground window before setting topmost
 HWND         hwndForeground2;        // foreground window before setting full screen
 char         WindowTitle[256];       // Title of the window - also used for the sender name
+
+// http://www.go4expert.com/articles/os-version-detection-32-64-bit-os-t1472/
+// bool is64bitOS(); // not working
+bool is64bitOS = ( sizeof(int*) == 8 );
 
 GLuint       base;                   // Base Display List For The Font Set
 
@@ -218,13 +233,24 @@ void doFullScreen(bool bFullscreen);
 void SaveOpenGLstate();
 void RestoreOpenGLstate();
 void GLerror();
+bool OpenDeviceKey(const char* key, int maxsize, char *description, char *version);
 bool OpenSender();
 bool OpenReceiver();
 void ShowSenderInfo();
 void ShowReceiverInfo();
 void StartCounter();
 double GetCounter();
+void trim(char * s);
 
+/*
+bool is64bit()
+{
+	if(sizeof(void*) == 4)
+		return false;
+	else
+		return true;
+}
+*/
 
 void GLerror() {
 	GLenum err;
@@ -413,13 +439,24 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 
 		// 24.10.14 - check if OpenDirectX11 succeeded
 		if(bReceiver) {
+			// Make sure it has been initialized
+			if(!receiver.spout.OpenSpout()) return 0;
 			bDX9mode = receiver.GetDX9();
 			sprintf_s(gldxcaps, 1024, "Spout Receiver");
 		}
 		else {
+			// Make sure it has been initialized
+			if(!sender.spout.OpenSpout()) return 0;
 			bDX9mode = sender.GetDX9();
 			sprintf_s(gldxcaps, 1024, "Spout Sender");
 		}
+
+		#ifdef is64bit // Compiler - not OS
+			strcat_s(gldxcaps, 1024, " 64bit");
+		#else
+			strcat_s(gldxcaps, 1024, " 32bit");
+		#endif
+
 
 		if(bDX9mode)
 			strcat_s(gldxcaps, 1024, " - DirectX 9\r\n");
@@ -440,8 +477,6 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 
 		bool bOsviX = true;
 		bool bCanDetect = true;
-		char output[256];
-		size_t charsConverted = 0;
 	
 		OSVERSIONINFOEX osvi;
 		ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
@@ -461,26 +496,26 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 			dwMajorVersion = osvi.dwMajorVersion;
 			dwMinorVersion = osvi.dwMinorVersion;
 			dwPlatformId = osvi.dwPlatformId;
-			// printf("Version is %d.%d Build (%d)\n", dwMajorVersion, dwMinorVersion, dwBuild);
+			// printf("Version is %d.%d Build (%d) Platform %d\n", dwMajorVersion, dwMinorVersion, dwBuild, dwPlatformId);
 			if(dwMajorVersion < 6) {
-				strcat_s(gldxcaps, 1024, "Windows XP - ");
+				strcat_s(gldxcaps, 1024, "Windows XP");
 			}
 			else {
 				switch (dwMinorVersion) {
 					case 0 : // vista
-						strcat_s(gldxcaps, 1024, "Windows Vista - ");
+						strcat_s(gldxcaps, 1024, "Windows Vista");
 						break;
 					case 1 : // 7
-						strcat_s(gldxcaps, 1024, "Windows 7 - ");
+						strcat_s(gldxcaps, 1024, "Windows 7");
 						break;
 					case 2 : // 8
-						strcat_s(gldxcaps, 1024, "Windows 8 - ");
+						strcat_s(gldxcaps, 1024, "Windows 8");
 						break;
 					case 3 : // 8.1
-						strcat_s(gldxcaps, 1024, "Windows 8.1 - ");
+						strcat_s(gldxcaps, 1024, "Windows 8.1");
 						break;
 					default : // Later than October 2013
-						strcat_s(gldxcaps, 1024, "Windows - ");
+						strcat_s(gldxcaps, 1024, "Windows");
 						break;
 				}
 			}
@@ -497,55 +532,107 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 		*/
 
 		// DirectX 11 only available for Windows 7 (6.1) and higher
+		/*
+		if(is64bitOS) // TODO - not working
+			strcat_s(gldxcaps, 1024, " 64bit");
+		else
+			strcat_s(gldxcaps, 1024, " 32bit");
+		*/
 
-		#ifdef is64bit
-				strcat_s(gldxcaps, 1024, "64bit\r\n");
-		#else
-				strcat_s(gldxcaps, 1024, "32bit\r\n");
-		#endif
+		strcat_s(gldxcaps, 1024, "\r\n");
+
+		// Find the render adapter using DirectX
+		char renderadapter[256];
+		renderadapter[0] = 0;
+		if(bReceiver)
+			receiver.spout.interop.GetAdapterInfo(renderadapter, 256);
+		else
+			sender.spout.interop.GetAdapterInfo(renderadapter, 256);
 
 		// Additional info
 		DISPLAY_DEVICE DisplayDevice;
 		DisplayDevice.cb = sizeof(DISPLAY_DEVICE);
-		if(EnumDisplayDevices(NULL, 0, &DisplayDevice, 0)) {
-			wcstombs_s(&charsConverted, output, 129, DisplayDevice.DeviceKey, 128);
-			// printf("DeviceKey = %s\n", output); // This is the registry key with all the information about the adapter
+		// 31.10.14 detect the adapter attached to the desktop
+		// To query all display devices in the current session, 
+		// call this function in a loop, starting with iDevNum set to 0, 
+		// and incrementing iDevNum until the function fails. 
+		// To select all display devices in the desktop, use only the display devices
+		// that have the DISPLAY_DEVICE_ATTACHED_TO_DESKTOP flag in the DISPLAY_DEVICE structure.
+		// StateFlags
+		char driverdescription[256];
+		char driverversion[256];
 
-			HKEY hRegKey;
-			DWORD dwSize, dwKey;  
-
-			// Extract the subkey from the DeviceKey string
-			string SubKey = strstr(output, "System");
-
-			// Convert all slash to double slash using a C++ string function
-			// to get subkey string required to extract registry information
-			for (unsigned int i=0; i<SubKey.length(); i++) {
-				if (SubKey[i] == '\\') {
-					SubKey.insert(i, 1, '\\');
-					++i; // Skip inserted char
-				}
-			}
-
-			// Open the key to find the adapter details
-			if(RegOpenKeyExA(HKEY_LOCAL_MACHINE, SubKey.c_str(), NULL, KEY_READ, &hRegKey) == 0) { 
-				dwSize = MAX_PATH;
-				// Adapter name
-				if(RegQueryValueExA(hRegKey, "DriverDesc", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
-					strcat_s(gldxcaps, 1024, output);
-					strcat_s(gldxcaps, 1024, "\r\n");
-				}
-				if(RegQueryValueExA(hRegKey, "DriverVersion", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
-					strcat_s(gldxcaps, 1024, "Driver : ");
-					// Find the last 6 characters of the version string then
-					// convert to a float and multiply to get decimal in the right place
-					sprintf_s(output, 256, "%5.2f", atof(output + strlen(output)-6)*100.0);
-					strcat_s(gldxcaps, 1024, output);
-				} // endif DriverVersion
-				RegCloseKey(hRegKey);
-			} // endif RegOpenKey
-		} // endif EnumDisplayDevices
-
+		char displaydescription[256];
+		char displayversion[256];
 		
+		char renderdescription[256];
+		char renderversion[256];
+
+		char regkey[256];
+
+		displaydescription[0] = 0;
+		renderdescription[0] = 0;
+		displayversion[0] = 0;
+		renderversion[0] = 0;
+		size_t charsConverted = 0;
+		int nDevices = 0;
+		for(int i=0; i<10; i++) { // should be much less than 10 adapters
+			if(EnumDisplayDevices(NULL, i, &DisplayDevice, 0)) {
+				// This will list all the devices
+				nDevices++;
+				// printf("Device %d\n", nDevices);
+				// Get the registry key
+				wcstombs_s(&charsConverted, regkey, 129, DisplayDevice.DeviceKey, 128);
+				// printf("DeviceKey = %s\n", regkey); // This is the registry key with all the information about the adapter
+				OpenDeviceKey(regkey, 256, driverdescription, driverversion);
+				
+				// Is it a render adapter ?
+				if(renderadapter && strcmp(driverdescription, renderadapter) == 0) {
+					// printf("[%s] Vers: %s ", driverdescription, driverversion);
+					strcpy_s(renderdescription, 256, driverdescription);
+					strcpy_s(renderversion, 256, driverversion);
+					// printf("(Render adapter)\n");
+				}
+
+				// Is it a display adapter
+				if(DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
+					// printf("[%s] Vers: %s ", driverdescription, driverversion);
+					strcpy_s(displaydescription, 256, driverdescription);
+					strcpy_s(displayversion, 256, driverversion);
+					// printf("(Attached to desktop)\n");
+					// break; // we have what we want
+				} // endif attached to desktop
+
+			} // endif EnumDisplayDevices
+		} // end search loop
+
+		// Add the device and driver desc to the caps text
+		
+		// The display adapter
+		if(displaydescription && displayversion) {
+			strcat_s(gldxcaps, 1024, "Display : ");
+			trim(displaydescription);
+			strcat_s(gldxcaps, 1024, displaydescription);
+			strcat_s(gldxcaps, 1024, " (");
+			strcat_s(gldxcaps, 1024, displayversion);
+			strcat_s(gldxcaps, 1024, ")\r\n");
+		}
+
+		// The render adapter
+		if(renderdescription) trim(renderdescription);
+		if(!renderdescription || strlen(renderdescription) == 0) {
+			strcat_s(gldxcaps, 1024, "No render device\r\n");
+		}
+		else if(renderdescription && renderversion) {
+			strcat_s(gldxcaps, 1024, "Render : ");
+			trim(renderdescription);
+			strcat_s(gldxcaps, 1024, renderdescription);
+			strcat_s(gldxcaps, 1024, " (");
+			strcat_s(gldxcaps, 1024, renderversion);
+			strcat_s(gldxcaps, 1024, ")\r\n");
+		}
+
+		/*
 		// Bits per pixel
 		hDC=GetDC(hWnd);
 		if (hDC) {
@@ -553,8 +640,8 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 			sprintf_s(output, 256, " (%d bpp)", bitsPerPixel);
 			strcat_s(gldxcaps, 1024, output);
 		}
+		*/
 
-		strcat_s(gldxcaps, 1024, "\r\n");
 
 		// Now we can call an initial hardware compatibilty check
 		// This checks for the NV_DX_interop extensions and will fail
@@ -622,6 +709,48 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	return TRUE;
 }
 
+
+bool OpenDeviceKey(const char* key, int maxsize, char *description, char *version)
+{
+	// Extract the subkey from the DeviceKey string
+	HKEY hRegKey;
+	DWORD dwSize, dwKey;  
+	char output[256];
+	strcpy_s(output, 256, key);
+	string SubKey = strstr(output, "System");
+
+	// Convert all slash to double slash using a C++ string function
+	// to get subkey string required to extract registry information
+	for (unsigned int i=0; i<SubKey.length(); i++) {
+		if (SubKey[i] == '\\') {
+			SubKey.insert(i, 1, '\\');
+			++i; // Skip inserted char
+		}
+	}
+
+	// Open the key to find the adapter details
+	if(RegOpenKeyExA(HKEY_LOCAL_MACHINE, SubKey.c_str(), NULL, KEY_READ, &hRegKey) == 0) { 
+		dwSize = MAX_PATH;
+		// Adapter name
+		if(RegQueryValueExA(hRegKey, "DriverDesc", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
+			// printf("DriverDesc = %s\n",output);
+			strcpy_s(description, maxsize, output);
+			// strcat_s(result, maxsize, "\r\n");
+		}
+		if(RegQueryValueExA(hRegKey, "DriverVersion", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
+			// printf("DriverVersion = %s\n", output);
+			// Find the last 6 characters of the version string then
+			// convert to a float and multiply to get decimal in the right place
+			sprintf_s(output, 256, "%5.2f", atof(output + strlen(output)-6)*100.0);
+			strcpy_s(version, maxsize, output);
+		} // endif DriverVersion
+		RegCloseKey(hRegKey);
+	} // endif RegOpenKey
+
+	return true;
+}
+
+
 bool OpenReceiver()
 {
 	//
@@ -661,6 +790,7 @@ bool OpenSender()
 
 	// First load the cube image for this demo
 	if (!LoadCubeTexture()) {	// Jump To Texture Loading Routine
+		// printf("Error 1\n");
 		return false;			// If Texture Didn't Load Return FALSE
 	}
 
@@ -685,9 +815,11 @@ bool OpenSender()
 		return true;
 	}
 
+	// printf("Error 2\n");
+
 	return false;
 
-	return(sender.CreateSender(g_SenderName, g_Width, g_Height));
+	// return(sender.CreateSender(g_SenderName, g_Width, g_Height));
 
 } // end OpenSender
 
@@ -792,6 +924,7 @@ int DrawGLScene(GLvoid)
 			bInitialized = OpenSender();
 			if(!bInitialized) {
 				// Failure is final so quit the whole program
+				MessageBoxA(NULL,"Cannot open Spout sender.","ERROR",MB_OK|MB_ICONEXCLAMATION);
 				return FALSE;
 			}
 			return TRUE;
@@ -1415,23 +1548,18 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	g_Width  = 640;
 	g_Height = 360; 
 
-	if(bDX9mode)
-		strcpy_s(WindowTitle, 256, "Spout ");
+	if(bMemoryMode)
+		strcpy_s(WindowTitle, 256, "Spout Memoryshare ");
+	else if(bDX9mode)
+		strcpy_s(WindowTitle, 256, "Spout DX9 ");
 	else
-		strcpy_s(WindowTitle, 256, "Spout ");
+		strcpy_s(WindowTitle, 256, "Spout DX11 ");
 
-	#ifdef is64bit
-		if(bReceiver)
-			strcat(WindowTitle, "Receiver 64bit"); // Sender name
-		else
-			strcpy_s(WindowTitle, "Sender 64bit"); // Sender name
-	#else
-		if(bReceiver)
-			strcat_s(WindowTitle, 256, "Receiver 32bit"); // Sender name
-		else
-			strcat_s(WindowTitle, 256, "Sender 32bit"); // Sender name
-	#endif
-	
+	if(bReceiver)
+		strcat_s(WindowTitle, 256, "Receiver"); // Sender name
+	else
+		strcat_s(WindowTitle, 256, "Sender"); // Sender name
+
 	// HDC	GLhdc = wglGetCurrentDC();
 	if (!CreateGLWindow(WindowTitle, g_Width, g_Height, 16))	{
 		return 0;										// Quit If Window Was Not Created
@@ -1752,10 +1880,14 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case WM_INITDIALOG:
 			strcpy_s(temp, 256, WindowTitle);
-			if(!bReceiver)
-				strcat_s(temp,  1024, "\r\nfor sending frames to\n32bit or 64bit receivers\n\nhttp://spout.zeal.co");
+			if(bDX9mode)
+				strcat_s(temp, 1024, " - DirectX 9\r\n");
 			else
-				strcat_s(temp,  1024, "\r\nfor receiving frames from\n32bit or 64bit senders\n\nhttp://spout.zeal.co");
+				strcat_s(temp, 1024, " - DirectX 11\r\n");
+			if(!bReceiver)
+				strcat_s(temp,  1024, "for sending frames to Spout receivers\n\nhttp://spout.zeal.co");
+			else
+				strcat_s(temp,  1024, "for receiving frames from Spout senders\n\nhttp://spout.zeal.co");
 
 			SetDlgItemTextA(hDlg, IDC_ABOUTBOXTEXT, (LPCSTR)temp);
 			return (INT_PTR)TRUE;
@@ -1877,3 +2009,42 @@ bool EnterSenderName(char *SenderName)
 }
 
 
+void trim(char * s) {
+    char * p = s;
+    int l = strlen(p);
+
+    while(isspace(p[l - 1])) p[--l] = 0;
+    while(* p && isspace(* p)) ++p, --l;
+
+    memmove(s, p, l + 1);
+}
+
+
+/*
+bool is64bitOS()
+{
+    BOOL bIs64BitOS = FALSE;
+
+	// We check if the OS is 64 Bit
+    typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+
+    LPFN_ISWOW64PROCESS 
+    fnIsWow64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(
+    GetModuleHandle(L"kernel32"), "IsWow64Process");
+ 
+    if (NULL != fnIsWow64Process)
+    {
+        if (!fnIsWow64Process(GetCurrentProcess(),&bIs64BitOS))
+        {
+            // handle error
+			return false;
+        }
+    }
+
+	if(bIs64BitOS)
+		return true;
+	else
+		return false;
+
+}
+*/
