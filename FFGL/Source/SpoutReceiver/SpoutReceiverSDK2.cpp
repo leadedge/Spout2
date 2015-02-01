@@ -68,6 +68,10 @@
 			 - Version 3.019
 	16.12.14 - included NvOptimusEnablement export
 			 - Version 3.020
+	31.01.15 - Changed ID to LJ48/49 instead of OF48/49
+			   Included define for DirectX 9 compile
+			   Recompiled for DirectX 11, DirectX9 and Memoryshare for 2015 release
+			   Version 3.021
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -79,8 +83,10 @@ extern "C" {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
-// To force memoryshare, enable the define in below
+// For memoryshare, enable the define in below
 // #define MemoryShareMode
+// For DirectX 9 mode enable the define in below
+// #define DX9Mode
 
 #ifndef MemoryShareMode
 	#define FFPARAM_SharingName		(0)
@@ -98,23 +104,27 @@ extern "C" {
 static CFFGLPluginInfo PluginInfo (
 	SpoutReceiverSDK2::CreateInstance,				// Create method
 	#ifndef MemoryShareMode
-	"OF48",										// Plugin unique ID
+	"LJ48",										// Plugin unique ID
 	"SpoutReceiver2",							// Plugin name (receive texture from DX)
 	1,											// API major version number
 	001,										// API minor version number
-	2,											// Plugin major version number
-	001,										// Plugin minor version number
+	3,											// Plugin major version number
+	021,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.020\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+		#ifdef DX9Mode
+		"Spout Receiver DirectX 9 - Vers 3.021\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+		#else
+		"Spout Receiver DirectX 11 - Vers 3.021\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+		#endif
 	#else
-	"OF49",										// Plugin unique ID
+	"LJ49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
 	1,											// API major version number
 	001,										// API minor version number
-	2,											// Plugin major version number
-	001,										// Plugin minor version number
+	3,											// Plugin major version number
+	021,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Memoryshare receiver",				// Plugin description
+	"Spout Receiver Memoryshare - Vers 3.021\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#endif
 	"S P O U T - Version 2\nspout.zeal.co"		// About
 );
@@ -147,17 +157,21 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	// ======== initial values ========
 	//
 
-	g_Width	= 512;
-	g_Height = 512;        // arbitrary initial image size
-	myTexture = 0;         // only used for memoryshare mode
+	#ifdef DX9Mode
+	bDX9mode          = true;   // DirectX 9 mode rather than default DirectX 11
+	#else
+	bDX9mode          = false;
+	#endif
 
-	bInitialized = false;
-	bDX9mode = false;      // DirectX 9 mode rather than default DirectX 11
-	bInitialized = false;  // not initialized yet by either means
-	bAspect = false;       // preserve aspect ratio of received texture in draw
-	bUseActive = true;     // connect to the active sender
-	bStarted = false;      // Do not allow a starting cycle
-	UserSenderName[0] = 0; // User entered sender name
+	bInitialized      = false;  // not initialized yet by either means
+	bAspect           = false;  // preserve aspect ratio of received texture in draw
+	bUseActive        = true;   // connect to the active sender
+	bStarted          = false;  // Do not allow a starting cycle
+
+	UserSenderName[0] = 0;      // User entered sender name
+	g_Width	          = 512;
+	g_Height          = 512;    // arbitrary initial image size
+	myTexture         = 0;      // only used for memoryshare mode
 
 	//
 	// Parameters
