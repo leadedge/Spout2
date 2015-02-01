@@ -56,8 +56,10 @@
 			 - Version 3.013
 	31.01.15 - Changed ID to LJ46/47 instead of OF46/47
 			   Included define for DirectX 9 compile
+	02.01.15 - Memoryshare SendTexture instead of DrawToSharedTexture
 			   Recomplied for DirectX 11, DirectX9 and Memoryshare for 2015 release
 			   Version 3.014
+
 */
 #include "SpoutSenderSDK2.h"
 #include <FFGL.h>
@@ -128,7 +130,7 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutSender2 Vers 3.013\n");
+	printf("SpoutSender2 Vers 3.014\n");
 	*/
 	
 	// initial values
@@ -260,7 +262,10 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	// Render the Freeframe texture into the shared texture
 	// Important - pass the FFGL host FBO to restore the binding because Spout uses a local fbo
 	// Default aspect = 1.0, default invert flag = true
-	sender.DrawToSharedTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height, (float)maxCoords.s, (float)maxCoords.t, 1.0f, true, pGL->HostFBO);
+	if(bMemoryMode)
+		sender.SendTexture(InputTexture.Handle, GL_TEXTURE_2D, m_Width, m_Height);
+	else
+		sender.DrawToSharedTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height, (float)maxCoords.s, (float)maxCoords.t, 1.0f, true, pGL->HostFBO);
 
 	return FF_SUCCESS;
 
