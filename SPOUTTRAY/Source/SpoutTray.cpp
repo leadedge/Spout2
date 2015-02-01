@@ -31,6 +31,8 @@
 //				 - Version 2.03
 //		20.10.14 - Recompile for update V 2.001 beta with detection of DirectX 11 compatibility
 //				 - Version 2.04
+//		02.01.15 - Recompile for SDK changes - removed dependence on Glew
+//				 - Version 2.05
 //
 #define GLEW_STATIC // to use glew32s.lib instead of glew32.lib otherwise there is a redefinition error
 
@@ -368,6 +370,7 @@ BOOL OnInitDialog(HWND hWnd)
 	return TRUE;
 }
 
+
 // Name says it all
 void ShowContextMenu(HWND hWnd)
 {
@@ -592,7 +595,7 @@ LRESULT CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		
 		case WM_INITDIALOG:
 			// Changeable text here
-			sprintf_s(temp,  1024, "SpoutTray - Version 2.04\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
+			sprintf_s(temp,  1024, "SpoutTray - Version 2.05\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
 			SetDlgItemTextA(hDlg, IDC_ABOUTBOXTEXT, (LPCSTR)temp);
 			return TRUE;
 

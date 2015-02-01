@@ -20,7 +20,7 @@ CAPTION "About"
 FONT 8, "MS Shell Dlg", 0, 0, 0
 {
     ICON            IDI_STEALTHDLG, IDC_MYICON, 3, 2, 128, 128, SS_ICON
-    CTEXT           "SpoutTray\nVersion 2.04\n\nhttp://spout.zeal.co/", IDC_ABOUTBOXTEXT, 27, 4, 189, 72, SS_CENTER | SS_NOPREFIX
+    CTEXT           "SpoutTray\nVersion 2.05\n\nhttp://spout.zeal.co/", IDC_ABOUTBOXTEXT, 27, 4, 189, 72, SS_CENTER | SS_NOPREFIX
     DEFPUSHBUTTON   "OK", IDOK, 107, 87, 30, 13, WS_GROUP | BS_CENTER
 }
 
