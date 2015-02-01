@@ -103,10 +103,10 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // ================= CHANGE COMPILE FLAGS HERE =================
 // Rename the executable as necessary to get a sender/receiver pair
 //
-bool bReceiver      = false; // Compile for receiver (true) or sender (false)
-bool bMemoryMode    = false; // Use memory share specifically (default is false)
-bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11
-bool bDX9compatible = true; // For DX11 senders only - compatible DX9 format for DX11 senders (default true)
+bool bReceiver      = true;  // Compile for receiver (true) or sender (false)
+bool bMemoryMode    = true;  // Use memory share specifically (default is false)
+bool bDX9mode       = false;  // Use DirectX 9 instead of DirectX 11
+bool bDX9compatible = true;   // For DX11 senders only - compatible DX9 format for DX11 senders (default true)
 // =============================================================
 
 //
@@ -360,8 +360,12 @@ void InitTexture(int width, int height)
 	glBindTexture(GL_TEXTURE_2D, myTexture);
 
 	// RGB for memoryshare, otherwise RGBA
-	if(bMemoryMode)	glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	else			glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	if(bMemoryMode)	{
+		glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	}
+	else {
+		glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	}
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -651,7 +655,6 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 			// It is possible that the extensions load OK, but that initialization will still fail
 			// This occurs when wglDXOpenDeviceNV fails - noted on dual graphics machines with NVIDIA Optimus
 			// Directx initialization seems OK with null hwnd, but in any case we will not use it.
-			// printf("GetMemoryShareMode\n");
 			bool bMem;
 			if(bReceiver) 
 				bMem = receiver.GetMemoryShareMode();
@@ -770,7 +773,7 @@ bool OpenReceiver()
 	// printf("OpenReceiver 1\n");
 	if(receiver.CreateReceiver(g_SenderName, g_Width, g_Height, true)) {
 		// Update the local texture
-		InitTexture(g_Width, g_Height);
+		InitTexture(g_Width, g_Height); // Memorymode RGB or Texturemode RGBA
 		// Check whether DirectX 11 initialization succeeded
 		if(sender.GetDX9()) bDX9mode = true;
 		return true;
@@ -853,6 +856,7 @@ int DrawGLScene(GLvoid)
 			// Received the texture OK, but the sender or texture dimensions could have changed
 			// The global name is already changed but the width and height also may be changed
 			if(width != g_Width || height != g_Height) {
+				// printf("resetting from %dx%d to %dx%d\n", g_Width, g_Height, width, height);
 
 				// Reset the global width and height
 				g_Width  = width;
@@ -868,7 +872,6 @@ int DrawGLScene(GLvoid)
 
 			SaveOpenGLstate(); // Aspect ratio control
 
-			/*
 			// METHOD 1 - use the local received texture
 			glPushMatrix();
 			glColor4f(1.f, 1.f, 1.f, 1.f);
@@ -883,16 +886,19 @@ int DrawGLScene(GLvoid)
 			glBindTexture(GL_TEXTURE_2D, 0);
 			glDisable(GL_TEXTURE_2D);
 			glPopMatrix();
-			*/
 
+			/*
 			// METHOD 2 - Draw the shared texture
+			// Only for texture share , not for memory share
 			glPushMatrix();
 			glColor4f(1.f, 1.f, 1.f, 1.f);
 			receiver.DrawSharedTexture();
 			glPopMatrix();
+			*/
 
 			/*
 			// METHOD 3 - use the shared texture
+			// Only for texture share , not for memory share
 			glPushMatrix();
 			glColor4f(1.f, 1.f, 1.f, 1.f);
 			glEnable(GL_TEXTURE_2D);
@@ -1538,6 +1544,7 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("WinSpoutSDK\n");
 	*/
+
 
 	// suppress warnings
 	msg.wParam = 0;
