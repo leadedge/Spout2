@@ -110,6 +110,8 @@
 	30.08.14 - Recompiled with SDK update
 	12.10.14 - recompiled for release
 	21.10.14 - Recompile for update V 2.001 beta
+	02.01.15 - Added GL_BGR to extensions to avoid using GLEW
+			   Recomplie after SDK changes
 
 */
 
@@ -139,7 +141,7 @@ CUnknown * WINAPI CVCam::CreateInstance(LPUNKNOWN lpunk, HRESULT *phr)
 	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutCam - 24-08-14\n");
+	printf("SpoutCam - 02-01-15\n");
 	*/
 
     CUnknown *punk = new CVCam(lpunk, phr);
@@ -226,6 +228,39 @@ CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
 	g_fbo			= 0;
 	g_fbo_texture	= 0;
 	SharedMemoryName[0] = 0;
+
+	/*
+	// LJ DEBUG - retrieve scale factor from the registry
+	// [HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{860BB310-5D01-11d0-BD3B-00A0C911CE86}\Instance\{8E14549A-DB61-4309-AFA1-3578E927E933}]
+	HKEY  hRegKey;
+	LONG  regres;
+	DWORD  dwSize, dwKey;  
+	char  mySubKey[512]; 
+	BYTE buffer[512];
+	unsigned int Scale;
+ 
+	// Search for our CSLID entry
+	sprintf_s(mySubKey, 512, "SOFTWARE\\Classes\\CLSID\\{860BB310-5D01-11d0-BD3B-00A0C911CE86}\\Instance\\{8E14549A-DB61-4309-AFA1-3578E927E933}");
+	regres = RegOpenKeyExA(HKEY_LOCAL_MACHINE, mySubKey, NULL, KEY_READ, &hRegKey);
+	// regres = RegOpenKeyExA(HKEY_LOCAL_MACHINE, NULL, NULL, 0, &hRegKey);
+
+	if(regres == ERROR_SUCCESS) printf("regres OK = %x\n", hRegKey);
+	else printf("regres failed = %x\n", hRegKey);
+
+	// Types
+	// REG_SZ (1), REG_DWORD(4), REG_BINARY (3)
+	dwSize = 512;
+	buffer[0] = 0;
+	regres = RegQueryValueExA(hRegKey, "Scale", NULL, &dwKey, buffer, &dwSize);
+	if(regres == ERROR_FILE_NOT_FOUND) {
+		printf("regres not found\n");
+	}
+	else {
+		Scale = (unsigned int)buffer[0];
+		// printf("Scale = %d, type = %d, size = %d\n", Scale, dwKey, dwSize);
+	}
+	RegCloseKey(hRegKey);
+	*/
 
 	//
 	// On startup get the active Sender name if any.

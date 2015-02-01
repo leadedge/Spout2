@@ -83,6 +83,17 @@ CFactoryTemplate g_Templates[] =
 
 int g_cTemplates = sizeof(g_Templates) / sizeof(g_Templates[0]);
 
+/*
+HRESULT RegisterFilter(
+  [in]       REFCLSID clsidFilter,
+  [in]       LPCWSTR Name,
+  [in, out]  IMoniker **ppMoniker,
+  [in]       const CLSID *pclsidCategory,
+  [in]       const OLECHAR *szInstance,
+  [in]       const REGFILTER2 *prf2
+);
+*/
+
 STDAPI RegisterFilters( BOOL bRegister )
 {
     HRESULT hr = NOERROR;
