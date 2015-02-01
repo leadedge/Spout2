@@ -54,6 +54,10 @@
 			 - Version 3.012
 	16.12.14 - included NvOptimusEnablement export
 			 - Version 3.013
+	31.01.15 - Changed ID to LJ46/47 instead of OF46/47
+			   Included define for DirectX 9 compile
+			   Recomplied for DirectX 11, DirectX9 and Memoryshare for 2015 release
+			   Version 3.014
 */
 #include "SpoutSenderSDK2.h"
 #include <FFGL.h>
@@ -64,8 +68,12 @@ extern "C" {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
-// To force memoryshare
+// For memoryshare, enable the define in below
 // #define MemoryShareMode
+// For DirectX 9 mode enable the define in below
+// #define DX9Mode
+
+
 #ifndef MemoryShareMode
 	#define FFPARAM_SharingName (0)
 	#define FFPARAM_Update      (1)
@@ -79,23 +87,28 @@ static CFFGLPluginInfo PluginInfo (
 
 	SpoutSenderSDK2::CreateInstance,		// Create method
 	#ifndef MemoryShareMode
-	"OF46",									// Plugin unique ID - LJ note 4 chars only
+	"LJ46",									// Plugin unique ID - LJ note 4 chars only
 	"SpoutSender2",							// Plugin name - LJ note 16 chars only ! see freeframe.h
 	1,										// API major version number
 	001,									// API minor version number
-	2,										// Plugin major version number
-	001,									// Plugin minor version number
+	3,										// Plugin major version number
+	014,									// Plugin minor version number
 	FF_EFFECT,								// Plugin type
-	"Spout Sender - Vers 3.013\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
+	#ifdef DX9Mode
+	"Spout Sender DirectX 9 - Vers 3.014\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
 	#else
-	"OF47",									// Plugin unique ID - LJ note 4 chars only
-	"SpoutSender2M",						// Plugin name - LJ note 16 chars only ! see freeframe.h
-	1,										// API major version number
-	001,									// API minor version number
-	2,										// Plugin major version number
-	001,									// Plugin minor version number
-	FF_EFFECT,								// Plugin type
-	"Spout Memoryshare sender",				// Plugin description - uses strdup
+	"Spout Sender DirectX 11 - Vers 3.014\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
+	#endif
+
+	#else
+	"LJ47",									 // Plugin unique ID - LJ note 4 chars only
+	"SpoutSender2M",						 // Plugin name - LJ note 16 chars only ! see freeframe.h
+	1,										 // API major version number
+	001,									 // API minor version number
+	3,										 // Plugin major version number
+	014,									 // Plugin minor version number
+	FF_EFFECT,								 // Plugin type
+	"Spout Memoryshare sender - Vers 3.014", // Plugin description - uses strdup
 	#endif
 	"S P O U T - Version 2\nspout.zeal.co"		// About
 );
@@ -119,20 +132,23 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	*/
 	
 	// initial values
-	bMemoryMode       = false;
-	bInitialized      = false;
-	bDX9mode          = false; // DirectX 9 mode rather than default DirectX 11
+
+	#ifdef MemoryShareMode
+	bMemoryMode = true; // Compilation memoryshare
+	#else
+	bMemoryMode = false;
+	#endif
+
+	#ifdef DX9Mode
+	bDX9mode          = true; // DirectX 9 mode rather than default DirectX 11
+	#else
+	bDX9mode          = false;
+	#endif
+
 	m_Width           = 0;
 	m_Height          = 0;
 	UserSenderName[0] = 0;
 	SenderName[0]     = 0;
-
-	// Compilation memoryshare
-	#ifdef MemoryShareMode
-	bMemoryMode = true;
-	#else
-	bMemoryMode = false;
-	#endif
 
 	// Set parameters if not memoryshare mode
 	#ifndef MemoryShareMode
