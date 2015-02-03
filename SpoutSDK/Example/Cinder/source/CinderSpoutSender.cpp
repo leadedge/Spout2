@@ -32,6 +32,7 @@
 	11.07.14 - changed to Spout SDK instead of the dll
 	29.09.14 - updated to revised SDK
 	12.10.14 - recompiled for release
+	03.01.15 - SDK recompile
 
 */
 #include "cinder/app/AppBasic.h"

@@ -33,6 +33,7 @@
 	11.07.14 - changed to Spout SDK instead of the dll
 	29.09.14 - update with with SDK revision
 	12.10.14 - recompiled for release
+	03.01.15 - SDK recompile - SpoutPanel detected from registry install path
 
 */
 
