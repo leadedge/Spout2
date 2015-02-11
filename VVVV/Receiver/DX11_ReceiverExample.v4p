@@ -1,13 +1,13 @@
 <!DOCTYPE PATCH  SYSTEM "http://vvvv.org/versions/vvvv45beta32.0.dtd" >
-   <PATCH nodename="SpoutReceiverExample.v4p" systemname="Example" filename="SpoutReceiverExample.v4p">
+   <PATCH nodename="C:\OPENFRAMEWORKS71VS\INSTALLATIONS\FILES\Spout2\VVVV\Receiver\SpoutReceiverExample.v4p" systemname="Example" filename="SpoutReceiverExample.v4p">
    <BOUNDS type="Window" left="5220" top="732" width="6372" height="4692">
    </BOUNDS>
    <NODE nodename="IOBox (String)" componentmode="InABox" id="3" systemname="IOBox (String)">
-   <BOUNDS type="Box" left="1521" top="1809" width="3525" height="240">
+   <BOUNDS type="Box" left="1521" top="1809" width="3528" height="240">
    </BOUNDS>
    <BOUNDS type="Node" left="1521" top="1809" width="0" height="0">
    </BOUNDS>
-   <PIN pinname="Input String" slicecount="1" values="|Spout SDK DX11 Sender 32bit|">
+   <PIN pinname="Input String" slicecount="1" values="|Spout Sender 32bit|">
    </PIN>
    <PIN pinname="Default" slicecount="1" values="#vvvv">
    </PIN>

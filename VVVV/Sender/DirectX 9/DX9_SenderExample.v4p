@@ -1,5 +1,5 @@
 <!DOCTYPE PATCH  SYSTEM "http://vvvv.org/versions/vvvv45beta32.0.dtd" >
-   <PATCH nodename="SpoutSenderExample.v4p" systemname="share_texture" filename="SpoutSenderExample.v4p" locked="0">
+   <PATCH nodename="C:\OPENFRAMEWORKS71VS\INSTALLATIONS\FILES\Spout2\VVVV\Sender\DirectX 9\DX9_SenderExample.v4p" systemname="share_texture" filename="SpoutSenderExample.v4p" locked="0">
    <BOUNDS type="Window" left="864" top="444" width="9336" height="10248">
    </BOUNDS>
    <NODE systemname="Renderer (EX9)" nodename="Renderer (EX9)" componentmode="InABox" id="1">
@@ -182,7 +182,7 @@
    </LINK>
    <LINK srcnodeid="126" srcpinname="Output" dstnodeid="125" dstpinname="Input 1">
    </LINK>
-   <NODE systemname="ShareTextureInfo (OpenGL, Interop)" filename="ShareTextureInfo (OpenGL, Interop).v4p" nodename="ShareTextureInfo (OpenGL, Interop).v4p" componentmode="InAWindow" id="137">
+   <NODE systemname="ShareTextureInfo (OpenGL, Interop)" filename="ShareTextureInfo (OpenGL, Interop).v4p" nodename="ShareTextureInfo (OpenGL, Interop).v4p" componentmode="Hidden" id="137">
    <BOUNDS type="Node" left="4132" top="8561" width="1644" height="276">
    </BOUNDS>
    <BOUNDS type="Box" left="504" top="4729" width="8080" height="7665">
@@ -318,6 +318,22 @@
    <PIN pinname="Output String" pintype="Output" visible="1">
    </PIN>
    <PIN pinname="ID" pintype="Output" visible="-1">
+   </PIN>
+   </NODE>
+   <NODE systemname="IOBox (String)" nodename="IOBox (String)" componentmode="InABox" id="150">
+   <BOUNDS type="Node" left="5856" top="8580" width="100" height="100">
+   </BOUNDS>
+   <BOUNDS type="Box" left="5856" top="8580" width="1500" height="240">
+   </BOUNDS>
+   <PIN pinname="Input String" slicecount="1" visible="0" pintype="Input" values="|RH click for details|">
+   </PIN>
+   <PIN pinname="Descriptive Name" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="String Type" slicecount="1" values="String">
+   </PIN>
+   <PIN pinname="Output String" visible="0" pintype="Output">
+   </PIN>
+   <PIN pinname="ID" visible="-1" pintype="Output">
    </PIN>
    </NODE>
    </PATCH>

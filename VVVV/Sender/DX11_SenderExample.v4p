@@ -1,6 +1,6 @@
 <!DOCTYPE PATCH  SYSTEM "http://vvvv.org/versions/vvvv45beta32.0.dtd" >
-   <PATCH nodename="DX11_SenderExample.v4p" systemname="DX11_SenderExample" filename="DX11_SenderExample.v4p" locked="0">
-   <BOUNDS type="Window" left="2148" top="420" width="11616" height="10668">
+   <PATCH nodename="C:\OPENFRAMEWORKS71VS\INSTALLATIONS\FILES\Spout2\VVVV\Sender\DX11_SenderExample.v4p" systemname="DX11_SenderExample" filename="DX11_SenderExample.v4p" locked="0">
+   <BOUNDS type="Window" left="336" top="696" width="11616" height="10668">
    </BOUNDS>
    <NODE id="19" nodename="HSL (Color Join)" systemname="HSL (Color Join)">
    <BOUNDS height="0" left="3216" top="2307" type="Node" width="0">
@@ -119,7 +119,7 @@
    </BOUNDS>
    <BOUNDS type="Box" left="468" top="192" width="3768" height="492">
    </BOUNDS>
-   <PIN pinname="Input String" slicecount="1" values="|Spout DX11 sender patch|" visible="-1" pintype="Input">
+   <PIN pinname="Input String" slicecount="1" visible="-1" pintype="Input" values="|Spout DX11 sender patch|">
    </PIN>
    <PIN pinname="Size" slicecount="1" values="14">
    </PIN>
@@ -211,7 +211,7 @@
    </BOUNDS>
    <BOUNDS type="Box" left="1122" top="4752" width="6000" height="4500">
    </BOUNDS>
-   <BOUNDS type="Window" left="14004" top="504" width="6240" height="5004">
+   <BOUNDS type="Window" left="12216" top="792" width="6240" height="5004">
    </BOUNDS>
    <PIN pinname="Texture In" visible="1">
    </PIN>
@@ -503,11 +503,11 @@
    </PIN>
    </NODE>
    <NODE systemname="IOBox (String)" nodename="IOBox (String)" componentmode="InABox" id="233">
-   <BOUNDS type="Node" left="6132" top="4980" width="100" height="100">
+   <BOUNDS type="Node" left="6156" top="5820" width="100" height="100">
    </BOUNDS>
-   <BOUNDS type="Box" left="6132" top="4980" width="4752" height="1668">
+   <BOUNDS type="Box" left="6156" top="5820" width="4260" height="528">
    </BOUNDS>
-   <PIN pinname="Input String" slicecount="1" visible="0" pintype="Input" values="|A format can be specified to match that of the texture being sent out so that the information is available to receivers. But whatever format is specified, Spout receives only from DX11 senders with compatible formats.&cr;&lf;DXGI_FORMAT_R8G8B8A8_UNORM (28)&cr;&lf;DXGI_FORMAT_B8G8R8A8_UNORM (87)&cr;&lf;DXGI_FORMAT_B8G8R8X8_UNORM (88)&cr;&lf;VVVV DX11 textures are not compatible for Spout DX9 receivers&cr;&lf;|">
+   <PIN pinname="Input String" slicecount="1" visible="0" pintype="Input" values="|Set to zero for default R8G8B8A8_UNorm. VVVV DX11 textures are not compatible for Spout DX9 receivers&cr;&lf;|">
    </PIN>
    <PIN pinname="String Type" slicecount="1" values="MultiLine">
    </PIN>
@@ -563,11 +563,11 @@
    </PIN>
    </NODE>
    <NODE systemname="IOBox (String)" nodename="IOBox (String)" componentmode="InABox" id="238">
-   <BOUNDS type="Node" left="3360" top="3396" width="100" height="100">
+   <BOUNDS type="Node" left="3300" top="3576" width="100" height="100">
    </BOUNDS>
-   <BOUNDS type="Box" left="3360" top="3396" width="1752" height="864">
+   <BOUNDS type="Box" left="3300" top="3576" width="1728" height="492">
    </BOUNDS>
-   <PIN pinname="Input String" slicecount="1" visible="0" pintype="Input" values="|Format must be either : R8G8B8A8_UNorm &cr;&lf;B8G8R8A8_UNorm&cr;&lf;B8G8R8AX_UNorm|">
+   <PIN pinname="Input String" slicecount="1" visible="0" pintype="Input" values="|Format must be : R8G8B8A8_UNorm |">
    </PIN>
    <PIN pinname="String Type" slicecount="1" values="MultiLine">
    </PIN>
