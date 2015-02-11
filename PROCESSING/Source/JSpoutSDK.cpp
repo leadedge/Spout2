@@ -39,10 +39,18 @@
 		30.09.14 - Java_JSpout_ReadTexture uses "ReceiveImage"
 				 - to transfer shared texture to Processing image pixels
 				 - DirectX 11
-		21.10.14 - Recompile for update V 2.001 beta
+		04.02.15 - Fixed error in InitReceiver. Sender object used instead of receiver object for 
+		           memoryshare test prevented sketch to stop and java was not terminated on close.
+		05.02.15 - changed InitSender to protect against null string copy
+				 - included FBO in call to SendTexture
+		06.02.15 - SDK recompile - added UseD3D9 define to compile fr botth DirectX 9 or DirectX 11
+
 
 */
 #define GL_BGRA_EXT 0x80E1
+
+// Compile for DX9 instead of DX11
+#define UseD3D9
 
 #include "malloc.h"
 #include <direct.h>
@@ -63,66 +71,94 @@ void CheckGLerror();
 JNIEXPORT jint JNICALL Java_JSpout_InitSender (JNIEnv *env, jclass c, jstring name, jint width, jint height, jint memorymode) {
 
 	bool bRet = false;
+	char Sendername[256]; // user entered Sender name
+	unsigned int uWidth, uHeight;
 	jint sharing_mode = 0; // 1 - memory 0 - texture : dependent on compatibility
+	jboolean isCopy = JNI_FALSE;
 
 	UNREFERENCED_PARAMETER(c);
 
-	const char *nativeString = env->GetStringUTFChars(name, 0);
+	try {
+		
+		// const char *nativestring = env->GetStringUTFChars(name, 0);
+		const char *nativestring = env->GetStringUTFChars(name, &isCopy);
 
-	// Set the global sender name, width and height
-	strcpy_s(g_SenderName, 256, nativeString);
-	g_Width = width;
-	g_Height = height;
+		// Set the sender name, width and height
+		if(nativestring[0])
+			strcpy_s(Sendername, 256, nativestring);
+		else
+			Sendername[0] = 0;
 
-	// user has selected memoryshare mode
-	if(memorymode == 1) sender.SetMemoryShareMode(true);
-	// else sender.SetDX9(true);
+		uWidth = (unsigned int)width;
+		uHeight = (unsigned int)height;
 
-	//
-	// Default settings are :
-	//		DirectX 11
-	//		Compatible texture format DXGI_FORMAT_B8G8R8A8_UNORM
-	//
 
-	// SPOUT CreateSender
-	// name						- name of this sender
-	// width, height			- width and height of this sender
-	// dwFormat					- optional DX11 texture format
-	//		DXGI_FORMAT_R8G8B8A8_UNORM - DX11 < > DX11
-	//		DXGI_FORMAT_B8G8R8A8_UNORM - DX11 < > DX9 (default)
-	// Also sender.SetDX9compatible(true / false); (true default)
-	// Returns true for success or false for initialisation failure.
-	bRet = sender.CreateSender(g_SenderName, g_Width, g_Height);
-	if(bRet) {
-		// Check compatibility
-		if(sender.GetMemoryShareMode()) {
-			bMemoryMode = true;
-			sharing_mode = 1;
+		// Set to DX9 for compatibility with Version 1 apps
+		#ifdef UseD3D9
+		sender.SetDX9(true);
+		#else
+		sender.SetDX9(false);
+		#endif
+
+		// user has selected memoryshare mode
+		if(memorymode == 1) sender.SetMemoryShareMode(true);
+
+		//
+		// Default settings are :
+		//		DirectX 11
+		//		Compatible texture format DXGI_FORMAT_B8G8R8A8_UNORM
+		//
+
+		// SPOUT CreateSender
+		// name						- name of this sender
+		// width, height			- width and height of this sender
+		// dwFormat					- optional DX11 texture format
+		//		DXGI_FORMAT_R8G8B8A8_UNORM - DX11 < > DX11
+		//		DXGI_FORMAT_B8G8R8A8_UNORM - DX11 < > DX9 (default)
+		// Also sender.SetDX9compatible(true / false); (true default)
+		// Returns true for success or false for initialisation failure.
+		bRet = sender.CreateSender(Sendername, uWidth, uHeight);
+		if(bRet) {
+
+			// Set globals
+			g_Width  = (int)uWidth;
+			g_Height = (int)uHeight;
+			strcpy_s(g_SenderName, 256, Sendername);
+
+			// Check compatibility
+			if(sender.GetMemoryShareMode()) {
+				bMemoryMode = true;
+				sharing_mode = 1; // memory mode
+			}
+			else {
+				bMemoryMode = false;
+				sharing_mode = 0; // texture mode
+			}
+			bInitialized = true;
 		}
 		else {
-			bMemoryMode = false;
-			sharing_mode = 0;
+			bInitialized = false;
 		}
-		bInitialized = true;
-	}
-	else {
-		bInitialized = false;
-	}
 
-	// release the input string
-	env->ReleaseStringUTFChars(name, nativeString);
+		// release the input string
+		env->ReleaseStringUTFChars(name, nativestring);
 
-	if(bRet) 
-		return sharing_mode;
-	else
+		if(bRet) 
+			return sharing_mode;
+		else
+			return -1; // error
+	}
+	catch (...) {
+		MessageBoxA(NULL, "Exception in InitSender", "JSpout", MB_OK);
 		return -1;
+	}
 
 }
 
 JNIEXPORT jint JNICALL Java_JSpout_InitReceiver (JNIEnv *env, jclass c, jstring name, jintArray dimarray, jint memorymode) {
 
 	bool bRet = false;
-	unsigned int width, height;
+	unsigned int uWidth, uHeight;
 	char Sendername[256]; // user entered Sender name
 	jint sharing_mode = 1; // 0 - memory 1 - texture : dependent on compatibility
 
@@ -132,8 +168,8 @@ JNIEXPORT jint JNICALL Java_JSpout_InitReceiver (JNIEnv *env, jclass c, jstring 
 	jint *dim = env->GetIntArrayElements(dimarray, &isCopy);
 	isCopy = JNI_FALSE;
 
-	width  = (unsigned int)dim[0];	// whatever was passed
-	height = (unsigned int)dim[1];
+	uWidth  = (unsigned int)dim[0];	// whatever was passed
+	uHeight = (unsigned int)dim[1];
 
 	const char *nativestring = env->GetStringUTFChars(name, &isCopy);
 	if(nativestring[0])
@@ -141,9 +177,16 @@ JNIEXPORT jint JNICALL Java_JSpout_InitReceiver (JNIEnv *env, jclass c, jstring 
 	else
 		Sendername[0] = 0;
 
+	// Set to DX9 for compatibility with Version 1 apps
+	#ifdef UseD3D9
+	receiver.SetDX9(true);
+	#else
+	receiver.SetDX9(false);
+	#endif
+
+
 	// user has selected memoryshare mode
 	if(memorymode == 1) receiver.SetMemoryShareMode(true);
-	// else receiver.SetDX9(true);
 	
 	//
 	// Default settings are	DirectX 11
@@ -156,16 +199,16 @@ JNIEXPORT jint JNICALL Java_JSpout_InitReceiver (JNIEnv *env, jclass c, jstring 
 	// name						- name of the sender found if the name passed was null
 	// width, height			- width and height of the sender
 	// Returns true for success or false for initialisation failure.
-	bRet = receiver.CreateReceiver(Sendername, width, height);
+	bRet = receiver.CreateReceiver(Sendername, uWidth, uHeight);
 
 	if(bRet) {
 		// Set globals
-		g_Width  = width;
-		g_Height = height;
+		g_Width  = (int)uWidth;
+		g_Height = (int)uHeight;
 		strcpy_s(g_SenderName, 256, Sendername);
 
 		// Check compatibility
-		if(sender.GetMemoryShareMode()) {
+		if(receiver.GetMemoryShareMode()) {
 			bMemoryMode = true;
 			sharing_mode = 1;
 		}
@@ -178,8 +221,8 @@ JNIEXPORT jint JNICALL Java_JSpout_InitReceiver (JNIEnv *env, jclass c, jstring 
 	if(bRet) {
 		// Pass back the width and height of the sender it connected to
 		// The new sender name can be retreived with GetSenderName
-		dim[0] = (jint)width;
-		dim[1] = (jint)height;
+		dim[0] = (jint)uWidth;
+		dim[1] = (jint)uHeight;
 		bInitialized = true;
 	}
 	else {
@@ -392,12 +435,15 @@ JNIEXPORT jboolean JNICALL Java_JSpout_ReadTexture (JNIEnv *env, jclass c, jintA
 
 	// ---------------------------------------------------------------
 	// retrieve opengl texture data directly to image pixels
-	// Java always operates on big-endian format so if C handles
-	// data in little-endian format, bytes need to be reversed.
+	// bytes need to be reversed.
 	// Transfer directly using a different GL format
 	// https://www.opengl.org/registry/specs/EXT/bgra.txt
 	// 
-	if(receiver.ReceiveImage(g_SenderName, width, height, (unsigned char *)pix, GL_BGRA_EXT)) {
+	// retrieve the current fbo
+	GLint previousFBO;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
+
+	if(receiver.ReceiveImage(g_SenderName, width, height, (unsigned char *)pix, GL_BGRA_EXT, previousFBO)) {
 
 		bRet = true;
 

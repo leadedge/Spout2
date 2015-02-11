@@ -18,13 +18,10 @@ PImage tex;
 
 void setup() {
 
-  // size(640, 360, removeFrameBorder(P3D));
   size(640, 360, P3D);
   
   tex = loadImage("SpoutLogoMarble3.bmp");
   textureMode(NORMAL);
-  fill(255);
-  stroke(color(44,48,32));
   
   // CREATE A NEW SPOUT OBJECT HERE
   spout = new Spout();

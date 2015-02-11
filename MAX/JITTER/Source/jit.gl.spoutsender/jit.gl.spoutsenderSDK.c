@@ -26,6 +26,8 @@
 	12.10.14 - Recompile for release - Vers 2.001
 	21.10.14 - Recompile for update V 2.001 beta
 			 - Vers 2.002
+	04.02.15 - Compile for DX9 and DX11 for SDK update
+			 - Vers 2.003
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -52,8 +54,9 @@
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 */
-// Compile for DX9 instead of DX11 (default)
-// #define UseD3D9
+
+// Compile for DX9 instead of DX11
+#define UseD3D9
 
 #include "jit.common.h"
 #include "jit.gl.h"
@@ -258,7 +261,7 @@ t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name)
 		jit_attr_setsym(x->sendername, _jit_sym_name, gensym("sendername"));
 
 		// instantiate a single internal jit.gl.texture for matrix input
-		x->texture = (t_symbol *)jit_object_new(ps_jit_gl_texture, jit_attr_getsym(x,ps_drawto) );
+		x->texture = (t_symbol *)jit_object_new(ps_jit_gl_texture, jit_attr_getsym(x, ps_drawto) );
 		if (x->texture)	{
 			// set texture attributes.
 			t_symbol *name =  jit_symbol_unique();

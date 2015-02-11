@@ -10,9 +10,9 @@
 //    06.08-14 - updated for Spout SDK
 //    05.09.14 - update with revised SDK
 //    12.10.14 - recompiled for release
+//    04.02.15 - receiver screen resize in sketch instead of in this class
 //
 import processing.opengl.*;
-import java.awt.*; // needed for frame insets
 
 class Spout
 {
@@ -115,25 +115,19 @@ class Spout
       print("Receiver initialized texture sharing\n");
     else if(memorymode == 1)
       print("Receiver texture sharing not supported - using memory sharing\n");
-      
     
     // Texture sharing succeeded and there was a sender running
     String newname = JSpout.GetSenderName();
     print("Receiver found sender : " + newname + " " + dim[0] + "x" + dim[1] + "\n");
     // dim will be returned with ths size of the sender it connected to
     
-    // Reset the screen size to the connected sender size if necessary
+    // Reset the image size to the connected sender size if necessary
     if(dim[0] != img.width || dim[1] != img.height && dim[0] > 0 && dim[1] > 0) {
       // reset the image size to that of the sender
       img.resize(dim[0], dim[1]);
-      // Reset the frame size - include borders and caption
-      Insets insets = frame.getInsets();
-      frame.setSize(dim[0] + (insets.left + insets.right), dim[1] + (insets.top + insets.bottom));            
+      img.updatePixels();
     }
- 
-    img.updatePixels();
     // All done
-    
   } // end Receiver initialization
   
   
@@ -156,13 +150,8 @@ class Spout
       // Otherwise update the image for return
       if(dim[0] != img.width || dim[1] != img.height && dim[0] > 0 && dim[1] > 0) {
          img.resize(dim[0], dim[1]);
-         // Include borders and caption
-         Insets insets = frame.getInsets();
-         frame.setSize(dim[0] + (insets.left + insets.right), dim[1] + (insets.top + insets.bottom));            
       }
-      else {
-          img.updatePixels();
-      }
+      img.updatePixels();
     }
     return img;
   }
@@ -174,6 +163,7 @@ class Spout
       print("Receiver closed" + "\n");
     else
       print("No receiver to close" + "\n");
+     
   } 
 
 } // end class Spout

@@ -87,6 +87,7 @@ Order of Function Calls
         CLEANUP
             [ MyWriteConfig ]                    // only called if user clicked 'OK' to exit
             << DirectX gets uninitialized at this point >>
+
 */
 
 /*
@@ -499,8 +500,18 @@ SPOUT NOTES :
 	30.10.14 - changed from Glut to pixelformat and OpenGL context creation
 	31.10.14 - changed initialization section to renderframe to ensure correct frame size
 			 - added Ctrl-D user selection of DirectX mode
-			 - flag bUseDX9 to select either DirectX 9 or DirectX 11
+			 - flag bUseDX11 to select either DirectX 9 or DirectX 11
 			 - saved DX mode flag in configuration file
+	05.11.14 - Included Spout options in the Visualization configuration control panel
+				Options -> Visualizatiosn -> Configure Plugin
+				MORE SETTINGS tab
+					Enable Spout output
+					Enable Spout DirectX 11 mode
+				Settings are saved with OK
+			 - retained Ctrl-Z for spout on / off while the Visualizer is running
+			 - included Ctrl-D to change from DirectX 9 to DirectX 11 
+			   (this might be removed in a future release if it gives trouble)
+			   The selected settings are saved when the Visualizer is stopped.
 
 */
 
@@ -943,7 +954,7 @@ void CPlugin::MyPreInitialize()
 	sprintf(WinampSenderName, "WinAmpSpoutSender");
 	bInitialized = false;
 	bSpoutOut = true; // User on/off toggle
-	bUseDX9 = true; // Set false to use DirectX11 - DX9 by default - picked up from config file
+	bUseDX11 = false; // Set true to use DirectX11 - DX9 by default - picked up from config file
 	bSpoutChanged = false; // set to write config on exit
 	// DirectX 11 mode uses a format that is incompatible with DirectX 9 receivers
 	// DirectX9 mode can fail with some drivers. Noted on Intel/NVIDIA laptop.
@@ -1199,8 +1210,9 @@ void CPlugin::MyReadConfig()
     wchar_t *pIni = GetConfigIniFile();
 
 	// ======================================
-	// SPOUT - save whether in DirectX9 (true) or DirectX 11 (false) mode, default true
-	bUseDX9 = GetPrivateProfileBoolW(L"settings", L"bUseDX9", bUseDX9, pIni);
+	// SPOUT - save whether in DirectX11 (true) or DirectX 9 (false) mode, default true
+	bSpoutOut = GetPrivateProfileBoolW(L"settings", L"bSpoutOut", bSpoutOut, pIni);
+	bUseDX11 = GetPrivateProfileBoolW(L"settings", L"bUseDX11", bUseDX11, pIni);
 	// ======================================
 
 	m_bFirstRun		= !GetPrivateProfileBoolW(L"settings",L"bConfigured" ,false,pIni);
@@ -1313,9 +1325,9 @@ void CPlugin::MyWriteConfig()
 
 	// ================================
 	// SPOUT
-	WritePrivateProfileIntW(bUseDX9, L"bUseDX9", pIni, L"settings");
+	WritePrivateProfileIntW(bSpoutOut, L"bSpoutOut", pIni, L"settings");
+	WritePrivateProfileIntW(bUseDX11, L"bUseDX11", pIni, L"settings");
 	// ================================
-
 
 	WritePrivateProfileIntW(m_bSongTitleAnims,			L"bSongTitleAnims",		pIni, L"settings");
 	WritePrivateProfileIntW(m_bHardCutsDisabled,	    L"bHardCutsDisabled",	pIni, L"settings");
@@ -1520,7 +1532,7 @@ void CPlugin::CleanUpMyNonDx9Stuff()
     // This gets called only once, when your plugin exits.
     // Be sure to clean up any objects here that were 
     // created/initialized in AllocateMyNonDx9Stuff.
-	// printf("CPlugin::CleanUpMyNonDx9Stuff\n");
+	printf("CPlugin::CleanUpMyNonDx9Stuff\n");
 
 	// =========================================================
 	// SPOUT cleanup on exit
@@ -1532,7 +1544,8 @@ void CPlugin::CleanUpMyNonDx9Stuff()
 		wglDeleteContext(ctx);
 		ReleaseDC(g_hwnd, g_hdc);
 	}
-	// If the DirectX mode has been changed, save the config file
+
+	// If Spout output or DirectX mode has been changed, save the config file
 	// so it is started in the selected mode the next time
 	if(bSpoutChanged) MyWriteConfig();
 	// =========================================================
@@ -6395,7 +6408,8 @@ LRESULT CPlugin::MyWindowProc(HWND hWnd, unsigned uMsg, WPARAM wParam, LPARAM lP
 		//
 		case 'Z':
 			if (bCtrlHeldDown)
-            {			
+            {	
+				bSpoutChanged = true; // write config on exit
 	            bSpoutOut = !bSpoutOut;
 				if(bSpoutOut) {
 					// Start spout
@@ -6429,18 +6443,18 @@ LRESULT CPlugin::MyWindowProc(HWND hWnd, unsigned uMsg, WPARAM wParam, LPARAM lP
 			if (bCtrlHeldDown)
 			{	
 				bSpoutChanged = true; // write config on exit
-				bUseDX9 = !bUseDX9;
-				if(bUseDX9) {
-					// Start spout in Directx 9 mode
+				bUseDX11 = !bUseDX11;
+				if(bUseDX11) {
+					// Start spout in Directx 11 mode
 					lstrcpyW(m_szSavedSongTitle, m_szSongTitle);
-					wsprintfW(m_szSongTitle, L"Spout DirectX 9 mode.");
+					wsprintfW(m_szSongTitle, L"Spout DirectX 11 mode.");
 					LaunchSongTitleAnim();
 					lstrcpyW(m_szSongTitle, m_szSavedSongTitle);
 				}
 				else {
-					// Start Spout in DirectX 11 mode
+					// Start Spout in DirectX 9 mode
 					lstrcpyW(m_szSavedSongTitle, m_szSongTitle);
-					wsprintfW(m_szSongTitle, L"Spout DirectX 11 mode.");
+					wsprintfW(m_szSongTitle, L"Spout DirectX 9 mode.");
 					LaunchSongTitleAnim();
 					lstrcpyW(m_szSongTitle, m_szSavedSongTitle);
 				}
@@ -6451,8 +6465,6 @@ LRESULT CPlugin::MyWindowProc(HWND hWnd, unsigned uMsg, WPARAM wParam, LPARAM lP
 				return 0;
 			}
 			break;
-
-
 		// ========================================
 
         case 'T':
@@ -7089,6 +7101,11 @@ BOOL CPlugin::MyConfigTabProc(int nPage, HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 			    CheckDlgButton(hwnd, IDC_CB_NORATING, !m_bEnableRating);
 			    CheckDlgButton(hwnd, IDC_CB_AUTOGAMMA, m_bAutoGamma);
 
+				// SPOUT
+				CheckDlgButton(hwnd, IDC_CB_SPOUTOUT, bSpoutOut);
+				CheckDlgButton(hwnd, IDC_CB_SPOUTDX11, bUseDX11);
+
+
                 RefreshTab2(hwnd);
             }
             break;  // case WM_INITDIALOG
@@ -7143,6 +7160,10 @@ BOOL CPlugin::MyConfigTabProc(int nPage, HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 				//m_bFixPinkBug = DlgItemIsChecked(hwnd, IDC_CB_PINKFIX);
 				m_bEnableRating = !DlgItemIsChecked(hwnd, IDC_CB_NORATING);
 				m_bAutoGamma = DlgItemIsChecked(hwnd, IDC_CB_AUTOGAMMA);
+
+				// SPOUT
+				bSpoutOut = DlgItemIsChecked(hwnd, IDC_CB_SPOUTOUT);
+				bUseDX11 = DlgItemIsChecked(hwnd, IDC_CB_SPOUTDX11);
                 
             }
             break;  // case WM_DESTROY
@@ -7326,6 +7347,11 @@ BOOL CPlugin::MyConfigTabProc(int nPage, HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 			    SetWindowText(GetDlgItem(hwnd, IDC_RAND_MSG), buf);
 
 			    CheckDlgButton(hwnd, IDC_CB_TITLE_ANIMS, m_bSongTitleAnims);
+
+				// SPOUT
+				CheckDlgButton(hwnd, IDC_CB_SPOUTOUT, bSpoutOut);
+				CheckDlgButton(hwnd, IDC_CB_SPOUTDX11, bUseDX11);
+
             }
             break;
         case WM_COMMAND:
@@ -7399,6 +7425,11 @@ BOOL CPlugin::MyConfigTabProc(int nPage, HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 					m_fTimeBetweenRandomCustomMsgs = val;
 
 				m_bSongTitleAnims = DlgItemIsChecked(hwnd, IDC_CB_TITLE_ANIMS);
+
+				// SPOUT
+				bSpoutOut = DlgItemIsChecked(hwnd, IDC_CB_SPOUTOUT);
+				bUseDX11 = DlgItemIsChecked(hwnd, IDC_CB_SPOUTDX11);
+
             }
             break;
         case WM_HELP:   // give help box for controls here
@@ -9840,23 +9871,23 @@ bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 	// This is a sender so create one
 	// This can be DirectX 11 which is the default
 	// The default DirectX 11 texture format is DXGI_FORMAT_B8G8R8A8_UNORM but we need X8 instead of A8
-	// spoutsender.spout.interop.SetDX11format(DXGI_FORMAT_B8G8R8X8_UNORM);
 
 	// To use DirectX 9 we need to specify that first
 	// Flag option for DX9 of DX11
 	bool bRet = false;
-	if(bUseDX9) {
-		spoutsender.SetDX9(true);
-		// printf("    Creating DX9 sender %dx%d\n", width, height);
-		// And we also have to set the shared texture format as D3DFMT_X8R8G8B8 so that receivers know it
-		// because the default format argument is zero and that assumes D3DFMT_A8R8G8B8
-		bRet = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)D3DFMT_X8R8G8B8);
+	if(bUseDX11) {
+		printf("    Creating DX11 sender %dx%d\n", width, height);
+		spoutsender.SetDX9(false);
+		// We have to set the shared texture format as DXGI_FORMAT_B8G8R8X8_UNORM so that receivers know it
+		// because the default is DXGI_FORMAT_B8G8R8A8_UNORM
+		bRet = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)DXGI_FORMAT_B8G8R8X8_UNORM );		spoutsender.SetDX9(true);
 	}
 	else {
-		// printf("    Creating DX11 sender %dx%d\n", width, height);
-		spoutsender.SetDX9(false);
-		// Same here because the default is DXGI_FORMAT_B8G8R8A8_UNORM
-		bRet = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)DXGI_FORMAT_B8G8R8X8_UNORM );
+		printf("    Creating DX9 sender %dx%d\n", width, height);
+		spoutsender.SetDX9(true);
+		// We have to set the shared texture format as D3DFMT_X8R8G8B8 so that receivers know it
+		// because the default format argument is zero and that assumes D3DFMT_A8R8G8B8
+		bRet = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)D3DFMT_X8R8G8B8);
 	}
 	
 	if(bRet) {

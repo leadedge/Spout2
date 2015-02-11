@@ -92,7 +92,7 @@ void main(void)
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("jit_gl_spout_receiverSDK\n");
 	*/
-	post("jit_gl_spout_receiver - SDK Vers 2.002");
+	post("jit_gl_spout_receiver - SDK Vers 2.003");
 
 	// initialize our Jitter class
 	jit_gl_spout_receiver_init();	

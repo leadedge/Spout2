@@ -11,4 +11,5 @@
 #define IDC_ABOUTBOXTEXT                        1000
 #define IDC_INFOTEXT                            1001
 #define IDC_CAPSTEXT                            1002
-#define IDC_COPY								1003
+#define IDC_INSTALLTEXT                         1003
+#define IDC_COPY								1004

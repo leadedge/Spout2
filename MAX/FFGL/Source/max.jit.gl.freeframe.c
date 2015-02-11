@@ -100,10 +100,10 @@ void main(void)
 	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("jit_gl_freeframe - Vers 1.005\n");
+	printf("jit_gl_freeframe - Vers 1.006\n");
 	*/
 
-	post("jit_gl_freeframe - Vers 1.005");
+	post("jit_gl_freeframe - Vers 1.006");
 
 	// initialize our Jitter class
 	jit_gl_freeframe_init();	

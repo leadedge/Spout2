@@ -314,11 +314,11 @@ public:
 		bool bInitialized; // did it work ?
 		bool OpenSender(unsigned int width, unsigned int height);
 		bool InitOpenGL();
-		bool bSpoutOut; // Spout output on or off
-
-		// 31.10.14
-		bool bUseDX9; // Spout DirectX mode
 		bool bSpoutChanged; // set to write config on exit
+		// User controlled
+		bool bSpoutOut; // Spout output on or off
+		bool bUseDX11; // Spout DirectX mode
+
 		unsigned int g_Width;
 		unsigned int g_Height;
 		HWND g_hwnd;

@@ -56,10 +56,13 @@
 //           - Version 2.04
 //	30-01-15 - added version static text and caption icon
 //           - Version 2.05
+//	07.02.15 - Fixed bug where VVVV sender was not registered
+//           - Version 2.06
 //
 
 #include <windows.h>
 #include <vector>
+#include <iostream>
 #include <fstream>
 #include <Shlwapi.h> // for path functions
 #include "resource.h"
@@ -109,19 +112,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutPanel 2.05\n");
+	printf("SpoutPanel 2.06\n");
 	*/
 
 	// Find the current active window to restore to the top when SpoutPanel quits
 	hWnd = GetForegroundWindow();
 
-	// Remove any temporary file
+	// Remove any temporary sender file
 	module = GetModuleHandle(NULL);
 	GetModuleFileNameA(module, path, MAX_PATH);
 	_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
 	_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
 	remove(path);
-	// printf("Text file path is [%s]\n");
 
 	// Check for arguments
 	UserMessage[0] = 0;
@@ -185,7 +187,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			// What file extension did the user last choose ?
 			char *extension = NULL;
 			extension = PathFindExtensionA(filename);
-			// if(extension) printf("extension is [%s]\n", extension);
+			// if(extension) // printf("extension is [%s]\n", extension);
 			bRet = OpenFile(filename, extension, MAX_PATH); // returns a file path if successful
 			// 04-01-15 - WritePathToRegistry
 			if(bRet) {
@@ -376,6 +378,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 					}
 
 					if(bDX9compatible && !bUnKnown) { // Specify DX9 compatible senders
+
 						// Is the sender DX9 compatible
 						if(! ( info.format == 0  // default directX 9
 							|| info.format == 21 // DX9 ARGB
@@ -393,11 +396,13 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							// wchar_t description[128]; // Wyhon compatible description (not used)
 							// unsigned __int32 partnerId; // Wyphon id of partner that shared it with us (not unused)
 							// 
-							printf("Sharehandle      [%x]\n", info.shareHandle);
-							printf("Width            [%d]\n", info.width);
-							printf("Height           [%d]\n", info.height);
-							printf("Format           [%d] (%x)\n", info.format, info.format);
-							printf("Usage            [%d]\n", info.usage);
+							// printf("not DX9 compatible\n");
+							// printf("Sharehandle      [%x]\n", info.shareHandle);
+							// printf("Width            [%d]\n", info.width);
+							// printf("Height           [%d]\n", info.height);
+							// printf("Format           [%d] (%x)\n", info.format, info.format);
+							// printf("Usage            [%d]\n", info.usage);
+
 						}
 					}
 
@@ -475,18 +480,13 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 					// Get contents of edit field into the global char string
 					GetDlgItemTextA(hDlg, IDC_ACTIVE, (LPSTR)SpoutSenderName, 256);
 					if(strlen(SpoutSenderName) > 0) {
-
 						// printf("    Sender  [%s]\n", SpoutSenderName);
-
 						// Does it have any shared info
 						if(sendernames.getSharedInfo(SpoutSenderName, &info)) {
-
 							// printf("    Width   %d\n", info.width);
 							// printf("    Height  %d\n", info.height);
 							// printf("    Format  %d\n", info.format);
 							// printf("    Handle  %u (%x)\n", info.shareHandle, info.shareHandle);
-
-
 							// Check the DirectX texture format and quit if not
 							// compatible if in compatibility mode
 							if(bDX9compatible) { // Specify DX9 compatible senders
@@ -496,9 +496,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 									|| info.format == 22 // DX9 XRGB
 									|| info.format == 21 // DX9 ARGB
 									)) {
-
 									// printf("Specified DX9 and the format (%d) is not compatible\n", info.format);
-
 									EndDialog(hDlg, LOWORD(wParam));
 									return TRUE;
 								}
@@ -506,36 +504,35 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 							// Is it registered ?
 							if(!sendernames.FindSenderName(SpoutSenderName)) {
-
-								// printf("    Not registerd\n");
-								
-
-								// Allow for a Sender which is not registered - e.g. VVVV
-								// Registering the sender here will only work if another sender
-								// is running or "SpoutTray" is present and has been activated 
-								// to show the sender list after this sender has been registered, 
-								// because this instance of spoutSenderNames for spoutpanel
-								// will close and erase the active name map and the sender map
-								// and any map handle in this app will be closed
-
-								// Failsafe method - open a text file and write to it,
-								// then delete it with the app when it is read or when
-								// SpoutPanel opens again. The path in calling app has to be 
-								// the same as for SpoutPanel.exe
-
-								ofstream myfile;
-								HMODULE module;
-								char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
-								module = GetModuleHandle(NULL);
-								GetModuleFileNameA(module, path, MAX_PATH);
-								_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
-								_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
-								myfile.open (path, ios::out | ios::app);
-								if (myfile.is_open()) {
-									myfile.write(SpoutSenderName, strlen(SpoutSenderName));
-									myfile.close();
-									// Register with the calling app
-								}
+								// Does it exist ?
+								if(sendernames.getSharedInfo(SpoutSenderName, &info)) {
+									// Allow for a Sender which is not registered - e.g. VVVV
+									// Registering the sender here will only work if another sender
+									// is running or "SpoutTray" is present and has been activated 
+									// to show the sender list after this sender has been registered, 
+									// because this instance of spoutSenderNames for spoutpanel
+									// will close and erase the active name map and the sender map
+									// and any map handle in this app will be closed
+										
+									// Failsafe method - open a text file and write to it,
+									// then delete it with the app when it is read or when
+									// SpoutPanel opens again. The path in calling app has to be 
+									// the same as for SpoutPanel.exe
+									ofstream myfile;
+									HMODULE module;
+									char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
+									module = GetModuleHandle(NULL);
+									GetModuleFileNameA(module, path, MAX_PATH);
+									_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
+									_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
+									myfile.open (path, ios::out | ios::app);
+									if (myfile.is_open()) {
+										myfile.write(SpoutSenderName, strlen(SpoutSenderName));
+										myfile.close();
+										// Register with the calling app
+									}
+								} // endif sender exists
+								// else printf("Sender[%s] does not exist\n", SpoutSenderName);
 							} // endif was not registered
 							// drop through
 						}
@@ -546,15 +543,20 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							EndDialog(hDlg, LOWORD(wParam));
 							return TRUE;
 						}
+						
+						// Register the sender name
+						sendernames.RegisterSenderName(SpoutSenderName);
 
 						// Set the selected name as the active Sender
 						// Any receiver can then query the active Sender name
-						// printf("    Setting as the active sender\n");
 						sendernames.SetActiveSender(SpoutSenderName);
 
 						// LJ DEBUG to halt for debugging
 						// sprintf_s(name, "Sender [%s] OK", SpoutSenderName);
 						// MessageBoxA(hDlg, name, "SpoutPanel", 0);
+
+						Sleep(250); // This seems necessary or the texture is not received
+
 					}
 				
 				case IDCANCEL: // 2
@@ -767,13 +769,13 @@ bool WritePathToRegistry(const char *filepath, const char *subkey, const char *v
 	// Does the key already exist ?
 	regres = RegOpenKeyExA(HKEY_CURRENT_USER, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
 	if(regres != ERROR_SUCCESS) {
-		printf("SpoutPanel - creating a new registry key (%s)\n", mySubKey);
+		// printf("SpoutPanel - creating a new registry key (%s)\n", mySubKey);
 		// Create a new key
 		regres = RegCreateKeyExA(HKEY_CURRENT_USER, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
 	}
 
 	if(regres == ERROR_SUCCESS && hRegKey != NULL) {
-		printf("SpoutPanel writing the path to the registry\n[%s]\n", filepath);
+		// printf("SpoutPanel writing the path to the registry\n[%s]\n", filepath);
 		// Write the path
 		regres = RegSetValueExA(hRegKey, valuename, 0, REG_SZ, (BYTE*)filepath, ((DWORD)strlen(filepath) + 1)*sizeof(unsigned char));
 		// For immediate read after write - necessary here becasue the app that opeded SpoutPanel

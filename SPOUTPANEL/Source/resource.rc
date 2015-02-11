@@ -22,7 +22,7 @@ FONT 8, "Ms Shell Dlg"
     PUSHBUTTON      "Cancel", IDCANCEL, 91, 105, 32, 14, 0, WS_EX_LEFT
     LISTBOX         IDC_LIST1, 13, 18, 145, 72, WS_TABSTOP | WS_HSCROLL | WS_VSCROLL | LBS_NOINTEGRALHEIGHT | LBS_NOTIFY, WS_EX_LEFT
     LTEXT           "", IDC_INFO, 13, 91, 145, 13, WS_BORDER | SS_LEFT, WS_EX_LEFT
-	LTEXT           "Vers 2.05", IDC_VERS, 13, 108, 30, 13, SS_LEFT, WS_EX_LEFT // change version here
+	LTEXT           "Vers 2.06", IDC_VERS, 13, 108, 30, 13, SS_LEFT, WS_EX_LEFT // change version here
 
 }
 

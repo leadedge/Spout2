@@ -29,6 +29,8 @@
 	12.10.14 - Recompile for release - Version 2.001
 	20.10.14 - Recompile for update V 2.001 beta
 			 - Version 2.002
+	04.02.15 - Compile for DX9 and DX11 for SDK update
+			 - Vers 2.003
 
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -65,7 +67,7 @@
 // Compile for DX9 instead of DX11 (default)
 // A DX11 receiver can receive from both DX9 and DX11 senders
 // so compiling for DX9 is not necessary dependent on NVIDIA driver bug (10-08-14)
-// #define UseD3D9
+#define UseD3D9
 
 #include "jit.common.h"
 #include "jit.gl.h"
@@ -571,7 +573,7 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 			// Update output texture dim to the new size
 			newdim[0] = x->g_Width;
 			newdim[1] = x->g_Height;
-			jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);
+			jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);  // LJ DEBUG - should be x-output ?
 			
 			x->bInitialized = true;
 		}
@@ -602,7 +604,7 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 				// Update output dim to the new size
 				newdim[0] = x->g_Width;
 				newdim[1] = x->g_Height;
-				jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);
+				jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);  // LJ DEBUG - should be x-output ?
 
 			}
 			else {

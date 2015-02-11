@@ -58,6 +58,8 @@
 			   Vers 1.004
 	03.02.15 - Cleanup
 			   Vers 1.005
+	11.02.15 - Check for GL context on jit_gl_freeframe_free before unloading plugin and free GL resources
+			   Vers 1.006
 
 	=========================================================================================
 
@@ -579,19 +581,26 @@ void jit_gl_freeframe_free(t_jit_gl_freeframe *x)
 {
 
 	// Free FFGL textures
-	if(x->ffglTexture.Handle != 0) glDeleteTextures(1, &x->ffglTexture.Handle);
-	if(x->ffglTexture2.Handle != 0) glDeleteTextures(1, &x->ffglTexture2.Handle);
-	if(x->ffglTexture3.Handle != 0) glDeleteTextures(1, &x->ffglTexture3.Handle);
+	// Check for OpenGL context first
+	t_jit_gl_context jit_ctx = 0;
+	jit_ctx = jit_gl_get_context();
+	
+	// If there is a context, unload plugin and free all resources
+	if(jit_ctx) {
+
+		if(x->bPluginLoaded) UnloadFFGLplugin(x);
+
+		if(x->ffglTexture.Handle != 0) glDeleteTextures(1, &x->ffglTexture.Handle);
+		if(x->ffglTexture2.Handle != 0) glDeleteTextures(1, &x->ffglTexture2.Handle);
+		if(x->ffglTexture3.Handle != 0) glDeleteTextures(1, &x->ffglTexture3.Handle);
+
+		if(x->g_fbo1 > 0) glDeleteFramebuffersEXT(1, &x->g_fbo1);
+	}
+
 	x->ffglTexture.Handle = 0;
 	x->ffglTexture2.Handle = 0;
 	x->ffglTexture3.Handle = 0;
-
-	// Free the fbo
-	if(x->g_fbo1 > 0) glDeleteFramebuffersEXT(1, &x->g_fbo1);
 	x->g_fbo1 = 0;
-
-	// Unload the FFGL plugin
-	if(x->bPluginLoaded) UnloadFFGLplugin(x);
 
 	// Delete the FFGL plugin object
 	if(x->plugin) delete x->plugin;

@@ -1,6 +1,6 @@
 /*
 
-	TDO - detect a memoryshare sender in findsender and getactivesender ?
+	TODO - detect a memoryshare sender in findsender and getactivesender ?
 	Return null name but width and height ?
 	
 				SpoutCam
@@ -111,13 +111,20 @@
 	12.10.14 - recompiled for release
 	21.10.14 - Recompile for update V 2.001 beta
 	02.01.15 - Added GL_BGR to extensions to avoid using GLEW
-			   Recomplie after SDK changes
+			   Recompile after SDK changes
+	04.02.15 - added conditional compile for DirectX 9 or DirectX 11
+			 - changed to direct OpenGL context creation rather than using glut
+	08.02.15 - Set texture format for ReceiveImage to GL_RGB. SDK default is now GL_RGBA.
+
 
 */
 
 
 #pragma warning(disable:4244)
 #pragma warning(disable:4711)
+
+// Compile for DX9 instead of DX11
+#define UseD3D9
 
 #include <streams.h>
 #include <stdio.h>
@@ -141,8 +148,9 @@ CUnknown * WINAPI CVCam::CreateInstance(LPUNKNOWN lpunk, HRESULT *phr)
 	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutCam - 02-01-15\n");
+	printf("SpoutCam - 08-02-15\n");
 	*/
+
 
     CUnknown *punk = new CVCam(lpunk, phr);
 
@@ -219,7 +227,7 @@ CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
 	bGLinitialized	= false;
 	bConnected		= false;
 	bDisconnected	= false; // has to connect before can disconnect or it will never connect
-	glContext		= 0;
+	glContext		= NULL;
 	ShareHandle		= NULL; // local copy of texture share handle
 	g_Width			= 320;	// if there is no Sender, getmediatype will use defaults
 	g_Height		= 240;
@@ -479,11 +487,10 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 				if(buffer) {
 					// Format for Receiveimage in memoryshare mode is GL_RGB
 					// because there is no texture to receive
-					if(receiver.ReceiveImage(SharedMemoryName, senderWidth, senderHeight, buffer)) {
+					if(receiver.ReceiveImage(SharedMemoryName, senderWidth, senderHeight, buffer, GL_RGB)) {
 						// first check that the image size has not changed
 						if(senderWidth == g_Width && senderHeight == g_Height) {
 							// all is OK - flip the data for correct orientation and change pixel format
-							// VertFlipBuf(buffer, (long)g_Width, (long)g_Height);
 							FlipVertical(buffer, g_Width, g_Height);
 							dst = (unsigned char *)pData;
 							src = buffer;
@@ -553,6 +560,9 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 				glBindTexture(GL_TEXTURE_2D, 0);
 				glDisable(GL_TEXTURE_2D);
 
+				// LJ DEBUG for flip test
+				// FlipVertical(pData, g_Width, g_Height);
+
 				NumFrames++;
 				return NOERROR;
 
@@ -580,12 +590,78 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 
 HRESULT CVCamStream::OpenReceiver()
 {
-	HDC GLhdc;
+	HDC hdc = NULL;
+	HWND hwnd = NULL;
+	HGLRC hRc = NULL;
+	char windowtitle[512];
 
 	glContext = wglGetCurrentContext();
+
 	// Once created it seems stable and retained
 	if(glContext == NULL) {
-		// You need to create a rendering context BEFORE calling glewInit()
+
+		// We only need an OpenGL context with no window
+		hwnd = GetForegroundWindow(); // Any window will do - we don't render to it
+		if(!hwnd) { 
+			printf("InitOpenGL error 1\n");
+			MessageBoxA(NULL, "Error 1\n", "InitOpenGL", MB_OK);
+			return S_FALSE; 
+		}
+
+		hdc = GetDC(hwnd);
+		if(!hdc) { 
+			printf("InitOpenGL error 2\n"); 
+			MessageBoxA(NULL, "Error 2\n", "InitOpenGL", MB_OK); 
+			return S_FALSE; 
+		}
+		GetWindowTextA(hwnd, windowtitle, 256); // debug
+
+		PIXELFORMATDESCRIPTOR pfd;
+		ZeroMemory( &pfd, sizeof( pfd ) );
+		pfd.nSize = sizeof( pfd );
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 32;
+		pfd.cDepthBits = 16;
+		pfd.iLayerType = PFD_MAIN_PLANE;
+		int iFormat = ChoosePixelFormat(hdc, &pfd);
+		if(!iFormat) { 
+			printf("InitOpenGL error 3\n"); 
+			MessageBoxA(NULL, "Error 3\n", "InitOpenGL", MB_OK);
+			return S_FALSE; 
+		}
+
+		if(!SetPixelFormat(hdc, iFormat, &pfd)) { 
+			printf("InitOpenGL error 4\n"); 
+			MessageBoxA(NULL, "Error 4\n", "InitOpenGL", MB_OK); 
+			return S_FALSE; 
+		}
+
+		hRc = wglCreateContext(hdc);
+		if(!hRc) { 
+			printf("InitOpenGL error 5\n"); 
+			MessageBoxA(NULL, "Error 5\n", "InitOpenGL", MB_OK); 
+			return S_FALSE; 
+		}
+
+		wglMakeCurrent(hdc, hRc);
+		if(wglGetCurrentContext() == NULL) {
+			printf("InitOpenGL error 6\n");
+			MessageBoxA(NULL, "Error 6\n", "InitOpenGL", MB_OK);
+			return S_FALSE; 
+		}
+
+		// Drop through to return true
+		// printf("InitOpenGL : hwnd = %x (%s), hdc = %x, context = %x\n", hwnd, windowtitle, hdc, hRc);
+
+		// int nCurAvailMemoryInKB = 0;
+		// glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
+		// printf("Memory available [%i]\n", nCurAvailMemoryInKB);
+
+		/*
+		// Glut method
+		// You need to create a rendering context BEFORE calling glutInit()
 		// First you need to create a valid OpenGL rendering context and call glewInit() 
 		// to initialize the extension entry points. 
 		int argc = 1;
@@ -597,7 +673,17 @@ HRESULT CVCamStream::OpenReceiver()
 		glutCreateWindow("vCamGL");
 		GLhdc = wglGetCurrentDC();
 		GLhwnd = WindowFromDC(GLhdc);
+		*/
+
+
 	} // end no glcontext 
+
+	// Set to DX9 for compatibility with Version 1 apps
+	#ifdef UseD3D9
+	receiver.SetDX9(true);
+	#else
+	receiver.SetDX9(false);
+	#endif
 
 	// This is a receiver so try to connect
 	if(receiver.CreateReceiver(SharedMemoryName, senderWidth, senderHeight)) {
@@ -982,6 +1068,7 @@ bool CVCamStream::InitTexture(unsigned int width, unsigned int height)
 }
 
 
+/*
 // Adapted from FreeImage function
 // Flip the image vertically along the horizontal axis.
 // Should be faster with one less line copy. Also only one malloc
@@ -1014,30 +1101,63 @@ bool CVCamStream::FlipVertical(unsigned char *src, unsigned int width, unsigned 
 
 		return true;
 }
+*/
 
-// Flip an RGB image vertically
-// http://www.codeproject.com/Questions/369873/How-can-i-flip-the-image-Vertically-using-cplusplu
+
+/*
+// LJ DEBUG - crash
 //
-bool CVCamStream::VertFlipBuf(unsigned char *inbuf, long widthBytes, long height)
+// http://stackoverflow.com/questions/14798604/simple-flip-buffer-vertically-issue-in-c-c
+//
+// void flip(unsigned* buffer, unsigned width, unsigned height)
+bool CVCamStream::FlipVertical(unsigned char *buffer, unsigned int width, unsigned int height)
+{
+    unsigned int rows = height / 2; // Iterate only half the buffer to get a full flip
+    unsigned int* tempRow;
+	unsigned int pf = 3;
+
+	tempRow = (unsigned*)malloc(width * pf * sizeof(unsigned int));
+
+    for (unsigned int rowIndex = 0; rowIndex < rows; rowIndex++) {
+
+        memcpy(tempRow, buffer + rowIndex * width, width * sizeof(unsigned));
+        memcpy(buffer + rowIndex * width *pf, buffer + (height - rowIndex - 1) * width *pf, width * pf * sizeof(unsigned int));
+        memcpy(buffer + (height - rowIndex - 1) * width * pf, tempRow, width * pf * sizeof(unsigned int));
+
+    }
+
+    free(tempRow);
+
+	return true;
+}
+*/
+
+//
+// Flip an RGB image vertically
+//
+// Based on : http://www.codeproject.com/Questions/369873/How-can-i-flip-the-image-Vertically-using-cplusplu
+//
+bool CVCamStream::FlipVertical(unsigned char *inbuf, unsigned int inwidth, unsigned int inheight)
 {   
 	unsigned char *tb1;
 	unsigned char *tb2;
-	long bufsize;
 	long row_cnt;     
 	long off1=0;
 	long off2=0;
- 
+	long widthBytes, height;
+
 	if (inbuf==NULL)
 		return false;
  
-	bufsize=widthBytes*3;
+	height = (long)inheight;
+	widthBytes = (long)inwidth*3; // RGB for SpoutCam
  
-	tb1 = (unsigned char *)malloc(bufsize);
+	tb1 = (unsigned char *)malloc(widthBytes);
 	if (tb1==NULL) {
 		return false;
 	}
  
-	tb2= (unsigned char *)malloc(bufsize);
+	tb2= (unsigned char *)malloc(widthBytes);
 	if (tb2==NULL) {
 		free((void *)tb1);
 		return false;
@@ -1045,14 +1165,14 @@ bool CVCamStream::VertFlipBuf(unsigned char *inbuf, long widthBytes, long height
 	
 	for (row_cnt=0;row_cnt<(height+1)/2;row_cnt++) 
 	{
-		off1=row_cnt*bufsize;
-		off2=((height-1)-row_cnt)*bufsize;  
+		off1=row_cnt*widthBytes;
+		off2=((height-1)-row_cnt)*widthBytes;  
 		
 		//	09.11.13 - changed from memcpy to CopyMemory - very slight speed advantage
-		CopyMemory(tb1, inbuf+off1, bufsize*sizeof(unsigned char));	
-		CopyMemory(tb2, inbuf+off2, bufsize*sizeof(unsigned char));	
-		CopyMemory(inbuf+off1, tb2, bufsize*sizeof(unsigned char));
-		CopyMemory(inbuf+off2, tb1, bufsize*sizeof(unsigned char));
+		CopyMemory(tb1, inbuf+off1, widthBytes*sizeof(unsigned char));	
+		CopyMemory(tb2, inbuf+off2, widthBytes*sizeof(unsigned char));	
+		CopyMemory(inbuf+off1, tb2, widthBytes*sizeof(unsigned char));
+		CopyMemory(inbuf+off2, tb1, widthBytes*sizeof(unsigned char));
 	}	
  
 	free((void*)tb1);
@@ -1060,4 +1180,5 @@ bool CVCamStream::VertFlipBuf(unsigned char *inbuf, long widthBytes, long height
  
 	return true;
 }
+
 

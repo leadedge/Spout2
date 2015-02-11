@@ -33,14 +33,11 @@
 //				 - Version 2.04
 //		02.01.15 - Recompile for SDK changes - removed dependence on Glew
 //				 - Version 2.05
+//		04.02.15 - changed to direct OpenGL context creation rather than using glut
+//				 - Version 2.06
+//		06.02.15 - option to create a report application for installation
+//				 - Version 2.07
 //
-#define GLEW_STATIC // to use glew32s.lib instead of glew32.lib otherwise there is a redefinition error
-
-#include <glew.h>
-#include <wglew.h> // wglew.h and glxew.h, which define the available WGL and GLX extensions
-#include <glut.h>
-#include <gl/gl.h>
-
 #include "stdafx.h"
 #include "..\Spout.h"
 #include "resource.h"
@@ -52,10 +49,14 @@
 #define SWM_HIDE	WM_APP + 12//	hide the window
 #define SWM_EXIT	WM_APP + 13//	close the window
 
+// Compile flag for report instead of a tray application
+#define REPORT
+
 // Global Variables:
 HINSTANCE		hInst;	// current instance
 NOTIFYICONDATA	niData;	// notify icon data
 HWND hWndMain;
+bool bReport = false; // report only, otherwise start as a system tray application
 
 // Spout sender variables
 Spout spout;
@@ -66,6 +67,7 @@ string namestring;
 char name[512];
 char temp[1024];
 char gldxcaps[1024]; // capability info
+static HBRUSH hbrBkgnd = NULL;
 
 // Forward declarations of functions included in this code module:
 BOOL				InitInstance(HINSTANCE, int);
@@ -76,13 +78,33 @@ ULONGLONG			GetDllVersion(LPCTSTR lpszDllName);
 INT_PTR CALLBACK	DlgProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
-int APIENTRY _tWinMain(HINSTANCE hInstance,
-                     HINSTANCE hPrevInstance,
-                     LPTSTR    lpCmdLine,
-                     int       nCmdShow)
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	MSG msg;
 	HACCEL hAccelTable;
+
+	/*
+	// Debug console window so printf works
+	FILE* pCout; // should really be freed on exit
+	AllocConsole();
+	freopen_s(&pCout, "CONOUT$", "w", stdout); 
+	printf("SpoutTray\n");
+	*/
+
+	// Compile for a report or a tray application
+	#ifdef REPORT
+		bReport = true;
+	#else
+	// Look for a command line
+	char commandline[512];
+	if(lpCmdLine) {
+		strcpy_s(commandline, 512, (const char *)lpCmdLine);
+		if(strstr(commandline, "report")) {
+			bReport = true;
+		}
+	}
+	#endif
 
 	// Perform application initialization:
 	if (!InitInstance (hInstance, nCmdShow)) return FALSE;
@@ -104,10 +126,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 //	Initialize the window and tray icon
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-	HDC GLhdc;
-	int argc = 1;
-	char *argv = (char*)"SpoutSenders";
-	char **vptr = &argv;
+	HDC hdc = NULL;
+	HWND hwnd = NULL;
+	HGLRC hRc = NULL;
+	char windowtitle[512];
+	char graphicsCard[256];
+	char installcaps[256];
 
 	// prepare for XP style controls
 	InitCommonControls();
@@ -169,8 +193,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 	// Fill capability info
 	// Only need to do this once
-	GLhdc = wglGetCurrentDC();
-	if(!GLhdc) {
+	hdc = wglGetCurrentDC();
+	if(!hdc) {
 
 		// ======= Hardware compatibility test =======
 		// Get the Windows version.
@@ -214,19 +238,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 			else {
 				switch (dwMinorVersion) {
 					case 0 : // vista
-						strcat_s(gldxcaps, 1024, "Windows Vista - ");
+						strcat_s(gldxcaps, 1024, "Windows Vista\r\n");
 						break;
 					case 1 : // 7
-						strcat_s(gldxcaps, 1024, "Windows 7 - ");
+						strcat_s(gldxcaps, 1024, "Windows 7\r\n");
 						break;
 					case 2 : // 8
-						strcat_s(gldxcaps, 1024, "Windows 8 - ");
+						strcat_s(gldxcaps, 1024, "Windows 8\r\n");
 						break;
 					case 3 : // 8.1
-						strcat_s(gldxcaps, 1024, "Windows 8.1 - ");
+						strcat_s(gldxcaps, 1024, "Windows 8.1\r\n");
 						break;
 					default : // Later than October 2013
-						strcat_s(gldxcaps, 1024, "Windows - ");
+						strcat_s(gldxcaps, 1024, "Windows\r\n");
 						break;
 				}
 			}
@@ -241,13 +265,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 			strcat_s(gldxcaps, 1024, output);
 		}
 		*/
-
-		// DirectX 11 only available for Windows 7 (6.1) and higher
-		#ifdef is64bit
-				strcat_s(gldxcaps, 1024, "64bit\r\n");
-		#else
-				strcat_s(gldxcaps, 1024, "32bit\r\n");
-		#endif
 
 		// Additional info
 		DISPLAY_DEVICE DisplayDevice;
@@ -274,6 +291,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 				dwSize = MAX_PATH;
 				// Adapter name
 				if(RegQueryValueExA(hRegKey, "DriverDesc", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
+					strcpy_s(graphicsCard, 256, output);
 					strcat_s(gldxcaps, 1024, output);
 					strcat_s(gldxcaps, 1024, "\r\n");
 				}
@@ -289,9 +307,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		} // endif EnumDisplayDevices
 
 		// Bits per pixel
-		HDC hDC=GetDC(hWnd);
-		if (hDC) {
-			int bitsPerPixel = GetDeviceCaps(hDC, BITSPIXEL); //to get current system's color depth
+		hdc=GetDC(hWnd);
+		if (hdc) {
+			int bitsPerPixel = GetDeviceCaps(hdc, BITSPIXEL); //to get current system's color depth
 			sprintf_s(output, 256, " (%d bpp)", bitsPerPixel);
 			strcat_s(gldxcaps, 1024, output);
 		}
@@ -301,14 +319,59 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		// This checks for the NV_DX_interop extensions and will fail
 		// if the graphics deliver does not support them, or fbos
 
-		// Initialize glew so that extensions can be found - only needed for this dialog
-		// You need to create a rendering context BEFORE calling glewInit()
-		// First you need to create a valid OpenGL rendering context and call glewInit() 
-		// to initialize the extension entry points, so create a window here but it will not show.
-		glutInit(&argc, vptr);
-		glutCreateWindow("SpoutSendersGL");
-		HGLRC glContext = wglGetCurrentContext(); // should check if opengl context creation succeed
-		if(glContext) {
+		// We only need an OpenGL context with no window so the dialog window will do - we don't render to it
+		if(!hWnd) { 
+			printf("InitOpenGL error 1\n");
+			MessageBoxA(NULL, "Error 1\n", "InitOpenGL", MB_OK);
+			return false; 
+		}
+
+		hdc = GetDC(hWnd);
+		if(!hdc) { 
+			printf("InitOpenGL error 2\n"); 
+			MessageBoxA(NULL, "Error 2\n", "InitOpenGL", MB_OK); 
+			return false; 
+		}
+		GetWindowTextA(hWnd, windowtitle, 256); // debug
+
+		PIXELFORMATDESCRIPTOR pfd;
+		ZeroMemory( &pfd, sizeof( pfd ) );
+		pfd.nSize = sizeof( pfd );
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 32;
+		pfd.cDepthBits = 16;
+		pfd.iLayerType = PFD_MAIN_PLANE;
+		int iFormat = ChoosePixelFormat(hdc, &pfd);
+		if(!iFormat) { 
+			printf("InitOpenGL error 3\n"); 
+			MessageBoxA(NULL, "Error 3\n", "InitOpenGL", MB_OK);
+			return false; 
+		}
+
+		if(!SetPixelFormat(hdc, iFormat, &pfd)) { 
+			printf("InitOpenGL error 4\n"); 
+			MessageBoxA(NULL, "Error 4\n", "InitOpenGL", MB_OK); 
+			return false; 
+		}
+
+		hRc = wglCreateContext(hdc);
+		if(!hRc) { 
+			printf("InitOpenGL error 5\n"); 
+			MessageBoxA(NULL, "Error 5\n", "InitOpenGL", MB_OK); 
+			return false; 
+		}
+
+		wglMakeCurrent(hdc, hRc);
+		if(wglGetCurrentContext() == NULL) {
+			printf("InitOpenGL error 6\n");
+			MessageBoxA(NULL, "Error 6\n", "InitOpenGL", MB_OK);
+			return false; 
+		}
+
+		// should check if opengl context creation succeed
+		if(hRc) {
 			// ======================================================
 			if(wglGetProcAddress("wglDXOpenDeviceNV")) { // extensions loaded OK
 				// It is possible that the extensions load OK, but that initialization will still fail
@@ -338,11 +401,28 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 			strcat_s(gldxcaps, 1024,  "No GL context");
 		}
 	}
+	SetDlgItemTextA(hWnd, IDC_INFOTEXT, (LPCSTR)gldxcaps);
+
+	if(bReport) {
+
+		// Determine whether to install DirectX9 or DirectX 11
+		// Currently Intel cards require DirectX 9
+		if(strstr(gldxcaps, "memory share"))
+			strcpy_s(installcaps, 256, "INSTALL MEMORYSHARE");
+		else if(strstr(graphicsCard, "Intel"))
+			strcpy_s(installcaps, 256, "INSTALL DIRECTX 9");
+		else
+			strcpy_s(installcaps, 256, "DIRECTX 11 COMPATIBLE");
+
+		SetDlgItemTextA(hWnd, IDC_INSTALLTEXT, (LPCSTR)installcaps);
+
+	}
 
 	SetDlgItemTextA(hWnd, IDC_INFOTEXT, (LPCSTR)gldxcaps);
 
 	// call ShowWindow here to make the dialog initially visible
-	// ShowWindow(hWnd, SW_SHOWNORMAL);
+	// if it is a diagnostic report and not a tray utility
+	if(bReport) ShowWindow(hWnd, SW_SHOWNORMAL);
 
 	return TRUE;
 }
@@ -489,6 +569,24 @@ INT_PTR CALLBACK DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	hMenu = GetMenu(hWnd);
 
 	switch (message) {
+
+		// Make Installation type Red text
+		case WM_CTLCOLORSTATIC:
+        {
+			if(bReport) {
+				HDC hdcStatic = (HDC)wParam;
+				// lParam is the handle to the control
+				if(GetDlgItem(hWnd, IDC_INSTALLTEXT) == (HWND)lParam) {
+					SetTextColor(hdcStatic, RGB(192, 0, 0));
+					SetBkColor(hdcStatic, RGB(255, 255, 255));
+					if (hbrBkgnd == NULL) {
+						hbrBkgnd = CreateSolidBrush(RGB(255, 255, 255));
+					}
+					return (INT_PTR)hbrBkgnd;
+				}
+			}
+        }
+		break;
 	
 	case SWM_TRAYMSG:
 
@@ -538,6 +636,8 @@ INT_PTR CALLBACK DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			case SWM_HIDE:
 			case IDOK:
 				ShowWindow(hWnd, SW_HIDE);
+				// If it is just a diagnostic report, close the window
+				if(bReport)	DestroyWindow(hWnd);
 				break;
 
 			case IDC_COPY :
@@ -595,7 +695,7 @@ LRESULT CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		
 		case WM_INITDIALOG:
 			// Changeable text here
-			sprintf_s(temp,  1024, "SpoutTray - Version 2.05\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
+			sprintf_s(temp,  1024, "SpoutTray - Version 2.06\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
 			SetDlgItemTextA(hDlg, IDC_ABOUTBOXTEXT, (LPCSTR)temp);
 			return TRUE;
 
