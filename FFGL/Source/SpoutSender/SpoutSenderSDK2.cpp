@@ -70,11 +70,11 @@ extern "C" {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
-// For memoryshare, enable the define in below
-// #define MemoryShareMode
-// For DirectX 9 mode enable the define in below
-// #define DX9Mode
+// For DirectX 9 mode enable the define below, otherwise compiles for DriectX 11
+#define DX9Mode
 
+// For memoryshare, enable the define below
+// #define MemoryShareMode
 
 #ifndef MemoryShareMode
 	#define FFPARAM_SharingName (0)
