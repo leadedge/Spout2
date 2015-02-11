@@ -72,6 +72,9 @@
 			   Included define for DirectX 9 compile
 			   Recompiled for DirectX 11, DirectX9 and Memoryshare for 2015 release
 			   Version 3.021
+	07.02.15 - corrected unregisterd sender logic in FFPARM_UPDATE
+			   Version 3.022
+
 
 */
 #include "SpoutReceiverSDK2.h"
@@ -83,10 +86,11 @@ extern "C" {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
-// For memoryshare, enable the define in below
-// #define MemoryShareMode
-// For DirectX 9 mode enable the define in below
+// For DirectX 9 mode enable the define below, otherwise compiles for DirectX 11
 // #define DX9Mode
+
+// For memoryshare, enable the define below
+// #define MemoryShareMode
 
 #ifndef MemoryShareMode
 	#define FFPARAM_SharingName		(0)
@@ -112,9 +116,9 @@ static CFFGLPluginInfo PluginInfo (
 	021,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
 		#ifdef DX9Mode
-		"Spout Receiver DirectX 9 - Vers 3.021\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+		"Spout Receiver DirectX 9 - Vers 3.022\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 		#else
-		"Spout Receiver DirectX 11 - Vers 3.021\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+		"Spout Receiver DirectX 11 - Vers 3.022\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 		#endif
 	#else
 	"LJ49",										// Plugin unique ID
@@ -124,7 +128,7 @@ static CFFGLPluginInfo PluginInfo (
 	3,											// Plugin major version number
 	021,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver Memoryshare - Vers 3.021\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver Memoryshare - Vers 3.022\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#endif
 	"S P O U T - Version 2\nspout.zeal.co"		// About
 );
@@ -146,7 +150,7 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.019\n");
+	printf("SpoutReceiver2 Vers 3.022\n");
 	*/
 
 	// Input properties - this is a source and has no inputs
@@ -270,6 +274,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 
 	// If already initialized and the user has entered a different name, reset the receiver
 	if(bInitialized && UserSenderName[0] && strcmp(UserSenderName, SenderName) != 0) {
+		printf("Resetting receiver[%s][%s]\n", UserSenderName, SenderName);
 		receiver.ReleaseReceiver();
 		bInitialized = false;
 	}
@@ -278,6 +283,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 
 		// If UserSenderName is set, use it. Otherwise find the active sender
 		if(UserSenderName[0]) {
+			printf("Using [%s]\n", UserSenderName);
 			strcpy_s(SenderName, UserSenderName); // Create a receiver with this name
 			bUseActive = false;
 		}
@@ -288,6 +294,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		// CreateReceiver will return true only if it finds a sender running.
 		// If a sender name is specified and does not exist it will return false.
 		if(receiver.CreateReceiver(SenderName, g_Width, g_Height, bUseActive)) {
+			printf("Created receiver [%s]\n", SenderName);
 			// Did it initialized in Memory share mode ?
 			bMemoryMode = receiver.GetMemoryShareMode();
 			// Initialize a texture - Memorymode RGB or Texturemode RGBA
@@ -361,12 +368,21 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 		#ifndef MemoryShareMode
 
 		case FFPARAM_SharingName:
+
 			if(pParam->NewParameterValue && (char*)pParam->NewParameterValue) {
 				// If there is anything already in this field at startup, it is set by a saved composition
 				strcpy_s(name, 256, (char*)pParam->NewParameterValue);
 				// If it is a different name, copy to the username
-				if(strcmp(name, UserSenderName) == 0)
+				if(strcmp(name, UserSenderName) != 0)
 					strcpy_s(UserSenderName, 256, (char*)pParam->NewParameterValue);
+				// Does the sender exist ?
+				if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
+					// Is it an external unregistered sender - e.g. VVVV ?
+					if(!receiver.spout.interop.senders.FindSenderName(UserSenderName) ) {
+						// register it
+						receiver.spout.interop.senders.RegisterSenderName(UserSenderName);
+					}
+				}
 			}
 			else {
 				// Reset to an empty string so that the active sender 
@@ -376,26 +392,24 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 			break;
 
 		case FFPARAM_Update :
+
 			// Update the user entered name
 			if(pParam->NewParameterValue) { // name entry toggle is on
 				// Is there a  user entered name
 				if(UserSenderName[0] != 0) {
-					// Cant be both initialized and the same name
-					if(!(bInitialized && strcmp(UserSenderName, SenderName) == 0)) {
-						// Does the sender exist ?
-						if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
-							// Is it an external unregistered sender - e.g. VVVV ?
-							if(!receiver.spout.interop.senders.FindSenderName(UserSenderName) ) {
-								// register it
-								receiver.spout.interop.senders.RegisterSenderName(UserSenderName);
-							}
-							// The user has typed it in, so make it the active sender
-							receiver.spout.interop.senders.SetActiveSender(UserSenderName);
-							// Start again
-							if(bInitialized) receiver.ReleaseReceiver();
-							bInitialized = false;
+					// Does the sender exist ?
+					if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
+						// Is it an external unregistered sender - e.g. VVVV ?
+						if(!receiver.spout.interop.senders.FindSenderName(UserSenderName) ) {
+							// register it
+							receiver.spout.interop.senders.RegisterSenderName(UserSenderName);
 						}
-					} // endif not already initialized and the same name
+						// The user has typed it in, so make it the active sender
+						receiver.spout.interop.senders.SetActiveSender(UserSenderName);
+						// Start again
+						if(bInitialized) receiver.ReleaseReceiver();
+						bInitialized = false;
+					}
 				} // endif user name entered
 			} // endif Update
 			break;
