@@ -11,6 +11,9 @@
 //		23.09.14	- return DirectX 11 capability in SetDX9
 //		28.09.14	- Added Host FBO for ReceiveTexture
 //		12.10.14	- changed SelectSenderPanel arg to const char
+//		23.12.14	- added host fbo arg to ReceiveImage
+//		08.02.15	- Changed default texture format for ReceiveImage in header to GL_RGBA
+//
 // ====================================================================================
 /*
 		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
@@ -52,16 +55,17 @@ SpoutReceiver::~SpoutReceiver()
 
 
 //---------------------------------------------------------
-bool SpoutReceiver::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, GLuint HostFBO)
+bool SpoutReceiver::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
 {
-	return spout.ReceiveTexture(name, width, height, TextureID, TextureTarget, HostFBO);
+	// printf("SpoutReceiver::ReceiveTexture HostFBO = %d\n", HostFBO);
+	return spout.ReceiveTexture(name, width, height, TextureID, TextureTarget, bInvert, HostFBO);
 }
 
 
 //---------------------------------------------------------
-bool SpoutReceiver::ReceiveImage(char* name, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat)
+bool SpoutReceiver::ReceiveImage(char* name, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat, GLuint HostFBO)
 {
-	return spout.ReceiveImage(name, width, height, pixels, glFormat);
+	return spout.ReceiveImage(name, width, height, pixels, glFormat, HostFBO);
 }
 
 
@@ -106,9 +110,9 @@ int  SpoutReceiver::GetSenderCount()
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::DrawSharedTexture(float max_x, float max_y, float aspect)
+bool SpoutReceiver::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert)
 {
-	return spout.DrawSharedTexture(max_x, max_y, aspect);
+	return spout.DrawSharedTexture(max_x, max_y, aspect, bInvert);
 }
 
 

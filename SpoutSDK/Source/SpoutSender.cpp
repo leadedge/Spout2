@@ -10,7 +10,7 @@
 //		28.09.14	- Added GL format for SendImage
 //					- Added bAlignment (4 byte alignment) flag for SendImage
 //					- Added Host FBO for SendTexture, DrawToSharedTexture
-//
+//		08.02.15	- Changed default texture format for SendImage in header to GL_RGBA
 // ====================================================================================
 /*
 

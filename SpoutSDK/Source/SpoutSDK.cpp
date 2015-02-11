@@ -23,7 +23,7 @@
 //		05-08-14	- default true for setverticalsync in sender and receiver classes
 //		11-08-14	- fixed incorrect name arg in OpenReceiver for ReceiveTexture / ReceiveImage
 //		24-08-14	- changed back to WM_PAINT message instead of RedrawWindow due to FFGL receiver bug appearing again
-//		27-08-14	- removed texture init chech from SelectSenderPanel
+//		27-08-14	- removed texture init check from SelectSenderPanel
 //		29-08-14	- changed SelectSenderPanel to use revised SpoutPanel with user message support
 //		03.09.14	- cleanup
 //		15.09.14	- protect against null string copy in SelectSenderPanel
@@ -39,7 +39,12 @@
 //		12.10.14	- Included SpoutPanel always bring to topmost in SelectSenderPanel
 //					- allowed for change of sender size in DrawToSharedTexture
 //		15.10.14	- added debugging aid for texture access locks
-//		
+//		29.10.14	- changes to SendImage
+//		23.12.14	- added host fbo arg to ReceiveImage
+//		30.01.15	- Read SpoutPanel path from registry (dependent on revised installer)
+//					  Next path checked is module path, then current working directory
+//		06.02.15	- added #pragma comment(lib,.. for "Shell32.lib" and "Advapi32.lib"
+//
 // ================================================================
 /*
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -68,7 +73,6 @@
 
 Spout::Spout()
 {
-
 	/*
 	// Debug console window so printf works
 	FILE* pCout; // should really be freed on exit 
@@ -76,6 +80,7 @@ Spout::Spout()
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("Spout::Spout()\n");
 	*/
+
 
 	g_Width				= 0;
 	g_Height			= 0;
@@ -215,8 +220,16 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 
 void Spout::ReleaseReceiver() 
 {
+	if(bMemoryShareInitOK) {
+		return;
+	}
+
 	// can be done without a check here if(bDxInitOK || bMemoryShareInitOK)
 	SpoutCleanUp();
+
+	// LJ DEBUG
+	bInitialized = false; // DEBUG - needs tracing
+	Sleep(100); // DEBUG - not needed - debugging aid only
 }
 
 
@@ -296,7 +309,7 @@ bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int he
 	BITMAPINFOHEADER * pbmih;
 
 	if(bDxInitOK) {
-
+		/*
 		// Check for 4-byte alignment (default) for 
 		if(bAlignment) {
 			imagewidth = ((width*24+31)/32)*4; // each line is 4-byte aligned in size
@@ -304,6 +317,8 @@ bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int he
 		else {
 			imagewidth = width;
 		}
+		*/
+		imagewidth = width;
 
 		if(glFormat == GL_RGB) {
 			imagesize = imagewidth*height*3; // RGB
@@ -312,22 +327,22 @@ bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int he
 			imagesize = imagewidth*height*4; // RGBA
 		}
 
-		rgbBuffer = (unsigned char *)malloc(imagesize*sizeof(unsigned char));
-		if(!rgbBuffer) return false;
-
 		// width, g_Width should all be the same
 		if(width != g_Width || height != g_Height) {
 			UpdateSender(g_SharedMemoryName, g_Width, g_Height);
 		}
+
 		if(bInvert) {
+			rgbBuffer = (unsigned char *)malloc(imagesize*sizeof(unsigned char));
+			if(!rgbBuffer) return false;
 			CopyMemory(rgbBuffer, pixels, imagesize);
 			FlipVertical(rgbBuffer, width, height, glFormat); // Can be RGB or RGBA
 			interop.WriteTexturePixels(rgbBuffer, width, height, glFormat, bAlignment);
+			free((void *)rgbBuffer);
 		}
 		else {
-			interop.WriteTexturePixels(pixels, width, height, glFormat);
+			interop.WriteTexturePixels(pixels, width, height, glFormat, bAlignment);
 		}
-		free((void *)rgbBuffer);
 
 		return true; // no checks for now
 	}
@@ -376,13 +391,14 @@ bool Spout::SendImage(unsigned char* pixels, unsigned int width, unsigned int he
 	}
 
 	return false;
+
 } // end SendImage
 
 
 //
 // ReceiveTexture
 //
-bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, GLuint HostFBO)
+bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
 {
 	char newname[256];
 	unsigned int newWidth, newHeight;
@@ -393,8 +409,11 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 	unsigned int imagesize;
 	unsigned char * rgbBuffer;
 
+	// printf("Spout::ReceiveTexture HostFBO = %d\n", HostFBO);
+
 	// Has it initialized yet ?
 	if(!bInitialized) {
+
 		// The name passed is the name to try to connect to 
 		// unless the bUseActive flag is set or the name is not initialized
 		// in which case it will try to find the active sender
@@ -421,6 +440,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 	} // endif not initialized
 
 	if(bDxInitOK && !bMemoryShareInitOK) {
+
 		// Check to see if SpoutPanel has been opened 
 		// the globals are reset if it has been
 		// And the sender name will be different to that passed
@@ -470,7 +490,6 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 		} // CheckSender did not find the sender - probably closed
 
 		// Sender exists and everything matched
-
 		// globals are now all current, so pass back the current name and size
 		// so that there is no change found by the host
 		strcpy_s(name, 256, g_SharedMemoryName);
@@ -478,13 +497,13 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 		height = g_Height;
 
 		// If a valid texture was passed, read the shared texture into it
+		// Otherwise skip it, all the checks are done
 		if(TextureID > 0 && TextureTarget > 0) {
-			if(!interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height, HostFBO)) {
+			if(!interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height, bInvert, HostFBO)) {
 				return false;
 			}
 		}
-		// All OK
-		return true;
+		// All OK - drop though to return true
 	} // was initialized in texture mode
 	else {
 		//
@@ -526,11 +545,10 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 			}
 			free((void *)rgbBuffer);
 		} // end buffer alloc OK
-
-		return true;
+		// All OK - drop though to return true
 	}
 
-	return false;
+	return true;
 
 } // end ReceiveTexture
 
@@ -538,7 +556,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 // Note was RGB only, but the format passed should go through now and work. 
 // Default format is now GL_RGBA but Memoryshare mode remains RGB only.
 // The host application must ensure a sufficient size for the pixel buffer
-bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat)
+bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat, GLuint HostFBO)
 {
 	char newname[256];
 	unsigned int newWidth, newHeight;
@@ -632,7 +650,7 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height, 
 		// If a valid pixel pointer was passed, read the shared texture into it
 		if(pixels) {
 			// Default format is GL_RGBA
-			if(interop.ReadTexturePixels(pixels, g_Width, g_Height, glFormat)) {
+			if(interop.ReadTexturePixels(pixels, g_Width, g_Height, glFormat, HostFBO)) {
 				return true;
 			}
 			else {
@@ -755,9 +773,9 @@ bool Spout::UnBindSharedTexture()
 
 
 //---------------------------------------------------------
-bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect)
+bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert)
 {
-	return interop.DrawSharedTexture(max_x, max_y, aspect);
+	return interop.DrawSharedTexture(max_x, max_y, aspect, bInvert);
 }
 
 
@@ -829,7 +847,7 @@ bool Spout::SelectSenderPanel(const char *message)
 	char UserMessage[512];
 	char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
 
-	if(message) {
+	if(message != NULL) {
 		strcpy_s(UserMessage, 512, message); // could be an arg or a user message
 	}
 	else {
@@ -851,13 +869,27 @@ bool Spout::SelectSenderPanel(const char *message)
 	hMutex1 = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 	if (!hMutex1) {
 		// No mutex, so not running, so can open it
-		// Find the path of the host program where SpoutPanel should have been copied
-		module = GetModuleHandle(NULL);
-		GetModuleFileNameA(module, path, MAX_PATH);
-
-		_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
-		_makepath_s(path, MAX_PATH, drive, dir, "SpoutPanel", ".exe");
-
+		// See if there has been a Spout installation with an install path for SpoutPanel.exe
+		if(!ReadPathFromRegistry(path, "Software\\Leading Edge\\SpoutPanel", "InstallPath")) {
+			// Find the path of the host program where SpoutPanel should have been copied
+			module = GetModuleHandle(NULL);
+			GetModuleFileNameA(module, path, MAX_PATH);
+			_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
+			_makepath_s(path, MAX_PATH, drive, dir, "SpoutPanel", ".exe");
+			// Does SpoutPanel.exe exist in this path ?
+			if(!PathFileExistsA(path) ) {
+				// Try the current working directory
+				if(_getcwd(path, MAX_PATH)) {
+					strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
+					// Does SpoutPanel exist here?
+					if(!PathFileExistsA(path) ) {
+						return false;
+					}
+				}
+			}
+		}
+		// printf("SpoutPanel path [%s]\n", path);
+		
 		//
 		// Use  ShellExecuteEx so we can test its return value later
 		//
@@ -866,13 +898,14 @@ bool Spout::SelectSenderPanel(const char *message)
 		ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
 		ShExecInfo.hwnd = NULL;
 		ShExecInfo.lpVerb = NULL;
-		ShExecInfo.lpFile = path;
+		ShExecInfo.lpFile = (LPCSTR)path;
 		ShExecInfo.lpParameters = UserMessage;
 		ShExecInfo.lpDirectory = NULL;
 		ShExecInfo.nShow = SW_SHOW;
 		ShExecInfo.hInstApp = NULL;	
 		ShellExecuteExA(&ShExecInfo);
 		Sleep(125); // alow time for SpoutPanel to open 0.125s
+
 		// Returns straight away here but multiple instances of SpoutPanel
 		// are prevented in it's WinMain procedure by the mutex.
 		// An infinite wait here causes problems.
@@ -907,7 +940,7 @@ bool Spout::SelectSenderPanel(const char *message)
 int Spout::GetSenderCount() {
 	std::set<string> SenderNameSet;
 	if(interop.senders.GetSenderNames(&SenderNameSet)) {
-		return(SenderNameSet.size());
+		return((int)SenderNameSet.size());
 	}
 	return 0;
 }
@@ -1182,10 +1215,11 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 
 bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, unsigned int theHeight, DWORD dwFormat, bool bMemoryMode) 
 {
+
 	// Texture share mode quit if there is no image size to initialize with
 	// Memoryshare can detect a Sender while the receiver is running
 	if(!bMemoryMode && (theWidth == 0 || theHeight == 0)) {
-		// printf("Spout::InitSender error 1\n");
+		printf("Spout::InitSender error 1\n");
 		return false;
 	}
 
@@ -1193,9 +1227,10 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 	//	- the user memory mode flag is not set
 	//	- Hardware is compatible
 	if(bGLDXcompatible && !bMemoryMode) {
+
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
 		if(!interop.CreateInterop(hwnd, theSendername, theWidth, theHeight, dwFormat, false)) {  // False for a sender
-			// printf("Spout::InitSender error 2\n");
+			printf("Spout::InitSender error 2\n");
 			return false;
 		}
 
@@ -1208,8 +1243,6 @@ bool Spout::InitSender (HWND hwnd, char* theSendername, unsigned int theWidth, u
 		bDxInitOK = true;
 		bMemoryShareInitOK	= false;
 		bInitialized = true;
-
-		// printf("Spout::InitSender OK\n");
 
 		return true;
 	} 
@@ -1517,6 +1550,54 @@ bool Spout::FlipVertical(unsigned char *src, unsigned int width, unsigned int he
 }
 
 
+/*
+//
+// http://stackoverflow.com/questions/19738898/2d-array-flip-vertical
+//
+void Spout::ppmFlipVertical(int (&image)[MAXROWS][MAXCOLS])
+{
+    for (int r = 0; r < (MAXROWS/2); r++)
+    {
+        for (int c = 0; c != MAXCOLUMNS; ++c)
+        {
+             std::swap(image[r][c], image[MAXROWS - 1 - r][c]);
+        }
+    }
+}
+*/
+
+/* - works
+//
+// http://stackoverflow.com/questions/14798604/simple-flip-buffer-vertically-issue-in-c-c
+//
+// void flip(unsigned* buffer, unsigned width, unsigned height)
+bool Spout::FlipVertical(unsigned char *buffer, unsigned int width, unsigned int height, GLenum glFormat)
+{
+    unsigned int rows = height / 2; // Iterate only half the buffer to get a full flip
+    unsigned int* tempRow;
+	unsigned int pf;
+	
+	if(glFormat == GL_RGB) // not the default
+		pf = 3;
+	else
+		pf = 4;
+
+
+		tempRow = (unsigned*)malloc(width * pf * sizeof(unsigned int));
+
+    for (unsigned int rowIndex = 0; rowIndex < rows; rowIndex++)
+    {
+        memcpy(tempRow, buffer + rowIndex * width, width * sizeof(unsigned));
+        memcpy(buffer + rowIndex * width *pf, buffer + (height - rowIndex - 1) * width *pf, width * pf * sizeof(unsigned int));
+        memcpy(buffer + (height - rowIndex - 1) * width * pf, tempRow, width * pf * sizeof(unsigned int));
+    }
+
+    free(tempRow);
+
+	return true;
+}
+*/
+
 bool Spout::OpenSpout()
 {
 	HDC hdc;
@@ -1530,7 +1611,7 @@ bool Spout::OpenSpout()
 	if(!bMemory) {
 		hdc = wglGetCurrentDC(); // OpenGl device context is needed
 		if(!hdc) {
-			// MessageBoxA(NULL, "    Cannot get GL device context", "OpenSpout", MB_OK);
+			MessageBoxA(NULL, "    Cannot get GL device context", "OpenSpout", MB_OK);
 			return false;
 		}
 
@@ -1589,9 +1670,65 @@ double Spout::GetCounter()
     return double(li.QuadPart-CounterStart)/PCFreq;
 }
 
+
+bool Spout::WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename)
+{
+	HKEY  hRegKey;
+	LONG  regres;
+	char  mySubKey[512];
+
+	// The required key
+	strcpy_s(mySubKey, 512, subkey);
+
+	// Does the key already exist ?
+	regres = RegOpenKeyExA(HKEY_CURRENT_USER, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
+	if(regres != ERROR_SUCCESS) { 
+		// Create a new key
+		regres = RegCreateKeyExA(HKEY_CURRENT_USER, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS,NULL, &hRegKey, NULL);
+	}
+
+	if(regres == ERROR_SUCCESS && hRegKey != NULL) {
+		// Write the path
+		regres = RegSetValueExA(hRegKey, valuename, 0, REG_SZ, (BYTE*)filepath, ((DWORD)strlen(filepath) + 1)*sizeof(unsigned char));
+		RegCloseKey(hRegKey);
+    }
+
+	if(regres == ERROR_SUCCESS)
+		return true;
+	else
+		return false;
+
+}
+
+
+bool Spout::ReadPathFromRegistry(const char *filepath, const char *subkey, const char *valuename)
+{
+	HKEY  hRegKey;
+	LONG  regres;
+	DWORD  dwSize, dwKey;  
+
+	dwSize = MAX_PATH;
+
+	// Does the key exist
+	regres = RegOpenKeyExA(HKEY_CURRENT_USER, subkey, NULL, KEY_READ, &hRegKey);
+	if(regres == ERROR_SUCCESS) {
+		// Read the key Filepath value
+		regres = RegQueryValueExA(hRegKey, valuename, NULL, &dwKey, (BYTE*)filepath, &dwSize);
+		RegCloseKey(hRegKey);
+		if(regres == ERROR_SUCCESS)
+			return true;
+	}
+
+	// Just quit if the key does not exist
+	return false;
+
+}
+
+
 // For debugging only
 void Spout::UseAccessLocks(bool bUseLocks)
 {
 	interop.spoutdx.bUseAccessLocks = bUseLocks;
 
 }
+

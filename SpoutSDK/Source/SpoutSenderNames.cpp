@@ -309,7 +309,7 @@ int spoutSenderNames::GetSenderCount() {
 	// Get the new set back
 	if(GetSenderNames(&SenderSet)) {
 		m_senderNames.Unlock();
-		return(SenderSet.size());
+		return((int)SenderSet.size());
 	}
 
 	m_senderNames.Unlock();
@@ -778,7 +778,7 @@ bool spoutSenderNames::GetSenderSet(std::set<string>& SenderNames) {
 // TODO - use pointer from initial map creation
 bool spoutSenderNames::setActiveSenderName(const char* SenderName) 
 {
-	int len = strlen(SenderName);
+	int len = (int)strlen(SenderName);
 	if(len  == 0 || len + 1 > SpoutMaxSenderNameLen)	return false;
 
 	m_activeSender.Create("ActiveSenderName", SpoutMaxSenderNameLen);

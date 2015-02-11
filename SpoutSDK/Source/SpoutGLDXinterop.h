@@ -65,10 +65,10 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool getSharedInfo(char* sharedMemoryName, SharedTextureInfo* info);
 		bool setSharedInfo(char* sharedMemoryName, SharedTextureInfo* info);
 		
-		bool ReadTexturePixels(unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA);
+		bool ReadTexturePixels(unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, GLuint HostFBO=0);
 		bool WriteTexturePixels(unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bAlignment = true);
 
-		bool ReadTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, GLuint HostFBO=0);
+		bool ReadTexture (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false, GLuint HostFBO=0);
 		bool WriteTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false, GLuint HostFBO=0);
 		#ifdef USE_PBO_EXTENSIONS
 		bool LoadTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, unsigned char *data);
@@ -77,7 +77,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool BindSharedTexture();
 		bool UnBindSharedTexture();
 
-		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0);
+		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true);
 		bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
 
 		// DX9
@@ -112,6 +112,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool GLDXcompatible();
 		int GetVerticalSync();
 		bool SetVerticalSync(bool bSync = true);
+		bool GetAdapterInfo(char* info, int maxsize);
 
 		spoutMemoryShare MemoryShare;	// Shared memory method
 		spoutSenderNames senders;	// Sender management

@@ -15,6 +15,8 @@
 //		17.10.14	- flush before release immediate context in CloseDX11
 //		21.10.14	- removed keyed mutex lock due to reported driver problems
 //					  TODO - cleanup all functions using it
+//		10.02.15	- removed functions relating to DirectX 11 keyed mutex lock
+//
 // ====================================================================================
 
 /*
@@ -139,6 +141,9 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 // For a RECEIVER : the sharehandle is valid and a handle to the existing shared texture is created
 bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle)
 {
+
+	// LJ DEBUG
+	// if(dxTexture) dxTexture->Release();
 
 	HRESULT res = pDevice->CreateTexture(width,
 										 height,
@@ -287,13 +292,8 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	desc.Height				= height;
 	desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 	desc.MiscFlags			= D3D11_RESOURCE_MISC_SHARED; // This texture will be shared
-	
 	// A DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not compatible with DirectX 9
-	// so if the format is set to be compatible (default) do not use this lock
-	// 21.10.14 - removed due to reported problems
-	// if(format == DXGI_FORMAT_B8G8R8A8_UNORM) desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
-	// else desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
-
+	// so a general named mutext is used for all texture types
 	desc.Format				= format;
 	desc.Usage				= D3D11_USAGE_DEFAULT;
 	desc.SampleDesc.Quality = 0;
@@ -305,19 +305,19 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 	if (res != S_OK) {
 		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
-		// printf("CreateTexture2D ERROR : [0x%x]\n", res);
+		printf("CreateTexture2D ERROR : [0x%x]\n", res);
 		switch (res) {
 			case D3DERR_INVALIDCALL:
-				// printf("    D3DERR_INVALIDCALL \n");
+				printf("    D3DERR_INVALIDCALL \n");
 				break;
 			case E_INVALIDARG:
-				// printf("    E_INVALIDARG \n");
+				printf("    E_INVALIDARG \n");
 				break;
 			case E_OUTOFMEMORY:
-				// printf("    E_OUTOFMEMORY \n");
+				printf("    E_OUTOFMEMORY \n");
 				break;
 			default :
-				// printf("    Unlisted error\n");
+				printf("    Unlisted error\n");
 				break;
 		}
 		return false;
@@ -329,8 +329,10 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	// of the resource can be obtained by querying the resource for the IDXGIResource 
 	// interface and then calling GetSharedHandle.
 	IDXGIResource* pOtherResource(NULL);
-	if(pTexture->QueryInterface( __uuidof(IDXGIResource), (void**)&pOtherResource) != S_OK)
+	if(pTexture->QueryInterface( __uuidof(IDXGIResource), (void**)&pOtherResource) != S_OK) {
+		printf("    QueryInterface error\n");
 		return false;
+	}
 
 	// Return the shared texture handle
 	pOtherResource->GetSharedHandle(&dxShareHandle); 
@@ -365,8 +367,7 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 // =================================================================
 // Texture access mutex locks
 //
-// 1) A general mutex lock for DirectX 9 and for DirectX11 where the tetxure foramt is compatible
-// 2) A texture keyed mutex lock for DirectX 11 textures otherwise where the receiver could be DirectX 9
+// A general mutex lock for DirectX 9 and for DirectX11 textures
 //
 // =================================================================
 bool spoutDirectX::CreateAccessMutex(const char *name, HANDLE &hAccessMutex)
@@ -398,7 +399,7 @@ bool spoutDirectX::CreateAccessMutex(const char *name, HANDLE &hAccessMutex)
 			// printf("access mutex [%s] already exists\n", szMutexName);
 		}
 		else {
-			printf("access mutex [%s] created\n", szMutexName);
+			// printf("access mutex [%s] created\n", szMutexName);
 		}
 	}
 
@@ -425,46 +426,33 @@ bool spoutDirectX::CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedText
 	// LJ DEBUG
 	if(!bUseAccessLocks) return true;
 
+	// General mutex lock
+	// DirectX 11 keyed mutex lock removed due to compatibility problems
+	if(!hAccessMutex) return true; 
 
-	// DirectX 9 uses a general mutex lock
-	// DirectX 11 uses texture keyed mutex lock except where it is sending to a DirectX 9 receiver
-	// with the default compatible texture format (DXGI_FORMAT_B8G8R8A8_UNORM).
-	// In that case the keyed mutex is not set (see CreateSharedDX11Texture)
-	// TODO - allow for use of this format
-	if(!IsKeyedMutexTexture(pSharedTexture) ) {
-		// Ignore if no mutex but this instance will have either
-		// picked one up from a sender or created one anyway
-		if(!hAccessMutex) return true; 
-
-		// printf("Mutex lock\n");
-		dwWaitResult = WaitForSingleObject(hAccessMutex, 67); // 4 frames at 60fps
-		if (dwWaitResult == WAIT_OBJECT_0 ) {
-			// The state of the object is signalled.
-			return true;
-		}
-		else {
-			switch(dwWaitResult) {
-				case WAIT_ABANDONED : // Could return here
-					printf("CheckAccess : WAIT_ABANDONED\n");
-					break;
-				case WAIT_TIMEOUT : // The time-out interval elapsed, and the object's state is nonsignaled.
-					printf("CheckAccess : WAIT_TIMEOUT\n");
-					break;
-				case WAIT_FAILED : // Could use call GetLastError
-					printf("CheckAccess : WAIT_FAILED\n");
-					break;
-				default :
-					printf("CheckAccess : unknown error\n");
-					break;
-			}
-		}
-		return false;
+	// printf("Mutex lock\n");
+	dwWaitResult = WaitForSingleObject(hAccessMutex, 67); // 4 frames at 60fps
+	if (dwWaitResult == WAIT_OBJECT_0 ) {
+		// The state of the object is signalled.
+		return true;
 	}
 	else {
-		// Lock using DirectX 11 texture keyed mutex
-		// printf("Keyed lock\n");
-		return(LockD3D11Texture(pSharedTexture));
+		switch(dwWaitResult) {
+			case WAIT_ABANDONED : // Could return here
+				printf("CheckAccess : WAIT_ABANDONED\n");
+				break;
+			case WAIT_TIMEOUT : // The time-out interval elapsed, and the object's state is nonsignaled.
+				printf("CheckAccess : WAIT_TIMEOUT\n");
+				break;
+			case WAIT_FAILED : // Could use call GetLastError
+				printf("CheckAccess : WAIT_FAILED\n");
+				break;
+			default :
+				printf("CheckAccess : unknown error\n");
+				break;
+		}
 	}
+	return false;
 
 }
 
@@ -474,80 +462,8 @@ void spoutDirectX::AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedText
 	// LJ DEBUG
 	if(!bUseAccessLocks) return;
 
-	if(!IsKeyedMutexTexture(pSharedTexture) ) {
-		if(hAccessMutex) ReleaseMutex(hAccessMutex);
-	}
-	else {
-		// Unlock using DirectX 11 texture keyed mutex
-		return(UnlockD3D11Texture(pSharedTexture));
-	}
-}
+	if(hAccessMutex) ReleaseMutex(hAccessMutex);
 
-
-//
-// Keyed Mutex lock for shared DirectX 11 textures (not applicable for DirectX 9)
-//
-bool spoutDirectX::IsKeyedMutexTexture(ID3D11Texture2D* pD3D11Texture)
-{
-	IDXGIKeyedMutex* pDXGIKeyedMutex;
-	if(pD3D11Texture == NULL) {
-		return false;
-	}
-	
-	pD3D11Texture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
-	if (pDXGIKeyedMutex) {
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-
-bool spoutDirectX::LockD3D11Texture(ID3D11Texture2D* pD3D11Texture)
-{
-	DWORD dwWaitResult;
-	IDXGIKeyedMutex* pDXGIKeyedMutex;
-
-	if(pD3D11Texture == NULL) return false;
-
-	pD3D11Texture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
-	if (pDXGIKeyedMutex) {
-		dwWaitResult = (DWORD)pDXGIKeyedMutex->AcquireSync(0, 67); // TODO - link with SPOUT_WAIT_TIMEOUT
-		if (dwWaitResult == WAIT_OBJECT_0 ) {
-			// The state of the object is signaled.
-			return true;
-		}
-		else {
-			switch(dwWaitResult) {
-				case WAIT_ABANDONED : // Could return here
-					printf("LockD3D11Texture : WAIT_ABANDONED\n");
-					break;
-				case WAIT_TIMEOUT : // The time-out interval elapsed, and the object's state is nonsignaled.
-					printf("LockD3D11Texture : WAIT_TIMEOUT\n");
-					break;
-				default :
-					break;
-			}
-		}
-	}
-	return false;
-}
-
-
-void spoutDirectX::UnlockD3D11Texture(ID3D11Texture2D* pD3D11Texture)
-{
-  if(pD3D11Texture == NULL) return;
-
-  IDXGIKeyedMutex* pDXGIKeyedMutex;
-
-  pD3D11Texture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
-  if (pDXGIKeyedMutex) {
-    HRESULT hr = pDXGIKeyedMutex->ReleaseSync(0);
-    if (FAILED(hr)) {
-      // printf("Failed to unlock the shared texture");
-    }
-  }
 }
 
 

@@ -16,3 +16,32 @@ SpoutDirectX.cpp
   Removed keyed mutex lock due to reported driver problems
   TODO - cleanup all functions using it
 
+
+Important note - DirectX compatibility :
+
+The SDK will initialize and use DirectX 11 textures by default.
+
+Reports have shown that Spout DirectX 11 applications are not compatible with Intel graphics
+and also many applications are based on DirectX 9.
+
+For maximum compatibility, you can use SetDX9(true) before Sender or Receiver creation.
+In that case, a DX9 receiver will still receive from a Spout DirectX 11 sender because 
+the sender texture format is compatible (DXGI_FORMAT_B8G8R8A8_UNORM). 
+
+However, the Unity plugin by Ben Kuper, when optimally compiled for DirectX 11, and the
+example Spout VVVV patches using DirectX 11 will have a different texture format and
+will only be received by Spout DirectX 11 receivers.
+
+The Spout2 Installer provides the option to install versions or the plugins and demo programs 
+compiled for DirectX 9. The default is DirectX 11.
+
+
+
+
+
+
+
+
+
+
+

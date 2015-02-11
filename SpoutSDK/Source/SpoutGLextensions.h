@@ -19,7 +19,7 @@
 //			FFGL - SpoutReceiver, SpoutSender				 -		 -		 -		 +		 +		 +
 //			MAX - jit.gl.spoutsender, jit.gl.spoutreceiver	 -		 -		 -		 +		 +		 +
 //			PROCESSING - Jspout JNI dll						 +		 -		 -		 +		 +		 +
-//			SpoutCam										 -		 -		 +		 +		 +		 +
+//			SpoutCam										 +		 -		 -		 +		 +		 +
 //			SpoutPanel										 +		 -		 -		 +		 +		 +
 //			SpoutTray										 -		 -		 +		 +		 +		 +
 //			Spout dll										 +		 +		 -		 +		 +		 +
@@ -27,8 +27,8 @@
 //			OpenFrameWorks									 +		 -		 -		 +		 +		 +
 //			Cinder											 +		 -		 -		 +		 +		 +
 //
-//
 //			03.11.14 - added additional defines for framebuffer status checks
+//			02.01.15 - added GL_BGR for SpoutCam
 //
 /*
 
@@ -128,8 +128,17 @@
 #define WGL_ACCESS_WRITE_DISCARD_NV		0x0002
 
 #define GL_CLAMP_TO_EDGE				0x812F
+#define GL_BGR							0x80E0 // 02.01.15 - For SpoutCam
 
 #ifndef USE_GLEW
+
+// ----------------------------
+// Memory management extensions
+// ----------------------------
+#define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
+#define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
+
+
 //----------------------
 // GL interop extensions
 //----------------------
