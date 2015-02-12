@@ -25,6 +25,12 @@ SpoutSender.cpp
 SpoutGLDXinterop.cpp
 		24.11.14	- removed context print statement in CleanupInterop
 		23.12.14	- added host fbo arg to ReadTexturePixels
-					  Changed readback method to glReadPixels
+				  Changed readback method to glReadPixels
 		04.02.15	- Changed header default to DirectX 9 instead of DirectX 11
 		09.02.15	- added invert flag to DrawSharedTexture (default true with no args)
+		11.02.15	- Changed bUseDX9 back to DirectX 11 (work in progress)
+
+
+
+
+
