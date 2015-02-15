@@ -58,6 +58,8 @@
 //           - Version 2.05
 //	07.02.15 - Fixed bug where VVVV sender was not registered
 //           - Version 2.06
+//	14.02.15 - Recomplied with latest SDK
+//           - Version 2.07
 //
 
 #include <windows.h>
