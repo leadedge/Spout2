@@ -81,12 +81,13 @@
 #include <FFGL.h>
 #include <FFGLLib.h>
 
-// Might or might not work
+// This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
 extern "C" {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
 // For DirectX 9 mode enable the define below, otherwise compiles for DirectX 11
+// 14.02.15 - added auto detection in SpoutGLDXinterop so can leave as DX11 default
 // #define DX9Mode
 
 // For memoryshare, enable the define below
