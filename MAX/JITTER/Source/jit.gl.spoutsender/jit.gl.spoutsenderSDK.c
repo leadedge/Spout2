@@ -6,7 +6,7 @@
 		jit.gl.simple by Cycling74
 		and jjit.gl.syphonclient.m
 	    Copyright 2010 bangnoise (Tom Butterworth) & vade (Anton Marini).
-
+		
 	=================== SPOUT 2 ===================
 	01.08.14 - rebuilt with Spout SDK
 			 - compiled /MT
@@ -28,6 +28,9 @@
 			 - Vers 2.002
 	04.02.15 - Compile for DX9 and DX11 for SDK update
 			 - Vers 2.003
+	14.02.15 - added auto detection in SpoutGLDXinterop so can leave as DX11 default
+			 - added Optimus enablement export
+			 - Vers 2.004
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -56,7 +59,8 @@
 */
 
 // Compile for DX9 instead of DX11
-#define UseD3D9
+// 14.02.15 - added auto detection in SpoutGLDXinterop so can leave as DX11 default
+// #define UseD3D9
 
 #include "jit.common.h"
 #include "jit.gl.h"
@@ -66,6 +70,10 @@
 
 #include "../../SpoutSDK/Spout.h"
 
+// This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
+extern "C" {
+    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
 
 t_jit_err jit_ob3d_dest_name_set(t_jit_object *x, void *attr, long argc, t_atom *argv);
 

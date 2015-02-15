@@ -27,7 +27,7 @@ void main(void)
 {	
 	void *classex, *jitclass;
 
-	post("jit_gl_spout_sender - SDK Vers 2.003");
+	post("jit_gl_spout_sender - SDK Vers 2.004");
 
 /*
 MAX 6
