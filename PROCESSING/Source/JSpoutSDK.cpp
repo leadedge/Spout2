@@ -43,14 +43,16 @@
 		           memoryshare test prevented sketch to stop and java was not terminated on close.
 		05.02.15 - changed InitSender to protect against null string copy
 				 - included FBO in call to SendTexture
-		06.02.15 - SDK recompile - added UseD3D9 define to compile fr botth DirectX 9 or DirectX 11
+		06.02.15 - SDK recompile - added UseD3D9 define to compile for both DirectX 9 or DirectX 11
+		14.02.15 - SDK recompile for auto detection of DirectX compatibiliy (see SpoutGLDXinterop.cpp).
 
 
 */
 #define GL_BGRA_EXT 0x80E1
 
 // Compile for DX9 instead of DX11
-#define UseD3D9
+// Not not necessary unless DX( is specifically required
+// #define UseD3D9
 
 #include "malloc.h"
 #include <direct.h>
