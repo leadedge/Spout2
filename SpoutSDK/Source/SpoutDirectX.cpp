@@ -16,9 +16,9 @@
 //		21.10.14	- removed keyed mutex lock due to reported driver problems
 //					  TODO - cleanup all functions using it
 //		10.02.15	- removed functions relating to DirectX 11 keyed mutex lock
+//		14.02.15	- added UNREFERENCED_PARAMETER(pSharedTexture) to CheckAceess and AllowAccess
 //
 // ====================================================================================
-
 /*
 
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -423,6 +423,9 @@ bool spoutDirectX::CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedText
 {
 	DWORD dwWaitResult;
 
+	UNREFERENCED_PARAMETER(pSharedTexture);
+
+
 	// LJ DEBUG
 	if(!bUseAccessLocks) return true;
 
@@ -459,6 +462,9 @@ bool spoutDirectX::CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedText
 
 void spoutDirectX::AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture)
 {
+
+	UNREFERENCED_PARAMETER(pSharedTexture);
+
 	// LJ DEBUG
 	if(!bUseAccessLocks) return;
 
@@ -502,9 +508,9 @@ bool spoutDirectX::DX11available()
 
     // Get the build number.
     if (dwVersion < 0x80000000) dwBuild = (DWORD)(HIWORD(dwVersion));
-
     // printf("Version is %d.%d Build (%d)\n", dwMajorVersion, dwMinorVersion, dwBuild);
-	// DirectX only available for Windows 7 (6.1) and higher
+
+	// DirectX 11 only available for Windows 7 (6.1) and higher
 	if(dwMajorVersion >= 6 && dwMinorVersion >= 1) {
 		// printf("DirectX 11 available\n");
 		return true;
@@ -515,3 +521,57 @@ bool spoutDirectX::DX11available()
 	}
 
 }
+
+/*
+//
+// http://www.nvidia.com/object/device_ids.html
+//
+// Example code to retrieve vendor and device ID's for the primary display device.
+//    #include <windows.h>
+//    #include <string>
+//    #include <iostream>
+//    using namespace std;
+bool spoutDirectX::GetDeviceIdentification(char *vendorID, char *deviceID)
+{
+	DISPLAY_DEVICE dd;
+	dd.cb = sizeof(DISPLAY_DEVICE);
+	int i = 0;
+	string id;
+	char idchars[256];
+	size_t charsConverted = 0;
+
+	idchars[0] = NULL;
+
+	// locate primary display device
+	while (EnumDisplayDevices(NULL, 0, &dd, 0)) {
+		if (dd.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) {
+			wcstombs_s(&charsConverted, idchars, 129, dd.DeviceID, 128);
+			printf("[%s]\n", idchars);
+			break;
+		}
+		i++;
+	}
+
+	if(!idchars[0]) return false;
+	
+	// get vendor ID
+	// vendorID = id.substr(8, 4);
+	if(idchars[8] && strlen(idchars) > 12) {
+		strcpy_s(vendorID, 256, &idchars[8]);
+		vendorID[4] = 0;
+	}
+
+	// get device ID
+	// deviceID = id.substr(17, 4);
+	if(idchars[17] && strlen(idchars) > 21) {
+		strcpy_s(deviceID, 256, &idchars[17]);
+		deviceID[4] = 0;
+	}
+
+	return true;
+}
+*/
+
+
+
+ 

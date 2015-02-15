@@ -44,6 +44,7 @@
 //		30.01.15	- Read SpoutPanel path from registry (dependent on revised installer)
 //					  Next path checked is module path, then current working directory
 //		06.02.15	- added #pragma comment(lib,.. for "Shell32.lib" and "Advapi32.lib"
+//		10.02.15	- added Optimus NvOptimusEnablement export to Spout.h - should apply to all apps including this SDK.
 //
 // ================================================================
 /*
@@ -283,6 +284,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 			// Default invert flag is true so do the flip to get it the
 			// right way up unless the user has specifically indicated not to
 			// LJ DEBUG - needs tracing semder/receiver - possible double invert - default false?
+			// printf("bInvert = %d\n", bInvert);
 			if(bInvert) FlipVertical(pBits, width, height, GL_RGB); // Default RGBA
 
 			// Write the header plus the image data to shared memory

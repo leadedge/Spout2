@@ -37,9 +37,12 @@
 #include <d3d9.h>
 #include <d3d11.h>
 #include <string>
+#include <iostream>
 
 #pragma comment (lib, "d3d9.lib")
 #pragma comment (lib, "d3d11.lib")
+
+using namespace std;
 
 class SPOUT_DLLEXP spoutDirectX {
 
@@ -75,6 +78,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		bool bUseAccessLocks;
 
 	protected:
+
+		// bool GetDeviceIdentification(char *vendorID, char *deviceID);
 
 		ID3D11DeviceContext*	g_pImmediateContext;
 		D3D_DRIVER_TYPE			g_driverType;

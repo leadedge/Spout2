@@ -74,6 +74,10 @@
 					  Changed readback method to glReadPixels
 		04.02.15	- Changed header default to DirectX 9 instead of DirectX 11
 		09.02.15	- added invert flag to DrawSharedTexture (default true with no args)
+		12.02.15	- Changed OpenDirectX to check for Intel graphics and open DirectX 9 if present
+		13.02.15	- OpenDirectX9 included SendMessageTimeout before attempting to get the fg window text
+		14.02.15	- Used PathStripPath function requiring shlwapi.h - (see SpoutSDK.h)
+
 */
 
 #include "spoutGLDXinterop.h"
@@ -87,7 +91,6 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
 	printf("spoutGLDXinterop\n");
 	*/
-
 
 	m_hWnd				= NULL;
 	m_glTexture			= 0;
@@ -131,25 +134,106 @@ spoutGLDXinterop::~spoutGLDXinterop() {
 
 
 // For external access so that the local global variables are used
+// Look for Intel graphics and open DirectX 9 if present
 bool spoutGLDXinterop::OpenDirectX(HWND hWnd, bool bDX9)
 {
-	// Check for Operating system DirectX 11 availability as well
+	char renderadapter[256];
+	char renderdescription[256];
+	char renderversion[256];
+	char displaydescription[256];
+	char displayversion[256];
+	// char tmp[256];
+
+	// If user set DX9 then just use it.
+	// Also check for Operating system DirectX 11 availability.
 	if(bDX9 || !spoutdx.DX11available()) {
 		bUseDX9 = true;
 		return (OpenDirectX9(hWnd));
 	}
-	else {
-		// 24.10.14 - if DX11 init fails, fall back to directX 9
-		// return (OpenDirectX11());
-		if(OpenDirectX11()) {
-			bUseDX9 = false;
-			return true;
+
+	// Open DX11	
+	if(OpenDirectX11()) {
+
+		bUseDX9 = false; // already intialized as DX11
+
+		// Get adapter info using both DirectX and Windows functions
+		// If GetAdapterInfo sets bUseDX9 to true, change back to DX9
+		GetAdapterInfo(renderadapter, renderdescription, renderversion, displaydescription, displayversion, 256, bUseDX9);
+
+		if(!bUseDX9) {
+			// printf("[%s] Using DX11\n", renderadapter);
+			// sprintf_s(tmp, 256, "[%s] Using DX11\n", renderadapter);
+			// MessageBoxA(NULL, tmp, "Spout", MB_OK);
+			return true; // Keep using DirectX 11
 		}
-		else {
-			bUseDX9 = true;
-			return (OpenDirectX9(hWnd));
+
+		// drop through
+	}
+
+	// printf("[%s] Using DX9\n", renderadapter);
+	// sprintf_s(tmp, 256, "[%s] Using DX9\n", renderadapter);
+	// MessageBoxA(NULL, tmp, "Spout", MB_OK);
+
+	// If DX11 init fails, or if bUseDX9 has been set to true
+	// close DX11 and initialize DX9 instead
+	spoutdx.CloseDX11(); // Release immediate context before releasing the DX11 device
+	if(g_pd3dDevice != NULL) g_pd3dDevice->Release();
+	g_pSharedTexture = NULL; // Important because mutex locks check for NULL
+	g_pd3dDevice = NULL;
+
+	return (OpenDirectX9(hWnd));
+
+}
+
+
+bool spoutGLDXinterop::OpenDeviceKey(const char* key, int maxsize, char *description, char *version)
+{
+	// Extract the subkey from the DeviceKey string
+	HKEY hRegKey;
+	DWORD dwSize, dwKey;  
+	char output[256];
+	strcpy_s(output, 256, key);
+	string SubKey = strstr(output, "System");
+
+	// Convert all slash to double slash using a C++ string function
+	// to get subkey string required to extract registry information
+	for (unsigned int i=0; i<SubKey.length(); i++) {
+		if (SubKey[i] == '\\') {
+			SubKey.insert(i, 1, '\\');
+			++i; // Skip inserted char
 		}
 	}
+
+	// Open the key to find the adapter details
+	if(RegOpenKeyExA(HKEY_LOCAL_MACHINE, SubKey.c_str(), NULL, KEY_READ, &hRegKey) == 0) { 
+		dwSize = MAX_PATH;
+		// Adapter name
+		if(RegQueryValueExA(hRegKey, "DriverDesc", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
+			// printf("DriverDesc = %s\n",output);
+			strcpy_s(description, maxsize, output);
+			// strcat_s(result, maxsize, "\r\n");
+		}
+		if(RegQueryValueExA(hRegKey, "DriverVersion", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
+			// printf("DriverVersion = %s\n", output);
+			// Find the last 6 characters of the version string then
+			// convert to a float and multiply to get decimal in the right place
+			sprintf_s(output, 256, "%5.2f", atof(output + strlen(output)-6)*100.0);
+			strcpy_s(version, maxsize, output);
+		} // endif DriverVersion
+		RegCloseKey(hRegKey);
+	} // endif RegOpenKey
+
+	return true;
+}
+
+void spoutGLDXinterop::trim(char * s) {
+    char * p = s;
+    int l = (int)strlen(p);
+
+    while(isspace(p[l - 1])) p[--l] = 0;
+    while(* p && isspace(* p)) ++p, --l;
+
+    memmove(s, p, l + 1);
 }
 
 
@@ -157,7 +241,7 @@ bool spoutGLDXinterop::OpenDirectX(HWND hWnd, bool bDX9)
 bool spoutGLDXinterop::OpenDirectX9(HWND hWnd)
 {
 	HWND fgWnd = NULL;
-	char fgwndName[256];
+	char fgwndName[MAX_PATH];
 
 	// Already initialized ?
 	if(m_pD3D != NULL) {
@@ -182,32 +266,6 @@ bool spoutGLDXinterop::OpenDirectX9(HWND hWnd)
 		return false;
 	}
 
-	// LJ DEBUG - adapter info
-	/*
-	D3DADAPTER_IDENTIFIER9 adapterinfo;
-    // char            Driver[MAX_DEVICE_IDENTIFIER_STRING];
-    // char            Description[MAX_DEVICE_IDENTIFIER_STRING];
-    // char            DeviceName[32];         // Device name for GDI (ex. \\.\DISPLAY1)
-	// LARGE_INTEGER   DriverVersion;          // Defined for 32 bit components
-    // DWORD           VendorId;
-    // DWORD           DeviceId;
-    // DWORD           SubSysId;
-    // DWORD           Revision;
-	// GUID            DeviceIdentifier;
-	// DWORD           WHQLLevel;
-
-	m_pD3D->GetAdapterIdentifier (D3DADAPTER_DEFAULT, 0, &adapterinfo);
-	// printf("Driver = [%s]\n", adapterinfo.Driver);
-	// printf("Description = [%s]\n", adapterinfo.Description);
-	// printf("DeviceName = [%s]\n", adapterinfo.DeviceName);
-	// printf("DriverVersion = [%d] [%x]\n", adapterinfo.DriverVersion, adapterinfo.DriverVersion);
-	// printf("VendorId = [%d] [%x]\n", adapterinfo.VendorId, adapterinfo.VendorId);
-	// printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
-	// printf("SubSysId = [%d] [%x]\n", adapterinfo.SubSysId, adapterinfo.SubSysId);
-	// printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
-	*/
-
-
 	// Problem for FFGL plugins - might be a problem for other FFGL hosts or applications.
 	// DirectX 9 device initialization creates black areas and the host window has to be redrawn.
 	// But this causes a crash for a sender in Magic when the render window size is changed.
@@ -216,10 +274,22 @@ bool spoutGLDXinterop::OpenDirectX9(HWND hWnd)
 	// Needed for Resolume.
 	// For now, limit this to Resolume only.
 	fgWnd = GetForegroundWindow();
-	GetWindowTextA(fgWnd, fgwndName, 256);
-	if(strstr(fgwndName, "Resolume") != NULL // Is resolume in the window title ?
-	&& strstr(fgwndName, "magic") == NULL) { // Make sure it is not a user named magic project.
-		 UpdateWindow(fgWnd);
+	if(fgWnd) {
+		// SMTO_ABORTIFHUNG : The function returns without waiting for the time-out
+		// period to elapse if the receiving thread appears to not respond or "hangs."
+		// if(SendMessageTimeoutA(fgWnd, WM_GETTEXT, 0, 0L, SMTO_ABORTIFHUNG, 64, NULL) != 0) {
+		if(SendMessageTimeoutA(fgWnd, WM_GETTEXT, MAX_PATH, (LPARAM)fgwndName, SMTO_ABORTIFHUNG, 128, NULL) != 0) {
+			// Returns the full path - get just the window name
+			PathStripPathA(fgwndName);
+			// console debug
+			// printf("Window text : %s\n", fgwndName);
+			if(fgwndName[0]) {
+				if(strstr(fgwndName, "Resolume") != NULL // Is resolume in the window title ?
+				&& strstr(fgwndName, "magic") == NULL) { // Make sure it is not a user named magic project.
+					UpdateWindow(fgWnd);
+				}
+			}
+		}
 	}
 
 	return true;
@@ -241,18 +311,39 @@ bool spoutGLDXinterop::OpenDirectX11()
 // Must be called after DirectX initialization
 //
 // https://code.google.com/p/chromium/issues/detail?id=106438
+//
 // NOTES : On a “normal” system EnumDisplayDevices and IDXGIAdapter::GetDesc always concur
 // i.e. the device that owns the head will be the device that performs the rendering. 
 // On an Optimus system IDXGIAdapter::GetDesc will return whichever device has been selected for rendering.
 // So on an Optimus system it is possible that IDXGIAdapter::GetDesc will return the dGPU whereas 
 // EnumDisplayDevices will return the iGPU.
 //
-bool spoutGLDXinterop::GetAdapterInfo(char* info, int maxsize)
+// This function compares the adapter descriptions of the two
+// The string "Intel" reveals that it is an Intel device but 
+// the Vendor ID could also be used
+//
+//	0x10DE	NVIDIA
+//	0x163C	intel
+//	0x8086  Intel
+//	0x8087  Intel
+//
+bool spoutGLDXinterop::GetAdapterInfo(char *renderadapter, 
+									  char *renderdescription, char *renderversion,
+									  char *displaydescription, char *displayversion,
+									  int maxsize, bool &bDX9)
 {
-
 	// printf("spoutGLDXinterop::GetAdapterInfo\n");
 
-	if(bUseDX9) {
+	renderadapter[0] = 0; // DirectX adapter
+	renderdescription[0] = 0;
+	renderversion[0] = 0;
+	displaydescription[0] = 0;
+	displayversion[0] = 0;
+
+	if(bDX9) {
+
+		// printf("DX9 mode\n");
+
 		if(m_pDevice == NULL) return false;
 
 		D3DADAPTER_IDENTIFIER9 adapterinfo;
@@ -275,10 +366,13 @@ bool spoutGLDXinterop::GetAdapterInfo(char* info, int maxsize)
 		// printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
 		// printf("SubSysId = [%d] [%x]\n", adapterinfo.SubSysId, adapterinfo.SubSysId);
 		// printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
-		strcpy_s(info, maxsize, adapterinfo.Description);
+		strcpy_s(renderadapter, maxsize, adapterinfo.Description);
 
 	}
 	else {
+
+		// printf("DX11 mode\n");
+
 		if(g_pd3dDevice == NULL) return false;
 
 		IDXGIDevice * pDXGIDevice;
@@ -287,7 +381,6 @@ bool spoutGLDXinterop::GetAdapterInfo(char* info, int maxsize)
 		pDXGIDevice->GetAdapter(&pDXGIAdapter);
 		DXGI_ADAPTER_DESC adapterinfo;
 		pDXGIAdapter->GetDesc(&adapterinfo);
-
 		// WCHAR Description[ 128 ];
 		// UINT VendorId;
 		// UINT DeviceId;
@@ -301,17 +394,85 @@ bool spoutGLDXinterop::GetAdapterInfo(char* info, int maxsize)
 		char output[256];
 		size_t charsConverted = 0;
 		wcstombs_s(&charsConverted, output, 129, adapterinfo.Description, 128);
-
 		// printf("    Description = [%s]\n", output);
-		// printf("VendorId = [%d] [%x]\n", adapterinfo.VendorId, adapterinfo.VendorId);
+		// printf("    VendorId = [%d] [%x]\n", adapterinfo.VendorId, adapterinfo.VendorId);
 		// printf("SubSysId = [%d] [%x]\n", adapterinfo.SubSysId, adapterinfo.SubSysId);
 		// printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
 		// printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
-		strcpy_s(info, maxsize, output);
+		strcpy_s(renderadapter, maxsize, output);
 	}
+
+	// Use Windows functions to look for Intel graphics to see  if it is
+	// the same render adapter that was detected with DirectX
+	char driverdescription[256];
+	char driverversion[256];
+	char regkey[256];
+	size_t charsConverted = 0;
+	
+	// Additional info
+	DISPLAY_DEVICE DisplayDevice;
+	DisplayDevice.cb = sizeof(DISPLAY_DEVICE);
+
+	// 31.10.14 detect the adapter attached to the desktop
+	// To query all display devices in the current session, 
+	// call this function in a loop, starting with iDevNum set to 0, 
+	// and incrementing iDevNum until the function fails. 
+	// To select all display devices in the desktop, use only the display devices
+	// that have the DISPLAY_DEVICE_ATTACHED_TO_DESKTOP flag in the DISPLAY_DEVICE structure.
+
+	int nDevices = 0;
+	for(int i=0; i<10; i++) { // should be much less than 10 adapters
+		if(EnumDisplayDevices(NULL, i, &DisplayDevice, 0)) {
+			// This will list all the devices
+			nDevices++;
+			// Get the registry key
+			wcstombs_s(&charsConverted, regkey, 129, DisplayDevice.DeviceKey, 128);
+			// printf("DeviceKey = %s\n", regkey); 
+			// This is the registry key with all the information about the adapter
+			OpenDeviceKey(regkey, 256, driverdescription, driverversion);
+			// Is it a render adapter ?
+			if(renderadapter && strcmp(driverdescription, renderadapter) == 0) {
+				// printf("Render adapter [%s] Vers [%s]\n", driverdescription, driverversion);
+				strcpy_s(renderdescription, maxsize, driverdescription);
+				strcpy_s(renderversion, maxsize, driverversion);
+			}
+			// Is it a display adapter
+			if(DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
+				// printf("[%s] Vers: %s ", driverdescription, driverversion);
+				strcpy_s(displaydescription, 256, driverdescription);
+				strcpy_s(displayversion, 256, driverversion);
+				// printf("(Attached to desktop)\n");
+			} // endif attached to desktop
+
+		} // endif EnumDisplayDevices
+	} // end search loop
+
+	// The render adapter
+	if(renderdescription) trim(renderdescription);
+
+	// Is it Intel graphics
+	if(renderdescription && strlen(renderdescription) > 0 && !strstr(renderdescription, "Intel")) {
+		// printf("Not Intel (%s) can use DX11\n", renderdescription);
+		// Don't change the existing bDX9 flag so that
+		// it returns to initialize either DirectX or DirectX 11 as the user requires (default is DX11)
+		// LJ DEBUG - comment out to simulate Intel detection
+		return true;
+	}
+
+	if(!renderdescription || strlen(renderdescription) == 0) {
+		// nvd3d9wrap.dll is loaded into all processes when Optimus is enabled.
+		HMODULE nvd3d9wrap = GetModuleHandleA("nvd3d9wrap.dll");
+		if(nvd3d9wrap != NULL)
+			sprintf_s(renderdescription, maxsize, "Optimus graphics integrated adapter");
+		else
+			sprintf_s(renderdescription, maxsize, "No render device");
+	}
+
+	bDX9 = true; // will return to re-initialize DirectX 9
 
 	return true;
 }
+
 
 //
 bool spoutGLDXinterop::CreateInterop(HWND hWnd, char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive)

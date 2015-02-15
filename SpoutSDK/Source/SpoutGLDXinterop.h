@@ -47,6 +47,7 @@
 #include <d3d11.h>	// DX11
 #include <gl/gl.h>
 #include <gl/glu.h> // For glerror
+#include <shlwapi.h> // for path functions
 
 class SPOUT_DLLEXP spoutGLDXinterop {
 
@@ -112,7 +113,10 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool GLDXcompatible();
 		int GetVerticalSync();
 		bool SetVerticalSync(bool bSync = true);
-		bool GetAdapterInfo(char* info, int maxsize);
+		bool GetAdapterInfo(char *renderadapter, 
+						    char *renderdescription, char *renderversion,
+							char *displaydescription, char *displayversion,
+							int maxsize, bool &bUseDX9);
 
 		spoutMemoryShare MemoryShare;	// Shared memory method
 		spoutSenderNames senders;	// Sender management
@@ -166,6 +170,10 @@ protected:
 
 		bool getSharedTextureInfo(char* sharedMemoryName);
 		bool setSharedTextureInfo(char* sharedMemoryName);
+
+		bool OpenDeviceKey(const char* key, int maxsize, char *description, char *version);
+		void trim(char * s);
+
 
 		// LJ DEBUG
 		// Timing calcs
