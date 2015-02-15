@@ -102,8 +102,6 @@ public:
 	spoutMemoryShare MemoryShare; // for initial memoryshare detection
 
 	HGLRC glContext;
-	HGLRC hRC; // Opengl Rendering Context
-	HWND GLhwnd; // OpenGL window handle
 	char SharedMemoryName[256];
 	HANDLE ShareHandle;		// local copy of texture share handle
 	bool bMemoryMode;		// true = memory, false = texture
