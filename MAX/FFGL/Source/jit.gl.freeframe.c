@@ -59,6 +59,7 @@
 	03.02.15 - Cleanup
 			   Vers 1.005
 	11.02.15 - Check for GL context on jit_gl_freeframe_free before unloading plugin and free GL resources
+			 - added Optimus enablement export
 			   Vers 1.006
 
 	=========================================================================================
@@ -118,6 +119,11 @@ using namespace std;
 #ifndef _delayimp_h
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 #endif
+
+// This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
+extern "C" {
+    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
 
 struct FFGLParamInfo {
 	float value;      // float value (default)
