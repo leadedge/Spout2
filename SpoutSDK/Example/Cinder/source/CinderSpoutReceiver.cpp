@@ -34,6 +34,8 @@
 	29.09.14 - update with with SDK revision
 	12.10.14 - recompiled for release
 	03.01.15 - SDK recompile - SpoutPanel detected from registry install path
+	04.02.15 - SDK recompile for default DX9 (see SpoutGLDXinterop.h)
+	14.02.15 - SDK recompile for default DX11 and auto compatibility detection (see SpoutGLDXinterop.cpp)
 
 */
 

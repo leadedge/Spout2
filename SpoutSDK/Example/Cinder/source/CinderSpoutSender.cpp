@@ -33,6 +33,9 @@
 	29.09.14 - updated to revised SDK
 	12.10.14 - recompiled for release
 	03.01.15 - SDK recompile
+	04.02.15 - SDK recompile for default DX9 (see SpoutGLDXinterop.h)
+	14.02.15 - SDK recompile for default DX11 and auto compatibility detection (see SpoutGLDXinterop.cpp)
+
 
 */
 #include "cinder/app/AppBasic.h"

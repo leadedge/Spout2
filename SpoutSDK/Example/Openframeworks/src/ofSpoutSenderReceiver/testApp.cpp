@@ -5,6 +5,9 @@
 	Copyright (C) 2014 Lynn Jarvis.
 
 	02.01.15 - SDK recompile
+	04.02.15 - SDK recompile for default DX9 (see SpoutGLDXinterop.h)
+	14.02.15 - SDK recompile for default DX11 and auto compatibility detection (see SpoutGLDXinterop.cpp)
+
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify

@@ -4,6 +4,13 @@
 
 	Copyright (C) 2014 Lynn Jarvis.
 
+	02.01.15 - SDK recompile
+	04.02.15 - corrected memoryshare detection after createreceiver
+			 - SDK recompile for default DX9 (see SpoutGLDXinterop.h)
+	04.02.15 - SDK recompile for default DX11 and auto compatibility detection (see SpoutGLDXinterop.cpp)
+
+
+	=========================================================================
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -16,10 +23,8 @@
 
     You should have received a copy of the GNU Lesser General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-	================================================================================================
-
-
+	=========================================================================
+	
 */
 
 #include "testApp.h"
@@ -75,6 +80,8 @@ void testApp::draw() {
 	if(!bInitialized) {
 		// Specify true to attempt to connect to the active sender
 		if(spoutreceiver->CreateReceiver(SenderName, width, height, true)) {
+			// Detect texture share compatibility for status below
+			bMemoryShare = spoutreceiver->GetMemoryShareMode();
 			// Is the size of the detected sender different ?
 			if(width != g_Width || height != g_Height ) {
 				// The sender dimensions have changed so update the global width and height
