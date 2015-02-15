@@ -60,7 +60,12 @@
 				- added optimus enablement export
 	06.12.14	- recompiled receiver and sender for minor update and VVVV
 	30.01.15	- Changes to name, capabilities and about dialogs for first 2015 release
-
+	06.02.15	- set bDX9compatible true only if a DX11 receiver
+				- Changed code properties from /MD to /MT
+	10.02.15	- detection of Intel graphics in spoutGLDXinterop "GetAdapterInfo" to use DX9
+	13.02.15	- added additional sender information in About box.
+	14.02.15	- added GetTextureDescription function
+				- added Optimus enablement export
 
 */
 #define MAX_LOADSTRING 100
@@ -90,8 +95,7 @@
 #include <crtdbg.h>
 #include "..\..\SpoutSDK\Spout.h"
 
-
-// Might or might not work
+// This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
 extern "C" {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
@@ -103,10 +107,9 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // ================= CHANGE COMPILE FLAGS HERE =================
 // Rename the executable as necessary to get a sender/receiver pair
 //
-bool bReceiver      = true;  // Compile for receiver (true) or sender (false)
-bool bMemoryMode    = true;  // Use memory share specifically (default is false)
-bool bDX9mode       = false;  // Use DirectX 9 instead of DirectX 11
-bool bDX9compatible = true;   // For DX11 senders only - compatible DX9 format for DX11 senders (default true)
+bool bReceiver      = false; // Compile for receiver (true) or sender (false)
+bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11 (default). Note Intel graphics detection switches back to DX9
+bool bMemoryMode    = false; // Use memory share specifically (default is false)
 // =============================================================
 
 //
@@ -114,8 +117,11 @@ bool bDX9compatible = true;   // For DX11 senders only - compatible DX9 format f
 //
 bool         bInitialized	= false; // Do-once intialization flag
 bool         bTextureShare	= false; // Texture share compatibility flag
+bool         bDX9compatible = true; // For DX11 senders only - compatible DX9 format (set later below)
+
 char         g_SenderName[256];      // Global sender name
 unsigned int g_Width, g_Height;      // Global width and height
+// char         g_SenderInfo[256];      // Global sender information display
 unsigned int width, height;          // Width and height returned by receivetexture
 char         gldxcaps[1024];         // capability info
 
@@ -240,6 +246,7 @@ void ShowSenderInfo();
 void ShowReceiverInfo();
 void StartCounter();
 double GetCounter();
+bool GetTextureDescription(char *SenderName, char *desc, int maxchars);
 void trim(char * s);
 
 /*
@@ -398,7 +405,6 @@ GLvoid ReSizeGLScene(GLsizei width, GLsizei height)		// Resize And Initialize Th
 int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 {
 
-	HGLRC glContext;
 	hMenu = GetMenu(hWnd);
 	HMENU hSubMenu;
 
@@ -418,6 +424,7 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 		// and DirectX 9 functions are used if the Operating system does not support DirectX 11
 		// This can be tested with GetDX9().
 		if(bDX9mode) {
+			// printf("SetDX9(true)\n");
 			sender.SetDX9(true);
 			receiver.SetDX9(true); // Must be set independently for each object
 		}
@@ -432,255 +439,12 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 			// Here the sender DX11 texure format can be set to be DX9 compatible or not
 			// Spout SDK default is a compatible format
 			// Has no effect for DirectX 9
-			sender.SetDX9compatible(bDX9compatible);
-		}
-	}
-
-	// ======= Hardware compatibility test =======
-	// Determine hardware capabilities now, not later when all is initialized
-	glContext = wglGetCurrentContext(); // should check if opengl context creation succeed
-	if(glContext) {
-
-		// 24.10.14 - check if OpenDirectX11 succeeded
-		if(bReceiver) {
-			// Make sure it has been initialized
-			if(!receiver.spout.OpenSpout()) return 0;
-			bDX9mode = receiver.GetDX9();
-			sprintf_s(gldxcaps, 1024, "Spout Receiver");
-		}
-		else {
-			// Make sure it has been initialized
-			if(!sender.spout.OpenSpout()) return 0;
-			bDX9mode = sender.GetDX9();
-			sprintf_s(gldxcaps, 1024, "Spout Sender");
-		}
-
-		#ifdef is64bit // Compiler - not OS
-			strcat_s(gldxcaps, 1024, " 64bit");
-		#else
-			strcat_s(gldxcaps, 1024, " 32bit");
-		#endif
-
-
-		if(bDX9mode)
-			strcat_s(gldxcaps, 1024, " - DirectX 9\r\n");
-		else
-			strcat_s(gldxcaps, 1024, " - DirectX 11\r\n");
-
-
-		// Get the Windows version.
-		DWORD dwVersion = 0; 
-		DWORD dwMajorVersion = 0;
-		DWORD dwMinorVersion = 0; 
-		DWORD dwBuild = 0;
-		DWORD dwPlatformId;
-		WORD wServicePackMajor = 0;
-	    WORD wServicePackMinor = 0;
-		WORD wSuiteMask = 0;
-		BYTE wProductType = 0;
-
-		bool bOsviX = true;
-		bool bCanDetect = true;
-	
-		OSVERSIONINFOEX osvi;
-		ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
-		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-	    if(!GetVersionEx((OSVERSIONINFO *)&osvi)) {
-			bOsviX = false;
-			// If that fails, try using the OSVERSIONINFO structure.
-			osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-			if(!GetVersionEx((OSVERSIONINFO *)&osvi))
-				bCanDetect = false;
-
-		}
-
-		if(bCanDetect) {
-
-			dwBuild = osvi.dwBuildNumber;
-			dwMajorVersion = osvi.dwMajorVersion;
-			dwMinorVersion = osvi.dwMinorVersion;
-			dwPlatformId = osvi.dwPlatformId;
-			// printf("Version is %d.%d Build (%d) Platform %d\n", dwMajorVersion, dwMinorVersion, dwBuild, dwPlatformId);
-			if(dwMajorVersion < 6) {
-				strcat_s(gldxcaps, 1024, "Windows XP");
-			}
-			else {
-				switch (dwMinorVersion) {
-					case 0 : // vista
-						strcat_s(gldxcaps, 1024, "Windows Vista");
-						break;
-					case 1 : // 7
-						strcat_s(gldxcaps, 1024, "Windows 7");
-						break;
-					case 2 : // 8
-						strcat_s(gldxcaps, 1024, "Windows 8");
-						break;
-					case 3 : // 8.1
-						strcat_s(gldxcaps, 1024, "Windows 8.1");
-						break;
-					default : // Later than October 2013
-						strcat_s(gldxcaps, 1024, "Windows");
-						break;
-				}
+			// For DX11 senders only - compatible DX9 format for DX11 senders (default true)
+			if(!bReceiver && bDX9mode == false) { // A DirectX11 sender
+				bDX9compatible = true;
+				sender.SetDX9compatible(bDX9compatible);
 			}
 		}
-
-		/*
-		if(bOsviX) {
-			// Here we can get additional service pack and other information
-			wServicePackMajor = osvi.wServicePackMajor;
-			wServicePackMinor = osvi.wServicePackMinor;
-			sprintf_s(output, 256, "SP %d.%d - ", wServicePackMajor, wServicePackMinor);
-			strcat_s(gldxcaps, 1024, output);
-		}
-		*/
-
-		// DirectX 11 only available for Windows 7 (6.1) and higher
-		/*
-		if(is64bitOS) // TODO - not working
-			strcat_s(gldxcaps, 1024, " 64bit");
-		else
-			strcat_s(gldxcaps, 1024, " 32bit");
-		*/
-
-		strcat_s(gldxcaps, 1024, "\r\n");
-
-		// Find the render adapter using DirectX
-		char renderadapter[256];
-		renderadapter[0] = 0;
-		if(bReceiver)
-			receiver.spout.interop.GetAdapterInfo(renderadapter, 256);
-		else
-			sender.spout.interop.GetAdapterInfo(renderadapter, 256);
-
-		// Additional info
-		DISPLAY_DEVICE DisplayDevice;
-		DisplayDevice.cb = sizeof(DISPLAY_DEVICE);
-		// 31.10.14 detect the adapter attached to the desktop
-		// To query all display devices in the current session, 
-		// call this function in a loop, starting with iDevNum set to 0, 
-		// and incrementing iDevNum until the function fails. 
-		// To select all display devices in the desktop, use only the display devices
-		// that have the DISPLAY_DEVICE_ATTACHED_TO_DESKTOP flag in the DISPLAY_DEVICE structure.
-		// StateFlags
-		char driverdescription[256];
-		char driverversion[256];
-
-		char displaydescription[256];
-		char displayversion[256];
-		
-		char renderdescription[256];
-		char renderversion[256];
-
-		char regkey[256];
-
-		displaydescription[0] = 0;
-		renderdescription[0] = 0;
-		displayversion[0] = 0;
-		renderversion[0] = 0;
-		size_t charsConverted = 0;
-		int nDevices = 0;
-		for(int i=0; i<10; i++) { // should be much less than 10 adapters
-			if(EnumDisplayDevices(NULL, i, &DisplayDevice, 0)) {
-				// This will list all the devices
-				nDevices++;
-				// printf("Device %d\n", nDevices);
-				// Get the registry key
-				wcstombs_s(&charsConverted, regkey, 129, DisplayDevice.DeviceKey, 128);
-				// printf("DeviceKey = %s\n", regkey); // This is the registry key with all the information about the adapter
-				OpenDeviceKey(regkey, 256, driverdescription, driverversion);
-				
-				// Is it a render adapter ?
-				if(renderadapter && strcmp(driverdescription, renderadapter) == 0) {
-					// printf("[%s] Vers: %s ", driverdescription, driverversion);
-					strcpy_s(renderdescription, 256, driverdescription);
-					strcpy_s(renderversion, 256, driverversion);
-					// printf("(Render adapter)\n");
-				}
-
-				// Is it a display adapter
-				if(DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-					// printf("[%s] Vers: %s ", driverdescription, driverversion);
-					strcpy_s(displaydescription, 256, driverdescription);
-					strcpy_s(displayversion, 256, driverversion);
-					// printf("(Attached to desktop)\n");
-					// break; // we have what we want
-				} // endif attached to desktop
-
-			} // endif EnumDisplayDevices
-		} // end search loop
-
-		// Add the device and driver desc to the caps text
-		
-		// The display adapter
-		if(displaydescription && displayversion) {
-			strcat_s(gldxcaps, 1024, "Display : ");
-			trim(displaydescription);
-			strcat_s(gldxcaps, 1024, displaydescription);
-			strcat_s(gldxcaps, 1024, " (");
-			strcat_s(gldxcaps, 1024, displayversion);
-			strcat_s(gldxcaps, 1024, ")\r\n");
-		}
-
-		// The render adapter
-		if(renderdescription) trim(renderdescription);
-		if(!renderdescription || strlen(renderdescription) == 0) {
-			strcat_s(gldxcaps, 1024, "No render device\r\n");
-		}
-		else if(renderdescription && renderversion) {
-			strcat_s(gldxcaps, 1024, "Render : ");
-			trim(renderdescription);
-			strcat_s(gldxcaps, 1024, renderdescription);
-			strcat_s(gldxcaps, 1024, " (");
-			strcat_s(gldxcaps, 1024, renderversion);
-			strcat_s(gldxcaps, 1024, ")\r\n");
-		}
-
-		/*
-		// Bits per pixel
-		hDC=GetDC(hWnd);
-		if (hDC) {
-			int bitsPerPixel = GetDeviceCaps(hDC, BITSPIXEL); //to get current system's color depth
-			sprintf_s(output, 256, " (%d bpp)", bitsPerPixel);
-			strcat_s(gldxcaps, 1024, output);
-		}
-		*/
-
-
-		// Now we can call an initial hardware compatibilty check
-		// This checks for the NV_DX_interop extensions and will fail
-		// if the graphics deliver does not support them, or fbos
-		// ======================================================
-		if(wglGetProcAddress("wglDXOpenDeviceNV")) { // extensions loaded OK
-			// It is possible that the extensions load OK, but that initialization will still fail
-			// This occurs when wglDXOpenDeviceNV fails - noted on dual graphics machines with NVIDIA Optimus
-			// Directx initialization seems OK with null hwnd, but in any case we will not use it.
-			bool bMem;
-			if(bReceiver) 
-				bMem = receiver.GetMemoryShareMode();
-			else
-				bMem = sender.GetMemoryShareMode();
-			if (!bMem) { // Test for memoryshare initialization
-				if(wglGetProcAddress("glBlitFramebufferEXT"))
-					strcat_s(gldxcaps, 1024, "Compatible hardware\r\nNV_DX_interop extensions supported\r\nInterop load successful\r\nTexture sharing mode available\r\nFBO blit available");
-				else
-					strcat_s(gldxcaps, 1024, "Compatible hardware\r\nNV_DX_interop extensions supported\r\nInterop load successful\r\nTexture sharing mode available\r\nFBO blit not available");
-			}
-			else {
-				strcat_s(gldxcaps, 1024,  "Compatible hardware\r\nNV_DX_interop extensions supported\r\nbut wglDXOpenDeviceNV failed to load\r\nLimited to memory share mode");
-			}
-		}
-		else {
-			// Determine whether fbo support is the reason or interop
-			if(!wglGetProcAddress("glGenFramebuffersEXT"))
-				strcat_s(gldxcaps, 1024,  "Hardware does not support EXT_framebuffer_object extensions\r\nTexture sharing not available\r\nLimited to memory share mode");
-			else
-				strcat_s(gldxcaps, 1024,  "Hardware does not support NV_DX_interop extensions\r\nTexture sharing not available\r\nLimited to memory share mode");
-		}
-
-	}
-	else {
-		strcat_s(gldxcaps, 1024,  "No GL context");
 	}
 
 
@@ -704,6 +468,7 @@ int InitGL(int width, int height)						// All Setup For OpenGL Goes Here
 	g_Height = height;
 	// Non-alphanumeric name to begin so that CreateReceiever finds the active sender
 	g_SenderName[0] = 0; 
+	// g_SenderInfo[0] = 0;
 
 	// Update the local texture
 	InitTexture(g_Width, g_Height);
@@ -776,6 +541,8 @@ bool OpenReceiver()
 		InitTexture(g_Width, g_Height); // Memorymode RGB or Texturemode RGBA
 		// Check whether DirectX 11 initialization succeeded
 		if(sender.GetDX9()) bDX9mode = true;
+		// Get texture details for screen display
+		// GetTextureDescription(g_SenderName, g_SenderInfo, 256);
 		return true;
 	}
 	// printf("OpenReceiver 5\n");
@@ -815,6 +582,9 @@ bool OpenSender()
 	// For success check whether DirectX 11 initialization succeeded
 	if(sender.CreateSender(g_SenderName, g_Width, g_Height)) {
 		if(sender.GetDX9()) bDX9mode = true; // TODO downgrade if DX11 did not initialize
+		// printf("Created sender [%s], bDX9mode = %d\n", g_SenderName, bDX9mode);
+		// Get texture details for screen display
+		// GetTextureDescription(g_SenderName, g_SenderInfo, 256);
 		return true;
 	}
 
@@ -1059,8 +829,13 @@ void ShowReceiverInfo()
 				glPrint("Memoryshare Receiver - fps %2.0f", frameRate, 0.0f);
 			}
 			else {
+
 				glRasterPos2i( 20, height-30 );
-				glPrint("Receiving from : [%s] - fps %2.0f", g_SenderName, frameRate, 0.0f);
+				// if(g_SenderInfo[0])
+					// glPrint("Receiving from : [%s] (%s) fps %2.0f", g_SenderName, g_SenderInfo, frameRate, 0.0f);
+				// else
+					glPrint("Receiving from : [%s] - fps %2.0f", g_SenderName, frameRate, 0.0f);
+
 				glRasterPos2i( 20, 40 );
 				glPrint("RH click to select  a sender", 0.0f);
 			}
@@ -1116,7 +891,10 @@ void ShowSenderInfo()
 		}
 		else {
 			glRasterPos2i( 20, height-30 );
-			glPrint("Sending as : [%s] - fps %2.0f", g_SenderName, frameRate, 0.0f);
+			// if(g_SenderInfo[0])
+				// glPrint("Sending as : [%s] (%s) fps %2.0f", g_SenderName, g_SenderInfo, frameRate, 0.0f);
+			// else
+				glPrint("Sending as : [%s] - fps %2.0f", g_SenderName, frameRate, 0.0f);
 		}
 		
 		glPopMatrix();
@@ -1168,7 +946,7 @@ GLvoid KillGLWindow(GLvoid)
  	height			- Height Of The GL Window
  	bits			- Number Of Bits To Use For Color (8/16/24/32)
 */
-BOOL CreateGLWindow(char* title, int width, int height, int bits)
+BOOL CreateGLWindow(int width, int height, int bits)
 {
 	GLuint		PixelFormat;			// Holds The Results After Searching For A Match
 	WNDCLASS	wc;						// Windows Class Structure
@@ -1180,7 +958,6 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 	WindowRect.right=(long)width;		// Set Right Value To Requested Width
 	WindowRect.top=(long)0;				// Set Top Value To 0
 	WindowRect.bottom=(long)height;		// Set Bottom Value To Requested Height
-
 	WindowRect.bottom += (long)GetSystemMetrics(SM_CYMENU); // for a menu
 
 	hInstance			= GetModuleHandle(NULL);				// Grab An Instance For Our Window
@@ -1223,7 +1000,7 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 	// Create The Window
 	hWnd=CreateWindowExA(	dwExStyle,							// Extended Style For The Window
 							"OpenGL",							// Class Name
-							title,								// Window Title
+							"GLwindow",							// Window Title temprarily
 							dwStyle |							// Defined Window Style
 							WS_CLIPSIBLINGS |					// Required Window Style
 							WS_CLIPCHILDREN,					// Required Window Style
@@ -1321,16 +1098,235 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits)
 		return FALSE;								// Return FALSE
 	}
 
-	ShowWindow(hWnd,SW_SHOW);						// Show The Window
-	SetForegroundWindow(hWnd);						// Slightly Higher Priority
-	SetFocus(hWnd);									// Sets Keyboard Focus To The Window
-	ReSizeGLScene(width, height);					// Set Up Our Perspective GL Screen
-
 	if (!InitGL(width, height))	{					// Initialize Our Newly Created GL Window
 		KillGLWindow();								// Reset The Display
 		MessageBoxA(NULL,"Initialization Failed.","ERROR",MB_OK|MB_ICONEXCLAMATION);
 		return FALSE;								// Return FALSE
 	}
+
+	//
+	// ======= Hardware compatibility test =======
+	//
+	if(hRC) { // must have a gl context
+
+		bool bMem = false;
+		// Check if OpenDirectX11 succeeded
+		if(bReceiver) {
+			// Make sure it has been initialized
+			if(!receiver.spout.OpenSpout()) return 0;
+			bDX9mode = receiver.GetDX9();
+			bMemoryMode = receiver.GetMemoryShareMode();
+			// printf("Receiver bDX9mode = %d\n", bDX9mode);
+			sprintf_s(gldxcaps, 1024, "Spout Receiver");
+		}
+		else {
+			if(!sender.spout.OpenSpout()) return 0;
+			bDX9mode = sender.GetDX9();
+			bMemoryMode = sender.GetMemoryShareMode();
+			// printf("Sender bDX9mode = %d\n", bDX9mode);
+			sprintf_s(gldxcaps, 1024, "Spout Sender");
+		}
+
+		if (bMemoryMode)
+			strcat_s(gldxcaps, 1024, " - MemoryShare\r\n");
+		else if(bDX9mode)
+			strcat_s(gldxcaps, 1024, " - DirectX 9\r\n");
+		else
+			strcat_s(gldxcaps, 1024, " - DirectX 11\r\n");
+
+
+		// Get the Windows version.
+		DWORD dwVersion = 0; 
+		DWORD dwMajorVersion = 0;
+		DWORD dwMinorVersion = 0; 
+		DWORD dwBuild = 0;
+		DWORD dwPlatformId;
+		WORD wServicePackMajor = 0;
+	    WORD wServicePackMinor = 0;
+		WORD wSuiteMask = 0;
+		BYTE wProductType = 0;
+
+		bool bOsviX = true;
+		bool bCanDetect = true;
+	
+		OSVERSIONINFOEX osvi;
+		ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+	    if(!GetVersionEx((OSVERSIONINFO *)&osvi)) {
+			bOsviX = false;
+			// If that fails, try using the OSVERSIONINFO structure.
+			osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+			if(!GetVersionEx((OSVERSIONINFO *)&osvi))
+				bCanDetect = false;
+
+		}
+
+		if(bCanDetect) {
+
+			dwBuild = osvi.dwBuildNumber;
+			dwMajorVersion = osvi.dwMajorVersion;
+			dwMinorVersion = osvi.dwMinorVersion;
+			dwPlatformId = osvi.dwPlatformId;
+			// printf("Version is %d.%d Build (%d) Platform %d\n", dwMajorVersion, dwMinorVersion, dwBuild, dwPlatformId);
+			if(dwMajorVersion < 6) {
+				strcat_s(gldxcaps, 1024, "Windows XP");
+			}
+			else {
+				switch (dwMinorVersion) {
+					case 0 : // vista
+						strcat_s(gldxcaps, 1024, "Windows Vista");
+						break;
+					case 1 : // 7
+						strcat_s(gldxcaps, 1024, "Windows 7");
+						break;
+					case 2 : // 8
+						strcat_s(gldxcaps, 1024, "Windows 8");
+						break;
+					case 3 : // 8.1
+						strcat_s(gldxcaps, 1024, "Windows 8.1");
+						break;
+					default : // Later than October 2013
+						strcat_s(gldxcaps, 1024, "Windows");
+						break;
+				}
+			}
+		}
+		// strcat_s(gldxcaps, 1024, "\r\n");
+
+		if(bOsviX) {
+			// Here we can get additional service pack and other information
+			char output[256];
+			wServicePackMajor = osvi.wServicePackMajor;
+			wServicePackMinor = osvi.wServicePackMinor;
+			sprintf_s(output, 256, " SP %d.%d\r\n", wServicePackMajor, wServicePackMinor);
+			strcat_s(gldxcaps, 1024, output);
+		}
+
+		// Find the render adapter using DirectX and Windows functions
+		// If Intel, the SDK swithes to DiectX 9
+		char renderadapter[256];
+		char renderdescription[256];
+		char renderversion[256];
+		char displaydescription[256];
+		char displayversion[256];
+
+		if(bReceiver)
+			receiver.spout.interop.GetAdapterInfo(renderadapter, 
+												  renderdescription, renderversion,
+												  displaydescription, displayversion,
+												  256, bDX9mode);
+		else
+			sender.spout.interop.GetAdapterInfo(renderadapter, 
+												renderdescription, renderversion,
+												displaydescription, displayversion,
+												256, bDX9mode);
+
+		// printf("GetAdapterInfo bDX9mode = %d\n", bDX9mode);
+		// printf("renderadapter [%s]\n", renderadapter);
+		// printf("renderdescription [%s]\n", renderdescription);
+		// printf("renderversion [%s]\n", renderversion);
+		// printf("displaydescription [%s]\n", displaydescription);
+		// printf("displayversion [%s]\n", displayversion);
+
+		// Add the device and driver desc to the caps text
+		
+		// The display adapter
+		if(displaydescription) trim(displaydescription);
+		if(displayversion) trim(displayversion);
+		if(displaydescription[0] && displayversion[0]) {
+			strcat_s(gldxcaps, 1024, "Display : ");
+			strcat_s(gldxcaps, 1024, displaydescription);
+			strcat_s(gldxcaps, 1024, " (");
+			strcat_s(gldxcaps, 1024, displayversion);
+			strcat_s(gldxcaps, 1024, ")\r\n");
+		}
+
+		// The render adapter
+		if(renderdescription) trim(renderdescription);
+		if(!renderdescription || strlen(renderdescription) == 0) {
+			// nvd3d9wrap.dll is loaded into all processes when Optimus is enabled.
+			HMODULE nvd3d9wrap = GetModuleHandleA("nvd3d9wrap.dll");
+			if(nvd3d9wrap != NULL)
+				strcat_s(gldxcaps, 1024, "Optimus graphics integrated adapter\r\n");
+			else
+				strcat_s(gldxcaps, 1024, "No render device\r\n");
+		}
+		else if(renderdescription && renderversion) {
+			trim(renderdescription);
+			trim(renderversion);
+			strcat_s(gldxcaps, 1024, "Render : ");
+			strcat_s(gldxcaps, 1024, renderdescription);
+			strcat_s(gldxcaps, 1024, " (");
+			strcat_s(gldxcaps, 1024, renderversion);
+			strcat_s(gldxcaps, 1024, ")\r\n");
+		}
+
+		// Now we can call an initial hardware compatibilty check
+		// This checks for the NV_DX_interop extensions and will fail
+		// if the graphics deliver does not support them, or fbos
+		// ======================================================
+		if(wglGetProcAddress("wglDXOpenDeviceNV")) { // extensions loaded OK
+			// It is possible that the extensions load OK, but that initialization will still fail
+			// This occurs when wglDXOpenDeviceNV fails - noted on dual graphics machines with NVIDIA Optimus
+			// Directx initialization seems OK with null hwnd, but in any case we will not use it.
+			bool bMem;
+			if(bReceiver) 
+				bMem = receiver.GetMemoryShareMode();
+			else
+				bMem = sender.GetMemoryShareMode();
+			if (!bMem) { // Test for memoryshare initialization
+				bMemoryMode = false;
+				if(wglGetProcAddress("glBlitFramebufferEXT"))
+					strcat_s(gldxcaps, 1024, "Compatible hardware\r\nNV_DX_interop extensions supported\r\nInterop load successful\r\nTexture sharing mode available\r\nFBO blit available");
+				else
+					strcat_s(gldxcaps, 1024, "Compatible hardware\r\nNV_DX_interop extensions supported\r\nInterop load successful\r\nTexture sharing mode available\r\nFBO blit not available");
+			}
+			else {
+				bMemoryMode = true;
+				strcat_s(gldxcaps, 1024,  "Compatible hardware\r\nNV_DX_interop extensions supported\r\nbut wglDXOpenDeviceNV failed to load\r\nLimited to memory share mode");
+			}
+		}
+		else {
+			bMemoryMode = true;
+			// Determine whether fbo support is the reason or interop
+			if(!wglGetProcAddress("glGenFramebuffersEXT"))
+				strcat_s(gldxcaps, 1024,  "Hardware does not support EXT_framebuffer_object extensions\r\nTexture sharing not available\r\nLimited to memory share mode");
+			else
+				strcat_s(gldxcaps, 1024,  "Hardware does not support NV_DX_interop extensions\r\nTexture sharing not available\r\nLimited to memory share mode");
+		}
+	}
+	else {
+		strcat_s(gldxcaps, 1024,  "No GL context");
+	}
+	// end hardware compatibility test
+
+	//
+	// Work out what the window title is
+	//
+	// This is also used for the sender name and
+	// depends on Spout being initialised to set bDX9mode
+	if(bMemoryMode)
+		strcpy_s(WindowTitle, 256, "Spout Memoryshare ");
+	else if(bDX9mode)
+		strcpy_s(WindowTitle, 256, "Spout DX9 ");
+	else
+		strcpy_s(WindowTitle, 256, "Spout DX11 ");
+
+	if(bReceiver)
+		strcat_s(WindowTitle, 256, "Receiver"); // Sender name
+	else
+		strcat_s(WindowTitle, 256, "Sender"); // Sender name
+
+	// printf("WindowTitle [%s]\n", WindowTitle);
+
+	// Set the window title bar
+	SetWindowTextA(hWnd, WindowTitle); 
+
+	ShowWindow(hWnd,SW_SHOW);						// Show The Window
+	SetForegroundWindow(hWnd);						// Slightly Higher Priority
+	SetFocus(hWnd);									// Sets Keyboard Focus To The Window
+	ReSizeGLScene(width, height);					// Set Up Our Perspective GL Screen
+
 	return TRUE;									// Success
 }
 
@@ -1549,26 +1545,13 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	// suppress warnings
 	msg.wParam = 0;
 
+	//
 	// Create Our OpenGL Window
+	//
 
-	// Global width and height
-	g_Width  = 640;
+	g_Width  = 640; // Global width and height
 	g_Height = 360; 
-
-	if(bMemoryMode)
-		strcpy_s(WindowTitle, 256, "Spout Memoryshare ");
-	else if(bDX9mode)
-		strcpy_s(WindowTitle, 256, "Spout DX9 ");
-	else
-		strcpy_s(WindowTitle, 256, "Spout DX11 ");
-
-	if(bReceiver)
-		strcat_s(WindowTitle, 256, "Receiver"); // Sender name
-	else
-		strcat_s(WindowTitle, 256, "Sender"); // Sender name
-
-	// HDC	GLhdc = wglGetCurrentDC();
-	if (!CreateGLWindow(WindowTitle, g_Width, g_Height, 16))	{
+	if (!CreateGLWindow(g_Width, g_Height, 16))	{
 		return 0;										// Quit If Window Was Not Created
 	}
 
@@ -1881,22 +1864,37 @@ void RestoreOpenGLstate()
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	UNREFERENCED_PARAMETER(lParam);
-	char temp[1024];
+	char temp[512];
+	char about[1024];
 
 	switch (message) {
 
 		case WM_INITDIALOG:
-			strcpy_s(temp, 256, WindowTitle);
-			if(bDX9mode)
-				strcat_s(temp, 1024, " - DirectX 9\r\n");
-			else
-				strcat_s(temp, 1024, " - DirectX 11\r\n");
-			if(!bReceiver)
-				strcat_s(temp,  1024, "for sending frames to Spout receivers\n\nhttp://spout.zeal.co");
-			else
-				strcat_s(temp,  1024, "for receiving frames from Spout senders\n\nhttp://spout.zeal.co");
+			
+			sprintf_s(about, 256, "%s\r\n", WindowTitle); // Shows whether memoryshare, DX9 or DX11
 
-			SetDlgItemTextA(hDlg, IDC_ABOUTBOXTEXT, (LPCSTR)temp);
+			// if(bDX9mode) strcat_s(about, 1024, " - DirectX 9\r\n");
+			// else strcat_s(about, 1024, " - DirectX 11\r\n");
+			
+			// Sender name
+			if(g_SenderName[0]) {
+				
+				// Receiver info
+				if(bReceiver) {
+					sprintf_s(temp,  1024, "Receiving from [%s]\n", g_SenderName);
+					strcat_s(about, 1024, temp);
+					if(GetTextureDescription(g_SenderName, temp, 512))
+						strcat_s(about, 1024, temp);
+				} // end receiver
+				else {
+					if(GetTextureDescription(g_SenderName, temp, 512))
+						strcat_s(about, 1024, temp);
+				} // endif sender
+			}
+
+			strcat_s(about,  1024, "\n\nhttp://spout.zeal.co");
+
+			SetDlgItemTextA(hDlg, IDC_ABOUTBOXTEXT, (LPCSTR)about);
 			return (INT_PTR)TRUE;
 
 		case WM_COMMAND:
@@ -2015,6 +2013,47 @@ bool EnterSenderName(char *SenderName)
 
 }
 
+bool GetTextureDescription(char *SenderName, char *desc, int maxchars) {
+
+	unsigned int width, height;
+	HANDLE dxShareHandle;
+	DWORD dwFormat;
+	bool bRet = true;
+				
+	if(bReceiver) bRet = receiver.GetSenderInfo(SenderName, width, height, dxShareHandle, dwFormat);
+	else bRet = sender.spout.GetSenderInfo(SenderName, width, height, dxShareHandle, dwFormat);
+	if(!bRet) {
+		desc[0] = 0;
+		return false;
+	}
+
+	switch(dwFormat) {
+		// DX9
+		case 0 : // default unknown
+			sprintf_s(desc, 512, "DirectX : %dx%d", width, height);
+			break;
+		case 21 : // D3DFMT_A8R8G8B8
+			sprintf_s(desc, 512, "DirectX 9 : %dx%d [ARGB]", width, height);
+			break;
+		case 22 : // D3DFMT_X8R8G8B8
+			sprintf_s(desc, 512, "DirectX 9 : %dx%d [XRGB]", width, height);
+			break;
+		// DX11
+		case 28 : // DXGI_FORMAT_R8G8B8A8_UNORM
+			sprintf_s(desc, 512, "DirectX 11 : %dx%d [RGBA]", width, height);
+			break;
+		case 87 : // DXGI_FORMAT_B8G8R8A8_UNORM
+			sprintf_s(desc, 512, "DirectX 11 : %dx%d [BGRA]", width, height);
+			break;
+		case 88 : // DXGI_FORMAT_B8G8R8AX_UNORM (untested)
+			sprintf_s(desc, 512, "DirectX 11 : %dx%d [BGRX]", width, height);
+			break;
+		default:
+			sprintf_s(desc, 512, "%dx%d :", width, height);
+			break;
+	}
+	return true;
+}
 
 void trim(char * s) {
     char * p = s;
