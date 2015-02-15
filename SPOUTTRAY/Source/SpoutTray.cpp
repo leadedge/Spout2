@@ -50,7 +50,7 @@
 #define SWM_EXIT	WM_APP + 13//	close the window
 
 // Compile flag for report instead of a tray application
-#define REPORT
+// #define REPORT
 
 // Global Variables:
 HINSTANCE		hInst;	// current instance
