@@ -2,7 +2,9 @@
 // VDJSpoutReceiver.cpp : Defines the exported functions for the DLL application.
 //
 //		09.02.15	corrected texture invert by adding invert flag to DrawSharedTexture
-//		10.02.15	Inital release
+//		14.02.15	added Optimus enablement export
+//					Changed to /MT compile
+//					Inital release
 //					Version 1.0
 //		------------------------------------------------------------
 //
@@ -26,9 +28,22 @@
 #include "stdafx.h"
 #include "VDJSpoutReceiver.h"
 
+// This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
+extern "C" {
+    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
+
 VDJ_EXPORT HRESULT __stdcall DllGetClassObject(const GUID &rclsid, const GUID &riid, void** ppObject)
 { 
 	// Syphon comment : TODO: Is this good?
+
+	// LJ - this limits it to VDJ 8
+
+	// This is the standard DLL loader for COM object.
+	// The memcmp(a, b, sizeof(XXXX)) function returns 0 if a and b match.
+	// if the plugins returns CLASS_E_CLASSNOTAVAILABLE, it means the plugin
+	// is not compatible with the current VirtualDJ version
+
 	if(memcmp(&rclsid, &CLSID_VdjPlugin8, sizeof(GUID)) != 0) return CLASS_E_CLASSNOTAVAILABLE; 
     if(memcmp(&riid, &IID_IVdjPluginVideoFx8, sizeof(GUID)) != 0) return CLASS_E_CLASSNOTAVAILABLE; 
 
@@ -85,9 +100,9 @@ HRESULT __stdcall SpoutReceiverPlugin::OnLoad()
 
 HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 {
-	infos->Author = NULL;
-    infos->PluginName = (char *)"Spout Receiver";
-    infos->Description = (char *)"http://Spout.zeal.co/";
+	infos->Author = "Lynn Jarvis";
+    infos->PluginName = (char *)"VDJSpoutReceiver";
+	infos->Description = (char *)"Receives frames from a Spout Sender\nSpout : http://Spout.zeal.co/";
 	infos->Version = (char *)"v1.0";
     infos->Bitmap = NULL;
 
@@ -145,6 +160,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDeviceClose()
 
 HRESULT __stdcall SpoutReceiverPlugin::OnParameter(int ParamID) 
 {
+	// Activate SpoutPanel to select a sender
 	spoutreceiver.SelectSenderPanel();
 	return S_OK;
 }
@@ -281,7 +297,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 
 	} // endif device
 
-	return S_FALSE;
+	return S_FALSE; // no device
 
 }
 

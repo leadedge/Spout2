@@ -1,7 +1,9 @@
 //
 // VDJSpoutSender.cpp : Defines the exported functions for the DLL application.
 //
-//		10.02.15	Inital release
+//		10.02.15	Inital testing
+//		14.02.15	added Optimus enablement export
+//					Changed to /MT compile
 //					Version 1.0
 //		------------------------------------------------------------
 //
@@ -28,6 +30,11 @@
 #ifndef _delayimp_h
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 #endif
+
+// This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
+extern "C" {
+    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
 
 VDJ_EXPORT HRESULT __stdcall DllGetClassObject(const GUID &rclsid, const GUID &riid, void** ppObject)
 { 
@@ -71,8 +78,6 @@ SpoutSenderPlugin::SpoutSenderPlugin()
 	*/
 
 
-
-
 }
 
 SpoutSenderPlugin::~SpoutSenderPlugin()
@@ -87,9 +92,9 @@ HRESULT __stdcall SpoutSenderPlugin::OnLoad()
 
 HRESULT __stdcall SpoutSenderPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 {
-	infos->Author = NULL;
-    infos->PluginName = (char *)"Spout Sender";
-    infos->Description = (char *)"http://Spout.zeal.co/";
+	infos->Author = "Lynn Jarvis";
+    infos->PluginName = (char *)"VDJSpoutSender";
+    infos->Description = (char *)"Sends frames to a Spout Receiver\nSpout : http://Spout.zeal.co/";
 	infos->Version = (char *)"v1.0";
     infos->Bitmap = NULL;
 
@@ -103,6 +108,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 
 HRESULT __stdcall SpoutSenderPlugin::OnStart()
 {
+	printf("OnStart()\n");
 	StartOpenGL(); // Initialize openGL if not already
 	bSpoutOut = true;
 
@@ -111,6 +117,8 @@ HRESULT __stdcall SpoutSenderPlugin::OnStart()
 
 HRESULT __stdcall SpoutSenderPlugin::OnStop()
 {
+	printf("OnStop()\n");
+
 	StartOpenGL(); // return to the main context
 	bSpoutOut = false;
  
@@ -120,11 +128,13 @@ HRESULT __stdcall SpoutSenderPlugin::OnStop()
 // When DirectX/OpenGL is initialized or closed, these functions will be called
 HRESULT __stdcall  SpoutSenderPlugin::OnDeviceInit() 
 {
+	printf("OnDeviceInit()\n");
 	return S_OK;
 }
 
 HRESULT __stdcall SpoutSenderPlugin::OnDeviceClose() 
 {
+	printf("OnDeviceClose()\n");
 	// Cleanup
 	if(m_hRC && wglMakeCurrent(m_hdc, m_hRC)) {
 		if(bInitialized) spoutsender.ReleaseSender();
@@ -154,6 +164,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 
 	// Activate the shared context for draw
 	if(!wglMakeCurrent(m_hdc, m_hSharedRC)) {
+		printf("wglMakeCurrent 1 fail\n");
 		bOpenGL = false;
 		// It will start again if the start button is toggled
 		DrawDeck();
@@ -178,6 +189,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 
 		// Activate the shared context for draw
 		if(!wglMakeCurrent(m_hdc, m_hSharedRC)) {
+			printf("wglMakeCurrent 2 fail\n");
 			bOpenGL = false;
 			// It will start again if the start button is toggled
 			DrawDeck();

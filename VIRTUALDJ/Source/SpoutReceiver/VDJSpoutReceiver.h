@@ -27,6 +27,7 @@
 
 #pragma comment(lib, "d3dx9.lib") 
 
+// VDJ VideoFx plugin class
 class SpoutReceiverPlugin : public IVdjPluginVideoFx8
 {
 
