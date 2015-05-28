@@ -60,6 +60,17 @@
 //           - Version 2.06
 //	14.02.15 - Recomplied with latest SDK
 //           - Version 2.07
+//	06.04.15 - added .fs format to known extension list
+//  21.04.15 - added more known compatible textures to info
+//			 - removed quit if texture incompatible with DX9
+//			 - darker version number text
+//           - Version 2.08
+//	29.04.15 - added texture info button in place of info text
+//			 - TODO : cleanup duplicate code
+//			 - Version 2.09
+//	24.05.15 - Registry write of sender name
+//	28.05.15 - Reduced sleep after select sender due to registry flush delay
+//			 - Version 2.10
 //
 
 #include <windows.h>
@@ -82,6 +93,7 @@ bool bFileOpen = false;
 bool GetSenderDialog(HINSTANCE hInst);
 bool OpenFile(char *filename, const char *extension, int maxchars);
 int ParseCommandline();
+void wtrim(WCHAR * s);
 bool ReadPathFromRegistry(const char *filepath, const char *subkey, const char *valuename);
 bool WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename);
 char **argv = NULL;
@@ -99,8 +111,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
 	HWND hWnd = NULL;
 	int i, argc;
-	HMODULE module;
-	char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
 	char filename[MAX_PATH];
 	bool bRet = false;
 
@@ -114,18 +124,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutPanel 2.06\n");
+	printf("SpoutPanel 2.10\n");
 	*/
 
 	// Find the current active window to restore to the top when SpoutPanel quits
 	hWnd = GetForegroundWindow();
-
-	// Remove any temporary sender file
-	module = GetModuleHandle(NULL);
-	GetModuleFileNameA(module, path, MAX_PATH);
-	_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
-	_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
-	remove(path);
 
 	// Check for arguments
 	UserMessage[0] = 0;
@@ -137,13 +140,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		EnableWindow(hWnd, FALSE);
 		for( i=1; i <argc; i++ ) {
 			// printf("Arg[%d] = [%s]\n", i, argv[i]);
-			// Argument /DX9
+			// Argument /DX9 or default
 			if(strcmp(argv[i], "/DX9") == 0) {
 				// printf("DX9 mode\n");
 				bArgFound = true;
 				bDX9compatible = true;
 			}
-			// Argument /DX11 or default
+			// Argument /DX11
 			else if ( strcmp(argv[i], "/DX11") == 0) {
 				// printf("DX11 mode\n");
 				bArgFound = true;
@@ -184,21 +187,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		if(bFileOpen) {
 			// Get the current file path from the registry
 			ReadPathFromRegistry(filename, "Software\\Leading Edge\\SpoutPanel", "Filepath");
-			// printf("SpoutPanel read from registry\n[%s]\n", filename);
-
 			// What file extension did the user last choose ?
 			char *extension = NULL;
 			extension = PathFindExtensionA(filename);
-			// if(extension) // printf("extension is [%s]\n", extension);
 			bRet = OpenFile(filename, extension, MAX_PATH); // returns a file path if successful
 			// 04-01-15 - WritePathToRegistry
 			if(bRet) {
 				// printf("SpoutPanel write to registry\n[%s]\n", filename);
 				WritePathToRegistry(filename, "Software\\Leading Edge\\SpoutPanel", "Filepath");
 			}
-			// Give time before the app tries to access the file or the registry
-			// 07-01-15 - Now depends on registry flush
-			// Sleep(125);
+			// Time before the app tries to access the file or the registry depends on registry flush
 		}
 		else if(UserMessage[0] != 0) {
 			// Pop out a message dialog instead of a sender list
@@ -276,13 +274,14 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 	switch (message) {
 
-		// Make Version infor light grey
+		// Make Version info light grey
 		case WM_CTLCOLORSTATIC:
         {
 			HDC hdcStatic = (HDC)wParam;
 			// lParam is the handle to the control
 			if(GetDlgItem(hDlg, IDC_VERS) == (HWND)lParam) {
-				SetTextColor(hdcStatic, RGB(140, 140, 140));
+				// SetTextColor(hdcStatic, RGB(140, 140, 140));
+				SetTextColor(hdcStatic, RGB(96, 96, 96));
 				SetBkColor(hdcStatic, RGB(240, 240, 240));
 				if (hbrBkgnd == NULL) {
 					hbrBkgnd = CreateSolidBrush(RGB(240, 240, 240));
@@ -373,8 +372,20 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 						case 88 : // DXGI_FORMAT_B8G8R8AX_UNORM (untested)
 							sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRX]", info.width, info.height);
 							break;
+						case 2 : // DXGI_FORMAT_R32G32B32A32_FLOAT = 2
+							sprintf_s(temp, 512, "DirectX 11 : %dx%d [32bit float RGBA]", info.width, info.height);
+							break;
+						case 10 : // DXGI_FORMAT_R16G16B16A16_FLOAT = 10
+							sprintf_s(temp, 512, "DirectX 11 : %dx%d [16bit float RGBA]", info.width, info.height);
+							break;
+						case 13 : // DXGI_FORMAT_R16G16B16A16_SNORM = 13
+							sprintf_s(temp, 512, "DirectX 11 : %dx%d [16bit RGBA]", info.width, info.height);
+							break;
+						case 24 : // DXGI_FORMAT_R10G10B10A2_UNORM = 24
+							sprintf_s(temp, 512, "DirectX 11 : %dx%d [10bit RGBA]", info.width, info.height);
+							break;
 						default:
-							sprintf_s(temp, 512, "%dx%d :", info.width, info.height);
+							sprintf_s(temp, 512, "Format(%d) %dx%d :", info.format, info.width, info.height);
 							bUnKnown = true;
 							break;
 					}
@@ -475,6 +486,86 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 			switch (LOWORD(wParam)) {
 
+				case IDC_INFO :
+					GetDlgItemTextA(hDlg, IDC_ACTIVE, (LPSTR)SpoutSenderName, 256);
+					if(strlen(SpoutSenderName) > 0) {
+						// printf("    Sender  [%s]\n", SpoutSenderName);
+						if(sendernames.getSharedInfo(SpoutSenderName, &info)) {
+							// printf("(%s) - %dx%d [%d]\n", name, info.width, info.height, info.format);
+							// printf("\n    Sender  [%s]\n", SpoutSenderName);
+							// printf("    Width   %d\n", info.width);
+							// printf("    Height  %d\n", info.height);
+							// printf("    Format  %d\n", info.format);
+							// printf("    Handle  %u (%x)\n", info.shareHandle, info.shareHandle);
+							switch(info.format) {
+								// DX9
+								case 0 : // default unknown
+									sprintf_s(temp, 512, "DirectX : %dx%d\nDefault format", info.width, info.height);
+									break;
+								case 21 : // D3DFMT_A8R8G8B8
+									sprintf_s(temp, 512, "DirectX 9 : %dx%d\nD3DFMT_A8R8G8B8 (21)", info.width, info.height);
+									break;
+								case 22 : // D3DFMT_X8R8G8B8
+									sprintf_s(temp, 512, "DirectX 9 : %dx%d\nD3DFMT_X8R8G8B8 (22)", info.width, info.height);
+									break;
+								// DX11
+								// DXGI_FORMAT_R32G32B32A32_TYPELESS       = 1,
+								case 2 :
+									sprintf_s(temp, 512, "DirectX 11 : %dx%d\nDXGI_FORMAT_R32G32B32A32_FLOAT (2)", info.width, info.height);
+									break;
+								//    DXGI_FORMAT_R32G32B32A32_UINT           = 3,
+								//    DXGI_FORMAT_R32G32B32A32_SINT           = 4,
+								//    DXGI_FORMAT_R32G32B32_TYPELESS          = 5,
+								//    DXGI_FORMAT_R32G32B32_FLOAT             = 6,
+								//    DXGI_FORMAT_R32G32B32_UINT              = 7,
+								//    DXGI_FORMAT_R32G32B32_SINT              = 8,
+								//    DXGI_FORMAT_R16G16B16A16_TYPELESS       = 9,
+								case 10 :
+									sprintf_s(temp, 512, "DirectX 11 : %dx%d\nDXGI_FORMAT_R16G16B16A16_FLOAT (10)", info.width, info.height);
+									break;
+								//        DXGI_FORMAT_R16G16B16A16_UNORM          = 11,
+								//        DXGI_FORMAT_R16G16B16A16_UINT           = 12,
+								case 13 :
+									sprintf_s(temp, 512, "DirectX 11 : %dx%d\nDXGI_FORMAT_R16G16B16A16_SNORM (13)", info.width, info.height);
+									break;
+								//        DXGI_FORMAT_R16G16B16A16_SINT           = 14,
+								//        DXGI_FORMAT_R32G32_TYPELESS             = 15,
+								//        DXGI_FORMAT_R32G32_FLOAT                = 16,
+								//        DXGI_FORMAT_R32G32_UINT                 = 17,
+								//        DXGI_FORMAT_R32G32_SINT                 = 18,
+								//        DXGI_FORMAT_R32G8X24_TYPELESS           = 19,
+								//        DXGI_FORMAT_D32_FLOAT_S8X24_UINT        = 20,
+								//        DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS    = 21,
+								//        DXGI_FORMAT_X32_TYPELESS_G8X24_UINT     = 22,
+								//        DXGI_FORMAT_R10G10B10A2_TYPELESS        = 23,
+								case 24 :
+									sprintf_s(temp, 512, "DirectX 11 : %dx%d\nDXGI_FORMAT_R10G10B10A2_UNORM (24)", info.width, info.height);
+									break;
+								//        DXGI_FORMAT_R10G10B10A2_UINT            = 25,
+								//        DXGI_FORMAT_R11G11B10_FLOAT             = 26,
+								//        DXGI_FORMAT_R8G8B8A8_TYPELESS           = 27,								
+								case 28 : // DXGI_FORMAT_R8G8B8A8_UNORM
+									sprintf_s(temp, 512, "DirectX 11 : %dx%d\nDXGI_FORMAT_R8G8B8A8_UNORM (28)", info.width, info.height);
+									break;
+								//        DXGI_FORMAT_R8G8B8A8_UNORM_SRGB         = 29,
+								//        DXGI_FORMAT_R8G8B8A8_UINT               = 30,
+								//        DXGI_FORMAT_R8G8B8A8_SNORM              = 31,
+								//        DXGI_FORMAT_R8G8B8A8_SINT               = 32,
+								case 87 : // DXGI_FORMAT_B8G8R8A8_UNORM
+									sprintf_s(temp, 512, "DirectX 11 : %dx%d\nDXGI_FORMAT_B8G8R8A8_UNORM (87)", info.width, info.height);
+									break;
+								case 88 : // DXGI_FORMAT_B8G8R8AX_UNORM (untested)
+									sprintf_s(temp, 512, "DirectX 11 : %dx%d\nDXGI_FORMAT_B8G8R8AX_UNORM (88)", info.width, info.height);
+									break;
+								default:
+									sprintf_s(temp, 512, "DirectX : %dx%d\nUnlisted format [%d]", info.width, info.height, info.format);
+									break;
+							} // end switch(info.format)
+							MessageBoxA(hDlg, temp, "Texture info", MB_OK);
+						} // endif sendernames.getSharedInfo(SpoutSenderName, &info)
+					} // endif strlen(SpoutSenderName) > 0
+					return TRUE;
+
 				case IDOK: // 1
 
 					// printf("\nIDOK\n");
@@ -482,61 +573,18 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 					// Get contents of edit field into the global char string
 					GetDlgItemTextA(hDlg, IDC_ACTIVE, (LPSTR)SpoutSenderName, 256);
 					if(strlen(SpoutSenderName) > 0) {
-						// printf("    Sender  [%s]\n", SpoutSenderName);
 						// Does it have any shared info
 						if(sendernames.getSharedInfo(SpoutSenderName, &info)) {
-							// printf("    Width   %d\n", info.width);
-							// printf("    Height  %d\n", info.height);
-							// printf("    Format  %d\n", info.format);
-							// printf("    Handle  %u (%x)\n", info.shareHandle, info.shareHandle);
-							// Check the DirectX texture format and quit if not
-							// compatible if in compatibility mode
-							if(bDX9compatible) { // Specify DX9 compatible senders
-								// If it is 0 or 87 the sender is DX9 compatible
-								if(! ( info.format == 0  // default directX 9
-									|| info.format == 87 // compatible DX11
-									|| info.format == 22 // DX9 XRGB
-									|| info.format == 21 // DX9 ARGB
-									)) {
-									// printf("Specified DX9 and the format (%d) is not compatible\n", info.format);
-									EndDialog(hDlg, LOWORD(wParam));
-									return TRUE;
-								}
-							}
-
-							// Is it registered ?
-							if(!sendernames.FindSenderName(SpoutSenderName)) {
-								// Does it exist ?
-								if(sendernames.getSharedInfo(SpoutSenderName, &info)) {
-									// Allow for a Sender which is not registered - e.g. VVVV
-									// Registering the sender here will only work if another sender
-									// is running or "SpoutTray" is present and has been activated 
-									// to show the sender list after this sender has been registered, 
-									// because this instance of spoutSenderNames for spoutpanel
-									// will close and erase the active name map and the sender map
-									// and any map handle in this app will be closed
-										
-									// Failsafe method - open a text file and write to it,
-									// then delete it with the app when it is read or when
-									// SpoutPanel opens again. The path in calling app has to be 
-									// the same as for SpoutPanel.exe
-									ofstream myfile;
-									HMODULE module;
-									char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
-									module = GetModuleHandle(NULL);
-									GetModuleFileNameA(module, path, MAX_PATH);
-									_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
-									_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
-									myfile.open (path, ios::out | ios::app);
-									if (myfile.is_open()) {
-										myfile.write(SpoutSenderName, strlen(SpoutSenderName));
-										myfile.close();
-										// Register with the calling app
-									}
-								} // endif sender exists
-								// else printf("Sender[%s] does not exist\n", SpoutSenderName);
-							} // endif was not registered
-							// drop through
+							// It is an OK sender so write it's name to the registry
+							WritePathToRegistry(SpoutSenderName, "Software\\Leading Edge\\SpoutPanel", "Sendername");
+							// For a Sender which is not registered - e.g. VVVV
+							// Registering the sender here will only work if another sender
+							// is running or "SpoutTray" is present and has been activated 
+							// to show the sender list after this sender has been registered, 
+							// because this instance of spoutSenderNames for spoutpanel
+							// will close and erase the active name map and the sender map
+							// and any map handle in this app will be closed
+							// Therefore we write the name to the registry and register it again later if not registered
 						}
 						else {
 							// Serious enough for a messagebox
@@ -557,9 +605,9 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 						// sprintf_s(name, "Sender [%s] OK", SpoutSenderName);
 						// MessageBoxA(hDlg, name, "SpoutPanel", 0);
 
-						Sleep(250); // This seems necessary or the texture is not received
+						Sleep(125); // This seems necessary or the texture is not received
 
-					}
+					} // endif strlen(SpoutSenderName) > 0
 				
 				case IDCANCEL: // 2
 					EndDialog(hDlg, LOWORD(wParam));
@@ -615,6 +663,27 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 										case 88 : // DXGI_FORMAT_B8G8R8AX_UNORM (untested)
 											sprintf_s(temp, 512, "DirectX 11 : %dx%d [BGRX]", info.width, info.height);
 											break;
+										// 21.04.15 - added more formats
+										// DXGI_FORMAT_R32G32B32A32_FLOAT = 2
+										// DXGI_FORMAT_R16G16B16A16_FLOAT = 10
+										// DXGI_FORMAT_R16G16B16A16_SNORM = 13
+										// DXGI_FORMAT_R10G10B10A2_UNORM = 24
+										case 2 :
+											sprintf_s(temp, 512, "DirectX 11 : %dx%d [32bit float RGBA]", info.width, info.height);
+											break;
+
+										case 10 :
+											sprintf_s(temp, 512, "DirectX 11 : %dx%d [16bit float RGBA]", info.width, info.height);
+											break;
+
+										case 13 :
+											sprintf_s(temp, 512, "DirectX 11 : %dx%d [16bit RGBA]", info.width, info.height);
+											break;
+
+										case 24 :
+											sprintf_s(temp, 512, "DirectX 11 : %dx%d [10bit RGBA]", info.width, info.height);
+											break;
+					
 										default:
 											sprintf_s(temp, 512, "%dx%d : incompatible format [%d]", info.width, info.height, info.format);
 											break;
@@ -624,7 +693,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							}
 			                return TRUE; 
 					} // end switch (HIWORD(wParam))
-				// end case IDC_LIST1
+					// end case IDC_LIST1
 			} // end switch (LOWORD(wParam))
 		// end case case WM_COMMAND:
 		return TRUE;
@@ -679,7 +748,7 @@ bool OpenFile(char *filepath, const char *extension, int maxchars)
 	// What extension did the user last use?
 	if(extension) {
 		// Known file types
-		// .glsl, .frag
+		// .glsl, .frag. .fs
 		if(strcmp(extension, ".glsl") == 0) {
 			ofn.lpstrFilter = "Shader Files (*.glsl)\0*.glsl\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
 		    ofn.lpstrDefExt = "glsl";
@@ -687,6 +756,10 @@ bool OpenFile(char *filepath, const char *extension, int maxchars)
 		else if(strcmp(extension, ".frag") == 0) {
 			ofn.lpstrFilter = "Shader Files (*.frag)\0*.frag\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
 		    ofn.lpstrDefExt = "frag";
+		}
+		else if(strcmp(extension, ".fs") == 0) {
+			ofn.lpstrFilter = "ISF Shader Files (*.fs)\0*.fs\0Shader Files (*.frag)\0*.frag\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+		    ofn.lpstrDefExt = "fs";
 		}
 	}
 
@@ -711,17 +784,25 @@ bool OpenFile(char *filepath, const char *extension, int maxchars)
 //
 int ParseCommandline()
 {
-
 	int    argc, BuffSize, i;
 	WCHAR  *wcCommandLine;
 	LPWSTR *argw;
 	
 	// Get a WCHAR version of the parsed commande line
-	wcCommandLine = GetCommandLineW();	
-	argw = CommandLineToArgvW( wcCommandLine, &argc);
+	wcCommandLine = GetCommandLineW();
+	if (*wcCommandLine == NULL) 
+		return 0;
 
-	// Create the first dimension of the double array
-	argv = (char **)GlobalAlloc( LPTR, argc + 1 );
+	// When a program is launched directory with no arguments, GetCommandLineW() can return 
+	// an unquoted path with spaces in it. In this case, CommandLineToArgvW() will not handle 
+	// the string properly. Ran into this issue on Vista 64 with a 32-bit app, not sure how widespread it is.
+	wtrim(wcCommandLine);
+	argw = CommandLineToArgvW( wcCommandLine, &argc);
+	if(*argw == NULL || argc <= 1)
+		return 0;
+
+
+	argv = (char **)GlobalAlloc( LPTR, argc + 1 ); 	// Create the first dimension of the double array
 	
 	// convert each line of wcCommandeLine to MultiByte and place them
 	// to the argv[] array
@@ -731,10 +812,28 @@ int ParseCommandline()
 		WideCharToMultiByte( CP_ACP, WC_COMPOSITECHECK, argw[i], BuffSize * sizeof( WCHAR ) ,argv[i], BuffSize, NULL, NULL );
 	}
 	
+	// LJ DEBUG - argv is not released - memory leak
+
 	// return the number of arguments
 	return argc;
 
 } // ParseCommandline()
+
+
+void wtrim(WCHAR * s) {
+
+    WCHAR * p = s;
+    int l = (int)wcslen(p);
+
+	if(!s[0]) return;
+
+    while(iswspace(p[l - 1])) p[--l] = 0;
+    while(* p && iswspace(* p)) ++p, --l;
+
+    memmove(s, p, l*2+1);
+
+}
+
 
 bool ReadPathFromRegistry(const char *filepath, const char *subkey, const char *valuename)
 {

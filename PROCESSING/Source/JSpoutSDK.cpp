@@ -45,13 +45,14 @@
 				 - included FBO in call to SendTexture
 		06.02.15 - SDK recompile - added UseD3D9 define to compile for both DirectX 9 or DirectX 11
 		14.02.15 - SDK recompile for auto detection of DirectX compatibiliy (see SpoutGLDXinterop.cpp).
+		21.04.15 - SDK recompile for both DX9 and DX11 versions for optional installer
+		26.05.15 - Recompile for revised SpoutPanel registry write of sender name
 
 
 */
 #define GL_BGRA_EXT 0x80E1
 
-// Compile for DX9 instead of DX11
-// Not not necessary unless DX( is specifically required
+// Compile for DX9 instead of DX11 - default is DX11 (see SpoutGLDXinterop)
 // #define UseD3D9
 
 #include "malloc.h"
@@ -95,7 +96,7 @@ JNIEXPORT jint JNICALL Java_JSpout_InitSender (JNIEnv *env, jclass c, jstring na
 		uHeight = (unsigned int)height;
 
 
-		// Set to DX9 for compatibility with Version 1 apps
+		// Use DX11 or else use DX9 for compatibility with Version 1 apps
 		#ifdef UseD3D9
 		sender.SetDX9(true);
 		#else

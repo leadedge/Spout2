@@ -1,4 +1,4 @@
-/*
+﻿/*
 
     jit.gl.spoutsender.c
     
@@ -31,6 +31,11 @@
 	14.02.15 - added auto detection in SpoutGLDXinterop so can leave as DX11 default
 			 - added Optimus enablement export
 			 - Vers 2.004
+	17.02.15 - fixed glViewport call using float arguments instead of cast to int
+	25.04.15 - Changed from graphics auto detection to set DirectX mode to optional installer
+			   Version 2.005
+	26.05.15 - Recompile for revised SpoutPanel registry write of sender name
+			   Version 2.006
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -58,8 +63,9 @@
 
 */
 
-// Compile for DX9 instead of DX11
+// For DirectX 11 mode enable the define below, otherwise compiles for DirectX 9
 // 14.02.15 - added auto detection in SpoutGLDXinterop so can leave as DX11 default
+// 25.04.15 - changed to optional installation rather than auto-detect
 // #define UseD3D9
 
 #include "jit.common.h"
@@ -148,6 +154,12 @@ t_symbol *ps_width;
 t_symbol *ps_height;
 t_symbol *ps_glid;
 t_symbol *ps_gltarget;
+
+// LJ DEBUG
+t_symbol *ps_glinternal;
+t_symbol *ps_glformat;
+t_symbol *ps_gldatatype;
+
 t_symbol *ps_drawto;
 t_symbol *ps_jit_gl_texture; // our internal texture for matrix input
 
@@ -227,6 +239,13 @@ t_jit_err jit_gl_spout_sender_init(void)
 	ps_height = gensym("height");
 	ps_glid = gensym("glid");
 	ps_gltarget = gensym("gltarget");
+
+	// LJ DEBUG
+	ps_gldatatype = gensym("gldatatype");
+	ps_glinternal = gensym("glinternal");
+	ps_glformat = gensym("glformat");
+
+
 	ps_jit_gl_texture = gensym("jit_gl_texture");
 	ps_drawto = gensym("drawto");
 
@@ -255,9 +274,8 @@ t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name)
 		// Create a new Spout sender
 		x->mySender = new SpoutSender;
 		
-		// Set to DX9 for compatibility with Version 1 apps
 		#ifdef UseD3D9
-		x->mySender->SetDX9(true);
+		x->mySender->SetDX9(true); // Set to DX9 for compatibility with Version 1 apps
 		#else
 		x->mySender->SetDX9(false);
 		#endif
@@ -274,9 +292,9 @@ t_jit_gl_spout_sender *jit_gl_spout_sender_new(t_symbol * dest_name)
 			// set texture attributes.
 			t_symbol *name =  jit_symbol_unique();
 			jit_attr_setsym(x->texture, _jit_sym_name, name);
-			jit_attr_setsym(x->texture,gensym("defaultimage"),gensym("white"));
-			jit_attr_setlong(x->texture,gensym("rectangle"), 1);
-			jit_attr_setsym(x->texture, gensym("mode"),gensym("dynamic"));	
+			jit_attr_setsym(x->texture, gensym("defaultimage"), gensym("white"));
+			jit_attr_setlong(x->texture, gensym("rectangle"), 1);
+			jit_attr_setsym(x->texture, gensym("mode"), gensym("dynamic"));	
 			jit_attr_setsym(x, ps_texture, name);
 			x->textureSource = name; // init of texture
 		} 
@@ -359,7 +377,7 @@ t_jit_err jit_gl_spout_sender_jit_matrix(t_jit_gl_spout_sender *x, t_symbol *s, 
 		jit_object_method(x->texture,s,s,argc,argv);
 		// add texture to ob3d texture list
 		t_symbol *texName = jit_attr_getsym(x->texture, _jit_sym_name);
-		jit_attr_setsym(x,ps_texture,texName);
+		jit_attr_setsym(x, ps_texture, texName);
 		x->textureSource = texName; // out texture is matrix input
 	}
 
@@ -406,9 +424,16 @@ t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
 		GLuint texHeight = jit_attr_getlong(texture, ps_height);
 		GLuint texTarget = jit_attr_getlong(texture, ps_gltarget);
 
+		// LJ DEBUG
+		// 0x1401 - GL_UNSIGNED_BYTE
+		// 0x1406 - GL_FLOAT
+		// 0x1908 - GL_RGBA
+		GLuint texDatatype = jit_attr_getlong(texture, ps_gldatatype); // 0x1401 - GL_UNSIGNED_BYTE
+		GLuint texInternal = jit_attr_getlong(texture, ps_glinternal); // 0x1908 - GL_RGBA
+		GLuint texFormat = jit_attr_getlong(texture, ps_glformat); // 0x1908 - GL_RGBA
+
 		// all of these must be > 0
 		if(texId > 0 && texWidth > 0 && texHeight > 0)	{
-
 			// =========================================
 			// 
 			//		Save OpenGL state
@@ -482,7 +507,8 @@ t_jit_err jit_gl_spout_sender_draw(t_jit_gl_spout_sender *x)
 			glPopMatrix();
 
 			glPopAttrib();
-			glViewport(vpdim[0], vpdim[1], vpdim[2], vpdim[3]);
+			// glViewport(vpdim[0], vpdim[1], vpdim[2], vpdim[3]);
+			glViewport((int)vpdim[0], (int)vpdim[1], (int)vpdim[2],(GLsizei)vpdim[3]);
 		
 			glMatrixMode(GL_TEXTURE);
 			glPopMatrix();

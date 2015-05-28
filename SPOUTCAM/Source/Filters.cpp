@@ -115,7 +115,7 @@
 	04.02.15 - added conditional compile for DirectX 9 or DirectX 11
 			 - changed to direct OpenGL context creation rather than using glut
 	08.02.15 - Set texture format for ReceiveImage to GL_RGB. SDK default is now GL_RGBA.
-
+	25.04.15 - Changed from graphics auto detection to set DirectX mode to optional installer
 
 */
 
@@ -123,9 +123,8 @@
 #pragma warning(disable:4244)
 #pragma warning(disable:4711)
 
-// Compile for DX9 instead of DX11
-#define UseD3D9
-
+// Compile for DX9 instead of default DX11
+// #define UseD3D9
 #include <streams.h>
 #include <stdio.h>
 #include <conio.h>
@@ -148,7 +147,7 @@ CUnknown * WINAPI CVCam::CreateInstance(LPUNKNOWN lpunk, HRESULT *phr)
 	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutCam - 08-02-15\n");
+	printf("SpoutCam - 24-04-15\n");
 	*/
 
 
@@ -678,11 +677,11 @@ HRESULT CVCamStream::OpenReceiver()
 
 	} // end no glcontext 
 
-	// Set to DX9 for compatibility with Version 1 apps
+	
 	#ifdef UseD3D9
 	receiver.SetDX9(true);
 	#else
-	receiver.SetDX9(false);
+	receiver.SetDX9(false); // Set to DX9 for compatibility with Version 1 apps
 	#endif
 
 	// This is a receiver so try to connect

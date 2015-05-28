@@ -57,7 +57,6 @@ SpoutReceiver::~SpoutReceiver()
 //---------------------------------------------------------
 bool SpoutReceiver::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
 {
-	// printf("SpoutReceiver::ReceiveTexture HostFBO = %d\n", HostFBO);
 	return spout.ReceiveTexture(name, width, height, TextureID, TextureTarget, bInvert, HostFBO);
 }
 

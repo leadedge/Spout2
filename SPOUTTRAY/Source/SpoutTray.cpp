@@ -37,6 +37,8 @@
 //				 - Version 2.06
 //		06.02.15 - option to create a report application for installation
 //				 - Version 2.07
+//		21.04.15 - Updated diagnostics ot the same as the demo sender/receiver
+//				 - Recompile for release 2.003 - Version 2.08
 //
 #include "stdafx.h"
 #include "..\Spout.h"
@@ -50,13 +52,13 @@
 #define SWM_EXIT	WM_APP + 13//	close the window
 
 // Compile flag for report instead of a tray application
-// #define REPORT
+#define REPORT
 
 // Global Variables:
 HINSTANCE		hInst;	// current instance
 NOTIFYICONDATA	niData;	// notify icon data
 HWND hWndMain;
-bool bReport = false; // report only, otherwise start as a system tray application
+bool bReport; // Report compilation flag
 
 // Spout sender variables
 Spout spout;
@@ -74,6 +76,7 @@ BOOL				InitInstance(HINSTANCE, int);
 BOOL				OnInitDialog(HWND hWnd);
 void				ShowContextMenu(HWND hWnd);
 ULONGLONG			GetDllVersion(LPCTSTR lpszDllName);
+void				trim(char * s);
 
 INT_PTR CALLBACK	DlgProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
@@ -93,6 +96,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	*/
 
 	// Compile for a report or a tray application
+	bReport = false; // default
 	#ifdef REPORT
 		bReport = true;
 	#else
@@ -210,9 +214,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 		bool bOsviX = true;
 		bool bCanDetect = true;
-		char output[256];
+		// char output[256];
 		size_t charsConverted = 0;
-	
+
 		OSVERSIONINFOEX osvi;
 		ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
 		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
@@ -255,66 +259,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 				}
 			}
 		}
-
-		/*
-		if(bOsviX) {
-			// Here we can get additional service pack and other information
-			wServicePackMajor = osvi.wServicePackMajor;
-			wServicePackMinor = osvi.wServicePackMinor;
-			sprintf_s(output, 256, "SP %d.%d - ", wServicePackMajor, wServicePackMinor);
-			strcat_s(gldxcaps, 1024, output);
-		}
-		*/
-
-		// Additional info
-		DISPLAY_DEVICE DisplayDevice;
-		DisplayDevice.cb = sizeof(DISPLAY_DEVICE);
-		if(EnumDisplayDevices(NULL, 0, &DisplayDevice, 0)) {
-			wcstombs_s(&charsConverted, output, 129, DisplayDevice.DeviceKey, 128);
-	
-			HKEY hRegKey;
-			DWORD dwSize, dwKey;  
-			// Extract the subkey from the DeviceKey string
-			string SubKey = strstr(output, "System");
-
-			// Convert all slash to double slash using a C++ string function
-			// to get subkey string required to extract registry information
-			for (unsigned int i=0; i<SubKey.length(); i++) {
-				if (SubKey[i] == '\\') {
-					SubKey.insert(i, 1, '\\');
-					++i; // Skip inserted char
-				}
-			}
-
-			// Open the key to find the adapter details
-			if(RegOpenKeyExA(HKEY_LOCAL_MACHINE, SubKey.c_str(), NULL, KEY_READ, &hRegKey) == 0) { 
-				dwSize = MAX_PATH;
-				// Adapter name
-				if(RegQueryValueExA(hRegKey, "DriverDesc", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
-					strcpy_s(graphicsCard, 256, output);
-					strcat_s(gldxcaps, 1024, output);
-					strcat_s(gldxcaps, 1024, "\r\n");
-				}
-				if(RegQueryValueExA(hRegKey, "DriverVersion", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
-					strcat_s(gldxcaps, 1024, "Driver : ");
-					// Find the last 6 characters of the version string then
-					// convert to a float and multiply to get decimal in the right place
-					sprintf_s(output, 256, "%5.2f", atof(output + strlen(output)-6)*100.0);
-					strcat_s(gldxcaps, 1024, output);
-				} // endif DriverVersion
-				RegCloseKey(hRegKey);
-			} // endif RegOpenKey
-		} // endif EnumDisplayDevices
-
-		// Bits per pixel
-		hdc=GetDC(hWnd);
-		if (hdc) {
-			int bitsPerPixel = GetDeviceCaps(hdc, BITSPIXEL); //to get current system's color depth
-			sprintf_s(output, 256, " (%d bpp)", bitsPerPixel);
-			strcat_s(gldxcaps, 1024, output);
-		}
-		strcat_s(gldxcaps, 1024, "\r\n");
-
 		// Now we can call an initial hardware compatibilty check
 		// This checks for the NV_DX_interop extensions and will fail
 		// if the graphics deliver does not support them, or fbos
@@ -372,7 +316,65 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 		// should check if opengl context creation succeed
 		if(hRc) {
+
 			// ======================================================
+			if(spout.OpenSpout()) {
+				// Find the render adapter using DirectX and Windows functions
+				char renderadapter[256];
+				char renderdescription[256];
+				char renderversion[256];
+				char displaydescription[256];
+				char displayversion[256];
+				bool bDX9mode = true; 
+
+				spout.interop.GetAdapterInfo(renderadapter, 
+											renderdescription, renderversion,
+											displaydescription, displayversion,
+											256, bDX9mode);
+
+				/*
+				printf("GetAdapterInfo bDX9mode = %d\n", bDX9mode);
+				printf("renderadapter [%s]\n", renderadapter);
+				printf("renderdescription [%s]\n", renderdescription);
+				printf("renderversion [%s]\n", renderversion);
+				printf("displaydescription [%s]\n", displaydescription);
+				printf("displayversion [%s]\n", displayversion);
+				*/
+
+				// Add the device and driver desc to the caps text
+
+				// The display adapter
+				if(displaydescription) trim(displaydescription);
+				if(displayversion) trim(displayversion);
+				if(displaydescription[0] && displayversion[0]) {
+					strcat_s(gldxcaps, 1024, "Display : ");
+					strcat_s(gldxcaps, 1024, displaydescription);
+					strcat_s(gldxcaps, 1024, " (");
+					strcat_s(gldxcaps, 1024, displayversion);
+					strcat_s(gldxcaps, 1024, ")\r\n");
+				}
+
+				// The render adapter
+				if(renderdescription) trim(renderdescription);
+				if(!renderdescription || strlen(renderdescription) == 0) {
+					// nvd3d9wrap.dll is loaded into all processes when Optimus is enabled.
+					HMODULE nvd3d9wrap = GetModuleHandleA("nvd3d9wrap.dll");
+					if(nvd3d9wrap != NULL)
+						strcat_s(gldxcaps, 1024, "Optimus graphics integrated adapter\r\n");
+					else
+						strcat_s(gldxcaps, 1024, "No render device\r\n");
+				}
+				else if(renderdescription && renderversion) {
+					trim(renderdescription);
+					trim(renderversion);
+					strcat_s(gldxcaps, 1024, "Render : ");
+					strcat_s(gldxcaps, 1024, renderdescription);
+					strcat_s(gldxcaps, 1024, " (");
+					strcat_s(gldxcaps, 1024, renderversion);
+					strcat_s(gldxcaps, 1024, ")\r\n");
+				}
+			}
+
 			if(wglGetProcAddress("wglDXOpenDeviceNV")) { // extensions loaded OK
 				// It is possible that the extensions load OK, but that initialization will still fail
 				// This occurs when wglDXOpenDeviceNV fails - noted on dual graphics machines with NVIDIA Optimus
@@ -403,6 +405,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	}
 	SetDlgItemTextA(hWnd, IDC_INFOTEXT, (LPCSTR)gldxcaps);
 
+	/*
 	if(bReport) {
 
 		// Determine whether to install DirectX9 or DirectX 11
@@ -410,13 +413,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		if(strstr(gldxcaps, "memory share"))
 			strcpy_s(installcaps, 256, "INSTALL MEMORYSHARE");
 		else if(strstr(graphicsCard, "Intel"))
-			strcpy_s(installcaps, 256, "INSTALL DIRECTX 9");
+			strcpy_s(installcaps, 256, "DIRECTX 9");
 		else
-			strcpy_s(installcaps, 256, "DIRECTX 11 COMPATIBLE");
+			strcpy_s(installcaps, 256, "DIRECTX 11");
 
 		SetDlgItemTextA(hWnd, IDC_INSTALLTEXT, (LPCSTR)installcaps);
 
 	}
+	*/
 
 	SetDlgItemTextA(hWnd, IDC_INFOTEXT, (LPCSTR)gldxcaps);
 
@@ -570,6 +574,7 @@ INT_PTR CALLBACK DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	switch (message) {
 
+		/*
 		// Make Installation type Red text
 		case WM_CTLCOLORSTATIC:
         {
@@ -587,7 +592,8 @@ INT_PTR CALLBACK DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
         }
 		break;
-	
+		*/
+
 	case SWM_TRAYMSG:
 
 		switch(lParam) {
@@ -695,7 +701,7 @@ LRESULT CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		
 		case WM_INITDIALOG:
 			// Changeable text here
-			sprintf_s(temp,  1024, "SpoutTray - Version 2.06\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
+			sprintf_s(temp,  1024, "SpoutTray - Version 2.08\n\nSelect a sender for sharing frames with receivers\nThe sender selected becomes the 'active' sender\nwhich can be detected when a receiver starts.\n\nhttp://spout.zeal.co");
 			SetDlgItemTextA(hDlg, IDC_ABOUTBOXTEXT, (LPCSTR)temp);
 			return TRUE;
 
@@ -710,3 +716,12 @@ LRESULT CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 
+void trim(char * s) {
+    char * p = s;
+    int l = strlen(p);
+
+    while(isspace(p[l - 1])) p[--l] = 0;
+    while(* p && isspace(* p)) ++p, --l;
+
+    memmove(s, p, l + 1);
+}

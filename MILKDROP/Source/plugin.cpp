@@ -512,6 +512,8 @@ SPOUT NOTES :
 			 - included Ctrl-D to change from DirectX 9 to DirectX 11 
 			   (this might be removed in a future release if it gives trouble)
 			   The selected settings are saved when the Visualizer is stopped.
+	25.04.15 - Changed Spout SDK from graphics auto detection to set DirectX mode to optional installer
+			 - Recompile for dual DX option installer
 
 */
 
@@ -9724,6 +9726,7 @@ void CPlugin::KillSprite(int iSlot)
 
 void CPlugin::DoCustomSoundAnalysis()
 {
+
     memcpy(mysound.fWave[0], m_sound.fWaveform[0], sizeof(float)*576);
     memcpy(mysound.fWave[1], m_sound.fWaveform[1], sizeof(float)*576);
 
@@ -9880,7 +9883,7 @@ bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 		spoutsender.SetDX9(false);
 		// We have to set the shared texture format as DXGI_FORMAT_B8G8R8X8_UNORM so that receivers know it
 		// because the default is DXGI_FORMAT_B8G8R8A8_UNORM
-		bRet = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)DXGI_FORMAT_B8G8R8X8_UNORM );		spoutsender.SetDX9(true);
+		bRet = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)DXGI_FORMAT_B8G8R8X8_UNORM );
 	}
 	else {
 		printf("    Creating DX9 sender %dx%d\n", width, height);

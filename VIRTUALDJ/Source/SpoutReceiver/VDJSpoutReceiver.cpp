@@ -6,6 +6,14 @@
 //					Changed to /MT compile
 //					Inital release
 //					Version 1.0
+//		21.02.15	Fixed bug for fbo released too soon - only showed up with Optimus graphics
+//					Verson 1.01
+//		22.02.15	Debug SpoutPanel.exe to resolve freeze and crash due to "WideCharToMultiByte" with null command line
+//					Set DX9 compatible because incompatible DX11 textures will not be received
+//					Version 1.02
+//		26.05.15	Recompile for revised SpoutPanel registry write of sender name
+//					Version 1.03
+//
 //		------------------------------------------------------------
 //
 //		Copyright (C) 2015. Lynn Jarvis, Leading Edge. Pty. Ltd.
@@ -28,15 +36,10 @@
 #include "stdafx.h"
 #include "VDJSpoutReceiver.h"
 
-// This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
-extern "C" {
-    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-}
 
 VDJ_EXPORT HRESULT __stdcall DllGetClassObject(const GUID &rclsid, const GUID &riid, void** ppObject)
 { 
 	// Syphon comment : TODO: Is this good?
-
 	// LJ - this limits it to VDJ 8
 
 	// This is the standard DLL loader for COM object.
@@ -60,8 +63,9 @@ SpoutReceiverPlugin::SpoutReceiverPlugin()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("VDJSpoutReceiver\n");
+	printf("VDJSpoutReceiver - 1.03\n");
 	*/
+
 
 	// DirectX9
 	d3d_device = NULL;
@@ -103,7 +107,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 	infos->Author = "Lynn Jarvis";
     infos->PluginName = (char *)"VDJSpoutReceiver";
 	infos->Description = (char *)"Receives frames from a Spout Sender\nSpout : http://Spout.zeal.co/";
-	infos->Version = (char *)"v1.0";
+	infos->Version = (char *)"v1.03";
     infos->Bitmap = NULL;
 
 	// A receiver is a source
@@ -115,6 +119,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 
 HRESULT __stdcall SpoutReceiverPlugin::OnStart()
 {
+	// printf("OnStart\n");
 	StartOpenGL(); // Initialize openGL if not already
 	spoutreceiver.SetDX9(true); // To use DirectX 9 we need to specify that first
 	bSpoutOut = true;
@@ -124,29 +129,30 @@ HRESULT __stdcall SpoutReceiverPlugin::OnStart()
 
 HRESULT __stdcall SpoutReceiverPlugin::OnStop()
 {
+	// printf("OnStop\n");
 	StartOpenGL(); // return to the main context
-	bSpoutOut = false;
 	return NO_ERROR;
 }
 
 // When DirectX/OpenGL is initialized or closed, these functions will be called
 HRESULT __stdcall  SpoutReceiverPlugin::OnDeviceInit() 
 {
+	// printf("OnDeviceInit\n");
 	return S_OK;
 }
 
 HRESULT __stdcall SpoutReceiverPlugin::OnDeviceClose() 
 {
+	// printf("OnDeviceClose\n");
 	if(m_hRC && wglMakeCurrent(m_hdc, m_hRC)) {
-		if(bInitialized) {
-			spoutreceiver.ReleaseReceiver(); 
-		}
+		if(bInitialized) spoutreceiver.ReleaseReceiver(); 
 		if(m_fbo != 0) glDeleteFramebuffersEXT(1, &m_fbo);
 		if(m_GLtextureVJ != 0) glDeleteTextures(1, &m_GLtextureVJ);	
 		wglMakeCurrent(NULL, NULL);
 		wglDeleteContext(m_hSharedRC);
 		wglDeleteContext(m_hRC);
 	}
+	bInitialized = false;
 	bOpenGL = false;
 	m_GLtextureVJ = 0;
 	m_fbo = 0;
@@ -160,8 +166,12 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDeviceClose()
 
 HRESULT __stdcall SpoutReceiverPlugin::OnParameter(int ParamID) 
 {
+	// printf("OnParameter\n");
 	// Activate SpoutPanel to select a sender
-	spoutreceiver.SelectSenderPanel();
+	// 22.02.15 - set DX9 compatible because incompatible DX11 textures will not be received
+	spoutreceiver.SelectSenderPanel("/DX9");
+	// spoutreceiver.SelectSenderPanel();
+
 	return S_OK;
 }
 
@@ -187,8 +197,9 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 
 		// Activate the shared context for draw
 		if(!wglMakeCurrent(m_hdc, m_hSharedRC)) {
+			// printf("wglMakeCurrent 1 fail\n");
 			bOpenGL = false;
-			// It will start again if the start button is toggled
+			StartOpenGL(); // It will start again if the start button is toggled
 			return S_OK;
 		}
 
@@ -196,6 +207,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 		if(m_Width != desc.Width || m_Height != desc.Height || m_GLtextureVJ == 0) {
 			m_Width = desc.Width;
 			m_Height = desc.Height;
+			// printf("Creating texture %dx%d\n", m_Width, m_Height);
 			InitGLtexture(m_GLtextureVJ, m_Width, m_Height);
 			// Set the viewport to the same size for texture drawing
 			// We are the only GL context so no need to save it
@@ -203,8 +215,8 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 			return S_OK; // do no more for this frame
 		}
 
-		if(bSpoutOut) { // The plugin has started
-
+		if(bSpoutOut) { // The plugin has started		
+		
 			// Find a sender and connect when it is found
 			if(!bInitialized) {
 				if(spoutreceiver.GetActiveSender(activesender)) {
@@ -213,6 +225,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 					// Create a receiver using the active sender
 					strcpy_s(SenderName, 256, activesender);
 					spoutreceiver.CreateReceiver(SenderName, m_SenderWidth, m_SenderHeight, true);
+					// printf("Created receiver [%s]\n", SenderName);
 					bInitialized = true;
 					return S_OK; // do no more for this frame
 				} // found active sender
@@ -222,16 +235,13 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 			width = m_SenderWidth;
 			height = m_SenderHeight;
 
-			// This is a tricky thing
-			// Because no texture handle is passed, there is no actual read into a texture
-			// but all the checks for user selection and size change are done by ReceiveTexture
-			// and a new name, width and height are returned if so.
 			if(spoutreceiver.ReceiveTexture(ReceivedName, width, height)) {
 
 				// The texture was received OK, but check to see if the sender has changed
 				if(strcmp(ReceivedName, SenderName) != 0
 					||  m_SenderWidth  != width
 					||	m_SenderHeight != height) {
+						// printf("Sender has changed\n");
 						strcpy_s(SenderName, 256, ReceivedName); // In case the sender name has changed
 						m_SenderWidth = width;
 						m_SenderHeight = height;
@@ -252,8 +262,6 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 
 					spoutreceiver.DrawSharedTexture(1.0, 1.0, 1.0, false); // draw the sender's shared texture into the fbo
 
-					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
 					// Transfer the OpenGL texture to system memory pixels
 					hr = d3d_device->CreateOffscreenPlainSurface(desc.Width, desc.Height, D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &SourceSurface, NULL);
 					if(SUCCEEDED(hr)) {
@@ -266,35 +274,27 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 							glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, (GLvoid *)d3dlr.pBits);
 							glBindTexture(GL_TEXTURE_2D, 0);
 							glDisable(GL_TEXTURE_2D);
-							SourceSurface->UnlockRect();
 
 							// Copy to the Virtual DJ texture surface now that the surfaces are the same size
 							hr = dxTexture->GetSurfaceLevel(0, &TextureSurface);
-							if(SUCCEEDED(hr)) {
+							if(SUCCEEDED(hr))
 								hr = D3DXLoadSurfaceFromSurface(TextureSurface, NULL, NULL, SourceSurface, NULL, NULL, D3DTEXF_NONE, 0);
-							}
+
+							if(TextureSurface) TextureSurface->Release();
+							SourceSurface->UnlockRect();
+
+							// Copy to the Virtual DJ texture surface
+							hr = dxTexture->GetSurfaceLevel(0, &TextureSurface);
+							if(SUCCEEDED(hr)) 
+								D3DXLoadSurfaceFromSurface(TextureSurface, NULL, NULL, SourceSurface, NULL, NULL, D3DTEXF_NONE, 0);
 							if(TextureSurface) TextureSurface->Release();
 						} // lockrect failed
 					} // create plain surface failed
 					if(SourceSurface) SourceSurface->Release();
-
-				} // fbo attach failed
-				// else {
-					// GLfboError(status); // debug to report the error
-				// }
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
-				// This can be done to preserve memory in case the OpenGL context is lost and created again
-				// if(m_fbo != 0) glDeleteFramebuffersEXT(1, &m_fbo);
-
-			} // Received OK
-			else { 
-				// start again
-				if(bInitialized)  spoutreceiver.ReleaseReceiver();
-				bInitialized = false;		
-			} // Sender is gone
-		} // endif plugin activated
-
+					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+				} // FBO not complete
+			} // Receivetexture failed
+		} // plugin has not started
 	} // endif device
 
 	return S_FALSE; // no device
@@ -306,10 +306,14 @@ bool SpoutReceiverPlugin::StartOpenGL()
 {
 	HGLRC hrc = NULL;
 
+	// printf("StartOpenGL()\n");
+
 	// Check to see if a context has already been created
 	if(bOpenGL && m_hdc && m_hRC) {
+		// printf("    Switching back\n");
 		// Switch back to the primary context to check it
 		if(!wglMakeCurrent(m_hdc, m_hRC)) {
+			// printf("    Not current - starting again\n");
 			// Not current so start again
 			wglMakeCurrent(NULL, NULL);
 			wglDeleteContext(m_hSharedRC);
@@ -317,11 +321,17 @@ bool SpoutReceiverPlugin::StartOpenGL()
 			m_hdc = NULL;
 			m_hRC = NULL;
 			m_hSharedRC = NULL;
-			// restart opengl
+			bOpenGL = false;
+			m_GLtextureVJ = 0;
+			m_fbo = 0; // restart opengl
+			bInitialized = false; // start again
 			bOpenGL = InitOpenGL();
 		}
+		// do nothing
 	}
 	else {
+		// printf("    Starting new\n");
+		bInitialized = false; // start again
 		bOpenGL = InitOpenGL();
 	}
 
@@ -334,11 +344,13 @@ bool SpoutReceiverPlugin::InitOpenGL()
 {
 	// We only need an OpenGL context with no window
 	m_hwnd = GetForegroundWindow(); // Any window will do - we don't render to it
+
+	// m_hwnd = FindWindowA(NULL, "Video");
+
 	if(!m_hwnd) { printf("InitOpenGL error 1\n"); MessageBoxA(NULL, "Error 1\n", "InitOpenGL", MB_OK); return false; }
 	m_hdc = GetDC(m_hwnd);
 	if(!m_hdc) { printf("InitOpenGL error 2\n"); MessageBoxA(NULL, "Error 2\n", "InitOpenGL", MB_OK); return false; }
-	GetWindowTextA(m_hwnd, windowtitle, 256); // debug
-
+	
 	PIXELFORMATDESCRIPTOR pfd;
 	ZeroMemory( &pfd, sizeof( pfd ) );
 	pfd.nSize = sizeof( pfd );
@@ -346,7 +358,8 @@ bool SpoutReceiverPlugin::InitOpenGL()
 	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
 	pfd.iPixelType = PFD_TYPE_RGBA;
 	pfd.cColorBits = 32;
-	pfd.cDepthBits = 16;
+	pfd.cDepthBits = 24; // LJ DEBUG - was 16;
+	pfd.cStencilBits = 8; // LJ DEBUG -added
 	pfd.iLayerType = PFD_MAIN_PLANE;
 
 	int iFormat = ChoosePixelFormat(m_hdc, &pfd);
@@ -366,11 +379,20 @@ bool SpoutReceiverPlugin::InitOpenGL()
 	if(!wglShareLists(m_hSharedRC, m_hRC)) { printf("wglShareLists failed\n"); }
 
 	// Drop through to return true
-	// printf("InitOpenGL : hwnd = %x (%s), hdc = %x, context = %x\n", m_hwnd, windowtitle, m_hdc, m_hRC);
+	
+	/*
+	// GetWindowTextA(m_hwnd, windowtitle, 256); // debug
+	SendMessageTimeoutA(m_hwnd, WM_GETTEXT, 256, (LPARAM)windowtitle, SMTO_ABORTIFHUNG, 128, NULL);
+	printf("InitOpenGL : hwnd = %x (%s), hdc = %x, context = %x\n", m_hwnd, windowtitle, m_hdc, m_hRC);
 
-	// int nCurAvailMemoryInKB = 0;
-	// glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
-	// printf("Memory available [%i]\n", nCurAvailMemoryInKB);
+	int nTotalAvailMemoryInKB = 0;
+	int nCurAvailMemoryInKB = 0;
+	// GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
+	// GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
+	glGetIntegerv(0x9048, &nTotalAvailMemoryInKB);
+	glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
+	printf("Memory : Total [%i], Available [%i]\n", nTotalAvailMemoryInKB, nCurAvailMemoryInKB);
+	*/
 
 	return true;
 
@@ -388,6 +410,8 @@ bool SpoutReceiverPlugin::InitGLtexture(GLuint &texID, unsigned int width, unsig
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); // GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // GL_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, 0);
+
+	GLerror("Texture");
 
 	return true;
 }

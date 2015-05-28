@@ -45,6 +45,7 @@
 #pragma comment(lib, "shlwapi.lib") // for path functions
 #pragma comment(lib, "Shell32.lib") // for shellexecute
 #pragma comment(lib, "Advapi32.lib") // for registry functions
+#pragma comment(lib, "Version.lib") // for VersionInfo API
 
 
 #include "SpoutCommon.h"
@@ -185,6 +186,9 @@ class SPOUT_DLLEXP Spout {
 	// Registry read/write
 	bool WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename);
 	bool ReadPathFromRegistry(const char *filepath, const char *subkey, const char *valuename);
+
+	// Find a file version
+	bool FindFileVersion(const char *filepath, DWORD &versMS, DWORD &versLS);
 
 	// TODO - used ? cleanup
 	void StartCounter();

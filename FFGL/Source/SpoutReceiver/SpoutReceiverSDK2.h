@@ -45,12 +45,14 @@ protected:
 	unsigned int width, height;
 	GLuint myTexture;
 
+	GLuint myTexture2; // LJ DEBUG
+
 	char SenderName[256];
 	char UserSenderName[256];
 	char HostName[MAX_PATH];
 	
 	bool bInitialized;
-	bool bDX9mode; // Use DirectX 9 instead of DirectX 11
+	bool bDX9mode; // Use DirectX 9 instead of default DirectX 11
 	bool bMemoryMode; // force memory share mode
 	bool bAspect; // preserve aspect ratio of received texture in draw
 	bool bUseActive; // connect to the active sender
@@ -58,6 +60,7 @@ protected:
 
 	void InitTexture();
 	void DrawReceivedTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height);
+	bool WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename);
 
 };
 

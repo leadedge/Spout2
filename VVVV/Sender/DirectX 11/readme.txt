@@ -33,7 +33,7 @@ After manual entry in this way the sender name will be registered as a Spout sen
 can be picked up by other Spout receivers. 
 
 If the receiving programs are closed, or the patch closed and re-started the VVVV sender 
-may no longer be detected by other receivers. This is becasue the patch saves sender 
+may no longer be detected by other receivers. This is because the patch saves sender 
 details to memory directly and does not initialize or de-initialize as required. If the 
 name is entered again in the receiver, the VVVV sender patch will be registered correctly 
 once more.

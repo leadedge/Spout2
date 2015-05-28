@@ -82,7 +82,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
 
 		// DX9
-		bool bUseDX9; // Use DX9 or DX11 (default)
+		bool bUseDX9; // Use DX11 (default) or DX9
 		bool UseDX9(bool bDX9);
 		bool isDX9();
 

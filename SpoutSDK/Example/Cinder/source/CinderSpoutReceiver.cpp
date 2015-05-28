@@ -36,6 +36,9 @@
 	03.01.15 - SDK recompile - SpoutPanel detected from registry install path
 	04.02.15 - SDK recompile for default DX9 (see SpoutGLDXinterop.h)
 	14.02.15 - SDK recompile for default DX11 and auto compatibility detection (see SpoutGLDXinterop.cpp)
+	21.05.15 - Added optional SetDX9 call
+			 - Recompiled for both DX9 and DX11 for new installer
+	26.05.15 - Recompile for revised SpoutPanel registry write of sender name
 
 */
 
@@ -108,6 +111,11 @@ void SpoutBoxApp::update()
 		SenderName[0] = NULL; // the name will be filled when the receiver connects to a sender
 		width  = g_Width; // pass the initial width and height (they will be adjusted if necessary)
 		height = g_Height;
+
+		// Optionally set for DirectX 9 instead of default DirectX 11 functions
+		// spoutreceiver.SetDX9(true);	
+
+		// Initialize a receiver
 		if(spoutreceiver.CreateReceiver(SenderName, width, height, true)) { // true to find the active sender
 			// Optionally test for texture share compatibility
 			// bMemoryMode informs us whether Spout initialized for texture share or memory share

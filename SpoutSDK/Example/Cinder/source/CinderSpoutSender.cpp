@@ -35,7 +35,9 @@
 	03.01.15 - SDK recompile
 	04.02.15 - SDK recompile for default DX9 (see SpoutGLDXinterop.h)
 	14.02.15 - SDK recompile for default DX11 and auto compatibility detection (see SpoutGLDXinterop.cpp)
-
+	21.05.15 - Added optional SetDX9 call
+			 - Recompiled for both DX9 and DX11 for new installer
+	26.05.15 - Recompile for revised SpoutPanel registry write of sender name
 
 */
 #include "cinder/app/AppBasic.h"
@@ -107,11 +109,16 @@ void SpoutBoxApp::setup()
 	// We grab the screen so it has to be the same size
 	spoutTexture =  gl::Texture(g_Width, g_Height);
 	strcpy_s(SenderName, "CINDER Spout SDK Sender"); // we have to set a sender name first
+
+	// Optionally set for DirectX 9 instead of default DirectX 11 functions
+	// spoutsender.SetDX9(true);	
+
+	// Initialize a sender
+	bInitialized = spoutsender.CreateSender(SenderName, g_Width, g_Height);
+
 	// Optionally test for texture share compatibility
 	// bMemoryMode informs us whether Spout initialized for texture share or memory share
 	bMemoryMode = spoutsender.GetMemoryShareMode();
-	// Initialize a sender
-	bInitialized = spoutsender.CreateSender(SenderName, g_Width, g_Height);
 	// ----------------------------
 
 }

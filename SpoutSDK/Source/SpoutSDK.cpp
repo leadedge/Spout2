@@ -45,6 +45,8 @@
 //					  Next path checked is module path, then current working directory
 //		06.02.15	- added #pragma comment(lib,.. for "Shell32.lib" and "Advapi32.lib"
 //		10.02.15	- added Optimus NvOptimusEnablement export to Spout.h - should apply to all apps including this SDK.
+//		22.02.15	- added FindFileVersion for future use
+//		24.05.15	- Registry read of sender name for CheckSpoutPanel (see SpoutPanel)
 //
 // ================================================================
 /*
@@ -74,6 +76,7 @@
 
 Spout::Spout()
 {
+
 	/*
 	// Debug console window so printf works
 	FILE* pCout; // should really be freed on exit 
@@ -868,12 +871,15 @@ bool Spout::SelectSenderPanel(const char *message)
 
 	// First check whether the panel is already running
 	// Try to open the application mutex.
+	bool bUsesRegistry = true; // Spout vers 2.002 or later
 	hMutex1 = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 	if (!hMutex1) {
 		// No mutex, so not running, so can open it
-		// See if there has been a Spout installation with an install path for SpoutPanel.exe
+		// See if there has been a Spout installation >= 2.002 with an install path for SpoutPanel.exe
 		if(!ReadPathFromRegistry(path, "Software\\Leading Edge\\SpoutPanel", "InstallPath")) {
-			// Find the path of the host program where SpoutPanel should have been copied
+			bUsesRegistry = false;
+			// Path not registered so find the path of the host program
+			// where SpoutPanel should have been copied
 			module = GetModuleHandle(NULL);
 			GetModuleFileNameA(module, path, MAX_PATH);
 			_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
@@ -890,9 +896,23 @@ bool Spout::SelectSenderPanel(const char *message)
 				}
 			}
 		}
-		// printf("SpoutPanel path [%s]\n", path);
-		
-		//
+
+		/*
+		printf("SpoutPanel path [%s]\n", path); // Spoutpanel exists
+		// Can get version information here
+		DWORD dwFileVersionMS = 0;
+		DWORD dwFileVersionLS = 0;
+		if(FindFileVersion(path, dwFileVersionMS, dwFileVersionLS)) {
+			printf( "File Version: %d.%d.%d.%d\n",
+				( dwFileVersionMS >> 16 ) & 0xffff,
+				( dwFileVersionMS >>  0 ) & 0xffff,
+				( dwFileVersionLS >> 16 ) & 0xffff,
+				( dwFileVersionLS >>  0 ) & 0xffff
+			);
+		}
+		*/
+
+		// 
 		// Use  ShellExecuteEx so we can test its return value later
 		//
 		ZeroMemory(&ShExecInfo, sizeof(ShExecInfo));
@@ -905,7 +925,9 @@ bool Spout::SelectSenderPanel(const char *message)
 		ShExecInfo.lpDirectory = NULL;
 		ShExecInfo.nShow = SW_SHOW;
 		ShExecInfo.hInstApp = NULL;	
+
 		ShellExecuteExA(&ShExecInfo);
+
 		Sleep(125); // alow time for SpoutPanel to open 0.125s
 
 		// Returns straight away here but multiple instances of SpoutPanel
@@ -937,6 +959,63 @@ bool Spout::SelectSenderPanel(const char *message)
 	return true;
 
 } // end selectSenderPanel
+
+
+// 22.02.15 - find the SpoutPanel version
+// http://stackoverflow.com/questions/940707/how-do-i-programatically-get-the-version-of-a-dll-or-exe-file
+//
+bool Spout::FindFileVersion(const char *FilePath, DWORD &versMS, DWORD &versLS)
+{
+    DWORD               dwSize              = 0;
+    unsigned char       *pbVersionInfo      = NULL;
+    VS_FIXEDFILEINFO    *pFileInfo          = NULL;
+    UINT                puLenFileInfo       = 0;
+
+    // get the version info for the file requested
+    dwSize = GetFileVersionInfoSizeA(FilePath, NULL );
+    if ( dwSize == 0 ) {
+        printf( "Error in GetFileVersionInfoSize: %d\n", GetLastError() );
+        return false;
+    }
+
+    pbVersionInfo = new BYTE[ dwSize ];
+
+    if ( !GetFileVersionInfoA( FilePath, 0, dwSize, pbVersionInfo ) )  {
+        printf( "Error in GetFileVersionInfo: %d\n", GetLastError() );
+        delete[] pbVersionInfo;
+        return false;
+    }
+
+    if ( !VerQueryValueA( pbVersionInfo, "\\", (LPVOID*) &pFileInfo, &puLenFileInfo ) ) {
+        printf( "Error in VerQueryValue: %d\n", GetLastError() );
+        delete[] pbVersionInfo;
+        return false;
+    }
+
+	versMS = pFileInfo->dwFileVersionMS;
+	versLS = pFileInfo->dwFileVersionLS;
+
+    /*
+	printf( "File Version: %d.%d.%d.%d\n",
+		( pFileInfo->dwFileVersionMS >> 16 ) & 0xffff,
+        ( pFileInfo->dwFileVersionMS >>  0 ) & 0xffff,
+        ( pFileInfo->dwFileVersionLS >> 16 ) & 0xffff,
+        ( pFileInfo->dwFileVersionLS >>  0 ) & 0xffff
+        );
+
+    printf( "Product Version: %d.%d.%d.%d\n",
+        ( pFileInfo->dwProductVersionMS >> 24 ) & 0xffff,
+        ( pFileInfo->dwProductVersionMS >> 16 ) & 0xffff,
+        ( pFileInfo->dwProductVersionLS >>  8 ) & 0xffff,
+        ( pFileInfo->dwProductVersionLS >>  0 ) & 0xffff
+        );
+	*/
+
+	return true;
+
+}
+// ======================
+
 
 
 int Spout::GetSenderCount() {
@@ -1442,7 +1521,7 @@ bool Spout::CheckSpoutPanel()
 		if(bDxInitOK && bSpoutPanelOpened) { // User has activated spout panel
 			hMutex = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 			if (!hMutex) { // It has now closed
-				bSpoutPanelOpened = false;
+				bSpoutPanelOpened = false; // Don't do this part again
 				// call GetExitCodeProcess() with the hProcess member of SHELLEXECUTEINFO
 				// to get the exit code from SpoutPanel
 				if(ShExecInfo.hProcess) {
@@ -1450,57 +1529,56 @@ bool Spout::CheckSpoutPanel()
 					// Only act if exit code = 0 (OK)
 					if(dwExitCode == 0) {
 						// SpoutPanel has been activated
-						string line;
-						HMODULE module;
-						char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
+						// Check for an unregistered sender first because this will not have been set as active yet
+						// Try to get the current sender name from the registry (24.05.15 instead of text file)
+						// Text file method does not work if SpoutPanel is in the Program Files folder without Admin privileges
+						// SpoutPanel now always writes the selected sender name to the registry
+						// so this first check should always work
+						newname[0] = 0;
+						if(!ReadPathFromRegistry(newname, "Software\\Leading Edge\\SpoutPanel", "Sendername")) {
+							// Otherwise try the text file method
+							string line;
+							HMODULE module;
+							char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
 						
-						// Find the path of the host program where SpoutPanel should have been copied
-						module = GetModuleHandle(NULL);
-						GetModuleFileNameA(module, path, MAX_PATH);
-						_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
-						_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
+							// Find the path of the host program where SpoutPanel should have been copied
+							module = GetModuleHandle(NULL);
+							GetModuleFileNameA(module, path, MAX_PATH);
+							_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
+							_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
 
-						// Check for an unregistered sender first because
-						// this will not have been set as active yet
-
-						// Try to open the SpoutPanel text file to see if it exists
-						// Find the path of the host program where SpoutPanel should have been copied
-						module = GetModuleHandle(NULL);
-						GetModuleFileNameA(module, path, MAX_PATH);
-						_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
-						_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
-
-						ifstream infile(path, ios::in);
-						if (infile.is_open()) {
-							if(getline(infile, line)) {
-								// Does the sender exist ?
-								strcpy_s(newname, 256, line.c_str());
-								if(interop.senders.getSharedInfo(newname, &TextureInfo)) {
-									interop.senders.RegisterSenderName(newname);
-									strcpy_s(g_SharedMemoryName, 256, newname);
-									g_Width  = (unsigned int)TextureInfo.width;
-									g_Height = (unsigned int)TextureInfo.height;
-									g_Format = TextureInfo.format;
-
-									// Register in the list of senders and make it the active sender
-									interop.senders.RegisterSenderName(newname);
-									interop.senders.SetActiveSender(newname);
-
-									bRet = true; // will pass on next call to receivetexture
+							ifstream infile(path, ios::in);
+							if (infile.is_open()) {
+								if(getline(infile, line)) {
+									strcpy_s(newname, 256, line.c_str());
 								}
+								infile.close();
+								remove(path);
 							}
-							infile.close();
-							remove(path);
-						} // no text file
+						}
+
+						// Do we have a sender name from the registry or a text file ?
+						if(newname[0] != 0) {
+							// Does the sender exist ?
+							if(interop.senders.getSharedInfo(newname, &TextureInfo)) {
+								strcpy_s(g_SharedMemoryName, 256, newname);
+								g_Width  = (unsigned int)TextureInfo.width;
+								g_Height = (unsigned int)TextureInfo.height;
+								g_Format = TextureInfo.format;
+								// Register in the list of senders and make it the active sender
+								interop.senders.RegisterSenderName(newname);
+								interop.senders.SetActiveSender(newname);
+								bRet = true; // will pass on next call to receivetexture
+							}
+						}
 						else {
-							// get the active sender which is set by spoutpanel
+							// No name in registry or text file, so get the active sender which is set by spoutpanel
 							if(interop.senders.GetActiveSender(newname)) { // returns the active sender name
 								if(interop.getSharedInfo(newname, &TextureInfo)) {
 									strcpy_s(g_SharedMemoryName, 256, newname);
 									g_Width  = (unsigned int)TextureInfo.width;
 									g_Height = (unsigned int)TextureInfo.height;
 									g_Format = TextureInfo.format;
-									remove(path);
 									bRet = true; // will pass on next call to receivetexture
 								}
 							} // no active sender
@@ -1603,9 +1681,13 @@ bool Spout::FlipVertical(unsigned char *buffer, unsigned int width, unsigned int
 bool Spout::OpenSpout()
 {
 	HDC hdc;
+
+	// printf("OpenSpout\n");
+
 	// Safety return if already initialized
 	if(bDxInitOK || bMemoryShareInitOK) {
 		bGLDXcompatible = bDxInitOK;
+		// printf("    Already initialized\n");
 		return true;
 	}
 
@@ -1624,9 +1706,14 @@ bool Spout::OpenSpout()
 				bDxInitOK = true; // DirectX initialization OK
 				bMemoryShareInitOK = false;
 				bGLDXcompatible = true; // Set global compatibility flag as well
+				// printf("    OpenSpout OK\n");
 				return true; 
 			}
 		}
+		else {
+			printf("    Extensions failed to load\n");
+		}
+
 	}
 
 	// Drop through and try to initialize shared memory
@@ -1635,8 +1722,11 @@ bool Spout::OpenSpout()
 	bMemoryShareInitOK = false;
 	if(interop.MemoryShare.Initialize()) {
 		bMemoryShareInitOK = true;
+		// printf("   Initialized shared memory\n");
 		return true;
 	}
+
+	// printf("    OpenSpout failed\n");
 
 	return false;
 }

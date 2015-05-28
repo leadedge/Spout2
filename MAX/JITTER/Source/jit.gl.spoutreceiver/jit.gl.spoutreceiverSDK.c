@@ -34,6 +34,10 @@
 	14.02.15 - added auto detection in SpoutGLDXinterop so can leave as DX11 default
 			 - added Optimus enablement export
 			 - Vers 2.004
+	25.04.15 - Changed from graphics auto detection to set DirectX mode to optional installer
+			   Version 2.005
+	26.05.15 - Recompile for revised SpoutPanel registry write of sender name
+			   Version 2.006
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
@@ -66,10 +70,11 @@
 // ** Must be changed in Max file as well **
 // #define UseServers
 
-// Compile for DX9 instead of DX11 (default)
+// Compile for DX11 instead of DX9 (default)
 // A DX11 receiver can receive from both DX9 and DX11 senders
 // so compiling for DX9 is not necessary dependent on NVIDIA driver bug (10-08-14)
-// 14.02.15 - added auto detection in SpoutGLDXinterop so can leave as DX11 default
+// 14.02.15 - added auto detection in SpoutGLDXinterop
+// 25.04.15 - changed to optional installation rather than auto-detect
 // #define UseD3D9
 
 #include "jit.common.h"
@@ -354,9 +359,8 @@ t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name)
 		// Create a new Spout receiver
 		x->myReceiver      = new SpoutReceiver;
 
-		// Set to DX9 for compatibility with Version 1 apps
 		#ifdef UseD3D9
-		x->myReceiver->SetDX9(true);
+		x->myReceiver->SetDX9(true); // Set to DX9 for compatibility with Version 1 apps
 		#else
 		x->myReceiver->SetDX9(false);
 		#endif
@@ -647,7 +651,7 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 						glDisable(GL_TEXTURE_2D);
 					}
 					else {
-						// Othewise draw the shared texture straight into it
+						// Otherwise draw the shared texture straight into it
 						x->myReceiver->DrawSharedTexture();
 					}
 				}

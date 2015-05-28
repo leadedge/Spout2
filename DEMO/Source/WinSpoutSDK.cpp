@@ -66,6 +66,10 @@
 	13.02.15	- added additional sender information in About box.
 	14.02.15	- added GetTextureDescription function
 				- added Optimus enablement export
+	24.04.15	- Recompile without graphics auto detection for optional installer
+				- DirectX 11 by default in spoutGLDXinterop
+	26.05.15	- Recompile for revised SpoutPanel registry write of sender name
+
 
 */
 #define MAX_LOADSTRING 100
@@ -94,11 +98,13 @@
 #include <stdlib.h>
 #include <crtdbg.h>
 #include "..\..\SpoutSDK\Spout.h"
+#include "opencl.h"
 
 // This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
 extern "C" {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
+
 
 SpoutSender sender;		// Create a Spout sender object
 SpoutReceiver receiver;	// Create a Spout receiver object
@@ -108,7 +114,7 @@ SpoutReceiver receiver;	// Create a Spout receiver object
 // Rename the executable as necessary to get a sender/receiver pair
 //
 bool bReceiver      = false; // Compile for receiver (true) or sender (false)
-bool bDX9mode       = false; // Use DirectX 9 instead of DirectX 11 (default). Note Intel graphics detection switches back to DX9
+bool bDX9mode       = false; // Set true to use DirectX 9 instead of DirectX 11 (default)
 bool bMemoryMode    = false; // Use memory share specifically (default is false)
 // =============================================================
 
@@ -329,7 +335,7 @@ int LoadCubeTexture()
 	int Status=FALSE; // Status Indicator
 	HBITMAP hBMP;
 	BITMAP BMP;
-
+	
 	glGenTextures(1, &cubeTexture);					// Create the cube texture
 
 	// Load a bitmap from resources
@@ -506,7 +512,7 @@ bool OpenDeviceKey(const char* key, int maxsize, char *description, char *versio
 			// strcat_s(result, maxsize, "\r\n");
 		}
 		if(RegQueryValueExA(hRegKey, "DriverVersion", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
-			// printf("DriverVersion = %s\n", output);
+			printf("DriverVersion = %s\n", output);
 			// Find the last 6 characters of the version string then
 			// convert to a float and multiply to get decimal in the right place
 			sprintf_s(output, 256, "%5.2f", atof(output + strlen(output)-6)*100.0);
@@ -560,7 +566,7 @@ bool OpenSender()
 
 	// First load the cube image for this demo
 	if (!LoadCubeTexture()) {	// Jump To Texture Loading Routine
-		// printf("Error 1\n");
+		printf("    Error 1\n");
 		return false;			// If Texture Didn't Load Return FALSE
 	}
 
@@ -582,17 +588,15 @@ bool OpenSender()
 	// For success check whether DirectX 11 initialization succeeded
 	if(sender.CreateSender(g_SenderName, g_Width, g_Height)) {
 		if(sender.GetDX9()) bDX9mode = true; // TODO downgrade if DX11 did not initialize
-		// printf("Created sender [%s], bDX9mode = %d\n", g_SenderName, bDX9mode);
+		// printf("    Created sender [%s], bDX9mode = %d\n", g_SenderName, bDX9mode);
 		// Get texture details for screen display
 		// GetTextureDescription(g_SenderName, g_SenderInfo, 256);
 		return true;
 	}
 
-	// printf("Error 2\n");
+	// printf("    Error 2\n");
 
 	return false;
-
-	// return(sender.CreateSender(g_SenderName, g_Width, g_Height));
 
 } // end OpenSender
 
@@ -954,6 +958,33 @@ BOOL CreateGLWindow(int width, int height, int bits)
 	DWORD		dwStyle;				// Window Style
 	RECT		WindowRect;				// Grabs Rectangle Upper Left / Lower Right Values
 
+	/*
+	// LJ DEBUG - possible optimus switch
+	cl_uint platformIdCount = 0;
+	cl_uint deviceIdCount = 0;
+    cl_platform_id	cpPlatform;
+	cl_int ciErrNum;
+    //Get the NVIDIA platform
+    // ciErrNum = oclGetPlatformID(&cpPlatform);
+	// query what platforms are available
+	clGetPlatformIDs (0, nullptr, &platformIdCount);
+
+	// Call the function first with an empty output to obtain the number of numbers
+	std::vector<cl_platform_id> platformIds (platformIdCount);
+
+	// After that, we can fetch the platforms in a correctly sized buffer
+	// an obtain the list of available OpenCL platforms
+	clGetPlatformIDs (platformIdCount, platformIds.data (), nullptr);
+
+	// Query the devices for the first platform we’ve found
+	clGetDeviceIDs (platformIds[0], CL_DEVICE_TYPE_ALL, 0, nullptr, &deviceIdCount);
+	if (deviceIdCount == 0) {
+		printf("No OpenCL devices found\n");
+	} else {
+		printf("Found %d OpenCL devices\n", deviceIdCount);
+	}
+	*/
+
 	WindowRect.left=(long)0;			// Set Left Value To 0
 	WindowRect.right=(long)width;		// Set Right Value To Requested Width
 	WindowRect.top=(long)0;				// Set Top Value To 0
@@ -1113,14 +1144,20 @@ BOOL CreateGLWindow(int width, int height, int bits)
 		// Check if OpenDirectX11 succeeded
 		if(bReceiver) {
 			// Make sure it has been initialized
-			if(!receiver.spout.OpenSpout()) return 0;
+			if(!receiver.spout.OpenSpout()) {
+				MessageBoxA(NULL,"Receiver OpenSpout Failed.", "ERROR", MB_OK|MB_ICONEXCLAMATION);
+				return FALSE;
+			}
 			bDX9mode = receiver.GetDX9();
 			bMemoryMode = receiver.GetMemoryShareMode();
 			// printf("Receiver bDX9mode = %d\n", bDX9mode);
 			sprintf_s(gldxcaps, 1024, "Spout Receiver");
 		}
 		else {
-			if(!sender.spout.OpenSpout()) return 0;
+			if(!sender.spout.OpenSpout()) {
+				MessageBoxA(NULL,"Sender OpenSpout Failed.", "ERROR", MB_OK|MB_ICONEXCLAMATION);
+				return FALSE;
+			}
 			bDX9mode = sender.GetDX9();
 			bMemoryMode = sender.GetMemoryShareMode();
 			// printf("Sender bDX9mode = %d\n", bDX9mode);
@@ -1191,19 +1228,22 @@ BOOL CreateGLWindow(int width, int height, int bits)
 				}
 			}
 		}
-		// strcat_s(gldxcaps, 1024, "\r\n");
+		strcat_s(gldxcaps, 1024, "\r\n");
 
+		/*
 		if(bOsviX) {
 			// Here we can get additional service pack and other information
+			// Reliable ??
 			char output[256];
 			wServicePackMajor = osvi.wServicePackMajor;
 			wServicePackMinor = osvi.wServicePackMinor;
 			sprintf_s(output, 256, " SP %d.%d\r\n", wServicePackMajor, wServicePackMinor);
 			strcat_s(gldxcaps, 1024, output);
 		}
+		*/
+
 
 		// Find the render adapter using DirectX and Windows functions
-		// If Intel, the SDK swithes to DiectX 9
 		char renderadapter[256];
 		char renderdescription[256];
 		char renderversion[256];
@@ -1541,7 +1581,6 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 	printf("WinSpoutSDK\n");
 	*/
 
-
 	// suppress warnings
 	msg.wParam = 0;
 
@@ -1638,6 +1677,10 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 
 				else {								// Not Time To Quit, Update Screen
 					
+					// Sleep(3);        // yield to other processes or threads
+					// SwitchToThread();
+					// WaitForInputIdle(NULL, 0);
+
 					if(!DrawGLScene()) {			// Draw The Scene
 						done=TRUE;	// Signal Quit for failure
 					}
@@ -1658,7 +1701,12 @@ int APIENTRY _tWinMain(	HINSTANCE hInstance,
 					// modern hardware to perfectly achieve vertical synchronization (vsync).
 					//
 					// LJ DEBUG - has no discernable effect on sync
+					// Does influence CPU load for a sender - vsync related
 					// glFinish();
+
+					// __GL_YIELD "USLEEP" 	OpenGL will call usleep(0) to yield.
+
+
 				}
 
 			} // endif active
@@ -2094,3 +2142,4 @@ bool is64bitOS()
 
 }
 */
+

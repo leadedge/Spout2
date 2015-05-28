@@ -37,7 +37,7 @@
    </BOUNDS>
    <BOUNDS type="Node" left="1449" top="1989" width="0" height="0">
    </BOUNDS>
-   <PIN pinname="Input String" slicecount="1" values="|Spout Sender 32bit|">
+   <PIN pinname="Input String" slicecount="1" values="|Spout DX11 Sender|">
    </PIN>
    <PIN pinname="Default" slicecount="1" values="#vvvv">
    </PIN>

@@ -8,7 +8,9 @@
 	04.02.15 - corrected memoryshare detection after createreceiver
 			 - SDK recompile for default DX9 (see SpoutGLDXinterop.h)
 	04.02.15 - SDK recompile for default DX11 and auto compatibility detection (see SpoutGLDXinterop.cpp)
-
+	21.05.15 - Added optional SetDX9 call
+			 - Recompiled for both DX9 and DX11 for new installer
+	26.05.15 - Recompile for revised SpoutPanel registry write of sender name
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -78,7 +80,11 @@ void testApp::draw() {
 	// and "CreateReceiver" can be called repeatedly until a sender is found.
 	// "CreateReceiver" will update the passed name, and dimensions.
 	if(!bInitialized) {
-		// Specify true to attempt to connect to the active sender
+
+		// Optionally set for DirectX 9 instead of default DirectX 11 functions
+		spoutreceiver->SetDX9(true);
+
+		// Create the receiver and specify true to attempt to connect to the active sender
 		if(spoutreceiver->CreateReceiver(SenderName, width, height, true)) {
 			// Detect texture share compatibility for status below
 			bMemoryShare = spoutreceiver->GetMemoryShareMode();

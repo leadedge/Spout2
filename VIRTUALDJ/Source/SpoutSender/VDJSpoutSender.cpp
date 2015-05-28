@@ -5,6 +5,11 @@
 //		14.02.15	added Optimus enablement export
 //					Changed to /MT compile
 //					Version 1.0
+//		21.02.15	Removed OptimusEnablement export - does not work for a dll
+//					Version 1.01
+//		26.05.15	Recompile for revised SpoutPanel registry write of sender name
+//					Version 1.02
+//
 //		------------------------------------------------------------
 //
 //		Copyright (C) 2015. Lynn Jarvis, Leading Edge. Pty. Ltd.
@@ -31,14 +36,11 @@
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 #endif
 
-// This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
-extern "C" {
-    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-}
 
 VDJ_EXPORT HRESULT __stdcall DllGetClassObject(const GUID &rclsid, const GUID &riid, void** ppObject)
 { 
 	// Syphon comment : TODO: Is this good?
+	// LJ - this limits it to VDJ 8
 	if(memcmp(&rclsid, &CLSID_VdjPlugin8, sizeof(GUID)) != 0) return CLASS_E_CLASSNOTAVAILABLE; 
     if(memcmp(&riid, &IID_IVdjPluginVideoFx8, sizeof(GUID)) != 0) return CLASS_E_CLASSNOTAVAILABLE; 
 
@@ -74,7 +76,7 @@ SpoutSenderPlugin::SpoutSenderPlugin()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutSenderPlugin()\n");
+	printf("SpoutSenderPlugin() - testing\n");
 	*/
 
 
@@ -95,7 +97,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 	infos->Author = "Lynn Jarvis";
     infos->PluginName = (char *)"VDJSpoutSender";
     infos->Description = (char *)"Sends frames to a Spout Receiver\nSpout : http://Spout.zeal.co/";
-	infos->Version = (char *)"v1.0";
+	infos->Version = (char *)"v1.02";
     infos->Bitmap = NULL;
 
 	// A sender is an effect
@@ -108,8 +110,9 @@ HRESULT __stdcall SpoutSenderPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 
 HRESULT __stdcall SpoutSenderPlugin::OnStart()
 {
-	printf("OnStart()\n");
+	// printf("OnStart()\n");
 	StartOpenGL(); // Initialize openGL if not already
+	spoutsender.SetDX9(true); // To use DirectX 9 we need to specify that first
 	bSpoutOut = true;
 
 	return NO_ERROR;
@@ -117,9 +120,22 @@ HRESULT __stdcall SpoutSenderPlugin::OnStart()
 
 HRESULT __stdcall SpoutSenderPlugin::OnStop()
 {
-	printf("OnStop()\n");
+	// printf("OnStop()\n");
+	// StartOpenGL(); // return to the main context
 
-	StartOpenGL(); // return to the main context
+	// Cleanup and start again on start
+	if(m_hRC && wglMakeCurrent(m_hdc, m_hRC)) {
+		if(bInitialized) spoutsender.ReleaseSender();
+		wglMakeCurrent(NULL, NULL);
+		wglDeleteContext(m_hSharedRC);
+		wglDeleteContext(m_hRC);
+	}
+	bInitialized = false;
+	bOpenGL = false;
+	m_hwnd = NULL;
+	m_hdc = NULL;
+	m_hRC = NULL;
+	m_hSharedRC = NULL;
 	bSpoutOut = false;
  
 	return NO_ERROR;
@@ -128,13 +144,13 @@ HRESULT __stdcall SpoutSenderPlugin::OnStop()
 // When DirectX/OpenGL is initialized or closed, these functions will be called
 HRESULT __stdcall  SpoutSenderPlugin::OnDeviceInit() 
 {
-	printf("OnDeviceInit()\n");
+	// printf("OnDeviceInit()\n");
 	return S_OK;
 }
 
 HRESULT __stdcall SpoutSenderPlugin::OnDeviceClose() 
 {
-	printf("OnDeviceClose()\n");
+	// printf("OnDeviceClose()\n");
 	// Cleanup
 	if(m_hRC && wglMakeCurrent(m_hdc, m_hRC)) {
 		if(bInitialized) spoutsender.ReleaseSender();
@@ -142,6 +158,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnDeviceClose()
 		wglDeleteContext(m_hSharedRC);
 		wglDeleteContext(m_hRC);
 	}
+	bInitialized = false;
 	bOpenGL = false;
 	m_hwnd = NULL;
 	m_hdc = NULL;
@@ -160,14 +177,20 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 	TVertex *vertices;
 
 	// Quit if OpenGL initialization failed
-	if(!bOpenGL) { DrawDeck(); return S_OK; }
+	if(!bOpenGL) { 
+		DrawDeck(); 
+		return S_OK; 
+	}
 
 	// Activate the shared context for draw
+	// This can fail if the video window is closed and re-opened
+	// Possibly because the dc that was orginally used is gone
+	// It will start again if the start button is toggled
+	// but calling StartOpenGL here seems to work OK.
 	if(!wglMakeCurrent(m_hdc, m_hSharedRC)) {
-		printf("wglMakeCurrent 1 fail\n");
+		// printf("wglMakeCurrent 1 fail\n");
 		bOpenGL = false;
-		// It will start again if the start button is toggled
-		DrawDeck();
+		StartOpenGL(); // Initialize openGL again
 		return S_OK;
 	}
 
@@ -183,17 +206,8 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 		GetTexture(VdjVideoEngineDirectX9, (void **)&dxTexture, &vertices);
 		dxTexture->GetLevelDesc(0, &desc);
 		if(!dxTexture) {
-			DrawDeck();
-		    return S_OK; // Let VirtualDJ do the drawing
-		}
-
-		// Activate the shared context for draw
-		if(!wglMakeCurrent(m_hdc, m_hSharedRC)) {
-			printf("wglMakeCurrent 2 fail\n");
-			bOpenGL = false;
-			// It will start again if the start button is toggled
-			DrawDeck();
-			return S_OK;
+			DrawDeck(); // Let VirtualDJ do the drawing
+		    return S_OK;
 		}
 
 		// Is Spout initialized yet ?
@@ -210,6 +224,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 			// And we also have to set the shared texture format as D3DFMT_X8R8G8B8 so that receivers know it
 			// because the default format argument is zero and that assumes D3DFMT_A8R8G8B8
 			if(spoutsender.CreateSender(SenderName, m_Width, m_Height, (DWORD)D3DFMT_X8R8G8B8)) {
+				// printf("Created sender [%s]\n", SenderName);
 				bInitialized = true;
 			}
 
@@ -235,10 +250,8 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 				hr = dxTexture->GetSurfaceLevel(0, &texture_surface);
 
 				if(SUCCEEDED(hr)) {
-
 					// Copy Surface to Surface
 					hr = d3d_device->GetRenderTargetData(texture_surface, source_surface);	
-
 					if(SUCCEEDED(hr)) {
 						// Lock the source surface using some flags for optimization
 						hr = source_surface->LockRect(&d3dlr, NULL, D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_READONLY);
@@ -264,7 +277,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 		}
 	}
 
-	DrawDeck(); // Draw the image coming in (necessary ?)
+	DrawDeck(); // Draw the image coming in
 
 	return S_OK;
 
@@ -318,7 +331,8 @@ bool SpoutSenderPlugin::InitOpenGL()
 	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
 	pfd.iPixelType = PFD_TYPE_RGBA;
 	pfd.cColorBits = 32;
-	pfd.cDepthBits = 16;
+	pfd.cDepthBits = 24; // LJ DEBUG - was 16;
+	pfd.cStencilBits = 8; // LJ DEBUG -added
 	pfd.iLayerType = PFD_MAIN_PLANE;
 
 	int iFormat = ChoosePixelFormat(m_hdc, &pfd);
@@ -338,11 +352,17 @@ bool SpoutSenderPlugin::InitOpenGL()
 	if(!wglShareLists(m_hSharedRC, m_hRC)) { printf("wglShareLists failed\n"); }
 
 	// Drop through to return true
-	// printf("InitOpenGL : hwnd = %x (%s), hdc = %x, context = %x\n", m_hwnd, windowtitle, m_hdc, m_hRC);
-
-	// int nCurAvailMemoryInKB = 0;
-	// glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
-	// printf("Memory available [%i]\n", nCurAvailMemoryInKB);
+	/*
+	SendMessageTimeoutA(m_hwnd, WM_GETTEXT, 256, (LPARAM)windowtitle, SMTO_ABORTIFHUNG, 128, NULL);
+	printf("InitOpenGL : hwnd = %x (%s), hdc = %x, context = %x\n", m_hwnd, windowtitle, m_hdc, m_hRC);
+	int nTotalAvailMemoryInKB = 0;
+	int nCurAvailMemoryInKB = 0;
+	// GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
+	// GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
+	glGetIntegerv(0x9048, &nTotalAvailMemoryInKB);
+	glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
+	printf("Memory : Total [%i], Available [%i]\n", nTotalAvailMemoryInKB, nCurAvailMemoryInKB);
+	*/
 
 	return true;
 

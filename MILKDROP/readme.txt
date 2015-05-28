@@ -1,11 +1,24 @@
-Copy vis_milk2.dll to the Winamp plugins folder
+vis_milk2.dll is a 32bit visualization plugin for Winamp modified for Spout output.
 
-Copy glut32.dll to
+Copy vis_milk2.dll from the Spout distribution to the Winamp plugins folder.
 
-32 bit Windows
-C:\WINDOWS\system32
+Start Winamp and select : Options > Visualization > Select Plugin
+and choose "MilkDrop v2.25c [vis_milk2.dll]"
 
-64 bit windows
-C:\Windows\SysWOW64
+Spout options are available in the Visualization configuration control panel :
+
+Options -> Visualizations -> Configure Plugin
+
+    MORE SETTINGS tab
+      [ ] Enable Spout output (default ON)
+      [ ] Enable Spout DirectX 11 mode (Default OFF - DirectX 9)
+
+Settings are saved with OK.
+
+These options can also be changed when the Visualization is running  :
 
 Ctrl-Z to enable or disable Spout output
+Ctrl-D to toggle between DirectX 9 and DirectX 11 output
+
+The selected settings are saved when the Visualizer is stopped.
+

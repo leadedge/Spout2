@@ -10,4 +10,3 @@
 #define IDC_INFO                                40001
 #define IDC_USERTEXT							40002
 #define IDC_VERS								40003
-

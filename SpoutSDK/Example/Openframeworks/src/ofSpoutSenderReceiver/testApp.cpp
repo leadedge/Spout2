@@ -7,7 +7,9 @@
 	02.01.15 - SDK recompile
 	04.02.15 - SDK recompile for default DX9 (see SpoutGLDXinterop.h)
 	14.02.15 - SDK recompile for default DX11 and auto compatibility detection (see SpoutGLDXinterop.cpp)
-
+	21.05.15 - Added optional SetDX9 call
+			 - Recompiled for both DX9 and DX11 for new installer
+	26.05.15 - Recompile for revised SpoutPanel registry write of sender name
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -87,9 +89,16 @@ void testApp::draw() {
 	// INITIALIZE A SENDER
 	//
 	if(!bSenderInitialized) {
-		// Test for textureshare compatibility
-		bMemoryShare = spoutsender->GetMemoryShareMode();
+
+		// Optionally set for DirectX 9 instead of default DirectX 11 functions
+		// spoutsender->SetDX9(true);
+
+		// Create the sender
 		bSenderInitialized = spoutsender->CreateSender(senderName, g_Width, g_Height);
+		
+		// Test for textureshare compatibility - only used for screen display
+		bMemoryShare = spoutsender->GetMemoryShareMode();
+
 	}
 	// Sender initialization will only fail if something is wrong
 
@@ -104,6 +113,10 @@ void testApp::draw() {
 	// and "CreateReceiver" can be called repeatedly until a sender is found.
 	// "CreateReceiver" will update the passed name, and dimensions.
 	if(!bReceverInitialized) {
+		
+		// Optionally set for DirectX 9 instead of default DirectX 11 functions
+		// spoutreceiver->SetDX9(true);
+
 		if(spoutreceiver->CreateReceiver(receiverName, width, height, true)) {
 			// Is the size of the detected sender different ?
 			if(width != receiverWidth || height != receiverWidth ) {

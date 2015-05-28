@@ -72,22 +72,26 @@
 			   Included define for DirectX 9 compile
 			   Recompiled for DirectX 11, DirectX9 and Memoryshare for 2015 release
 			   Version 3.021
-	07.02.15 - corrected unregisterd sender logic in FFPARM_UPDATE
+	07.02.15 - corrected unregistered sender logic in FFPARM_UPDATE
 			   Version 3.022
-
+	23.02.15 - Removed OptimusEnablement export because it does not work in a plugin
+	25.04.15 - Changed from graphics auto detection to set DirectX mode to optional installer
+	01.05.15 - Changed project Linker > Debugging > Generate debugging info to YES
+			   Version 3.023
+	01.05.15 - Recompiled with WM_PAINT in SpoutGLDXinterop OpenDirectX9 instead of UpdateWindow
+			   Version 3.024
+	26.05.15 - Registry write of entered sender name (see also change to SpoutPanel)
+			   Version 3.025
 
 */
 #include "SpoutReceiverSDK2.h"
 #include <FFGL.h>
 #include <FFGLLib.h>
 
-// This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
-extern "C" {
-    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-}
 
-// For DirectX 9 mode enable the define below, otherwise compiles for DirectX 11
+// For DirectX 11 mode enable the define below, otherwise compiles for DirectX 9
 // 14.02.15 - added auto detection in SpoutGLDXinterop so can leave as DX11 default
+// 25.04.15 - changed default to optional installation rather than auto-detect
 // #define DX9Mode
 
 // For memoryshare, enable the define below
@@ -112,24 +116,24 @@ static CFFGLPluginInfo PluginInfo (
 	"LJ48",										// Plugin unique ID
 	"SpoutReceiver2",							// Plugin name (receive texture from DX)
 	1,											// API major version number
-	001,										// API minor version number
+	005,										// API minor version number
 	3,											// Plugin major version number
-	021,										// Plugin minor version number
+	025,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
 		#ifdef DX9Mode
-		"Spout Receiver DirectX 9 - Vers 3.022\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+		"Spout Receiver DirectX 9 - Vers 3.025\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 		#else
-		"Spout Receiver DirectX 11 - Vers 3.022\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+		"Spout Receiver DirectX 11 - Vers 3.025\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 		#endif
 	#else
 	"LJ49",										// Plugin unique ID
 	"SpoutReceiver2M",							// Plugin name (receive texture from DX)
 	1,											// API major version number
-	001,										// API minor version number
+	005,										// API minor version number
 	3,											// Plugin major version number
 	021,										// Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver Memoryshare - Vers 3.022\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver Memoryshare - Vers 3.023\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	#endif
 	"S P O U T - Version 2\nspout.zeal.co"		// About
 );
@@ -151,7 +155,11 @@ SpoutReceiverSDK2::SpoutReceiverSDK2()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutReceiver2 Vers 3.022\n");
+	#ifdef DX9Mode
+	printf("SpoutReceiver2 DX9 Vers 3.025\n");
+	#else
+	printf("SpoutReceiver2 DX11 Vers 3.025\n");
+	#endif
 	*/
 
 	// Input properties - this is a source and has no inputs
@@ -275,7 +283,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 
 	// If already initialized and the user has entered a different name, reset the receiver
 	if(bInitialized && UserSenderName[0] && strcmp(UserSenderName, SenderName) != 0) {
-		printf("Resetting receiver[%s][%s]\n", UserSenderName, SenderName);
+		// printf("Resetting receiver[%s][%s]\n", UserSenderName, SenderName);
 		receiver.ReleaseReceiver();
 		bInitialized = false;
 	}
@@ -284,7 +292,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 
 		// If UserSenderName is set, use it. Otherwise find the active sender
 		if(UserSenderName[0]) {
-			printf("Using [%s]\n", UserSenderName);
+			// printf("Using [%s]\n", UserSenderName);
 			strcpy_s(SenderName, UserSenderName); // Create a receiver with this name
 			bUseActive = false;
 		}
@@ -295,7 +303,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		// CreateReceiver will return true only if it finds a sender running.
 		// If a sender name is specified and does not exist it will return false.
 		if(receiver.CreateReceiver(SenderName, g_Width, g_Height, bUseActive)) {
-			printf("Created receiver [%s]\n", SenderName);
+			// printf("Created receiver [%s]\n", SenderName);
 			// Did it initialized in Memory share mode ?
 			bMemoryMode = receiver.GetMemoryShareMode();
 			// Initialize a texture - Memorymode RGB or Texturemode RGBA
@@ -313,6 +321,7 @@ DWORD SpoutReceiverSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		//
 		// Important - pass the host FBO to restore the binding
 		bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D, false, pGL->HostFBO);
+		// bRet = receiver.ReceiveTexture(SenderName, width, height, myTexture2, GL_TEXTURE_2D, false, pGL->HostFBO);
 
 		if(bRet) {
 			// Received the texture OK, but the sender or texture dimensions could have changed
@@ -370,18 +379,34 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 
 		case FFPARAM_SharingName:
 
-			if(pParam->NewParameterValue && (char*)pParam->NewParameterValue) {
+			if(pParam->NewParameterValue && (char*)pParam->NewParameterValue && strlen((char*)pParam->NewParameterValue) > 0) {
+
 				// If there is anything already in this field at startup, it is set by a saved composition
 				strcpy_s(name, 256, (char*)pParam->NewParameterValue);
+
 				// If it is a different name, copy to the username
-				if(strcmp(name, UserSenderName) != 0)
+				if(strcmp(name, UserSenderName) != 0) {
+					// printf("Different name [%s][%s]\n", name, UserSenderName);
 					strcpy_s(UserSenderName, 256, (char*)pParam->NewParameterValue);
-				// Does the sender exist ?
-				if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
-					// Is it an external unregistered sender - e.g. VVVV ?
-					if(!receiver.spout.interop.senders.FindSenderName(UserSenderName) ) {
-						// register it
-						receiver.spout.interop.senders.RegisterSenderName(UserSenderName);
+
+					// Does the sender exist ?
+					if(receiver.GetSenderInfo(UserSenderName, width, height, dxShareHandle, dwFormat)) {
+						// printf("Sender exists\n");
+						// Is it an external unregistered sender - e.g. VVVV ?
+						if(!receiver.spout.interop.senders.FindSenderName(UserSenderName) ) {
+							// printf("Sender is not registered\n");
+							// register it
+							receiver.spout.interop.senders.RegisterSenderName(UserSenderName);
+						}
+						// The user has typed it in, so make it the active sender
+						receiver.spout.interop.senders.SetActiveSender(UserSenderName);
+
+						// Write the sender name to the registry
+						WritePathToRegistry(UserSenderName, "Software\\Leading Edge\\SpoutPanel", "Sendername");
+
+						// Start again
+						if(bInitialized) receiver.ReleaseReceiver();
+						bInitialized = false;
 					}
 				}
 			}
@@ -407,6 +432,10 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 						}
 						// The user has typed it in, so make it the active sender
 						receiver.spout.interop.senders.SetActiveSender(UserSenderName);
+
+						// Write the sender name to the registry
+						WritePathToRegistry(UserSenderName, "Software\\Leading Edge\\SpoutPanel", "Sendername");
+
 						// Start again
 						if(bInitialized) receiver.ReleaseReceiver();
 						bInitialized = false;
@@ -424,10 +453,10 @@ DWORD SpoutReceiverSDK2::SetParameter(const SetParameterStruct* pParam)
 				}
 				else {
 					if(bDX9mode) {
-						receiver.SelectSenderPanel("/DX9");
+						receiver.SelectSenderPanel("/DX9"); // optional DX9 compatible
 					}
 					else {
-						receiver.SelectSenderPanel("/DX11"); // default DX11 compatible
+						receiver.SelectSenderPanel("/DX11"); // default DX11
 					}
 				}
 			}
@@ -476,6 +505,21 @@ void SpoutReceiverSDK2::InitTexture()
 		glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGB, g_Width, g_Height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	else
 		glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGBA, g_Width, g_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// LJ DEBUG
+	if(myTexture2 != 0) {
+		glDeleteTextures(1, &myTexture2);
+		myTexture2 = 0;
+	}
+
+	glGenTextures(1, &myTexture2);
+	glBindTexture(GL_TEXTURE_2D, myTexture2);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGB, g_Width, g_Height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
 }
@@ -531,7 +575,9 @@ void SpoutReceiverSDK2::DrawReceivedTexture(GLuint TextureID, GLuint TextureTarg
 
 
 	glPushMatrix();
+
 	glColor4f(1.f, 1.f, 1.f, 1.f);
+	
 	glEnable(TextureTarget);
 	glBindTexture(TextureTarget, TextureID);
 
@@ -547,5 +593,35 @@ void SpoutReceiverSDK2::DrawReceivedTexture(GLuint TextureID, GLuint TextureTarg
 	glDisable(TextureTarget);
 	glPopMatrix();
 
+}
+
+
+// Note registry flush not needed (see SpoutPanel) because this is the receiver
+bool SpoutReceiverSDK2::WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename)
+{
+	HKEY  hRegKey;
+	LONG  regres;
+	char  mySubKey[512];
+
+	// The required key
+	strcpy_s(mySubKey, 512, subkey);
+
+	// Does the key already exist ?
+	regres = RegOpenKeyExA(HKEY_CURRENT_USER, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
+	if(regres != ERROR_SUCCESS) { 
+		// Create a new key
+		regres = RegCreateKeyExA(HKEY_CURRENT_USER, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS,NULL, &hRegKey, NULL);
+	}
+
+	if(regres == ERROR_SUCCESS && hRegKey != NULL) {
+		// Write the path
+		regres = RegSetValueExA(hRegKey, valuename, 0, REG_SZ, (BYTE*)filepath, ((DWORD)strlen(filepath) + 1)*sizeof(unsigned char));
+		RegCloseKey(hRegKey);
+    }
+
+	if(regres == ERROR_SUCCESS)
+		return true;
+	else
+		return false;
 
 }
