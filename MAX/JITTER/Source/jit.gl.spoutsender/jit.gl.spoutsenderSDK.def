@@ -1,4 +1,0 @@
-LIBRARY jit.gl.spoutsender.mxe
-
-EXPORTS
-	main

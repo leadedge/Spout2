@@ -1,4 +1,0 @@
-LIBRARY jit.gl.spoutreceiver.mxe
-
-EXPORTS
-	main

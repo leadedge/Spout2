@@ -38,9 +38,17 @@
 			   Version 2.005
 	26.05.15 - Recompile for revised SpoutPanel registry write of sender name
 			   Version 2.006
+	24.07.15 - Revised for Max 7 and 64 bit
+	25.07.15 - Changed SpoutGLDXinterop so that the OpenGL texture and fbo are not re-created
+	26.07.15 - Created utilities for Save and restore OpenGL state
+			 - Save/restore state in dest_closing for release of receiver
+			 - Introduced flags for closing and changed to ensure that all is done before creating the receiver again
+			 - Moved ReleaseReceiver from jit_gl_spout_receiver_sendername to draw
+	01.08.15 - Recompiled for Spout 2.004 - 32 bit VS2010 - Version 2.007.10
+	01.08.15 - Recompiled for Spout 2.004 - 64bit VS2012 - Version 2.007.12
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -65,16 +73,12 @@
 
  */
 
-// Temporary debugging define for ableton test 
-// patch needing servers instead of senders
-// ** Must be changed in Max file as well **
-// #define UseServers
-
 // Compile for DX11 instead of DX9 (default)
 // A DX11 receiver can receive from both DX9 and DX11 senders
 // so compiling for DX9 is not necessary dependent on NVIDIA driver bug (10-08-14)
 // 14.02.15 - added auto detection in SpoutGLDXinterop
 // 25.04.15 - changed to optional installation rather than auto-detect
+// 24.07.15 - now an optional over-ride for DirectX mode configuration after installation
 // #define UseD3D9
 
 #include "jit.common.h"
@@ -84,10 +88,6 @@
 #include "string"
 #include "../../SpoutSDK/Spout.h"
 
-// This allows the Optimus global 3d setting to be "adapt" instead of "high performance"
-extern "C" {
-    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-}
 
 t_jit_err jit_ob3d_dest_name_set(t_jit_object *x, void *attr, long argc, t_atom *argv);
 
@@ -100,18 +100,13 @@ typedef struct _jit_gl_spout_receiver
 	void *ob3d;
 		
 	// attributes
-	#ifdef UseServers
-	t_symbol *servername; // Use for sharing name
-	#else
 	t_symbol *sendername; // Use for sharing name
-	#endif
-
 	t_symbol *texturename;	
 
 	long update; // update to the active sender
 	long aspect; // retain aspect ratio of input texture
 	long memoryshare; // memory share instead of interop directx texture share
-	long dim[2]; // output dim
+	t_atom_long dim[2]; // output dim
 
 	// Our Spout receiver object
 	SpoutReceiver * myReceiver;
@@ -120,6 +115,10 @@ typedef struct _jit_gl_spout_receiver
 	char         g_SenderName[256];
 	GLuint       g_GLtexture; // local utility texture
 	bool         bInitialized;
+
+	bool         bDestClosing;
+	bool         bDestChanged;
+	bool         bNameChanged;
 
 	// internal jit.gl.texture object
 	t_jit_object *output;
@@ -137,23 +136,17 @@ t_jit_err jit_gl_spout_receiver_init(void);
 t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name);
 void jit_gl_spout_receiver_free(t_jit_gl_spout_receiver *x);
 
-// handle context changes - need to rebuild IOSurface + textures here.
+// handle context changes - need to rebuild textures here.
 t_jit_err jit_gl_spout_receiver_dest_closing(t_jit_gl_spout_receiver *x);
 t_jit_err jit_gl_spout_receiver_dest_changed(t_jit_gl_spout_receiver *x);
 
 // draw;
 t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x);
-t_jit_err jit_gl_spout_receiver_draw2(t_jit_gl_spout_receiver *x);
 t_jit_err jit_gl_spout_receiver_drawto(t_jit_gl_spout_receiver *x, t_symbol *s, int argc, t_atom *argv);
 
 // attributes
 // @sendername, for Sender name
-#ifdef UseServers
-t_jit_err jit_gl_spout_receiver_servername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
-#else
 t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
-#endif
-
 
 // @update  update to active Sender
 t_jit_err jit_gl_spout_receiver_update(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv); 
@@ -173,13 +166,12 @@ t_jit_err jit_gl_spout_receiver_getattr_out_name(t_jit_gl_spout_receiver *x, voi
 // @dim - dimension output
 t_jit_err jit_gl_spout_receiver_setattr_dim(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
 
+// Utility
+void SaveOpenGLstate(t_jit_gl_spout_receiver *x,  GLuint width, GLuint height, GLint &previousFBO, GLint &previousMatrixMode,  GLint &previousActiveTexture, float *vpdim);
+void RestoreOpenGLstate(t_jit_gl_spout_receiver *x, GLint previousFBO, GLint previousMatrixMode,  GLint previousActiveTexture, float *vpdim);
 
 // symbols
-#ifdef UseServers
-t_symbol *ps_servername;
-#else
 t_symbol *ps_sendername;
-#endif
 t_symbol *ps_texture;
 t_symbol *ps_width;
 t_symbol *ps_height;
@@ -191,7 +183,7 @@ t_symbol *ps_drawto;
 t_symbol *ps_draw;
 
 // for our internal texture
-extern t_symbol *ps_jit_gl_texture;
+extern t_symbol *ps_out_texture;
 
 //
 // Function implementations
@@ -225,21 +217,19 @@ t_jit_err jit_gl_spout_receiver_init(void)
 						  calcoffset(t_jit_gl_spout_receiver, ob3d), 
 						  ob3d_flags);
 
-
 	
 	// OB3D methods
 
 	// define the dest_closing and dest_changed methods. 
 	jit_class_addmethod(_jit_gl_spout_receiver_class, 
 						(method)jit_gl_spout_receiver_dest_closing, "dest_closing", A_CANT, 0L);
+
 	jit_class_addmethod(_jit_gl_spout_receiver_class, 
 						(method)jit_gl_spout_receiver_dest_changed, "dest_changed", A_CANT, 0L);
 
 	// define our OB3D draw method.
 	jit_class_addmethod(_jit_gl_spout_receiver_class, 
-						(method)jit_gl_spout_receiver_draw, 
-						"ob3d_draw", A_CANT, 0L);
-
+						(method)jit_gl_spout_receiver_draw,	"ob3d_draw", A_CANT, 0L);
 
 	// must register for ob3d use
 	jit_class_addmethod(_jit_gl_spout_receiver_class, 
@@ -264,23 +254,15 @@ t_jit_err jit_gl_spout_receiver_init(void)
     jit_class_addattr(_jit_gl_spout_receiver_class,attr);	
 	
 	// Enter a sender name
-	#ifdef UseServers
-	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"servername",
-										  _jit_sym_symbol,attrflags,
-										   (method)0L,
-										   jit_gl_spout_receiver_servername, 
-										   calcoffset(t_jit_gl_spout_receiver, servername));
-	#else
 	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"sendername",
 										  _jit_sym_symbol,attrflags,
 										   (method)0L,
 										   jit_gl_spout_receiver_sendername, 
 										   calcoffset(t_jit_gl_spout_receiver, sendername));
-	#endif
 
 	jit_class_addattr(_jit_gl_spout_receiver_class, attr);
 	
-	// Update to latest sender
+	// Update - open SpoutPanel to select a sender (currently not used)
 	attr = (t_jit_object*)jit_object_new(_jit_sym_jit_attr_offset, "update", 
 										_jit_sym_long, attrflags, 
 										 (method)0L, 
@@ -298,6 +280,7 @@ t_jit_err jit_gl_spout_receiver_init(void)
 										 calcoffset(t_jit_gl_spout_receiver, aspect));
 	jit_attr_addfilterset_clip(attr, 0, 1, TRUE, TRUE);	// Must be 0 to 1
 	jit_class_addattr(_jit_gl_spout_receiver_class, attr);
+
 
 	// force memory share
 	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"memoryshare", _jit_sym_long, attrflags,
@@ -318,12 +301,7 @@ t_jit_err jit_gl_spout_receiver_init(void)
 	jit_class_addattr(_jit_gl_spout_receiver_class,attr);
 
 	//symbols
-	#ifdef UseServers
-	ps_servername = gensym("servername");
-	#else
 	ps_sendername = gensym("sendername");
-	#endif
-
 	ps_texture = gensym("texture");
 	ps_width = gensym("width");
 	ps_height = gensym("height");
@@ -355,26 +333,23 @@ t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name)
 		x->g_SenderName[0] = 0;     // means it will try to find the active sender when it starts
 		x->g_GLtexture     = NULL;  // local OpenGL texture for memoryshare mode
 		x->bInitialized    = false; // not initialized yet
+		x->bDestClosing    = false;
+		x->bDestChanged    = false;
+		x->bNameChanged    = false;
 
 		// Create a new Spout receiver
 		x->myReceiver      = new SpoutReceiver;
 
 		#ifdef UseD3D9
 		x->myReceiver->SetDX9(true); // Set to DX9 for compatibility with Version 1 apps
-		#else
-		x->myReceiver->SetDX9(false);
 		#endif
 
 		// Syphon comment : TODO : is this right ?  LJ not sure
 		// set up attributes
-		#ifdef UseServers
-		jit_attr_setsym(x->servername, _jit_sym_name, gensym("servername"));
-		#else
 		jit_attr_setsym(x->sendername, _jit_sym_name, gensym("sendername"));
-		#endif
 
 		// instantiate a single internal jit.gl.texture for output
-		x->output = (t_jit_object *)jit_object_new(ps_jit_gl_texture, dest_name);
+		x->output = (t_jit_object *)jit_object_new(ps_out_texture, dest_name);
 
 		if (x->output) {
 			x->texturename = jit_symbol_unique();
@@ -383,7 +358,8 @@ t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name)
 			jit_attr_setsym(x->output,  gensym("defaultimage"), gensym("black"));
 			jit_attr_setlong(x->output, gensym("rectangle"), 1);
 			jit_attr_setlong(x->output, gensym("flip"), 0);
-			x->dim[0] = 320;
+			// Set dimension output
+			x->dim[0] = 320; 
 			x->dim[1] = 240;
 			// Set texture size
 			jit_attr_setlong_array(x->output, _jit_sym_dim, 2, x->dim);
@@ -407,7 +383,6 @@ t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name)
 
 void jit_gl_spout_receiver_free(t_jit_gl_spout_receiver *x)
 {
-
 	// Free the memoryshare input texture if there is one
 	if(x->g_GLtexture) glDeleteTextures(1, &x->g_GLtexture);
 
@@ -418,7 +393,7 @@ void jit_gl_spout_receiver_free(t_jit_gl_spout_receiver *x)
 	if(x) jit_ob3d_free(x);
 	
 	// Release the receiver
-	x->myReceiver->ReleaseReceiver();
+	if(x->bInitialized)	x->myReceiver->ReleaseReceiver();
 
 	// Delete the Receiver object last.
 	if(x->myReceiver) delete x->myReceiver;
@@ -427,26 +402,27 @@ void jit_gl_spout_receiver_free(t_jit_gl_spout_receiver *x)
 
 t_jit_err jit_gl_spout_receiver_dest_closing(t_jit_gl_spout_receiver *x)
 {
-	// In case we have dest-closing without dest_changed
-	// or dest_changed without dest_closing - allow for both.
+
+	float vpdim[4];
+	GLint previousFBO;
+    GLint previousMatrixMode;
+	GLint previousActiveTexture;
+	GLuint width  = (GLuint)jit_attr_getlong(x->output, ps_width);
+	GLuint height = (GLuint)jit_attr_getlong(x->output, ps_height);
+
 	// Release sender if initialized
+	SaveOpenGLstate(x, width, height, previousFBO, previousMatrixMode, previousActiveTexture, vpdim);
 	if(x->bInitialized)	x->myReceiver->ReleaseReceiver();
+	RestoreOpenGLstate(x, previousFBO, previousMatrixMode, previousActiveTexture, vpdim);
+
 	x->bInitialized = false; // Initialize again in draw
+	x->bDestClosing = true;
 
 	return JIT_ERR_NONE;
 }
 
 t_jit_err jit_gl_spout_receiver_dest_changed(t_jit_gl_spout_receiver *x)
 {	
-
-	//
-	// Release receiver if initialized
-	//
-	// IMPORTANT : do not re-initialize here but do so next round in draw
-	//
-	if(x->bInitialized) x->myReceiver->ReleaseReceiver();
-	x->bInitialized = false; // Initialize again in draw
-
 	// Syphon comment : our texture has to be bound in the new context before we can use it
 	// http://cycling74.com/forums/topic.php?id=29197
 	// Result otherwise is a white screen
@@ -460,6 +436,8 @@ t_jit_err jit_gl_spout_receiver_dest_changed(t_jit_gl_spout_receiver *x)
 		jit_gl_bindtexture(&drawInfo, texName, 0);
 		jit_gl_unbindtexture(&drawInfo, texName, 0);
 	}
+
+	x->bDestChanged = true;
 
 	return JIT_ERR_NONE;
 }
@@ -478,13 +456,13 @@ t_jit_err jit_gl_spout_receiver_drawto(t_jit_gl_spout_receiver *x, t_symbol *s, 
 
 t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 {
+
 	t_jit_err result = JIT_ERR_NONE;
-	float vpdim[4]; // for saving the viewport dimensions
-	float fx, fy, as, vpScaleX, vpScaleY, vpWidth, vpHeight;
-	int vpx, vpy;
-	long newdim[2];	// output dim
+	t_atom_long newdim[2]; // new output dimensions
 	unsigned int senderWidth = 0;
 	unsigned int senderHeight = 0;
+
+	float vpdim[4]; // for saving the viewport dimensions
 	GLint previousFBO = 0;      
 	GLint previousMatrixMode = 0;
 	GLint previousActiveTexture = 0;
@@ -493,77 +471,33 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 		return JIT_ERR_INVALID_PTR;
 	}
 
-	// We need the Jitter texture ID, width and height.
-	GLuint texname	= jit_attr_getlong(x->output, ps_glid);
-	GLuint width	= jit_attr_getlong(x->output, ps_width);
-	GLuint height	= jit_attr_getlong(x->output, ps_height);
+	if(x->bDestClosing || x->bDestChanged) {
+		// skip a frame so that the receiver misses a frame
+		if(x->bDestClosing) x->bDestClosing = false;
+		if(x->bDestChanged) x->bDestChanged = false;
+		return JIT_ERR_NONE;
+	}
 
-	// TODO: necessary ? JKC says no unless context changed above? should be set during draw for you. 
-	// LJ - seems necessary
+	// We need the Jitter texture ID, width and height.
+	GLuint texname	= (GLuint)jit_attr_getlong(x->output, ps_glid);
+	GLuint width	= (GLuint)jit_attr_getlong(x->output, ps_width);
+	GLuint height	= (GLuint)jit_attr_getlong(x->output, ps_height);
+
+	// TODO: necessary ? 
+	// Syphon comment : JKC says no unless context changed above? should be set during draw for you. 
+	// LJ - seems necessary - needs checking
 	t_jit_gl_context ctx = jit_gl_get_context();
 	jit_ob3d_set_context(x);
 
-	// Save FBO etc
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
-	glGetIntegerv(GL_MATRIX_MODE, &previousMatrixMode);
-	glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture);
-	
-	// find the viewport size in order to scale to the aspect ratio
-	glGetFloatv(GL_VIEWPORT, vpdim);
+	// Save OpenGL state
+	SaveOpenGLstate(x, width, height, previousFBO, previousMatrixMode, previousActiveTexture, vpdim);
 
-	// Save texture state, client state, etc.
-	glPushAttrib(GL_ALL_ATTRIB_BITS);
-	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
-
-	// Syphon note :
-	// Jitter uses multiple texture coordinate arrays on different units
-	// http://s-musiclab.jp/mmj_docs/max5/develop/MaxSDK-5.1.1_J/html/jit_8gl_8texture_8c_source.html
-	// We need to ensure we set this before changing our texture matrix
-	// glActiveTexture selects which texture unit subsequent texture state calls will affect.
-	glActiveTexture(GL_TEXTURE0);
-
-	// ensure we act on the proper client texture as well
-	glClientActiveTexture(GL_TEXTURE0);
-
-	glMatrixMode(GL_TEXTURE);
-	glPushMatrix();
-	glLoadIdentity();
-
-	// find the viewport size in order to scale to the aspect ratio
-	glGetFloatv(GL_VIEWPORT, vpdim);
-
-	// Scale width and height to the current viewport size
-	vpScaleX = width/(float)x->g_Width;			// vpdim[2]/(float)x->g_Width;
-	vpScaleY = height/(float)x->g_Height;		// vpdim[3]/(float)x->g_Height;
-	vpWidth  = (float)x->g_Width  * vpScaleX;
-	vpHeight = (float)x->g_Height * vpScaleY;
-	vpx = vpy = 0.0;
-
-	// User selection flag to preserve aspect ratio or not
-	if(x->aspect == 1) {
-		// back to original aspect ratio
-		as = (float)x->g_Width/(float)x->g_Height;
-		if(x->g_Width > x->g_Height) {
-			fy = vpWidth/as;
-			vpy = (int)(vpHeight-fy)/2;
-			vpHeight = fy;
-		}
-		else {
-			fx = vpHeight/as;
-			vpx = (int)(vpWidth-fx)/2;
-			vpWidth = fx;
-		}
+	// First check if a new sender name has been selected
+	if(x->bNameChanged) {
+		if(x->bInitialized) x->myReceiver->ReleaseReceiver();
+		x->bInitialized = false;
+		x->bNameChanged = false;
 	}
-	glViewport((int)vpx, (int)vpy, (int)vpWidth, (int)vpHeight);
-
-	glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-	glLoadIdentity();
-	glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0f, 1.0f);
-                               
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
 
 	// Try to create a receiver if not initialized
 	// If sendername is null it will pick up the active sender
@@ -578,20 +512,26 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 
 			x->g_Width	= senderWidth;
 			x->g_Height	= senderHeight;
+			// printf("Created receiver [%s] (%dx%d)\n", x->g_SenderName, senderWidth, senderHeight);
 			
 			// For memoryshare create a local OpenGL texture of the same size
 			if(x->memoryshare == 1) InitTexture(x);
 			
-			// Update output texture dim to the new size
+			// Update output texture to the new size
 			newdim[0] = x->g_Width;
 			newdim[1] = x->g_Height;
-			jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);  // LJ DEBUG - should be x-output ?
-			
+			jit_attr_setlong_array(x->output, _jit_sym_dim, 2, newdim); 
+
+			// Set output dimension as well
+			jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);
+	
 			x->bInitialized = true;
+
 		}
+
 	} // endif not initialized
 
-	// Did it initialize ?
+	// Is it initialized
 	if(x->bInitialized) {
 
 		// Receive a shared texture and return it's width and height
@@ -601,10 +541,16 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 		senderWidth = x->g_Width;
 		senderHeight = x->g_Height;
 	
+		// Call Receivetexture here whether memoryshare or not
+		// If memoryshare, the shared texture is returned in x->g_GLtexture
+		// If not, all the checks for sender name and size are done anyway
+		// and the shared texture can be used directly with DrawSharedTexture 
+		// into the Jitter texture because the sender will have updated it
 		if(x->myReceiver->ReceiveTexture(x->g_SenderName, senderWidth, senderHeight, x->g_GLtexture, GL_TEXTURE_2D)) {
 
 			// Test for change of texture size
 			if(senderWidth != x->g_Width || senderHeight != x->g_Height) {
+				// printf("Size change from (%dx%d) to (%dx%d)\n", x->g_Width, x->g_Height, senderWidth, senderHeight);
 
 				// Set global width and height
 				x->g_Width	= senderWidth;
@@ -616,7 +562,8 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 				// Update output dim to the new size
 				newdim[0] = x->g_Width;
 				newdim[1] = x->g_Height;
-				jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim);  // LJ DEBUG - should be x-output ?
+				jit_attr_setlong_array(x->output, _jit_sym_dim, 2, newdim); // texture
+				jit_attr_setlong_array(x, _jit_sym_dim, 2, newdim); // dimensions
 
 			}
 			else {
@@ -655,6 +602,7 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 						x->myReceiver->DrawSharedTexture();
 					}
 				}
+
 				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 				glDeleteFramebuffersEXT(1, &tempFBO);
 				tempFBO = 0;
@@ -667,6 +615,87 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 		}
 	} // endif intialized
 
+	// Restore everything
+	RestoreOpenGLstate(x, previousFBO, previousMatrixMode, previousActiveTexture, vpdim);
+
+	// Restore context
+	jit_gl_set_context(ctx);
+
+	return JIT_ERR_NONE;
+
+}
+
+void SaveOpenGLstate(t_jit_gl_spout_receiver *x, GLuint width, GLuint height, GLint &previousFBO, GLint &previousMatrixMode,  GLint &previousActiveTexture, float *vpdim)
+{
+
+	float fx, fy, as, vpScaleX, vpScaleY, vpWidth, vpHeight;
+	int vpx, vpy;
+
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
+	glGetIntegerv(GL_MATRIX_MODE, &previousMatrixMode);
+	glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture);
+	
+	// find the viewport size in order to scale to the aspect ratio
+	glGetFloatv(GL_VIEWPORT, vpdim);
+
+	// Save texture state, client state, etc.
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+
+	// Syphon note :
+	// Jitter uses multiple texture coordinate arrays on different units
+	// http://s-musiclab.jp/mmj_docs/max5/develop/MaxSDK-5.1.1_J/html/jit_8gl_8texture_8c_source.html
+	// We need to ensure we set this before changing our texture matrix
+	// glActiveTexture selects which texture unit subsequent texture state calls will affect.
+	glActiveTexture(GL_TEXTURE0);
+
+	// ensure we act on the proper client texture as well
+	glClientActiveTexture(GL_TEXTURE0);
+
+	glMatrixMode(GL_TEXTURE);
+	glPushMatrix();
+	glLoadIdentity();
+
+	// find the viewport size in order to scale to the aspect ratio
+	glGetFloatv(GL_VIEWPORT, vpdim);
+
+	// Scale width and height to the current viewport size
+	vpScaleX = width/(float)x->g_Width;			// vpdim[2]/(float)x->g_Width;
+	vpScaleY = height/(float)x->g_Height;		// vpdim[3]/(float)x->g_Height;
+	vpWidth  = (float)x->g_Width  * vpScaleX;
+	vpHeight = (float)x->g_Height * vpScaleY;
+	vpx = vpy = 0;
+
+	// User selection flag to preserve aspect ratio or not
+	if(x->aspect == 1) {
+		// back to original aspect ratio
+		as = (float)x->g_Width/(float)x->g_Height;
+		if(x->g_Width > x->g_Height) {
+			fy = vpWidth/as;
+			vpy = (int)(vpHeight-fy)/2;
+			vpHeight = fy;
+		}
+		else {
+			fx = vpHeight/as;
+			vpx = (int)(vpWidth-fx)/2;
+			vpWidth = fx;
+		}
+	}
+	glViewport((int)vpx, (int)vpy, (int)vpWidth, (int)vpHeight);
+
+	glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+	glLoadIdentity();
+	glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0f, 1.0f);
+                               
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+}
+
+void RestoreOpenGLstate(t_jit_gl_spout_receiver *x, GLint previousFBO, GLint previousMatrixMode,  GLint previousActiveTexture, float vpdim[4])
+{
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
 
@@ -688,26 +717,16 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, previousFBO);
 
 	// Restore the viewport
-	glViewport(vpdim[0], vpdim[1], vpdim[2], vpdim[3]);
-
-	// Restore context
-	jit_gl_set_context(ctx);
-
-	return JIT_ERR_NONE;
-
+	glViewport((int)vpdim[0], (int)vpdim[1], (GLsizei)vpdim[2], (GLsizei)vpdim[3]);
 }
 
-		
+
 //
 // attributes
 //
 
 // @Senderuuid
-#ifdef UseServers
-t_jit_err jit_gl_spout_receiver_servername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
-#else
 t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
-#endif
 {
 	t_symbol *srvname;
 	char name[256];
@@ -715,33 +734,26 @@ t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *att
 	if(x) {	
 		if (argc && argv) {
 			srvname = jit_atom_getsym(argv);
-			#ifdef UseServers
-			x->servername = srvname;
-			strcpy_s(name, 256, x->servername->s_name);
-			#else
 			x->sendername = srvname;
 			strcpy_s(name, 256, x->sendername->s_name);
-			#endif
 			if(strcmp(x->g_SenderName, name) != 0) { // different name
 				strcpy_s(x->g_SenderName, 256, name);
-				x->myReceiver->ReleaseReceiver();
-				x->bInitialized = false;
+				// Can't release the receiver here because the OpenGL context
+				// is not guaranteed, so set a name changed flag and do it in Draw
+				x->bNameChanged = true;
 				return JIT_ERR_NONE;
 			}
 		} 
 		else {
 			// no args, set to zero
-			#ifdef UseServers
-			x->servername = _jit_sym_nothing;
-			#else
 			x->sendername = _jit_sym_nothing;
-			#endif
 			x->g_SenderName[0] = 0;
 		}
 	}
 
 	return JIT_ERR_NONE;
 }
+
 
 // #texturename
 t_jit_err jit_gl_spout_receiver_texturename(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
@@ -757,10 +769,12 @@ t_jit_err jit_gl_spout_receiver_texturename(t_jit_gl_spout_receiver *x, void *at
 	return JIT_ERR_NONE;
 }
 
+
 // @update - activate SpoutPanel to get the active Sender
 t_jit_err jit_gl_spout_receiver_update(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 {
-	long c = jit_atom_getlong(argv);
+
+	long c = (long)jit_atom_getlong(argv);
 
 	x->update = c; // Button - check down or up ?
 
@@ -773,8 +787,7 @@ t_jit_err jit_gl_spout_receiver_update(t_jit_gl_spout_receiver *x, void *attr, l
 // @aspect - retain aspect ratio of shared texture
 t_jit_err jit_gl_spout_receiver_aspect(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 {
-	long c = jit_atom_getlong(argv);
-
+	long c = (long)jit_atom_getlong(argv);
 	x->aspect = c;
 
 	return JIT_ERR_NONE;
@@ -785,7 +798,7 @@ t_jit_err jit_gl_spout_receiver_aspect(t_jit_gl_spout_receiver *x, void *attr, l
 // force memory share flag (default is 0 off - then is automatic dependent on hardware)
 t_jit_err jit_gl_spout_receiver_memoryshare(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 {
-	long c = jit_atom_getlong(argv);
+	long c = (long)jit_atom_getlong(argv);
 
 	// Bypass compiler warning
 	bool bC = true;
@@ -810,7 +823,6 @@ t_jit_err jit_gl_spout_receiver_memoryshare(t_jit_gl_spout_receiver *x, void *at
 
 t_jit_err jit_gl_spout_receiver_getattr_out_name(t_jit_gl_spout_receiver *x, void *attr, long *ac, t_atom **av)
 {
-
 	if ((*ac)&&(*av)) {
 		//memory passed in, use it
 	} else {
@@ -830,19 +842,19 @@ t_jit_err jit_gl_spout_receiver_getattr_out_name(t_jit_gl_spout_receiver *x, voi
 
 t_jit_err jit_gl_spout_receiver_setattr_dim(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 {
-    long i;
-	long v;
+ 	long i;
+	t_atom_long v;
 
 	if (x) 	{
 
 		for(i = 0; i < JIT_MATH_MIN(argc, 2); i++) {
 			v = jit_atom_getlong(argv+i);
 			if (x->dim[i] != JIT_MATH_MIN(v,1))	{
-				x->dim[i] = v;
+				x->dim[i] = v; // Update dimension
 			}
 		}
 
-        // update internal output texture size
+        // update internal output texture size as well
         jit_attr_setlong_array(x->output, _jit_sym_dim, 2, x->dim);
 
 		return JIT_ERR_NONE;
@@ -853,6 +865,7 @@ t_jit_err jit_gl_spout_receiver_setattr_dim(t_jit_gl_spout_receiver *x, void *at
 
 
 // ===================================
+// TODO ??
 t_jit_err jit_ob3d_dest_name_set(t_jit_object *x, void *attr, long argc, t_atom *argv)
 {
 	return JIT_ERR_NONE;
@@ -863,7 +876,7 @@ t_jit_err jit_ob3d_dest_name_set(t_jit_object *x, void *attr, long argc, t_atom 
 bool InitTexture(t_jit_gl_spout_receiver *x)
 {
 	if(x->g_Width == 0 || x->g_Height == 0) {
-		return JIT_ERR_INVALID_PTR;
+		return false;
 	}
 
 	if(x->g_GLtexture) glDeleteTextures(1, &x->g_GLtexture);
@@ -877,5 +890,5 @@ bool InitTexture(t_jit_gl_spout_receiver *x)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	return JIT_ERR_NONE;
+	return true;
 }
