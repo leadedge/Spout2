@@ -5,7 +5,7 @@
 	The main SDK include file
 
 
-		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -94,13 +94,19 @@ class SPOUT_DLLEXP Spout {
 
 	int  GetSenderCount();
 	bool GetSenderName(int index, char* sendername, int MaxSize = 256);
-	bool GetSenderInfo(char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
+	bool GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
 	bool GetActiveSender(char* Sendername);
 	bool SetActiveSender(char* Sendername);
 	
 	// Utilities
-	bool SetDX9(bool bDX9 = true); // set to use DirectX 9 (default is DirectX 11)
-	bool GetDX9();
+	bool SetDX9(bool bDX9 = true); // User request to use DirectX 9 (default is DirectX 11)
+	bool GetDX9(); // Return the flag that has been set
+
+
+	int GetNumAdapters(); // Get the number of graphics adapters in the system
+	bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name
+	bool SetAdapter(int index = 0); // Set required graphics adapter for output
+	int GetAdapter(); // Get the SpoutDirectX global adapter index
 
 	bool GetMemoryShareMode();
 	bool SetMemoryShareMode(bool bMemory = true);
@@ -110,6 +116,10 @@ class SPOUT_DLLEXP Spout {
 
 	bool CheckSpoutPanel(); // Public for debugging
 	bool OpenSpout(); // Public for debugging
+	
+	// Registry read/write
+	bool WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename);
+	bool ReadPathFromRegistry(const char *filepath, const char *subkey, const char *valuename);
 	
 	spoutGLDXinterop interop; // Opengl/directx interop texture sharing
 
@@ -182,10 +192,6 @@ class SPOUT_DLLEXP Spout {
 	// FPS calcs - TODO cleanup
 	double timeNow, timeThen, elapsedTime, frameTime, lastFrameTime, frameRate, fps, PCFreq, waitMillis, millisForFrame;
 	__int64 CounterStart;
-
-	// Registry read/write
-	bool WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename);
-	bool ReadPathFromRegistry(const char *filepath, const char *subkey, const char *valuename);
 
 	// Find a file version
 	bool FindFileVersion(const char *filepath, DWORD &versMS, DWORD &versLS);

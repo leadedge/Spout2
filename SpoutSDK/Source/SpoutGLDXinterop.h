@@ -9,7 +9,7 @@
 		https://www.opengl.org/registry/specs/NV/DX_interop.txt
 
 
-		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -49,6 +49,7 @@
 #include <gl/glu.h> // For glerror
 #include <shlwapi.h> // for path functions
 
+
 class SPOUT_DLLEXP spoutGLDXinterop {
 
 	public:
@@ -86,8 +87,17 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool UseDX9(bool bDX9);
 		bool isDX9();
 
+		// Set and get flags only
+		void SetDX9(bool bDX9);
+		bool GetDX9();
+
 		D3DFORMAT DX9format; // the DX9 texture format to be used
 		void SetDX9format(D3DFORMAT textureformat);
+
+		int GetNumAdapters(); // Get the number of graphics adapters in the system
+		bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name
+		bool SetAdapter(int index); // Set required graphics adapter for output
+		int GetAdapter(); // Get the SpoutDirectX global adapter index
 
 		bool CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
 		bool OpenDirectX9(HWND hWnd); // Initialize and prepare DirectX9
@@ -106,8 +116,8 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		HANDLE LinkGLDXtextures(void* pDXdevice, void* pSharedTexture, HANDLE dxShareHandle, GLuint glTextureID);
 		void CleanupDirectX();
 
-		// LJ DEBUG - not working
-		bool LinkGLtexture(GLuint glTexture) ;
+		// TODO - not working
+		// bool LinkGLtexture(GLuint glTexture) ;
 
 		// Utilities
 		bool GLDXcompatible();
@@ -117,6 +127,10 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 						    char *renderdescription, char *renderversion,
 							char *displaydescription, char *displayversion,
 							int maxsize, bool &bUseDX9);
+		
+		// Registry read/write
+		bool ReadDwordFromRegistry(DWORD *pValue, const char *subkey, const char *valuename);
+		bool WriteDwordToRegistry(DWORD dwValue, const char *subkey, const char *valuename);
 
 		spoutMemoryShare MemoryShare;	// Shared memory method
 		spoutSenderNames senders;	// Sender management
@@ -130,13 +144,12 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		GLuint m_fbo;
 
 		// ====================
-		// LJ DEBUG
+		// DEBUG
 		// public for debugging
 		IDirect3DDevice9Ex* m_pDevice;   // DX9 device
 		LPDIRECT3DTEXTURE9  m_dxTexture; // the shared DX9 texture
 		void GLerror();
 		// ====================
-
 
 protected:
 
@@ -175,7 +188,7 @@ protected:
 		void trim(char * s);
 
 
-		// LJ DEBUG
+		// DEBUG
 		// Timing calcs
 		// __int64 CounterStart;
 		// double PCFreq;

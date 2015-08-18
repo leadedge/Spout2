@@ -9,6 +9,11 @@
 //					Version 1.01
 //		26.05.15	Recompile for revised SpoutPanel registry write of sender name
 //					Version 1.02
+//		08.07.15	Create an invisible dummy button window for OpenGL due to SetPixelFormat problems noted with Mapio
+//		01.08.15	Recompile for 2.004 release /MT
+//					Version 1.03
+//
+// Example : http://www.virtualdj.com/wiki/Plugins_SDKv8_Example.html
 //
 //		------------------------------------------------------------
 //
@@ -79,7 +84,6 @@ SpoutSenderPlugin::SpoutSenderPlugin()
 	printf("SpoutSenderPlugin() - testing\n");
 	*/
 
-
 }
 
 SpoutSenderPlugin::~SpoutSenderPlugin()
@@ -97,7 +101,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 	infos->Author = "Lynn Jarvis";
     infos->PluginName = (char *)"VDJSpoutSender";
     infos->Description = (char *)"Sends frames to a Spout Receiver\nSpout : http://Spout.zeal.co/";
-	infos->Version = (char *)"v1.02";
+	infos->Version = (char *)"v1.03";
     infos->Bitmap = NULL;
 
 	// A sender is an effect
@@ -112,7 +116,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnStart()
 {
 	// printf("OnStart()\n");
 	StartOpenGL(); // Initialize openGL if not already
-	spoutsender.SetDX9(true); // To use DirectX 9 we need to specify that first
+	// spoutsender.SetDX9(true); // To use DirectX 9 we need to specify that first
 	bSpoutOut = true;
 
 	return NO_ERROR;
@@ -130,6 +134,11 @@ HRESULT __stdcall SpoutSenderPlugin::OnStop()
 		wglDeleteContext(m_hSharedRC);
 		wglDeleteContext(m_hRC);
 	}
+
+	// 08.07.15
+	// Destroy dummy window used for OpenGL context creation
+	if(m_hwnd) DestroyWindow(m_hwnd);
+
 	bInitialized = false;
 	bOpenGL = false;
 	m_hwnd = NULL;
@@ -158,6 +167,11 @@ HRESULT __stdcall SpoutSenderPlugin::OnDeviceClose()
 		wglDeleteContext(m_hSharedRC);
 		wglDeleteContext(m_hRC);
 	}
+
+	// 08.07.15
+	// Destroy dummy window used for OpenGL context creation
+	if(m_hwnd) DestroyWindow(m_hwnd);
+
 	bInitialized = false;
 	bOpenGL = false;
 	m_hwnd = NULL;
@@ -219,11 +233,16 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 			sprintf_s(SenderName, 256, "VirtualDJ Spout Sender");
 
 			// To use DirectX 9 we need to specify that first
-			spoutsender.SetDX9(true);
+			// spoutsender.SetDX9(true);
 
 			// And we also have to set the shared texture format as D3DFMT_X8R8G8B8 so that receivers know it
 			// because the default format argument is zero and that assumes D3DFMT_A8R8G8B8
-			if(spoutsender.CreateSender(SenderName, m_Width, m_Height, (DWORD)D3DFMT_X8R8G8B8)) {
+			bool bRet = false;
+			if(spoutsender.GetDX9())
+				bRet = spoutsender.CreateSender(SenderName, m_Width, m_Height, (DWORD)D3DFMT_X8R8G8B8);
+			else
+				bRet = spoutsender.CreateSender(SenderName, m_Width, m_Height);
+			if(bRet) {
 				// printf("Created sender [%s]\n", SenderName);
 				bInitialized = true;
 			}
@@ -260,8 +279,9 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 							// Pass the pixels to spout
 							// Disable invert of texture because this is a DirectX source
 							// 4-byte alignment might need checking
-							if(desc.Format == D3DFMT_X8R8G8B8) { // We have initialized the sender for this format
-								spoutsender.SendImage((unsigned char *)d3dlr.pBits, desc.Width, desc.Height, GL_BGRA_EXT, true, false);
+							// printf("Format = [%d]\n", D3DFMT_X8R8G8B8); // 22
+							if(desc.Format == D3DFMT_X8R8G8B8) { // We have initialized the sender for this D3D format
+									spoutsender.SendImage((unsigned char *)d3dlr.pBits, desc.Width, desc.Height, GL_BGRA_EXT, true, false);
 							}
 							source_surface->UnlockRect();
 						}
@@ -318,7 +338,17 @@ bool SpoutSenderPlugin::InitOpenGL()
 	char windowtitle[512];
 
 	// We only need an OpenGL context with no window
-	m_hwnd = GetForegroundWindow(); // Any window will do - we don't render to it
+	// m_hwnd = GetForegroundWindow(); // 08.07.15 - causes problems with SetPixelFormat - noted with Mapio
+	// See details in VDJSpoutReceiver .cpp
+	//
+	if(!m_hwnd || !IsWindow(m_hwnd)) {
+		m_hwnd = CreateWindowA("BUTTON",
+			            "VDJ Sender",
+				        WS_OVERLAPPEDWINDOW,
+					    0, 0, 32, 32,
+						NULL, NULL, NULL, NULL);
+	}
+
 	if(!m_hwnd) { printf("InitOpenGL error 1\n"); MessageBoxA(NULL, "Error 1\n", "InitOpenGL", MB_OK); return false; }
 	m_hdc = GetDC(m_hwnd);
 	if(!m_hdc) { printf("InitOpenGL error 2\n"); MessageBoxA(NULL, "Error 2\n", "InitOpenGL", MB_OK); return false; }

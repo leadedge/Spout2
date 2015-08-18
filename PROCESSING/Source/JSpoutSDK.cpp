@@ -47,18 +47,29 @@
 		14.02.15 - SDK recompile for auto detection of DirectX compatibiliy (see SpoutGLDXinterop.cpp).
 		21.04.15 - SDK recompile for both DX9 and DX11 versions for optional installer
 		26.05.15 - Recompile for revised SpoutPanel registry write of sender name
-
+		29.06.15 - Added Spout Controls
+		03.07.15 - Checked for null name and text for release env in Java_JSpout_CheckControls
+		07.07.15 - Converted VS2012 project to VS2010
+				 - Compiled with JDK 8.45
+		17.07.15 - Recomplile Win32 with SpoutControls class revisions. No changes made to JSpout functions.
+		22.07.15 - Included "CreateControl"
+		27.07.15 - Used pixel transfer method for Java_JSpout_ReadTexture due to problems with Intel 4400 graphics
+				 - recompiled Win32 and x64 after work on Max externals
+		01.08.15 - Recompile Win32 for 2.004 release VS2010 /MT UseD3D9 undefined
+		01.08.15 - Recompile x64 for 2.004 release VS2012 /MT UseD3D9 undefined
 
 */
 #define GL_BGRA_EXT 0x80E1
 
-// Compile for DX9 instead of DX11 - default is DX11 (see SpoutGLDXinterop)
+// Compile for DX9 instead of DX11
+// Now not used - set by setup program instead
 // #define UseD3D9
 
 #include "malloc.h"
 #include <direct.h>
 #include "JSpout.h"
 #include "../../SpoutSDK/Spout.h"
+#include "../../SpoutSDK/SpoutControls.h"
 
 char   g_SenderName[256];
 int	   g_Width		= 0;
@@ -68,6 +79,7 @@ bool   bMemoryMode	= false;
 
 SpoutSender sender;		// Spout sender object
 SpoutReceiver receiver;	// Spout receiver object
+SpoutControls spoutcontrols; // Spout controls object
 
 void CheckGLerror();
 
@@ -96,12 +108,14 @@ JNIEXPORT jint JNICALL Java_JSpout_InitSender (JNIEnv *env, jclass c, jstring na
 		uHeight = (unsigned int)height;
 
 
-		// Use DX11 or else use DX9 for compatibility with Version 1 apps
+		/*
+		// Set to DX9 for compatibility with Version 1 apps
 		#ifdef UseD3D9
 		sender.SetDX9(true);
 		#else
 		sender.SetDX9(false);
 		#endif
+		*/
 
 		// user has selected memoryshare mode
 		if(memorymode == 1) sender.SetMemoryShareMode(true);
@@ -415,6 +429,7 @@ JNIEXPORT jboolean JNICALL Java_JSpout_ReadTexture (JNIEnv *env, jclass c, jintA
 	jboolean isCopy = FALSE;
 	unsigned int width = 0;
 	unsigned int height = 0;
+	unsigned char *rgbBuffer = NULL; // LJ DEBUG
 
 	UNREFERENCED_PARAMETER(c);
 
@@ -436,6 +451,56 @@ JNIEXPORT jboolean JNICALL Java_JSpout_ReadTexture (JNIEnv *env, jclass c, jintA
 		goto exit;
 	}
 
+
+	// LJ DEBUG
+    rgbBuffer = (unsigned char *)malloc(width*height*4*sizeof(unsigned char));
+	GLint previousFBO;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previousFBO);
+
+    // if(receiver.ReceiveImage(g_SenderName, width, height, rgbBuffer, GL_RGBA)) { // default format is RGBA
+	if(receiver.ReceiveImage(g_SenderName, width, height, rgbBuffer, GL_RGBA, previousFBO)) {
+        
+		bRet = true;
+
+        // If the image size has changed, return now with the changed size and true to show a
+        // or the buffer sizes will not match. Return true to show a successful read and
+        // resize the image in the calling program
+        if(dim[0] != (jint)width || dim[1] != (jint)height) {
+            dim[0] = (jint)width;
+            dim[1] = (jint)height;
+            free((void*)rgbBuffer);
+            goto exit;
+        }
+        else {
+            // Data appears to come out is BGRA format, possibly endian issue as below
+            // so read in that order and assemble Processing pixel as ABGR (reverse RGBA)
+            // Clues http://www.felixgers.de/teaching/jogl/imagingProg.html
+            unsigned char *pBits = rgbBuffer;
+            unsigned __int32 *pixels = (unsigned __int32 *)pix;
+            unsigned __int32 red, grn, blu, alf;
+            for(unsigned int i = 0; i < width*height; i++) {
+                // Read pixels in BGRA order
+                blu = ((unsigned __int32)*pBits++ << 16);
+                grn = ((unsigned __int32)*pBits++ <<  8);
+                red = ((unsigned __int32)*pBits++      );
+                alf = ((unsigned __int32)*pBits++ << 24);
+                // Assemble in ABGR order
+                pixels[i] = (alf & 0xFF000000) | (blu & 0x00FF0000) | (grn & 0x0000FF00) | (red & 0x000000FF);
+            }
+			
+			// make sure we are current
+			width  = dim[0];
+			height = dim[1];
+
+        }
+    }
+	else {
+		bRet = false;
+	}
+
+    free((void*)rgbBuffer);
+
+	/*
 	// ---------------------------------------------------------------
 	// retrieve opengl texture data directly to image pixels
 	// bytes need to be reversed.
@@ -466,6 +531,8 @@ JNIEXPORT jboolean JNICALL Java_JSpout_ReadTexture (JNIEnv *env, jclass c, jintA
 	else {
 		bRet = false;
 	}
+	*/
+
 
 exit :
 
@@ -527,6 +594,213 @@ JNIEXPORT jboolean JNICALL Java_JSpout_SenderDialog (JNIEnv *env, jclass c)
 	else {
 		return(receiver.SelectSenderPanel("/DX11"));
 	}
+}
+
+//
+// Spout controls
+//
+
+//
+// CreateControl(name, type, minimum, maximum, value, text)
+//
+JNIEXPORT jboolean JNICALL Java_JSpout_CreateControl
+  (JNIEnv *env, jclass c, jstring name, jstring type, jfloat minimum, jfloat maximum, jfloat value, jstring text)
+{
+
+	bool bRet = false;
+	char ControlName[256]; // control name
+	char ControlType[256]; // control type
+	char ControlText[256]; // control text
+	float fMin;
+	float fMax;
+	float fValue;
+	jboolean isCopy = JNI_FALSE;
+
+	UNREFERENCED_PARAMETER(c);
+
+	try {
+		const char *nativestring1 = env->GetStringUTFChars(name, &isCopy);
+		if(nativestring1[0])
+			strcpy_s(ControlName, 256, nativestring1);
+		else
+			ControlName[0] = 0;
+
+		const char *nativestring2 = env->GetStringUTFChars(type, &isCopy);
+		if(nativestring2[0])
+			strcpy_s(ControlType, 256, nativestring2);
+		else
+			ControlType[0] = 0;
+
+		const char *nativestring3 = env->GetStringUTFChars(text, &isCopy);
+		if(nativestring3[0])
+			strcpy_s(ControlText, 256, nativestring3);
+		else
+			ControlText[0] = 0;
+
+		fMin   = (float)minimum;
+		fMax   = (float)maximum;
+		fValue = (float)value;
+
+		if(ControlName[0] && ControlType[0]) {
+
+			// event
+			// bool
+			// float
+			// text
+
+			if(strcmp(ControlType, "event") == 0) // button
+				bRet = spoutcontrols.CreateControl(ControlName, ControlType, fValue);
+			else if(strcmp(ControlType, "bool") == 0) // checkbox
+				bRet = spoutcontrols.CreateControl(ControlName, ControlType, fValue);
+			else if(strcmp(ControlType, "text") == 0) {	// text
+				if(ControlText[0])
+					bRet = spoutcontrols.CreateControl(ControlName, ControlType, ControlText);
+				else
+					bRet = spoutcontrols.CreateControl(ControlName, ControlType);
+			}
+			else { // float
+				bRet = spoutcontrols.CreateControl(ControlName, ControlType, fMin, fMax, fValue);
+			}
+
+		}
+
+		// release the input strings
+		env->ReleaseStringUTFChars(name, nativestring1);
+		env->ReleaseStringUTFChars(name, nativestring2);
+		env->ReleaseStringUTFChars(name, nativestring3);
+
+		return (jboolean)bRet;
+
+	}
+	catch (...) {
+		MessageBoxA(NULL, "Exception in CreateControl(name, type, min, max, value, text)", "JSpout", MB_OK);
+		return false;
+	}
+
+}
+
+
+
+JNIEXPORT jboolean JNICALL Java_JSpout_OpenControls (JNIEnv *env, jclass c, jstring name) 
+{
+
+	bool bRet = false;
+	char Sendername[256]; // user entered Sender name
+	jboolean isCopy = JNI_FALSE;
+
+	UNREFERENCED_PARAMETER(c);
+
+	try {
+		
+		const char *nativestring = env->GetStringUTFChars(name, &isCopy);
+
+		// Set the sender name, width and height
+		if(nativestring[0])
+			strcpy_s(Sendername, 256, nativestring);
+		else
+			Sendername[0] = 0;
+
+		bRet = spoutcontrols.OpenControls(Sendername);
+
+		// release the input string
+		env->ReleaseStringUTFChars(name, nativestring);
+
+		return (jboolean)bRet;
+
+	}
+	catch (...) {
+		MessageBoxA(NULL, "Exception in OpenControls", "JSpout", MB_OK);
+		return false;
+	}
+
+}
+
+JNIEXPORT jint JNICALL Java_JSpout_CheckControls (JNIEnv * env, jclass c, jobjectArray controlName, jintArray controlType, jfloatArray controlValue, jobjectArray controlText)
+{
+	UNREFERENCED_PARAMETER(c);
+	UNREFERENCED_PARAMETER(env);
+
+	jint nControls = 0;
+	jint *Type;
+	jfloat *Value;
+	jboolean isCopy = JNI_FALSE;
+	bool bRet = false;
+	bool bText = false;
+	bool bName = false;
+
+
+	// Spout controls vector
+	vector<control> Controls;
+
+	if(spoutcontrols.CheckControls(Controls)) {
+
+		if(Controls.size() > 0) {
+
+			//
+			// Initialization
+			//
+
+			// All the arrays are the same size
+			// jsize stringCount = env->GetArrayLength(controlName);
+			jsize stringCount = env->GetArrayLength(controlType);
+
+			// Control Types
+			Type = env->GetIntArrayElements(controlType, &isCopy);
+
+			// Control Values
+			Value = env->GetFloatArrayElements(controlValue, &isCopy);
+
+			// Return names and text
+			for(int i=0; i<stringCount, i<(int)Controls.size(); i++) {
+				// Return the names
+				if(!Controls.at(i).name.empty()) {
+					jstring string = env->NewStringUTF(Controls.at(i).name.c_str());
+					env->SetObjectArrayElement(controlName, i, string);
+					bName = true;
+				}
+
+				// Return the text
+				if(!Controls.at(i).text.empty()) {
+					jstring string = env->NewStringUTF(Controls.at(i).text.c_str());
+					env->SetObjectArrayElement(controlText, i, string);
+					bText = true;
+				}
+
+				// Return the type
+				Type[i] = Controls.at(i).type;
+
+				// Return the value
+				Value[i] = Controls.at(i).value;
+
+			}
+		}
+
+		env->ReleaseIntArrayElements(controlType, Type, 0);
+		env->ReleaseFloatArrayElements(controlValue, Value, 0);
+
+		if(bName)
+			env->DeleteLocalRef(controlName);
+
+		if(bText)
+			env->DeleteLocalRef(controlText);
+
+		env->DeleteLocalRef(controlType);
+		env->DeleteLocalRef(controlValue);
+
+		return (jint)Controls.size();
+	}
+
+	return 0;
+}
+
+JNIEXPORT jboolean JNICALL Java_JSpout_CloseControls (JNIEnv *env, jclass c)
+{
+	UNREFERENCED_PARAMETER(c);
+	UNREFERENCED_PARAMETER(env);
+
+	return(spoutcontrols.CloseControls());
+
+
 }
 
 

@@ -11,10 +11,13 @@
 //					- Added bAlignment (4 byte alignment) flag for SendImage
 //					- Added Host FBO for SendTexture, DrawToSharedTexture
 //		08.02.15	- Changed default texture format for SendImage in header to GL_RGBA
+//		29.05.15	- Included SetAdapter for multiple adapters - Franz Hildgen.
+//		02.06.15	- Added GetAdapter, GetNumAdapters, GetAdapterName
+//		08.06.15	- Added SelectSenderPanel for user adapter output selection
 // ====================================================================================
 /*
 
-		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -92,6 +95,12 @@ bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, un
 	return spout.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO);
 }
 
+//---------------------------------------------------------
+bool SpoutSender::SelectSenderPanel(const char* message)
+{
+	return spout.SelectSenderPanel(message);
+}
+
 
 //---------------------------------------------------------
 bool SpoutSender::GetMemoryShareMode()
@@ -110,6 +119,7 @@ bool SpoutSender::SetMemoryShareMode(bool bMemoryMode)
 //---------------------------------------------------------
 bool SpoutSender::SetDX9(bool bDX9)
 {
+	// printf("spoutSender::SetDX9(%d)\n", bDX9);
 	return spout.SetDX9(bDX9);
 }
 
@@ -143,6 +153,31 @@ bool SpoutSender::GetDX9compatible()
 		return false;
 	
 }
+
+//---------------------------------------------------------
+bool SpoutSender::SetAdapter(int index)
+{
+	return spout.SetAdapter(index);
+}
+
+// Get current adapter index
+int SpoutSender::GetAdapter()
+{
+	return spout.GetAdapter();
+}
+
+// Get the number of graphics adapters in the system
+int SpoutSender::GetNumAdapters()
+{
+	return spout.GetNumAdapters();
+}
+
+// Get an adapter name
+bool SpoutSender::GetAdapterName(int index, char *adaptername, int maxchars)
+{
+	return spout.GetAdapterName(index, adaptername, maxchars);
+}
+
 
 //---------------------------------------------------------
 bool SpoutSender::SetVerticalSync(bool bSync)

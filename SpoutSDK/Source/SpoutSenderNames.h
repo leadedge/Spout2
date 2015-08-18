@@ -10,7 +10,7 @@
 	https://github.com/mbechard	
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -103,6 +103,7 @@ class SPOUT_DLLEXP spoutSenderNames {
 
 		// Generic sender map info retrieval
 		bool getSharedInfo (const char* SenderName, SharedTextureInfo* info);
+		bool setSharedInfo (const char* SenderName, SharedTextureInfo* info);
 
 		// ------------------------------------------------------------
 		// Functions to maintain the active sender

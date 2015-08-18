@@ -25,5 +25,13 @@ class JSpout {
   
   static native boolean SenderDialog();
 
- 
+  static native boolean CreateControl(String name, String type, float minimum, float maximum, float value, String text);
+  
+  static native boolean OpenControls(String name);
+
+  static native int CheckControls(String[] name, int[] type, float[] value, String[] text);
+
+  static native boolean CloseControls();
+
+
 }

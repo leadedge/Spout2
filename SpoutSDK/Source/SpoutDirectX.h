@@ -5,7 +5,7 @@
 	DirectX functions to manage DirectX 11 texture sharing
 
 
-		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014 - 2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -36,11 +36,13 @@
 #include <windowsx.h>
 #include <d3d9.h>
 #include <d3d11.h>
+#include <DXGI.h> // LJ DEBUG
 #include <string>
 #include <iostream>
 
 #pragma comment (lib, "d3d9.lib")
 #pragma comment (lib, "d3d11.lib")
+#pragma comment (lib, "DXGI.lib")
 
 using namespace std;
 
@@ -63,24 +65,26 @@ class SPOUT_DLLEXP spoutDirectX {
 		void CloseDX11();
 		bool DX11available(); // Verify that the operating system supports DirectX 11
 
+		// Output adapter selection
+		int GetNumAdapters(); // Get the number of graphics adapters in the system
+		bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name
+		bool SetAdapter(int index); // Set required graphics adapter for output
+		int GetAdapter(); // Get the current adapter index
+
 		// Mutex locks for DirectX 9 shared texture access
 		bool CreateAccessMutex(const char *name, HANDLE &hAccessMutex);
 		void CloseAccessMutex(HANDLE &hAccessMutex);
 		bool CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture = NULL);
 		void AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture = NULL);
 
-		// Keyed mutex locks for D3D11 shared texture access
-		bool IsKeyedMutexTexture(ID3D11Texture2D* pD3D11Texture);
-		bool LockD3D11Texture(ID3D11Texture2D* pD3D11Texture);
-		void UnlockD3D11Texture(ID3D11Texture2D* pD3D11Texture);
-
 		// For debugging only - to toggle texture access locks disable/enable
 		bool bUseAccessLocks;
 
 	protected:
 
-		// bool GetDeviceIdentification(char *vendorID, char *deviceID);
-
+		IDXGIAdapter* GetAdapterPointer(int index); // Get adapter pointer for DirectX 11
+		int						g_AdapterIndex; // Used for DX9
+		IDXGIAdapter*			g_pAdapterDX11;
 		ID3D11DeviceContext*	g_pImmediateContext;
 		D3D_DRIVER_TYPE			g_driverType;
 		D3D_FEATURE_LEVEL		g_featureLevel;

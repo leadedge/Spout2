@@ -116,6 +116,13 @@
 			 - changed to direct OpenGL context creation rather than using glut
 	08.02.15 - Set texture format for ReceiveImage to GL_RGB. SDK default is now GL_RGBA.
 	25.04.15 - Changed from graphics auto detection to set DirectX mode to optional installer
+	08.06.15 - Created a dummy window for OpenGL context creation due to SetPixelFormat error in Mapio
+			 - needs testing with different programs and 64bit Windows 7 and 8
+	17.06.15 - Transferred project to Win7 64bit SSD drive
+			   Missing strmbase.lib - generated from DirectShow base classes - copied to a "libs" folder
+	07.07.15 - Transferred project back to Win 7 32bit 
+	17.08.15 - Removed SetDX9 - now done by registry setting
+			   Recompile for 2.004 release 32bit Win32 VS2010 /MT
 
 */
 
@@ -134,6 +141,8 @@
 
 #define RGB2BGR(a_ulColor) (a_ulColor & 0xFF000000) | ((a_ulColor & 0xFF0000) >> 16) | (a_ulColor & 0x00FF00) | ((a_ulColor & 0x0000FF) << 16)
 
+static HWND hwndButton = NULL; // dummy window for opengl context
+
 //////////////////////////////////////////////////////////////////////////
 //  CVCam is the source filter which masquerades as a capture device
 //////////////////////////////////////////////////////////////////////////
@@ -147,9 +156,8 @@ CUnknown * WINAPI CVCam::CreateInstance(LPUNKNOWN lpunk, HRESULT *phr)
 	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutCam - 24-04-15\n");
+	printf("SpoutCam - 08-06-15\n");
 	*/
-
 
     CUnknown *punk = new CVCam(lpunk, phr);
 
@@ -292,6 +300,7 @@ CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
 
 	NumDroppedFrames = 0;
 	NumFrames = 0;
+	hwndButton = NULL; // ensure NULL of static variable
 
 }
 
@@ -308,6 +317,10 @@ CVCamStream::~CVCamStream()
 			wglDeleteContext(glContext); // try to prevent initgl twice
 		}
 	}
+
+	// 08-06-15
+	// Destroy dummy window used for OpenGL context creation
+	if(hwndButton) DestroyWindow(hwndButton);
 
 } 
 
@@ -592,28 +605,52 @@ HRESULT CVCamStream::OpenReceiver()
 	HDC hdc = NULL;
 	HWND hwnd = NULL;
 	HGLRC hRc = NULL;
-	char windowtitle[512];
+	// char windowtitle[512];
 
 	glContext = wglGetCurrentContext();
 
 	// Once created it seems stable and retained
 	if(glContext == NULL) {
 
-		// We only need an OpenGL context with no window
-		hwnd = GetForegroundWindow(); // Any window will do - we don't render to it
-		if(!hwnd) { 
+		// We only need an OpenGL context with no render window because we don't draw to it
+		// so create an invisible dummy button window. This is then independent from the host
+		// program window (GetForegroundWindow). If SetPixelFormat has been called on the
+		// host window it cannot be called again. This caused a problem in Mapio and could be
+		// a problem with VirtualDJ.
+		//
+		// Microsoft :
+		//
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
+		//
+		// If hdc references a window, calling the SetPixelFormat function also changes the pixel
+		// format of the window. Setting the pixel format of a window more than once can lead to
+		// significant complications for the Window Manager and for multithread applications,
+		// so it is not allowed. An application can only set the pixel format of a window one time.
+		// Once a window's pixel format is set, it cannot be changed.
+		//
+		if(!hwndButton || !IsWindow(hwndButton)) {
+			hwndButton = CreateWindowA("BUTTON",
+				            "Spout Cam",
+					        WS_OVERLAPPEDWINDOW,
+						    0, 0, 32, 32,
+							NULL, NULL, NULL, NULL);
+		}
+
+		// hwndButton = GetForegroundWindow(); // causes problems with Mapio
+		if(!hwndButton) { 
 			printf("InitOpenGL error 1\n");
 			MessageBoxA(NULL, "Error 1\n", "InitOpenGL", MB_OK);
 			return S_FALSE; 
 		}
 
-		hdc = GetDC(hwnd);
+		hdc = GetDC(hwndButton);
+
 		if(!hdc) { 
 			printf("InitOpenGL error 2\n"); 
 			MessageBoxA(NULL, "Error 2\n", "InitOpenGL", MB_OK); 
 			return S_FALSE; 
 		}
-		GetWindowTextA(hwnd, windowtitle, 256); // debug
+		// GetWindowTextA(hwndButton, windowtitle, 256); // debug
 
 		PIXELFORMATDESCRIPTOR pfd;
 		ZeroMemory( &pfd, sizeof( pfd ) );
@@ -631,9 +668,14 @@ HRESULT CVCamStream::OpenReceiver()
 			return S_FALSE; 
 		}
 
-		if(!SetPixelFormat(hdc, iFormat, &pfd)) { 
-			printf("InitOpenGL error 4\n"); 
-			MessageBoxA(NULL, "Error 4\n", "InitOpenGL", MB_OK); 
+		if(!SetPixelFormat(hdc, iFormat, &pfd)) {
+			DWORD dwError = GetLastError();
+			printf("InitOpenGL error 4 (Error %d (%x))\n", dwError, dwError); 
+			// 2000 (0x7D0) The pixel format is invalid.
+			// Caused by repeated call of  the SetPixelFormat function
+			char temp[128];
+			sprintf_s(temp, "InitOpenGL Error 4\nSetPixelFormat\nError %d (%x)", dwError, dwError);
+			MessageBoxA(NULL, temp, "InitOpenGL", MB_OK); 
 			return S_FALSE; 
 		}
 
@@ -659,10 +701,11 @@ HRESULT CVCamStream::OpenReceiver()
 		// printf("Memory available [%i]\n", nCurAvailMemoryInKB);
 
 		/*
-		// Glut method
+		// Glut method (glut.dll dependency)
 		// You need to create a rendering context BEFORE calling glutInit()
 		// First you need to create a valid OpenGL rendering context and call glewInit() 
 		// to initialize the extension entry points. 
+		HDC GLhdc;
 		int argc = 1;
 		char *argv = (char*)"vCam";
 		char **vptr = &argv;
@@ -678,11 +721,13 @@ HRESULT CVCamStream::OpenReceiver()
 	} // end no glcontext 
 
 	
+	/*
 	#ifdef UseD3D9
 	receiver.SetDX9(true);
 	#else
 	receiver.SetDX9(false); // Set to DX9 for compatibility with Version 1 apps
 	#endif
+	*/
 
 	// This is a receiver so try to connect
 	if(receiver.CreateReceiver(SharedMemoryName, senderWidth, senderHeight)) {

@@ -29,10 +29,13 @@
 	22-08-14 - activated event locks
 	03.09.14 - cleanup
 	10.10.14 - Restored CreateSender for use by DirectX apps
-
+	01.08.15 - FindSender
+				- return false if the the sender is not registered
+				- if registered sender is no longer there release it
+			 - CheckSender bug - Name for ReleaseSenderName was wrong
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -601,7 +604,11 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 	}
 	// now we have either an existing sender name or the active sender name
 
-	// Try to get the sender information
+	// 01.08.15 - Is the given sender registered ?
+	if(!FindSenderName(sendername))
+		return false;
+
+	// Sender is registered so try to get the sender information
 	if(getSharedInfo(sendername, &info)) {
 		width			= (unsigned int)info.width; // pass back sender size
 		height			= (unsigned int)info.height;
@@ -609,6 +616,9 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 		dwFormat		= (DWORD)info.format;
 		return true;
 	}
+
+	// 01.08.15 - Registered sender is no longer there so release it
+	ReleaseSenderName(sendername);
 
 	return false;
 
@@ -631,14 +641,12 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
 {
 	SharedTextureInfo info;
-	char sname[SpoutMaxSenderNameLen];
 
 	// Is the given sender registered ?
 	if(FindSenderName(sendername)) {
 		// Does it still exist ?
 		if(getSharedInfo(sendername, &info)) {
 			// Return the texture info
-			// strcpy_s(sendername, 256, sname);
 			theWidth		= (unsigned int)info.width;
 			theHeight		= (unsigned int)info.height;
 			hSharehandle	= (HANDLE)info.shareHandle;
@@ -647,10 +655,11 @@ bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidt
 		}
 		else {
 			// Sender is registered but does not exist so close it
-			ReleaseSenderName(sname);
+			// 01.08.15 - bug - ReleaseSenderName(sname);
+			ReleaseSenderName(sendername);
 		}
 	}
-	
+
 	// Return zero width and height to indicate sender not found
 	theHeight = 0;
 	theWidth  = 0;
@@ -845,6 +854,33 @@ bool spoutSenderNames::getSharedInfo(const char* sharedMemoryName, SharedTexture
 
 	mem.Unlock();
 
+	return true;
+
+} // end getSharedInfo
+
+
+// 12.06.15 - Added to allow direct modification of a sender's information in shared memory
+bool spoutSenderNames::setSharedInfo(const char* sharedMemoryName, SharedTextureInfo* info) 
+{
+	SpoutSharedMemory mem;
+	bool result = mem.Open(sharedMemoryName);
+
+	if (!result) {
+		printf("   memory not found\n");
+		return false;
+	}
+
+	char *pBuf = mem.Lock();
+
+	if (!pBuf)	{
+		printf("   buffer not locked\n");
+		return false;
+	}
+
+	memcpy((void *)pBuf, (void *)info, sizeof(SharedTextureInfo) );
+
+	mem.Unlock();
+	
 	return true;
 
 } // end getSharedInfo

@@ -3,7 +3,7 @@
 					SpoutSender.h
  
 
-		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -48,6 +48,8 @@ class SPOUT_DLLEXP SpoutSender {
 	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true, GLuint HostFBO = 0);
 	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
 
+	bool SelectSenderPanel(const char* message = NULL);
+
 	bool SetMemoryShareMode(bool bMemoryMode = true);
 	bool GetMemoryShareMode();
 
@@ -56,9 +58,15 @@ class SPOUT_DLLEXP SpoutSender {
 
 	void SetDX9compatible(bool bCompatible = true); // DirectX 11 format compatible with DirectX 9
 	bool GetDX9compatible();
+	
+	int GetNumAdapters(); // Get the number of graphics adapters in the system
+	bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name
+	bool SetAdapter(int index = 0); // Set required graphics adapter for output
+	int GetAdapter(); // Get the current adapter index
 
 	bool SetVerticalSync(bool bSync = true);
 	int GetVerticalSync();
+
 
 	bool SenderDebug(char *Sendername, int size);
 

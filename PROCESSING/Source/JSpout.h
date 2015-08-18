@@ -87,6 +87,38 @@ JNIEXPORT jstring JNICALL Java_JSpout_GetSenderName
 JNIEXPORT jboolean JNICALL Java_JSpout_SenderDialog
   (JNIEnv *, jclass);
 
+/*
+ * Class:     JSpout
+ * Method:    CreateControl
+ * Signature: (Ljava/lang/String;Ljava/lang/String;FFFLjava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_JSpout_CreateControl
+  (JNIEnv *, jclass, jstring, jstring, jfloat, jfloat, jfloat, jstring);
+
+/*
+ * Class:     JSpout
+ * Method:    OpenControls
+ * Signature: (Ljava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_JSpout_OpenControls
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     JSpout
+ * Method:    CheckControls
+ * Signature: ([Ljava/lang/String;[I[F[Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_JSpout_CheckControls
+  (JNIEnv *, jclass, jobjectArray, jintArray, jfloatArray, jobjectArray);
+
+/*
+ * Class:     JSpout
+ * Method:    CloseControls
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_JSpout_CloseControls
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif

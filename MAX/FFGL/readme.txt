@@ -2,14 +2,14 @@
 jit.gl.freeframe
 ----------------
 
-jit.gl.freeframe is a 32-bit Max Jitter external for Windows that can be used to load 
+jit.gl.freeframe is a 32 bit Max Jitter external for Windows that can be used to load 
 FreeframeGL plugins within Jitter. It is similar in concept to jit.freeframe which is 
 designed for Freeframe 1.0 plugins, but provides for texture inputs and OpenGL processing 
 by the plugin. The pdf contains further information.
 
 
 ========================
-Max Freeframe example
+Freeframe example
 ========================
 
 Demonstrates using jit.gl.freeframe with Freeframe plugins
@@ -21,3 +21,11 @@ Example plugins credit Resolume developers - Freeframe SDK
 
 ShaderMaker
 "https://github.com/leadedge/ShaderMaker"
+
+========================
+Spout example
+========================
+
+Demonstrates using jit.gl.freeframe with the Spout sender and receiver Freeframe plugins
+Open "FreeframeGL_sender.maxpat" and wait for it to initialize.
+Open any Spout receiver, including "FreeframeGL_receiver.maxpat".

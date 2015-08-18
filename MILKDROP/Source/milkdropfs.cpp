@@ -230,15 +230,18 @@ bool CPlugin::OnResizeGraphicsWindow()
 
 bool CPlugin::RenderStringToTitleTexture()	// m_szSongMessage
 {
-    if (!m_lpDDSTitle)  // this *can* be NULL, if not much video mem!
+    if (!m_lpDDSTitle)  { // this *can* be NULL, if not much video mem!
         return false;
+	}
 
-	if (m_supertext.szTextW[0]==0)
+	if (m_supertext.szTextW[0]==0) {
 		return false;
+	}
 
     LPDIRECT3DDEVICE9 lpDevice = GetDevice();
-    if (!lpDevice)
+    if (!lpDevice) {
         return false;
+	}
 
 	wchar_t szTextToDraw[512];
 	swprintf(szTextToDraw, L" %s ", m_supertext.szTextW);  //add a space @ end for italicized fonts; and at start, too, because it's centered!
@@ -313,16 +316,14 @@ bool CPlugin::RenderStringToTitleTexture()	// m_szSongMessage
 	rect.top    = m_nTitleTexSizeY* 1/21;  // otherwise, top of '%' could be cut off (1/21 seems safe)
 	rect.bottom = m_nTitleTexSizeY*17/21;  // otherwise, bottom of 'g' could be cut off (18/21 seems safe, but we want some leeway)
 
-    if (!m_supertext.bIsSongTitle)
+	if (!m_supertext.bIsSongTitle)
     {
         // custom msg -> pick font to use that will best fill the texture
-
         HFONT gdi_font = NULL;
         LPD3DXFONT d3dx_font = NULL;
 
         int lo = 0;
 	    int hi = sizeof(g_title_font_sizes)/sizeof(int) - 1;
-    
         // limit the size of the font used:
 
         //int user_title_size = GetFontHeight(SONGTITLE_FONT);
@@ -330,7 +331,7 @@ bool CPlugin::RenderStringToTitleTexture()	// m_szSongMessage
         //    hi--;
 
         RECT temp;
-	    while (1)//(lo < hi-1)
+		while (1)//(lo < hi-1)
 	    {
 		    int mid = (lo+hi)/2;
 
@@ -338,6 +339,7 @@ bool CPlugin::RenderStringToTitleTexture()	// m_szSongMessage
             gdi_font = CreateFontW( g_title_font_sizes[mid], 0, 0, 0, m_supertext.bBold ? 900 : 400, m_supertext.bItal, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, 
 				                    m_fontinfo[SONGTITLE_FONT].bAntiAliased ? ANTIALIASED_QUALITY : DEFAULT_QUALITY, 
 								    DEFAULT_PITCH, m_supertext.nFontFace );
+
             if (gdi_font) 
             {
                 // create new d3dx font at 'mid' size:
@@ -356,12 +358,13 @@ bool CPlugin::RenderStringToTitleTexture()	// m_szSongMessage
 						&d3dx_font
 				) == D3D_OK)
                 {
-                    if (lo == hi-1)
+                    if (lo == hi-1) {
                         break;      // DONE; but the 'lo'-size font is ready for use!
-
+					}
                     // compute size of text if drawn w/font of THIS size:
 		            temp = rect;
-		            int h = d3dx_font->DrawTextW(NULL, szTextToDraw, -1, &temp, DT_SINGLELINE | DT_CALCRECT /*| DT_NOPREFIX*/, 0xFFFFFFFF);
+		            // int h = d3dx_font->DrawTextW(NULL, szTextToDraw, -1, &temp, DT_SINGLELINE | DT_CALCRECT /| DT_NOPREFIX/, 0xFFFFFFFF);
+					int h = d3dx_font->DrawTextW(NULL, szTextToDraw, -1, &temp, DT_SINGLELINE | DT_CALCRECT , 0xFFFFFFFF);
 
                     // adjust & prepare to reiterate:
 		            if (temp.right >= rect.right || h > rect.bottom-rect.top)
@@ -372,20 +375,24 @@ bool CPlugin::RenderStringToTitleTexture()	// m_szSongMessage
                     SafeRelease(d3dx_font);
                 }
 
-                DeleteObject(gdi_font); gdi_font=NULL;
+                DeleteObject(gdi_font); 
+				gdi_font=NULL;
             }
 	    }
 
         if (gdi_font && d3dx_font)
         {
 	        // do actual drawing + set m_supertext.nFontSizeUsed; use 'lo' size
-            int h = d3dx_font->DrawTextW(NULL, szTextToDraw, -1, &temp, DT_SINGLELINE | DT_CALCRECT /*| DT_NOPREFIX*/ | DT_CENTER, 0xFFFFFFFF);
-	        temp.left   = 0;
+            // int h = d3dx_font->DrawTextW(NULL, szTextToDraw, -1, &temp, DT_SINGLELINE | DT_CALCRECT /| DT_NOPREFIX/ | DT_CENTER, 0xFFFFFFFF);
+			int h = d3dx_font->DrawTextW(NULL, szTextToDraw, -1, &temp, DT_SINGLELINE | DT_CALCRECT | DT_CENTER, 0xFFFFFFFF);
+
+			temp.left   = 0;
 	        temp.right  = m_nTitleTexSizeX;  // now allow text to go all the way over, since we're actually drawing!
             temp.top    = m_nTitleTexSizeY/2 - h/2;
             temp.bottom = m_nTitleTexSizeY/2 + h/2;
-	        m_supertext.nFontSizeUsed = d3dx_font->DrawTextW(NULL, szTextToDraw, -1, &temp, DT_SINGLELINE /*| DT_NOPREFIX*/ | DT_CENTER, 0xFFFFFFFF);
-	        
+
+	        // m_supertext.nFontSizeUsed = d3dx_font->DrawTextW(NULL, szTextToDraw, -1, &temp, DT_SINGLELINE /| DT_NOPREFIX/ | DT_CENTER, 0xFFFFFFFF);
+			m_supertext.nFontSizeUsed = d3dx_font->DrawTextW(NULL, szTextToDraw, -1, &temp, DT_SINGLELINE | DT_CENTER, 0xFFFFFFFF);
             ret = true;
         }
         else
@@ -395,13 +402,17 @@ bool CPlugin::RenderStringToTitleTexture()	// m_szSongMessage
 
         // clean up font:
         SafeRelease(d3dx_font);
-        if (gdi_font) DeleteObject(gdi_font); gdi_font=NULL;
-    }
-    else // song title
-    {
-        wchar_t* str = m_supertext.szTextW;
+        if (gdi_font) 
+			DeleteObject(gdi_font); 
+		gdi_font=NULL;
 
-        // clip the text manually...
+    }
+	else // song title
+    {
+
+        wchar_t* str = m_supertext.szTextW;
+		
+		// clip the text manually...
         // NOTE: DT_END_ELLIPSIS CAUSES NOTHING TO DRAW, IF YOU USE W/D3DX9!
         int h;
         int max_its = 6;
@@ -437,16 +448,15 @@ bool CPlugin::RenderStringToTitleTexture()	// m_szSongMessage
             break;
         }
 
-        // now actually draw it
+	    // now actually draw it
         RECT temp;
         temp.left   = 0;
 	    temp.right  = m_nTitleTexSizeX;  // now allow text to go all the way over, since we're actually drawing!
         temp.top    = m_nTitleTexSizeY/2 - h/2;
         temp.bottom = m_nTitleTexSizeY/2 + h/2;
-
         // NOTE: DT_END_ELLIPSIS CAUSES NOTHING TO DRAW, IF YOU USE W/D3DX9!
 	    m_supertext.nFontSizeUsed = m_d3dx_title_font_doublesize->DrawTextW(NULL, str, -1, &temp, DT_SINGLELINE /*| DT_NOPREFIX | DT_END_ELLIPSIS*/ | DT_CENTER , 0xFFFFFFFF);
-    }
+	}
 
     // Change the rendertarget back to the original setup
     lpDevice->SetTexture(0, NULL);

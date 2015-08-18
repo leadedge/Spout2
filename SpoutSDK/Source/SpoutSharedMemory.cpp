@@ -9,7 +9,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -262,10 +262,12 @@ void SpoutSharedMemory::Unlock()
 
 void SpoutSharedMemory::Debug()
 {
+	/*
 	if (m_pName) {
 		printf("(%s) m_hMap = [%x], m_pBuffer = [%x]\n", m_pName, m_hMap, m_pBuffer);
 	}
 	else {
 		printf("Shared Memory Map is not open\n");
 	}
+	*/
 }

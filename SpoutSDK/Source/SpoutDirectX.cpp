@@ -17,11 +17,15 @@
 //					  TODO - cleanup all functions using it
 //		10.02.15	- removed functions relating to DirectX 11 keyed mutex lock
 //		14.02.15	- added UNREFERENCED_PARAMETER(pSharedTexture) to CheckAceess and AllowAccess
-//
+//		29.05.15	- Included SetAdapter for multiple adapters - Franz Hildgen.
+//		02.06.15	- Added GetAdapter, GetNumAdapters, GetAdapterName
+//		08.06.15	- removed dx9 flag from setadapter
+//		04.08.15	- cleanup
+//		11.08.15	- removed GetAdapterName return if Intel. For use with Intel HD4400/5000 graphics
 // ====================================================================================
 /*
 
-		Copyright (c) 2014, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2015. Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -57,6 +61,12 @@ spoutDirectX::spoutDirectX() {
 	// For debugging only - to toggle texture access locks disable/enable
 	bUseAccessLocks     = true; // use texture access locks by default
 
+	// Output graphics adapter
+	// Programmer can set for an application
+	g_AdapterIndex  = D3DADAPTER_DEFAULT; // DX9
+	g_pAdapterDX11  = nullptr; // DX11
+
+
 }
 
 spoutDirectX::~spoutDirectX() {
@@ -86,6 +96,10 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	IDirect3DDevice9Ex* pDevice;
     D3DPRESENT_PARAMETERS d3dpp;
 	D3DCAPS9 d3dCaps;
+	// int AdapterIndex = 0; // DEBUG disable temp
+	int AdapterIndex = g_AdapterIndex;
+
+	// printf("CreateDX9device : g_AdapterIndex = %d\n", g_AdapterIndex);
 
     ZeroMemory(&d3dpp, sizeof(d3dpp));
     d3dpp.Windowed		= TRUE;						// windowed and not full screen
@@ -106,7 +120,11 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 
 	// Test for hardware vertex processing capability and set up as needed
 	// D3DCREATE_MULTITHREADED required by interop spec
-	if(pD3D->GetDeviceCaps( D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, &d3dCaps) != S_OK ) return false;
+	if(pD3D->GetDeviceCaps( AdapterIndex, D3DDEVTYPE_HAL, &d3dCaps) != S_OK ) {
+		printf("spoutDirectX::CreateDX9device - GetDeviceCaps error\n");
+		return false;
+	}
+
 	// | D3DCREATE_NOWINDOWCHANGES
 	DWORD dwBehaviorFlags = D3DCREATE_PUREDEVICE | D3DCREATE_MULTITHREADED; 
 	if ( d3dCaps.VertexProcessingCaps != 0 )
@@ -118,7 +136,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	// LJ notes - hwnd seems to have no effect - maybe because we do not render anything.
 	// Note here that we are setting up for Windowed mode but it seems not to be affected
 	// by fullscreen, probably because we are not rendering to it.
-    res = pD3D->CreateDeviceEx(	D3DADAPTER_DEFAULT,
+    res = pD3D->CreateDeviceEx(	AdapterIndex, // D3DADAPTER_DEFAULT
 								D3DDEVTYPE_HAL, // Hardware rasterization. 
 								hWnd,			// hFocusWindow (can be NULL)
 								dwBehaviorFlags,
@@ -127,8 +145,11 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 								&pDevice);
 	
 	if ( res != D3D_OK ) {
+		printf("spoutDirectX::CreateDX9device - CreateDeviceEx returned error %d (%x)\n", res, res);
 		return NULL;
 	}
+
+	// printf("spoutDirectX::CreateDX9device - pDevice = %d (%x)\n", pDevice, pDevice);
 
 	return pDevice;
 
@@ -142,7 +163,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle)
 {
 
-	// LJ DEBUG
+	// DEBUG
 	// if(dxTexture) dxTexture->Release();
 
 	HRESULT res = pDevice->CreateTexture(width,
@@ -201,6 +222,10 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	ID3D11Device* pd3dDevice = NULL;
 	HRESULT hr = S_OK;
 	UINT createDeviceFlags = 0;
+	// IDXGIAdapter* pAdapterDX11 = nullptr; // DEBUG temp disable
+	IDXGIAdapter* pAdapterDX11 = g_pAdapterDX11;
+
+	// printf("CreateDX11device : g_AdapterIndex = %d, pAdapterDX11 = [%x]\n", g_AdapterIndex, g_pAdapterDX11);
 
 	// GL/DX interop Spec
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
@@ -221,26 +246,42 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 
 	UINT numFeatureLevels = ARRAYSIZE( featureLevels );
 
-	for( UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++ ) {
-		g_driverType = driverTypes[driverTypeIndex];
+	// To allow for multiple graphics cards we will use g_pAdapterDX11
+	// Which is set by SetAdapter before initializing DirectX
+	// printf("CreateDX11device : pAdapterDX11 = %x\n", pAdapterDX11);
 
-		// Createdevice only method, not the full swap chain
-		hr = D3D11CreateDevice(	NULL,
-								g_driverType,
-								NULL,
-								createDeviceFlags,
-								featureLevels,
-								numFeatureLevels,
-								D3D11_SDK_VERSION, 
-								&pd3dDevice,
-								&g_featureLevel,
-								&g_pImmediateContext);
-		
-		// Break as soon as something passes
-		if(SUCCEEDED(hr))
-			break;
+	if(pAdapterDX11) {
+			hr = D3D11CreateDevice( pAdapterDX11,
+									D3D_DRIVER_TYPE_UNKNOWN,
+									NULL,
+									createDeviceFlags,
+									featureLevels,
+									numFeatureLevels,
+									D3D11_SDK_VERSION,
+									&pd3dDevice,
+									&g_featureLevel,
+									&g_pImmediateContext );
+	} // endif adapter set
+	else {
+		for( UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++ ) {
+			g_driverType = driverTypes[driverTypeIndex];
 
-	}
+			hr = D3D11CreateDevice(	NULL,
+									g_driverType,
+									NULL,
+									createDeviceFlags,
+									featureLevels,
+									numFeatureLevels,
+									D3D11_SDK_VERSION, 
+									&pd3dDevice,
+									&g_featureLevel,
+									&g_pImmediateContext);
+
+			// Break as soon as something passes
+			if(SUCCEEDED(hr))
+				break;
+		}
+	} // endif no adapter set
 	
 	// Quit if nothing worked
 	if( FAILED(hr))
@@ -351,6 +392,7 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	// To share a resource between a Direct3D 9 device and a Direct3D 11 device 
 	// the texture must have been created using the pSharedHandle argument of CreateTexture.
 	// The shared Direct3D 9 handle is then passed to OpenSharedResource in the hResource argument.
+	// printf("OpenDX11shareHandle - pDevice [%x] %x, %x\n", pDevice, dxShareHandle, ppSharedTexture);
 	hr = pDevice->OpenSharedResource(dxShareHandle, __uuidof(ID3D11Resource), (void**)(ppSharedTexture));
 	if(hr != S_OK) {
 		return false;
@@ -426,7 +468,7 @@ bool spoutDirectX::CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedText
 	UNREFERENCED_PARAMETER(pSharedTexture);
 
 
-	// LJ DEBUG
+	// For debugging
 	if(!bUseAccessLocks) return true;
 
 	// General mutex lock
@@ -465,7 +507,7 @@ void spoutDirectX::AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedText
 
 	UNREFERENCED_PARAMETER(pSharedTexture);
 
-	// LJ DEBUG
+	// For debugging
 	if(!bUseAccessLocks) return;
 
 	if(hAccessMutex) ReleaseMutex(hAccessMutex);
@@ -522,56 +564,183 @@ bool spoutDirectX::DX11available()
 
 }
 
-/*
-//
-// http://www.nvidia.com/object/device_ids.html
-//
-// Example code to retrieve vendor and device ID's for the primary display device.
-//    #include <windows.h>
-//    #include <string>
-//    #include <iostream>
-//    using namespace std;
-bool spoutDirectX::GetDeviceIdentification(char *vendorID, char *deviceID)
+// Set required graphics adapter for output
+bool spoutDirectX::SetAdapter(int index)
 {
-	DISPLAY_DEVICE dd;
-	dd.cb = sizeof(DISPLAY_DEVICE);
-	int i = 0;
-	string id;
-	char idchars[256];
-	size_t charsConverted = 0;
+	char adaptername[128];
 
-	idchars[0] = NULL;
+	// printf("spoutDirectX::SetAdapter(%d)\n", index);
 
-	// locate primary display device
-	while (EnumDisplayDevices(NULL, 0, &dd, 0)) {
-		if (dd.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) {
-			wcstombs_s(&charsConverted, idchars, 129, dd.DeviceID, 128);
-			printf("[%s]\n", idchars);
-			break;
-		}
-		i++;
+	g_AdapterIndex = D3DADAPTER_DEFAULT; // DX9
+	g_pAdapterDX11 = nullptr; // DX11
+
+	// Reset
+	if(index == -1) {
+		return true;
 	}
 
-	if(!idchars[0]) return false;
-	
-	// get vendor ID
-	// vendorID = id.substr(8, 4);
-	if(idchars[8] && strlen(idchars) > 12) {
-		strcpy_s(vendorID, 256, &idchars[8]);
-		vendorID[4] = 0;
+	// Is the requested adapter available
+	if(index > GetNumAdapters()) {
+		printf("Index greater than number of adapters\n");
+		return false;
 	}
 
-	// get device ID
-	// deviceID = id.substr(17, 4);
-	if(idchars[17] && strlen(idchars) > 21) {
-		strcpy_s(deviceID, 256, &idchars[17]);
-		deviceID[4] = 0;
+	if(!GetAdapterName(index, adaptername, 128)) {
+		printf("Incompatible adapter\n");
+		return false;
 	}
+
+	// Set the global adapter index for DX9
+	g_AdapterIndex = index;
+
+	// Set the global adapter pointer for DX11
+	g_pAdapterDX11 = GetAdapterPointer(index);
 
 	return true;
+
 }
-*/
+
+// Get the global adapter index
+int spoutDirectX::GetAdapter()
+{
+	return g_AdapterIndex;
+}
 
 
 
- 
+// Get the number of graphics adapters in the system
+int spoutDirectX::GetNumAdapters()
+{
+	IDXGIFactory1* _dxgi_factory1;
+	IDXGIAdapter* adapter1_ptr = nullptr;
+	UINT32 i;
+
+	// Enum Adapters first : multiple video cards
+	if ( FAILED( CreateDXGIFactory1( __uuidof(IDXGIFactory1), (void**)&_dxgi_factory1 ) ) )
+		return 0;
+
+	for ( i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
+		// DXGI_ADAPTER_DESC	desc;
+		// adapter1_ptr->GetDesc( &desc );
+		// printf( "Adapter : %S\n", desc.Description );
+		// adapter1_ptr->Release();
+
+		/*
+		// printf( "bdd_spout : D3D11 Adapter %d found\n", i );
+		DXGI_ADAPTER_DESC	desc;
+		adapter1_ptr->GetDesc( &desc );
+		printf( "Adapter(%d) : %S\n", i, desc.Description );
+		printf( "  Vendor Id : %d\n", desc.VendorId );
+		printf( "  Dedicated System Memory : %.0f MiB\n", (float)desc.DedicatedSystemMemory / (1024.f * 1024.f) );
+		printf( "  Dedicated Video Memory : %.0f MiB\n", (float)desc.DedicatedVideoMemory / (1024.f * 1024.f) );
+		printf( "  Shared System Memory : %.0f MiB\n", (float)desc.SharedSystemMemory / (1024.f * 1024.f) );
+		
+		IDXGIOutput*	p_output = nullptr;
+		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
+			DXGI_OUTPUT_DESC	desc_out;
+			p_output->GetDesc( &desc_out );
+			printf( "  Output : %d\n", j );
+			printf( "    Name %S\n", desc_out.DeviceName );
+			printf( "    Attached to desktop : %s\n", desc_out.AttachedToDesktop ? "yes" : "no" );
+			//printf( "    Rotation", desc_out.DeviceName );
+			printf( "    Left : %d\n", desc_out.DesktopCoordinates.left );
+			printf( "    Top : %d\n", desc_out.DesktopCoordinates.top );
+			printf( "    Right : %d\n", desc_out.DesktopCoordinates.right );
+			printf( "    Bottom : %d\n", desc_out.DesktopCoordinates.bottom );
+			if( p_output )
+				p_output->Release();
+		}
+		*/
+
+
+	}
+
+
+	return (int)i;
+
+}
+
+// Get an adapter name
+bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
+{
+	IDXGIFactory1* _dxgi_factory1;
+	IDXGIAdapter* adapter1_ptr = nullptr;
+	UINT32 i;
+
+	if ( FAILED( CreateDXGIFactory1( __uuidof(IDXGIFactory1), (void**)&_dxgi_factory1 ) ) )
+		return false;
+	
+	for ( i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ ) {
+		if((int)i == index) {
+			DXGI_ADAPTER_DESC	desc;
+			adapter1_ptr->GetDesc( &desc );
+			adapter1_ptr->Release();
+			size_t charsConverted = 0;
+			wcstombs_s(&charsConverted, adaptername, maxchars, desc.Description, maxchars-1);
+			// Is the adapter compatible ?
+			// For now - just test for Intel graphics
+			// 11.08.15 - removed for use with Intel HD4400/5000 graphics
+			// if(strstr(adaptername, "Intel")) {
+				// printf("Intel graphics not supported\n");
+				// return false;
+			// }
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
+IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
+{
+	// Enum Adapters first : multiple video cards
+	IDXGIFactory1*	_dxgi_factory1;
+	if ( FAILED( CreateDXGIFactory1( __uuidof(IDXGIFactory1), (void**)&_dxgi_factory1 ) ) )	{
+		printf( "Could not create CreateDXGIFactory1\n" );
+		return nullptr;
+	}
+
+	IDXGIAdapter* adapter1_ptr = nullptr;
+	for ( UINT32 i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
+		
+		/*
+		printf( "bdd_spout : D3D11 Adapter %d found\n", i );
+		DXGI_ADAPTER_DESC	desc;
+		adapter1_ptr->GetDesc( &desc );
+		printf( "Adapter : %S\n", desc.Description );
+		printf( "  Vendor Id : %d\n", desc.VendorId );
+		printf( "  Dedicated System Memory : %.0f MiB\n", (float)desc.DedicatedSystemMemory / (1024.f * 1024.f) );
+		printf( "  Dedicated Video Memory : %.0f MiB\n", (float)desc.DedicatedVideoMemory / (1024.f * 1024.f) );
+		printf( "  Shared System Memory : %.0f MiB\n", (float)desc.SharedSystemMemory / (1024.f * 1024.f) );
+		
+		IDXGIOutput*	p_output = nullptr;
+		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
+			DXGI_OUTPUT_DESC	desc_out;
+			p_output->GetDesc( &desc_out );
+			printf( "  Output : %d\n", j );
+			printf( "    Name %S\n", desc_out.DeviceName );
+			printf( "    Attached to desktop : %s\n", desc_out.AttachedToDesktop ? "yes" : "no" );
+			//printf( "    Rotation", desc_out.DeviceName );
+			printf( "    Left : %d\n", desc_out.DesktopCoordinates.left );
+			printf( "    Top : %d\n", desc_out.DesktopCoordinates.top );
+			printf( "    Right : %d\n", desc_out.DesktopCoordinates.right );
+			printf( "    Bottom : %d\n", desc_out.DesktopCoordinates.bottom );
+			if( p_output )
+				p_output->Release();
+		}
+		*/
+
+		if ( index == (int)i ) {
+			// Now we have the requested adapter, but does it support the required extensions
+			return adapter1_ptr;
+		}
+
+		adapter1_ptr->Release();
+	}
+
+	return nullptr;
+}
+
+
+

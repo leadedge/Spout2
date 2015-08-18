@@ -13,6 +13,10 @@
 //					Version 1.02
 //		26.05.15	Recompile for revised SpoutPanel registry write of sender name
 //					Version 1.03
+//		07.07.15	Recompile on new drive Windows 7 32bit VS2010 - VDJ vers v8.0.2345
+//		08.07.15	Create an invisible dummy button window for OpenGL due to SetPixelFormat problems noted with Mapio
+//		01.08.15	Recompile for 2.004 release /MT
+//					Version 1.04
 //
 //		------------------------------------------------------------
 //
@@ -63,7 +67,7 @@ SpoutReceiverPlugin::SpoutReceiverPlugin()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("VDJSpoutReceiver - 1.03\n");
+	printf("VDJSpoutReceiver - 1.04\n");
 	*/
 
 
@@ -107,7 +111,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 	infos->Author = "Lynn Jarvis";
     infos->PluginName = (char *)"VDJSpoutReceiver";
 	infos->Description = (char *)"Receives frames from a Spout Sender\nSpout : http://Spout.zeal.co/";
-	infos->Version = (char *)"v1.03";
+	infos->Version = (char *)"v1.04";
     infos->Bitmap = NULL;
 
 	// A receiver is a source
@@ -121,7 +125,8 @@ HRESULT __stdcall SpoutReceiverPlugin::OnStart()
 {
 	// printf("OnStart\n");
 	StartOpenGL(); // Initialize openGL if not already
-	spoutreceiver.SetDX9(true); // To use DirectX 9 we need to specify that first
+	// To use DirectX 9 we need to specify that first
+	// spoutreceiver.SetDX9(true); 
 	bSpoutOut = true;
 
 	return NO_ERROR;
@@ -152,6 +157,11 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDeviceClose()
 		wglDeleteContext(m_hSharedRC);
 		wglDeleteContext(m_hRC);
 	}
+
+	// 08.07.15
+	// Destroy dummy window used for OpenGL context creation
+	if(m_hwnd) DestroyWindow(m_hwnd);
+
 	bInitialized = false;
 	bOpenGL = false;
 	m_GLtextureVJ = 0;
@@ -169,8 +179,10 @@ HRESULT __stdcall SpoutReceiverPlugin::OnParameter(int ParamID)
 	// printf("OnParameter\n");
 	// Activate SpoutPanel to select a sender
 	// 22.02.15 - set DX9 compatible because incompatible DX11 textures will not be received
-	spoutreceiver.SelectSenderPanel("/DX9");
-	// spoutreceiver.SelectSenderPanel();
+	if(spoutreceiver.GetDX9())
+		spoutreceiver.SelectSenderPanel("/DX9");
+	else
+		spoutreceiver.SelectSenderPanel();
 
 	return S_OK;
 }
@@ -342,10 +354,32 @@ bool SpoutReceiverPlugin::StartOpenGL()
 // Spout OpenGL initialization function
 bool SpoutReceiverPlugin::InitOpenGL()
 {
-	// We only need an OpenGL context with no window
-	m_hwnd = GetForegroundWindow(); // Any window will do - we don't render to it
-
-	// m_hwnd = FindWindowA(NULL, "Video");
+	// m_hwnd = GetForegroundWindow(); // causes problems with SetPixelFormat - noted with Mapio
+	//
+	// 08.07.15
+	// We only need an OpenGL context with no render window because we don't draw to it
+	// so create an invisible dummy button window. This is then independent from the host
+	// program window (GetForegroundWindow). If SetPixelFormat has been called on the
+	// host window it cannot be called again. This caused a problem in Mapio and could be
+	// a problem with VirtualDJ.
+	//
+	// Microsoft :
+	//
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
+	//
+	// If hdc references a window, calling the SetPixelFormat function also changes the pixel
+	// format of the window. Setting the pixel format of a window more than once can lead to
+	// significant complications for the Window Manager and for multithread applications,
+	// so it is not allowed. An application can only set the pixel format of a window one time.
+	// Once a window's pixel format is set, it cannot be changed.
+	//
+	if(!m_hwnd || !IsWindow(m_hwnd)) {
+		m_hwnd = CreateWindowA("BUTTON",
+			            "VDJ Receiver",
+				        WS_OVERLAPPEDWINDOW,
+					    0, 0, 32, 32,
+						NULL, NULL, NULL, NULL);
+	}
 
 	if(!m_hwnd) { printf("InitOpenGL error 1\n"); MessageBoxA(NULL, "Error 1\n", "InitOpenGL", MB_OK); return false; }
 	m_hdc = GetDC(m_hwnd);

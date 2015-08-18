@@ -13,10 +13,12 @@
 //		12.10.14	- changed SelectSenderPanel arg to const char
 //		23.12.14	- added host fbo arg to ReceiveImage
 //		08.02.15	- Changed default texture format for ReceiveImage in header to GL_RGBA
+//		29.05.15	- Included SetAdapter for multiple adapters - Franz Hildgen.
+//		02.06.15	- Added GetAdapter, GetNumAdapters, GetAdapterName
 //
 // ====================================================================================
 /*
-		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -136,7 +138,7 @@ bool SpoutReceiver::SetActiveSender(char* Sendername)
 
 
 //---------------------------------------------------------
-bool SpoutReceiver::GetSenderInfo(char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
+bool SpoutReceiver::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
 {
 	return spout.GetSenderInfo(sendername, width, height, dxShareHandle, dwFormat);
 }
@@ -198,6 +200,29 @@ bool SpoutReceiver::GetDX9compatible()
 		return false;
 }
 
+//---------------------------------------------------------
+bool SpoutReceiver::SetAdapter(int index)
+{
+	return spout.SetAdapter(index);
+}
+
+// Get current adapter index
+int SpoutReceiver::GetAdapter()
+{
+	return spout.GetAdapter();
+}
+
+// Get the number of graphics adapters in the system
+int SpoutReceiver::GetNumAdapters()
+{
+	return spout.GetNumAdapters();
+}
+
+// Get an adapter name
+bool SpoutReceiver::GetAdapterName(int index, char *adaptername, int maxchars)
+{
+	return spout.GetAdapterName(index, adaptername, maxchars);
+}
 
 //---------------------------------------------------------
 bool SpoutReceiver::SetVerticalSync(bool bSync)

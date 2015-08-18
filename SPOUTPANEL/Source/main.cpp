@@ -71,13 +71,22 @@
 //	24.05.15 - Registry write of sender name
 //	28.05.15 - Reduced sleep after select sender due to registry flush delay
 //			 - Version 2.10
+//	13.06.15 - Added Font (ttf)to known extension types
+//			 - Version 2.11
+//	14.06.15 - Added Font selection dialog and "\FONT" option
+//	15.06.15 - Added font properties to file name search via font handle
+//			 - Version 2.12
+//	19.06.15 - fixed case sensitive extensions for Openfile
+//	08.07.15 - remove unknown texture from DX9 incompatibility report
+//			 - recompile for 2.004 release
+//			 - Version 2.14 /MT
 //
-
 #include <windows.h>
 #include <vector>
 #include <iostream>
 #include <fstream>
 #include <Shlwapi.h> // for path functions
+#include <io.h> // for file existence check
 #include "resource.h"
 
 #include "../../../../SpoutSDK/SpoutSenderNames.h"
@@ -86,20 +95,36 @@
 
 char SpoutSenderName[256]; // global Sender name to retrieve from the list dialog
 char UserMessage[512]; // User message for the text dialog
-
 bool bDX9compatible = false; // Only list DX9 compatible senders - modified by /DX9 arg
 bool bArgFound = false;
 bool bFileOpen = false;
-bool GetSenderDialog(HINSTANCE hInst);
-bool OpenFile(char *filename, const char *extension, int maxchars);
-int ParseCommandline();
-void wtrim(WCHAR * s);
-bool ReadPathFromRegistry(const char *filepath, const char *subkey, const char *valuename);
-bool WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename);
+bool bFontOpen = false;
 char **argv = NULL;
 spoutSenderNames sendernames; // Names class functions
 HINSTANCE g_hInst = NULL;
 static HBRUSH hbrBkgnd = NULL;
+
+//
+// Font dialog support
+//
+// http://stackoverflow.com/questions/16769758/get-a-font-filename-based-on-the-font-handle-hfont
+//
+#define FONT_FINGERPRINT_SIZE    256
+struct FontListItem {
+	std::string FileName;
+	int FingerPrintOffset;
+	char FingerPrint[FONT_FINGERPRINT_SIZE];
+};
+std::multimap< size_t, std::shared_ptr<FontListItem> > FontList;
+
+bool GetSenderDialog(HINSTANCE hInst);
+bool OpenFile(char *filename, const char *extension, int maxchars);
+bool OpenFont(char *filepath);
+int ParseCommandline();
+void wtrim(WCHAR * s);
+bool ReadPathFromRegistry(const char *filepath, const char *subkey, const char *valuename);
+bool WritePathToRegistry(const char *filepath, const char *subkey, const char *valuename);
+void AddFontToList(const std::string& fontFileName);
 
 // The sender list dialog
 INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
@@ -124,7 +149,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutPanel 2.10\n");
+	printf("SpoutPanel 2.14\n");
 	*/
 
 	// Find the current active window to restore to the top when SpoutPanel quits
@@ -135,6 +160,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	argc = ParseCommandline();
 	if( argc > 1) { // 0 = "SpoutPanel"
 		bFileOpen = false;
+		bFontOpen = false;
 		bArgFound = false;
 		hWnd = GetActiveWindow();
 		EnableWindow(hWnd, FALSE);
@@ -158,10 +184,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				bArgFound = true;
 				bFileOpen = true;
 			}
+			// "/FONT" to activate a font selection dialog
+			else if ( strcmp(argv[i], "/FONT") == 0) {
+				// printf("FONT found\n");
+				bArgFound = true;
+				bFontOpen = true;
+			}
 			else {
 				// printf("No known arg found\n");
 				bArgFound = false;
 				bFileOpen = false;
+				bFontOpen = false;
 			}
 		}
 
@@ -178,22 +211,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		EnableWindow(hWnd, TRUE);
 	}
 
+	// LJ DEBUG
+	// bFileOpen = true;
+	// bFontOpen = true;
+
 	// Try to open the application mutex.
     HANDLE hMutex = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 
 	if (!hMutex) {
 		hMutex = CreateMutexA(0, 0, "SpoutPanel");
 		// FileOpen common dialog
-		if(bFileOpen) {
+		if(bFileOpen || bFontOpen) {
 			// Get the current file path from the registry
 			ReadPathFromRegistry(filename, "Software\\Leading Edge\\SpoutPanel", "Filepath");
 			// What file extension did the user last choose ?
 			char *extension = NULL;
 			extension = PathFindExtensionA(filename);
-			bRet = OpenFile(filename, extension, MAX_PATH); // returns a file path if successful
-			// 04-01-15 - WritePathToRegistry
+			if(bFileOpen)
+				bRet = OpenFile(filename, extension, MAX_PATH); // returns a file path if successful
+			else // Only one other choice
+				bRet = OpenFont(filename); // returns a file path if successful
+			// WritePathToRegistry
 			if(bRet) {
-				// printf("SpoutPanel write to registry\n[%s]\n", filename);
+				// printf("SpoutPanel OPEN write to registry\n[%s]\n", filename);
 				WritePathToRegistry(filename, "Software\\Leading Edge\\SpoutPanel", "Filepath");
 			}
 			// Time before the app tries to access the file or the registry depends on registry flush
@@ -390,7 +430,8 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							break;
 					}
 
-					if(bDX9compatible && !bUnKnown) { // Specify DX9 compatible senders
+					// if(bDX9compatible && !bUnKnown) { // Specify DX9 compatible senders
+					if(bDX9compatible) { // Specify DX9 compatible senders
 
 						// Is the sender DX9 compatible
 						if(! ( info.format == 0  // default directX 9
@@ -732,11 +773,168 @@ INT_PTR CALLBACK TextDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 	return FALSE;
 }
 
+
+bool OpenFont(char *filepath)
+{
+	static DWORD rgbCurrent;  // current text color
+	CHOOSEFONTA cf;            // common dialog box structure
+	static LOGFONTA lf;        // logical font structure
+	char WinFontDir[MAX_PATH];
+
+	// Find the Windows font folder
+	if(GetEnvironmentVariableA((LPCSTR)"windir", (LPSTR)WinFontDir, MAX_PATH) == 0)	return false;
+	strcat_s(WinFontDir, "\\fonts");
+	// printf("WinFontDir [%s]\n", WinFontDir);
+
+	// create a lookup table (FontList) of all installed/known fonts
+	// with the Windows font files in WinFontDir
+	HANDLE hFind = NULL;
+	WIN32_FIND_DATAA fd;
+	char FilePath[MAX_PATH];
+	std::string FontFileName;
+
+	sprintf_s(FilePath, MAX_PATH, "%s\\*.ttf", WinFontDir);
+	hFind = FindFirstFileA(FilePath, &fd); 
+	if(hFind != INVALID_HANDLE_VALUE) {
+		strcpy_s(FilePath, WinFontDir);
+		strcat_s(FilePath, "\\");
+		int i = 0;
+		do  { 
+			// read all ttf files in current folder
+			if(!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ) {
+				FontFileName = FilePath;
+				FontFileName += fd.cFileName;
+				AddFontToList(FontFileName);
+			}
+			i++;
+		} while(FindNextFileA(hFind, &fd) != 0); 
+		FindClose(hFind); 
+	}
+
+	// Initialize CHOOSEFONT for the dialog
+	ZeroMemory(&cf, sizeof(cf));
+	cf.lStructSize = sizeof (cf);
+	cf.hwndOwner = NULL; // hwnd;
+	cf.lpLogFont = &lf;
+	cf.rgbColors = rgbCurrent;
+	cf.Flags = CF_SCREENFONTS | CF_EFFECTS;
+
+	// Open the dialog
+	if (ChooseFontA(&cf)==TRUE) {
+
+		/*
+		printf("Face Name        = [%s]\n", cf.lpLogFont->lfFaceName);
+		printf("lfEscapement     = [%d]\n", cf.lpLogFont->lfEscapement);
+		printf("lfOrientation    = [%d]\n", cf.lpLogFont->lfOrientation);
+		printf("lfWeight         = [%d]\n", cf.lpLogFont->lfWeight);
+		printf("lfItalic         = [%d]\n", cf.lpLogFont->lfItalic);
+		printf("lfUnderline      = [%d]\n", cf.lpLogFont->lfUnderline);
+		printf("lfStrikeOut      = [%d]\n", cf.lpLogFont->lfStrikeOut);
+		printf("lfCharSet        = [%d]\n", cf.lpLogFont->lfCharSet);
+		printf("lfPitchAndFamily = [%d]\n", cf.lpLogFont->lfPitchAndFamily);
+		*/
+		// Create a font based on the information retrieved
+		// in order to get the font handle
+		HFONT fontHandle = CreateFontA(	cf.lpLogFont->lfHeight,
+								cf.lpLogFont->lfWidth,
+								cf.lpLogFont->lfEscapement,
+								cf.lpLogFont->lfOrientation,
+								cf.lpLogFont->lfWeight,
+								cf.lpLogFont->lfItalic,
+								cf.lpLogFont->lfUnderline,
+								cf.lpLogFont->lfStrikeOut,
+								cf.lpLogFont->lfCharSet,
+								cf.lpLogFont->lfOutPrecision,
+								cf.lpLogFont->lfClipPrecision,
+								cf.lpLogFont->lfQuality,
+								cf.lpLogFont->lfPitchAndFamily,
+								cf.lpLogFont->lfFaceName);
+		if(fontHandle) {
+			printf("fontHandle = %x (%s)\n", fontHandle, cf.lpLogFont->lfFaceName);
+			// Retrieve the font data given its handle
+			std::vector<char> data;
+			bool result = false;
+			HDC hdc = CreateCompatibleDC(NULL);
+			if (hdc != NULL) {
+				HGDIOBJ prevObj = SelectObject(hdc, fontHandle);
+				if(prevObj != NULL && prevObj != HGDI_ERROR) {
+					DWORD size = GetFontData(hdc, 0, 0, NULL, 0);
+					if(size != GDI_ERROR) {
+						char* buffer = new char[size];
+						if (GetFontData(hdc, 0, 0, buffer, size) == size) {
+							data.resize(size); // LJ - this is necessary
+							memcpy(&data[0], buffer, size);
+							result = true;
+						}
+						delete[] buffer;
+					}
+					else {
+						printf("GetFontData failed (hdc = %x, size = %d\n", hdc, (int)size);
+					}
+				}
+				else {
+					printf("SelectObject failed\n");
+				}
+				DeleteDC(hdc);
+			}
+			else {
+				printf("CreateCompatibleDC failed\n");
+			}
+			DeleteFont(fontHandle);
+
+			// Compare the data with the font list
+			if(result) {
+				for (auto i = FontList.lower_bound(data.size()); i != FontList.upper_bound(data.size()); ++i) {
+					if (memcmp(&data[i->second->FingerPrintOffset], i->second->FingerPrint, FONT_FINGERPRINT_SIZE) == 0) {
+						FontFileName = i->second->FileName;
+					}
+				}
+				sprintf_s(filepath, MAX_PATH, "%s", FontFileName.c_str());
+				// Does it exist ?
+				if(_access(filepath, 0) != -1) { 
+					return true;
+				}
+			}
+		}
+	}
+	else {
+		// printf("ChooseFont not OK\n");
+	}
+
+	return false;
+
+}
+
+void AddFontToList(const std::string& fontFileName)
+{
+	// printf("AddFontToList(%s)\n", fontFileName.c_str());
+
+    std::ifstream file(fontFileName, std::ios::binary | std::ios::ate);
+    if (!file.is_open())
+        return;
+
+    size_t fileSize = (size_t)file.tellg();
+    if (fileSize < FONT_FINGERPRINT_SIZE) {
+		file.close();
+        return;
+	}
+
+    std::shared_ptr<FontListItem> fontListItem(new FontListItem());
+    fontListItem->FileName = fontFileName;
+    fontListItem->FingerPrintOffset = rand() % (fileSize - FONT_FINGERPRINT_SIZE);
+    file.seekg(fontListItem->FingerPrintOffset);
+    file.read(fontListItem->FingerPrint, FONT_FINGERPRINT_SIZE);
+    FontList.insert(std::pair<size_t, std::shared_ptr<FontListItem> >(fileSize, fontListItem));
+	file.close();
+
+}
+
+
 bool OpenFile(char *filepath, const char *extension, int maxchars)
 {
 	OPENFILENAMEA ofn;
     char szFile[MAX_PATH] = "";
-
+	
 	ZeroMemory(&ofn, sizeof(ofn));
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = NULL; // TODO hwnd;
@@ -747,26 +945,41 @@ bool OpenFile(char *filepath, const char *extension, int maxchars)
 
 	// What extension did the user last use?
 	if(extension) {
+
+		// printf("extension [%s]\n", extension);
+
 		// Known file types
+		// .ttf (font files)
+		if(strcmp(extension, ".ttf") == 0 || strcmp(extension, ".TTF") == 0) {
+			ofn.lpstrFilter = "Font Files (*.ttf)\0*.ttf\0Shader Files (*.glsl)\0*.glsl\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+		    ofn.lpstrDefExt = "ttf";
+		}
 		// .glsl, .frag. .fs
-		if(strcmp(extension, ".glsl") == 0) {
+		else if(strcmp(extension, ".glsl") == 0 || strcmp(extension, ".GLSL") == 0) {
 			ofn.lpstrFilter = "Shader Files (*.glsl)\0*.glsl\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
 		    ofn.lpstrDefExt = "glsl";
 		}
-		else if(strcmp(extension, ".frag") == 0) {
+		else if(strcmp(extension, ".frag") == 0 || strcmp(extension, ".FRAG") == 0) {
 			ofn.lpstrFilter = "Shader Files (*.frag)\0*.frag\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
 		    ofn.lpstrDefExt = "frag";
 		}
-		else if(strcmp(extension, ".fs") == 0) {
+		else if(strcmp(extension, ".fs") == 0 || strcmp(extension, ".FS") == 0) {
 			ofn.lpstrFilter = "ISF Shader Files (*.fs)\0*.fs\0Shader Files (*.frag)\0*.frag\0Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
 		    ofn.lpstrDefExt = "fs";
 		}
+
+		// printf("default extension [%s]\n", ofn.lpstrDefExt);
 	}
 
     ofn.lpstrFile = szFile;
     ofn.nMaxFile = MAX_PATH;
     // ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-	ofn.Flags = OFN_EXPLORER | OFN_HIDEREADONLY;
+	// ofn.Flags = OFN_EXPLORER | OFN_HIDEREADONLY;
+	ofn.Flags = OFN_EXPLORER;
+	// OFN_FORCESHOWHIDDEN : Forces the showing of system and hidden files, thus overriding
+	// the user setting to show or not show hidden files.
+	// However, a file that is marked both system and hidden is not shown.
+	// ofn.Flags = OFN_FORCESHOWHIDDEN | OFN_EXPLORER;
 
     if(GetOpenFileNameA(&ofn)) {
 		strcpy_s(filepath, maxchars, szFile);
@@ -870,13 +1083,11 @@ bool WritePathToRegistry(const char *filepath, const char *subkey, const char *v
 	// Does the key already exist ?
 	regres = RegOpenKeyExA(HKEY_CURRENT_USER, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
 	if(regres != ERROR_SUCCESS) {
-		// printf("SpoutPanel - creating a new registry key (%s)\n", mySubKey);
 		// Create a new key
 		regres = RegCreateKeyExA(HKEY_CURRENT_USER, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
 	}
 
 	if(regres == ERROR_SUCCESS && hRegKey != NULL) {
-		// printf("SpoutPanel writing the path to the registry\n[%s]\n", filepath);
 		// Write the path
 		regres = RegSetValueExA(hRegKey, valuename, 0, REG_SZ, (BYTE*)filepath, ((DWORD)strlen(filepath) + 1)*sizeof(unsigned char));
 		// For immediate read after write - necessary here becasue the app that opeded SpoutPanel

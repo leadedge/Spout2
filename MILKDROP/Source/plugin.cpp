@@ -514,6 +514,13 @@ SPOUT NOTES :
 			   The selected settings are saved when the Visualizer is stopped.
 	25.04.15 - Changed Spout SDK from graphics auto detection to set DirectX mode to optional installer
 			 - Recompile for dual DX option installer
+	17.06.15 - User observation that custom messages do not work.
+			   This is isolated to "RenderStringToTitleTexture" and seems to be related to
+			   generating the fonts from GDI to DX9. Not sure of the reason. Could be DX9 libraries.
+			   As a a workaround, custom message rendering is replaced with the same as used for 
+			   title animation which works OK. The limitation is that this gives a fixed font,
+			   but the colour should come out the same as in the custom message setup file.
+	07.07.15 - Recompile for 2.004 release
 
 */
 
@@ -5425,7 +5432,6 @@ LRESULT CPlugin::MyWindowProc(HWND hWnd, unsigned uMsg, WPARAM wParam, LPARAM lP
 				else
 				{
 					//m_fShowUserMessageUntilThisTime = GetTime();	// if there was an error message already, clear it
-
 					if(m_waitstring.bDisplayAsCode)
 					{
 						char buf[16];
@@ -9499,6 +9505,19 @@ void CPlugin::LaunchCustomMessage(int nMsgNum)
 	m_supertext.bIsSongTitle = false;
 	lstrcpyW(m_supertext.szTextW, m_CustomMessage[nMsgNum].szText);
 
+	// LJ DEBUG
+	// Problem with rendering of custom messages in RenderStringToTitleTexture
+	// This is a workaround to replace custom renderng with title animation
+	// ==============================
+	// wprintf(L"CustomMessage : %s\n", m_CustomMessage[nMsgNum].szText);
+	lstrcpyW(m_szSavedSongTitle, m_szSongTitle);
+	wsprintfW(m_szSongTitle, m_CustomMessage[nMsgNum].szText);
+	m_supertext.bIsSongTitle = true;
+	lstrcpyW(m_supertext.szTextW, m_szSongTitle);
+	// Fixed font
+	// lstrcpyW(m_supertext.nFontFace, m_fontinfo[SONGTITLE_FONT].szFace);
+	// ==============================
+
 	// regular properties:
 	m_supertext.fFontSize   = m_CustomMessage[nMsgNum].fSize;
 	m_supertext.fX          = m_CustomMessage[nMsgNum].x + m_CustomMessage[nMsgNum].randx * ((warand()%1037)/1037.0f*2.0f - 1.0f);
@@ -9545,9 +9564,12 @@ void CPlugin::LaunchCustomMessage(int nMsgNum)
 			}
 			pos++;
 		}
-	}*/
+	}
+	*/
 
 	m_supertext.fStartTime = GetTime(); 
+	lstrcpyW(m_szSongTitle, m_szSavedSongTitle);
+
 }
 
 void CPlugin::LaunchSongTitleAnim()
