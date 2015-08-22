@@ -9,6 +9,7 @@
 //		07.11.14 - started dll
 //		08.01.15 - tested with OpenFrameworks and CodeBlocks with MingW compiler
 //		15.08.15 - added Init and Close OpenGL for apps that do not have an OpenGL context
+//		22.08.15 - cleanup and documentation
 //
 /*
 		Copyright (c) 2014-2015. Lynn Jarvis. All rights reserved.
@@ -148,6 +149,7 @@ namespace Spout2 {
 		return spout.SetActiveSender(Sendername);
 	}
 	
+
 	//
 	// Utilities
 	//
@@ -187,13 +189,7 @@ namespace Spout2 {
 		return spout.SelectSenderPanel(message);
 	}
 
-	// Convert a wide string to a character array - used by PureBasic
-	extern "C" _declspec(dllexport)
-	int _wcstombs(void *sendername, const wchar_t *wname, int maxcount)
-	{
-		return (int)wcstombs((char *)sendername, wname, maxcount);
-	}
-
+	// OpenGL context for situations where there is none
 	extern "C" _declspec(dllexport)
 	bool InitOpenGL()
 	{

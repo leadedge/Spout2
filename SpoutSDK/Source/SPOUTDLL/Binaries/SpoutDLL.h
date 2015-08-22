@@ -36,7 +36,10 @@ namespace Spout2 {
 	
 	// exported functions
 
+	//
 	// Sender
+	//
+
 	extern "C" _declspec(dllexport)
 	bool CreateSender(char *name, unsigned int width, unsigned int height, DWORD dwFormat = 0);
 
@@ -55,7 +58,10 @@ namespace Spout2 {
 	extern "C" _declspec(dllexport)
 	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
 
+	//
 	// Receiver
+	//
+
 	extern "C" _declspec(dllexport)
 	bool CreateReceiver(char* name, unsigned int &width, unsigned int &height, bool bUseActive = false);
 
@@ -94,8 +100,11 @@ namespace Spout2 {
 	
 	extern "C" _declspec(dllexport)
 	bool SetActiveSender(char* Sendername);
-	
+
+	//
 	// Utilities
+	//
+
 	extern "C" _declspec(dllexport)
 	bool SetDX9(bool bDX9 = true); // set to use DirectX 9 (default is DirectX 11)
 	
@@ -116,9 +125,10 @@ namespace Spout2 {
 	
 	extern "C" _declspec(dllexport)
 	bool SelectSenderPanel(const char* message = NULL);
-
-	extern "C" _declspec(dllexport)
-	int _wcstombs(void *sendername, const wchar_t *wname, int maxcount);
+	
+	//
+	// OpenGL context for situations where there is none
+	//
 
 	extern "C" _declspec(dllexport)
 	bool InitOpenGL();
