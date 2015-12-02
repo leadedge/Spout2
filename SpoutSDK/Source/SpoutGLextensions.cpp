@@ -7,8 +7,11 @@
 //			to use Glew or disable dynamic load of specific extensions
 //			See spoutGLext.h
 //
+//			01.09.15	- added MessageBox error warning in LoadGLextensions
+//			11.11.15	- removed (unsigned) cast from GetProcAddress in FBO extensions
+//
 
-		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -142,23 +145,23 @@ bool loadFBOextensions() {
 		return false;
 	#else
 	try { // load extensions for FBO
-		glBindFramebufferEXT						= (glBindFramebufferEXTPROC)(unsigned)wglGetProcAddress("glBindFramebufferEXT");
-		glBindRenderbufferEXT						= (glBindRenderbufferEXTPROC)(unsigned)wglGetProcAddress("glBindRenderbufferEXT");
-		glCheckFramebufferStatusEXT					= (glCheckFramebufferStatusEXTPROC)(unsigned)wglGetProcAddress("glCheckFramebufferStatusEXT");
-		glDeleteFramebuffersEXT						= (glDeleteFramebuffersEXTPROC)(unsigned)wglGetProcAddress("glDeleteFramebuffersEXT");
-		glDeleteRenderBuffersEXT					= (glDeleteRenderBuffersEXTPROC)(unsigned)wglGetProcAddress("glDeleteRenderbuffersEXT");
-		glFramebufferRenderbufferEXT				= (glFramebufferRenderbufferEXTPROC)(unsigned)wglGetProcAddress("glFramebufferRenderbufferEXT");
-		glFramebufferTexture1DEXT					= (glFramebufferTexture1DEXTPROC)(unsigned)wglGetProcAddress("glFramebufferTexture1DEXT");
-		glFramebufferTexture2DEXT					= (glFramebufferTexture2DEXTPROC)(unsigned)wglGetProcAddress("glFramebufferTexture2DEXT");
-		glFramebufferTexture3DEXT					= (glFramebufferTexture3DEXTPROC)(unsigned)wglGetProcAddress("glFramebufferTexture3DEXT");
-		glGenFramebuffersEXT						= (glGenFramebuffersEXTPROC)(unsigned)wglGetProcAddress("glGenFramebuffersEXT");
-		glGenRenderbuffersEXT						= (glGenRenderbuffersEXTPROC)(unsigned)wglGetProcAddress("glGenRenderbuffersEXT");
-		glGenerateMipmapEXT							= (glGenerateMipmapEXTPROC)(unsigned)wglGetProcAddress("glGenerateMipmapEXT");
-		glGetFramebufferAttachmentParameterivEXT	= (glGetFramebufferAttachmentParameterivEXTPROC)(unsigned)wglGetProcAddress("glGetFramebufferAttachmentParameterivEXT");
-		glGetRenderbufferParameterivEXT				= (glGetRenderbufferParameterivEXTPROC)(unsigned)wglGetProcAddress("glGetRenderbufferParameterivEXT");
-		glIsFramebufferEXT							= (glIsFramebufferEXTPROC)(unsigned)wglGetProcAddress("glIsFramebufferEXT");
-		glIsRenderbufferEXT							= (glIsRenderbufferEXTPROC)(unsigned)wglGetProcAddress("glIsRenderbufferEXT");
-		glRenderbufferStorageEXT					= (glRenderbufferStorageEXTPROC)(unsigned)wglGetProcAddress("glRenderbufferStorageEXT");
+		glBindFramebufferEXT						= (glBindFramebufferEXTPROC)wglGetProcAddress("glBindFramebufferEXT");
+		glBindRenderbufferEXT						= (glBindRenderbufferEXTPROC)wglGetProcAddress("glBindRenderbufferEXT");
+		glCheckFramebufferStatusEXT					= (glCheckFramebufferStatusEXTPROC)wglGetProcAddress("glCheckFramebufferStatusEXT");
+		glDeleteFramebuffersEXT						= (glDeleteFramebuffersEXTPROC)wglGetProcAddress("glDeleteFramebuffersEXT");
+		glDeleteRenderBuffersEXT					= (glDeleteRenderBuffersEXTPROC)wglGetProcAddress("glDeleteRenderbuffersEXT");
+		glFramebufferRenderbufferEXT				= (glFramebufferRenderbufferEXTPROC)wglGetProcAddress("glFramebufferRenderbufferEXT");
+		glFramebufferTexture1DEXT					= (glFramebufferTexture1DEXTPROC)wglGetProcAddress("glFramebufferTexture1DEXT");
+		glFramebufferTexture2DEXT					= (glFramebufferTexture2DEXTPROC)wglGetProcAddress("glFramebufferTexture2DEXT");
+		glFramebufferTexture3DEXT					= (glFramebufferTexture3DEXTPROC)wglGetProcAddress("glFramebufferTexture3DEXT");
+		glGenFramebuffersEXT						= (glGenFramebuffersEXTPROC)wglGetProcAddress("glGenFramebuffersEXT");
+		glGenRenderbuffersEXT						= (glGenRenderbuffersEXTPROC)wglGetProcAddress("glGenRenderbuffersEXT");
+		glGenerateMipmapEXT							= (glGenerateMipmapEXTPROC)wglGetProcAddress("glGenerateMipmapEXT");
+		glGetFramebufferAttachmentParameterivEXT	= (glGetFramebufferAttachmentParameterivEXTPROC)wglGetProcAddress("glGetFramebufferAttachmentParameterivEXT");
+		glGetRenderbufferParameterivEXT				= (glGetRenderbufferParameterivEXTPROC)wglGetProcAddress("glGetRenderbufferParameterivEXT");
+		glIsFramebufferEXT							= (glIsFramebufferEXTPROC)wglGetProcAddress("glIsFramebufferEXT");
+		glIsRenderbufferEXT							= (glIsRenderbufferEXTPROC)wglGetProcAddress("glIsRenderbufferEXT");
+		glRenderbufferStorageEXT					= (glRenderbufferStorageEXTPROC)wglGetProcAddress("glRenderbufferStorageEXT");
 	}
 	catch (...) {
 		return false;
@@ -193,6 +196,7 @@ bool loadFBOextensions() {
 
 	return true;
 }
+
 
 bool loadBLITextension() {
 
@@ -239,12 +243,12 @@ bool loadPBOextensions()
 		return false;
 	#else
 	try { // load extensions for PBO
-		glGenBuffers	= (glGenBuffersPROC)(unsigned)wglGetProcAddress("glGenBuffers");
-		glDeleteBuffers = (glDeleteBuffersPROC)(unsigned)wglGetProcAddress("glDeleteBuffers");
-		glBindBuffer	= (glBindBufferPROC)(unsigned)wglGetProcAddress("glBindBuffer");
-		glBufferData	= (glBufferDataPROC)(unsigned)wglGetProcAddress("glBufferData");
-		glMapBuffer		= (glMapBufferPROC)(unsigned)wglGetProcAddress("glMapBuffer");
-		glUnmapBuffer	= (glUnmapBufferPROC)(unsigned)wglGetProcAddress("glUnmapBuffer");
+		glGenBuffers	= (glGenBuffersPROC)wglGetProcAddress("glGenBuffers");
+		glDeleteBuffers = (glDeleteBuffersPROC)wglGetProcAddress("glDeleteBuffers");
+		glBindBuffer	= (glBindBufferPROC)wglGetProcAddress("glBindBuffer");
+		glBufferData	= (glBufferDataPROC)wglGetProcAddress("glBufferData");
+		glMapBuffer		= (glMapBufferPROC)wglGetProcAddress("glMapBuffer");
+		glUnmapBuffer	= (glUnmapBufferPROC)wglGetProcAddress("glUnmapBuffer");
 	}
 	catch (...) {
 		return false;
@@ -306,21 +310,20 @@ unsigned int loadGLextensions() {
 	
 	unsigned int caps = 0; // as per elio glextensions
 
-	// printf("spoutGLextensions - loadGLextensions()\n");
-
 	#ifdef USE_GLEW
 	InitializeGlew(); // probably needs failure check
 	#endif
 
 	// Check for FBO extensions first - no use continuing without them
 	if(!loadFBOextensions()) {
-		// printf("    loadFBOextensions fail\n");
+		printf("    loadFBOextensions fail\n");
 		return 0;
 	}
 
 	// Load wgl interop extensions - return if fail
 	if (!loadInteropExtensions()) {
-		// printf("    loadInteropExtensions fail\n");
+		// MessageBoxA(NULL, "Cannot load OpenGL interop extensions", "ERROR", MB_OK);
+		printf("    loadInteropExtensions fail\n");
 		return 0;
 	}
 
