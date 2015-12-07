@@ -27,7 +27,8 @@
 //		04.12.15	Cleanup
 //		06.12.15	Version 1.06
 //		07.12.15	Release offscreen surface before equating to resolved surface
-//					Gave problem with Windows 7 32bit but not 64bit and only for AOV mode
+//					Gave problems with Windows 7 32bit but not 64bit and only for AOV mode
+//				    Cleanup of surface naming and unused variables
 //					Version 1.07
 //
 //		------------------------------------------------------------
@@ -118,7 +119,9 @@ HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
     infos->Bitmap = NULL;
 
 	// A receiver is a source
-	infos->Flags = VDJFLAG_VIDEO_VISUALISATION | VDJFLAG_PROCESSFIRST; // to ensure that all other effects are processed afterwards
+	// VDJFLAG_VIDEO_VISUALISATION - the effect generates visuals, rather than applying an effect on given images
+	// VDJFLAG_PROCESSLAST - porcess last in the stack to overwrite all others
+	infos->Flags = VDJFLAG_VIDEO_VISUALISATION | VDJFLAG_PROCESSLAST;
 
     return NO_ERROR;
 }
@@ -265,9 +268,8 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 							hr = m_pDevice->StretchRect(ShadowTextureSurface, NULL, ResolvedSurface, NULL, D3DTEXF_NONE );
 							if(SUCCEEDED(hr)) {
 
-								// 07-12-15 - ShadowTextureSurface surface needs to be released first
-								// or it is not finally released and affects video memory availability 
-								// for texture creation.
+								// 07-12-15 - ShadowTextureSurface surface needs to be released first or it is not
+								// finally released and affects video memory availability for texture creation.
 								if(ShadowTextureSurface != NULL) ShadowTextureSurface->Release();
 								ShadowTextureSurface = ResolvedSurface;
 
