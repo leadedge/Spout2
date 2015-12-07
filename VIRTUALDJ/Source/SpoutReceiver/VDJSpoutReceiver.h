@@ -37,8 +37,8 @@ public:
 	HRESULT __stdcall OnDraw();
 
 	// When DirectX is initialized or closed, these functions will be called
-	HRESULT __stdcall  OnDeviceInit();
-	HRESULT __stdcall  OnDeviceClose();
+	HRESULT __stdcall OnDeviceInit();
+	HRESULT __stdcall OnDeviceClose();
 	HRESULT __stdcall OnParameter(int id);
 
 private:
@@ -50,11 +50,6 @@ private:
 	HRESULT hr;
 	IDirect3DDevice9* m_VDJ_device; // VirtualDJ DirectX device
 	LPDIRECT3DTEXTURE9 m_VDJ_texture; // The Virtual DJ texture
-	LPDIRECT3DSURFACE9 TextureSurface; // Surface derived from the texture
-	LPDIRECT3DSURFACE9 SourceSurface; // System memory surface for copying
-	D3DLOCKED_RECT d3dlr; // LockRect for data transfer
-	D3DLOCKED_RECT d3dlr2; // LockRect for data transfer
-	D3DSURFACE_DESC desc; // Texture description
 
 	// SPOUT variables and functions
 	SpoutReceiver spoutreceiver;
@@ -68,11 +63,13 @@ private:
 	bool bInitialized; // did Spout initialization work ?
 	bool bSpoutOut; // Spout output on or off when plugin is started and stopped
 	bool bUseActive; // Use the active sender
+	bool bIsClosing;
 
 	char SenderName[256]; // The sender name
 	char ReceivedName[256];
 	char activesender[256]; // The name of any Spout sender being received
 
+	// DirectX9Ex
 	IDirect3D9Ex *m_pD3D;
 	IDirect3DDevice9Ex *m_pDevice;
 	LPDIRECT3DTEXTURE9 m_dxTexture; // Pointer to DirectX 9 texture to shadow the VirtualDJ directX texture

@@ -26,6 +26,9 @@
 //					VDJ <> Milkdrop is DX9 only, so must use DX9 for all apps
 //		04.12.15	Cleanup
 //		06.12.15	Version 1.06
+//		07.12.15	Release offscreen surface before equating to resolved surface
+//					Gave problem with Windows 7 32bit but not 64bit and only for AOV mode
+//					Version 1.07
 //
 //		------------------------------------------------------------
 //
@@ -62,7 +65,6 @@ VDJ_EXPORT HRESULT __stdcall DllGetClassObject(const GUID &rclsid, const GUID &r
 
 SpoutReceiverPlugin::SpoutReceiverPlugin()
 {
-
 	/*
 	// Debug console window so printf works
 	FILE* pCout;
@@ -74,8 +76,6 @@ SpoutReceiverPlugin::SpoutReceiverPlugin()
 	// DirectX9
 	m_VDJ_device = NULL;
 	m_VDJ_texture = NULL;
-	SourceSurface = NULL; 
-	TextureSurface = NULL;
 
 	// SPOUT variables and functions
 	m_Width  = 0; // global width and height of the VirtualDJ texture
@@ -86,6 +86,7 @@ SpoutReceiverPlugin::SpoutReceiverPlugin()
 	bInitialized = false;
 	bSpoutOut = false; // toggle for plugin start and stop
 	bUseActive = true; // use active sender
+	bIsClosing = false; // is not closing
 
 	m_pD3D = NULL;
 	m_pDevice = NULL;
@@ -98,11 +99,12 @@ SpoutReceiverPlugin::SpoutReceiverPlugin()
 
 SpoutReceiverPlugin::~SpoutReceiverPlugin()
 {
-
+	// printf("~SpoutReceiverPlugin\n");
 }
 
 HRESULT __stdcall SpoutReceiverPlugin::OnLoad()
 {
+	// printf("OnLoad\n");
 	DeclareParameterButton(&SelectButton, 1, "Sender", "Sender");
     return NO_ERROR;
 }
@@ -112,7 +114,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 	infos->Author = "Lynn Jarvis";
     infos->PluginName = (char *)"VDJSpoutReceiver";
 	infos->Description = (char *)"Receives frames from a Spout Sender\nSpout : http://Spout.zeal.co/";
-	infos->Version = (char *)"v1.06";
+	infos->Version = (char *)"v1.07";
     infos->Bitmap = NULL;
 
 	// A receiver is a source
@@ -124,12 +126,14 @@ HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 
 HRESULT __stdcall SpoutReceiverPlugin::OnStart()
 {
+	// printf("OnStart\n");
 	bSpoutOut = true;
 	return NO_ERROR;
 }
 
 HRESULT __stdcall SpoutReceiverPlugin::OnStop()
 {
+	// printf("OnStop\n");
 	bSpoutOut = false;
 	return NO_ERROR;
 }
@@ -137,14 +141,16 @@ HRESULT __stdcall SpoutReceiverPlugin::OnStop()
 // When DirectX/OpenGL is initialized or closed, these functions will be called
 HRESULT __stdcall  SpoutReceiverPlugin::OnDeviceInit() 
 {
+	// printf("OnDeviceInit\n");
 	return S_OK;
 }
 
 HRESULT __stdcall SpoutReceiverPlugin::OnDeviceClose() 
 {
-
-	if(m_dxTexture) m_dxTexture->Release();
-	if(m_dxSpoutTexture) m_dxSpoutTexture->Release();
+	// printf("OnDeviceClose\n");
+	bIsClosing = true;
+	if(m_dxTexture != NULL) m_dxTexture->Release();
+	if(m_dxSpoutTexture != NULL) m_dxSpoutTexture->Release();
 	if (m_pDevice != NULL) m_pDevice->Release();
 	if (m_pD3D != NULL) m_pD3D->Release();
 	
@@ -160,6 +166,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDeviceClose()
 
 HRESULT __stdcall SpoutReceiverPlugin::OnParameter(int ParamID) 
 {
+	// printf("OnParameter\n");
 	// Activate SpoutPanel to select a sender
 	spoutreceiver.SelectSenderPanel();
 	return S_OK;
@@ -174,22 +181,33 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 	DWORD dwFormat;
 	HANDLE hShareHandle;
 	unsigned int width, height;
-	// TODO : messy names - change to more logical names including globals
-	IDirect3DSurface9 *textureSurface = NULL;
-	IDirect3DSurface9 *sourceSurface = NULL;
-	IDirect3DSurface9 *renderTarget = NULL;
-	IDirect3DSurface9 *resolvedSurface = NULL;
-	IDirect3DSurface9 *offscreenSurface = NULL;
+
+	IDirect3DSurface9 * VDJTextureSurface = NULL; // Surface derived from the texture
+	IDirect3DSurface9 * OffscreenSurface = NULL; // System memory surface for copying
+	IDirect3DSurface9 * SharedTextureSurface = NULL;
+	IDirect3DSurface9 * SourceSurface = NULL;
+	IDirect3DSurface9 * ResolvedSurface = NULL;
+	IDirect3DSurface9 * ShadowTextureSurface = NULL;
+
+	D3DLOCKED_RECT d3dlr; // LockRect for data transfer
+	D3DLOCKED_RECT d3dlr2; // LockRect for data transfer
+	D3DSURFACE_DESC desc; // Texture description
+
+	if(bIsClosing) {
+		// printf("Closing\n");
+		return S_FALSE;
+	}
 
 	// Local D3D9ex device for receiving a shared texture and copying
 	if(m_pDevice == NULL) {
 		if(!InitD3DEx(NULL)) {
+			printf("InitD3DEx failed\n");
 			return S_FALSE;
 		}
 	}
 
 	GetDevice(VdjVideoEngineDirectX9, (void **)&m_VDJ_device);
-	if(m_VDJ_device) {
+	if(m_VDJ_device != NULL) {
 		
 		// Get the Virtual DJ texture and description
 		GetTexture(VdjVideoEngineDirectX9, (void **)&m_VDJ_texture, &vertices);
@@ -198,7 +216,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 		if(bSpoutOut) { // The plugin has started	
 
 			// Check for VirtualDJ texture size change compared to the local shadow DirectX texture
-			if(m_Width != desc.Width || m_Height != desc.Height || m_dxTexture == 0) {
+			if(m_Width != desc.Width || m_Height != desc.Height || m_dxTexture == NULL) {
 				hShareHandle = NULL; // a new texture rather than a copy of a shared one
 				CreateDX9exTexture(m_pDevice, desc.Width, desc.Height, D3DFMT_A8R8G8B8, m_dxTexture, hShareHandle);
 				m_Width  = desc.Width;
@@ -213,14 +231,13 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 					spoutreceiver.GetSenderInfo(activesender, m_SenderWidth, m_SenderHeight, hShareHandle, dwFormat);
 					// Create a receiver using the active sender
 					strcpy_s(SenderName, 256, activesender);
-					strcpy_s(SenderName, 256, activesender);
 					bInitialized = true;
 				} // found active sender
 				return S_FALSE; // do no more for this frame
 			} // was not initialized
 		
 			// Receive the sender shared texture
-			width = m_SenderWidth;
+			width  = m_SenderWidth;
 			height = m_SenderHeight;
 
 			// Check sender presence and create a local shared texture from the sender's sharehandle
@@ -231,47 +248,53 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 			// Now we have a local D3D9ex copy of the Spout shared texture (m_dxSpoutTexture)
 			// and a local D3D9ex texture (m_dxTexture) the same size as the VirtualDJ texture
 		
-			// The local spout shared texture surface (m_pDevice)
-			hr = m_dxSpoutTexture->GetSurfaceLevel(0, &textureSurface);
+			// The local spout shared texture surface (D3D9ex m_pDevice)
+			hr = m_dxSpoutTexture->GetSurfaceLevel(0, &SharedTextureSurface);
 			if(SUCCEEDED(hr)) {
-				// The local empty VDJ texture surface (m_pDevice)
-				hr = m_dxTexture->GetSurfaceLevel(0, &offscreenSurface);
+				// The local empty shadow VDJ texture surface (D3D9ex m_pDevice)
+				hr = m_dxTexture->GetSurfaceLevel(0, &ShadowTextureSurface);
 				if(SUCCEEDED(hr)) {
-					// Copy from the larger spout shared texture surface to the smaller texture
-					hr = m_pDevice->StretchRect( textureSurface, NULL, offscreenSurface, NULL, D3DTEXF_NONE );
+					// Copy from the larger spout shared texture surface to the smaller texture shadowing the VDJ texture
+					hr = m_pDevice->StretchRect( SharedTextureSurface, NULL, ShadowTextureSurface, NULL, D3DTEXF_NONE );
 					if(SUCCEEDED(hr)) {
 						// The below seems necessary or getrendertargetdata fails
 						// Usually used for resolving multi-sampled (anitaliased)
-						offscreenSurface->GetDesc( &desc );
-						hr = m_pDevice->CreateRenderTarget(desc.Width, desc.Height, desc.Format, D3DMULTISAMPLE_NONE, 0, FALSE, &resolvedSurface, NULL);
+						ShadowTextureSurface->GetDesc( &desc );
+						hr = m_pDevice->CreateRenderTarget(desc.Width, desc.Height, desc.Format, D3DMULTISAMPLE_NONE, 0, FALSE, &ResolvedSurface, NULL);
 						if(SUCCEEDED(hr)) {
-							hr = m_pDevice->StretchRect(offscreenSurface, NULL, resolvedSurface, NULL, D3DTEXF_NONE );
+							hr = m_pDevice->StretchRect(ShadowTextureSurface, NULL, ResolvedSurface, NULL, D3DTEXF_NONE );
 							if(SUCCEEDED(hr)) {
-								offscreenSurface = resolvedSurface;
+
+								// 07-12-15 - ShadowTextureSurface surface needs to be released first
+								// or it is not finally released and affects video memory availability 
+								// for texture creation.
+								if(ShadowTextureSurface != NULL) ShadowTextureSurface->Release();
+								ShadowTextureSurface = ResolvedSurface;
+
 								// Then use GetRenderTargetData to copy texture data from device memory to system memory
-								hr = m_pDevice->CreateOffscreenPlainSurface(desc.Width, desc.Height, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &sourceSurface, NULL);
+								hr = m_pDevice->CreateOffscreenPlainSurface(desc.Width, desc.Height, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &SourceSurface, NULL);
 								if(SUCCEEDED(hr)) {
-									// Copy the render-target data from device memory to system memory (sourceSurface).
-									hr = m_pDevice->GetRenderTargetData(offscreenSurface, sourceSurface);
+									// Copy the render-target data from device memory to system memory (SourceSurface).
+									hr = m_pDevice->GetRenderTargetData(ShadowTextureSurface, SourceSurface);
 									if(SUCCEEDED(hr)) {
-										// Create a plain surface using the VDJ D3D device
+										// Create a plain offscreen surface using the VDJ D3D device
 										// and copy between the surfaces created on the different devices
-										m_VDJ_device->CreateOffscreenPlainSurface(desc.Width, desc.Height, D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &SourceSurface, NULL);
-										hr = SourceSurface->LockRect(&d3dlr2, NULL, D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_DISCARD);
+										m_VDJ_device->CreateOffscreenPlainSurface(desc.Width, desc.Height, D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &OffscreenSurface, NULL);
+										hr = OffscreenSurface->LockRect(&d3dlr2, NULL, D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_DISCARD);
 										if(SUCCEEDED(hr)) {
-											hr = sourceSurface->LockRect(&d3dlr, NULL, D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_DISCARD);
+											hr = SourceSurface->LockRect(&d3dlr, NULL, D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_DISCARD); 
 											if(SUCCEEDED(hr)) {
 												memcpy((void *)d3dlr2.pBits, (void *)d3dlr.pBits, desc.Width*desc.Height*4);
-												sourceSurface->UnlockRect();
 												SourceSurface->UnlockRect();
+												OffscreenSurface->UnlockRect();
 												// Now copy to the VDJtexture surface
-												hr = m_VDJ_texture->GetSurfaceLevel(0, &TextureSurface);
-												D3DXLoadSurfaceFromSurface(TextureSurface, NULL, NULL, SourceSurface, NULL, NULL, D3DTEXF_NONE, 0);
+												hr = m_VDJ_texture->GetSurfaceLevel(0, &VDJTextureSurface);
+												D3DXLoadSurfaceFromSurface(VDJTextureSurface, NULL, NULL, OffscreenSurface, NULL, NULL, D3DTEXF_NONE, 0);
 											}
 											else {
-												SourceSurface->UnlockRect();
+												OffscreenSurface->UnlockRect();
 											}
-										} // SourceSurface->LockRect
+										} // OffscreenSurface->LockRect
 									} // m_pDevice->GetRenderTargetData
 								} // m_pDevice->CreateOffscreenPlainSurface
 							} // m_pDevice->StretchRect
@@ -282,19 +305,18 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 		} // plugin has not started
 	} // endif device
 
-	if(TextureSurface != NULL) TextureSurface->Release();
+	if(VDJTextureSurface != NULL) VDJTextureSurface->Release();
+	if(OffscreenSurface != NULL) OffscreenSurface->Release();
 	if(SourceSurface != NULL) SourceSurface->Release();
-	if(sourceSurface != NULL) sourceSurface->Release();
-	if(textureSurface != NULL) textureSurface->Release();
-	if(offscreenSurface != NULL) offscreenSurface->Release();
-	if(resolvedSurface != NULL) resolvedSurface->Release();
-	if(renderTarget != NULL) renderTarget->Release();
+	if(ResolvedSurface != NULL) ResolvedSurface->Release();
+	if(ShadowTextureSurface != NULL) ShadowTextureSurface->Release(); // already released by ResolvedSurface?
+	if(SharedTextureSurface != NULL) SharedTextureSurface->Release();
+	VDJTextureSurface = NULL;
+	OffscreenSurface = NULL;
 	SourceSurface = NULL;
-	sourceSurface = NULL;
-	textureSurface = NULL;
-	offscreenSurface = NULL;
-	resolvedSurface = NULL;
-	renderTarget = NULL;
+	ResolvedSurface = NULL;
+	ShadowTextureSurface = NULL;
+	SharedTextureSurface = NULL;
 
 	return S_FALSE;
 
@@ -374,9 +396,15 @@ bool SpoutReceiverPlugin::CreateDX9exTexture(IDirect3DDevice9Ex* pDevice, unsign
 {
 
 	if(width == 0 || height == 0) return false;
-	if(!m_pDevice) return false; // Global D3D9ex device
+	if(m_pDevice == NULL) {
+		printf("NULL D3D9ex device\n");
+		return false; // Global D3D9ex device
+	}
 
-	if(dxTexture != NULL) dxTexture->Release();
+	if(dxTexture != NULL) {
+		// printf("releasing texture\n");
+		dxTexture->Release();
+	}
 
 	HRESULT res = pDevice->CreateTexture(width,
 										 height,
@@ -485,6 +513,7 @@ bool SpoutReceiverPlugin::InitD3DEx(HWND hWnd)
 
 	res = Direct3DCreate9Ex(D3D_SDK_VERSION, &m_pD3D);
 	if ( res != D3D_OK ) {
+		printf("Direct3DCreate9Ex failed\n");
 		return false;
 	}
 
