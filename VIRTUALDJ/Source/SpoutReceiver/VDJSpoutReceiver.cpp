@@ -30,7 +30,8 @@
 //					Gave problems with Windows 7 32bit but not 64bit and only for AOV mode
 //				    Cleanup of surface naming and unused variables
 //					Version 1.07
-//
+//		08.12.15	info flag VDJFLAG_VIDEO_VISUALISATION only
+//					Version 1.07b
 //		------------------------------------------------------------
 //
 //		Copyright (C) 2015. Lynn Jarvis, Leading Edge. Pty. Ltd.
@@ -66,12 +67,13 @@ VDJ_EXPORT HRESULT __stdcall DllGetClassObject(const GUID &rclsid, const GUID &r
 
 SpoutReceiverPlugin::SpoutReceiverPlugin()
 {
+	
 	/*
 	// Debug console window so printf works
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("VDJSpoutReceiver - 1.06\n");
+	printf("VDJSpoutReceiver - 1.07b\n");
 	*/
 
 	// DirectX9
@@ -115,13 +117,12 @@ HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 	infos->Author = "Lynn Jarvis";
     infos->PluginName = (char *)"VDJSpoutReceiver";
 	infos->Description = (char *)"Receives frames from a Spout Sender\nSpout : http://Spout.zeal.co/";
-	infos->Version = (char *)"v1.07";
+	infos->Version = (char *)"v1.07b";
     infos->Bitmap = NULL;
 
 	// A receiver is a source
 	// VDJFLAG_VIDEO_VISUALISATION - the effect generates visuals, rather than applying an effect on given images
-	// VDJFLAG_PROCESSLAST - porcess last in the stack to overwrite all others
-	infos->Flags = VDJFLAG_VIDEO_VISUALISATION | VDJFLAG_PROCESSLAST;
+	infos->Flags = VDJFLAG_VIDEO_VISUALISATION;
 
     return NO_ERROR;
 }
