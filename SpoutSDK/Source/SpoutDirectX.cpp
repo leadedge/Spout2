@@ -122,7 +122,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	// D3DCREATE_MULTITHREADED required by interop spec
 	if(pD3D->GetDeviceCaps( AdapterIndex, D3DDEVTYPE_HAL, &d3dCaps) != S_OK ) {
 		printf("spoutDirectX::CreateDX9device - GetDeviceCaps error\n");
-		return false;
+		return NULL;
 	}
 
 	// | D3DCREATE_NOWINDOWCHANGES
