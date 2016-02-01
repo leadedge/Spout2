@@ -1173,8 +1173,6 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		return false;
 	}
 
-	if(!bMemoryShareInitOK && bDxInitOK) bMemoryMode = false;
-
 	// Check compatibility
 	if(!bMemoryShareInitOK && bDxInitOK) { 
 		bMemoryMode = false;
