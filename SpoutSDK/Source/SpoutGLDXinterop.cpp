@@ -771,7 +771,7 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 
 	if (m_hInteropDevice == NULL) {
 		printf("    LinkGLDXtextures error 1 : could not create interop device from %x\n", pDXdevice);
-		return false;
+		return NULL;
 	}
 
 	// prepare shared resource

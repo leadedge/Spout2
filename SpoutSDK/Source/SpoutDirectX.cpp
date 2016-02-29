@@ -122,7 +122,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	// D3DCREATE_MULTITHREADED required by interop spec
 	if(pD3D->GetDeviceCaps( AdapterIndex, D3DDEVTYPE_HAL, &d3dCaps) != S_OK ) {
 		printf("spoutDirectX::CreateDX9device - GetDeviceCaps error\n");
-		return false;
+		return NULL;
 	}
 
 	// | D3DCREATE_NOWINDOWCHANGES
@@ -684,10 +684,12 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 				// printf("Intel graphics not supported\n");
 				// return false;
 			// }
+            _dxgi_factory1->Release();
 			return true;
 		}
 	}
 
+    _dxgi_factory1->Release();
 	return false;
 }
 
@@ -733,12 +735,14 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 
 		if ( index == (int)i ) {
 			// Now we have the requested adapter, but does it support the required extensions
+            _dxgi_factory1->Release();
 			return adapter1_ptr;
 		}
 
 		adapter1_ptr->Release();
 	}
 
+    _dxgi_factory1->Release();
 	return nullptr;
 }
 
