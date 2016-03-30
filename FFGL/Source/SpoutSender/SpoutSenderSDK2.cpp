@@ -65,25 +65,26 @@
 			   Version 3.015
 	26.05.15 - Recompile for revised SpoutPanel registry write of sender name
 			   Version 3.016
-
+	17.08.15 - Removed DX mode from description
+			   Removed SetDX9 - now done by registry setting
+			   Recompile for 2.004 release
+			   Version 3.017
+	13.09.15 - Remove Memoryshare define for 2.005 memoryshare release
+	15.09.15 - Recompile VS2010 /MT
+			   Version 3.018
+	10.10.15 - Removed memoryshare and DX9 user options for 2.005
+	11.11.15 - Used DrawToSharedTexture / DrawToSharedMemory
+	19.11.15 - diagnostic version to list installed adapters
+	30.03.15 - Rebuild for Spout 2.005 release
+			 - Version 3.019
 
 */
 #include "SpoutSenderSDK2.h"
 #include <FFGL.h>
 #include <FFGLLib.h>
 
-// For DirectX 11 mode enable the define below, otherwise compiles for DirectX 9
-// 14.02.15 - added auto detection in SpoutGLDXinterop so can leave as DX11 default
-// 25.04.15 - changed to optional installation rather than auto-detect
-// #define DX9Mode
-
-// For memoryshare, enable the define below
-// #define MemoryShareMode
-
-#ifndef MemoryShareMode
-	#define FFPARAM_SharingName (0)
-	#define FFPARAM_Update      (1)
-#endif
+#define FFPARAM_SharingName (0)
+#define FFPARAM_Update      (1)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,30 +93,14 @@
 static CFFGLPluginInfo PluginInfo (
 
 	SpoutSenderSDK2::CreateInstance,		// Create method
-	#ifndef MemoryShareMode
 	"LJ46",									// Plugin unique ID - LJ note 4 chars only
 	"SpoutSender2",							// Plugin name - LJ note 16 chars only ! see freeframe.h
 	1,										// API major version number
 	005,									// API minor version number - FFGL 1.5
 	3,										// Plugin major version number
-	016,									// Plugin minor version number
+	18,									    // Plugin minor version number
 	FF_EFFECT,								// Plugin type
-	#ifdef DX9Mode
-	"Spout Sender DirectX 9 - Vers 3.016\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
-	#else
-	"Spout Sender DirectX 11 - Vers 3.016\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
-	#endif
-
-	#else
-	"LJ47",									 // Plugin unique ID - LJ note 4 chars only
-	"SpoutSender2M",						 // Plugin name - LJ note 16 chars only ! see freeframe.h
-	1,										 // API major version number
-	005,									 // API minor version number - FFGL 1.5
-	3,										 // Plugin major version number
-	015,									 // Plugin minor version number
-	FF_EFFECT,								 // Plugin type
-	"Spout Memoryshare sender - Vers 3.016", // Plugin description - uses strdup
-	#endif
+	"Spout Sender - Vers 3.019\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
 	"S P O U T - Version 2\nspout.zeal.co"		// About
 );
 
@@ -134,48 +119,18 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutSender2 Vers 3.016\n");
+	printf("SpoutSender2 Vers 3.019\n");
 	*/
 
 	// initial values
-
-	#ifdef MemoryShareMode
-	bMemoryMode = true; // Compilation memoryshare
-	#else
-	bMemoryMode = false;
-	#endif
-
-	#ifdef DX9Mode
-	bDX9mode          = true; // DirectX 9 rather than default DirectX 11
-	#else
-	bDX9mode          = false;
-	#endif
-
 	m_Width           = 0;
 	m_Height          = 0;
 	UserSenderName[0] = 0;
 	SenderName[0]     = 0;
 
-	// Set parameters if not memoryshare mode
-	#ifndef MemoryShareMode
+	// Set parameters
 	SetParamInfo(FFPARAM_SharingName,   "Sender Name",      FF_TYPE_TEXT,    "");
 	SetParamInfo(FFPARAM_Update,        "Update",           FF_TYPE_EVENT,   false );
-	#endif
-
-	// For memory mode, tell Spout to use memoryshare 
-	// Default is false or detected according to compatibility
-	if(bMemoryMode) {
-		sender.SetMemoryShareMode(true);
-		// Give it a user name for ProcessOpenGL
-		strcpy_s(UserSenderName, 256, "MemoryShare"); 
-	}
-
-	// Set DirectX mode depending on DX9 flag
-	if(bDX9mode) 
-		sender.SetDX9(true);
-	else 
-	    sender.SetDX9(false);
-
 
 }
 
@@ -183,10 +138,9 @@ SpoutSenderSDK2::SpoutSenderSDK2() : CFreeFrameGLPlugin(), m_initResources(1), m
 SpoutSenderSDK2::~SpoutSenderSDK2()
 {
 	// OpenGL context required
-	if(wglGetCurrentContext()) {
-		// ReleaseSender does nothing if there is no sender
+	// ReleaseSender does nothing if there is no sender
+	if(wglGetCurrentContext())
 		if(bInitialized) sender.ReleaseSender();
-	}
 
 }
 
@@ -206,9 +160,9 @@ DWORD SpoutSenderSDK2::InitGL(const FFGLViewportStruct *vp)
 DWORD SpoutSenderSDK2::DeInitGL()
 {
 	// OpenGL context required
-	if(wglGetCurrentContext()) {
+	if(wglGetCurrentContext())
 		if(bInitialized) sender.ReleaseSender();
-	}
+
 	bInitialized = false;
 
 	return FF_SUCCESS;
@@ -228,23 +182,22 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	// of the used portion of the allocated texture space
 	FFGLTexCoords maxCoords = GetMaxGLTexCoords(InputTexture);
 
-	// Draw now whether a sender has initialized or not
-	DrawTexture(InputTexture.Handle, maxCoords);
+	// Draw the incomimg texture now whether a sender has initialized or not
+	DrawFFGLtexture(InputTexture.Handle, maxCoords);
 
 	// If there is no sender name yet, the sender cannot be created
-	if(!UserSenderName[0]) {
+	if(!UserSenderName[0]){
 		return FF_SUCCESS; // keep waiting for a name
 	}
-	
-	// Otherwise create a sender if not initialized yet
 	else if(!bInitialized) {
 
-		// Update the sender name
-		strcpy_s(SenderName, 256, UserSenderName); 
+		// Otherwise create a sender if not initialized yet
+		strcpy_s(SenderName, 256, UserSenderName); // Update the sender name
 
 		// Set global width and height so any change can be tested
 		m_Width  = (unsigned int)InputTexture.Width;
 		m_Height = (unsigned int)InputTexture.Height;
+
 		// Create a new sender
 		bInitialized = sender.CreateSender(SenderName, m_Width, m_Height);
 		if(!bInitialized) {
@@ -265,11 +218,7 @@ DWORD SpoutSenderSDK2::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 
 	// Render the Freeframe texture into the shared texture
 	// Important - pass the FFGL host FBO to restore the binding because Spout uses a local fbo
-	// Default aspect = 1.0, default invert flag = true
-	if(bMemoryMode)
-		sender.SendTexture(InputTexture.Handle, GL_TEXTURE_2D, m_Width, m_Height);
-	else
-		sender.DrawToSharedTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height, (float)maxCoords.s, (float)maxCoords.t, 1.0f, true, pGL->HostFBO);
+	sender.DrawToSharedTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height, (float)maxCoords.s, (float)maxCoords.t, 1.0f, true, pGL->HostFBO);
 
 	return FF_SUCCESS;
 
@@ -279,15 +228,13 @@ DWORD SpoutSenderSDK2::GetParameter(DWORD dwIndex)
 {
 	DWORD dwRet = FF_FAIL;
 
-	#ifndef MemoryShareMode
 	switch (dwIndex) {
 		case FFPARAM_SharingName:
-			if(!bMemoryMode) dwRet = (DWORD)UserSenderName;
+			dwRet = (DWORD)UserSenderName;
 			return dwRet;
 		default:
 			return FF_FAIL;
 	}
-	#endif
 
 	return FF_FAIL;
 }
@@ -297,8 +244,7 @@ DWORD SpoutSenderSDK2::SetParameter(const SetParameterStruct* pParam)
 {
 	HGLRC glContext = wglGetCurrentContext();
 
-	// The parameters will not exist for memoryshare mode
-	#ifndef MemoryShareMode
+	// The parameters
 	if (pParam != NULL) {
 
 		switch (pParam->ParameterNumber) {
@@ -339,13 +285,12 @@ DWORD SpoutSenderSDK2::SetParameter(const SetParameterStruct* pParam)
 		}
 		return FF_SUCCESS;
 	}
-	#endif
 
 	return FF_FAIL;
 }
 
 
-void SpoutSenderSDK2::DrawTexture(GLuint TextureHandle, FFGLTexCoords maxCoords)
+void SpoutSenderSDK2::DrawFFGLtexture(GLuint TextureHandle, FFGLTexCoords maxCoords)
 {
 
 	GLfloat tex_coords[] = {

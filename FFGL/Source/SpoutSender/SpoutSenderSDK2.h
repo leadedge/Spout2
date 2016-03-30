@@ -54,10 +54,7 @@ protected:
 	char SenderName[256];
 	char UserSenderName[256];
 	bool bInitialized;
-	bool bMemoryMode;
-	bool bDX9mode;
-
-	void DrawTexture(GLuint TextureHandle, FFGLTexCoords maxCoords);
+	void DrawFFGLtexture(GLuint TextureHandle, FFGLTexCoords maxCoords);
 
 };
 
