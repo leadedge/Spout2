@@ -23,7 +23,7 @@ FONT 8, "Ms Shell Dlg"
     PUSHBUTTON      "Cancel", IDCANCEL, 91, 105, 32, 14, 0, WS_EX_LEFT
     LISTBOX         IDC_LIST1, 13, 18, 145, 72, WS_TABSTOP | WS_HSCROLL | WS_VSCROLL | LBS_NOINTEGRALHEIGHT | LBS_NOTIFY, WS_EX_LEFT
 	PUSHBUTTON      "", IDC_INFO, 13, 91, 145, 13, BS_FLAT, WS_EX_LEFT
-	LTEXT           "Vers 2.14", IDC_VERS, 13, 108, 30, 13, SS_LEFT, WS_EX_LEFT // change version here
+	LTEXT           "Vers 2.17", IDC_VERS, 13, 108, 30, 13, SS_LEFT, WS_EX_LEFT // change version here
 
 }
 
@@ -41,8 +41,8 @@ FONT 8, "MS Shell Dlg", 0, 0, 1
 }
 
 VS_VERSION_INFO  VERSIONINFO
-  FILEVERSION 2,00,1,4                     // change version here       
-  PRODUCTVERSION 2,00,1,4                  // change version here 
+  FILEVERSION 2,00,1,7                     // change version here       
+  PRODUCTVERSION 2,00,1,7                  // change version here 
   FILEFLAGSMASK 0x3fL
   FILEFLAGS 0x1l
   FILEOS 0x10004L
@@ -55,12 +55,12 @@ VS_VERSION_INFO  VERSIONINFO
       BEGIN
         VALUE "CompanyName", "Leading Edge Pty Ltd\r\n\r\nspout@zeal.co\0"
         VALUE "FileDescription", "SpoutPanel\0"
-        VALUE "FileVersion", "2.014\0"            // change version here 
+        VALUE "FileVersion", "2.017\0"            // change version here 
         VALUE "InternalName", "SpoutPanel\0"
         VALUE "LegalCopyright", "Copyright \251 Leading Edge Pty Ltd 2015\0" 
         VALUE "OriginalFilename", "SpoutPanel.exe\0"
         VALUE "ProductName", "SpoutPanel\0"
-        VALUE "ProductVersion", "2.014\0"         // change version here 
+        VALUE "ProductVersion", "2.017\0"         // change version here 
         VALUE "Comments", ""
       END
     END
