@@ -7,7 +7,8 @@
 //
 // Include the entire SDK in the project because we initialize
 // OpenGL in this app and use the OpenGL functions of Spout
-// The OpenGL device is not returned by the GetDevice functions
+// An OpenGL device is not returned by the GetDevice functions
+// because the Windows version of VDJ is DirectX 9
 //
 // Libraries needed :
 //
@@ -27,23 +28,16 @@ class SpoutSenderPlugin : public IVdjPluginVideoFx8
 public:
 
     SpoutSenderPlugin();
-    
     ~SpoutSenderPlugin();
     
     HRESULT __stdcall OnLoad();
-
     HRESULT __stdcall OnGetPluginInfo(TVdjPluginInfo8 *infos);
-        
 	HRESULT __stdcall OnStart();
-
 	HRESULT __stdcall OnStop();
-
 	HRESULT __stdcall OnDraw();
-
-	// When DirectX is initialized or closed, these functions will be called
-	HRESULT __stdcall  OnDeviceInit();
-
-	HRESULT __stdcall  OnDeviceClose();
+	HRESULT __stdcall OnDeviceInit();
+	HRESULT __stdcall OnDeviceClose();
+	ULONG   __stdcall Release();
 
 private:
 

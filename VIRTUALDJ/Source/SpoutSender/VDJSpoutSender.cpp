@@ -10,14 +10,16 @@
 //		26.05.15	Recompile for revised SpoutPanel registry write of sender name
 //					Version 1.02
 //		08.07.15	Create an invisible dummy button window for OpenGL due to SetPixelFormat problems noted with Mapio
-//		01.08.15	Recompile for 2.004 release /MT
+//		01.08.15	Recompile for 2.004
 //					Version 1.03
+//		17.12.15	Clean up and rebuild for 2.005 release VS2012
+//					Version 1.04
 //
 // Example : http://www.virtualdj.com/wiki/Plugins_SDKv8_Example.html
 //
 //		------------------------------------------------------------
 //
-//		Copyright (C) 2015. Lynn Jarvis, Leading Edge. Pty. Ltd.
+//		Copyright (C) 2015-2016. Lynn Jarvis, Leading Edge. Pty. Ltd.
 //
 //		This program is free software: you can redistribute it and/or modify
 //		it under the terms of the GNU Lesser General Public License as published by
@@ -32,20 +34,18 @@
 //		You will receive a copy of the GNU Lesser General Public License along 
 //		with this program.  If not, see http://www.gnu.org/licenses/.
 //		--------------------------------------------------------------
+//
+//		30.03.16 - rebuild for Spout 2.005 release Version 1.05
+//				   VS2012 /MT
+//
 
 #include "stdafx.h"
 #include "VDJSpoutSender.h"
 
-// to get the dll hModule since there is no main
-#ifndef _delayimp_h
-extern "C" IMAGE_DOS_HEADER __ImageBase;
-#endif
-
 
 VDJ_EXPORT HRESULT __stdcall DllGetClassObject(const GUID &rclsid, const GUID &riid, void** ppObject)
 { 
-	// Syphon comment : TODO: Is this good?
-	// LJ - this limits it to VDJ 8
+	// VDJ 8
 	if(memcmp(&rclsid, &CLSID_VdjPlugin8, sizeof(GUID)) != 0) return CLASS_E_CLASSNOTAVAILABLE; 
     if(memcmp(&riid, &IID_IVdjPluginVideoFx8, sizeof(GUID)) != 0) return CLASS_E_CLASSNOTAVAILABLE; 
 
@@ -101,12 +101,11 @@ HRESULT __stdcall SpoutSenderPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 	infos->Author = "Lynn Jarvis";
     infos->PluginName = (char *)"VDJSpoutSender";
     infos->Description = (char *)"Sends frames to a Spout Receiver\nSpout : http://Spout.zeal.co/";
-	infos->Version = (char *)"v1.03";
+	infos->Version = (char *)"v1.05";
     infos->Bitmap = NULL;
 
-	// A sender is an effect
-	// A receiver is a source
-	infos->Flags = VDJFLAG_PROCESSLAST; // to ensure that all other effects are processed first
+	// A sender is an effect - process last so all other effects are shown
+	infos->Flags = VDJFLAG_PROCESSLAST;
 
     return NO_ERROR;
 }
@@ -114,9 +113,8 @@ HRESULT __stdcall SpoutSenderPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 
 HRESULT __stdcall SpoutSenderPlugin::OnStart()
 {
-	// printf("OnStart()\n");
+	
 	StartOpenGL(); // Initialize openGL if not already
-	// spoutsender.SetDX9(true); // To use DirectX 9 we need to specify that first
 	bSpoutOut = true;
 
 	return NO_ERROR;
@@ -124,9 +122,6 @@ HRESULT __stdcall SpoutSenderPlugin::OnStart()
 
 HRESULT __stdcall SpoutSenderPlugin::OnStop()
 {
-	// printf("OnStop()\n");
-	// StartOpenGL(); // return to the main context
-
 	// Cleanup and start again on start
 	if(m_hRC && wglMakeCurrent(m_hdc, m_hRC)) {
 		if(bInitialized) spoutsender.ReleaseSender();
@@ -135,8 +130,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnStop()
 		wglDeleteContext(m_hRC);
 	}
 
-	// 08.07.15
-	// Destroy dummy window used for OpenGL context creation
+	// Destroy OpenGL window
 	if(m_hwnd) DestroyWindow(m_hwnd);
 
 	bInitialized = false;
@@ -153,13 +147,11 @@ HRESULT __stdcall SpoutSenderPlugin::OnStop()
 // When DirectX/OpenGL is initialized or closed, these functions will be called
 HRESULT __stdcall  SpoutSenderPlugin::OnDeviceInit() 
 {
-	// printf("OnDeviceInit()\n");
 	return S_OK;
 }
 
 HRESULT __stdcall SpoutSenderPlugin::OnDeviceClose() 
 {
-	// printf("OnDeviceClose()\n");
 	// Cleanup
 	if(m_hRC && wglMakeCurrent(m_hdc, m_hRC)) {
 		if(bInitialized) spoutsender.ReleaseSender();
@@ -168,8 +160,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnDeviceClose()
 		wglDeleteContext(m_hRC);
 	}
 
-	// 08.07.15
-	// Destroy dummy window used for OpenGL context creation
+	// Destroy OpenGL window
 	if(m_hwnd) DestroyWindow(m_hwnd);
 
 	bInitialized = false;
@@ -182,10 +173,13 @@ HRESULT __stdcall SpoutSenderPlugin::OnDeviceClose()
 	return S_OK;
 }
 
+ULONG __stdcall SpoutSenderPlugin::Release()
+{
+	delete this; 
+	return S_OK;
+}
 
-// use this function to render the GL surface on the device, using any modification you want
-// return S_OK if you actually draw the texture on the device, or S_FALSE to let VirtualDJ do it
-// if using VDJPLUGINFLAG_VIDEOINPLACE, texture and vertices will be NULL
+
 HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 {
 	TVertex *vertices;
@@ -202,15 +196,10 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 	// It will start again if the start button is toggled
 	// but calling StartOpenGL here seems to work OK.
 	if(!wglMakeCurrent(m_hdc, m_hSharedRC)) {
-		// printf("wglMakeCurrent 1 fail\n");
 		bOpenGL = false;
 		StartOpenGL(); // Initialize openGL again
 		return S_OK;
 	}
-
-	// In order to draw the original image, you can either just call DrawDeck()
-	// if you don't need to modify the image (for overlay plugins for examples),
-	// or call GetTexture to get low-level access to the texture and its vertices.
 
 	// Get the DX9 device
 	GetDevice(VdjVideoEngineDirectX9, (void **)&d3d_device);
@@ -218,77 +207,51 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 
 		// Get the Virtual DJ texture and description
 		GetTexture(VdjVideoEngineDirectX9, (void **)&dxTexture, &vertices);
-		dxTexture->GetLevelDesc(0, &desc);
 		if(!dxTexture) {
 			DrawDeck(); // Let VirtualDJ do the drawing
 		    return S_OK;
 		}
+		dxTexture->GetLevelDesc(0, &desc);
 
 		// Is Spout initialized yet ?
 		if(!bInitialized) {
 			m_Width = desc.Width;
 			m_Height = desc.Height;
-
 			// This is a sender so create one
 			sprintf_s(SenderName, 256, "VirtualDJ Spout Sender");
-
-			// To use DirectX 9 we need to specify that first
-			// spoutsender.SetDX9(true);
-
-			// And we also have to set the shared texture format as D3DFMT_X8R8G8B8 so that receivers know it
-			// because the default format argument is zero and that assumes D3DFMT_A8R8G8B8
-			bool bRet = false;
-			if(spoutsender.GetDX9())
-				bRet = spoutsender.CreateSender(SenderName, m_Width, m_Height, (DWORD)D3DFMT_X8R8G8B8);
-			else
-				bRet = spoutsender.CreateSender(SenderName, m_Width, m_Height);
-			if(bRet) {
-				// printf("Created sender [%s]\n", SenderName);
+			// The default format argument is zero and that assumes D3DFMT_A8R8G8B8
+			if(spoutsender.CreateSender(SenderName, m_Width, m_Height)) {
 				bInitialized = true;
 			}
-
-
 		}
 		else if(m_Width != desc.Width || m_Height != desc.Height) {
-
 			// Initialized but has the texture changed size ?
 			m_Width = desc.Width;
 			m_Height = desc.Height;
-
 			// Update the sender	
 			spoutsender.UpdateSender(SenderName, m_Width, m_Height);
-
 		}
 		else if(bSpoutOut) { // Initialized and plugin has started
 
 			// Copy from video memory to system memory
 			hr = d3d_device->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format, D3DPOOL_SYSTEMMEM, &source_surface, NULL);
 			if(SUCCEEDED(hr)) {
-				
 				// Get the Virtual DJ texture Surface
 				hr = dxTexture->GetSurfaceLevel(0, &texture_surface);
-
 				if(SUCCEEDED(hr)) {
-					// Copy Surface to Surface
+					// Get the rendertarget data into system memory
 					hr = d3d_device->GetRenderTargetData(texture_surface, source_surface);	
 					if(SUCCEEDED(hr)) {
 						// Lock the source surface using some flags for optimization
 						hr = source_surface->LockRect(&d3dlr, NULL, D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_READONLY);
 						if(SUCCEEDED(hr)) {
-							source_surface->GetDesc(&desc);
 							// Pass the pixels to spout
-							// Disable invert of texture because this is a DirectX source
-							// 4-byte alignment might need checking
-							// printf("Format = [%d]\n", D3DFMT_X8R8G8B8); // 22
-							if(desc.Format == D3DFMT_X8R8G8B8) { // We have initialized the sender for this D3D format
-									spoutsender.SendImage((unsigned char *)d3dlr.pBits, desc.Width, desc.Height, GL_BGRA_EXT, true, false);
-							}
+							spoutsender.SendImage((unsigned char *)d3dlr.pBits, desc.Width, desc.Height, GL_BGRA_EXT);
 							source_surface->UnlockRect();
 						}
 					}
 				}
 			}
-
 			if(texture_surface) texture_surface->Release();
 			if(source_surface) source_surface->Release();
 			texture_surface = NULL;
@@ -335,12 +298,7 @@ bool SpoutSenderPlugin::StartOpenGL()
 // Spout OpenGL initialization function
 bool SpoutSenderPlugin::InitOpenGL()
 {
-	char windowtitle[512];
-
-	// We only need an OpenGL context with no window
-	// m_hwnd = GetForegroundWindow(); // 08.07.15 - causes problems with SetPixelFormat - noted with Mapio
-	// See details in VDJSpoutReceiver .cpp
-	//
+	// We only need an OpenGL context with no rendering window
 	if(!m_hwnd || !IsWindow(m_hwnd)) {
 		m_hwnd = CreateWindowA("BUTTON",
 			            "VDJ Sender",
@@ -352,7 +310,6 @@ bool SpoutSenderPlugin::InitOpenGL()
 	if(!m_hwnd) { printf("InitOpenGL error 1\n"); MessageBoxA(NULL, "Error 1\n", "InitOpenGL", MB_OK); return false; }
 	m_hdc = GetDC(m_hwnd);
 	if(!m_hdc) { printf("InitOpenGL error 2\n"); MessageBoxA(NULL, "Error 2\n", "InitOpenGL", MB_OK); return false; }
-	GetWindowTextA(m_hwnd, windowtitle, 256); // debug
 
 	PIXELFORMATDESCRIPTOR pfd;
 	ZeroMemory( &pfd, sizeof( pfd ) );
@@ -381,18 +338,6 @@ bool SpoutSenderPlugin::InitOpenGL()
 	if(!m_hSharedRC) { printf("InitOpenGL shared context not created\n"); }
 	if(!wglShareLists(m_hSharedRC, m_hRC)) { printf("wglShareLists failed\n"); }
 
-	// Drop through to return true
-	/*
-	SendMessageTimeoutA(m_hwnd, WM_GETTEXT, 256, (LPARAM)windowtitle, SMTO_ABORTIFHUNG, 128, NULL);
-	printf("InitOpenGL : hwnd = %x (%s), hdc = %x, context = %x\n", m_hwnd, windowtitle, m_hdc, m_hRC);
-	int nTotalAvailMemoryInKB = 0;
-	int nCurAvailMemoryInKB = 0;
-	// GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
-	// GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
-	glGetIntegerv(0x9048, &nTotalAvailMemoryInKB);
-	glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
-	printf("Memory : Total [%i], Available [%i]\n", nTotalAvailMemoryInKB, nCurAvailMemoryInKB);
-	*/
 
 	return true;
 
