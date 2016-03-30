@@ -11,7 +11,7 @@
 		Search for "SPOUT" to see what is required
 
 	==========================================================================
-	Copyright (C) 2014 Lynn Jarvis.
+	Copyright (C) 2014-2016 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -38,6 +38,9 @@
 	21.05.15 - Added optional SetDX9 call
 			 - Recompiled for both DX9 and DX11 for new installer
 	26.05.15 - Recompile for revised SpoutPanel registry write of sender name
+	01.07.15 - Convert project to VS2012
+			 - add a window title
+	30-03-16 - Rebuild for Spout 2.005 release - VS2012 /MT
 
 */
 #include "cinder/app/AppBasic.h"
@@ -83,7 +86,8 @@ class SpoutBoxApp : public AppBasic {
 void SpoutBoxApp::prepareSettings(Settings *settings)
 {
 		g_Width  = 640;
-		g_Height = 512;
+		g_Height = 360;
+		settings->setTitle("CinderSpoutSender");
 		settings->setWindowSize( g_Width, g_Height );
 		settings->setFullScreen( false );
 		settings->setResizable( false ); // keep the screen size constant for a sender
@@ -108,10 +112,7 @@ void SpoutBoxApp::setup()
 	// Set up the texture we will use to send out
 	// We grab the screen so it has to be the same size
 	spoutTexture =  gl::Texture(g_Width, g_Height);
-	strcpy_s(SenderName, "CINDER Spout SDK Sender"); // we have to set a sender name first
-
-	// Optionally set for DirectX 9 instead of default DirectX 11 functions
-	// spoutsender.SetDX9(true);	
+	strcpy_s(SenderName, "CINDER Spout Sender"); // we have to set a sender name first
 
 	// Initialize a sender
 	bInitialized = spoutsender.CreateSender(SenderName, g_Width, g_Height);

@@ -6,9 +6,7 @@
 
     Search for SPOUT for additions to a typical Openframeworks application
 
-	Copyright (C) 2015 Lynn Jarvis.
-
-	03.08.15 - Created project
+	Copyright (C) 2016 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -73,23 +71,23 @@ void ofApp::draw() {
 	// A render window must be available for Spout initialization and might not be
 	// available in "update" so do it now when there is definitely a render window.
 	if(!bInitialized) {
-		bInitialized = spoutsender->CreateSender(sendername, ofGetWidth(), ofGetHeight()); // Create the sender
+		// Create the sender
+		bInitialized = spoutsender->CreateSender(sendername, ofGetWidth(), ofGetHeight()); 
 	}
     // ===================
-
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - -
 	// Draw 3D graphics demo - this could be anything
 	ofPushMatrix();
-	glTranslatef((float)ofGetWidth()/2.0, (float)ofGetHeight()/2.0, 0); // centre
+	ofTranslate((float)ofGetWidth()/2.0, (float)ofGetHeight()/2.0, 0);
 	ofRotateY(rotX); // rotate - must be float
 	ofRotateX(rotY);
 	myTextureImage.getTextureReference().bind(); // bind our texture
 	ofDrawBox(0.4*(float)ofGetHeight()); // Draw the graphic
+	myTextureImage.getTextureReference().unbind(); // bind our texture
 	ofPopMatrix();
 	rotX+=0.5;
 	rotY+=0.5;
-	// - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	// ====== SPOUT =====
 	if(bInitialized) {
@@ -114,9 +112,9 @@ void ofApp::draw() {
             ofDrawBitmapString(str, ofGetWidth()-120, 20);
 
         }
-
 	}
     // ===================
+
 
 }
 
@@ -131,11 +129,13 @@ void ofApp::exit() {
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h) 
 {
+	
 	// ====== SPOUT =====
 	// Update the sender texture to receive the new dimensions
 	// Change of width and height is handled within the SendTexture function
 	if(w > 0 && h > 0) // protect against user minimize
         InitGLtexture(sendertexture, w, h);
+	
 }
 
 // ====== SPOUT =====

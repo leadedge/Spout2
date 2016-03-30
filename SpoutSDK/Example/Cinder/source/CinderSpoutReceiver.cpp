@@ -39,6 +39,9 @@
 	21.05.15 - Added optional SetDX9 call
 			 - Recompiled for both DX9 and DX11 for new installer
 	26.05.15 - Recompile for revised SpoutPanel registry write of sender name
+	01.07.15 - Convert project to VS2012
+			 - add a window title
+	30.03.16 - Rebuild for 2.005 release - VS2012 /MT
 
 */
 
@@ -80,6 +83,7 @@ void SpoutBoxApp::prepareSettings(Settings *settings)
 {
 	g_Width = 320; // set global width and height to something
 	g_Height = 240; // they need to be reset when the receiver connects to a sender
+	settings->setTitle("CinderSpoutReceiver");
 	settings->setWindowSize( g_Width, g_Height );
 	settings->setFullScreen( false );
 	settings->setResizable( true ); // allowed for a receiver
@@ -111,9 +115,6 @@ void SpoutBoxApp::update()
 		SenderName[0] = NULL; // the name will be filled when the receiver connects to a sender
 		width  = g_Width; // pass the initial width and height (they will be adjusted if necessary)
 		height = g_Height;
-
-		// Optionally set for DirectX 9 instead of default DirectX 11 functions
-		// spoutreceiver.SetDX9(true);	
 
 		// Initialize a receiver
 		if(spoutreceiver.CreateReceiver(SenderName, width, height, true)) { // true to find the active sender
@@ -150,9 +151,9 @@ void SpoutBoxApp::shutdown()
 
 void SpoutBoxApp::mouseDown(MouseEvent event)
 {
-	if( event.isRightDown() ) { // Select a sender
-		// SpoutPanel.exe must be in the executable path
-		spoutreceiver.SelectSenderPanel(); // DirectX 11 by default
+	// Select a sender
+	if( event.isRightDown() ) { 
+		spoutreceiver.SelectSenderPanel();
 	}
 }
 // ----------------------------

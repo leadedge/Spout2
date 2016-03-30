@@ -6,9 +6,7 @@
 
     Search for SPOUT for additions to a typical Openframeworks application
 
-	Copyright (C) 2015 Lynn Jarvis.
-
-	03.08.15 - Created project
+	Copyright (C) 2015-2016 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
