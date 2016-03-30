@@ -11,6 +11,8 @@
 //			11.11.15	- removed (unsigned) cast from GetProcAddress in FBO extensions
 //			17.03.16	- added bgra extensions to find out if they are supported at compile and runtime
 //			28.03.16	- caps is returned instead of fail for interop extensions
+//			29.03.16	- Fixed loadInteropExtensions flag test in loadGLextensions
+//
 
 		Copyright (c) 2014-2016, Lynn Jarvis. All rights reserved.
 
@@ -348,11 +350,8 @@ unsigned int loadGLextensions() {
 	// }
 	#endif
 
-	// Load wgl interop extensions - return caps if fail
-	// Not needed for memoryshare
-	if (!loadInteropExtensions()) {
-		// MessageBoxA(NULL, "Cannot load OpenGL interop extensions", "ERROR", MB_OK);
-		//printf("    loadInteropExtensions fail\n");
+	// Load wgl interop extensions - not needed for memoryshare
+	if (loadInteropExtensions()) {
 		caps |= GLEXT_SUPPORT_NVINTEROP;
 	}
 
