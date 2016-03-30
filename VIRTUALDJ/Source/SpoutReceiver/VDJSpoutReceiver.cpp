@@ -32,9 +32,22 @@
 //					Version 1.07
 //		08.12.15	info flag VDJFLAG_VIDEO_VISUALISATION only
 //					Version 1.07b
+//		11.12.15	Added release function as per examples - checked that it was previously called
+//					Version 1.07c
+//		14.12.15	Used UpdateSurface instead of  D3DXLoadSurfaceFromSurface
+//					Removed dependency on D3dx9.lib
+//		15.12.15	Rebuild for Spout 2.005 release
+//					Version 1.08
+//		18.02.16	Added an optional define "SPOUTEFFECT" to compile as an effect plugin
+//					Should be copied to the "Plugins\VideoEffect" folder as "VDJSpoutEffect"
+//					Version 1.09
+//		29.03.16 - rebuild for Spout 2.005 release Version 1.10
+//				   VS2012 /MT
+//
+//
 //		------------------------------------------------------------
 //
-//		Copyright (C) 2015. Lynn Jarvis, Leading Edge. Pty. Ltd.
+//		Copyright (C) 2015-2016. Lynn Jarvis, Leading Edge. Pty. Ltd.
 //
 //		This program is free software: you can redistribute it and/or modify
 //		it under the terms of the GNU Lesser General Public License as published by
@@ -50,6 +63,7 @@
 //		with this program.  If not, see http://www.gnu.org/licenses/.
 //		--------------------------------------------------------------
 //
+// #define SPOUTEFFECT
 
 #include "stdafx.h"
 #include "VDJSpoutReceiver.h"
@@ -73,7 +87,7 @@ SpoutReceiverPlugin::SpoutReceiverPlugin()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("VDJSpoutReceiver - 1.07b\n");
+	printf("VDJSpoutReceiver - 1.10\n");
 	*/
 
 	// DirectX9
@@ -102,12 +116,11 @@ SpoutReceiverPlugin::SpoutReceiverPlugin()
 
 SpoutReceiverPlugin::~SpoutReceiverPlugin()
 {
-	// printf("~SpoutReceiverPlugin\n");
+
 }
 
 HRESULT __stdcall SpoutReceiverPlugin::OnLoad()
 {
-	// printf("OnLoad\n");
 	DeclareParameterButton(&SelectButton, 1, "Sender", "Sender");
     return NO_ERROR;
 }
@@ -115,29 +128,33 @@ HRESULT __stdcall SpoutReceiverPlugin::OnLoad()
 HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 {
 	infos->Author = "Lynn Jarvis";
-    infos->PluginName = (char *)"VDJSpoutReceiver";
+
+#ifdef SPOUTEFFECT
+	infos->PluginName = (char *)"VDJSpoutEffect";
+	infos->Description = (char *)"Receives frames from a Spout Sender\nas an effect plugin\nSpout : http://Spout.zeal.co/";
+#else
+	infos->PluginName = (char *)"VDJSpoutReceiver";
 	infos->Description = (char *)"Receives frames from a Spout Sender\nSpout : http://Spout.zeal.co/";
-	infos->Version = (char *)"v1.07b";
+#endif
+
+	infos->Version = (char *)"v1.10n";
     infos->Bitmap = NULL;
 
-	// A receiver is a source
-	// VDJFLAG_VIDEO_VISUALISATION - the effect generates visuals, rather than applying an effect on given images
+#ifndef SPOUTEFFECT
 	infos->Flags = VDJFLAG_VIDEO_VISUALISATION;
-
+#endif
     return NO_ERROR;
 }
 
 
 HRESULT __stdcall SpoutReceiverPlugin::OnStart()
 {
-	// printf("OnStart\n");
 	bSpoutOut = true;
 	return NO_ERROR;
 }
 
 HRESULT __stdcall SpoutReceiverPlugin::OnStop()
 {
-	// printf("OnStop\n");
 	bSpoutOut = false;
 	return NO_ERROR;
 }
@@ -145,13 +162,11 @@ HRESULT __stdcall SpoutReceiverPlugin::OnStop()
 // When DirectX/OpenGL is initialized or closed, these functions will be called
 HRESULT __stdcall  SpoutReceiverPlugin::OnDeviceInit() 
 {
-	// printf("OnDeviceInit\n");
 	return S_OK;
 }
 
 HRESULT __stdcall SpoutReceiverPlugin::OnDeviceClose() 
 {
-	// printf("OnDeviceClose\n");
 	bIsClosing = true;
 	if(m_dxTexture != NULL) m_dxTexture->Release();
 	if(m_dxSpoutTexture != NULL) m_dxSpoutTexture->Release();
@@ -168,9 +183,17 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDeviceClose()
 	return S_OK;
 }
 
+// added 11.12.15 
+// Confirmed that it is called in vdjPlugin8.h
+ULONG __stdcall SpoutReceiverPlugin::Release()
+{
+	delete this; 
+	return S_OK;
+}
+
+
 HRESULT __stdcall SpoutReceiverPlugin::OnParameter(int ParamID) 
 {
-	// printf("OnParameter\n");
 	// Activate SpoutPanel to select a sender
 	spoutreceiver.SelectSenderPanel();
 	return S_OK;
@@ -198,14 +221,12 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 	D3DSURFACE_DESC desc; // Texture description
 
 	if(bIsClosing) {
-		// printf("Closing\n");
 		return S_FALSE;
 	}
 
 	// Local D3D9ex device for receiving a shared texture and copying
 	if(m_pDevice == NULL) {
 		if(!InitD3DEx(NULL)) {
-			printf("InitD3DEx failed\n");
 			return S_FALSE;
 		}
 	}
@@ -269,7 +290,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 							hr = m_pDevice->StretchRect(ShadowTextureSurface, NULL, ResolvedSurface, NULL, D3DTEXF_NONE );
 							if(SUCCEEDED(hr)) {
 
-								// 07-12-15 - ShadowTextureSurface surface needs to be released first or it is not
+								// ShadowTextureSurface surface needs to be released first or it is not
 								// finally released and affects video memory availability for texture creation.
 								if(ShadowTextureSurface != NULL) ShadowTextureSurface->Release();
 								ShadowTextureSurface = ResolvedSurface;
@@ -292,7 +313,17 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 												OffscreenSurface->UnlockRect();
 												// Now copy to the VDJtexture surface
 												hr = m_VDJ_texture->GetSurfaceLevel(0, &VDJTextureSurface);
-												D3DXLoadSurfaceFromSurface(VDJTextureSurface, NULL, NULL, OffscreenSurface, NULL, NULL, D3DTEXF_NONE, 0);
+												// https://msdn.microsoft.com/en-us/library/windows/desktop/bb172904%28v=vs.85%29.aspx 
+												// If D3DXLoadSurfaceFromSurface is called and the surface was not already dirty 
+												// (this is unlikely under normal usage scenarios), the application needs to
+												// explicitly call AddDirtyRect on the surface.
+												// D3DXLoadSurfaceFromSurface(VDJTextureSurface, NULL, NULL, OffscreenSurface, NULL, NULL, D3DTEXF_NONE, 0);
+												// UpdateSurface
+												// https://msdn.microsoft.com/en-us/library/windows/desktop/bb205857%28v=vs.85%29.aspx
+												//    The source surface must have been created with D3DPOOL_SYSTEMMEM.
+												//    The destination surface must have been created with D3DPOOL_DEFAULT.
+												//    Neither surface can be locked or holding an outstanding device context.
+												m_VDJ_device->UpdateSurface(OffscreenSurface, NULL, VDJTextureSurface, NULL);
 											}
 											else {
 												OffscreenSurface->UnlockRect();
@@ -326,12 +357,12 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 }
 
 
-bool SpoutReceiverPlugin::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
+bool SpoutReceiverPlugin::ReceiveTexture(char* name, unsigned int &width, unsigned int &height) // , GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
 {
 	char activename[256];
 	unsigned int newWidth, newHeight;
 	DWORD dwFormat;
-	HANDLE hShareHandle;
+	HANDLE hShareHandle = NULL;
 
 	// Has the user used SpoutPanel ?
 	if(spoutreceiver.spout.CheckSpoutPanel()) {
@@ -372,9 +403,6 @@ bool SpoutReceiverPlugin::ReceiveTexture(char* name, unsigned int &width, unsign
 				}
 			} // width, height, format or name have changed
 		} // width and height are zero
-		else {
-			return false;
-		}
 	} // endif GetSenderInfo found the sender
 	else {
 		return false;
@@ -400,12 +428,10 @@ bool SpoutReceiverPlugin::CreateDX9exTexture(IDirect3DDevice9Ex* pDevice, unsign
 
 	if(width == 0 || height == 0) return false;
 	if(m_pDevice == NULL) {
-		printf("NULL D3D9ex device\n");
 		return false; // Global D3D9ex device
 	}
 
 	if(dxTexture != NULL) {
-		// printf("releasing texture\n");
 		dxTexture->Release();
 	}
 

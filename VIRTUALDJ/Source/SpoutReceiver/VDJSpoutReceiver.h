@@ -18,9 +18,9 @@
 #include <d3d9.h>
 #include <d3d10.h>
 #include <dxgi.h>
-#include <d3dx9.h> // Needed for D3DXLoadSurfaceFromSurface() 
 
-#pragma comment(lib, "d3dx9.lib") 
+// #include <d3dx9.h> // Needed for D3DXLoadSurfaceFromSurface() 
+// #pragma comment(lib, "d3dx9.lib") 
 
 // VDJ VideoFx plugin class
 class SpoutReceiverPlugin : public IVdjPluginVideoFx8
@@ -39,6 +39,7 @@ public:
 	// When DirectX is initialized or closed, these functions will be called
 	HRESULT __stdcall OnDeviceInit();
 	HRESULT __stdcall OnDeviceClose();
+	ULONG   __stdcall Release(); // added 11.12.15 - not really necessary
 	HRESULT __stdcall OnParameter(int id);
 
 private:
@@ -81,7 +82,8 @@ private:
 
 	bool CreateReceiver(char* sendername, unsigned int &width, unsigned int &height, bool bActive);
 	bool OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& theHeight);
-	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO=0);
+	// bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO=0);
+	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height);
 
 };
 
