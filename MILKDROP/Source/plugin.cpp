@@ -521,6 +521,10 @@ SPOUT NOTES :
 			   title animation which works OK. The limitation is that this gives a fixed font,
 			   but the colour should come out the same as in the custom message setup file.
 	07.07.15 - Recompile for 2.004 release
+	15.09.15 - Recompile for 2.005 release - revised memoryshare SDK
+	08.11.15 - removed directX9/directX11 option for 2.005
+			 - OpenSender and milkdropfs.cpp - removed XRGB format option
+	30.03.16 - Rebuild for Spout 2.005
 
 */
 
@@ -963,7 +967,8 @@ void CPlugin::MyPreInitialize()
 	sprintf(WinampSenderName, "WinAmpSpoutSender");
 	bInitialized = false;
 	bSpoutOut = true; // User on/off toggle
-	bUseDX11 = false; // Set true to use DirectX11 - DX9 by default - picked up from config file
+	// bUseDX11 = false; // Set true to use DirectX11 - DX9 by default - picked up from config file
+	bMemoryMode = false; // texture share by default
 	bSpoutChanged = false; // set to write config on exit
 	// DirectX 11 mode uses a format that is incompatible with DirectX 9 receivers
 	// DirectX9 mode can fail with some drivers. Noted on Intel/NVIDIA laptop.
@@ -1221,7 +1226,7 @@ void CPlugin::MyReadConfig()
 	// ======================================
 	// SPOUT - save whether in DirectX11 (true) or DirectX 9 (false) mode, default true
 	bSpoutOut = GetPrivateProfileBoolW(L"settings", L"bSpoutOut", bSpoutOut, pIni);
-	bUseDX11 = GetPrivateProfileBoolW(L"settings", L"bUseDX11", bUseDX11, pIni);
+	// bUseDX11 = GetPrivateProfileBoolW(L"settings", L"bUseDX11", bUseDX11, pIni);
 	// ======================================
 
 	m_bFirstRun		= !GetPrivateProfileBoolW(L"settings",L"bConfigured" ,false,pIni);
@@ -1335,7 +1340,7 @@ void CPlugin::MyWriteConfig()
 	// ================================
 	// SPOUT
 	WritePrivateProfileIntW(bSpoutOut, L"bSpoutOut", pIni, L"settings");
-	WritePrivateProfileIntW(bUseDX11, L"bUseDX11", pIni, L"settings");
+	// WritePrivateProfileIntW(bUseDX11, L"bUseDX11", pIni, L"settings");
 	// ================================
 
 	WritePrivateProfileIntW(m_bSongTitleAnims,			L"bSongTitleAnims",		pIni, L"settings");
@@ -1541,7 +1546,7 @@ void CPlugin::CleanUpMyNonDx9Stuff()
     // This gets called only once, when your plugin exits.
     // Be sure to clean up any objects here that were 
     // created/initialized in AllocateMyNonDx9Stuff.
-	printf("CPlugin::CleanUpMyNonDx9Stuff\n");
+	// printf("CPlugin::CleanUpMyNonDx9Stuff\n");
 
 	// =========================================================
 	// SPOUT cleanup on exit
@@ -6441,6 +6446,7 @@ LRESULT CPlugin::MyWindowProc(HWND hWnd, unsigned uMsg, WPARAM wParam, LPARAM lP
 			}
 			break;
 
+		/*
 		//
 		//		CTRL-D - change DirectX mode
 		//
@@ -6474,6 +6480,7 @@ LRESULT CPlugin::MyWindowProc(HWND hWnd, unsigned uMsg, WPARAM wParam, LPARAM lP
 			}
 			break;
 		// ========================================
+		*/
 
         case 'T':
             if (bCtrlHeldDown)
@@ -7111,7 +7118,7 @@ BOOL CPlugin::MyConfigTabProc(int nPage, HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 
 				// SPOUT
 				CheckDlgButton(hwnd, IDC_CB_SPOUTOUT, bSpoutOut);
-				CheckDlgButton(hwnd, IDC_CB_SPOUTDX11, bUseDX11);
+				// CheckDlgButton(hwnd, IDC_CB_SPOUTDX11, bUseDX11);
 
 
                 RefreshTab2(hwnd);
@@ -7171,7 +7178,7 @@ BOOL CPlugin::MyConfigTabProc(int nPage, HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 
 				// SPOUT
 				bSpoutOut = DlgItemIsChecked(hwnd, IDC_CB_SPOUTOUT);
-				bUseDX11 = DlgItemIsChecked(hwnd, IDC_CB_SPOUTDX11);
+				// bUseDX11 = DlgItemIsChecked(hwnd, IDC_CB_SPOUTDX11);
                 
             }
             break;  // case WM_DESTROY
@@ -7358,7 +7365,7 @@ BOOL CPlugin::MyConfigTabProc(int nPage, HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 
 				// SPOUT
 				CheckDlgButton(hwnd, IDC_CB_SPOUTOUT, bSpoutOut);
-				CheckDlgButton(hwnd, IDC_CB_SPOUTDX11, bUseDX11);
+				// CheckDlgButton(hwnd, IDC_CB_SPOUTDX11, bUseDX11);
 
             }
             break;
@@ -7436,7 +7443,7 @@ BOOL CPlugin::MyConfigTabProc(int nPage, HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 
 				// SPOUT
 				bSpoutOut = DlgItemIsChecked(hwnd, IDC_CB_SPOUTOUT);
-				bUseDX11 = DlgItemIsChecked(hwnd, IDC_CB_SPOUTDX11);
+				// bUseDX11 = DlgItemIsChecked(hwnd, IDC_CB_SPOUTDX11);
 
             }
             break;
@@ -9899,6 +9906,21 @@ bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 
 	// To use DirectX 9 we need to specify that first
 	// Flag option for DX9 of DX11
+	// LJ DEBUG - check directX mode for 2.005
+
+	if(spoutsender.CreateSender(WinampSenderName, width, height)) {
+		// printf("    Created sender %dx%d OK\n", width, height);
+		// Check for memoryshare mode
+		bMemoryMode = spoutsender.GetMemoryShareMode();
+		g_Width  = width;
+		g_Height = height;
+		bSpoutOut = true;
+		bInitialized = true;
+		return true;
+	}
+
+
+	/*
 	bool bRet = false;
 	if(bUseDX11) {
 		printf("    Creating DX11 sender %dx%d\n", width, height);
@@ -9914,7 +9936,7 @@ bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 		// because the default format argument is zero and that assumes D3DFMT_A8R8G8B8
 		bRet = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)D3DFMT_X8R8G8B8);
 	}
-	
+
 	if(bRet) {
 		// printf("    Created sender %dx%d OK\n", width, height);
 		g_Width  = width;
@@ -9923,7 +9945,9 @@ bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 		bInitialized = true;
 		return true;
 	}
-	
+	*/
+
+
 	// printf("    Create sender failed\n");
 
 	return false;

@@ -1306,20 +1306,12 @@ void CPlugin::RenderFrame(int bRedraw)
 				hr = offscreen_surface->LockRect(&d3dlr, NULL, D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_READONLY);
 				if(SUCCEEDED(hr)) {
 					
-					// Can find the backbuffer format here, but a variable format isn't implemented yet
-					// so the user has to set up for X8R8G8B8
+					// Can find the backbuffer format here, but a variable format isn't
+					// implemented so the user has to set up for X8R8G8B8
 
 					// Pass the pixels to spout
+					spoutsender.SendImage((const unsigned char *)d3dlr.pBits, g_Width, g_Height, GL_BGRA_EXT); // 2.005
 
-					// DX9 needs D3DFMT_X8R8G8B8
-					// If DX11, match with the DX11 format initialized - (DXGI_FORMAT_B8G8R8X8_UNORM)
-					//
-					// bool SendImage(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGB, bool bAlignment = true, bool bInvert=true);
-					//
-					// Disable 4-byte alignment, disable invert of texture because this is a DirectX source
-					if(desc.Format == D3DFMT_X8R8G8B8) { // We needs to see this format
-						spoutsender.SendImage((unsigned char *)d3dlr.pBits, g_Width, g_Height, GL_BGRA_EXT, false, false);
-					}
 				}
 			}
 		}

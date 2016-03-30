@@ -32,3 +32,9 @@ Revisions :
 	   As a a workaround, custom message rendering is replaced with the same as used for 
 	   title animation which works OK. The limitation is that this gives a fixed font,
 	   but the colour should come out the same as in the custom message setup file.
+07.07.15 - Recompile for 2.004 release
+15.09.15 - Recompile for 2.005 release - revised memoryshare SDK
+08.11.15 - removed directX9/directX11 option for 2.005
+	 - OpenSender and milkdropfs.cpp - removed XRGB format option
+30.03.16 - Rebuild for Spout 2.005
+
