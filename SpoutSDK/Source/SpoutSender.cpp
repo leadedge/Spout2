@@ -14,10 +14,18 @@
 //		29.05.15	- Included SetAdapter for multiple adapters - Franz Hildgen.
 //		02.06.15	- Added GetAdapter, GetNumAdapters, GetAdapterName
 //		08.06.15	- Added SelectSenderPanel for user adapter output selection
+//		24.08.15	- Added GetHostPath to retrieve the path of the host that produced the sender
+//		25.09.15	- Changed SetMemoryShareMode for 2.005 - now will only set true for 2.005 and above
+//		09.10.15	- DrawToSharedTexture - invert default false instead of true
+//		10.10.15	- Added transition flag to set invert true for 2.004 rather than default false for 2.005
+//					- currently not used - see SpoutSDK.cpp CreateSender
+//		14.11.15	- changed functions to "const char *" where required
+//		17.03.16	- changed to const unsigned char for Sendimage buffer
+//
 // ====================================================================================
 /*
 
-		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2016, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -44,7 +52,9 @@
 
 SpoutSender::SpoutSender()
 {
-
+	bInv = false; // 2.005 default
+	// 2.004 - 2.005 transition to set invert true, otherwise 2.005 default is false
+	bInv = spout.interop.CheckSpout2004();
 }
 
 
@@ -55,16 +65,15 @@ SpoutSender::~SpoutSender()
 }
 
 
-
 //---------------------------------------------------------
-bool SpoutSender::CreateSender(char *name, unsigned int width, unsigned int height, DWORD dwFormat)
+bool SpoutSender::CreateSender(const char *name, unsigned int width, unsigned int height, DWORD dwFormat)
 {
 	return spout.CreateSender(name, width, height, dwFormat);
 }
 
 
 //---------------------------------------------------------
-bool SpoutSender::UpdateSender(char *name, unsigned int width, unsigned int height)
+bool SpoutSender::UpdateSender(const char *name, unsigned int width, unsigned int height)
 {
 	return spout.UpdateSender(name, width, height);
 }
@@ -78,10 +87,11 @@ void SpoutSender::ReleaseSender(DWORD dwMsec)
 
 
 //---------------------------------------------------------
-bool SpoutSender::SendImage(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bAlignment, bool bInvert)
+bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
 {
-	return spout.SendImage(pixels, width, height, glFormat, bAlignment, bInvert);
+	return spout.SendImage(pixels, width, height, glFormat, bInvert);
 }
+
 
 //---------------------------------------------------------
 bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
@@ -89,16 +99,25 @@ bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget,  unsigned 
 	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
 }
 
+
 //---------------------------------------------------------
 bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
 {
 	return spout.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO);
 }
 
+
 //---------------------------------------------------------
 bool SpoutSender::SelectSenderPanel(const char* message)
 {
 	return spout.SelectSenderPanel(message);
+}
+
+
+//---------------------------------------------------------
+bool SpoutSender::SetMemoryShareMode(bool bMem)
+{
+	return spout.SetMemoryShareMode(bMem);
 }
 
 
@@ -110,16 +129,8 @@ bool SpoutSender::GetMemoryShareMode()
 
 
 //---------------------------------------------------------
-bool SpoutSender::SetMemoryShareMode(bool bMemoryMode)
-{
-	return spout.SetMemoryShareMode(bMemoryMode);
-}
-
-
-//---------------------------------------------------------
 bool SpoutSender::SetDX9(bool bDX9)
 {
-	// printf("spoutSender::SetDX9(%d)\n", bDX9);
 	return spout.SetDX9(bDX9);
 }
 
@@ -129,6 +140,7 @@ bool SpoutSender::GetDX9()
 {
 	return spout.interop.isDX9();
 }
+
 
 //---------------------------------------------------------
 void SpoutSender::SetDX9compatible(bool bCompatible)
@@ -154,28 +166,43 @@ bool SpoutSender::GetDX9compatible()
 	
 }
 
+
 //---------------------------------------------------------
 bool SpoutSender::SetAdapter(int index)
 {
 	return spout.SetAdapter(index);
 }
 
+
+//---------------------------------------------------------
 // Get current adapter index
 int SpoutSender::GetAdapter()
 {
 	return spout.GetAdapter();
 }
 
+
+//---------------------------------------------------------
 // Get the number of graphics adapters in the system
 int SpoutSender::GetNumAdapters()
 {
 	return spout.GetNumAdapters();
 }
 
+
+//---------------------------------------------------------
 // Get an adapter name
 bool SpoutSender::GetAdapterName(int index, char *adaptername, int maxchars)
 {
 	return spout.GetAdapterName(index, adaptername, maxchars);
+}
+
+
+//---------------------------------------------------------
+// Get the path of the host that created the sender
+bool SpoutSender::GetHostPath(const char *sendername, char *hostpath, int maxchars)
+{
+	return spout.GetHostPath(sendername, hostpath, maxchars);
 }
 
 
@@ -185,11 +212,13 @@ bool SpoutSender::SetVerticalSync(bool bSync)
 	return spout.interop.SetVerticalSync(bSync);
 }
 
+
 //---------------------------------------------------------
 int SpoutSender::GetVerticalSync()
 {
 	return spout.interop.GetVerticalSync();
 }
+
 
 //------------------ debugging aid only --------------------
 bool SpoutSender::SenderDebug(char *Sendername, int size)

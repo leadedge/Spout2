@@ -1,45 +1,16 @@
 /*
-	spoutMemoryShare.h
 
-	Class used for Spout inter-process communication
+	SpoutMemoryShare.h
 
-		Semaphore single reader/writer version
+	Spout memory map management for sharing images via shared memory
+	Revised over original single reader/writer pair
 
-		Last modifed : 11.02.14
+	Thanks and credit to Malcolm Bechard for the SpoutSharedMemory class
 
-		 The purpose is to establish a fixed shared memory map for an RGB image the size of the desktop (1920x1080)
-		 and semaphores to control read/write access for sharing a bitmap image between sender and receiver
-		 Only one sender and receiver is assumed.
+	https://github.com/mbechard	
 
-		bool Initialize();
-		Initialize memory map and read/write semaphores
-
-		void DeInitialize();
-		Close memory map and semaphore handles
-
-		void CreateSenderMutex();
-		// Create a mutex by the sender which is checked by a receiver
-
-		void ReleaseSenderMutex();
-		// for a sender to release its mutex on close
-
-		bool CheckSenderMutex();
-		// for a receiver to check the presence of a sender
-		// If the mutex does not exist, the semaphore read wait is skipped
-
-		bool ReadFromMemory(unsigned char *buffer, int numBytes, int offset = 0);
-		// Read from shared memory
-		// Offset is useful for example when reading a bitmap to skip the bitmap header
-
-		bool WriteToMemory(unsigned char *buffer, int numBytes);
-		// Write to shared memory
-
-		void setSharedMemoryName(char* sharedMemoryName); 
-		// to set names of mapping and semaphores externally 
-		// otherwise a default name is used
-
-
-		Copyright (c) 2014>, Lynn Jarvis. All rights reserved.
+	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+		Copyright (c) 2014-2016, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -61,48 +32,47 @@
 		LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-*/
-
+ */
+#pragma once
 #ifndef __spoutMemoryShare__
 #define __spoutMemoryShare__
 
-// #define CONSOLE_DEBUG  // to activate debug console messages
-
+#include <windowsx.h>
+#include <string>
 #include "SpoutCommon.h"
-#include <Windows.h>
-#include <stdio.h>
+#include "SpoutSharedMemory.h"
+
+using namespace std;
 
 class SPOUT_DLLEXP spoutMemoryShare {
 
 	public:
 
-        spoutMemoryShare();
-        ~spoutMemoryShare();
-		bool Initialize();
-		void DeInitialize();
-		// Create a mutex by the sender which is checked by a receiver
-		// If the mutex does not exist, the semaphore read wait is skipped
-		void CreateSenderMutex();	// for a sender to set a mutex for a receiver to test
-		void ReleaseSenderMutex();	// for a receiver to release the mutex if a sender is present
-		bool CheckSenderMutex();	// for a receiver to check the presence of a sender
-		bool GetImageSizeFromSharedMemory(unsigned int &width, unsigned int &height);
-		bool ReadFromMemory(unsigned char *buffer, int numBytes, int offset = 0);
-		bool WriteToMemory(unsigned char *buffer, int numBytes);
-		void setSharedMemoryName(char* sharedMemoryName); // to set names of mapping and semaphores externally 
-		char szShareMemoryName[256];		// name of the shared memory (made public for FFGL plugins)
+		spoutMemoryShare();
+		~spoutMemoryShare();
 
-	protected:
+		// Create / Open, Update or Close a sender memory map
+		bool CreateSenderMemory (const char *sendername, unsigned int width, unsigned int height);
+		bool UpdateSenderMemorySize (const char* sendername, unsigned int width, unsigned int height);
+		bool OpenSenderMemory (const char *sendername);
+		void CloseSenderMemory ();
 
-		LPTSTR  pBuffer;					// shared memory pointer
-		HANDLE  hSharedMemory;				// handle to shared memory
-		HANDLE	hReadSemaphore;
-		HANDLE	hWriteSemaphore;
-		HANDLE	hSenderMutex;				// Mutex that gets set by a sender
-		char	szReadSemaphoreName[256];	// name of the read semaphore
-		char	szWriteSemaphoreName[256];	// name of the read semaphore
+		// Retrieve global width and height
+		bool GetSenderMemorySize(unsigned int &width, unsigned int &height);
 
+		// Lock and unlock memory and retrieve buffer pointer
+		unsigned char * LockSenderMemory();
+		void UnlockSenderMemory();
+
+		// Close and release memory object
+		void ReleaseSenderMemory ();
+
+protected:
+
+		SpoutSharedMemory *senderMem;
+		unsigned int m_Width;
+		unsigned int m_Height;
 
 };
 
 #endif
-

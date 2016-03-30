@@ -3,14 +3,12 @@
 	spoutSenderNames.h
 	Spout sender management
 
-	LJ - leadedge@adam.com.au
-
 	Thanks and credit to Malcolm Bechard for modifications to this class
 
 	https://github.com/mbechard	
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-		Copyright (c) 2014-2015, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2016, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -52,7 +50,7 @@
 #include "SpoutSharedMemory.h"
 
 #define SPOUT_WAIT_TIMEOUT 100 // 100 msec wait for events
-#define MaxSenders 10 // Max for list of Sender names
+// Now replaced by a global class variable // #define MaxSenders 10 // Max for list of Sender names
 #define SpoutMaxSenderNameLen 256
 
 // The texture information structure that is saved to shared memory
@@ -71,7 +69,6 @@ struct SharedTextureInfo {
 	unsigned __int32 partnerId; // Wyphon id of partner that shared it with us (not unused)
 };
 
-using namespace std;
 
 class SPOUT_DLLEXP spoutSenderNames {
 
@@ -84,17 +81,20 @@ class SPOUT_DLLEXP spoutSenderNames {
 
 		// ------------------------------------------------------------
 		// You must first register a sender name being using
-		// UpdateSender() to update it's texture information
-		// TODO - revise functions
 		bool RegisterSenderName(const char* senderName);
 		bool ReleaseSenderName(const char* senderName);
 		bool FindSenderName     (const char* Sendername);
 
 		// ------------------------------------------------------------
 		// Functions to retrieve info about the sender set map and the senders in it
-		bool GetSenderNames	   (std::set<string> *Sendernames);
+		bool GetSenderNames	   (std::set<std::string> *Sendernames);
 		int  GetSenderCount();
 		bool GetSenderNameInfo (int index, char* sendername, int sendernameMaxSize, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle);
+
+		// ------------------------------------------------------------
+		// New for 2.005
+		int GetMaxSenders();
+		void SetMaxSenders(int maxSenders); // Set the maximum number of senders in a new sender map
 
 		// ------------------------------------------------------------
 		// Functions to read and write info to a sender memory map
@@ -116,8 +116,8 @@ class SPOUT_DLLEXP spoutSenderNames {
 		// Functions to Create, Find or Update a sender without initializing DirectX or the GL/DX interop functions
 		bool CreateSender (const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
 		bool UpdateSender (const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
-		bool FindSender       (char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
-		bool CheckSender      (const char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
+		bool CheckSender  (const char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
+		bool FindSender   (char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 		// ------------------------------------------------------------
 
 		// Debug function
@@ -127,7 +127,7 @@ protected:
 
 		// Sender name set management
 		bool CreateSenderSet();
-		bool GetSenderSet (std::set<string>& SenderNames);
+		bool GetSenderSet (std::set<std::string>& SenderNames);
 
 		// Active sender management
 		bool setActiveSenderName (const char* SenderName);
@@ -138,30 +138,9 @@ protected:
 		// any that shouldn't still be around
 		void cleanSenderSet();
 
-		// ------------------------------------------------------------
 		// Functions to manage shared memory map access
-		//
-		// The way it works :
-		//
-		//			Creating the map
-		// A map with a given name and size is created (CreateMap)
-		// This map is local to this instance and each instance will manage it's own list of senders
-		// Within this function a matching named mutex is created (CreateMapLock) to lock and unlock access to the map
-		//
-		//			Using the map
-		// The required, named map is locked (LockMap). Within this function the map mutex is checked  and if it
-		// does not exist, the function returns NULL. If it does exist there is a wait of 4 frames for access.
-		// The map is then opened (OpenMap) and a handle and pointer to the map buffer are returned for either
-		// read or write to the map.
-		// After map access it is closed (CloseMap), which closes it but does not release it.
-		// Finally it is unlocked (UnlockMap)
-		//
-		//			Releasing the map
-		// At termination of this instance all maps are closed if there is no open view
-		// i.e. if another sender has an open view, the map is not closed.
-		//
-		static void		readSenderSetFromBuffer(const char* buffer, std::set<string>& SenderNames);
-		static void		writeBufferFromSenderSet(const std::set<string>& SenderNames, char *buffer);
+		static void readSenderSetFromBuffer(const char* buffer, std::set<std::string>& SenderNames, int maxSenders);
+		static void	writeBufferFromSenderSet(const std::set<std::string>& SenderNames, char *buffer, int maxSenders);
 
 		SpoutSharedMemory	m_senderNames;
 		SpoutSharedMemory	m_activeSender;
@@ -172,6 +151,7 @@ protected:
 		// Make this a pointer to avoid size differences between compilers
 		// if the .dll is compiled with something different
 		std::unordered_map<std::string, SpoutSharedMemory*>*	m_senders;
+		int m_MaxSenders; // user defined maximum for the number of senders - development testing only
 
 };
 
