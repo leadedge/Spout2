@@ -1,5 +1,0 @@
-#include "resource.h"
-//
-// Icon resource
-//
-IDI_ICON1  ICON ".\\src\\Spout.ico"
