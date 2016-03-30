@@ -5,21 +5,22 @@
 //	Updated 24.12.13
 //	Updated 03.01.14 - cleanup
 //	Updated 10.04.14
+//	28.09.15 - updated with modifications by John MacCormick, 2012.
+//
 //
 
 #pragma once
+
 #define DECLARE_PTR(type, ptr, expr) type* ptr = (type*)(expr);
 
-#define GLEW_STATIC // to use glew32s.lib instead of glew32.lib otherwise there is a redefinition error
+// #define GLEW_STATIC // to use glew32s.lib instead of glew32.lib otherwise there is a redefinition error
 
 #include "../../../SpoutSDK/Spout.h"
 #include "../../../SpoutSDK/SpoutMemoryShare.h" //for initial memoryshare detection
-#include <glut.h>
-
-
+// #include <glut.h>
+#include <streams.h>
 
 EXTERN_C const GUID CLSID_SpoutCam;
-
 
 class CVCamStream;
 class CVCam : public CSource
@@ -31,13 +32,47 @@ public:
     static CUnknown * WINAPI CreateInstance(LPUNKNOWN lpunk, HRESULT *phr);
     STDMETHODIMP QueryInterface(REFIID riid, void **ppv);
 
-	// LJ additon
+	// LJ additons
 	STDMETHODIMP GetState(DWORD dwMSecs, FILTER_STATE *State);
 
     IFilterGraph *GetGraph() {return m_pGraph;}
 
+	STDMETHODIMP JoinFilterGraph(__inout_opt IFilterGraph * pGraph, __in_opt LPCWSTR pName);
+
 private:
+
     CVCam(LPUNKNOWN lpunk, HRESULT *phr);
+
+/////////////////////////////////////
+// all inherited virtual functions //
+/////////////////////////////////////
+public:
+
+	virtual CBasePin *GetPin(int n);
+	#ifdef PERF
+    virtual void RegisterPerfId() { m_idTransInPlace = MSR_REGISTER(TEXT("Vcam")); }
+	#endif // PERF
+	virtual int GetPinCount();
+	virtual HRESULT StreamTime(CRefTime& rtStream);
+	virtual LONG GetPinVersion();
+	virtual __out_opt LPAMOVIESETUP_FILTER GetSetupData();
+	virtual HRESULT STDMETHODCALLTYPE EnumPins(__out  IEnumPins **ppEnum);
+	virtual HRESULT STDMETHODCALLTYPE FindPin(LPCWSTR Id, __out  IPin **ppPin);
+	virtual HRESULT STDMETHODCALLTYPE QueryFilterInfo(__out  FILTER_INFO *pInfo);
+	virtual HRESULT STDMETHODCALLTYPE QueryVendorInfo(__out  LPWSTR *pVendorInfo);
+	virtual HRESULT STDMETHODCALLTYPE Stop( void);
+	virtual HRESULT STDMETHODCALLTYPE Pause( void);
+	virtual HRESULT STDMETHODCALLTYPE Run(REFERENCE_TIME tStart);
+	// virtual HRESULT STDMETHODCALLTYPE GetState(DWORD dwMilliSecsTimeout, __out  FILTER_STATE *State);
+	virtual HRESULT STDMETHODCALLTYPE SetSyncSource(__in_opt  IReferenceClock *pClock);
+	virtual HRESULT STDMETHODCALLTYPE GetSyncSource(__deref_out_opt  IReferenceClock **pClock);
+	virtual STDMETHODIMP GetClassID(__out CLSID *pClsID);
+	virtual ULONG STDMETHODCALLTYPE AddRef( void);
+	virtual ULONG STDMETHODCALLTYPE Release( void);
+	virtual HRESULT STDMETHODCALLTYPE Register( void);
+    virtual HRESULT STDMETHODCALLTYPE Unregister( void);
+
+
 };
 
 class CVCamStream : public CSourceStream, public IAMStreamConfig, public IKsPropertySet
@@ -80,7 +115,29 @@ public:
     HRESULT STDMETHODCALLTYPE Get(REFGUID guidPropSet, DWORD dwPropID, void *pInstanceData,DWORD cbInstanceData, void *pPropData, DWORD cbPropData, DWORD *pcbReturned);
     HRESULT STDMETHODCALLTYPE QuerySupported(REFGUID guidPropSet, DWORD dwPropID, DWORD *pTypeSupport);
     
+ 	//////////////////////////////////////////////////////////////////////////
+    //  IPin
     //////////////////////////////////////////////////////////////////////////
+	virtual HRESULT STDMETHODCALLTYPE QueryPinInfo(__out  PIN_INFO *pInfo);
+	virtual HRESULT STDMETHODCALLTYPE Connect(IPin *pReceivePin, __in_opt  const AM_MEDIA_TYPE *pmt);
+	virtual HRESULT STDMETHODCALLTYPE ReceiveConnection(IPin *pConnector, const AM_MEDIA_TYPE *pmt);
+	virtual HRESULT STDMETHODCALLTYPE Disconnect( void);
+	virtual HRESULT STDMETHODCALLTYPE ConnectedTo(__out  IPin **pPin);
+	virtual HRESULT STDMETHODCALLTYPE ConnectionMediaType(__out  AM_MEDIA_TYPE *pmt);
+	virtual HRESULT STDMETHODCALLTYPE QueryDirection(__out  PIN_DIRECTION *pPinDir);
+	virtual HRESULT STDMETHODCALLTYPE QueryId(__out  LPWSTR *Id);
+	virtual HRESULT STDMETHODCALLTYPE QueryAccept(const AM_MEDIA_TYPE *pmt);
+	virtual HRESULT STDMETHODCALLTYPE EnumMediaTypes(__out  IEnumMediaTypes **ppEnum);
+	virtual HRESULT STDMETHODCALLTYPE QueryInternalConnections(__out_ecount_part_opt(*nPin, *nPin) IPin **apPin, ULONG *nPin);
+	virtual HRESULT STDMETHODCALLTYPE EndOfStream( void);
+	virtual HRESULT STDMETHODCALLTYPE BeginFlush( void);
+	virtual HRESULT STDMETHODCALLTYPE EndFlush( void);
+	virtual HRESULT STDMETHODCALLTYPE NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate);
+
+	///////// jmac ////////
+	STDMETHODIMP NonDelegatingQueryInterface(REFIID riid, __deref_out void **ppv);
+
+	//////////////////////////////////////////////////////////////////////////
     //  CSourceStream
     //////////////////////////////////////////////////////////////////////////
     CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName);
@@ -88,9 +145,12 @@ public:
 
     HRESULT FillBuffer(IMediaSample *pms);
     HRESULT DecideBufferSize(IMemAllocator *pIMemAlloc, ALLOCATOR_PROPERTIES *pProperties);
-	HRESULT GetMediaType(CMediaType *pmt);
+	// HRESULT GetMediaType(CMediaType *pmt);
+    HRESULT CheckMediaType(const CMediaType *pMediaType);
+    HRESULT GetMediaType(int iPosition, CMediaType *pmt);
     HRESULT SetMediaType(const CMediaType *pmt);
     HRESULT OnThreadCreate(void);
+
 
 	// ============== IPC functions ==============
 	//
@@ -98,35 +158,38 @@ public:
 	//
 	SpoutReceiver receiver; // Spoutcam is a receiver
 
-	// spoutMemoryShare * MemoryShare; // for initial memoryshare detection
-	spoutMemoryShare MemoryShare; // for initial memoryshare detection
-
 	HGLRC glContext;
 	HWND GLhwnd; // OpenGL window handle
-	char SharedMemoryName[256];
-	HANDLE ShareHandle;		// local copy of texture share handle
-	bool bMemoryMode;		// true = memory, false = texture
+	
+	char g_SenderName[256];
+	char g_ActiveSender[256];         // The name of any Spout sender being received
+
+	bool bMemoryMode;				// true = memory, false = texture
+	bool bDX9mode;
+	bool bInvert;
 	bool bDebug;
 	bool bInitialized;
 	bool bGLinitialized;
-	bool bConnected;		// Sender has started up and is sending images
-	bool bDisconnected;		// Sender had started but it has stopped or changed image size
+	bool bBGRA;
+	bool bDisconnected;				// Sender had started but it has stopped or changed image size
+	bool bSpoutPanelOpened;         // User has not activated SpoutPanel
 
-	unsigned int g_Width;	// The global filter image width
-	unsigned int g_Height;	// The glonbal filter image height
-	unsigned int senderWidth;	// The global filter image width
-	unsigned int senderHeight;	// The glonbal filter image height
+	unsigned int g_Width;			// The global filter image width
+	unsigned int g_Height;			// The global filter image height
+	unsigned int g_SenderWidth;		// The global sender image width
+	unsigned int g_SenderHeight;	// The glonbal sender image height
 
-	GLuint g_fbo;			// The frame buffer object
-	GLuint g_fbo_texture;	// The opengl texture object
+	GLuint g_senderTexture;			// Local rgba texture to receive images the same size as the sender
+	unsigned char *g_senderBuffer;	// Local rgb buffer the same size as the sender
 	
-	bool InitTexture(unsigned int width, unsigned int height);
-	HRESULT OpenReceiver();
+	bool InitOpenGL();
+	bool CreateSenderTexture(unsigned int width, unsigned int height);
+	void GLerror();
+	bool isExtensionSupported(const char *extension);
+	
+	void rgb2bgr(void* source, void *dest, unsigned int width, unsigned int height, bool bInvert = false); // 32bit asm
+    void rgb2bgrResample(unsigned char* source, unsigned char* dest, unsigned int sourceWidth, unsigned int sourceHeight, unsigned int destWidth, unsigned int destHeight, bool bInvert = false);
 
-	bool FlipVertical(unsigned char *src, unsigned int width, unsigned int height) ;
-	bool VertFlipBuf(unsigned char *inbuf, long widthBytes, long height);
-    
-    
 private:
 
 	CVCam *m_pParent;
@@ -142,6 +205,14 @@ private:
     CCritSec m_cSharedState;
     IReferenceClock *m_pClock;
 
+	///////// jmac ////////
+	LONG GetMediaTypeVersion();
+	HRESULT CompleteConnect(IPin *pReceivePin);
+	HRESULT CheckConnect(IPin *pPin);
+	HRESULT BreakConnect();
+	protected:
+	HRESULT Active(void);
+	////////////////////////////// end jmac /////////////
+
+
 };
-
-

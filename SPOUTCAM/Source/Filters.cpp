@@ -1,12 +1,7 @@
 /*
 
-	TODO - detect a memoryshare sender in findsender and getactivesender ?
-	Return null name but width and height ?
-	
 				SpoutCam
 	
-	A Memory or texture share Share Virtual webcam
-
 	Receives frames from a memory share or texture share Sender
 	Simulates a webcam to other programs.
 
@@ -15,11 +10,11 @@
 	to the frames being sent by the Sender
 	Currently there is no way to change the frame size
 	after the filter has been loaded. If there is no Sender, 
-	the default is 320x240 with a noise image
+	the default is 640x480 with a noise image
 
-	Copyright 2013 Lynn Jarvis - leadedge@adam.com.au
+	Copyright 2013-2016 Lynn Jarvis - spout@zeal.co
 
-	"Spout" in all and any of it's parts, is free software: 
+	"SpoutCam" is free software: 
 	you can redistribute it and/or modify it under the terms of the GNU
 	Lesser General Public License as published by the Free Software Foundation, 
 	either version 3 of the License, or (at your option) any later version.
@@ -32,10 +27,10 @@
 
 	http://tmhare.mvps.org/downloads/vcam.zip
 
-	SpoutCam is a modification of this code and changes are clearly
-	documented in this file. Any problems cannot be attributed
-	to authors of previous versions. 
-	
+	Credit for alterations for Skype compatibility - John MacCormick, 2012.
+
+	https://github.com/johnmaccormick/MultiCam
+		
 	"Spout" distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -43,6 +38,15 @@
 
 	See also the GNU general public license text file provided.
 	If not found, see <http://www.gnu.org/licenses/>.
+
+	SpoutCam is a modification of code by these authors and changes are clearly
+	documented in this file. Any problems cannot be attributed to authors of
+	previous versions.
+
+	//
+	// Revisions :
+	//
+
 	19-08-13 -started changes for synchronisation of FillBuffer
 	with whether the filter is active or inactive - based on :
 	22-08-13
@@ -123,6 +127,19 @@
 	07.07.15 - Transferred project back to Win 7 32bit 
 	17.08.15 - Removed SetDX9 - now done by registry setting
 			   Recompile for 2.004 release 32bit Win32 VS2010 /MT
+	15.09.15 - Recompiled for 2.005 memoryshare, changed memoryshare read section. 32bit Win32 VS2010 /MT.
+	19.09.15 - Removed DX9 option
+	20.09.15 - Sorted memoryshare readtexture RGBA external and RGB internal and local invert
+	22.09.15 - Work on property page archived and removed from working source.
+	27.09.15 - Modifications for Skype compatibility based on MultiCam by John MacCormick.
+			 - changed back to simple timing method due to crash in Skype with RED5 method.
+	28.09.15 - Found NULL clock with GetSyncSource for Skype, so fixed crash and enabled detailed timimg again.
+	11.10.15 - Renamed DrawSharedTexture to DrawReceivedTexture to avoid confusion with SDK function
+	15.12.15 - Changed dll name from "Spout Cam to "SpoutCam" - in dll.cpp
+	15.12.15 - Rebuild for 2.005 VS2012 /MT
+	11.03.16 - Major change for ReceiveImage into a local texture and rgb buffer and rescaling functions
+	25.03.16 - Revised isExtensionSupported for glGetStringi
+	30.03.16 - Rebuild for 2.005 release  VS2012 /MT
 
 */
 
@@ -130,16 +147,12 @@
 #pragma warning(disable:4244)
 #pragma warning(disable:4711)
 
-// Compile for DX9 instead of default DX11
-// #define UseD3D9
 #include <streams.h>
 #include <stdio.h>
 #include <conio.h>
 #include <olectl.h>
 #include <dvdmedia.h>
 #include "filters.h"
-
-#define RGB2BGR(a_ulColor) (a_ulColor & 0xFF000000) | ((a_ulColor & 0xFF0000) >> 16) | (a_ulColor & 0x00FF00) | ((a_ulColor & 0x0000FF) << 16)
 
 static HWND hwndButton = NULL; // dummy window for opengl context
 
@@ -152,11 +165,10 @@ CUnknown * WINAPI CVCam::CreateInstance(LPUNKNOWN lpunk, HRESULT *phr)
 
 	/*
 	// debug console window
-	AllocConsole();
 	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutCam - 08-06-15\n");
+	printf("SpoutCam ~~ 30-03-16\n");
 	*/
 
     CUnknown *punk = new CVCam(lpunk, phr);
@@ -165,7 +177,7 @@ CUnknown * WINAPI CVCam::CreateInstance(LPUNKNOWN lpunk, HRESULT *phr)
 }
 
 CVCam::CVCam(LPUNKNOWN lpunk, HRESULT *phr) : 
-    CSource(NAME("Spout Cam"), lpunk, CLSID_SpoutCam)
+    CSource(NAME("SpoutCam"), lpunk, CLSID_SpoutCam)
 {
     ASSERT(phr);
 
@@ -173,7 +185,7 @@ CVCam::CVCam(LPUNKNOWN lpunk, HRESULT *phr) :
     
 	// Create the one and only output pin
     m_paStreams = (CSourceStream **)new CVCamStream*[1];
-    m_paStreams[0] = new CVCamStream(phr, this, L"Spout Cam");
+    m_paStreams[0] = new CVCamStream(phr, this, L"SpoutCam");
 
 }
 
@@ -191,25 +203,9 @@ HRESULT CVCam::QueryInterface(REFIID riid, void **ppv)
         return CSource::QueryInterface(riid, ppv);
 }
 
-// LJ addition - maybe not necessary - needs checking - comments from Microsoft
-// Live sources, such as capture devices, are an exception to this general architecture. 
-// With a live source, it is not appropriate to cue any data in advance. 
-// The application might pause the graph and then wait for a long time before running it. 
-// The graph should not render "stale" samples. Therefore, a live source produces 
-// no samples while paused, only while running. To signal this fact to the Filter Graph Manager, 
-// the source filter's IMediaFilter::GetState method returns VFW_S_CANT_CUE. 
-// This return code indicates that the filter has switched to the paused state, 
-// even though the renderer did not receive any data.
-// A capture filter should produce data only when the filter is running. Do not send data
-// from your pins when the filter is paused. Also, return VFW_S_CANT_CUE from the
-// CBaseFilter::GetState method when the filter is paused. This return code informs the
-// Filter Graph Manager that it should not wait for any data from your filter while the
-// filter is paused. For more information, see Filter States.
-// The following code shows how to implement the GetState method:
-// live source - override GetState to return VFW_S_CANT_CUE when pausing
-// since we won't be sending any data when paused
+
+
 // If a filter cannot deliver data for some reason, it returns VFW_S_CANT_CUE. 
-// Live capture filters return this value while paused, because they do not deliver data in the paused state.
 HRESULT CVCam::GetState(DWORD dw, FILTER_STATE *pState)
 {
 	CheckPointer(pState, E_POINTER);
@@ -221,104 +217,212 @@ HRESULT CVCam::GetState(DWORD dw, FILTER_STATE *pState)
 		return S_OK;
 }
 
+
+
+
+STDMETHODIMP CVCam::JoinFilterGraph(
+		__inout_opt IFilterGraph * pGraph,
+		__in_opt LPCWSTR pName)
+{
+	HRESULT hr = CBaseFilter::JoinFilterGraph(pGraph, pName);
+	return hr;
+}
+
+
+///////////////////////////////////////////////////////////
+// all inherited virtual functions
+///////////////////////////////////////////////////////////
+CBasePin *CVCam::GetPin(int n)
+{
+	CBasePin *pin = CSource::GetPin(n);
+	ASSERT(pin!=NULL);
+	return pin;
+}
+
+
+int CVCam::GetPinCount()
+{
+	return CSource::GetPinCount();
+}
+
+
+HRESULT CVCam::StreamTime(CRefTime& rtStream)
+{
+	return CSource::StreamTime(rtStream);
+}
+
+LONG CVCam::GetPinVersion()
+{
+	return CSource::GetPinVersion();
+}
+
+__out_opt LPAMOVIESETUP_FILTER CVCam::GetSetupData()
+{
+	return CSource::GetSetupData();
+}
+
+HRESULT STDMETHODCALLTYPE CVCam::EnumPins(__out  IEnumPins **ppEnum)
+{
+	return CSource::EnumPins(ppEnum);
+}
+
+HRESULT STDMETHODCALLTYPE CVCam::FindPin(LPCWSTR Id, __out  IPin **ppPin)
+{
+	return CSource::FindPin(Id, ppPin);
+}
+
+HRESULT STDMETHODCALLTYPE CVCam::QueryFilterInfo(__out  FILTER_INFO *pInfo)
+{
+	return CSource::QueryFilterInfo(pInfo);
+}
+
+HRESULT STDMETHODCALLTYPE CVCam::QueryVendorInfo(__out  LPWSTR *pVendorInfo)
+{
+	return CSource::QueryVendorInfo(pVendorInfo);
+}
+
+
+HRESULT STDMETHODCALLTYPE CVCam::Stop( void)
+{
+	return CSource::Stop( );
+}
+
+HRESULT STDMETHODCALLTYPE CVCam::Pause( void)
+{
+	return CSource::Pause( );
+}
+
+HRESULT STDMETHODCALLTYPE CVCam::Run(REFERENCE_TIME tStart)
+{
+	HRESULT hr = CSource::Run(tStart);
+	return hr;
+}
+
+
+HRESULT STDMETHODCALLTYPE CVCam::SetSyncSource(__in_opt  IReferenceClock *pClock)
+{
+	return CSource::SetSyncSource(pClock);
+}
+
+HRESULT STDMETHODCALLTYPE CVCam::GetSyncSource(__deref_out_opt  IReferenceClock **pClock)
+{
+	return CSource::GetSyncSource(pClock);
+}
+
+STDMETHODIMP CVCam::GetClassID(__out CLSID *pClsID)
+{
+	return CSource::GetClassID(pClsID);
+}
+
+ULONG STDMETHODCALLTYPE CVCam::AddRef( void)
+{
+	return CSource::AddRef( );
+}
+
+ULONG STDMETHODCALLTYPE CVCam::Release( void)
+{
+	return CSource::Release( );
+}
+
+HRESULT STDMETHODCALLTYPE CVCam::Register( void)
+{
+	return CSource::Register( );
+}
+
+HRESULT STDMETHODCALLTYPE CVCam::Unregister( void)
+{
+	return CSource::Unregister( );
+}
+//////////////////////////////////////////////////////////////////////////
+
+
+
 //////////////////////////////////////////////////////////////////////////
 // CVCamStream is the one and only output pin of CVCam which handles 
 // all the stuff.
 //////////////////////////////////////////////////////////////////////////
 CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
-    CSourceStream(NAME("Spout Cam"), phr, pParent, pPinName), m_pParent(pParent)
+    CSourceStream(NAME("SpoutCam"), phr, pParent, pPinName), m_pParent(pParent)
 {
 
 	bMemoryMode		= false; // Default mode is texture, true means memoryshare
-	bInitialized	= false; 
-	bGLinitialized	= false;
-	bConnected		= false;
-	bDisconnected	= false; // has to connect before can disconnect or it will never connect
-	glContext		= NULL;
-	ShareHandle		= NULL; // local copy of texture share handle
-	g_Width			= 320;	// if there is no Sender, getmediatype will use defaults
-	g_Height		= 240;
-	senderWidth		= 0;
-	senderHeight	= 0;
-	g_fbo			= 0;
-	g_fbo_texture	= 0;
-	SharedMemoryName[0] = 0;
+	bDX9mode        = false; // Not currently used
+	bInvert         = true;  // Not currently used
+	bInitialized	= false; // Spoutcam reiver
+	bGLinitialized	= false; // OpenGL
+	bBGRA           = false; // #ifdef GL_EXT_bgra = GL_BGRA_EXT and GL_BGR_EXT
+	bDisconnected	= false; // Has to connect before can disconnect or it will never connect
+	glContext		= NULL;  // Context is established within this application
+	g_Width			= 640;	 // if there is no Sender, getmediatype will use defaults
+	g_Height		= 480; 
+	g_SenderWidth	= 640;	 // give it an initial size - this will be changed if a sender is running at start
+	g_SenderHeight	= 480;
+	g_senderBuffer  = NULL;  // local rgb buffer the same size as the sender (can be a different size to the filter)
+	g_senderTexture = 0;
+	g_SenderName[0] = 0;
 
-	/*
-	// LJ DEBUG - retrieve scale factor from the registry
-	// [HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{860BB310-5D01-11d0-BD3B-00A0C911CE86}\Instance\{8E14549A-DB61-4309-AFA1-3578E927E933}]
-	HKEY  hRegKey;
-	LONG  regres;
-	DWORD  dwSize, dwKey;  
-	char  mySubKey[512]; 
-	BYTE buffer[512];
-	unsigned int Scale;
- 
-	// Search for our CSLID entry
-	sprintf_s(mySubKey, 512, "SOFTWARE\\Classes\\CLSID\\{860BB310-5D01-11d0-BD3B-00A0C911CE86}\\Instance\\{8E14549A-DB61-4309-AFA1-3578E927E933}");
-	regres = RegOpenKeyExA(HKEY_LOCAL_MACHINE, mySubKey, NULL, KEY_READ, &hRegKey);
-	// regres = RegOpenKeyExA(HKEY_LOCAL_MACHINE, NULL, NULL, 0, &hRegKey);
-
-	if(regres == ERROR_SUCCESS) printf("regres OK = %x\n", hRegKey);
-	else printf("regres failed = %x\n", hRegKey);
-
-	// Types
-	// REG_SZ (1), REG_DWORD(4), REG_BINARY (3)
-	dwSize = 512;
-	buffer[0] = 0;
-	regres = RegQueryValueExA(hRegKey, "Scale", NULL, &dwKey, buffer, &dwSize);
-	if(regres == ERROR_FILE_NOT_FOUND) {
-		printf("regres not found\n");
-	}
-	else {
-		Scale = (unsigned int)buffer[0];
-		// printf("Scale = %d, type = %d, size = %d\n", Scale, dwKey, dwSize);
-	}
-	RegCloseKey(hRegKey);
-	*/
 
 	//
 	// On startup get the active Sender name if any.
 	//
-	// The purpose of an ActiveSender' is to set the user requested name from a dialog
-	// which is independent of the program, so an external means of finding the selection is required
-	// If there is no active Sender, find out if any are registered, and if so, use the first one in the list
-	// Currently if no Sender exists, the camera will go static and has to be closed and opened
-	// again to detect a Sender. Resizing is needed before any more can be done.
-	//
-	//
-	if(receiver.GetImageSize(SharedMemoryName, senderWidth, senderHeight, bMemoryMode)) {
-		// printf(" *** First size = %dx%d - ,bMemoryMode = %d\n", senderWidth, senderHeight, bMemoryMode);
-		if(bMemoryMode) receiver.SetMemoryShareMode(true); // memory mode from now on
+	if(receiver.GetActiveSender(g_SenderName)) {
 		// Set the global width and height
-		g_Width  = senderWidth;
-		g_Height = senderHeight;
+		receiver.GetImageSize(g_SenderName, g_SenderWidth, g_SenderHeight, bMemoryMode);
+		g_Width  = g_SenderWidth;
+		g_Height = g_SenderHeight;
 	}
 
+
+	// Cannot use receiver.GetMemoryShareMode() here because 
+	// it requires an OpenGL context, so look at the registry directly.
+	DWORD dwMemory = 0;
+	if(receiver.spout.interop.spoutdx.ReadDwordFromRegistry(&dwMemory, "Software\\Leading Edge\\Spout", "MemoryShare")) {
+		if(dwMemory == 1) {
+			bMemoryMode = true;
+		}
+	}
+
+	bDX9mode = receiver.GetDX9(); // Currently not used, might use this flag later
+
 	// Set mediatype to shared width and height or if it did not connect set defaults
-	GetMediaType(&m_mt);
+	GetMediaType(4, &m_mt);
 
 	NumDroppedFrames = 0;
 	NumFrames = 0;
-	hwndButton = NULL; // ensure NULL of static variable
+	hwndButton = NULL; // ensure NULL of static variable for the OpenGL window handle
 
 }
 
 CVCamStream::~CVCamStream()
 {
-	// If there is no gl context here, deletebuffers causes a crash
-	// so we assume the fbo and texture are destroyed on exit
-	// also specific call to dxconnector.cleanup crashes so we must assume it happens OK
-	// (needs modification to connector cleanup as in jit.gl.spoutSender)
+	DWORD dwSpoutPanel = 1;
+	char sendername[256];
+	sendername[0] = 0;
+
+	if(!m_pParent->IsActive() && !bDisconnected) {
+		// Is there an instance running and a sender running ?
+		if(receiver.spout.ReadPathFromRegistry(sendername, "Software\\Leading Edge\\SpoutCam\\", "Sender")) {
+			if(sendername[0] != 0) { // a SpoutCam instance has started
+				receiver.SelectSenderPanel(); // Choose the active sender
+				// Write a registry flag to inform the other instance
+				receiver.spout.interop.spoutdx.WriteDwordToRegistry(dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel");
+			}
+		}
+	}
+
 	HGLRC ctx = wglGetCurrentContext();
 	if(ctx != NULL) {
 		if(bInitialized) receiver.ReleaseReceiver();
-		if(glContext != NULL) { // global context handle
+		if(glContext != NULL) { 
+			// global context handle
 			wglDeleteContext(glContext); // try to prevent initgl twice
 		}
 	}
 
-	// 08-06-15
+	// if(bInitialized) receiver.ReleaseReceiver(); // TODO : check for context required
+	if(g_senderBuffer) free((void *)g_senderBuffer);
+	if(g_senderTexture != 0) glDeleteTextures(1, &g_senderTexture);	
+
 	// Destroy dummy window used for OpenGL context creation
 	if(hwndButton) DestroyWindow(hwndButton);
 
@@ -352,18 +456,14 @@ HRESULT CVCamStream::QueryInterface(REFIID riid, void **ppv)
 //////////////////////////////////////////////////////////////////////////
 HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 {
-	unsigned char *buffer;
-	unsigned char *src;
-	unsigned char *dst;
-	unsigned char red, grn, blu;
-
-	unsigned int i, imagesize, width, height;
+	unsigned int imagesize, width, height;
 	long l, lDataLen;
+	bool bResult = false;
+	DWORD dwSpoutPanel = 0;
 	HRESULT hr=S_OK;;
     BYTE *pData;
-	HGLRC glCtx;
-	float dim[4]; // for saving the viewport dimensions
 	VIDEOINFOHEADER *pvi = (VIDEOINFOHEADER *) m_mt.Format();
+
 
 	// If graph is inactive stop cueing samples
 	if(!m_pParent->IsActive()) {
@@ -384,11 +484,16 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 	*/
 
 	// What Time is it REALLY ???
-	m_pParent->GetSyncSource(&m_pClock);
-	
-	m_pClock->GetTime(&refSync1);
-	
-	if(m_pClock) m_pClock->Release();
+	// m_pClock is returned NULL with Skype, but OK for YawCam and VLC
+	m_pParent->GetSyncSource(&m_pClock); 
+	if(m_pClock) {
+		m_pClock->GetTime(&refSync1);
+		m_pClock->Release();
+	}
+	else {
+		refSync1 = NumFrames*avgFrameTime;
+	}
+
 
 	if(NumFrames <= 1) {
 		// initiate values
@@ -427,7 +532,6 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
     hr = pms->SetTime(&rtNow, &m_rtLastTime);
 	// Set true on every sample for uncompressed frames
     hr = pms->SetSyncPoint(true);
-	
 	// ============== END OF INITIAL TIMING ============
 
 	// Check access to the sample's data buffer
@@ -435,6 +539,7 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 	if(pData == NULL) {
 		return NOERROR;
 	}
+
 
 	// Get the current frame size for texture transfers
     imagesize = (unsigned int)pvi->bmiHeader.biSizeImage;
@@ -444,149 +549,161 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 		return NOERROR;
 	}
 
-
-	// don't do anything if disconnected because it will already have connected
+	// Don't do anything if disconnected because it will already have connected
 	// previously and something has changed. It can only disconnect after it has connected.
 	if(!bDisconnected) {
-		
-		// This also initialises OpenGL and Glew - bInitialized is set if all is OK
-		if(!bInitialized) {
-			if(OpenReceiver() == NOERROR) {
-				bInitialized = true;
-				bDisconnected = false;
-				if(!bMemoryMode) {
-					InitTexture(g_Width, g_Height); // the size of the camera window
-				}
-			}
-			else {
-				bInitialized = false;
-				bDisconnected = true;
-			}
-			return NOERROR;
-		}
 
-		// check gl context again
-		glCtx = wglGetCurrentContext();
-		if(glCtx == NULL) {
-			receiver.ReleaseReceiver();
-			bInitialized = false;
-			bDisconnected = true; // don't try again
-			return NOERROR;
-		}
-
-		// Check that a texture Sender has not changed size
 		// If connected, sizes should be OK, but check again
 		unsigned int size = (unsigned int)pms->GetSize();
-		imagesize = width*height*3; // also retrieved above
+		imagesize = width*height*3; // Retrieved above
 		if(size != imagesize) {
-			receiver.ReleaseReceiver();
+			if(bInitialized) receiver.ReleaseReceiver();
 			bInitialized = false;
 			bDisconnected = true; // don't try again
 			return NOERROR;
 		}
-		//
-		// everything matches so go ahead with the shared texture read
-		if(!bDisconnected) {
-			if(bMemoryMode) {
-				//
-				// Memoryshare instead of interop texture share
-				//
-				// A memoryshare sender cannot change from startup like a texture sender
-				// so the global width and height are always the same as the camera width and height
-				//
-				// Read the bitmap from shared memory into a local buffer
-				buffer = (unsigned char *)malloc(g_Width*g_Height*3);
-				if(buffer) {
-					// Format for Receiveimage in memoryshare mode is GL_RGB
-					// because there is no texture to receive
-					if(receiver.ReceiveImage(SharedMemoryName, senderWidth, senderHeight, buffer, GL_RGB)) {
-						// first check that the image size has not changed
-						if(senderWidth == g_Width && senderHeight == g_Height) {
-							// all is OK - flip the data for correct orientation and change pixel format
-							FlipVertical(buffer, g_Width, g_Height);
-							dst = (unsigned char *)pData;
-							src = buffer;
-							for(i=0; i<g_Width*g_Height; i++) {
-								red = *src++;
-								grn = *src++;
-								blu = *src++;
-								*dst++ = blu;
-								*dst++ = grn;
-								*dst++ = red;
-							}
-						}
-						else {
-							// Sender has changed the image size
-							// no way presently to deal with it so deinit
-							receiver.ReleaseReceiver();
-							bMemoryMode = false; // it will go to a static image from now on
-							bDisconnected = true; // and not try again
-						} // end image size check
-					} // received OK
-					free((void *)buffer);
-				} // endif buffer OK
-				NumFrames++;
-				return NOERROR;
+
+
+		// Quit if nothing running at all
+		if(!receiver.GetActiveSender(g_ActiveSender)) {
+			if(bInitialized) {
+				receiver.ReleaseReceiver();
+				bInitialized = false;
+				// Reset the registry entries for SpoutCam
+				dwSpoutPanel = 0;
+				receiver.spout.interop.spoutdx.WriteDwordToRegistry(dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel");
+				receiver.spout.WritePathToRegistry("", "Software\\Leading Edge\\SpoutCam\\", "Sender");
 			}
-			else if(receiver.ReceiveTexture(SharedMemoryName, senderWidth, senderHeight)) {
-				//
-				// ======= RENDER THE SHARED TEXTURE INVERTED TO A LOCAL TEXTURE VIA FBO ==========
-				//
-				// The shared texture can be a different size to the local texture because this is 
-				// rendering and not copying. The local texture is always the same size as the filter.
-				//
-				glMatrixMode(GL_TEXTURE);
-				glPushMatrix();
-				glLoadIdentity();
-				glPushAttrib(GL_TRANSFORM_BIT);
-				glGetFloatv(GL_VIEWPORT, dim);
-				glViewport(0, 0, g_Width, g_Height); // size of the camera window
-				glMatrixMode(GL_PROJECTION);
-				glPushMatrix();
-				glLoadIdentity(); // reset the current matrix back to its default state
-				glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0f, 1.0f);
-				glMatrixMode(GL_MODELVIEW);
-				glPushMatrix();
-				glLoadIdentity();
+			goto ShowStatic;
+		}
 
-				// Attach the local texture (desination) to the color buffer in our frame buffer  
-				// and draw into it with the shared texture
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, g_fbo); 
-				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, g_fbo_texture, 0);
-				receiver.DrawSharedTexture();
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); 
+		// Has SpoutPanel been opened
+		HANDLE hMutex = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
+		if(hMutex) {
+			bSpoutPanelOpened = true;
+			// We opened it so close it, otherwise it is never released
+			CloseHandle(hMutex);
+		}
+		else {
+			// Wait for SpoutPanel to close
+			if(bSpoutPanelOpened) {
+				// Check the registry for the SpoutPanel flag
+				dwSpoutPanel = 0;
+				if(receiver.spout.interop.spoutdx.ReadDwordFromRegistry(&dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel")) {
+					if(dwSpoutPanel == 1) {
+						if(bInitialized) receiver.ReleaseReceiver();
+						bInitialized = false; // start again
+					}
+				}
+				// Reset the registry flag
+				dwSpoutPanel = 0;
+				receiver.spout.interop.spoutdx.WriteDwordToRegistry(dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel");
+				bSpoutPanelOpened = false;
+			}
+		} // end SpoutPanel check
+
+		// everything ready
+		if(!bInitialized) {
+
+			// If not initialized, look for a sender
+			if(receiver.GetActiveSender(g_SenderName)) {
+				
+				// Initialize OpenGl if is has not been done
+				if(!bGLinitialized) {
+					if(InitOpenGL()) {
+						// Find out whether bgra extensions are supported at runtime
+						// bBGRA = receiver.spout.interop.IsBGRAavailable();
+						bBGRA = isExtensionSupported("GL_EXT_bgra");
+						bGLinitialized = true;
+						// Call OpenSpout so that OpenGL extensions are loaded
+						receiver.spout.OpenSpout();
+					}
+					else {
+						bGLinitialized = false;
+						bDisconnected = true; // don't try again
+						return NOERROR;
+					}
+				}
+
+				// Found a sender so initialize the receiver
+				if(receiver.CreateReceiver(g_SenderName, g_SenderWidth, g_SenderHeight)) {
 					
-				glMatrixMode(GL_MODELVIEW);
-				glPopMatrix();
-				glMatrixMode(GL_PROJECTION);
-				glPopMatrix();
-				glPopAttrib();
-				glViewport(dim[0], dim[1], dim[2], dim[3]);
-				glMatrixMode(GL_TEXTURE);
-				glPopMatrix();
+					// Create a local rgba OpenGL texture to receive the sender's shared texture
+					CreateSenderTexture(g_SenderWidth, g_SenderHeight);
 
-				// now read the local texture into the sample's data buffer because the sizes match
-				glBindTexture(GL_TEXTURE_2D, g_fbo_texture);
-				glEnable(GL_TEXTURE_2D);
-				glGetTexImage(GL_TEXTURE_2D, 0,  GL_BGR,  GL_UNSIGNED_BYTE, (void *)pData);
+					// Create a local rgb buffer for data tranfser from the shared texture
+					if(g_senderBuffer) free((void *)g_senderBuffer);
+					g_senderBuffer = (unsigned char *)malloc(g_SenderWidth*g_SenderHeight*3*sizeof(unsigned char));
+							
+					// Write the sender path to the registry for SpoutPanel
+					receiver.spout.WritePathToRegistry(g_SenderName, "Software\\Leading Edge\\SpoutCam", "Sender");
+					bInitialized = true;
+					NumFrames++;
+					return NOERROR; // no more for this frame
+				}
+				else {
+					// TODO : what
+				}
+			} // end found a sender
+		} // end not initialized
+		else {
+
+			// Receive the shared texture or memoryshare pixels into a local rgba OpenGL texture
+			// The shared texture is inverted at the same time, so no software inversion is needed.
+
+			width = g_SenderWidth; // for sender size check
+			height = g_SenderHeight;
+
+			if(receiver.ReceiveTexture(g_SenderName, width, height, g_senderTexture, GL_TEXTURE_2D, bInvert)) {
+
+				// Sender size check
+				if(g_SenderWidth != width || g_SenderHeight != height) {
+					g_SenderWidth  = width;
+					g_SenderHeight = height;
+					// restart to initialize with the new size
+					receiver.ReleaseReceiver();
+					bInitialized = false;
+					NumFrames++;
+					return NOERROR;					
+				}
+
+				glBindTexture(GL_TEXTURE_2D, g_senderTexture);
+				#ifdef GL_EXT_bgra // Or else GL_BGR_EXT is not defined
+				if (bBGRA && g_SenderWidth == g_Width && g_SenderHeight == g_Height) {
+					// If bgra is supported at runtime and the sizes match, transfer the
+					// texture data directly to the filter pixel buffer using bgr format.
+					glGetTexImage(GL_TEXTURE_2D, 0, GL_BGR_EXT, GL_UNSIGNED_BYTE, (void *)pData);
+				} else
+				#endif
+				{
+					// If GL_EXT_bgra is not supported by the compiler, or bgra is not
+					// supported at runtime, or the sender and filter are different sizes,
+					// load the sender buffer with rgb data for software conversion to bgr.
+					glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB,  GL_UNSIGNED_BYTE, g_senderBuffer);
+				}
 				glBindTexture(GL_TEXTURE_2D, 0);
-				glDisable(GL_TEXTURE_2D);
 
-				// LJ DEBUG for flip test
-				// FlipVertical(pData, g_Width, g_Height);
+				if(g_SenderWidth != g_Width || g_SenderHeight != g_Height) {
+					// For different sender and filter sizes, resample the rgb sender buffer into the bgr filter buffer.
+					rgb2bgrResample(g_senderBuffer, (unsigned char *)pData, g_SenderWidth, g_SenderHeight, g_Width, g_Height);
+				}
+				else if(!bBGRA) {
+					// Otherwise if the buffer dimensions match but bgra is not supported, convert from rgb to bgr.
+					rgb2bgr(g_senderBuffer, (unsigned char *)pData, g_SenderWidth, g_SenderHeight);
+				}
 
 				NumFrames++;
 				return NOERROR;
 
 			} // endif received OK
 			else {
-
 				receiver.ReleaseReceiver();
 				bInitialized = false;
-				bDisconnected = true; // don't try again
 			} // endif received texture OK
-		} // endif texture mode
+		} // endif initialized
 	} // endif not disconnected
+
+ShowStatic :
 
 	// drop through to default static image if it did not work
 	pms->GetPointer(&pData);
@@ -600,143 +717,7 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 
 } // FillBuffer
 
-HRESULT CVCamStream::OpenReceiver()
-{
-	HDC hdc = NULL;
-	HWND hwnd = NULL;
-	HGLRC hRc = NULL;
-	// char windowtitle[512];
 
-	glContext = wglGetCurrentContext();
-
-	// Once created it seems stable and retained
-	if(glContext == NULL) {
-
-		// We only need an OpenGL context with no render window because we don't draw to it
-		// so create an invisible dummy button window. This is then independent from the host
-		// program window (GetForegroundWindow). If SetPixelFormat has been called on the
-		// host window it cannot be called again. This caused a problem in Mapio and could be
-		// a problem with VirtualDJ.
-		//
-		// Microsoft :
-		//
-		// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
-		//
-		// If hdc references a window, calling the SetPixelFormat function also changes the pixel
-		// format of the window. Setting the pixel format of a window more than once can lead to
-		// significant complications for the Window Manager and for multithread applications,
-		// so it is not allowed. An application can only set the pixel format of a window one time.
-		// Once a window's pixel format is set, it cannot be changed.
-		//
-		if(!hwndButton || !IsWindow(hwndButton)) {
-			hwndButton = CreateWindowA("BUTTON",
-				            "Spout Cam",
-					        WS_OVERLAPPEDWINDOW,
-						    0, 0, 32, 32,
-							NULL, NULL, NULL, NULL);
-		}
-
-		// hwndButton = GetForegroundWindow(); // causes problems with Mapio
-		if(!hwndButton) { 
-			printf("InitOpenGL error 1\n");
-			MessageBoxA(NULL, "Error 1\n", "InitOpenGL", MB_OK);
-			return S_FALSE; 
-		}
-
-		hdc = GetDC(hwndButton);
-
-		if(!hdc) { 
-			printf("InitOpenGL error 2\n"); 
-			MessageBoxA(NULL, "Error 2\n", "InitOpenGL", MB_OK); 
-			return S_FALSE; 
-		}
-		// GetWindowTextA(hwndButton, windowtitle, 256); // debug
-
-		PIXELFORMATDESCRIPTOR pfd;
-		ZeroMemory( &pfd, sizeof( pfd ) );
-		pfd.nSize = sizeof( pfd );
-		pfd.nVersion = 1;
-		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-		pfd.iPixelType = PFD_TYPE_RGBA;
-		pfd.cColorBits = 32;
-		pfd.cDepthBits = 16;
-		pfd.iLayerType = PFD_MAIN_PLANE;
-		int iFormat = ChoosePixelFormat(hdc, &pfd);
-		if(!iFormat) { 
-			printf("InitOpenGL error 3\n"); 
-			MessageBoxA(NULL, "Error 3\n", "InitOpenGL", MB_OK);
-			return S_FALSE; 
-		}
-
-		if(!SetPixelFormat(hdc, iFormat, &pfd)) {
-			DWORD dwError = GetLastError();
-			printf("InitOpenGL error 4 (Error %d (%x))\n", dwError, dwError); 
-			// 2000 (0x7D0) The pixel format is invalid.
-			// Caused by repeated call of  the SetPixelFormat function
-			char temp[128];
-			sprintf_s(temp, "InitOpenGL Error 4\nSetPixelFormat\nError %d (%x)", dwError, dwError);
-			MessageBoxA(NULL, temp, "InitOpenGL", MB_OK); 
-			return S_FALSE; 
-		}
-
-		hRc = wglCreateContext(hdc);
-		if(!hRc) { 
-			printf("InitOpenGL error 5\n"); 
-			MessageBoxA(NULL, "Error 5\n", "InitOpenGL", MB_OK); 
-			return S_FALSE; 
-		}
-
-		wglMakeCurrent(hdc, hRc);
-		if(wglGetCurrentContext() == NULL) {
-			printf("InitOpenGL error 6\n");
-			MessageBoxA(NULL, "Error 6\n", "InitOpenGL", MB_OK);
-			return S_FALSE; 
-		}
-
-		// Drop through to return true
-		// printf("InitOpenGL : hwnd = %x (%s), hdc = %x, context = %x\n", hwnd, windowtitle, hdc, hRc);
-
-		// int nCurAvailMemoryInKB = 0;
-		// glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
-		// printf("Memory available [%i]\n", nCurAvailMemoryInKB);
-
-		/*
-		// Glut method (glut.dll dependency)
-		// You need to create a rendering context BEFORE calling glutInit()
-		// First you need to create a valid OpenGL rendering context and call glewInit() 
-		// to initialize the extension entry points. 
-		HDC GLhdc;
-		int argc = 1;
-		char *argv = (char*)"vCam";
-		char **vptr = &argv;
-		glutInit(&argc, vptr);
-		// In this case there is not be a rendering context. There is if an external window is present
-		// but we don't know what it is. So create a window here but it will not show.
-		glutCreateWindow("vCamGL");
-		GLhdc = wglGetCurrentDC();
-		GLhwnd = WindowFromDC(GLhdc);
-		*/
-
-
-	} // end no glcontext 
-
-	
-	/*
-	#ifdef UseD3D9
-	receiver.SetDX9(true);
-	#else
-	receiver.SetDX9(false); // Set to DX9 for compatibility with Version 1 apps
-	#endif
-	*/
-
-	// This is a receiver so try to connect
-	if(receiver.CreateReceiver(SharedMemoryName, senderWidth, senderHeight)) {
-		return NO_ERROR;
-	}
-
-	return S_FALSE;
-
-} // end OpenReceiver
 
 
 //
@@ -746,6 +727,7 @@ STDMETHODIMP CVCamStream::Notify(IBaseFilter * pSender, Quality q)
 {
     return E_NOTIMPL;
 } // Notify
+
 
 //////////////////////////////////////////////////////////////////////////
 // This is called when the output format has been negotiated
@@ -761,56 +743,48 @@ HRESULT CVCamStream::SetMediaType(const CMediaType *pmt)
     return hr;
 }
 
-
-// LJ version for one media type
-//
-// GetMediaType: This method tells the downstream pin what types we support.
-//
-// Here is how CSourceStream deals with media types:
-//
-// If you support exactly one type, override GetMediaType(CMediaType*). It will then be
-// called when 
-//		(a) our filter proposes a media type, 
-//		(b) the other filter proposes a type and we have to check that type.
-//
-// If you support > 1 type, override GetMediaType(int,CMediaType*) AND CheckMediaType.
-//
-// In this case we support only one type, which we obtain from the bitmap.
-//
-// Can be called repeatedly
-//
-HRESULT CVCamStream::GetMediaType(CMediaType *pmt)
+// See Directshow help topic for IAMStreamConfig for details on this method
+HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType *pmt)
 {
 	unsigned int width, height;
 
-	if(pmt == NULL) {
-        return E_POINTER;
+	if(iPosition < 0) {
+		return E_INVALIDARG;
+	}
+    if(iPosition > 8) { // TODO - needs work - only one position
+		return VFW_S_NO_MORE_ITEMS;
+	}
+	
+    if(iPosition == 0) {
+        *pmt = m_mt;
+        return S_OK;
     }
 
     DECLARE_PTR(VIDEOINFOHEADER, pvi, pmt->AllocFormatBuffer(sizeof(VIDEOINFOHEADER)));
     ZeroMemory(pvi, sizeof(VIDEOINFOHEADER));
 
-	// Allow for default as well as width and height of memory share image
+ 	// Allow for default
 	if(g_Width == 0 || g_Height == 0) {
-		width  = 320;
-		height = 240;
+		width  = 640;
+		height = 480;
 	}
 	else {
-		// as per sending app
+		// as per Spout sender received
 		width	=  g_Width;
 		height	=  g_Height;
 	}
+	
+	// width	=  g_Width;
+	// height	=  g_Height;
+	// printf("GetMediaType [%d] (%dx%d)\n", iPosition, width, height);
 
 	pvi->bmiHeader.biSize				= sizeof(BITMAPINFOHEADER);
 	pvi->bmiHeader.biWidth				= (LONG)width;
 	pvi->bmiHeader.biHeight				= (LONG)height;
 	pvi->bmiHeader.biPlanes				= 1;
 	pvi->bmiHeader.biBitCount			= 24;
-	pvi->bmiHeader.biCompression		= 0;
-	pvi->bmiHeader.biSizeImage			= 0;             // default 
-	// pvi->bmiHeader.biXPelsPerMeter	= 0;             // default 
-	// pvi->bmiHeader.biYPelsPerMeter	= 0;             // default 
-	// pvi->bmiHeader.biClrUsed			= 0;
+	pvi->bmiHeader.biCompression		= 0; // defaults 
+	pvi->bmiHeader.biSizeImage			= 0;
 	pvi->bmiHeader.biClrImportant		= 0;
 	pvi->bmiHeader.biSizeImage			= GetBitmapSize(&pvi->bmiHeader);
 
@@ -837,7 +811,18 @@ HRESULT CVCamStream::GetMediaType(CMediaType *pmt)
 
     return NOERROR;
 
-}
+} // GetMediaType
+
+
+// This method is called to see if a given output format is supported
+HRESULT CVCamStream::CheckMediaType(const CMediaType *pMediaType)
+{
+	if(*pMediaType != m_mt) 
+        return E_INVALIDARG;
+
+    return S_OK;
+} // CheckMediaType
+
 
 
 
@@ -855,6 +840,8 @@ HRESULT CVCamStream::DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROPERTIE
     VIDEOINFOHEADER *pvi = (VIDEOINFOHEADER *) m_mt.Format();
     pProperties->cBuffers = 1;
     pProperties->cbBuffer = pvi->bmiHeader.biSizeImage;
+
+	// printf("CVCamStream::DecideBufferSize()\n");
 
     ASSERT(pProperties->cbBuffer);
 
@@ -894,7 +881,7 @@ HRESULT CVCamStream::OnThreadCreate()
 HRESULT STDMETHODCALLTYPE CVCamStream::SetFormat(AM_MEDIA_TYPE *pmt)
 {
 	// http://kbi.theelude.eu/?p=161
-	if(!pmt)return S_OK;//Default? red5
+	if(!pmt) return S_OK; // Default? red5
 
 	VIDEOINFOHEADER *pvi = (VIDEOINFOHEADER *)(pmt->pbFormat);
 	VIDEOINFOHEADER *mvi = (VIDEOINFOHEADER *)(m_mt.Format ());
@@ -1039,10 +1026,7 @@ HRESULT STDMETHODCALLTYPE CVCamStream::GetAverageFrameSize (long* plAverageSize)
 	return S_OK;
 }
 
-//
-// LJ - Possible bug here with properties.
-// If a host tries to open the property page it can crash.
-//
+
 
 //////////////////////////////////////////////////////////////////////////
 // IKsPropertySet
@@ -1065,6 +1049,7 @@ HRESULT CVCamStream::Get(
     DWORD *pcbReturned     // Return the size of the property.
 	)
 {
+
     if (guidPropSet != AMPROPSETID_Pin)             return E_PROP_SET_UNSUPPORTED;
     if (dwPropID != AMPROPERTY_PIN_CATEGORY)        return E_PROP_ID_UNSUPPORTED;
     if (pPropData == NULL && pcbReturned == NULL)   return E_POINTER;
@@ -1088,141 +1073,469 @@ HRESULT CVCamStream::QuerySupported(REFGUID guidPropSet, DWORD dwPropID, DWORD *
     return S_OK;
 }
 
-bool CVCamStream::InitTexture(unsigned int width, unsigned int height)
+HRESULT STDMETHODCALLTYPE CVCamStream::QueryPinInfo(__out  PIN_INFO *pInfo)
+{
+	return CSourceStream::QueryPinInfo(pInfo);
+}
+
+STDMETHODIMP  CVCamStream::NonDelegatingQueryInterface(REFIID riid, __deref_out void **ppv)
+{
+	return CSourceStream::NonDelegatingQueryInterface(riid, ppv);
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::ConnectedTo(__out  IPin **pPin)
+{
+	return CSourceStream::ConnectedTo(pPin);
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::EnumMediaTypes(__out  IEnumMediaTypes **ppEnum)
+{
+	return CSourceStream::EnumMediaTypes(ppEnum);
+}
+
+LONG  CVCamStream::GetMediaTypeVersion()
+{
+	return CSourceStream::GetMediaTypeVersion();
+}
+
+HRESULT  CVCamStream::CompleteConnect(IPin *pReceivePin)
+{
+	return CSourceStream::CompleteConnect(pReceivePin);
+}
+
+HRESULT  CVCamStream::CheckConnect(IPin *pPin)
+{
+	return CSourceStream::CheckConnect(pPin);
+}
+
+HRESULT  CVCamStream::BreakConnect()
+{
+	return CSourceStream::BreakConnect();
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::Connect(IPin *pReceivePin,	__in_opt  const AM_MEDIA_TYPE *pmt)
+{
+	return CSourceStream::Connect( pReceivePin, pmt);
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::ReceiveConnection(IPin *pConnector, const AM_MEDIA_TYPE *pmt)
+{
+	return CSourceStream::ReceiveConnection( pConnector,pmt);
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::Disconnect( void)
+{
+	bDisconnected = true;
+
+	// Reset the registry entries for SpoutCam
+	DWORD dwSpoutPanel = 0;
+	receiver.spout.interop.spoutdx.WriteDwordToRegistry(dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel");
+	receiver.spout.WritePathToRegistry("", "Software\\Leading Edge\\SpoutCam\\", "Sender");
+
+	return CSourceStream::Disconnect( );
+}
+
+
+HRESULT STDMETHODCALLTYPE CVCamStream::ConnectionMediaType(__out  AM_MEDIA_TYPE *pmt)
+{
+	return CSourceStream::ConnectionMediaType(pmt);
+}
+
+
+HRESULT STDMETHODCALLTYPE CVCamStream::QueryDirection(__out  PIN_DIRECTION *pPinDir)
+{
+	return CSourceStream::QueryDirection(pPinDir);
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::QueryId(__out  LPWSTR *Id)
+{
+	return CSourceStream::QueryId(Id);
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::QueryAccept(const AM_MEDIA_TYPE *pmt)
+{
+	return CSourceStream::QueryAccept(pmt);
+}
+
+
+HRESULT STDMETHODCALLTYPE CVCamStream::QueryInternalConnections(__out_ecount_part_opt(*nPin, *nPin) IPin **apPin, ULONG *nPin)
+{
+	return CSourceStream::QueryInternalConnections(apPin, nPin);
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::EndOfStream( void)
+{
+	return CSourceStream::EndOfStream( );
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::BeginFlush( void)
+{
+	return CSourceStream::BeginFlush( );
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::EndFlush( void)
+{
+	return CSourceStream::EndFlush( );
+}
+
+HRESULT STDMETHODCALLTYPE CVCamStream::NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate)
+{
+	return CSourceStream::NewSegment(tStart,tStop, dRate);
+}
+
+HRESULT CVCamStream::Active(void)  {
+	return CSourceStream::Active();
+}
+
+
+
+bool CVCamStream::InitOpenGL()
+{
+	HDC hdc = NULL;
+	HWND hwnd = NULL;
+	HGLRC hRc = NULL;
+
+	glContext = wglGetCurrentContext();
+	// printf("InitOpenGL (ctx = %d)\n", glContext);
+
+	// Once created it seems stable and retained
+	if(glContext == NULL) {
+
+		// printf("InitOpenGL creating OpenGL windows\n");
+
+		// We only need an OpenGL context with no render window because we don't draw to it
+		// so create an invisible dummy button window. This is then independent from the host
+		// program window (GetForegroundWindow). If SetPixelFormat has been called on the
+		// host window it cannot be called again. This caused a problem in Mapio and could be
+		// a problem with VirtualDJ.
+		//
+		// Microsoft :
+		//
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
+		//
+		// If hdc references a window, calling the SetPixelFormat function also changes the pixel
+		// format of the window. Setting the pixel format of a window more than once can lead to
+		// significant complications for the Window Manager and for multithread applications,
+		// so it is not allowed. An application can only set the pixel format of a window one time.
+		// Once a window's pixel format is set, it cannot be changed.
+		//
+		if(!hwndButton || !IsWindow(hwndButton)) {
+			hwndButton = CreateWindowA("BUTTON",
+				            "SpoutCam",
+					        WS_OVERLAPPEDWINDOW,
+						    0, 0, 32, 32,
+							NULL, NULL, NULL, NULL);
+		}
+
+		// hwndButton = GetForegroundWindow(); // causes problems with Mapio
+		if(!hwndButton) { 
+			// printf("InitOpenGL error 1\n");
+			MessageBoxA(NULL, "Error 1\n", "InitOpenGL", MB_OK);
+			return false; 
+		}
+
+		hdc = GetDC(hwndButton);
+		// printf("    GetDC = %x\n", hdc); 
+		if(!hdc) { 
+			// printf("InitOpenGL error 2\n"); 
+			MessageBoxA(NULL, "Error 2\n", "InitOpenGL", MB_OK); 
+			return false; 
+		}
+		// GetWindowTextA(hwndButton, windowtitle, 256); // debug
+
+		PIXELFORMATDESCRIPTOR pfd;
+		ZeroMemory( &pfd, sizeof( pfd ) );
+		pfd.nSize = sizeof( pfd );
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 32;
+		pfd.cDepthBits = 16;
+		pfd.iLayerType = PFD_MAIN_PLANE;
+		int iFormat = ChoosePixelFormat(hdc, &pfd);
+		if(!iFormat) { 
+			// printf("InitOpenGL error 3\n"); 
+			MessageBoxA(NULL, "Error 3\n", "InitOpenGL", MB_OK);
+			return false; 
+		}
+
+		if(!SetPixelFormat(hdc, iFormat, &pfd)) {
+			DWORD dwError = GetLastError();
+			// printf("InitOpenGL error 4 (Error %d (%x))\n", dwError, dwError); 
+			// 2000 (0x7D0) The pixel format is invalid.
+			// Caused by repeated call of  the SetPixelFormat function
+			char temp[128];
+			// sprintf_s(temp, "InitOpenGL Error 4\nSetPixelFormat\nError %d (%x)", dwError, dwError);
+			MessageBoxA(NULL, temp, "InitOpenGL", MB_OK); 
+			return false; 
+		}
+
+		hRc = wglCreateContext(hdc);
+		// GLerror();
+		// 1282 (0x502)
+		if(!hRc) { 
+			// printf("InitOpenGL error 5\n"); 
+			MessageBoxA(NULL, "Error 5\n", "InitOpenGL", MB_OK); 
+			return false; 
+		}
+
+		if(wglMakeCurrent(hdc, hRc)) {
+			GLerror();
+			glContext = wglGetCurrentContext();
+			GLerror();
+			// printf("    wglGetCurrentContext() = %d\n", glContext);
+			// if(wglGetCurrentContext() == NULL) {
+			if(glContext == NULL) {
+				// printf("InitOpenGL error 6\n");
+				MessageBoxA(NULL, "Error 6\n", "InitOpenGL", MB_OK);
+				return false; 
+			}
+		}
+		else {
+			MessageBoxA(NULL, "Error 7\n", "InitOpenGL", MB_OK);
+			return false; 
+			// printf("    wglMakeCurrent failed\n");
+		}
+
+		// Drop through to return true
+		// printf("    InitOpenGL OK : hwnd = %x, hdc = %x, context = %x\n", hwndButton, hdc, hRc);
+
+		// MessageBoxA(NULL, "Init OpenGL OK\n", "InitOpenGL", MB_OK);
+
+		// int nCurAvailMemoryInKB = 0;
+		// glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
+		// printf("Memory available [%i]\n", nCurAvailMemoryInKB);
+
+	} // end no glcontext 
+
+	// LJ DEBUG
+	return true;
+
+} // end InitOpenGL
+
+
+// For debugging - (gluErrorString needs glu32.lib)
+void CVCamStream::GLerror() {
+	GLenum err;
+	while ((err = glGetError()) != GL_NO_ERROR) {
+		printf("GL error = %d (0x%x)\n", err, err);
+		// printf("GL error = %d (0x%x) %s\n", err, err, gluErrorString(err));
+	}
+}	
+
+
+
+// Adapted from : http://nehe.gamedev.net/tutorial/playing_avi_files_in_opengl/23001/
+// Inline asm only supported for 32bit by Visual Studio.
+void CVCamStream::rgb2bgr(void* source, void *dest, unsigned int width, unsigned int height, bool bInvert)
+{
+    void* a = source;     // Source rgb buffer
+	void* b = dest;       // Destination bgr buffer
+	unsigned int h = height;  // Line counter
+	unsigned int w = width;   // Line size in pixels
+	unsigned int s = 0;	      // Source buffer size for invert
+	unsigned int t = 0;       // Source line size for invert
+
+	if(bInvert) {
+		s = width*height*3;    // Source buffer size
+		t = width*3;           // Source line size
+	}
+
+    __asm                      // Assembler Code To Follow
+    {
+        mov ebx, a             // Points ebx to source data (a)
+		mov edx, b             // Points ebx To rgb data (b)
+
+		// Invert
+		add ebx, s             // end of source buffer
+		sub ebx, t             // beginning of the last line
+
+        mov ecx, h             // Line counter
+
+		lines:
+
+		push ecx
+		mov ecx, w             // Bytes per line source
+
+        label:                 // Label Used For Looping
+
+		    // loop though 3 bytes rgb and bgr
+
+			// b
+            mov al,[ebx+2]     // Loads Value At ebx Into al - rgb source
+			mov [edx],al       // Stores Value In al At edx - bgr dest
+            inc ebx            // rgb source buffer increment
+			inc edx            // bgr dest buffer increment
+
+			// g
+            mov al,[ebx]       // Loads Value At ebx Into al      rgb source
+			mov [edx],al       // Stores Value In al At edx       bgr dest
+            inc ebx            // rgba buffer increment
+			inc edx            // rgb buffer increment
+
+			// r
+            mov al,[ebx-2]     // Loads Value At ebx Into al      rgb source
+			mov [edx],al       // Stores Value In al At edx       bgr dest
+            inc ebx            // rgba buffer increment
+			inc edx            // rgb buffer increment
+
+            dec ecx            // Decrease Loop Counter (3 bytes per loop)
+            jnz label          // If Not Zero Jump Back To Label
+
+			// drop through after doing one line
+
+			pop ecx            // restore line counter
+
+			// Invert
+			sub ebx, t
+			sub ebx, t         // Next rgb source line up
+
+			dec ecx            // next line
+			jnz lines          // do all lines
+
+    }
+}
+
+
+// Adapted from :
+// http://tech-algorithm.com/articles/nearest-neighbor-image-scaling/
+// http://www.cplusplus.com/forum/general/2615/#msg10482
+//
+void CVCamStream::rgb2bgrResample(unsigned char* source, unsigned char* dest, 
+								  unsigned int sourceWidth, unsigned int sourceHeight, 
+								  unsigned int destWidth, unsigned int destHeight, bool bInvert)
+{
+	unsigned char *srcBuffer = (unsigned char *)source; // void to unsigned char pointer
+	unsigned char *dstBuffer = (unsigned char *)dest;
+
+	float x_ratio = (float)sourceWidth/(float)destWidth ;
+	float y_ratio = (float)sourceHeight/(float)destHeight ;
+	float px, py ; 
+	unsigned int i, j;
+	unsigned int pixel, nearestMatch;
+	for(i = 0; i<destHeight; i++) {
+		for(j = 0; j<destWidth; j++) {
+			px = floor((float)j*x_ratio);
+			py = floor((float)i*y_ratio);
+			if(bInvert)
+				pixel = (destHeight-i-1)*destWidth*3 + j*3; // flip vertically
+			else
+				pixel = i*destWidth*3 + j*3;
+			nearestMatch = (int)(py*sourceWidth*3 + px*3);
+			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 2];
+			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
+			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 0];
+		}
+	}
+}
+
+
+bool CVCamStream::CreateSenderTexture(unsigned int width, unsigned int height)
 {
 
-	if(g_fbo != 0) glDeleteFramebuffersEXT(1, &g_fbo);
-	if(g_fbo_texture != 0) glDeleteTextures(1, &g_fbo_texture);	
+	if(g_senderTexture != 0) glDeleteTextures(1, &g_senderTexture);	
 
-	glGenFramebuffersEXT(1, &g_fbo); // create a texture to attach to the fbo
-	glGenTextures(1, &g_fbo_texture); // Generate one texture
+	glGenTextures(1, &g_senderTexture);
 
-	glBindTexture(GL_TEXTURE_2D, g_fbo_texture); // Bind the fbo_texture
-	// Create a standard texture with the width and height of our window
-	// this will be filled with data from the movie frame rgb openframeworks image
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL); 
-	// Setup the basic texture parameters
+	glBindTexture(GL_TEXTURE_2D, g_senderTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL); 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, 0); // Unbind the texture
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 	return true;
 }
 
-
-/*
-// Adapted from FreeImage function
-// Flip the image vertically along the horizontal axis.
-// Should be faster with one less line copy. Also only one malloc
-bool CVCamStream::FlipVertical(unsigned char *src, unsigned int width, unsigned int height) 
+//
+//	Used to determine support for GL_EXT_bgra extensions
+//
+bool CVCamStream::isExtensionSupported(const char *extension)
 {
-		BYTE *From, *Mid;
+	const char * extensionsstr = NULL;
+	const char * versionstr = NULL;
+	const char * start;
+	const char * exc;
+	char *where, *terminator;
+	int n, i;
 
-		// swap the buffer
-		int pitch = width*3; // RGB
+	// Extension names should not have spaces.
+	where = (char *)strchr(extension, ' ');
+	if (where || *extension == '\0')
+		return false;
 
-		// copy between aligned memories
-		Mid = (BYTE*)malloc(pitch * sizeof(BYTE));
-		if (!Mid) return false;
+	versionstr = (const char *)glGetString(GL_VERSION);
+	// printf("OpenGL version (%s)\n", versionstr);
 
-		From = src;
-	
-		unsigned int line_s = 0;
-		unsigned int line_t = (height-1)*pitch;
+	extensionsstr = (const char *)glGetString(GL_EXTENSIONS);
 
-		for(unsigned int y = 0; y<height/2; y++) {
-			// 15-07-14 - changed from memcpy to CopyMemory - very slight speed advantage
-			CopyMemory(Mid, From + line_s, pitch);	
-			CopyMemory(From + line_s, From + line_t, pitch);
-			CopyMemory(From + line_t, Mid, pitch);
-			line_s += pitch;
-			line_t -= pitch;
+	#ifndef GL_NUM_EXTENSIONS
+	#define GL_NUM_EXTENSIONS 0x821D // in gl3.h
+	#endif
+
+	if(extensionsstr == NULL) {
+
+		// printf("glGetstring not supported\n");
+
+		//
+		// glGetstring not supported
+		//
+		// Code adapted from : https://bitbucket.org/Coin3D/coin/issues/54/support-for-opengl-3x-specifically
+		//
+
+		typedef GLubyte* (APIENTRY * COIN_PFNGLGETSTRINGIPROC)(GLenum enm, GLuint idx);
+		COIN_PFNGLGETSTRINGIPROC glGetStringi = 0;
+		glGetStringi = (COIN_PFNGLGETSTRINGIPROC)wglGetProcAddress("glGetStringi");
+		if(glGetStringi != NULL) {
+			glGetIntegerv(GL_NUM_EXTENSIONS, &n);
+			// printf("%d extensions\n", n);
+			if(n > 0) {
+				for (i = 0; i < n; i++) {
+					exc = (const char *)glGetStringi(GL_EXTENSIONS, i);
+					if(strcmp(exc, extension) == 0) {
+						break;
+					}
+				}
+				if(i < n) {
+					return true;
+				}
+			}
+			else {
+				printf("glGetIntegerv(GL_NUM_EXTENSIONS) did not return a value\nso unable to get extensions for this gl driver\n");
+			}
 		}
+		else {
+			printf("glGetString(GL_EXTENSIONS) returned null, but glGetStringi is NULL,\nso unable to get extensions for this gl driver\n");
+		}
+	} 
+	else {
 
-		free((void *)Mid);
+		// printf("glGetstring supported\n");
 
-		return true;
-}
-*/
+		//
+		// glGetString supported
+		//
+		// Code adapted from : ftp://ftp.sgi.com/opengl/contrib/blythe/advanced99/notes/node395.html
+		//
 
-
-/*
-// LJ DEBUG - crash
-//
-// http://stackoverflow.com/questions/14798604/simple-flip-buffer-vertically-issue-in-c-c
-//
-// void flip(unsigned* buffer, unsigned width, unsigned height)
-bool CVCamStream::FlipVertical(unsigned char *buffer, unsigned int width, unsigned int height)
-{
-    unsigned int rows = height / 2; // Iterate only half the buffer to get a full flip
-    unsigned int* tempRow;
-	unsigned int pf = 3;
-
-	tempRow = (unsigned*)malloc(width * pf * sizeof(unsigned int));
-
-    for (unsigned int rowIndex = 0; rowIndex < rows; rowIndex++) {
-
-        memcpy(tempRow, buffer + rowIndex * width, width * sizeof(unsigned));
-        memcpy(buffer + rowIndex * width *pf, buffer + (height - rowIndex - 1) * width *pf, width * pf * sizeof(unsigned int));
-        memcpy(buffer + (height - rowIndex - 1) * width * pf, tempRow, width * pf * sizeof(unsigned int));
-
-    }
-
-    free(tempRow);
-
-	return true;
-}
-*/
-
-//
-// Flip an RGB image vertically
-//
-// Based on : http://www.codeproject.com/Questions/369873/How-can-i-flip-the-image-Vertically-using-cplusplu
-//
-bool CVCamStream::FlipVertical(unsigned char *inbuf, unsigned int inwidth, unsigned int inheight)
-{   
-	unsigned char *tb1;
-	unsigned char *tb2;
-	long row_cnt;     
-	long off1=0;
-	long off2=0;
-	long widthBytes, height;
-
-	if (inbuf==NULL)
-		return false;
- 
-	height = (long)inheight;
-	widthBytes = (long)inwidth*3; // RGB for SpoutCam
- 
-	tb1 = (unsigned char *)malloc(widthBytes);
-	if (tb1==NULL) {
-		return false;
+		// It takes a bit of care to be fool-proof about parsing the
+		// OpenGL extensions string.  Don't be fooled by sub-strings, etc.
+		start = extensionsstr;
+		for (;;) {
+			where = (char *)strstr((const char *)start, extension);
+			if (!where)
+				break;
+			terminator = where + strlen(extension);
+		    if (where == start || *(where - 1) == ' ') {
+				if (*terminator == ' ' || *terminator == '\0') {
+					return true;
+				}
+			}
+			start = terminator;
+		}
 	}
- 
-	tb2= (unsigned char *)malloc(widthBytes);
-	if (tb2==NULL) {
-		free((void *)tb1);
-		return false;
-	}
-	
-	for (row_cnt=0;row_cnt<(height+1)/2;row_cnt++) 
-	{
-		off1=row_cnt*widthBytes;
-		off2=((height-1)-row_cnt)*widthBytes;  
-		
-		//	09.11.13 - changed from memcpy to CopyMemory - very slight speed advantage
-		CopyMemory(tb1, inbuf+off1, widthBytes*sizeof(unsigned char));	
-		CopyMemory(tb2, inbuf+off2, widthBytes*sizeof(unsigned char));	
-		CopyMemory(inbuf+off1, tb2, widthBytes*sizeof(unsigned char));
-		CopyMemory(inbuf+off2, tb1, widthBytes*sizeof(unsigned char));
-	}	
- 
-	free((void*)tb1);
-	free((void*)tb2);
- 
-	return true;
+
+	return false;
+
 }
-
-

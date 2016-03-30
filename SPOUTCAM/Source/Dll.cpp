@@ -34,11 +34,14 @@ STDAPI AMovieSetupUnregisterServer( CLSID clsServer );
 DEFINE_GUID(CLSID_SpoutCam,
             0x8e14549a, 0xdb61, 0x4309, 0xaf, 0xa1, 0x35, 0x78, 0xe9, 0x27, 0xe9, 0x33);
 
+
 //
-// SpoutCam filter property page
+// https://msdn.microsoft.com/en-us/library/dd377627%28v=vs.85%29.aspx
+//
+// SpoutCam filter property page : TODO
 // F0B09553-7B71-49D5-9E04-9DE0A0987144
-DEFINE_GUID(CLSID_CamProp,
-			0xF0B09553, 0x7B71, 0x49D5, 0x9E, 0x04, 0x9D, 0xE0, 0xA0, 0x98, 0x71, 0x44);
+// DEFINE_GUID(CLSID_SaturationProp, 0xF0B09553, 0x7B71, 0x49D5, 0x9E, 0x04, 0x9D, 0xE0, 0xA0, 0x98, 0x71, 0x44);
+
 
 const AMOVIESETUP_MEDIATYPE AMSMediaTypesVCam = 
 { 
@@ -62,7 +65,7 @@ const AMOVIESETUP_PIN AMSPinVCam=
 const AMOVIESETUP_FILTER AMSFilterVCam =
 {
     &CLSID_SpoutCam,	// Filter CLSID
-    L"Spout Cam",		// String name
+    L"SpoutCam",		// String name
     MERIT_DO_NOT_USE,   // Filter merit
 						// Recommended for capture (http://msdn.microsoft.com/en-us/library/windows/desktop/dd388793%28v=vs.85%29.aspx)
     1,                  // Number pins
@@ -72,12 +75,12 @@ const AMOVIESETUP_FILTER AMSFilterVCam =
 CFactoryTemplate g_Templates[] = 
 {
     {
-        L"Spout Cam",
+        L"SpoutCam",
         &CLSID_SpoutCam,
         CVCam::CreateInstance,
         NULL,
         &AMSFilterVCam
-    },
+    }
 
 };
 
@@ -110,7 +113,7 @@ STDAPI RegisterFilters( BOOL bRegister )
     hr = CoInitialize(0);
     if(bRegister)
     {
-        hr = AMovieSetupRegisterServer(CLSID_SpoutCam, L"Spout Cam", achFileName, L"Both", L"InprocServer32");
+        hr = AMovieSetupRegisterServer(CLSID_SpoutCam, L"SpoutCam", achFileName, L"Both", L"InprocServer32");
     }
 
     if( SUCCEEDED(hr) )
@@ -127,7 +130,7 @@ STDAPI RegisterFilters( BOOL bRegister )
                 rf2.dwMerit = MERIT_DO_NOT_USE;
                 rf2.cPins = 1;
                 rf2.rgPins = &AMSPinVCam;
-                hr = fm->RegisterFilter(CLSID_SpoutCam, L"Spout Cam", &pMoniker, &CLSID_VideoInputDeviceCategory, NULL, &rf2);
+                hr = fm->RegisterFilter(CLSID_SpoutCam, L"SpoutCam", &pMoniker, &CLSID_VideoInputDeviceCategory, NULL, &rf2);
             }
             else
             {
