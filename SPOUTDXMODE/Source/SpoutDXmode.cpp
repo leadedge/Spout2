@@ -14,13 +14,30 @@
 //					https://technet.microsoft.com/en-us/library/cc709628.aspx					
 //				 - renamed from SpoutSetup to SpoutDXmode
 //		07.07.15 - Converted VS2012 project to VS2010
+//		16.09.15 - Recompile with revised memoryshare class 
+//				 - Sorted out compatibilty tests and memoryshare mode
+//		05-10-15 - included NVIDIA nvapi functions to set NVIDIA as global for Optimus systems.
+//				 - TODO : test on Optimus systems.
+//		12-11-15 - remove profiling and compile for 2.005
+//		15.12.15 - Change to a combo-box for user selection of NVIDIA mode
+//				   Detect current settings from NVIDIA base profile rather than the registry
+//		16.12.15 - build for 2.005 release as SpoutDirectX.exe
+//		24.02.16 - updated SpoutDirectX icon file to organize layers properly
+//		26.03.16 - Changed caption to SpoutDXmode
+//		30.03.16 - Rebuild for 2.005 release VS2012 /MT - SpoutDXmode.exe
 //
 #include "stdafx.h"
 #include "Spout.h"
+#include "SpoutOptimus.h" // NVIDIA profile settings
 #include "resource.h"
 
 Spout spout; // Spout object
-bool bDX9mode = false;  // Use DirectX 9 instead of DirectX 11 (default)
+bool bDX9mode = false;  // Use DirectX 9 instead of default DirectX 11
+bool bMemorymode = false;  // Use MemoryShare instead of default DirectX
+
+// NVAPI object to force NVIDIA
+nVidia g_NvApi;
+int NvidiaMode = 0; // Optimus graphics mode
 
 // Global Variables used
 HWND g_hWndMain;
@@ -35,10 +52,12 @@ LRESULT CALLBACK DirectXDialog(HWND, UINT, WPARAM, LPARAM);
 bool CheckForDirectX9c();
 
 // Static variables for the dialog
-// Static variables for the dialog
 static HWND ParamWnd = NULL;
 static HBRUSH hbrBkgnd = NULL;
 static bool bdx9 = false;
+static bool bmemory = false;
+static int nvidiamode = 0;
+static int comboindex = 0;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -49,7 +68,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutDirectX\n");
+	printf("SpoutDXmode\n");
 	*/
 
 	// Perform application initialization:
@@ -68,20 +87,35 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	// Set global vars according to statics changed by the dialog
 	if(bdx9 != bDX9mode) { // changed flag
-		// MessageBoxA(NULL, "Changed", "Info", MB_OK);
 		// If DX9 check for DirectX 9.0c
 		if(bdx9 && !CheckForDirectX9c()) {
 			MessageBoxA(NULL, "DirectX 9.0c not available", "Warning", MB_OK | MB_ICONEXCLAMATION);
 		}
 		else {
-			// printf("IDM_DX9 - changing DX9 mode from %d to %d\n", bDX9mode, bdx9);
 			if(bdx9) bDX9mode = true;
 			else     bDX9mode = false;
-			// Set DX9 mpde
+			// Set DX9 mode
 			spout.SetDX9((DWORD)bDX9mode);
 			// Write the DX9 mode to the registry. This is global for all apps
-			spout.interop.WriteDwordToRegistry((DWORD)bDX9mode, "Software\\Leading Edge\\Spout", "DX9");
+			spout.interop.spoutdx.WriteDwordToRegistry((DWORD)bDX9mode, "Software\\Leading Edge\\Spout", "DX9");
 		}
+	}
+
+	//
+	// Memoryshare
+	//
+	if(bmemory) bMemorymode = true;
+	else        bMemorymode = false;
+
+	// Write the Memory mode to the registry. This is global for all apps
+	spout.interop.spoutdx.WriteDwordToRegistry((DWORD)bMemorymode, "Software\\Leading Edge\\Spout", "MemoryShare");
+
+	//
+	// NVIDIA Optimus
+	//
+	if(nvidiamode != NvidiaMode) { // user has changed
+		NvidiaMode = nvidiamode;
+		g_NvApi.ActivateNVIDIA(NvidiaMode); // will just fail for unsupported hardware
 	}
 
 	return (int) msg.wParam;
@@ -115,8 +149,6 @@ BOOL InitApplication(HANDLE hInstance)
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	HDC hdc = NULL;
-	// HWND hwnd = NULL;
-	// HWND hWnd = NULL;
 	HGLRC hRc = NULL;
 	char windowtitle[512];
 	char graphicsCard[256];
@@ -197,18 +229,29 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	// Spout will have read it from the registry when the sender object was created
 	bDX9mode = spout.GetDX9();
 
+	// Get the current Memoryshare mode
+	// Performs a compatibilty test and sets memorymode to the registry if not compatible
+	// The compatibility check is repeated after user selection.
+	bMemorymode = spout.GetMemoryShareMode();
+
+	// Get the current Optimus NVIDIA setting from the NVIDIA base profile
+	// will just fail for unsupported hardware and return 0
+	NvidiaMode = g_NvApi.GetNVIDIA(); // 0 - nvidia, 1 - integrated or 2 - auto-select
+
 	// Set static checkbox vars for dialog
 	if(bDX9mode) bdx9 = true;
 	else         bdx9 = false;
+
+	if(bMemorymode) bmemory = true;
+	else            bmemory = false;
+
+	nvidiamode = comboindex = NvidiaMode; // to check for changes
 
 	// Check for DX9 availability
 	if(CheckForDirectX9c())	
 	 	g_bDX9available = true;
 	 else 
 		g_bDX9available = false;
-
-	// LJ DEBUG for testing
-	// g_bDX9available = false;
 
 	// Create DirectX dialog and wait for OK / CANCEL
 	// Modeless dialog
@@ -260,30 +303,6 @@ bool CheckForDirectX9c()
 		if(major == 4 && minor == 9 && revision == 904)
 			return true;
 	}
-	// else {
-		// printf("RegOpenKey failed\n");
-	// }
-
-	return false;
-
-    /*
-	// Needs dsetup.h, dsetup.lib and dsetup.dll
-	// dsetup.dll remains as a dependency
-	DWORD dwVersion;
-    DWORD dwRevision;
-	DirectXSetupGetVersion( &dwVersion, &dwRevision );
-    // Use HIWORD(dwVersion); to get the DirectX major version
-    // Use LOWORD(dwVersion); to get the DirectX minor version
-    // For example: for DirectX 5 dwVersion == 0x00040005
-	// printf("Version 0x%08lX\nRevision %ld\n", dwVersion, dwRevision );
-	// printf("Major %d, Minor %d\n", HIWORD(dwVersion), LOWORD(dwVersion));
-
-	// Version
-	// DirectX 9.0	0x00040009
-	// Revision 904 - 9.0c
-	// if(dwVersion == 0x00040009 && dwRevision == 904)
-		// return true;
-	*/
 
 	return false;
 
@@ -297,6 +316,7 @@ LRESULT CALLBACK DirectXDialog(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 	HWND hwndList = NULL;
 	int pos, lbItem;
 	char name[128];
+	char prefs[3][128] =  { "High performance", "Integrated", "Auto select" };
 
 	switch (message) {
 		// Owner draw button
@@ -310,6 +330,8 @@ LRESULT CALLBACK DirectXDialog(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 					SetBkColor(hdcStatic, RGB(0, 128, 0));
 					SetDlgItemTextA(hDlg, IDC_DX9TEXT1, "DirectX 9.0c installed");
 					SetDlgItemTextA(hDlg, IDC_DX9TEXT2, "( Use DirectX 9 functions instead of DirectX 11 )");
+					SetDlgItemTextA(hDlg, IDC_MEMTEXT, "( Use MemoryShare instead of DirectX )");
+
 					// Hide DirectX install buttons
 					ShowWindow(GetDlgItem(hDlg, IDC_DX9_INSTALL), SW_HIDE);
 					ShowWindow(GetDlgItem(hDlg, IDC_DX9_DOWNLOAD), SW_HIDE);
@@ -332,28 +354,59 @@ LRESULT CALLBACK DirectXDialog(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 		case WM_INITDIALOG:
 
 			// Set the window icon
-			HICON hIcon;
-			hIcon = (HICON)LoadImage(g_hInst,
+			// http://blog.barthe.ph/2009/07/17/wmseticon/
+			HICON hIcon1;
+			hIcon1 = (HICON)LoadImage(g_hInst,
+									MAKEINTRESOURCE(IDI_SPOUTICON),
+									IMAGE_ICON,
+									GetSystemMetrics(SM_CXICON), // SM_CXSMICON),
+									GetSystemMetrics(SM_CXICON), // SM_CYSMICON),
+									// GetSystemMetrics(SM_CXSMICON),
+									// GetSystemMetrics(SM_CYSMICON),
+									0);
+			if(hIcon1)
+				SendMessage(hDlg, WM_SETICON, ICON_BIG, (LPARAM)hIcon1); // ICON_SMALL
+					SendMessage(hDlg, WM_SETICON, ICON_SMALL, (LPARAM)hIcon1); // ICON_SMALL
+
+			HICON hIcon2;
+			hIcon2 = (HICON)LoadImage(g_hInst,
 									MAKEINTRESOURCE(IDI_SPOUTICON),
 									IMAGE_ICON,
 									GetSystemMetrics(SM_CXSMICON),
 									GetSystemMetrics(SM_CYSMICON),
 									0);
-			if(hIcon)
-				SendMessage(hDlg, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+			if(hIcon2)
+				SendMessage(hDlg, WM_SETICON, ICON_SMALL, (LPARAM)hIcon2);
 
 			// Set checkboxes
 			if(bdx9) CheckDlgButton(hDlg, IDC_DX9, BST_CHECKED);
 			else     CheckDlgButton(hDlg, IDC_DX9, BST_UNCHECKED);
 
+			if(bmemory) CheckDlgButton(hDlg, IDC_MEM, BST_CHECKED);
+			else        CheckDlgButton(hDlg, IDC_MEM, BST_UNCHECKED);
+
+			hwndList = GetDlgItem(hDlg, IDC_NVIDIA);
+			for (int k = 0; k < 3; k ++) {
+				strcpy_s(name, sizeof(name),  prefs[k]);
+				SendMessageA(hwndList, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)name);
+			}
+			// Display an initial item in the selection field  
+			SendMessageA(hwndList, CB_SETCURSEL, (WPARAM)comboindex, (LPARAM)0);
+
 			return TRUE; // return TRUE  unless you set the focus to a control
 
 		case WM_COMMAND:
 
+			// Combo box selection
+			if(HIWORD(wParam) == CBN_SELCHANGE)
+				comboindex = SendMessage((HWND)lParam, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
+				
 			switch(LOWORD(wParam)) {
 
 				case IDC_DX9_INSTALL :
+					//
 					// Web installer
+					//
 					sprintf(str1, "https://www.microsoft.com/en-us/download/details.aspx?id=35");
 					// sprintf(str1, "http://download.microsoft.com/download/1/7/1/1718CCC4-6315-4D8E-9543-8E28A4E18C4C/dxwebsetup.exe");
 					ShellExecuteA(hDlg, "open", str1, NULL, NULL, SW_SHOWNORMAL); 
@@ -369,11 +422,19 @@ LRESULT CALLBACK DirectXDialog(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 					break;
 
 				case IDOK :
-					// Set static DX9 flag according to checkboxes
+					// Set static flags according to checkboxes
 					if(IsDlgButtonChecked(hDlg, IDC_DX9) == BST_CHECKED)
 						bdx9 = true;
 					else
 						bdx9 = false;
+
+					if(IsDlgButtonChecked(hDlg, IDC_MEM) == BST_CHECKED)
+						bmemory = true;
+					else
+						bmemory = false;
+
+					nvidiamode = comboindex; // set global NVIDIA preference flag
+
 					DestroyWindow(hDlg);
                     break;
 

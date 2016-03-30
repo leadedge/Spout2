@@ -14,20 +14,24 @@
 // Dialog resources
 //
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-IDD_DIRECTXBOX DIALOG 0, 0, 226, 91
+IDD_DIRECTXBOX DIALOG 0, 0, 238, 132
 STYLE DS_3DLOOK | DS_CENTER | DS_MODALFRAME | DS_SHELLFONT | WS_CAPTION | WS_VISIBLE | WS_POPUP | WS_SYSMENU
-CAPTION "Spout DirectX"
+CAPTION "SpoutDXmode"
 FONT 8, "Ms Shell Dlg"
 {
+    GROUPBOX        "DirectX / MemoryShare", -1, 14, 9, 210, 59, 0, WS_EX_LEFT
+    PUSHBUTTON      "Web Installer", IDC_DX9_INSTALL, 114, 21, 44, 14, NOT WS_TABSTOP, WS_EX_LEFT
     PUSHBUTTON      "Download", IDC_DX9_DOWNLOAD, 161, 21, 36, 14, NOT WS_TABSTOP, WS_EX_LEFT
     LTEXT           "ab", IDC_DX9TEXT0, 22, 24, 9, 9, SS_LEFT, WS_EX_LEFT
     LTEXT           "DirectX 9.0c installed", IDC_DX9TEXT1, 33, 24, 79, 9, SS_LEFT, WS_EX_LEFT
-    PUSHBUTTON      "Web Installer", IDC_DX9_INSTALL, 114, 21, 44, 14, NOT WS_TABSTOP, WS_EX_LEFT
-    AUTOCHECKBOX    "&DirectX 9", IDC_DX9, 22, 39, 40, 8, 0, WS_EX_LEFT
-    LTEXT           "", IDC_DX9TEXT2, 64, 39, 141, 10, SS_LEFT, WS_EX_LEFT
-    GROUPBOX        "DirectX", -1, 14, 9, 198, 48, 0, WS_EX_LEFT
-    PUSHBUTTON      "Cancel", IDCANCEL, 115, 67, 35, 14, 0, WS_EX_LEFT
-    DEFPUSHBUTTON   "OK", IDOK, 73, 67, 36, 14, 0, WS_EX_LEFT
+    AUTOCHECKBOX    "&DirectX 9", IDC_DX9, 22, 39, 46, 8, 0, WS_EX_LEFT
+    LTEXT           "", IDC_DX9TEXT2, 72, 39, 148, 10, SS_LEFT, WS_EX_LEFT
+    AUTOCHECKBOX    "&Memory", IDC_MEM, 22, 54, 49, 8, 0, WS_EX_LEFT
+    LTEXT           "", IDC_MEMTEXT, 71, 54, 149, 10, SS_LEFT, WS_EX_LEFT
+    GROUPBOX        "NVIDIA global processor ( high performance required for Spout )", -1, 14, 70, 210, 32, 0, WS_EX_LEFT
+    COMBOBOX        IDC_NVIDIA, 18, 82, 140, 57, CBS_DROPDOWN | CBS_HASSTRINGS, WS_EX_LEFT
+    DEFPUSHBUTTON   "OK", IDOK, 75, 109, 36, 14, 0, WS_EX_LEFT
+    PUSHBUTTON      "Cancel", IDCANCEL, 117, 109, 35, 14, 0, WS_EX_LEFT
 }
 
 
@@ -45,8 +49,8 @@ IDI_SPOUTICON      ICON           "SpoutDirectX.ico"
 //
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 VS_VERSION_INFO VERSIONINFO
-    FILEVERSION     1,0,0,0
-    PRODUCTVERSION  1,0,0,0
+    FILEVERSION     1,0,0,1
+    PRODUCTVERSION  1,0,0,1
     FILEOS          VOS_NT
     FILETYPE        VFT_APP
     FILESUBTYPE     VFT2_UNKNOWN
@@ -58,13 +62,13 @@ VS_VERSION_INFO VERSIONINFO
         BLOCK "080904E4"
         {
             VALUE "CompanyName", "Leading Edge Pty Ltd\0"
-            VALUE "FileDescription", "Spout DirectX configuration program\0"
-            VALUE "FileVersion", "1.00\0"
+            VALUE "FileDescription", "Spout configuration program\0"
+            VALUE "FileVersion", "1.01\0"
             VALUE "InternalName", "Spout DirectX\0"
             VALUE "LegalCopyright", "Copyright \251 Leading Edge Pty Ltd 2015\0"
-            VALUE "OriginalFilename", "SpoutDirectX.exe\0"
-            VALUE "ProductName", "Spout DirectX Configuration\0"
-            VALUE "ProductVersion", "1.00\0"
+            VALUE "OriginalFilename", "SpoutDXmode.exe\0"
+            VALUE "ProductName", "Spout Configuration\0"
+            VALUE "ProductVersion", "1.01\0"
         }
     }
     BLOCK "VarFileInfo"
