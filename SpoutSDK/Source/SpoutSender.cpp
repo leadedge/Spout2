@@ -87,9 +87,9 @@ void SpoutSender::ReleaseSender(DWORD dwMsec)
 
 
 //---------------------------------------------------------
-bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
+bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
-	return spout.SendImage(pixels, width, height, glFormat, bInvert);
+	return spout.SendImage(pixels, width, height, glFormat, bInvert, HostFBO);
 }
 
 

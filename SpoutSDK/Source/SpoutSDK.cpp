@@ -323,7 +323,8 @@ bool Spout::SendImage(const unsigned char* pixels,
 					  unsigned int width, 
 					  unsigned int height, 
 					  GLenum glFormat, 
-					  bool bInvert)
+					  bool bInvert,
+					  GLuint HostFBO)
 {
 	bool bResult = true;
 	unsigned char * buffer = NULL;
@@ -347,7 +348,7 @@ bool Spout::SendImage(const unsigned char* pixels,
 
 	if(bDxInitOK) {
 		// Write the pixel data to the rgba shared texture from the user pixel format
-		bResult = interop.WriteTexturePixels(pixels, width, height, glformat, bInvert);
+		bResult = interop.WriteTexturePixels(pixels, width, height, glformat, bInvert, HostFBO);
 	}
 	else {
 		// Write the pixel data to the rgba shared memory from the user pixel format

@@ -78,7 +78,7 @@ class SPOUT_DLLEXP Spout {
 	bool UpdateSender  (const char* Sendername, unsigned int width, unsigned int height);
 	void ReleaseSender (DWORD dwMsec = 0);
 	bool SendTexture   (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true, GLuint HostFBO=0);
-	bool SendImage     (const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false);
+	bool SendImage     (const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false, GLuint HostFBO = 0);
 
 	// Receiver
 	bool CreateReceiver (char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
