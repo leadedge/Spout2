@@ -126,6 +126,9 @@
 					- Added CopyTexture function
 					- Added buffer flip and format conversion as utilities 
 		28.03.16	- Added bGLDXavailable and switch to memoryshare in LoadGLextensions
+		04.04.16	- Texture copy functions revised
+					  Changed WriteTexture, ReadTexture and CopyTexture
+					  to always use fbo blit if blit extensions are available
 
  */
 
@@ -1064,6 +1067,7 @@ bool spoutGLDXinterop::LoadGLextensions()
 
 	// If the GL/DX extensions failed to load, then it has to be memoryshare
 	if(!m_bGLDXavailable) {
+		// printf("Force memoryshare\n");
 		// Force memoryshare if not compatible
 		m_bUseMemory = true;
 		// Write to the registry now - this function is called by the SpoutDirectX utility when it starts
@@ -1155,6 +1159,7 @@ bool spoutGLDXinterop::setSharedInfo(char* sharedMemoryName, SharedTextureInfo* 
 //
 bool spoutGLDXinterop::GLDXcompatible()
 {
+	// printf("GLDXcompatible()\n");
 	//
 	// ======= Hardware compatibility test =======
 	//
@@ -1174,8 +1179,10 @@ bool spoutGLDXinterop::GLDXcompatible()
 		return false;
 	}
 	HWND hWnd = WindowFromDC(hdc); // can be null though
-	if(!m_bExtensionsLoaded)
+	if(!m_bExtensionsLoaded) {
+		// printf("GLDXcompatible() - loading extensions\n");
 		m_bExtensionsLoaded = LoadGLextensions();
+	}
 
 	if(m_bExtensionsLoaded) {
 		// Try to set up directx and open the GL/DX interop
@@ -1398,11 +1405,13 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 	if(width != m_TextureInfo.width || height != m_TextureInfo.height) return false;
 
 	// printf("WriteTexture - bInvert = %d\n", bInvert);
+
 	// Wait for access to the texture
 	if(spoutdx.CheckAccess(m_hAccessMutex)) {
 
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+
 			// fbo is a  local FBO and width/height are the dimensions of the texture.
 			// "TextureID" is the source texture, and "m_glTexture" is destination texture
 			// which should have been already created
@@ -1415,10 +1424,8 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 			glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
 
 			// Attach target texture (the shared texture we write into) to second attachment point
-			if(bInvert) {
-				glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, m_glTexture, 0);
-				glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
-			}
+			glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, m_glTexture, 0);
+			glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
 
 			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 			if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
@@ -1434,10 +1441,20 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 										 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
 				}
 				else { 
-					// no invert flag means leave it alone
-					glBindTexture(GL_TEXTURE_2D, m_glTexture);
-					glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-					glBindTexture(GL_TEXTURE_2D, 0);
+					if(m_bBLITavailable) {
+						// Do not flip during blit
+						glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
+											 width, height,	// srcX1, srcY1
+											 0, 0,			// dstX0, dstY0,
+											 width, height,	// dstX1, dstY1,
+											 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
+					}
+					else {
+						// Copy from the fbo (input texture attached) to the shared texture
+						glBindTexture(GL_TEXTURE_2D, m_glTexture);
+						glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+						glBindTexture(GL_TEXTURE_2D, 0);
+					}
 				}
 			}
 			else {
@@ -1490,16 +1507,11 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 			glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
 
 			// Attach target texture (the one we read into and return) to second attachment point
-			if(bInvert) {
-				glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, TextureTarget, TextureID, 0);
-				glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
-			}
+			glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, TextureTarget, TextureID, 0);
+			glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
 
 			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 			if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-
-				// printf("ReadTexture\n");
-
 				// Flip if the user wants that
 				if(bInvert) {
 					// copy one texture buffer to the other while flipping upside down
@@ -1510,10 +1522,20 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 										 GL_COLOR_BUFFER_BIT, GL_LINEAR);
 				}
 				else { 
-					// Copy from the fbo (shared texture attached) to the dest texture
-					glBindTexture(TextureTarget, TextureID);
-					glCopyTexSubImage2D(TextureTarget, 0, 0, 0, 0, 0, width, height);
-					glBindTexture(TextureTarget, 0);
+					if(m_bBLITavailable) {
+						// Do not flip during blit
+						glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
+											 width, height,	// srcX1, srcY1
+											 0, 0,			// dstX0, dstY0,
+											 width, height,	// dstX1, dstY1,
+											 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
+					}
+					else {
+						// Copy from the fbo (shared texture attached) to the dest texture
+						glBindTexture(TextureTarget, TextureID);
+						glCopyTexSubImage2D(TextureTarget, 0, 0, 0, 0, 0, width, height);
+						glBindTexture(TextureTarget, 0);
+					}
 				}
 			}
 			else {
@@ -2503,7 +2525,10 @@ bool spoutGLDXinterop::CopyTexture(	GLuint SourceID,
 	// printf("CopyTexture - m_fbo = %d, bInvert = %d\n", m_fbo, bInvert);
 
 	// Create an fbo if not already
-	if(m_fbo == 0) glGenFramebuffersEXT(1, &m_fbo); 
+	if(m_fbo == 0) {
+		// printf("Creating fbo\n");
+		glGenFramebuffersEXT(1, &m_fbo); 
+	}
 
 	// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
@@ -2513,17 +2538,16 @@ bool spoutGLDXinterop::CopyTexture(	GLuint SourceID,
 	glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
 
 	// Attach destination texture (the texture we write into) to second attachment point
-	if(bInvert) {
-		glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
-		glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
-	}
+	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
 
 	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 		// Default invert flag is false so do the flip to get it the right way up if the user wants that
 		if(bInvert) {
 			// Blit method with checks - 0.75 - 0.85 msec
-			// copy one texture buffer to the other while flipping upside down (OpenGL and DirectX have different texture origins)
+			// copy one texture buffer to the other while flipping upside down 
+			// (OpenGL and DirectX have different texture origins)
 			glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
 								 width, height, // srcX1, srcY1
 								 0, height,		// dstX0, dstY0,
@@ -2531,10 +2555,19 @@ bool spoutGLDXinterop::CopyTexture(	GLuint SourceID,
 								 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
 		}
 		else { 
-			// no invert flag means leave it alone
-			glBindTexture(DestTarget, DestID);
-			glCopyTexSubImage2D(DestTarget, 0, 0, 0, 0, 0, width, height);
-			glBindTexture(GL_TEXTURE_2D, 0);
+			if(m_bBLITavailable) {
+				// Do not flip during blit
+				glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
+									 width, height,	// srcX1, srcY1
+									 0, 0,			// dstX0, dstY0,
+									 width, height,	// dstX1, dstY1,
+									 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
+			}
+			else {
+				glBindTexture(DestTarget, DestID);
+				glCopyTexSubImage2D(DestTarget, 0, 0, 0, 0, 0, width, height);
+				glBindTexture(GL_TEXTURE_2D, 0);
+			}
 		}
 	}
 	else {
