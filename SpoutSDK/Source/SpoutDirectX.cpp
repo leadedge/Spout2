@@ -88,7 +88,8 @@ IDirect3D9Ex* spoutDirectX::CreateDX9object()
 {
 	HRESULT res;
 	IDirect3D9Ex* pD3D;
-    
+
+	// MessageBoxA(NULL, "CreateDX9object", "Spout", MB_OK);
 	res = Direct3DCreate9Ex(D3D_SDK_VERSION, &pD3D);
 	if ( res != D3D_OK ) return NULL;
 

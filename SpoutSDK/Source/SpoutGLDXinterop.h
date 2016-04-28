@@ -96,6 +96,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool GetMemoryShareMode();
 		bool SetMemoryShareMode(bool bMem = true);
 		bool IsBGRAavailable(); // are the bgra extensions available
+		bool IsPBOavailable(); // Are pbo extensions supported
 
 		D3DFORMAT DX9format; // the DX9 texture format to be used
 		void SetDX9format(D3DFORMAT textureformat);
@@ -223,6 +224,18 @@ protected:
 		bool OpenDeviceKey(const char* key, int maxsize, char *description, char *version);
 		void trim(char * s);
 		bool InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
+
+		// PBO support
+		GLuint m_pbo[2];
+		int PboIndex;
+		int NextPboIndex;
+		bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
+								 unsigned int width, unsigned int height,
+								 unsigned char *data, GLenum glFormat = GL_RGBA);
+		bool LoadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
+							   unsigned int width, unsigned int height,
+							   const unsigned char *data, GLenum glFormat = GL_RGBA);
+
 
 };
 

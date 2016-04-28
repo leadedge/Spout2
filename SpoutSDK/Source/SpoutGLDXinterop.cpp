@@ -129,6 +129,10 @@
 		04.04.16	- Texture copy functions revised
 					  Changed WriteTexture, ReadTexture and CopyTexture
 					  to always use fbo blit if blit extensions are available
+		19.04.16	- used glTexSubImage2D in WriteTexturePixels and ReadMemory
+		27.04.16	- PBO functions for pixels transfer
+					  LoadTexturePixels and UnloadTexturePixels used if PBO extensions available
+					  in ReadTexturePixels and WriteTexturePixels
 
  */
 
@@ -147,8 +151,8 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	m_hAccessMutex      = NULL;
 	
 	// DX9
-	m_bUseDX9				= false; // Use DX11 (default false) or DX9 (true)
-	m_bUseMemory			= false; // Memoryshare
+	m_bUseDX9			= false; // Use DX11 (default false) or DX9 (true)
+	m_bUseMemory		= false; // Memoryshare
 	m_pD3D				= NULL;
 	m_pDevice			= NULL;
 	m_dxTexture			= NULL;
@@ -164,6 +168,7 @@ spoutGLDXinterop::spoutGLDXinterop() {
 
 	m_bInitialized		= false;
 	m_bBGRAavailable	= false;
+	
 
 	m_bExtensionsLoaded	= false;
 	m_bFBOavailable		= false;
@@ -171,6 +176,12 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	m_bPBOavailable		= false;
 	m_bSWAPavailable	= false;
 	m_bGLDXavailable    = false;
+
+	// PBO support
+	PboIndex			= 0;
+	NextPboIndex		= 0;
+	m_pbo[0]			= NULL;
+	m_pbo[1]			= NULL;
 
 	// 08.06.15 - get DX9 flags from the registry
 	// User can also request the modes to overwrite this
@@ -1003,6 +1014,11 @@ void spoutGLDXinterop::CleanupInterop(bool bExit)
 			glDeleteFramebuffersEXT(1, &m_fbo);
 			m_fbo = 0;
 		}
+		
+		if(m_pbo[0]) {
+			glDeleteBuffersEXT(2, m_pbo);
+		}
+
 		if(m_glTexture)	{
 			// printf("    glDeleteTextures\n");
 			glDeleteTextures(1, &m_glTexture);
@@ -1082,6 +1098,11 @@ bool spoutGLDXinterop::LoadGLextensions()
 bool spoutGLDXinterop::IsBGRAavailable()
 {
 	return m_bBGRAavailable;
+}
+
+bool spoutGLDXinterop::IsPBOavailable()
+{
+	return m_bPBOavailable;
 }
 
 // 03.09.14 - MB mods for names map class
@@ -1379,10 +1400,19 @@ bool spoutGLDXinterop::WriteTexturePixels(const unsigned char *pixels,
 		InitTexture(m_TexID, GL_RGBA, width, height);
 
 	// Transfer the pixels to the local rgba texture
+
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glBindTexture(GL_TEXTURE_2D, m_TexID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, glformat, GL_UNSIGNED_BYTE, pixels); 
-	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// Use PBO if supported and format is RGBA
+	if(IsPBOavailable() && glFormat == GL_RGBA) {
+		LoadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, pixels, glFormat);
+	}
+	else {
+		glBindTexture(GL_TEXTURE_2D, m_TexID);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, glformat, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
 	// Write the local texture to the shared texture and invert if necessary
@@ -1392,6 +1422,61 @@ bool spoutGLDXinterop::WriteTexturePixels(const unsigned char *pixels,
 
 } // end WriteTexturePixels
 
+
+//
+// COPY IMAGE PIXELS TO A TEXTURE
+//
+//
+// Streaming Texture Upload
+//
+// From : http://www.songho.ca/opengl/gl_pbo.html
+//
+bool spoutGLDXinterop::LoadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
+										 unsigned int width, unsigned int height, 
+										 const unsigned char *data, GLenum glFormat)
+{
+	void *pboMemory = NULL;
+	
+	int channels = 4; // RGBA or RGB
+	if(glFormat == GL_RGB || glFormat == GL_BGR_EXT) channels = 3;
+
+	// Create pbos if not already
+	if(!m_pbo[0]) glGenBuffersEXT(2, m_pbo);
+
+	PboIndex = (PboIndex + 1) % 2;
+	NextPboIndex = (PboIndex + 1) % 2;
+
+	// Bind the texture and PBO
+	glBindTexture(TextureTarget, TextureID);
+	glBindBufferEXT(GL_PIXEL_UNPACK_BUFFER, m_pbo[PboIndex]);
+
+	// Copy pixels from PBO to the texture - use offset instead of pointer.
+	glTexSubImage2D(TextureTarget, 0, 0, 0, width, height, glFormat, GL_UNSIGNED_BYTE, 0);
+
+	// Bind PBO to update the texture
+	glBindBufferEXT(GL_PIXEL_UNPACK_BUFFER, m_pbo[NextPboIndex]);
+
+	// Call glBufferData() with a NULL pointer to clear the PBO data and avoid a stall.
+	glBufferDataEXT(GL_PIXEL_UNPACK_BUFFER, width*height*channels, 0, GL_STREAM_DRAW);
+
+	// Map the buffer object into client's memory
+	pboMemory = (void *)glMapBufferEXT(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+	if(pboMemory) {
+		// Update data directly on the mapped buffer
+		CopyMemory(pboMemory, (void *)data, width*height*channels);
+		glUnmapBufferEXT(GL_PIXEL_UNPACK_BUFFER); // release the mapped buffer
+	}
+	else {
+		glBindBufferEXT(GL_PIXEL_UNPACK_BUFFER, 0);
+		return false;
+	}
+
+	// Release PBOs
+	glBindBufferEXT(GL_PIXEL_UNPACK_BUFFER, 0);
+
+	return true;
+
+}
 
 
 //
@@ -1651,56 +1736,127 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels,
 	if(m_hInteropDevice == NULL || m_hInteropObject == NULL) return false;
 	if(width != m_TextureInfo.width || height != m_TextureInfo.height) return false;
 
+	// printf("ReadTexturePixels (%dx%d) - format = %x\n", width, height, glFormat);
+
 	// retrieve opengl texture data directly to image pixels rather than via an fbo and texture
 	// Wait for access to the texture
 	if(spoutdx.CheckAccess(m_hAccessMutex)) {
+		
 		// lock dx object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 
 			// Set single pixel alignment in case of rgb source
 			glPixelStorei(GL_PACK_ALIGNMENT, 1);
 			
-			/*
 			//
-			// glGetTexImage method
+			// glGetTexImage method (slow)
 			//
-			glBindTexture(GL_TEXTURE_2D, m_glTexture);
-			glGetTexImage(GL_TEXTURE_2D, 0, glFormat,  GL_UNSIGNED_BYTE, pixels);
-			glBindTexture(GL_TEXTURE_2D, 0);
-			*/
+			// glBindTexture(GL_TEXTURE_2D, m_glTexture);
+			// glGetTexImage(GL_TEXTURE_2D, 0, glFormat,  GL_UNSIGNED_BYTE, pixels);
+			// glBindTexture(GL_TEXTURE_2D, 0);
 
-			//
-			// fbo attachment method - current fbo has to be passed in
-			//
-			// Bind our local fbo
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
-			// Attach the shared texture to the color buffer in our frame buffer
-			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
-			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-			if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-				// read the pixels from the framebuffer in the user provided format
-				glReadPixels(0, 0, width, height, glformat, GL_UNSIGNED_BYTE, pixels);
+			// PBO method
+			if(IsPBOavailable()) {
+				UnloadTexturePixels(m_glTexture, GL_TEXTURE_2D, width, height, pixels, glFormat);
 			}
 			else {
-				PrintFBOstatus(status);
-			}
+				//
+				// fbo attachment method - current fbo has to be passed in
+				//
+				// Bind our local fbo
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
+				// Attach the shared texture to the color buffer in our frame buffer
+				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
+				status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+				if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+					// read the pixels from the framebuffer in the user provided format
+					glReadPixels(0, 0, width, height, glformat, GL_UNSIGNED_BYTE, pixels);
+				}
+				else {
+					PrintFBOstatus(status);
+				}
 
-			// restore the previous fbo - default is 0
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+				// restore the previous fbo - default is 0
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+
+			}
 
 			glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
 			// Unlock interop object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+			
 
 			// drop through to manage events and return true;
 		} // if lock failed just keep going
+
 	}
 	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 	return true;
 
 } // end ReadTexturePixels 
 
+
+
+//
+// Asynchronous Read-back from a texture
+//
+// Adapted from : http://www.songho.ca/opengl/gl_pbo.html
+//
+bool spoutGLDXinterop::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
+										   unsigned int width, unsigned int height, 
+										   unsigned char *data, GLenum glFormat)
+{
+	void *pboMemory = NULL;
+
+	// printf("UnloadTexturePixels\n");
+
+	int channels = 4; // RGBA or RGB
+	if(glFormat == GL_RGB || glFormat == GL_BGR_EXT) channels = 3;
+
+	// Create pbos if not already
+	if(!m_pbo[0]) glGenBuffersEXT(2, m_pbo);
+
+	PboIndex = (PboIndex + 1) % 2;
+	NextPboIndex = (PboIndex + 1) % 2;
+
+	// Attach the texture to an FBO
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, TextureTarget, TextureID, 0);
+
+	// Set the target framebuffer to read
+	glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
+
+	// Bind the PBO
+	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, m_pbo[PboIndex]);
+
+	// Null existing data to avoid a stall
+	glBufferDataEXT(GL_PIXEL_PACK_BUFFER, width*height*channels, 0, GL_STREAM_READ);
+
+	// Read pixels from framebuffer to PBO - glReadPixels() should return immediately.
+	glReadPixels(0, 0, width, height, glFormat, GL_UNSIGNED_BYTE, (GLvoid *)0);
+
+	// Map the PBO to process its data by CPU
+	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, m_pbo[NextPboIndex]);
+	pboMemory = glMapBufferEXT(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+	if(pboMemory) {
+		CopyMemory((void *)data, pboMemory, width*height*channels);
+		glUnmapBufferEXT(GL_PIXEL_PACK_BUFFER);
+	}
+	else {
+		glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		return false;
+	}
+
+	// Back to conventional pixel operation
+	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
+
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+	return true;
+
+}
 
 //
 // BIND THE SHARED TEXTURE
@@ -1803,6 +1959,7 @@ HRESULT spoutGLDXinterop::LockInteropObject(HANDLE hDevice, HANDLE *hObject)
 	HRESULT hr;
 
 	if(hDevice == NULL || hObject == NULL || *hObject == NULL) {
+
 		return E_HANDLE;
 	}
 
@@ -2181,7 +2338,8 @@ bool spoutGLDXinterop::ReadMemory(GLuint TexID,
 
 	// Copy the rgba memory map pixels to the local rgba opengl texture
 	glBindTexture(GL_TEXTURE_2D, m_TexID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pBuffer); 
+	// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pBuffer); 
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pBuffer);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
 	// Copy the local rgba texture to the user texture and invert as necessary
@@ -2869,3 +3027,4 @@ bool spoutGLDXinterop::CloseOpenGL()
 
 		return false;
 }
+

@@ -66,7 +66,7 @@
 #define USE_FBO_EXTENSIONS // don't use for jitter
 
 // If load of PBO extensions conflicts with Jitter disable them here
-// #define USE_PBO_EXTENSIONS // don't use for openframeworks or jitter
+#define USE_PBO_EXTENSIONS // don't use for jitter
 
 #include <windows.h>
 #include <stdio.h> // for debug print
@@ -279,7 +279,10 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 #define GL_PIXEL_PACK_BUFFER_BINDING	0x88ED
 #define GL_PIXEL_UNPACK_BUFFER_BINDING	0x88EF
 #define GL_STREAM_DRAW					0x88E0
+#define GL_STREAM_READ					0x88E1
+#define GL_READ_ONLY					0x88B8
 #define GL_WRITE_ONLY					0x88B9
+
 
 // PBO functions
 typedef ptrdiff_t GLsizeiptr;
@@ -290,12 +293,12 @@ typedef void   (APIENTRY *glBufferDataPROC) (GLenum target,  GLsizeiptr size,  c
 typedef void * (APIENTRY *glMapBufferPROC) (GLenum target,  GLenum access);
 typedef void   (APIENTRY *glUnmapBufferPROC) (GLenum target);
 
-extern glGenBuffersPROC		glGenBuffers;
-extern glDeleteBuffersPROC	glDeleteBuffers;
-extern glBindBufferPROC		glBindBuffer;
-extern glBufferDataPROC		glBufferData;
-extern glMapBufferPROC		glMapBuffer;
-extern glUnmapBufferPROC	glUnmapBuffer;
+extern glGenBuffersPROC		glGenBuffersEXT;
+extern glDeleteBuffersPROC	glDeleteBuffersEXT;
+extern glBindBufferPROC		glBindBufferEXT;
+extern glBufferDataPROC		glBufferDataEXT;
+extern glMapBufferPROC		glMapBufferEXT;
+extern glUnmapBufferPROC	glUnmapBufferEXT;
 #endif // USE_PBO_EXTENSIONS
 
 #endif // end GLEW

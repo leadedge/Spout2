@@ -82,12 +82,12 @@ PFNWGLGETSWAPINTERVALEXTPROC			wglGetSwapIntervalEXT			= NULL;
 
 // PBO extensions
 #ifdef USE_PBO_EXTENSIONS
-glGenBuffersPROC						glGenBuffers					= NULL;
-glDeleteBuffersPROC						glDeleteBuffers					= NULL;
-glBindBufferPROC						glBindBuffer					= NULL;
-glBufferDataPROC						glBufferData					= NULL;
-glMapBufferPROC							glMapBuffer						= NULL;
-glUnmapBufferPROC						glUnmapBuffer					= NULL;
+glGenBuffersPROC						glGenBuffersEXT					= NULL;
+glDeleteBuffersPROC						glDeleteBuffersEXT				= NULL;
+glBindBufferPROC						glBindBufferEXT					= NULL;
+glBufferDataPROC						glBufferDataEXT					= NULL;
+glMapBufferPROC							glMapBufferEXT					= NULL;
+glUnmapBufferPROC						glUnmapBufferEXT				= NULL;
 #endif
 
 #endif
@@ -246,19 +246,19 @@ bool loadPBOextensions()
 		return false;
 	#else
 	try { // load extensions for PBO
-		glGenBuffers	= (glGenBuffersPROC)wglGetProcAddress("glGenBuffers");
-		glDeleteBuffers = (glDeleteBuffersPROC)wglGetProcAddress("glDeleteBuffers");
-		glBindBuffer	= (glBindBufferPROC)wglGetProcAddress("glBindBuffer");
-		glBufferData	= (glBufferDataPROC)wglGetProcAddress("glBufferData");
-		glMapBuffer		= (glMapBufferPROC)wglGetProcAddress("glMapBuffer");
-		glUnmapBuffer	= (glUnmapBufferPROC)wglGetProcAddress("glUnmapBuffer");
+		glGenBuffersEXT	= (glGenBuffersPROC)wglGetProcAddress("glGenBuffers");
+		glDeleteBuffersEXT = (glDeleteBuffersPROC)wglGetProcAddress("glDeleteBuffers");
+		glBindBufferEXT	= (glBindBufferPROC)wglGetProcAddress("glBindBuffer");
+		glBufferDataEXT	= (glBufferDataPROC)wglGetProcAddress("glBufferData");
+		glMapBufferEXT = (glMapBufferPROC)wglGetProcAddress("glMapBuffer");
+		glUnmapBufferEXT = (glUnmapBufferPROC)wglGetProcAddress("glUnmapBuffer");
 	}
 	catch (...) {
 		return false;
 	}
-	if(glGenBuffers != NULL && glDeleteBuffers != NULL
-	&& glBindBuffer != NULL && glBufferData    != NULL
-	&& glMapBuffer  != NULL && glUnmapBuffer   != NULL) {
+	if(glGenBuffersEXT != NULL && glDeleteBuffersEXT != NULL
+	&& glBindBufferEXT != NULL && glBufferDataEXT    != NULL
+	&& glMapBufferEXT  != NULL && glUnmapBufferEXT   != NULL) {
 		return true;
 	}
 	else {

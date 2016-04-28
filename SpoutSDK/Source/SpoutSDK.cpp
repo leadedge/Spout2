@@ -90,6 +90,10 @@
 //		21.03.16	- Added glFormat and bInvert to SendImage
 //					- Included LoadGLextensions in InitSender and InitReceiver for memoryshare mode.
 //		24.03.16	- Added HostFBO argument to WriteMemory and ReadMemory function calls.
+//		04.04.16	- Added HostFBO argument to SendImage - only used for texture share
+//					  Merge from Smokhov https://github.com/leadedge/Spout2/pull/14
+//					- Changed default invert flag for SendImage to true.
+//		24.04.16	- Added IsPBOavailable to test for PBO support.
 //
 // ================================================================
 /*
@@ -745,6 +749,13 @@ bool Spout::IsSpoutInitialized()
 bool Spout::IsBGRAavailable()
 {
 	return interop.IsBGRAavailable();
+
+}
+
+// Are PBO extensions supported
+bool Spout::IsPBOavailable()
+{
+	return interop.IsPBOavailable();
 
 }
 
