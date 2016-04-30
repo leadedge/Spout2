@@ -22,5 +22,5 @@ COMPATIBILITY
 The dll created from this project has the advantage that all the functions
 in the Spout SDK classes are available. However, it is only suitable for 
 use with Visual Studio compilers. For other compilers, see the C compatible
-dll in the SPOUTDSK\SPOUTDLL folder.
+dll in the SPOUT_LIBRARY folder.
 
