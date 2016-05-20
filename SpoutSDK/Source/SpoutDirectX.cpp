@@ -27,7 +27,8 @@
 //		20.11.15	- Registry read/write moved from SpoutGLDXinterop class
 //		16.02.16	- IDXGIFactory release - from https://github.com/jossgray/Spout2
 //		29.02.16	- cleanup
-
+//		05.04.16	- removed unused texture pointer from mutex access functions
+//
 // ====================================================================================
 /*
 
@@ -435,7 +436,7 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 // =================================================================
 // Texture access mutex locks
 //
-// A general mutex lock for DirectX 9 and for DirectX11 textures
+// A general mutex lock
 //
 // =================================================================
 bool spoutDirectX::CreateAccessMutex(const char *name, HANDLE &hAccessMutex)
@@ -476,17 +477,14 @@ void spoutDirectX::CloseAccessMutex(HANDLE &hAccessMutex)
 // Checks whether any other process is holding the lock and waits for access for 4 frames if so.
 // For receiving from Version 1 apps with no mutex lock, a reader will have created the mutex and
 // will have sole access and rely on the interop locks
-bool spoutDirectX::CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture)
+bool spoutDirectX::CheckAccess(HANDLE hAccessMutex)
 {
 	DWORD dwWaitResult;
-
-	UNREFERENCED_PARAMETER(pSharedTexture);
 
 	// For debugging
 	if(!bUseAccessLocks) return true;
 
 	// General mutex lock
-	// DirectX 11 keyed mutex lock removed due to compatibility problems
 	// Don't block if no mutex for Spout1 apps
 	if(!hAccessMutex) {
 		// printf("No access mutex\n");
@@ -519,10 +517,8 @@ bool spoutDirectX::CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedText
 }
 
 
-void spoutDirectX::AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture)
+void spoutDirectX::AllowAccess(HANDLE hAccessMutex)
 {
-
-	UNREFERENCED_PARAMETER(pSharedTexture);
 
 	// For debugging
 	if(!bUseAccessLocks) return;

@@ -193,7 +193,8 @@ unsigned char * spoutMemoryShare::LockSenderMemory()
 
 	char *pBuf = senderMem->Lock();
 	if (!pBuf) {
-		senderMem->Unlock();
+		// https://github.com/leadedge/Spout2/issues/15
+		// senderMem->Unlock();
 		return NULL;
 	}
 

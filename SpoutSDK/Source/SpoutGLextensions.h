@@ -65,8 +65,8 @@
 // *** Load of FBO extensions conflicts with FFGL or Jitter, disable them here ***
 #define USE_FBO_EXTENSIONS // don't use for jitter
 
-// If load of PBO extensions conflicts with Jitter disable them here
-#define USE_PBO_EXTENSIONS // don't use for jitter
+// If load of PBO extensions conflicts, disable them here - OK for Jitter
+#define USE_PBO_EXTENSIONS
 
 #include <windows.h>
 #include <stdio.h> // for debug print

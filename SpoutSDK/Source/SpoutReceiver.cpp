@@ -72,7 +72,12 @@ bool SpoutReceiver::ReceiveTexture(char* name, unsigned int &width, unsigned int
 
 
 //---------------------------------------------------------
-bool SpoutReceiver::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat, GLuint HostFBO)
+bool SpoutReceiver::ReceiveImage(char* Sendername, 
+								 unsigned int &width, 
+								 unsigned int &height, 
+								 unsigned char* pixels, 
+								 GLenum glFormat, 
+								 GLuint HostFBO)
 {
 	return spout.ReceiveImage(Sendername, width, height, pixels, glFormat, HostFBO);
 }

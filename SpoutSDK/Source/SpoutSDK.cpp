@@ -94,6 +94,8 @@
 //					  Merge from Smokhov https://github.com/leadedge/Spout2/pull/14
 //					- Changed default invert flag for SendImage to true.
 //		24.04.16	- Added IsPBOavailable to test for PBO support.
+//		04.05.16	- SetPBOavailable(true/false) added to enable/disable pbo functions
+//		07.05.16	- SetPBOavailable changed to SetBufferMode
 //
 // ================================================================
 /*
@@ -141,6 +143,7 @@ Spout::Spout()
 	g_hWnd                = NULL;   // handle to render window
 	g_SharedMemoryName[0] = 0;      // No name to start 
 	bDxInitOK             = false;  // Initialized in texture share mode
+	bGLDXcompatible       = false;  // Not used
 	bMemory               = false;  // User or compatibility memoryshare mode
 	bInitialized          = false;  // Has initialized or not
 	bIsSending            = false;  // A sender
@@ -149,7 +152,7 @@ Spout::Spout()
 	bUseActive            = false;  // Use the active sender for CreateReceiver
 	bSpoutPanelOpened     = false;  // Selection panel "spoutpanel.exe" opened
 	bSpoutPanelActive     = false;  // The SpoutPanel window has been activated
-
+	
 }
 
 
@@ -304,11 +307,11 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 	// width, g_Width should all be the same
 	// (the application resets the size of any texture that is being sent out)
 	if(width != g_Width || height != g_Height) {
+		// printf("Spout::SendTexture Update %s, %d, %d\n", g_SharedMemoryName, width, height);
 		return(UpdateSender(g_SharedMemoryName, width, height));
 	}
 
 	// printf("Spout::SendTexture %d, %d, [%x], [%x] (bInvert = %d)\n", width, height, TextureID, TextureTarget, bInvert);
-
 	if(bDxInitOK) {
 		// Write OpenGL texture to shared texture
 		return(interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
@@ -317,6 +320,8 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int wid
 		// Write OpenGL texture pixels to shared memory
 		return(interop.WriteMemory(TextureID, TextureTarget, width, height, bInvert, HostFBO));
 	}
+
+	// return false;
 
 } // end SendTexture
 
@@ -331,7 +336,6 @@ bool Spout::SendImage(const unsigned char* pixels,
 					  GLuint HostFBO)
 {
 	bool bResult = true;
-	unsigned char * buffer = NULL;
 	GLenum glformat = glFormat;
 
 	// width, g_Width should all be the same
@@ -376,7 +380,6 @@ bool Spout::ReceiveTexture(char* name,
 						   GLuint HostFBO)
 {
 	bool bConnected = true;
-	
 	// printf("Spout::ReceiveTexture(%s), %d, %d, [%x], [%x] (bInvert = %d)\n", name, width, height, TextureID, TextureTarget, bInvert);
 
 	//
@@ -401,7 +404,7 @@ bool Spout::ReceiveTexture(char* name,
 	//
 	if(!CheckReceiver(name, width, height, bConnected))
 		return bConnected;
-	
+
 	// Sender exists and everything matched.
 	// Globals are now all current, so pass back the current name and size
 	// so that there is no change found by the host.
@@ -412,18 +415,21 @@ bool Spout::ReceiveTexture(char* name,
 	if(bDxInitOK) {
 		// If a valid texture was passed, read the shared texture into it.
 		// Otherwise skip it. All the other checks for name and size are already done.
-		if(TextureID > 0 && TextureTarget > 0)
+		if(TextureID > 0 && TextureTarget > 0) {
 			return(interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height, bInvert, HostFBO));
-		else
+		}
+		else {
 			return true;
+		}
 			// Just depend on the shared texture being updated and don't return one
 			// e.g. can use DrawSharedTexture to use the shared texture directly
 			// ReceiveTexture still does all the check for sender presence and size change etc.
 	}
 	else {
 		// Read GL texture from shared memory if a texture handle was passed
-		if(TextureID > 0 && TextureTarget > 0)
+		if(TextureID > 0 && TextureTarget > 0) {
 			return(interop.ReadMemory(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+		}
 		else
 			return true; // Otherwise the sender will have updated the shared memory
 	}
@@ -450,6 +456,7 @@ bool Spout::ReceiveImage(char* name,
 	// Only RGBA, BGRA, RGB and BGR supported
 	if(!(glformat == GL_RGBA || glFormat == 0x80E1  || glFormat == GL_RGB || glFormat == 0x80E0))
 		return false;
+
 
 	// Check for BGRA support
 	if(!IsBGRAavailable()) {
@@ -758,6 +765,19 @@ bool Spout::IsPBOavailable()
 	return interop.IsPBOavailable();
 
 }
+
+// Switch pbo functions on or off (default is off).
+void Spout::SetBufferMode(bool bActive)
+{
+	interop.SetBufferMode(bActive);
+}
+
+/*
+bool Spout::GetBufferMode()
+{
+	return interop.GetBufferMode();
+}
+*/
 
 //
 // SelectSenderPanel - used by a receiver
@@ -1124,6 +1144,7 @@ void Spout::CleanSenders()
 bool Spout::InitSender (HWND hwnd, const char* theSendername, unsigned int theWidth, unsigned int theHeight, DWORD dwFormat, bool bMemoryMode) 
 {
 	char sendername[256];
+
 	// printf("Spout::Initsender [%s] (%dx%d) (bGLDXcompatible = %d, memorymode = %d)\n", theSendername, theWidth, theHeight, bGLDXcompatible, bMemoryMode);
 
 	// Quit if there is no image size to initialize with
@@ -1216,6 +1237,7 @@ bool Spout::InitSender (HWND hwnd, const char* theSendername, unsigned int theWi
 			}
 		}
 
+
 		// Now create a sender with a valid texture handle and format
 		// For a 2.004 receiver the result will just be black
 		// Memoryshare needs to create a sender separately
@@ -1240,6 +1262,7 @@ bool Spout::InitSender (HWND hwnd, const char* theSendername, unsigned int theWi
 	bIsSending   = true;
 
 	return true;
+
 
 } // end InitSender
 

@@ -268,7 +268,7 @@ bool loadPBOextensions()
 
 #endif
 
-	return true;
+	// return true;
 
 }
 

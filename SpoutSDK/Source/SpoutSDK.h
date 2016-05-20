@@ -114,6 +114,7 @@ class SPOUT_DLLEXP Spout {
 	bool IsSpoutInitialized(); // has the class been initialized
 	bool IsBGRAavailable(); // Are bgra extensions supported (in interop class)
 	bool IsPBOavailable(); // Are pbo extensions supported (in interop class)
+	void SetBufferMode(bool bActive); // Set the pbo availability on or off
 
 	// Adapter functions
 	int  GetNumAdapters(); // Get the number of graphics adapters in the system
@@ -205,6 +206,9 @@ class SPOUT_DLLEXP Spout {
 
 	// Find a file version
 	bool FindFileVersion(const char *filepath, DWORD &versMS, DWORD &versLS);
+
+	// === Testing ===
+	DWORD dwLastFrameNumber;
 
 };
 

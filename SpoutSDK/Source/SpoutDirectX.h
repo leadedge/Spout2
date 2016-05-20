@@ -76,11 +76,11 @@ class SPOUT_DLLEXP spoutDirectX {
 		bool ReadDwordFromRegistry(DWORD *pValue, const char *subkey, const char *valuename);
 		bool WriteDwordToRegistry(DWORD dwValue, const char *subkey, const char *valuename);
 
-		// Mutex locks for DirectX 9 shared texture access
+		// Mutex locks for shared texture access
 		bool CreateAccessMutex(const char *name, HANDLE &hAccessMutex);
 		void CloseAccessMutex(HANDLE &hAccessMutex);
-		bool CheckAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture = NULL);
-		void AllowAccess(HANDLE hAccessMutex, ID3D11Texture2D* pSharedTexture = NULL);
+		bool CheckAccess(HANDLE hAccessMutex);
+		void AllowAccess(HANDLE hAccessMutex);
 
 		// For debugging only - to toggle texture access locks disable/enable
 		bool bUseAccessLocks;

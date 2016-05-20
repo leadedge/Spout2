@@ -74,6 +74,15 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool WriteTexturePixels(const unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 		bool ReadTexturePixels (unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, GLuint HostFBO=0);
 
+		// PBO functions for external access
+		bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
+								 unsigned int width, unsigned int height,
+								 unsigned char *data, GLenum glFormat = GL_RGBA, GLuint HostFBO = 0);
+
+		bool LoadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
+							   unsigned int width, unsigned int height,
+							   const unsigned char *data, GLenum glFormat = GL_RGBA);
+
 		bool InitOpenGL();
 		bool CloseOpenGL();
 
@@ -97,6 +106,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool SetMemoryShareMode(bool bMem = true);
 		bool IsBGRAavailable(); // are the bgra extensions available
 		bool IsPBOavailable(); // Are pbo extensions supported
+		void SetBufferMode(bool bActive); // Set the pbo availability on or off
 
 		D3DFORMAT DX9format; // the DX9 texture format to be used
 		void SetDX9format(D3DFORMAT textureformat);
@@ -192,6 +202,7 @@ protected:
 
 		bool m_bInitialized;	  // this instance initialized flag
 		bool m_bExtensionsLoaded; // extensions have been loaded
+		unsigned int m_caps;      // extension capabilities
 		bool m_bFBOavailable;     // fbo extensions available
 		bool m_bBLITavailable;    // fbo blit extensions available
 		bool m_bPBOavailable;     // pbo extensions available
@@ -205,6 +216,11 @@ protected:
 		GLuint            m_TexID;         // Local texture used for memoryshare functions
 		unsigned int      m_TexWidth;      // width and height of local texture
 		unsigned int      m_TexHeight;     // for testing changes of memoryshare sender size
+
+		// PBO support
+		GLuint m_pbo[2];
+		int PboIndex;
+		int NextPboIndex;
 
 		// DX11
 		ID3D11DeviceContext* g_pImmediateContext;
@@ -224,17 +240,6 @@ protected:
 		bool OpenDeviceKey(const char* key, int maxsize, char *description, char *version);
 		void trim(char * s);
 		bool InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
-
-		// PBO support
-		GLuint m_pbo[2];
-		int PboIndex;
-		int NextPboIndex;
-		bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
-								 unsigned int width, unsigned int height,
-								 unsigned char *data, GLenum glFormat = GL_RGBA);
-		bool LoadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
-							   unsigned int width, unsigned int height,
-							   const unsigned char *data, GLenum glFormat = GL_RGBA);
 
 
 };
