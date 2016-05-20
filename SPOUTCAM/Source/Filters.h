@@ -170,7 +170,6 @@ public:
 	bool bDebug;
 	bool bInitialized;
 	bool bGLinitialized;
-	bool bBGRA;
 	bool bDisconnected;				// Sender had started but it has stopped or changed image size
 	bool bSpoutPanelOpened;         // User has not activated SpoutPanel
 
@@ -178,18 +177,17 @@ public:
 	unsigned int g_Height;			// The global filter image height
 	unsigned int g_SenderWidth;		// The global sender image width
 	unsigned int g_SenderHeight;	// The glonbal sender image height
-
-	GLuint g_senderTexture;			// Local rgba texture to receive images the same size as the sender
 	unsigned char *g_senderBuffer;	// Local rgb buffer the same size as the sender
 	
 	bool InitOpenGL();
-	bool CreateSenderTexture(unsigned int width, unsigned int height);
 	void GLerror();
-	bool isExtensionSupported(const char *extension);
 	
 	void rgb2bgr(void* source, void *dest, unsigned int width, unsigned int height, bool bInvert = false); // 32bit asm
-    void rgb2bgrResample(unsigned char* source, unsigned char* dest, unsigned int sourceWidth, unsigned int sourceHeight, unsigned int destWidth, unsigned int destHeight, bool bInvert = false);
-
+    void rgb2bgrResample(unsigned char* source, unsigned char* dest, 
+						 unsigned int sourceWidth, unsigned int sourceHeight, 
+						 unsigned int destWidth, unsigned int destHeight, 
+						 bool bInvert = false);
+	
 private:
 
 	CVCam *m_pParent;

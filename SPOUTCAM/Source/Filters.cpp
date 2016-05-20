@@ -139,7 +139,8 @@
 	15.12.15 - Rebuild for 2.005 VS2012 /MT
 	11.03.16 - Major change for ReceiveImage into a local texture and rgb buffer and rescaling functions
 	25.03.16 - Revised isExtensionSupported for glGetStringi
-	30.03.16 - Rebuild for 2.005 release  VS2012 /MT
+	20.05.16 - Remove testing of sender selection - not working.
+			 - Rebuild for 2.005 release  VS2012 /MT
 
 */
 
@@ -350,7 +351,6 @@ CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
 	bInvert         = true;  // Not currently used
 	bInitialized	= false; // Spoutcam reiver
 	bGLinitialized	= false; // OpenGL
-	bBGRA           = false; // #ifdef GL_EXT_bgra = GL_BGRA_EXT and GL_BGR_EXT
 	bDisconnected	= false; // Has to connect before can disconnect or it will never connect
 	glContext		= NULL;  // Context is established within this application
 	g_Width			= 640;	 // if there is no Sender, getmediatype will use defaults
@@ -358,9 +358,7 @@ CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
 	g_SenderWidth	= 640;	 // give it an initial size - this will be changed if a sender is running at start
 	g_SenderHeight	= 480;
 	g_senderBuffer  = NULL;  // local rgb buffer the same size as the sender (can be a different size to the filter)
-	g_senderTexture = 0;
 	g_SenderName[0] = 0;
-
 
 	//
 	// On startup get the active Sender name if any.
@@ -395,6 +393,7 @@ CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
 
 CVCamStream::~CVCamStream()
 {
+	/*
 	DWORD dwSpoutPanel = 1;
 	char sendername[256];
 	sendername[0] = 0;
@@ -409,6 +408,7 @@ CVCamStream::~CVCamStream()
 			}
 		}
 	}
+	*/
 
 	HGLRC ctx = wglGetCurrentContext();
 	if(ctx != NULL) {
@@ -421,7 +421,6 @@ CVCamStream::~CVCamStream()
 
 	// if(bInitialized) receiver.ReleaseReceiver(); // TODO : check for context required
 	if(g_senderBuffer) free((void *)g_senderBuffer);
-	if(g_senderTexture != 0) glDeleteTextures(1, &g_senderTexture);	
 
 	// Destroy dummy window used for OpenGL context creation
 	if(hwndButton) DestroyWindow(hwndButton);
@@ -459,7 +458,7 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 	unsigned int imagesize, width, height;
 	long l, lDataLen;
 	bool bResult = false;
-	DWORD dwSpoutPanel = 0;
+	// DWORD dwSpoutPanel = 0;
 	HRESULT hr=S_OK;;
     BYTE *pData;
 	VIDEOINFOHEADER *pvi = (VIDEOINFOHEADER *) m_mt.Format();
@@ -475,14 +474,6 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 	REFERENCE_TIME rtNow, rtDelta, rtDelta2=0; // delta for dropped, delta 2 for sleep.
 	REFERENCE_TIME avgFrameTime = ((VIDEOINFOHEADER*)m_mt.pbFormat)->AvgTimePerFrame;
 	
-	// Simple method - avoids "stuttering" in yawcam but VLC fails !
-	/*
-	rtNow = m_rtLastTime;
-    m_rtLastTime += avgFrameTime;
-    pms->SetTime(&rtNow, &m_rtLastTime);
-    pms->SetSyncPoint(TRUE);
-	*/
-
 	// What Time is it REALLY ???
 	// m_pClock is returned NULL with Skype, but OK for YawCam and VLC
 	m_pParent->GetSyncSource(&m_pClock); 
@@ -569,14 +560,17 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 			if(bInitialized) {
 				receiver.ReleaseReceiver();
 				bInitialized = false;
+				/*
 				// Reset the registry entries for SpoutCam
 				dwSpoutPanel = 0;
 				receiver.spout.interop.spoutdx.WriteDwordToRegistry(dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel");
 				receiver.spout.WritePathToRegistry("", "Software\\Leading Edge\\SpoutCam\\", "Sender");
+				*/
 			}
 			goto ShowStatic;
 		}
 
+		/*
 		// Has SpoutPanel been opened
 		HANDLE hMutex = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 		if(hMutex) {
@@ -601,6 +595,7 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 				bSpoutPanelOpened = false;
 			}
 		} // end SpoutPanel check
+		*/
 
 		// everything ready
 		if(!bInitialized) {
@@ -611,10 +606,6 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 				// Initialize OpenGl if is has not been done
 				if(!bGLinitialized) {
 					if(InitOpenGL()) {
-						// Find out whether bgra extensions are supported at runtime
-						// bBGRA = receiver.spout.interop.IsBGRAavailable();
-						bBGRA = isExtensionSupported("GL_EXT_bgra");
-						bGLinitialized = true;
 						// Call OpenSpout so that OpenGL extensions are loaded
 						receiver.spout.OpenSpout();
 					}
@@ -628,9 +619,6 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 				// Found a sender so initialize the receiver
 				if(receiver.CreateReceiver(g_SenderName, g_SenderWidth, g_SenderHeight)) {
 					
-					// Create a local rgba OpenGL texture to receive the sender's shared texture
-					CreateSenderTexture(g_SenderWidth, g_SenderHeight);
-
 					// Create a local rgb buffer for data tranfser from the shared texture
 					if(g_senderBuffer) free((void *)g_senderBuffer);
 					g_senderBuffer = (unsigned char *)malloc(g_SenderWidth*g_SenderHeight*3*sizeof(unsigned char));
@@ -649,12 +637,10 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 		else {
 
 			// Receive the shared texture or memoryshare pixels into a local rgba OpenGL texture
-			// The shared texture is inverted at the same time, so no software inversion is needed.
-
 			width = g_SenderWidth; // for sender size check
 			height = g_SenderHeight;
 
-			if(receiver.ReceiveTexture(g_SenderName, width, height, g_senderTexture, GL_TEXTURE_2D, bInvert)) {
+			if(receiver.ReceiveImage(g_SenderName, width, height, g_senderBuffer, GL_RGB)) {
 
 				// Sender size check
 				if(g_SenderWidth != width || g_SenderHeight != height) {
@@ -667,29 +653,13 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 					return NOERROR;					
 				}
 
-				glBindTexture(GL_TEXTURE_2D, g_senderTexture);
-				#ifdef GL_EXT_bgra // Or else GL_BGR_EXT is not defined
-				if (bBGRA && g_SenderWidth == g_Width && g_SenderHeight == g_Height) {
-					// If bgra is supported at runtime and the sizes match, transfer the
-					// texture data directly to the filter pixel buffer using bgr format.
-					glGetTexImage(GL_TEXTURE_2D, 0, GL_BGR_EXT, GL_UNSIGNED_BYTE, (void *)pData);
-				} else
-				#endif
-				{
-					// If GL_EXT_bgra is not supported by the compiler, or bgra is not
-					// supported at runtime, or the sender and filter are different sizes,
-					// load the sender buffer with rgb data for software conversion to bgr.
-					glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB,  GL_UNSIGNED_BYTE, g_senderBuffer);
-				}
-				glBindTexture(GL_TEXTURE_2D, 0);
-
 				if(g_SenderWidth != g_Width || g_SenderHeight != g_Height) {
-					// For different sender and filter sizes, resample the rgb sender buffer into the bgr filter buffer.
-					rgb2bgrResample(g_senderBuffer, (unsigned char *)pData, g_SenderWidth, g_SenderHeight, g_Width, g_Height);
+					// For different sender and filter sizes, resample the sender buffer into the filter buffer.
+					rgb2bgrResample(g_senderBuffer, (unsigned char *)pData, g_SenderWidth, g_SenderHeight, g_Width, g_Height, true);
 				}
-				else if(!bBGRA) {
-					// Otherwise if the buffer dimensions match but bgra is not supported, convert from rgb to bgr.
-					rgb2bgr(g_senderBuffer, (unsigned char *)pData, g_SenderWidth, g_SenderHeight);
+				else {
+					// Otherwise if the buffer dimensions match just convert rgb to bgr
+					rgb2bgr((void *)g_senderBuffer, (void *)pData, g_SenderWidth, g_SenderHeight, true);
 				}
 
 				NumFrames++;
@@ -774,10 +744,6 @@ HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType *pmt)
 		height	=  g_Height;
 	}
 	
-	// width	=  g_Width;
-	// height	=  g_Height;
-	// printf("GetMediaType [%d] (%dx%d)\n", iPosition, width, height);
-
 	pvi->bmiHeader.biSize				= sizeof(BITMAPINFOHEADER);
 	pvi->bmiHeader.biWidth				= (LONG)width;
 	pvi->bmiHeader.biHeight				= (LONG)height;
@@ -792,8 +758,6 @@ HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType *pmt)
 	// 60fps = 166667
 	// 30fps = 333333
 	pvi->AvgTimePerFrame = 166667; // 60fps
-	// pvi->AvgTimePerFrame = 200000; // 50fps
-	// pvi->AvgTimePerFrame = 333333; // 30fps
 
     SetRectEmpty(&(pvi->rcSource)); // we want the whole image area rendered.
     SetRectEmpty(&(pvi->rcTarget)); // no particular destination rectangle
@@ -1127,10 +1091,12 @@ HRESULT STDMETHODCALLTYPE CVCamStream::Disconnect( void)
 {
 	bDisconnected = true;
 
+	/*
 	// Reset the registry entries for SpoutCam
 	DWORD dwSpoutPanel = 0;
 	receiver.spout.interop.spoutdx.WriteDwordToRegistry(dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel");
 	receiver.spout.WritePathToRegistry("", "Software\\Leading Edge\\SpoutCam\\", "Sender");
+	*/
 
 	return CSourceStream::Disconnect( );
 }
@@ -1227,21 +1193,16 @@ bool CVCamStream::InitOpenGL()
 							NULL, NULL, NULL, NULL);
 		}
 
-		// hwndButton = GetForegroundWindow(); // causes problems with Mapio
 		if(!hwndButton) { 
-			// printf("InitOpenGL error 1\n");
 			MessageBoxA(NULL, "Error 1\n", "InitOpenGL", MB_OK);
 			return false; 
 		}
 
 		hdc = GetDC(hwndButton);
-		// printf("    GetDC = %x\n", hdc); 
 		if(!hdc) { 
-			// printf("InitOpenGL error 2\n"); 
 			MessageBoxA(NULL, "Error 2\n", "InitOpenGL", MB_OK); 
 			return false; 
 		}
-		// GetWindowTextA(hwndButton, windowtitle, 256); // debug
 
 		PIXELFORMATDESCRIPTOR pfd;
 		ZeroMemory( &pfd, sizeof( pfd ) );
@@ -1254,18 +1215,16 @@ bool CVCamStream::InitOpenGL()
 		pfd.iLayerType = PFD_MAIN_PLANE;
 		int iFormat = ChoosePixelFormat(hdc, &pfd);
 		if(!iFormat) { 
-			// printf("InitOpenGL error 3\n"); 
 			MessageBoxA(NULL, "Error 3\n", "InitOpenGL", MB_OK);
 			return false; 
 		}
 
 		if(!SetPixelFormat(hdc, iFormat, &pfd)) {
 			DWORD dwError = GetLastError();
-			// printf("InitOpenGL error 4 (Error %d (%x))\n", dwError, dwError); 
 			// 2000 (0x7D0) The pixel format is invalid.
 			// Caused by repeated call of  the SetPixelFormat function
 			char temp[128];
-			// sprintf_s(temp, "InitOpenGL Error 4\nSetPixelFormat\nError %d (%x)", dwError, dwError);
+			sprintf_s(temp, "InitOpenGL Error 4\nSetPixelFormat\nError %d (%x)", dwError, dwError);
 			MessageBoxA(NULL, temp, "InitOpenGL", MB_OK); 
 			return false; 
 		}
@@ -1274,7 +1233,6 @@ bool CVCamStream::InitOpenGL()
 		// GLerror();
 		// 1282 (0x502)
 		if(!hRc) { 
-			// printf("InitOpenGL error 5\n"); 
 			MessageBoxA(NULL, "Error 5\n", "InitOpenGL", MB_OK); 
 			return false; 
 		}
@@ -1283,10 +1241,7 @@ bool CVCamStream::InitOpenGL()
 			GLerror();
 			glContext = wglGetCurrentContext();
 			GLerror();
-			// printf("    wglGetCurrentContext() = %d\n", glContext);
-			// if(wglGetCurrentContext() == NULL) {
 			if(glContext == NULL) {
-				// printf("InitOpenGL error 6\n");
 				MessageBoxA(NULL, "Error 6\n", "InitOpenGL", MB_OK);
 				return false; 
 			}
@@ -1294,21 +1249,15 @@ bool CVCamStream::InitOpenGL()
 		else {
 			MessageBoxA(NULL, "Error 7\n", "InitOpenGL", MB_OK);
 			return false; 
-			// printf("    wglMakeCurrent failed\n");
 		}
 
 		// Drop through to return true
-		// printf("    InitOpenGL OK : hwnd = %x, hdc = %x, context = %x\n", hwndButton, hdc, hRc);
-
-		// MessageBoxA(NULL, "Init OpenGL OK\n", "InitOpenGL", MB_OK);
-
 		// int nCurAvailMemoryInKB = 0;
 		// glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
 		// printf("Memory available [%i]\n", nCurAvailMemoryInKB);
 
 	} // end no glcontext 
 
-	// LJ DEBUG
 	return true;
 
 } // end InitOpenGL
@@ -1329,8 +1278,8 @@ void CVCamStream::GLerror() {
 // Inline asm only supported for 32bit by Visual Studio.
 void CVCamStream::rgb2bgr(void* source, void *dest, unsigned int width, unsigned int height, bool bInvert)
 {
-    void* a = source;     // Source rgb buffer
-	void* b = dest;       // Destination bgr buffer
+    void* a = source;         // Source rgb buffer
+	void* b = dest;           // Destination bgr buffer
 	unsigned int h = height;  // Line counter
 	unsigned int w = width;   // Line size in pixels
 	unsigned int s = 0;	      // Source buffer size for invert
@@ -1430,112 +1379,4 @@ void CVCamStream::rgb2bgrResample(unsigned char* source, unsigned char* dest,
 }
 
 
-bool CVCamStream::CreateSenderTexture(unsigned int width, unsigned int height)
-{
 
-	if(g_senderTexture != 0) glDeleteTextures(1, &g_senderTexture);	
-
-	glGenTextures(1, &g_senderTexture);
-
-	glBindTexture(GL_TEXTURE_2D, g_senderTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL); 
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	return true;
-}
-
-//
-//	Used to determine support for GL_EXT_bgra extensions
-//
-bool CVCamStream::isExtensionSupported(const char *extension)
-{
-	const char * extensionsstr = NULL;
-	const char * versionstr = NULL;
-	const char * start;
-	const char * exc;
-	char *where, *terminator;
-	int n, i;
-
-	// Extension names should not have spaces.
-	where = (char *)strchr(extension, ' ');
-	if (where || *extension == '\0')
-		return false;
-
-	versionstr = (const char *)glGetString(GL_VERSION);
-	// printf("OpenGL version (%s)\n", versionstr);
-
-	extensionsstr = (const char *)glGetString(GL_EXTENSIONS);
-
-	#ifndef GL_NUM_EXTENSIONS
-	#define GL_NUM_EXTENSIONS 0x821D // in gl3.h
-	#endif
-
-	if(extensionsstr == NULL) {
-
-		// printf("glGetstring not supported\n");
-
-		//
-		// glGetstring not supported
-		//
-		// Code adapted from : https://bitbucket.org/Coin3D/coin/issues/54/support-for-opengl-3x-specifically
-		//
-
-		typedef GLubyte* (APIENTRY * COIN_PFNGLGETSTRINGIPROC)(GLenum enm, GLuint idx);
-		COIN_PFNGLGETSTRINGIPROC glGetStringi = 0;
-		glGetStringi = (COIN_PFNGLGETSTRINGIPROC)wglGetProcAddress("glGetStringi");
-		if(glGetStringi != NULL) {
-			glGetIntegerv(GL_NUM_EXTENSIONS, &n);
-			// printf("%d extensions\n", n);
-			if(n > 0) {
-				for (i = 0; i < n; i++) {
-					exc = (const char *)glGetStringi(GL_EXTENSIONS, i);
-					if(strcmp(exc, extension) == 0) {
-						break;
-					}
-				}
-				if(i < n) {
-					return true;
-				}
-			}
-			else {
-				printf("glGetIntegerv(GL_NUM_EXTENSIONS) did not return a value\nso unable to get extensions for this gl driver\n");
-			}
-		}
-		else {
-			printf("glGetString(GL_EXTENSIONS) returned null, but glGetStringi is NULL,\nso unable to get extensions for this gl driver\n");
-		}
-	} 
-	else {
-
-		// printf("glGetstring supported\n");
-
-		//
-		// glGetString supported
-		//
-		// Code adapted from : ftp://ftp.sgi.com/opengl/contrib/blythe/advanced99/notes/node395.html
-		//
-
-		// It takes a bit of care to be fool-proof about parsing the
-		// OpenGL extensions string.  Don't be fooled by sub-strings, etc.
-		start = extensionsstr;
-		for (;;) {
-			where = (char *)strstr((const char *)start, extension);
-			if (!where)
-				break;
-			terminator = where + strlen(extension);
-		    if (where == start || *(where - 1) == ' ') {
-				if (*terminator == ' ' || *terminator == '\0') {
-					return true;
-				}
-			}
-			start = terminator;
-		}
-	}
-
-	return false;
-
-}
