@@ -7,8 +7,18 @@
 	24.07.15 - Revised for Max 7 and 64 bit
 	27.07.15 - Used Max 6 main function
 			   Version 2.007
-	01.08.15 - Recompiled for Spout 2.004 - 32 bit VS2010 - Version 2.007.10
-	TODO : 01.08.15 - Recompiled for Spout 2.004 - 64bit VS2012 - Version 2.007.12
+	01.08.15 - Recompiled for Spout 2.004 - 32bit VS2010 - Version 2.007.10
+	01.08.15 - Recompiled for Spout 2.004 - 64bit VS2012 - Version 2.007.12
+			 - Recompiled /MD Spout 2.005 - 64bit VS2012 - Version 2.008.12
+			 - Recompiled /MD Spout 2.005 - 64bit VS2012 - Version 2.008.12
+	26.03.16 - Recompiled /MD Spout 2.005 - 64bit VS2012 - Version 2.009.12
+			 - Recompiled /MD Spout 2.005 - 64bit VS2012 - Version 2.009.12
+	01.04.16 - Included detection of 64bit for post of version number
+			 - Recompiled /MT Spout 2.005 - 64bit VS2012 - Version 2.010.12
+			 - Recompiled /MT Spout 2.005 - 32bit VS2012 - Version 2.010.12
+	16.05.16 - Changed Version numbering to allow the Max Package manager
+			   to show 2.0.4 -> 2.0.5 for the package, VS2010 option removed.
+	02.06.16 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.10
 
 	----------------------------------------------------
 		
@@ -19,7 +29,7 @@
 
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-		Copyright (c) 2015, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2015-2016 - Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -47,6 +57,13 @@
 #include "jit.gl.h"
 #include "ext_obex.h"
 
+// Check for 64bit compile
+#ifdef _WIN64
+     #define ENV64BIT
+#else
+    #define ENV32BIT
+#endif
+
 typedef struct _max_jit_gl_spoutsender
 {
 	t_object		ob;
@@ -71,8 +88,12 @@ int C74_EXPORT main(void)
 
 	t_class *maxclass, *jitclass;
 
-	post("jit_gl_spout_sender - Vers 2.007.10");
-	// post("jit_gl_spout_sender - Vers 2.007.12");
+	#ifdef ENV64BIT
+	post("jit_gl_spout_sender - Vers 2.0.5.10 (64 bit)");
+	#else
+	post("jit_gl_spout_sender - Vers 2.0.5.10 (32 bit)");
+	#endif
+
 
 	// initialize our Jitter class
 	jit_gl_spoutsender_init();	
@@ -146,8 +167,7 @@ void *max_jit_gl_spoutsender_new(t_symbol *s, long argc, t_atom *argv)
 			// create new proxy inlet.
 			max_jit_obex_proxy_new(x, 0);
 		} 
-		else 
-		{
+		else {
 			error("jit.gl.spout_sender: could not allocate object");
 			freeobject((t_object *)x);
 			x = NULL;

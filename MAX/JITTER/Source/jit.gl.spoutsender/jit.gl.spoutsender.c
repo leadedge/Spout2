@@ -4,8 +4,8 @@
     
 	Based on :
 		jit.gl.simple by Cycling74
-		and jjit.gl.syphonclient.m
-	    Copyright 2010 bangnoise (Tom Butterworth) & vade (Anton Marini).
+		and jit.gl.syphonclient.m
+	    Copyright 2010 Tom Butterworth & Anton Marini
 		
 	=================== SPOUT 2 ===================
 	01.08.14 - rebuilt with Spout SDK
@@ -43,10 +43,25 @@
 			 - Introduced flags for closing and changed to ensure that all is done before creating the sender again
 	01.08.15 - Recompiled for Spout 2.004 - 32 bit VS2010 - Version 2.007.10
 	01.08.15 - Recompiled for Spout 2.004 - 64bit VS2012 - Version 2.007.12
+	07.10.15 - Solution check - must be /MD and not /MT for VS2012
+	11.11.15 - Removed memoryshare attribute
+			 - Removed DX9 option define
+			 - Recompiled /MD with corrections to fbo extensions in SpoutGLextensions.cpp
+			 - cleanup for 2.005 testing 
+			 - 64bit VS2012 - Version 2.008.12
+			 - 32bit VS2012 - Version 2.008.12
+	23.11.15 - added invert option, @invert 1 or 0, default 0
+	30.03.16 - rebuild for 2.005 release with MAX 7.1 SDK
+	01.04.16 - Recompile VS2012 /MT - needed removal of "libcmt.lib" from Linker "ignore specific libraries".
+			 - 64bit VS2012 - Spout 2.005 - Version 2.009.12
+			 - 32bit VS2012 - Spout 2.005 - Version 2.009.12
+	16.05.16 - Changed Version numbering to allow the Max Package manager
+			   to show 2.0.4 -> 2.0.5 for the package, VS2010 option removed.
+	02.06.16 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.10
 
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-		Copyright (c) 2015, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -70,12 +85,6 @@
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 */
-
-// For DirectX 11 mode enable the define below, otherwise compiles for DirectX 9
-// 14.02.15 - added auto detection in SpoutGLDXinterop so can leave as DX11 default
-// 25.04.15 - changed to optional installation rather than auto-detect
-// 24.07.15 - now an optional over-ride for DirectX mode configuration after installation
-// #define UseD3D9
 
 #include "jit.common.h"
 #include "jit.gl.h"
@@ -103,12 +112,13 @@ typedef struct _jit_gl_spoutsender
 	
 	// attributes
 	t_symbol	*sendername;	// Used for input of the sender name
-	long		memoryshare;	// force memory share instead of interop directx texture share
+	long        invert;         // flip the texture when sending - default false
 
 	// Our Spout sender object
 	SpoutSender * mySender;
 
 	bool bInitialized;
+	bool bMemoryshare;	    // Memory share instead of texture share
 	GLuint g_texId;			// jitter texture ID
 	int g_Width;			// width
 	int g_Height;			// height
@@ -148,8 +158,8 @@ t_jit_err jit_gl_spoutsender_jit_matrix(t_jit_gl_spoutsender *x, t_symbol *s, in
 // @sendername, for sender name
 t_jit_err jit_gl_spoutsender_sendername(t_jit_gl_spoutsender *x, void *attr, long argc, t_atom *argv);
 
-// @memoryshare 0 / 1 force memoryshare
-t_jit_err jit_gl_spoutsender_memoryshare(t_jit_gl_spoutsender *x, void *attr, long argc, t_atom *argv); 
+// @invert, to flip the image
+t_jit_err jit_gl_spoutsender_invert(t_jit_gl_spoutsender *x, void *attr, long argc, t_atom *argv);
 
 // Utility
 void SaveOpenGLstate(t_jit_gl_spoutsender *x, GLint &previousFBO, GLint &previousMatrixMode,  GLint &previousActiveTexture, float *vpdim);
@@ -213,12 +223,11 @@ t_jit_err jit_gl_spoutsender_init(void)
 						  (method)0L, jit_gl_spoutsender_sendername, calcoffset(t_jit_gl_spoutsender, sendername));	
 	jit_class_addattr(_jit_gl_spoutsender_class,attr);
 	
-	// force memory share
-	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"memoryshare", _jit_sym_long, attrflags,
-		(method)0L, (method)jit_gl_spoutsender_memoryshare, calcoffset(_jit_gl_spoutsender, memoryshare));	
-	jit_class_addattr(_jit_gl_spoutsender_class,attr);	
-
-
+	// invert
+	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"invert",_jit_sym_symbol,attrflags,
+						  (method)0L, jit_gl_spoutsender_invert, calcoffset(t_jit_gl_spoutsender, invert));	
+	jit_class_addattr(_jit_gl_spoutsender_class,attr);
+	
 	// define our OB3D draw method.  called in automatic mode by 
 	jit_class_addmethod(_jit_gl_spoutsender_class, (method)jit_gl_spoutsender_draw, "ob3d_draw", A_CANT, 0L);
 
@@ -243,7 +252,7 @@ t_jit_err jit_gl_spoutsender_init(void)
 	ps_height = gensym("height");
 	ps_glid = gensym("glid");
 	ps_gltarget = gensym("gltarget");
-	ps_flip = gensym("flip");
+	ps_flip = gensym("flip"); // Not used
 	ps_jit_gl_texture = gensym("jit_gl_texture");
 	ps_drawto = gensym("drawto");
 
@@ -264,10 +273,12 @@ t_jit_gl_spoutsender *jit_gl_spoutsender_new(t_symbol *dest_name)
 
 		// Initialize variables
 		x->bInitialized  = false;
+		x->bMemoryshare  = false; // default is texture share (flag unused at present)
 		x->g_Width       = 0;
 		x->g_Height      = 0;
 		x->g_texId       = 0;
 		x->mySender      = NULL;
+		x->invert        = 1; // invert texture when sending - default true
 
 		x->bDestChanged  = false;
 		x->bDestClosing  = false;
@@ -275,13 +286,6 @@ t_jit_gl_spoutsender *jit_gl_spoutsender_new(t_symbol *dest_name)
 		// Create a new Spout sender
 		x->mySender = new SpoutSender;
 		
-		#ifdef UseD3D9
-		x->mySender->SetDX9(true); // Set to DX9 for compatibility with Version 1 apps
-		#endif
-
-		// set up attributes
-		x->memoryshare = 0; // default is texture share
-
 		// Syphon comment - TODO : is this right ? LJ - not sure
 		jit_attr_setsym(x->sendername, _jit_sym_name, gensym("sendername"));
 
@@ -294,9 +298,9 @@ t_jit_gl_spoutsender *jit_gl_spoutsender_new(t_symbol *dest_name)
 			jit_attr_setsym(x->texture, gensym("defaultimage"), gensym("white"));
 			jit_attr_setlong(x->texture, gensym("rectangle"), 1);
 			jit_attr_setsym(x->texture, gensym("mode"), gensym("dynamic"));	
-			jit_attr_setlong(x->texture, gensym("flip"), 0);
+			jit_attr_setlong(x->texture, gensym("flip"), 0); // Not used but could be
 			jit_attr_setsym(x, ps_texture, name);
-			x->textureSource = name; // init of texture
+			x->textureSource = name; // initialization of jitter texture
 		} 
 		else {
 			jit_object_error((t_object *)x,"jit.gl.spoutsender: could not create texture");
@@ -313,6 +317,7 @@ t_jit_gl_spoutsender *jit_gl_spoutsender_new(t_symbol *dest_name)
 
 void jit_gl_spoutsender_free(t_jit_gl_spoutsender *x)
 {
+	// GL context not required
 
 	// free our internal texture
 	if(x->texture) jit_object_free(x->texture);
@@ -413,6 +418,9 @@ t_jit_err jit_gl_spoutsender_draw(t_jit_gl_spoutsender *x)
 	GLint previousFBO;
     GLint previousMatrixMode;
 	GLint previousActiveTexture;
+
+	// Invert on send depening on "invert" attribute
+	bool bInvert = (bool)(x->invert == 1);
 	
 	if(x->bDestClosing || x->bDestChanged) {
 		// skip a frame so that the receiver misses a frame
@@ -439,12 +447,9 @@ t_jit_err jit_gl_spoutsender_draw(t_jit_gl_spoutsender *x)
 
 			// Create a sender if it is not initialized ---
 			if(!x->bInitialized) {
-
-				// Set memoryshare mode if the user requested it
-				if(x->memoryshare == 1) x->mySender->SetMemoryShareMode(true);
-
+				// Get memoryshare mode - unused at present
+				// x->bMemoryshare = x->mySender->GetMemoryShareMode();
 				// Create a sender
-				// printf("Creating sender (%s)(%s) (%dx%d) - [%x]\n", x->g_SenderName, x->sendername->s_name, texWidth, texHeight, texId);
 				if(x->mySender->CreateSender(x->g_SenderName, texWidth, texHeight)) {
 					x->g_texId	= texId;
 					x->g_Width	= texWidth;
@@ -453,12 +458,10 @@ t_jit_err jit_gl_spoutsender_draw(t_jit_gl_spoutsender *x)
 				}
 			}
 			// --- Check for change of name, width and height or texture ID ---
-			else if(texWidth != x->g_Width 
-				 || texHeight != x->g_Height
-				 || texId != x->g_texId
+			else if(texWidth  !=  (GLuint)x->g_Width 
+				 || texHeight !=  (GLuint)x->g_Height
+				 || texId     !=  x->g_texId
 				 || strncmp(x->sendername->s_name, x->g_SenderName, 256) != 0) {
-					// printf("jit_gl_spoutsender_draw - change (%dx%d) - [%x]\n", texWidth, texHeight, texId);
-
 					// Reset and initialize again the next time round
 					x->mySender->ReleaseSender();
 					x->bInitialized = false; 
@@ -467,7 +470,7 @@ t_jit_err jit_gl_spoutsender_draw(t_jit_gl_spoutsender *x)
 			// --- otherwise it is initialized OK so send the frame out ---
 			else {
 				// No actual rendering is done here, this is just sending out a texture
-				if(x->bInitialized)	x->mySender->SendTexture(texId, texTarget, texWidth, texHeight, true); // ? MAX 7 - why inverted
+				if(x->bInitialized)	x->mySender->SendTexture(texId, texTarget, texWidth, texHeight, bInvert);
 			} // end if size was OK and normal draw
 
 			// Restore everything
@@ -491,7 +494,7 @@ void SaveOpenGLstate(t_jit_gl_spoutsender *x, GLint &previousFBO, GLint &previou
 
 	// Syphon note :
 	// Jitter uses multiple texture coordinate arrays on different units
-	// http://s-musiclab.jp/mmj_docs/max5/develop/MaxSDK-5.1.1_J/html/jit_8gl_8texture_8c_source.html
+	// See for example : http://s-musiclab.jp/mmj_docs/max5/develop/MaxSDK-5.1.1_J/html/jit_8gl_8texture_8c_source.html
 	// We need to ensure we set this before changing our texture matrix
 	// glActiveTexture selects which texture unit subsequent texture state calls will affect.
 	glClientActiveTexture(GL_TEXTURE0);
@@ -569,19 +572,11 @@ t_jit_err jit_gl_spoutsender_sendername(t_jit_gl_spoutsender *x, void *attr, lon
 }
 
 
-// @memoryshare
-// force memory share flag (default is 0 off - then is automatic dependent on hardware)
-t_jit_err jit_gl_spoutsender_memoryshare(t_jit_gl_spoutsender *x, void *attr, long argc, t_atom *argv)
+// @invert
+t_jit_err jit_gl_spoutsender_invert(t_jit_gl_spoutsender *x, void *attr, long argc, t_atom *argv)
 {
 	long c = (long)jit_atom_getlong(argv);
-
-	// Bypass compiler warning
-	bool bC = true;
-	if(c == 0) bC = false;
-
-	x->memoryshare = c; // 0 off or 1 on
-	x->mySender->SetMemoryShareMode(bC); // Memoryshare on or off
+	x->invert = c;
 
 	return JIT_ERR_NONE;
 }
-
