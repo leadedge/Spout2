@@ -152,7 +152,7 @@ Spout::Spout()
 	bUseActive            = false;  // Use the active sender for CreateReceiver
 	bSpoutPanelOpened     = false;  // Selection panel "spoutpanel.exe" opened
 	bSpoutPanelActive     = false;  // The SpoutPanel window has been activated
-	
+
 }
 
 
@@ -168,6 +168,7 @@ Spout::~Spout()
 
 	// This is the end, so cleanup and close directx or memoryshare
 	SpoutCleanUp(true);
+	
 }
 
 

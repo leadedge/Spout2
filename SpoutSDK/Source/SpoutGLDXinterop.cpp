@@ -137,6 +137,7 @@
 		01.05.16	- pbo functions for memoryshare ReadMemory and WriteMemory
 		03.05.16	- SetPBOavailable(true/false) added to enable/disable pbo functions
 		07.05.16	- SetPBOavailable changed to SetBufferMode
+		22.05.16	- CleanupDirectX in interop cleanup
 
  */
 
@@ -1045,13 +1046,11 @@ void spoutGLDXinterop::CleanupInterop(bool bExit)
 	}
 	*/
 
-	/*
-	glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
+	// glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
 	// printf("GPU memory 2 : [%i]\n", nCurAvailMemoryInKB);
 	CleanupDirectX();
-	glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
+	// glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
 	// printf("GPU memory 3 : [%i]\n", nCurAvailMemoryInKB);
-	*/
 
 	// Close general texture access mutex
 	spoutdx.CloseAccessMutex(m_hAccessMutex);
@@ -1793,6 +1792,19 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels,
 				UnloadTexturePixels(m_glTexture, GL_TEXTURE_2D, width, height, pixels, glFormat, HostFBO);
 			}
 			else {
+
+				/*
+				glBindTexture(GL_TEXTURE_2D, m_glTexture);
+				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
+				glBindTexture(GL_TEXTURE_2D, 0);
+
+				printf("ReadTexturePixels (%dx%d) - format = %x\n", width, height, glFormat);
+				unsigned char *src = pixels;
+				for(int i = 0; i <width*height*4; i++) {
+					*src++ = 255;
+				}
+				*/
+
 				//
 				// fbo attachment method - current fbo has to be passed in
 				//
@@ -1811,6 +1823,7 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels,
 
 				// restore the previous fbo - default is 0
 				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+
 
 			}
 	

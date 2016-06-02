@@ -75,6 +75,8 @@ spoutSenderNames::spoutSenderNames() {
 
 spoutSenderNames::~spoutSenderNames() {
 
+	// SenderDebug("SpoutSenderNames", 2560);
+
 	for (auto itr = m_senders->begin(); itr != m_senders->end(); itr++)
 	{
 		delete itr->second;
@@ -768,9 +770,10 @@ bool spoutSenderNames::CreateSenderSet()
 
 	SpoutCreateResult result = m_senderNames.Create("SpoutSenderNames", m_MaxSenders*SpoutMaxSenderNameLen);
 	if(result == SPOUT_CREATE_FAILED) {
+		printf("spoutSenderNames::CreateSenderSet()\n    SPOUT_CREATE_FAILED\n");
 		return false;
 	}
-	
+
 	return true;
 
 } // end CreateSenderSet
@@ -922,9 +925,9 @@ bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 	UNREFERENCED_PARAMETER(Sendername);
 	UNREFERENCED_PARAMETER(size);
 
-	printf("**** SENDER DEBUG ****\n");
+	// printf("**** SENDER DEBUG ****\n");
 
-	m_senderNames.Debug();
+	// m_senderNames.Debug();
 
 	// Check the sender names
 	/*
@@ -943,6 +946,7 @@ bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 	}
 	*/
 
+	/*
 	printf("    GetSenderNames\n");
 	if(GetSenderNames(&SenderNames)) {
 		printf("        SenderNames size = [%d]\n", SenderNames.size());
@@ -959,6 +963,9 @@ bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 	else {
 		printf("    GetSenderSet failed\n");
 	}
+	*/
+
+	// MessageBoxA(NULL,"spoutSenderNames::SenderDebug()", "Info", MB_OK);
 
 	/*
 	// printf("2) Closing - hSenderNamesMap = [%x], pSenderNamesMap = [%x]\n", m_hSenderNamesMap, m_pSenderNamesMap);
@@ -978,7 +985,7 @@ bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 	CloseMap(m_pActiveSenderMap, m_hActiveSenderMap);
 	*/
 
-	m_activeSender.Debug();
+	// m_activeSender.Debug();
 
 	return true;
 }
