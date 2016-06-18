@@ -138,6 +138,9 @@
 		03.05.16	- SetPBOavailable(true/false) added to enable/disable pbo functions
 		07.05.16	- SetPBOavailable changed to SetBufferMode
 		22.05.16	- CleanupDirectX in interop cleanup
+		09.06.16	- Corrected interop and mutex lock checks for fail in all functions
+		16.06.16	- Added WriteDX9surface
+		18.06.16	- Add invert to ReadTexturePixels
 
  */
 
@@ -1341,13 +1344,16 @@ bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarge
 
 			// restore the previous fbo - default is 0
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+			spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+			return true;
 		}
 	}
 	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
-	return true;
+	// return true;
+	return false;
+
 }
 
 //
@@ -1394,13 +1400,17 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect,
 
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-			
+			spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+			return true;
+
 			// drop through to manage events and return true;
-		} // if lock failed just keep going
-	}
+		} // lock failed
+	} // mutex lock failed
+
 	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
-	return true;
+	// return true;
+	return false;
 
 } // end DrawSharedTexture
 
@@ -1588,19 +1598,18 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 			// restore the previous fbo - default is 0
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 
-			// unbind the shared texture
-			// glBindTexture(GL_TEXTURE_2D, 0);
-
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+			spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+			return true;
+
 		}
-		spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
-		return true;
+		// spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+		// return true;
 
 	}
-	else {
-		// printf("WriteTexture - no access\n");
-	}
+	// else { printf("WriteTexture - no access\n"); }
+
 	// There is no reader
 	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
@@ -1673,18 +1682,19 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+			spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+			return true;
+
 		}
-		else {
-			// printf("ReadTexture - no lock\n");
-		}
-		spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+		// else { printf("ReadTexture - no lock\n"); }
+		// spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 	}
-	else {
-		// printf("ReadTexture - no access\n");
-	}
+	// else { printf("ReadTexture - no access\n");	}
+
 	spoutdx.AllowAccess(m_hAccessMutex);
 
-	return true;
+	// return true;
+	return false;
 
 } // end ReadTexture
 
@@ -1747,6 +1757,7 @@ bool spoutGLDXinterop::ReadTexture(ID3D11Texture2D** texture)
 		g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
 	}
 
+	// LJ - possibly needs LockInteropObject as well
 	if(spoutdx.CheckAccess(m_hAccessMutex)) {
 		g_pImmediateContext->CopyResource(*texture, g_pSharedTexture);
 		spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
@@ -1759,6 +1770,43 @@ bool spoutGLDXinterop::ReadTexture(ID3D11Texture2D** texture)
 } // end ReadTexture
 
 
+//
+// Write a DirectX 9 system memory surface to the shared texture
+// Sizes must be the same.
+bool spoutGLDXinterop::WriteDX9surface(LPDIRECT3DSURFACE9 source_surface)
+{
+	IDirect3DSurface9* texture_surface = NULL;
+	HRESULT hr = 0;
+	bool bRet = false;
+
+	if(m_hInteropDevice == NULL || m_hInteropObject == NULL) return false;
+
+	// Only for DX9 mode
+	if(!source_surface || !GetDX9())
+		return false;
+
+	if(spoutdx.CheckAccess(m_hAccessMutex)) {
+		// Interop lock seems necessary or update is intermittent
+		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+			hr = m_dxTexture->GetSurfaceLevel(0, &texture_surface); // Spout shared texture surface
+			if(SUCCEEDED(hr)) {
+				// UpdateSurface
+				// https://msdn.microsoft.com/en-us/library/windows/desktop/bb205857%28v=vs.85%29.aspx
+				//    The source surface must have been created with D3DPOOL_SYSTEMMEM.
+				//    The destination surface must have been created with D3DPOOL_DEFAULT.
+				//    Neither surface can be locked or holding an outstanding device context.
+				m_pDevice->UpdateSurface(source_surface, NULL, texture_surface, NULL);
+				bRet = true;
+			}
+			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+		}
+		spoutdx.AllowAccess(m_hAccessMutex);
+	}
+
+	return bRet;
+
+}
+
 
 //
 // COPY THE SHARED TEXTURE TO IMAGE PIXELS
@@ -1767,6 +1815,7 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels,
 										 unsigned int width, 
 										 unsigned int height, 
 										 GLenum glFormat,
+										 bool bInvert, 
 										 GLuint HostFBO)
 {
 	GLenum status;
@@ -1777,41 +1826,46 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels,
 
 	// printf("ReadTexturePixels (%dx%d) - format = %x\n", width, height, glFormat);
 
+	// Create a local rgba buffer texture if not yet created
+	if(m_TexID == 0 || width != m_TexWidth || height != m_TexHeight) { 
+		InitTexture(m_TexID, GL_RGBA, width, height);
+		m_TexWidth = width;
+		m_TexHeight = height;
+	}
+
 	// retrieve opengl texture data directly to image pixels rather than via an fbo and texture
 	// Wait for access to the texture
 	if(spoutdx.CheckAccess(m_hAccessMutex)) {
 		
-		// lock dx object
+		// lock gl/dx interop object
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 
 			// Set single pixel alignment in case of rgb source
 			glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
+			// First copy the shared texture to the local texture, inverting if necessary
+			CopyTexture(m_glTexture, GL_TEXTURE_2D, m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
+
+			// Then extract the pixels from the local texture - changing to the user passed format
 			// PBO method
 			if(IsPBOavailable()) {
-				UnloadTexturePixels(m_glTexture, GL_TEXTURE_2D, width, height, pixels, glFormat, HostFBO);
+				UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, pixels, glFormat, HostFBO);
 			}
 			else {
 
-				/*
-				glBindTexture(GL_TEXTURE_2D, m_glTexture);
-				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
-				glBindTexture(GL_TEXTURE_2D, 0);
+				// glBindTexture(GL_TEXTURE_2D, m_glTexture);
+				// glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
+				// glBindTexture(GL_TEXTURE_2D, 0);
 
-				printf("ReadTexturePixels (%dx%d) - format = %x\n", width, height, glFormat);
-				unsigned char *src = pixels;
-				for(int i = 0; i <width*height*4; i++) {
-					*src++ = 255;
-				}
-				*/
+				// printf("ReadTexturePixels (%dx%d) - format = %x\n", width, height, glFormat);
 
 				//
 				// fbo attachment method - current fbo has to be passed in
 				//
 				// Bind our local fbo
 				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
-				// Attach the shared texture to the color buffer in our frame buffer
-				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
+				// Attach the local rgba texture to the color buffer in our frame buffer
+				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_TexID, 0);
 				status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 				if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 					// read the pixels from the framebuffer in the user provided format
@@ -1820,25 +1874,23 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels,
 				else {
 					PrintFBOstatus(status);
 				}
-
 				// restore the previous fbo - default is 0
 				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-
-
 			}
 	
 			glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
 			// Unlock interop object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+			spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+			return true;
 
-			// drop through to manage events and return true;
+		} // interop lock failed
+	} // mutex access failed
+	
+	spoutdx.AllowAccess(m_hAccessMutex);
 
-		} // if lock failed just keep going
-
-	}
-	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
-	return true;
+	return false;
 
 } // end ReadTexturePixels 
 

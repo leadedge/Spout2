@@ -96,6 +96,7 @@
 //		24.04.16	- Added IsPBOavailable to test for PBO support.
 //		04.05.16	- SetPBOavailable(true/false) added to enable/disable pbo functions
 //		07.05.16	- SetPBOavailable changed to SetBufferMode
+//		18.06.16	- Add invert to ReceiveImage
 //
 // ================================================================
 /*
@@ -446,6 +447,7 @@ bool Spout::ReceiveImage(char* name,
 						 unsigned int &height, 
 						 unsigned char* pixels, 
 						 GLenum glFormat,
+						 bool bInvert, 
 						 GLuint HostFBO)
 {
 	bool bConnected = true;
@@ -480,11 +482,11 @@ bool Spout::ReceiveImage(char* name,
 	if(bDxInitOK) { // Texture share
 		// Read the shared texture into the pixel buffer
 		// glReadPixels handles the formats supported
-		bResult = interop.ReadTexturePixels(pixels, width, height, glformat, HostFBO);
+		bResult = interop.ReadTexturePixels(pixels, width, height, glformat, bInvert, HostFBO);
 	}
 	else {
 		// Receive rgba pixels from shared memory to the user pixel format
-		bResult = interop.ReadMemoryPixels(pixels, width, height, glformat);
+		bResult = interop.ReadMemoryPixels(pixels, width, height, glformat, bInvert);
 	}
 
 	return bResult;

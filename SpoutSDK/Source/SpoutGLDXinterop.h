@@ -71,8 +71,10 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool WriteTexture(ID3D11Texture2D** texture);
 		bool ReadTexture (ID3D11Texture2D** texture);
 
+		bool WriteDX9surface(LPDIRECT3DSURFACE9 source_surface);
+
 		bool WriteTexturePixels(const unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
-		bool ReadTexturePixels (unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, GLuint HostFBO=0);
+		bool ReadTexturePixels (unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
 
 		// PBO functions for external access
 		bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget, 

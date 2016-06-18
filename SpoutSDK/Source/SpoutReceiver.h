@@ -41,7 +41,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 
 	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
 	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
-	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, GLuint HostFBO=0);
+	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
 	bool CheckReceiver (char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 	bool GetImageSize  (char* Sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);
 	void ReleaseReceiver(); 
