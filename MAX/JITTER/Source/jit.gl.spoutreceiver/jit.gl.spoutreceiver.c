@@ -59,7 +59,8 @@
 			 - 32bit VS2012 - Spout 2.005 - Version 2.009.12
 	16.05.16 - Changed Version numbering to allow the Max Package manager
 			   to show 2.0.4 -> 2.0.5 for the package, VS2010 option removed.
-	02.06.16 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.9
+	20.06.16 - Removed frame number testing
+			 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.9
 			 
 			 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		Copyright (c) 2016, Lynn Jarvis. All rights reserved.
@@ -125,12 +126,6 @@ typedef struct _jit_gl_spout_receiver
 	bool         bDestChanged;
 	bool         bNameChanged;
 
-	// Frame numbering
-	long         framenumber; // flag to output a framenumber from the receiver
-	bool         bIsFrameSender; // Is the sender sending frame numbers ?
-	DWORD        dwFrame; // Current received frame number
-	string       sFrame; // the string received by shared memory
-
 	// internal jit.gl.texture object
 	t_jit_object *output;
 	
@@ -175,13 +170,6 @@ t_jit_err jit_gl_spout_receiver_getattr_out_name(t_jit_gl_spout_receiver *x, voi
 // @dim - dimension input
 t_jit_err jit_gl_spout_receiver_setattr_dim(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
 
-//
-// Frame numbering
-//
-// @framenumber 0/1 - for output of a received frame number by max...
-t_jit_err jit_gl_spout_receiver_framenumber(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv);
-t_jit_err jit_gl_spout_receiver_getattr_out_frame(t_jit_gl_spout_receiver *x, void *attr, long *ac, t_atom **av);
-
 // Utility
 void SaveOpenGLstate(t_jit_gl_spout_receiver *x,  GLuint width, GLuint height, GLint &previousFBO, GLint &previousMatrixMode,  GLint &previousActiveTexture, float *vpdim);
 void RestoreOpenGLstate(t_jit_gl_spout_receiver *x, GLint previousFBO, GLint previousMatrixMode,  GLint previousActiveTexture, float *vpdim);
@@ -200,9 +188,6 @@ t_symbol *ps_draw;
 
 // To give back to Max
 extern t_symbol *ps_out_texture; // for our internal texture
-
-// Frame numbering
-extern t_symbol *ps_framenumber; // received frame counter output
 
 //
 // Function implementations
@@ -309,15 +294,6 @@ t_jit_err jit_gl_spout_receiver_init(void)
 	jit_class_addattr(_jit_gl_spout_receiver_class,attr);	
 
 	//
-	// Frame numbering
-	//
-	// Flag to control received frame number output to the RH dump outlet
-	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset, "framenumber", _jit_sym_long, attrflags,
-		(method)0L, (method)jit_gl_spout_receiver_framenumber, calcoffset(_jit_gl_spout_receiver, framenumber));	
-	jit_class_addattr(_jit_gl_spout_receiver_class,attr);
-
-
-	//
 	// OUTPUT
 	//
 	attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_OPAQUE_USER;
@@ -325,14 +301,6 @@ t_jit_err jit_gl_spout_receiver_init(void)
 	// Texture output
 	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"out_name",_jit_sym_symbol, attrflags,
 						  (method)jit_gl_spout_receiver_getattr_out_name,(method)0L,0);	
-	jit_class_addattr(_jit_gl_spout_receiver_class, attr);
-
-	//
-	// Frame numbering
-	//
-	// Received frame number output
-	attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset, "out_frame", _jit_sym_symbol, attrflags,
-						  (method)jit_gl_spout_receiver_getattr_out_frame, (method)0L, 0);	
 	jit_class_addattr(_jit_gl_spout_receiver_class, attr);
 
 	//
@@ -365,13 +333,6 @@ t_jit_gl_spout_receiver *jit_gl_spout_receiver_new(t_symbol * dest_name)
 		x->update          = 0;     // update to active Sender
 		x->aspect          = 0;     // preserve aspect ratio of incoming texture
 		x->memoryshare     = 0;     // user memory mode flag
-		
-		// Frame numbering
-		x->framenumber     = 1;     // Flag to control received frame number output - set to 1 here for default ON
-		x->bIsFrameSender  = false; // True if the detected sender is sending frame numbers
-		x->dwFrame         = 0;     // Zero the frame counter
-		x->sFrame          = "";    // Zero the frame string
-
 		x->g_Width         = 320;   // give it an initial image size
 		x->g_Height        = 240;
 		x->g_SenderName[0] = 0;     // initial NULL means it will try to find the active sender when it starts
@@ -436,12 +397,6 @@ void jit_gl_spout_receiver_free(t_jit_gl_spout_receiver *x)
 	// Release the receiver
 	if(x->bInitialized)	x->myReceiver->ReleaseReceiver();
 
-	// Frame numbering
-	// release sender memory map for data transfer
-	if(x->framenumber == 1) {
-		x->myReceiver->spout.interop.memoryshare.ReleaseSenderMemory();
-	}
-
 	// Delete the Receiver object last.
 	if(x->myReceiver) delete x->myReceiver;
 	x->myReceiver = NULL;
@@ -461,8 +416,6 @@ t_jit_err jit_gl_spout_receiver_dest_closing(t_jit_gl_spout_receiver *x)
 	SaveOpenGLstate(x, width, height, previousFBO, previousMatrixMode, previousActiveTexture, vpdim);
 	if(x->bInitialized)	{
 		x->myReceiver->ReleaseReceiver();
-		// Frame numbering - close receiver memory map for data transfer
-		if(x->framenumber == 1) x->myReceiver->spout.interop.memoryshare.ReleaseSenderMemory();
 	}
 	RestoreOpenGLstate(x, previousFBO, previousMatrixMode, previousActiveTexture, vpdim);
 
@@ -508,11 +461,11 @@ t_jit_err jit_gl_spout_receiver_drawto(t_jit_gl_spout_receiver *x, t_symbol *s, 
 t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 {
 
-	t_jit_err result = JIT_ERR_NONE;
+	// t_jit_err result = JIT_ERR_NONE;
 	t_atom_long newdim[2]; // new output dimensions
 	unsigned int senderWidth = 0;
 	unsigned int senderHeight = 0;
-	bool bRet = false;
+	// bool bRet = false;
 
 	float vpdim[4]; // for saving the viewport dimensions
 	GLint previousFBO = 0;      
@@ -546,13 +499,6 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 
 	// First check if a new sender name has been selected
 	if(x->bNameChanged) {
-		
-		// Frame numbering - close shared memory because the sender name has changed
-		if(x->framenumber == 1) {
-			x->myReceiver->spout.interop.memoryshare.ReleaseSenderMemory();
-			x->dwFrame = 0;
-		}
-
 		if(x->bInitialized) x->myReceiver->ReleaseReceiver();
 		x->bInitialized = false;
 		x->bNameChanged = false;
@@ -579,22 +525,6 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 			// For memoryshare create a local OpenGL texture of the same size
 			if(x->memoryshare == 1)	InitTexture(x);
 
-			// Frame numbering - for memoryshare, disable frame numbering
-			if(x->memoryshare == 1)	x->framenumber = 0;
-
-			//
-			// Frame numbering
-			// 
-			// For frame numbering open the sender memory map if it has been created by the sender
-			// the size is set by the sender and we assume it is big enough for the frame number string.
-			if(x->framenumber == 1) {
-				if(x->myReceiver->spout.interop.memoryshare.OpenSenderMemory(x->g_SenderName))
-					x->bIsFrameSender = true;
-				else
-					x->bIsFrameSender = false;
-				x->dwFrame = 0; // start frame numbering
-			}
-			
 			// Update output texture to the new size
 			newdim[0] = x->g_Width;
 			newdim[1] = x->g_Height;
@@ -619,44 +549,15 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 		senderWidth = x->g_Width;
 		senderHeight = x->g_Height;
 	
+		//
 		// Call Receivetexture here whether memoryshare or not
+		//
 		// If memoryshare, the shared texture is returned in x->g_GLtexture
 		// If not, all the checks for sender name and size are done anyway
 		// and the shared texture can be used directly with DrawSharedTexture 
 		// into the Jitter texture because the sender will have updated it
-
-		// Frame numbering - read the frame number from shared memory
-		if(x->framenumber == 1 && x->bIsFrameSender) {
-			DWORD dwFrame = 0;
-			// Lock the shared memory so that the receiver is blocked from getting the next memory frame
-			unsigned char *pixels = x->myReceiver->spout.interop.memoryshare.LockSenderMemory();
-			if(pixels) {
-				pixels[8] = 0;
-				dwFrame = (DWORD)atoi((const char *)pixels);
-				if(dwFrame > x->dwFrame) {
-					// if(x->dwFrame != 0 && (dwFrame - x->dwFrame) > 1)
-					// 	printf("Missed %d frames (old = %d, new = %d)\n", (dwFrame - x->dwFrame - 1), x->dwFrame, dwFrame);
-					// printf("Memory   : %d\n", dwFrame);
-					x->dwFrame =  dwFrame; // The frame number received
-					x->sFrame = (char *)pixels; // the string received
-				}
-				// Receive the next texture frame while the recever is accessing the current memory frame
-				bRet = x->myReceiver->ReceiveTexture(x->g_SenderName, senderWidth, senderHeight, x->g_GLtexture, GL_TEXTURE_2D);
-				// Unlock to allow receiver access again
-				x->myReceiver->spout.interop.memoryshare.UnlockSenderMemory();
-			}
-			else { // Lock failed - just read the texture
-				bRet = x->myReceiver->ReceiveTexture(x->g_SenderName, senderWidth, senderHeight, x->g_GLtexture, GL_TEXTURE_2D);
-			}
-		}
-		else { // No frame numbering - just read the tetxure
-			bRet = x->myReceiver->ReceiveTexture(x->g_SenderName, senderWidth, senderHeight, x->g_GLtexture, GL_TEXTURE_2D);
-			x->dwFrame++; // Could zero here to disable
-		}
-
-		// Now continue as usual
-		if(bRet) {
-		// if(x->myReceiver->ReceiveTexture(x->g_SenderName, senderWidth, senderHeight, x->g_GLtexture, GL_TEXTURE_2D)) {
+		//
+		if(x->myReceiver->ReceiveTexture(x->g_SenderName, senderWidth, senderHeight, x->g_GLtexture, GL_TEXTURE_2D)) {
 
 			// Test for change of texture size
 			if(senderWidth != x->g_Width || senderHeight != x->g_Height) {
@@ -668,11 +569,6 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 			
 				// For memoryshare create a local OpenGL texture of the same size
 				if(x->memoryshare == 1) InitTexture(x);
-				
-				// Frame numbering - re-create a memory map of the same size for data transfer
-				if(x->framenumber == 1 && x->bIsFrameSender) {
-					x->myReceiver->spout.interop.memoryshare.UpdateSenderMemorySize(x->g_SenderName, senderWidth, senderHeight);
-				}
 
 				// Update output dim to the new size
 				newdim[0] = x->g_Width;
@@ -692,7 +588,7 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 				if(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
 
 					// If memoryshare, draw the local OpenGL texture into it
-					// Not needed for frame numbering and texture share
+					// Not needed for texture share
 					if(x->memoryshare == 1) {
 						glEnable(GL_TEXTURE_2D);
 						glBindTexture(GL_TEXTURE_2D, x->g_GLtexture);
@@ -806,6 +702,8 @@ void SaveOpenGLstate(t_jit_gl_spout_receiver *x, GLuint width, GLuint height, GL
 
 void RestoreOpenGLstate(t_jit_gl_spout_receiver *x, GLint previousFBO, GLint previousMatrixMode,  GLint previousActiveTexture, float vpdim[4])
 {
+	UNREFERENCED_PARAMETER(x);
+
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
 
@@ -838,6 +736,8 @@ void RestoreOpenGLstate(t_jit_gl_spout_receiver *x, GLint previousFBO, GLint pre
 // @Senderuuid
 t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 {
+	UNREFERENCED_PARAMETER(attr);
+
 	t_symbol *srvname;
 	char name[256];
 
@@ -868,6 +768,9 @@ t_jit_err jit_gl_spout_receiver_sendername(t_jit_gl_spout_receiver *x, void *att
 // #texturename
 t_jit_err jit_gl_spout_receiver_texturename(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 {
+	UNREFERENCED_PARAMETER(attr);
+	UNREFERENCED_PARAMETER(argc);
+
 	t_symbol *s=jit_atom_getsym(argv);
 
 	if(s->s_name) {
@@ -884,6 +787,8 @@ t_jit_err jit_gl_spout_receiver_texturename(t_jit_gl_spout_receiver *x, void *at
 // @update - activate SpoutPanel to get the active Sender
 t_jit_err jit_gl_spout_receiver_update(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 {
+	UNREFERENCED_PARAMETER(attr);
+	UNREFERENCED_PARAMETER(argc);
 
 	long c = (long)jit_atom_getlong(argv);
 
@@ -898,32 +803,19 @@ t_jit_err jit_gl_spout_receiver_update(t_jit_gl_spout_receiver *x, void *attr, l
 // @aspect - retain aspect ratio of shared texture
 t_jit_err jit_gl_spout_receiver_aspect(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 {
+	UNREFERENCED_PARAMETER(attr);
+	UNREFERENCED_PARAMETER(argc);
+
 	long c = (long)jit_atom_getlong(argv);
 	x->aspect = c;
 
 	return JIT_ERR_NONE;
 }
 
-
-//
-// Frame numbering
-//
-// @framenumber
-// Flag to control frame number output from the RH dump outlet
-t_jit_err jit_gl_spout_receiver_framenumber(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
-{
-	long c = (long)jit_atom_getlong(argv);
-
-	x->framenumber = c; // 0 off or 1 on
-
-	// For memoryshare reset to off
-	if(x->memoryshare == 1) x->framenumber = 0;
-
-	return JIT_ERR_NONE;
-}
-
 t_jit_err jit_gl_spout_receiver_getattr_out_name(t_jit_gl_spout_receiver *x, void *attr, long *ac, t_atom **av)
 {
+	UNREFERENCED_PARAMETER(attr);
+
 	if ((*ac)&&(*av)) {
 		//memory passed in, use it
 	} else {
@@ -941,41 +833,10 @@ t_jit_err jit_gl_spout_receiver_getattr_out_name(t_jit_gl_spout_receiver *x, voi
 }											  
 
 
-//
-// Frame numbering
-//
-// Used to send the address of the frame number to Max for output
-t_jit_err jit_gl_spout_receiver_getattr_out_frame(t_jit_gl_spout_receiver *x, void *attr, long *ac, t_atom **av)
-{
-	DWORD pFrameNumber;
-
-	// For memoryshare return now with no error
-	if(x->memoryshare == 1) return JIT_ERR_NONE;
-
-	if ((*ac)&&(*av)) {
-		// memory passed in, so use it
-	} else {
-		//otherwise allocate memory
-		*ac = 1;
-		if (!(*av = (t_atom *)jit_getbytes(sizeof(t_atom)*(*ac)))) {
-			*ac = 0;
-			return JIT_ERR_OUT_OF_MEM;
-		}
-	}
-
-	// pFrameNumber = (DWORD)&x->dwFrame; // The shared memory frame number
-	// DEBUG - pass a string to decode inside Max insetad of the number itself
-	pFrameNumber = (DWORD)&x->sFrame; // The shared memory string
-	ps_framenumber->s_thing = (t_object *)pFrameNumber; 
-	jit_atom_setsym(*av, ps_framenumber);
-
-	return JIT_ERR_NONE;
-}											  
-
-
-
 t_jit_err jit_gl_spout_receiver_setattr_dim(t_jit_gl_spout_receiver *x, void *attr, long argc, t_atom *argv)
 {
+	UNREFERENCED_PARAMETER(attr);
+
  	long i;
 	t_atom_long v;
 
@@ -1002,6 +863,11 @@ t_jit_err jit_gl_spout_receiver_setattr_dim(t_jit_gl_spout_receiver *x, void *at
 // TODO ??
 t_jit_err jit_ob3d_dest_name_set(t_jit_object *x, void *attr, long argc, t_atom *argv)
 {
+	UNREFERENCED_PARAMETER(x);
+	UNREFERENCED_PARAMETER(attr);
+	UNREFERENCED_PARAMETER(argc);
+	UNREFERENCED_PARAMETER(argv);
+
 	return JIT_ERR_NONE;
 
 }

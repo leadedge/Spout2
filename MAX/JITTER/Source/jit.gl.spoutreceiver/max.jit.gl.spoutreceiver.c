@@ -17,7 +17,8 @@
 			 - Recompiled /MT Spout 2.005 - 32bit VS2012 - Version 2.009.12
 	16.05.16 - Changed Version numbering to allow the Max Package manager
 			   to show 2.0.4 -> 2.0.5 for the package, VS2010 option removed.
-	02.06.16 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.9
+	20.06.16 - Removed frame numbering testing
+			 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.10
 	----------------------------------------------------
 		
 	Based on :
@@ -71,9 +72,6 @@ typedef struct _max_jit_gl_spout_receiver
 	void			*texout;
     void            *dumpout;
 	bool			b_Started;
-	
-	// Frame numbering
-	long            lastFrame;
 
 } t_max_jit_gl_spout_receiver;
 
@@ -93,13 +91,10 @@ t_class *max_jit_gl_spout_receiver_class;
 
 t_symbol *ps_out_texture, *ps_maxdraw, *ps_out_name, *ps_spoutsendername, *ps_clear;
 
-// Frame numbering
-t_symbol *ps_out_frame, *ps_framenumber, *ps_framestring;
-
-
 // MAX 7
 void ext_main(void *r)
 {
+	UNREFERENCED_PARAMETER(r);
 
 	t_class *maxclass, *jitclass;
 
@@ -108,14 +103,14 @@ void ext_main(void *r)
 	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("jit_gl_spout_receiver - Vers 2.009\n");
+	printf("jit_gl_spout_receiver - Vers 2.0.5.10\n");
 	*/
 
 	// Show the version for reference
 	#ifdef ENV64BIT
-	post("jit_gl_spout_receiver - Vers 2.0.5.9 (64 bit)");
+	post("jit_gl_spout_receiver - Vers 2.0.5.10 (64 bit)");
 	#else
-	post("jit_gl_spout_receiver - Vers 2.0.5.9 (32 bit)");
+	post("jit_gl_spout_receiver - Vers 2.0.5.10 (32 bit)");
 	#endif
 
 	// initialize our Jitter class
@@ -156,11 +151,6 @@ void ext_main(void *r)
 	ps_spoutsendername = gensym("SpoutSender");
     ps_clear = gensym("clear");
 
-	// Frame numbering
-	ps_out_frame      = gensym("out_frame");
-	ps_framenumber    = gensym("framenumber");
-	ps_framestring    = gensym("framestring");
-
 	// register our class with max
 	class_register(CLASS_BOX, maxclass);
 	max_jit_gl_spout_receiver_class = maxclass;
@@ -183,6 +173,8 @@ void max_jit_gl_spout_receiver_free(t_max_jit_gl_spout_receiver *x)
 // TODO - necessary ?
 void max_jit_gl_spout_receiver_bang(t_max_jit_gl_spout_receiver *x)
 {
+	UNREFERENCED_PARAMETER(x);
+
 	// printf("max_jit_gl_spout_receiver_bang\n");
 	// max_jit_gl_spout_receiver_draw(x, ps_maxdraw, 0, NULL);
 
@@ -191,9 +183,11 @@ void max_jit_gl_spout_receiver_bang(t_max_jit_gl_spout_receiver *x)
 
 void max_jit_gl_spout_receiver_draw(t_max_jit_gl_spout_receiver *x, t_symbol *s, long argc, t_atom *argv)
 {
+	UNREFERENCED_PARAMETER(s);
+	UNREFERENCED_PARAMETER(argc);
+	UNREFERENCED_PARAMETER(argv);
+
 	t_atom a;
-	t_atom atomNum; // frame number to send out
-	DWORD pFramenumber; // pointer retrieved from jitter
 
 	// get the jitter object
 	t_jit_object *jitob = (t_jit_object*)max_jit_obex_jitob_get(x);
@@ -209,65 +203,14 @@ void max_jit_gl_spout_receiver_draw(t_max_jit_gl_spout_receiver *x, t_symbol *s,
 	jit_atom_setsym(&a, jit_attr_getsym(jitob, ps_out_name));
 	outlet_anything(x->texout, ps_out_texture, 1, &a);
 
-	//
-	// Frame numbering
-	//
-	// query the framenumber output attribute function in jitter
-	jit_atom_setsym(&a, jit_attr_getsym(jitob, ps_out_frame));
-
-	// retrieve the framenumber address
-	pFramenumber = (DWORD)atom_getsym(&a)->s_thing; 
-	if(pFramenumber > 0) {
-		/*
-		// Convert the address to a long
-		long FrameNumber = *(long *)pFramenumber;
-		// printf("FrameNumber = %d\n", FrameNumber);
-		if(FrameNumber > x->lastFrame) {
-			// Send out the number
-			atom_setlong(&atomNum, FrameNumber);
-			outlet_anything(x->dumpout, ps_framenumber, 1, &atomNum);
-		}
-		x->lastFrame = FrameNumber;
-		*/
-
-		// Convert the address to a string
-		string FrameString = (char *)pFramenumber;
-
-		// Convert the string to a number
-		long FrameNumber = atol(FrameString.c_str());
-		// printf("FrameString = %s, frame = %d\n", FrameString, FrameNumber);
-
-		// Send out the number
-		if(FrameNumber > x->lastFrame) {
-
-			// Number
-			atom_setlong(&atomNum, FrameNumber);
-			outlet_anything(x->dumpout, ps_framenumber, 1, &atomNum);
-
-			/*
-			// DEBUG to test string output
-			t_atom atomList; // string to send out
-			char list[256]; // list string
-
-			// String plus number
-			sprintf_s(list, 256, "\"%s\" %d", FrameString.c_str(), FrameNumber);
-			atom_setsym(&atomList, gensym(list));
-			outlet_anything(x->dumpout, ps_framestring, 1, &atomList);
-
-			// String
-			// atom_setsym(&atomList, gensym(FrameString.c_str()));
-			// outlet_anything(x->dumpout, ps_framestring, 1, &atomList);
-			*/
-
-		}
-		x->lastFrame = FrameNumber;
-	}
 
 }
 
 
 void *max_jit_gl_spout_receiver_new(t_symbol *s, long argc, t_atom *argv)
 {
+	UNREFERENCED_PARAMETER(s);
+
 	t_max_jit_gl_spout_receiver *x;
 	void *jit_ob;
 	long attrstart;
@@ -301,10 +244,6 @@ void *max_jit_gl_spout_receiver_new(t_symbol *s, long argc, t_atom *argv)
 			// For first sender detection
 			x->b_Started = false;
 
-			// Frame numbering
-			x->lastFrame = 0;
-
-			
 		} 
 		else {
 			error("jit_gl_spout_receiver : could not allocate object");
