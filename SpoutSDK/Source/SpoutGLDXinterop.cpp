@@ -141,6 +141,10 @@
 		09.06.16	- Corrected interop and mutex lock checks for fail in all functions
 		16.06.16	- Added WriteDX9surface
 		18.06.16	- Add invert to ReadTexturePixels
+		23.06.16	- change back to 2.004 logic for mutex and interop lock checks
+					- Mutex or interop lock fail does not mean read failure, but just no access
+					  The current texture is re-used for a missed frame.
+
 
  */
 
@@ -1345,14 +1349,16 @@ bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarge
 			// restore the previous fbo - default is 0
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-			spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
-			return true;
+			// 23.06.16 - change back to 2.004 logic
+			// spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+			// return true;
 		}
 	}
 	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
-	// return true;
-	return false;
+	// 23.06.16 - change back to 2.004 logic
+	return true;
+	// return false;
 
 }
 
@@ -1400,8 +1406,10 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect,
 
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-			spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
-			return true;
+
+			// 23.06.16 - change back to 2.004 logic
+			// spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+			// return true;
 
 			// drop through to manage events and return true;
 		} // lock failed
@@ -1409,8 +1417,9 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect,
 
 	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
-	// return true;
-	return false;
+	// 23.06.16 - change back to 2.004 logic
+	return true;
+	// return false;
 
 } // end DrawSharedTexture
 
@@ -1600,8 +1609,9 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-			spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
-			return true;
+			// 23.06.16 - change back to 2.004 logic
+			// spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+			// return true;
 
 		}
 		// spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
@@ -1613,7 +1623,9 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget, unsi
 	// There is no reader
 	spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 
-	return false;
+	// 23.06.16 - change back to 2.004 logic
+	return true;
+	// return false;
 
 } // end WriteTexture
 
@@ -1682,8 +1694,10 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-			spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
-			return true;
+
+			// 23.06.16 - change back to 2.004 logic
+			// spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+			// return true;
 
 		}
 		// else { printf("ReadTexture - no lock\n"); }
@@ -1693,8 +1707,9 @@ bool spoutGLDXinterop::ReadTexture(GLuint TextureID, GLuint TextureTarget, unsig
 
 	spoutdx.AllowAccess(m_hAccessMutex);
 
-	// return true;
-	return false;
+	// 23.06.16 - change back to 2.004 logic
+	return true;
+	// return false;
 
 } // end ReadTexture
 
@@ -1882,15 +1897,19 @@ bool spoutGLDXinterop::ReadTexturePixels(unsigned char *pixels,
 
 			// Unlock interop object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-			spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
-			return true;
+
+			// 23.06.16 - change back to 2.004 logic
+			// spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
+			// return true;
 
 		} // interop lock failed
 	} // mutex access failed
 	
 	spoutdx.AllowAccess(m_hAccessMutex);
 
-	return false;
+	// 23.06.16 - change back to 2.004 logic
+	return true;
+	// return false;
 
 } // end ReadTexturePixels 
 
