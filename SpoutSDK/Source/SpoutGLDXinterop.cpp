@@ -565,11 +565,23 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 
 	// printf("CreateInterop - %dx%d - dwFormat (%d) \n", width, height, dwFormat);
 
+	//
 	// Texture format tests
-	// Compatible formats
-	// DXGI_FORMAT_R8G8B8A8_UNORM; // default DX11 format - not compatible with DX9 (28)
+	//
+	// DX9 compatible formats
+	// DXGI_FORMAT_R8G8B8A8_UNORM; // default DX11 format - compatible with DX9 (28)
 	// DXGI_FORMAT_B8G8R8A8_UNORM; // compatible DX11 format - works with DX9 (87)
 	// DXGI_FORMAT_B8G8R8X8_UNORM; // compatible DX11 format - works with DX9 (88)
+	//
+	// Other formats that work with DX11 but not with DX9
+	// DXGI_FORMAT_R16G16B16A16_FLOAT
+	// DXGI_FORMAT_R16G16B16A16_SNORM
+	// DXGI_FORMAT_R10G10B10A2_UNORM
+	//
+	// To change any of these you can use :
+	//
+	// void spoutGLDXinterop::SetDX11format(DXGI_FORMAT textureformat)
+	//
 	// Allow for compatible DirectX 11 senders (format 87)
 	// And compatible DirectX9 senders D3DFMT_X8R8G8B8 - 22
 	// and the default D3DFMT_A8R8G8B8 - 21
