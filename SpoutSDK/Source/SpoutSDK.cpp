@@ -436,7 +436,8 @@ bool Spout::ReceiveTexture(char* name,
 			return true; // Otherwise the sender will have updated the shared memory
 	}
 
-	return false;
+	// unreachable 
+	// return false;
 
 } // end ReceiveTexture
 
