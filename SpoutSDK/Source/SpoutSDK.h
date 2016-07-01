@@ -140,7 +140,7 @@ class SPOUT_DLLEXP Spout {
 	void UseAccessLocks(bool bUseLocks); // to disable/enable texture access locks in SpoutDirectX.cpp
 	void SpoutCleanUp(bool bExit = false);
 	void CleanSenders();
-
+	int ReportMemory();
 
 /*
 //

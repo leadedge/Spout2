@@ -97,6 +97,9 @@
 //		04.05.16	- SetPBOavailable(true/false) added to enable/disable pbo functions
 //		07.05.16	- SetPBOavailable changed to SetBufferMode
 //		18.06.16	- Add invert to ReceiveImage
+//		29.06.16	- Added ReportMemory() for debugging
+//					- Changed OpenSpout to fail for DX9 if no hwnd
+//					  https://github.com/leadedge/Spout2/issues/18
 //
 // ================================================================
 /*
@@ -1073,16 +1076,20 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	g_ShareHandle = sharehandle;
 
 	if(bDxInitOK) {
+
 		// Render window must be visible for initSharing to work
 		// Safety in case no opengl context
-		if(wglGetCurrentContext() == NULL) {
+		if(wglGetCurrentContext() == NULL || wglGetCurrentDC() == NULL) {
 			return false;
 		}
 	
 		g_hWnd = WindowFromDC(wglGetCurrentDC()); 
+		// Suggested : https://github.com/leadedge/Spout2/issues/18
+		// if(g_hWnd == NULL && interop.m_bUseDX9) {
 		if(g_hWnd == NULL) {
 			return false;
 		}
+
 	}
 
 	// Set the global name, width, height and format
@@ -1547,25 +1554,35 @@ bool Spout::OpenSpout()
 		return true;
 	}
 
-	if(!bMemoryShare) {
+	if(bMemoryShare) {
+		// Memoryshare was user set, so return to use shared memory
+		bDxInitOK = false;
+		bMemory = true;
+	}
+	else {
 		// If not memoryshare, initialize DirectX and prepare GLDX interop
 		hdc = wglGetCurrentDC(); // OpenGl device context is needed
 		if(!hdc) {
-			MessageBoxA(NULL, "    Cannot get GL device context", "OpenSpout", MB_OK);
+			MessageBoxA(NULL, "Cannot get GL device context", "OpenSpout", MB_OK);
 			return false;
 		}
-		g_hWnd = WindowFromDC(hdc); // can be null though
-		if(interop.OpenDirectX(g_hWnd, GetDX9())) { // did the NVIDIA open interop extension work ?
-			bDxInitOK = true; // DirectX initialization OK
-			bMemory = false;
-			return true; 
+	
+		g_hWnd = WindowFromDC(hdc); // can be null for DX11
+		if(g_hWnd == NULL && GetDX9()) {
+			//
+			// DX9 device creation needs hwnd
+			// https://github.com/leadedge/Spout2/issues/18
+			//
+			MessageBoxA(NULL, "Cannot get hwnd to create DirectX 9 device", "OpenSpout", MB_OK);
+			return false;
 		}
-		return false;
+
+		if(!interop.OpenDirectX(g_hWnd, GetDX9())) { // did the NVIDIA open interop extension work ?
+			bDxInitOK = false; // DirectX initialization failed
+			bMemory = true; // Default to memoryshare
+		}
 	}
 
-	// Memoryshare was user set, so return to use shared memory
-	bDxInitOK = false;
-	bMemory = true;
 	return true;
 
 }
@@ -1698,3 +1715,16 @@ void Spout::UseAccessLocks(bool bUseLocks)
 	interop.spoutdx.bUseAccessLocks = bUseLocks;
 }
 
+
+int Spout::ReportMemory()
+{
+	int nTotalAvailMemoryInKB = 0;
+	int nCurAvailMemoryInKB = 0;
+
+	glGetIntegerv(0x9048, &nTotalAvailMemoryInKB);
+	glGetIntegerv(0x9049, &nCurAvailMemoryInKB);
+	// printf("Memory used : Total [%i], Available [%i]\n", nTotalAvailMemoryInKB, nCurAvailMemoryInKB);
+
+	return nCurAvailMemoryInKB;
+
+}
