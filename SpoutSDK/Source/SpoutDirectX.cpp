@@ -29,6 +29,7 @@
 //		29.02.16	- cleanup
 //		05.04.16	- removed unused texture pointer from mutex access functions
 //		16.06.16	- fixed null device release in SetAdapter - https://github.com/leadedge/Spout2/issues/17
+//		01.07.16	- restored hFocusWindow in CreateDX9device (was set to NULL for testing)
 //
 // ====================================================================================
 /*
@@ -147,7 +148,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	// by fullscreen, probably because we are not rendering to it.
     res = pD3D->CreateDeviceEx(	AdapterIndex, // D3DADAPTER_DEFAULT
 								D3DDEVTYPE_HAL, // Hardware rasterization. 
-								NULL, // hWnd,			// hFocusWindow (can be NULL)
+								hWnd,			// hFocusWindow (can be NULL)
 								dwBehaviorFlags,
 								&d3dpp,			// d3dpp.hDeviceWindow should be valid if hFocusWindow is NULL
 								NULL,			// pFullscreenDisplayMode must be NULL for windowed mode
