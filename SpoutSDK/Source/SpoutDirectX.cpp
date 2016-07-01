@@ -28,6 +28,7 @@
 //		16.02.16	- IDXGIFactory release - from https://github.com/jossgray/Spout2
 //		29.02.16	- cleanup
 //		05.04.16	- removed unused texture pointer from mutex access functions
+//		16.06.16	- fixed null device release in SetAdapter - https://github.com/leadedge/Spout2/issues/17
 //
 // ====================================================================================
 /*
@@ -146,7 +147,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	// by fullscreen, probably because we are not rendering to it.
     res = pD3D->CreateDeviceEx(	AdapterIndex, // D3DADAPTER_DEFAULT
 								D3DDEVTYPE_HAL, // Hardware rasterization. 
-								hWnd,			// hFocusWindow (can be NULL)
+								NULL, // hWnd,			// hFocusWindow (can be NULL)
 								dwBehaviorFlags,
 								&d3dpp,			// d3dpp.hDeviceWindow should be valid if hFocusWindow is NULL
 								NULL,			// pFullscreenDisplayMode must be NULL for windowed mode
@@ -567,7 +568,7 @@ bool spoutDirectX::SetAdapter(int index)
 	// Set the global adapter index for DX9
 	g_AdapterIndex = index;
 
-	// LJ DEBUG - in case of incompatibility - test everything here
+	// In case of incompatibility - test everything here
 
 	// 2.005 what is the directX mode ?
 	DWORD dwDX9 = 0;
@@ -603,12 +604,13 @@ bool spoutDirectX::SetAdapter(int index)
 		pd3dDevice = CreateDX11device();
 		if(pd3dDevice == NULL) {
 			// printf("SetAdapter - could not create DX11 device\n");
-			// Close it because not initialized yet and is just a test
-			pd3dDevice->Release();
 			g_AdapterIndex = D3DADAPTER_DEFAULT; // DX9
 			g_pAdapterDX11 = nullptr; // DX11
 			return false;
 		}
+		// Close it because not initialized yet and is just a test
+		// See : https://github.com/leadedge/Spout2/issues/17
+		pd3dDevice->Release();
 		// printf("SetAdapter - created DX11 device OK\n");
 	}
 
