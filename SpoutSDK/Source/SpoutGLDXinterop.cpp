@@ -144,9 +144,11 @@
 		23.06.16	- change back to 2.004 logic for mutex and interop lock checks
 					- Mutex or interop lock fail does not mean read failure, but just no access
 					  The current texture is re-used for a missed frame.
+		03.07-16	- Use helper functions for conversion of 64bit HANDLE to unsigned __int32
+					  and unsigned __int32 to 64bit HANDLE
+					  https://msdn.microsoft.com/en-us/library/aa384267%28VS.85%29.aspx
 
-
- */
+*/
 
 #include "spoutGLDXinterop.h"
 
@@ -716,11 +718,13 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 
 	// Set up local values for this instance
 	// Needed for texture read and write size checks
-	m_TextureInfo.width			= (unsigned __int32)width;
-	m_TextureInfo.height		= (unsigned __int32)height;
-	m_TextureInfo.shareHandle	= (unsigned __int32)m_dxShareHandle;
-	m_TextureInfo.format		= format;
-
+	m_TextureInfo.width       = (unsigned __int32)width;
+	m_TextureInfo.height      = (unsigned __int32)height;
+#ifdef _M_X64
+	m_TextureInfo.shareHandle = (unsigned __int32)(HandleToLong(m_dxShareHandle));
+#else
+	m_TextureInfo.shareHandle = (unsigned __int32)m_dxShareHandle;
+#endif
 	// Additional unused fields available
 	// DWORD usage; // texture usage
 	// wchar_t description[128]; // Wyhon compatible description
@@ -903,7 +907,7 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 	}
 
 	if (m_hInteropDevice == NULL) {
-		printf("    LinkGLDXtextures error 1 : could not create interop device from %x\n", pDXdevice);
+		printf("    LinkGLDXtextures error 1 : could not create interop device from pDXdevice\n");
 		return NULL;
 	}
 
@@ -1167,7 +1171,12 @@ bool spoutGLDXinterop::getSharedTextureInfo(const char* sharedMemoryName) {
 	m_dxShareHandle = (HANDLE)handle;
 	m_TextureInfo.width = w;
 	m_TextureInfo.height = h;
-	m_TextureInfo.shareHandle = (__int32)handle;
+#ifdef _M_X64
+	m_TextureInfo.shareHandle = (unsigned __int32)(HandleToLong(handle));
+#else
+	m_TextureInfo.shareHandle = (unsigned __int32)handle;
+#endif
+	// m_TextureInfo.shareHandle = (__int32)handle;
 	m_TextureInfo.format = format;
 
 	return true;
@@ -1209,7 +1218,12 @@ bool spoutGLDXinterop::setSharedInfo(char* sharedMemoryName, SharedTextureInfo* 
 {
 	m_TextureInfo.width			= info->width;
 	m_TextureInfo.height		= info->height;
-	m_dxShareHandle				= (HANDLE)info->shareHandle; 
+#ifdef _M_X64
+	m_dxShareHandle = (HANDLE)(LongToHandle((long)info->shareHandle));
+#else
+	m_dxShareHandle = (HANDLE)info->shareHandle;
+#endif	
+	// m_dxShareHandle				= (HANDLE)info->shareHandle; 
 	// the local info structure handle "m_TextureInfo.shareHandle" gets converted 
 	// into (unsigned __int32) from "m_dxShareHandle" by setSharedTextureInfo
 	if(setSharedTextureInfo(sharedMemoryName)) {

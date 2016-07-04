@@ -39,6 +39,10 @@
 			   the number of senders in the map passed
 			 - changed writeBufferFromSenderSet to use the global m_MaxSenders
 			 - Created SetMaxSenders to set m_MaxSenders
+	03.07-16 - Use helper functions for conversion of 64bit HANDLE to unsigned __int32
+			   and unsigned __int32 to 64bit HANDLE
+			   https://msdn.microsoft.com/en-us/library/aa384267%28VS.85%29.aspx
+
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2016, Lynn Jarvis. All rights reserved.
@@ -398,7 +402,12 @@ bool spoutSenderNames::GetSenderInfo(const char* sendername, unsigned int &width
 	if(getSharedInfo(sendername, &info)) {
 		width		  = (unsigned int)info.width;
 		height		  = (unsigned int)info.height;
+#ifdef _M_X64
+		dxShareHandle = (HANDLE)(LongToHandle((long)info.shareHandle));
+#else
 		dxShareHandle = (HANDLE)info.shareHandle;
+#endif
+		// dxShareHandle = (HANDLE)info.shareHandle;
 		dwFormat      = info.format;
 		return true;
 	}
@@ -432,10 +441,15 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 		return false;
 	}
 	
-	info.width			= (unsigned __int32)width;
-	info.height			= (unsigned __int32)height;
-	info.shareHandle	= (unsigned __int32)dxShareHandle; 
-	info.format			= (unsigned __int32)dwFormat;
+	info.width       = (unsigned __int32)width;
+	info.height      = (unsigned __int32)height;
+#ifdef _M_X64
+	info.shareHandle = (unsigned __int32)(HandleToLong(dxShareHandle));
+#else
+	info.shareHandle = (unsigned __int32)dxShareHandle;
+#endif
+	// info.shareHandle = (unsigned __int32)dxShareHandle; 
+	info.format      = (unsigned __int32)dwFormat;
 	// Usage not used
 
 	memcpy((void *)pBuf, (void *)&info, sizeof(SharedTextureInfo) );
@@ -540,7 +554,12 @@ bool spoutSenderNames::FindActiveSender(char sendername[SpoutMaxSenderNameLen], 
 			strcpy_s(sendername, SpoutMaxSenderNameLen, sname); // pass back sender name
 			theWidth        = (unsigned int)TextureInfo.width;
 			theHeight       = (unsigned int)TextureInfo.height;
-			hSharehandle	= (HANDLE)TextureInfo.shareHandle;
+#ifdef _M_X64
+			hSharehandle = (HANDLE)(LongToHandle((long)TextureInfo.shareHandle));
+#else
+			hSharehandle = (HANDLE)TextureInfo.shareHandle;
+#endif
+			// hSharehandle	= (HANDLE)TextureInfo.shareHandle;
 			dwFormat        = (DWORD)TextureInfo.format;
 			return true;
 		}
@@ -639,7 +658,12 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 	if(getSharedInfo(sendername, &info)) {
 		width			= (unsigned int)info.width; // pass back sender size
 		height			= (unsigned int)info.height;
-		hSharehandle	= (HANDLE)info.shareHandle;
+#ifdef _M_X64
+		hSharehandle = (HANDLE)(LongToHandle((long)info.shareHandle));
+#else
+		hSharehandle = (HANDLE)info.shareHandle;
+#endif
+		// hSharehandle	= (HANDLE)info.shareHandle;
 		dwFormat		= (DWORD)info.format;
 		return true;
 	}
@@ -674,9 +698,14 @@ bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidt
 		// Does it still exist ?
 		if(getSharedInfo(sendername, &info)) {
 			// Return the texture info
-			theWidth		= (unsigned int)info.width;
-			theHeight		= (unsigned int)info.height;
-			hSharehandle	= (HANDLE)info.shareHandle;
+			theWidth     = (unsigned int)info.width;
+			theHeight    = (unsigned int)info.height;
+#ifdef _M_X64
+			hSharehandle = (HANDLE)(LongToHandle((long)info.shareHandle));
+#else
+			hSharehandle = (HANDLE)info.shareHandle;
+#endif			
+			// hSharehandle	= (HANDLE)info.shareHandle;
 			dwFormat		= (DWORD)info.format;
 			return true;
 		}
