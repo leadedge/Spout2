@@ -100,6 +100,7 @@
 //		29.06.16	- Added ReportMemory() for debugging
 //					- Changed OpenSpout to fail for DX9 if no hwnd
 //					  https://github.com/leadedge/Spout2/issues/18
+//		03.07.16	- Fix dwFormat repeat declaration in InitSender
 //
 // ================================================================
 /*
@@ -1152,7 +1153,9 @@ void Spout::CleanSenders()
 }
 
 
-bool Spout::InitSender (HWND hwnd, const char* theSendername, unsigned int theWidth, unsigned int theHeight, DWORD dwFormat, bool bMemoryMode) 
+bool Spout::InitSender (HWND hwnd, const char* theSendername, 
+						unsigned int theWidth, unsigned int theHeight, 
+						DWORD theFormat, bool bMemoryMode) 
 {
 	char sendername[256];
 
@@ -1177,7 +1180,7 @@ bool Spout::InitSender (HWND hwnd, const char* theSendername, unsigned int theWi
 	// only try dx if the memory mode flag is not set
 	if(!bMemoryMode) {
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
-		if(!interop.CreateInterop(hwnd, sendername, theWidth, theHeight, dwFormat, false)) {  // False for a sender
+		if(!interop.CreateInterop(hwnd, sendername, theWidth, theHeight, theFormat, false)) {  // False for a sender
 			printf("Spout::InitSender error 2\n");
 			return false;
 		}
@@ -1247,7 +1250,6 @@ bool Spout::InitSender (HWND hwnd, const char* theSendername, unsigned int theWi
 				return false;
 			}
 		}
-
 
 		// Now create a sender with a valid texture handle and format
 		// For a 2.004 receiver the result will just be black

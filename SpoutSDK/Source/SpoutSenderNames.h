@@ -59,6 +59,12 @@
 // See : http://msdn.microsoft.com/en-us/library/windows/desktop/aa384203%28v=vs.85%29.aspx
 // This is also compatible with wyphon : 
 // The structure is declared here so that this class is can be independent of opengl
+//
+// 03.07-16 - Use helper functions for conversion of 64bit HANDLE to unsigned __int32
+// and unsigned __int32 to 64bit HANDLE
+// https://msdn.microsoft.com/en-us/library/aa384267%28VS.85%29.aspx
+// in SpoutGLDXinterop.cpp and SpoutSenderNames
+//
 struct SharedTextureInfo {
 	unsigned __int32 shareHandle;
 	unsigned __int32 width;
