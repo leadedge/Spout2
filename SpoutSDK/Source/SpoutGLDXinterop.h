@@ -58,10 +58,10 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		// Initialization functions
 		bool LoadGLextensions(); // Load required opengl extensions
 		bool CreateInterop(HWND hWnd, const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
-		bool CheckInterop(HWND hWnd); // Check for successful open of the interop
+		// bool CheckInterop(HWND hWnd); // Check for successful open of the interop
 		void CleanupInterop(bool bExit = false); // Cleanup with flag to avoid unknown crash bug
 
-		void setSharedMemoryName(char* sharedMemoryName, bool bReceive = true); 
+		// void setSharedMemoryName(char* sharedMemoryName, bool bReceive = true); 
 		bool getSharedInfo(char* sharedMemoryName, SharedTextureInfo* info);
 		bool setSharedInfo(char* sharedMemoryName, SharedTextureInfo* info);
 		
@@ -122,7 +122,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 
 		bool CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
 		bool OpenDirectX9(HWND hWnd); // Initialize and prepare DirectX9
-		void CleanupDX9();
+		void CleanupDX9(bool bExit = false);
 
 		// DX11
 		DXGI_FORMAT	DX11format; // the DX11 texture format to be used
@@ -131,11 +131,11 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool CreateDX11interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive);
 		bool OpenDirectX11(); // Initialize and prepare DirectX11
 		bool DX11available(); // Test for DX11 by attempting to open a device
-		void CleanupDX11();
+		void CleanupDX11(bool bExit = false);
 
 		// Common
 		bool OpenDirectX(HWND hWnd, bool bDX9);
-		void CleanupDirectX();
+		void CleanupDirectX(bool bExit = false);
 		HANDLE LinkGLDXtextures(void* pDXdevice, void* pSharedTexture, HANDLE dxShareHandle, GLuint glTextureID);
 
 		// Utilities

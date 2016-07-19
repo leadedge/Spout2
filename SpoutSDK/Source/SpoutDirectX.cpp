@@ -243,7 +243,13 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 
 	UINT numDriverTypes = ARRAYSIZE( driverTypes );
 
+	// These are the feature levels that we will accept.
+	// g_featureLevel is the feature level used
+	// 11.0 = 0xb000
+	// 11.1 = 0xb001
+	// TODO - check for 11.1 and multiple passes if feature level fails
 	D3D_FEATURE_LEVEL featureLevels[] =	{
+		// D3D_FEATURE_LEVEL_11_1,
 		D3D_FEATURE_LEVEL_11_0,
 		D3D_FEATURE_LEVEL_10_1,
 		D3D_FEATURE_LEVEL_10_0,
@@ -300,6 +306,8 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	if( FAILED(hr))
 		return NULL;
 
+	// printf("Feature level %x\n", g_featureLevel);
+
 	// All OK
 	return pd3dDevice;
 
@@ -334,7 +342,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	//		MSAA textures are not allowed
 	//		Bind flags must have SHADER_RESOURCE and RENDER_TARGET set
 	//		Only R10G10B10A2_UNORM, R16G16B16A16_FLOAT and R8G8B8A8_UNORM formats are allowed - ?? LJ ??
-	//		** If a shared texture is updated on one device ID3D11DeviceContext::Flush must be called on that device **
+	//		If a shared texture is updated on one device ID3D11DeviceContext::Flush must be called on that device **
 
 	// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476903%28v=vs.85%29.aspx
 	// To share a resource between two Direct3D 11 devices the resource must have been created
@@ -347,7 +355,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 	desc.MiscFlags			= D3D11_RESOURCE_MISC_SHARED; // This texture will be shared
 	// A DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not compatible with DirectX 9
-	// so a general named mutext is used for all texture types
+	// so a general named mutex is used for all texture types
 	desc.Format				= format;
 	desc.Usage				= D3D11_USAGE_DEFAULT;
 	// Multisampling quality and count
