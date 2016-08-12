@@ -313,6 +313,6 @@ bool loadFBOextensions();
 bool loadBLITextension();
 bool loadSwapExtensions();
 bool loadPBOextensions();
-bool isExtensionSupported(const char *extension);
+// bool isExtensionSupported(const char *extension);
 
 #endif

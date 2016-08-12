@@ -197,7 +197,8 @@ bool loadFBOextensions() {
 
 #endif
 
-	return true;
+	// Unreachable
+	// return true;
 }
 
 
@@ -363,8 +364,9 @@ unsigned int loadGLextensions() {
 
 
 //
-//	Used to determine support for GL_EXT_bgra extensions
-//
+// Used to determine support for GL_EXT_bgra extensions
+// Currently not used
+/*
 bool isExtensionSupported(const char *extension)
 {
 	const char * extensionsstr = NULL;
@@ -380,7 +382,7 @@ bool isExtensionSupported(const char *extension)
 		return false;
 
 	versionstr = (const char *)glGetString(GL_VERSION);
-	printf("OpenGL version (%s)\n", versionstr);
+	// printf("OpenGL version (%s)\n", versionstr);
 
 	extensionsstr = (const char *)glGetString(GL_EXTENSIONS);
 
@@ -390,7 +392,7 @@ bool isExtensionSupported(const char *extension)
 
 	if(extensionsstr == NULL) {
 
-		printf("glGetString(GL_VERSION) not supported\n");
+		// printf("glGetString(GL_VERSION) not supported\n");
 
 		//
 		// glGetstring not supported
@@ -412,21 +414,21 @@ bool isExtensionSupported(const char *extension)
 					}
 				}
 				if(i < n) {
-					printf("glGetStringi(%d) %s found\n", i, exc);
+					// printf("glGetStringi(%d) %s found\n", i, exc);
 					return true;
 				}
 			}
 			else {
-				printf("glGetIntegerv(GL_NUM_EXTENSIONS) did not return a value\nso unable to get extensions for this gl driver\n");
+				// printf("glGetIntegerv(GL_NUM_EXTENSIONS) did not return a value\nso unable to get extensions for this gl driver\n");
 			}
 		}
 		else {
-			printf("glGetString(GL_EXTENSIONS) returned null, but glGetStringi is NULL,\nso unable to get extensions for this gl driver\n");
+			// printf("glGetString(GL_EXTENSIONS) returned null, but glGetStringi is NULL,\nso unable to get extensions for this gl driver\n");
 		}
 	} 
 	else {
 
-		printf("glGetString(GL_VERSION) supported\n");
+		// printf("glGetString(GL_VERSION) supported\n");
 
 		//
 		// glGetString supported
@@ -445,7 +447,7 @@ bool isExtensionSupported(const char *extension)
 		    if (where == start || *(where - 1) == ' ') {
 				if (*terminator == ' ' || *terminator == '\0') {
 					*terminator = '\0';
-					printf("Extension %s found\n", where);
+					// printf("Extension %s found\n", where);
 					return true;
 				}
 			}
@@ -456,3 +458,4 @@ bool isExtensionSupported(const char *extension)
 	return false;
 
 }
+*/
