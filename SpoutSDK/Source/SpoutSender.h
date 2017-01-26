@@ -3,7 +3,7 @@
 					SpoutSender.h
  
 
-		Copyright (c) 2014-2016, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2017, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -54,6 +54,12 @@ class SPOUT_DLLEXP SpoutSender {
 	bool GetDX9();
 	bool SetMemoryShareMode(bool bMem = true);
 	bool GetMemoryShareMode();
+	bool SetCPUmode(bool bCPU = true);
+	bool GetCPUmode();
+	int  GetShareMode();
+	bool SetShareMode(int mode);
+	void SetBufferMode(bool bActive); // Set the pbo availability on or off
+	bool GetBufferMode();
 
 	void SetDX9compatible(bool bCompatible = true); // DirectX 11 format compatible with DirectX 9
 	bool GetDX9compatible();
@@ -73,8 +79,6 @@ class SPOUT_DLLEXP SpoutSender {
 	Spout spout; // For access to all functions
 
 protected :
-
-	bool bInv; // Transition flag for a 2.005 app with a 2.004 user installation
 
 };
 

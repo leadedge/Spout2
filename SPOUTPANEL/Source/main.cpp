@@ -92,14 +92,26 @@
 //	02.03.16 - change default extension for openfile to *.*
 //			 - Version 2.17
 //	30.03.16 - Rebuild for 2.005
+//	04.04.16 - increased message buffer to 1024
+//	13.05.16 - Rebuild for 2.005 installation
+//	31.08.16 - re-arrange flags in main entry
+//			 - Version 2.18
+//	12.01.17 - Update for Spout 2.006
+//			 - Add bCPUmode for texture info display
+//			 - Version 2.19
+//	16.01.17 - Rebuild VS2012
+//	21.01.17 - include zero char in command line checks
+//	22.01.17 - rebuild VS2012 /MD to avoid virus false postive
 //
 #include <windows.h>
 #include <vector>
+#include <string>
 #include <iostream>
 #include <fstream>
 #include <Shlwapi.h> // for path functions
 #include <io.h> // for file existence check
 #include <memory> // for shared_ptr VS2012
+// #include <tchar.h> // for _tWinMain - no effect on Virus false positive
 #include "resource.h"
 
 #include "../../../../SpoutSDK/SpoutSenderNames.h"
@@ -107,13 +119,17 @@
 #pragma comment(lib, "Shlwapi") // for Path functions
 
 char SpoutSenderName[256]; // global Sender name to retrieve from the list dialog
-char UserMessage[512]; // User message for the text dialog
+char UserMessage[1024]; // User message for the text dialog
 bool bDX9compatible = false; // Only list DX9 compatible senders - modified by /DX9 arg
 bool bMemoryMode = false; // List memoryshare senders (sharehandle is NULL)
+bool bCPUmode = false;
 bool bArgFound = false;
 bool bFileOpen = false;
 bool bFontOpen = false;
 char **argv = NULL;
+
+std::vector<char> argdata;
+
 spoutSenderNames sendernames; // Names class functions
 HINSTANCE g_hInst = NULL;
 static HBRUSH hbrBkgnd = NULL;
@@ -148,6 +164,7 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 INT_PTR CALLBACK TextDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+// int APIENTRY _tWinMain(	HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine,	int nCmdShow)
 {
 	HWND hWnd = NULL;
 	int i, argc;
@@ -159,24 +176,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	g_hInst = hInstance;
 
+	
 	/*
 	// Debug console window so printf works
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutPanel 2.17\n");
+	printf("SpoutPanel 2.19\n");
 	*/
 
 	// Find the current active window to restore to the top when SpoutPanel quits
 	hWnd = GetForegroundWindow();
 
 	// Check for arguments
+	// printf("CmdLine [%s]\n", lpCmdLine);
 	UserMessage[0] = 0;
+	bFileOpen = false;
+	bFontOpen = false;
+	bArgFound = false;
+	argc = 0;
+
 	argc = ParseCommandline();
 	if( argc > 1) { // 0 = "SpoutPanel"
-		bFileOpen = false;
-		bFontOpen = false;
-		bArgFound = false;
 		hWnd = GetActiveWindow();
 		EnableWindow(hWnd, FALSE);
 		for( i=1; i <argc; i++ ) {
@@ -186,24 +207,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				// printf("DX9 mode\n");
 				bArgFound = true;
 				bDX9compatible = true;
+				break;
 			}
 			// Argument /DX11
 			else if ( strcmp(argv[i], "/DX11") == 0) {
 				// printf("DX11 mode\n");
 				bArgFound = true;
 				bDX9compatible = false;
+				break;
 			}
 			// "/FILEOPEN" to activate a modal file selection dialog
 			else if ( strcmp(argv[i], "/FILEOPEN") == 0) {
 				// printf("FileOpen found\n");
 				bArgFound = true;
 				bFileOpen = true;
+				break;
 			}
 			// "/FONT" to activate a font selection dialog
 			else if ( strcmp(argv[i], "/FONT") == 0) {
 				// printf("FONT found\n");
 				bArgFound = true;
 				bFontOpen = true;
+				break;
 			}
 			else {
 				// printf("No known arg found\n");
@@ -213,25 +238,33 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				bMemoryMode = false;
 			}
 		}
-
-		if(!bArgFound && lpCmdLine) {
-			// Know listed args, but a command line so send a user message
-			strcpy_s(UserMessage, 512, lpCmdLine); // Message to be shown instead of sender list
+		EnableWindow(hWnd, TRUE);
+	}
+	else {
+		// printf("Argc is zero\n");
+		if(lpCmdLine && lpCmdLine[0]) {
+			// No listed args, but a command line so send a user message
 			// printf("text arg [%s]\n", lpCmdLine);
+			strcpy_s(UserMessage, 512, (char *)lpCmdLine); // Message to be shown instead of sender list
 		}
 		else {
 			// printf("No text arg\n");
 			UserMessage[0] = 0; // make sure this is not an un-initialized string
 		}
-
-		EnableWindow(hWnd, TRUE);
 	}
 
 	// Look for memoryshare mode in the registry
-	DWORD dwMemory = 0;
-	if(ReadDwordFromRegistry(&dwMemory, "Software\\Leading Edge\\Spout", "MemoryShare")) {
-		if(dwMemory == 1) {
+	DWORD dwMode = 0;
+	if(ReadDwordFromRegistry(&dwMode, "Software\\Leading Edge\\Spout", "MemoryShare")) {
+		if(dwMode == 1) {
 			bMemoryMode = true;
+		}
+	}
+
+	dwMode = 0;
+	if(ReadDwordFromRegistry(&dwMode, "Software\\Leading Edge\\Spout", "CPU")) {
+		if(dwMode == 1) {
+			bCPUmode = true;
 		}
 	}
 
@@ -259,7 +292,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				bRet = OpenFont(filename); // returns a file path if successful
 			// WritePathToRegistry
 			if(bRet) {
-				printf("SpoutPanel OPEN write to registry\n[%s]\n", filename);
+				// printf("SpoutPanel OPEN write to registry\n[%s]\n", filename);
 				WritePathToRegistry(filename, "Software\\Leading Edge\\SpoutPanel", "Filepath");
 			}
 			// Time before the app tries to access the file or the registry depends on registry flush
@@ -389,17 +422,22 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 			// So here we run through again and check whether the sender exists and if it does not
 			// release the sender from the local sender list
 			if(Senders.size() > 0) {
+				// printf("%d senders\n", Senders.size());
 				for(iter = Senders.begin(); iter != Senders.end(); iter++) {
 					namestring = *iter; // the Sender name string
 					strcpy_s(name, namestring.c_str());
+					// printf("    %s\n", name);
 					// we have the name already, so look for it's info
 					if(!sendernames.getSharedInfo(name, &info)) {
 						// Sender does not exist any more
-						// printf("%s does not exist any more\n", name);
+						// printf("    %s does not exist any more\n", name);
 						sendernames.ReleaseSenderName(name); // release from the shared memory list
 					}
 				}
 			}
+			// else {
+				// printf("No senders\n");
+			// }
 
 			// Now we have cleaned up the list in shared memory, so get it again
 			Senders.clear();
@@ -658,7 +696,13 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 										sprintf_s(temp, 512, "DirectX : %dx%d\nUnlisted format [%d]", info.width, info.height, info.format);
 										break;
 								} // end switch(info.format)
-							if(bMemoryMode)	strcat_s(temp, 512, "\nSpout Memoryshare mode");
+
+							if(bMemoryMode)	
+								strcat_s(temp, 512, "\nMemoryshare");
+							else if(bCPUmode)
+								strcat_s(temp, 512, "\nCPU texture share");
+							else 
+								strcat_s(temp, 512, "\nTexture share");
 							
 							// ====================================================
 							// 25.02.16 - get the maximum number of senders
@@ -1080,11 +1124,14 @@ int ParseCommandline()
 	int    argc, BuffSize, i;
 	WCHAR  *wcCommandLine;
 	LPWSTR *argw;
-	
+
 	// Get a WCHAR version of the parsed commande line
 	wcCommandLine = GetCommandLineW();
-	if (*wcCommandLine == NULL) 
+	if (*wcCommandLine == NULL) {
+		// printf("NULL command line\n");
 		return 0;
+	}
+
 
 	// When a program is launched directory with no arguments, GetCommandLineW() can return 
 	// an unquoted path with spaces in it. In this case, CommandLineToArgvW() will not handle 
@@ -1111,6 +1158,7 @@ int ParseCommandline()
 	return argc;
 
 } // ParseCommandline()
+
 
 
 void wtrim(WCHAR * s) {

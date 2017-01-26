@@ -37,4 +37,8 @@ Revisions :
 08.11.15 - removed directX9/directX11 option for 2.005
 	 - OpenSender and milkdropfs.cpp - removed XRGB format option
 30.03.16 - Rebuild for Spout 2.005
+22.01.17 - Create sender with default ARGB format
+	 - Clear alpha to white in milkdropfs.cpp
+	 - Rebuild for Spout 2.006
+
 

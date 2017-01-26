@@ -6,11 +6,45 @@
 //	Based on the CodeProject "HowTo: Export C++ classes from a DLL" by Alex Blekhman.
 //	http://www.codeproject.com/Articles/28969/HowTo-Export-C-classes-from-a-DLL
 //
-//		30.03.16	- Build for 2.005 release - VS2012 /MT
+//		30.03.16 - Build for 2.005 release - VS2012 /MT
+//		13.05.16 - Rearrange folders - rebuild 2.005 - VS2012 /MT
+//		23.06.16 - Add invert to ReceiveImage
+//		23.06.16 - Rebuild for 2.005 release - VS2012 /MT
+//		03.07.16 - Rebuild with VS2015
+//		13.01.17 - Rebuild for Spout 2.006
+//				 - Add SetCPUmode, GetCPUmode, SetBufferMode, GetBufferMode
+//				 - Add HostFBO arg to DrawSharedTexture
+//		17.01.17 - Add GetShareMode, SetShareMode
+//		23.01.17 - Rebuild for Spout 2.006 - VS2012 /MT
 //
+//
+/*
+		Copyright (c) 2016-2017, Lynn Jarvis. All rights reserved.
+
+		Redistribution and use in source and binary forms, with or without modification, 
+		are permitted provided that the following conditions are met:
+
+		1. Redistributions of source code must retain the above copyright notice, 
+		   this list of conditions and the following disclaimer.
+
+		2. Redistributions in binary form must reproduce the above copyright notice, 
+		   this list of conditions and the following disclaimer in the documentation 
+		   and/or other materials provided with the distribution.
+
+		THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"	AND ANY 
+		EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
+		OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE	ARE DISCLAIMED. 
+		IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
+		INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+		PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+		INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+		LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #include "SpoutLibrary.h"
 #include <stdio.h>
-#include "..\..\..\SpoutSDK\Spout.h"
+#include "..\..\SpoutSDK3\Spout.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -37,14 +71,14 @@ class SPOUTImpl : public SPOUTLIBRARY
 		void ReleaseReceiver();
 		bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
 		bool SelectSenderPanel(const char* message = NULL);
-		bool ReceiveImage   (char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, GLuint HostFBO=0);
+		bool ReceiveImage   (char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
 		bool CheckReceiver	(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 		bool GetImageSize   (char* sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);	
 
 		bool BindSharedTexture();
 		bool UnBindSharedTexture();
 	
-		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true);
+		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
 		bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
 
 		int  GetSenderCount ();
@@ -58,6 +92,13 @@ class SPOUTImpl : public SPOUTLIBRARY
 		bool GetDX9(); // Return the flag that has been set
 		bool SetMemoryShareMode(bool bMem = true);
 		bool GetMemoryShareMode();
+		bool SetCPUmode(bool bCPU = true);
+		bool GetCPUmode();
+		int  GetShareMode();
+		bool SetShareMode(int mode);
+		void SetBufferMode(bool bActive); // Set the pbo availability on or off
+		bool GetBufferMode();
+
 		int  GetMaxSenders(); // Get maximum senders allowed
 		void SetMaxSenders(int maxSenders); // Set maximum senders allowed
 		bool GetHostPath(const char *sendername, char *hostpath, int maxchars); // The path of the host that produced the sender
@@ -133,9 +174,9 @@ bool SPOUTImpl::SelectSenderPanel(const char* message)
 	return spoutSDK->SelectSenderPanel(message);
 }
 
-bool SPOUTImpl::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat, GLuint HostFBO)
+bool SPOUTImpl::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
-	return spoutSDK->ReceiveImage(Sendername, width, height, pixels, glFormat, HostFBO);
+	return spoutSDK->ReceiveImage(Sendername, width, height, pixels, glFormat, bInvert, HostFBO);
 }
 
 bool SPOUTImpl::CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected)
@@ -158,9 +199,9 @@ bool SPOUTImpl::UnBindSharedTexture()
 	return spoutSDK->UnBindSharedTexture();
 }
 
-bool SPOUTImpl::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert)
+bool SPOUTImpl::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
 {
-	return spoutSDK->DrawSharedTexture(max_x, max_y, aspect, bInvert);
+	return spoutSDK->DrawSharedTexture(max_x, max_y, aspect, bInvert, HostFBO);
 }
 
 bool SPOUTImpl::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
@@ -213,6 +254,38 @@ bool SPOUTImpl::GetMemoryShareMode()
 {
 	return spoutSDK->GetMemoryShareMode();
 }
+
+
+bool SPOUTImpl::SetCPUmode(bool bCPU)
+{
+	return spoutSDK->SetCPUmode(bCPU);
+}
+
+bool SPOUTImpl::GetCPUmode()
+{
+	return spoutSDK->GetCPUmode();
+}
+
+int SPOUTImpl::GetShareMode()
+{
+	return spoutSDK->GetShareMode();
+}
+
+bool SPOUTImpl::SetShareMode(int mode)
+{
+	return spoutSDK->SetShareMode(mode);
+}
+
+void SPOUTImpl::SetBufferMode(bool bActive)
+{
+	return spoutSDK->SetBufferMode(bActive);
+}
+
+bool SPOUTImpl::GetBufferMode()
+{
+	return spoutSDK->GetBufferMode();
+}
+
 
 int  SPOUTImpl::GetMaxSenders()
 {

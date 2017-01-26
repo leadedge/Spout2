@@ -20,7 +20,7 @@
 //
 //	DirectX headers and libs from DirectX SDK 2010
 //
-#include "..\..\SpoutSDK\Spout.h"
+#include "..\..\SpoutSDK3\Spout.h"
 
 class SpoutSenderPlugin : public IVdjPluginVideoFx8
 {

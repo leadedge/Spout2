@@ -57,11 +57,12 @@
 			 - 32bit VS2012 - Spout 2.005 - Version 2.009.12
 	16.05.16 - Changed Version numbering to allow the Max Package manager
 			   to show 2.0.4 -> 2.0.5 for the package, VS2010 option removed.
-	02.06.16 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.10
-
+	20.06.16 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.10
+	23.06.16 - change back to 2.004 logic for access locks for texture read/write
+	26.01.17 - Rebuild for Spout 2.006 VS2012 /MT - Vers 2.006.0
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-		Copyright (c) 2016, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2017, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:

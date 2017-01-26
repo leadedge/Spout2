@@ -5,7 +5,7 @@
 	The main SDK include file
 
 
-		Copyright (c) 2014-2016, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2017, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -77,23 +77,22 @@ class SPOUT_DLLEXP Spout {
 	bool CreateSender  (const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
 	bool UpdateSender  (const char* Sendername, unsigned int width, unsigned int height);
 	void ReleaseSender (DWORD dwMsec = 0);
-	bool SendTexture   (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true, GLuint HostFBO=0);
-	bool SendImage     (const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=true, GLuint HostFBO = 0);
 
 	// Receiver
 	bool CreateReceiver (char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
 	void ReleaseReceiver(); 
+	bool CheckReceiver	(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
+	bool GetImageSize   (char* sendername, unsigned int &width, unsigned int &height, bool &mMemoryMode);	
 
+	// Texture functions
+	bool SendTexture    (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true, GLuint HostFBO=0);
+	bool SendImage      (const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=true, GLuint HostFBO = 0);
 	bool ReceiveTexture (char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO=0);
 	bool ReceiveImage   (char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
-	bool CheckReceiver	(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
-	bool GetImageSize   (char* sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);	
-
+	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
+	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
-	
-	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true);
-	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
 
 	int  GetSenderCount ();
 	bool GetSenderName  (int index, char* sendername, int MaxSize = 256);
@@ -106,6 +105,10 @@ class SPOUT_DLLEXP Spout {
 	bool GetDX9(); // Return the flag that has been set
 	bool SetMemoryShareMode(bool bMem = true);
 	bool GetMemoryShareMode();
+	bool SetCPUmode(bool bCPU = true);
+	bool GetCPUmode();
+	int  GetShareMode();
+	bool SetShareMode(int mode);
 	int  GetMaxSenders(); // Get maximum senders allowed
 	void SetMaxSenders(int maxSenders); // Set maximum senders allowed
 	
@@ -115,6 +118,7 @@ class SPOUT_DLLEXP Spout {
 	bool IsBGRAavailable(); // Are bgra extensions supported (in interop class)
 	bool IsPBOavailable(); // Are pbo extensions supported (in interop class)
 	void SetBufferMode(bool bActive); // Set the pbo availability on or off
+	bool GetBufferMode();
 
 	// Adapter functions
 	int  GetNumAdapters(); // Get the number of graphics adapters in the system
@@ -184,10 +188,11 @@ class SPOUT_DLLEXP Spout {
 	DWORD g_Format;
 	GLuint g_TexID;
 	HWND g_hWnd;
-	bool bMemory; // force memoryshare flag
 	bool bGLDXcompatible;
 	bool bMemoryShareInitOK;
 	bool bDxInitOK;
+	bool bUseCPU;
+	bool bMemory; // force memoryshare flag
 	bool bInitialized;
 	bool bIsSending;
 	bool bIsReceiving;
@@ -195,7 +200,7 @@ class SPOUT_DLLEXP Spout {
 	bool bSpoutPanelOpened;
 	bool bSpoutPanelActive;
 	bool bUseActive; // Use the active sender for CreateReceiver
-	SHELLEXECUTEINFOA ShExecInfo;
+	SHELLEXECUTEINFOA m_ShExecInfo;
 
 	bool GLDXcompatible();
 	bool OpenReceiver (char *name, unsigned int& width, unsigned int& height);
@@ -206,9 +211,6 @@ class SPOUT_DLLEXP Spout {
 
 	// Find a file version
 	bool FindFileVersion(const char *filepath, DWORD &versMS, DWORD &versLS);
-
-	// === Testing ===
-	DWORD dwLastFrameNumber;
 
 };
 

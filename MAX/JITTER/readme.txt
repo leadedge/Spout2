@@ -9,22 +9,12 @@ To receive a texture :
     jit.gl.spoutreceiver = jit.gl.syphonclient
 
 
-========================
-Max Spout sender example
-========================
+jit.gl.spoutsender and jit.gl.spoutreceiver are now available in the Max package manager
+for both 32bit and 64bit. 
 
-Demonstrates sending to a Spout receiver
-Open the project "spoutSender32.maxpat".
-Graphics will be immediately available to any Spout receiver.
+Max provides help files as examples.
 
-==========================
-Max Spout receiver example
-==========================
 
-Demonstrates receiving from a Spout sender
-Open the patch "spoutReceiver.maxpat"
-Click the "Update" button to receive the output of the "active" sender
-Read the documentation for more information on selecting a sender.
 
 
 

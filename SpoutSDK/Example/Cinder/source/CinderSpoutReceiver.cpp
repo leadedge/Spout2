@@ -10,7 +10,7 @@
 		Search for "SPOUT" to see what is required
 
 	==========================================================================
-	Copyright (C) 2014 Lynn Jarvis.
+	Copyright (C) 2014-2017 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -42,6 +42,7 @@
 	01.07.15 - Convert project to VS2012
 			 - add a window title
 	30.03.16 - Rebuild for 2.005 release - VS2012 /MT
+	17.01.16 - Rebuild for 2.006 release - VS2012 /MT
 
 */
 

@@ -14,12 +14,18 @@
 //					Version 1.03
 //		17.12.15	Clean up and rebuild for 2.005 release VS2012
 //					Version 1.04
+//		23.06.16 - rebuild for Spout 2.005 release Version 1.05
+//				   VS2012 /MT
+//		12.01.17 - Add CS_OWNDC to OpenGL window creation
+//		16.01.16 - Remove destroy OpenGL on Stop
+//		23.01.16 - Rebuild for 2.006 VS2012 /MD - Version 1.06
+//
 //
 // Example : http://www.virtualdj.com/wiki/Plugins_SDKv8_Example.html
 //
 //		------------------------------------------------------------
 //
-//		Copyright (C) 2015-2016. Lynn Jarvis, Leading Edge. Pty. Ltd.
+//		Copyright (C) 2015-2017. Lynn Jarvis, Leading Edge. Pty. Ltd.
 //
 //		This program is free software: you can redistribute it and/or modify
 //		it under the terms of the GNU Lesser General Public License as published by
@@ -35,8 +41,6 @@
 //		with this program.  If not, see http://www.gnu.org/licenses/.
 //		--------------------------------------------------------------
 //
-//		30.03.16 - rebuild for Spout 2.005 release Version 1.05
-//				   VS2012 /MT
 //
 
 #include "stdafx.h"
@@ -81,14 +85,14 @@ SpoutSenderPlugin::SpoutSenderPlugin()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutSenderPlugin() - testing\n");
+	printf("VDJSpoutSender\n");
 	*/
 
 }
 
 SpoutSenderPlugin::~SpoutSenderPlugin()
 {
-	
+
 }
 
 HRESULT __stdcall SpoutSenderPlugin::OnLoad()
@@ -101,7 +105,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 	infos->Author = "Lynn Jarvis";
     infos->PluginName = (char *)"VDJSpoutSender";
     infos->Description = (char *)"Sends frames to a Spout Receiver\nSpout : http://Spout.zeal.co/";
-	infos->Version = (char *)"v1.05";
+	infos->Version = (char *)"v1.06";
     infos->Bitmap = NULL;
 
 	// A sender is an effect - process last so all other effects are shown
@@ -122,25 +126,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnStart()
 
 HRESULT __stdcall SpoutSenderPlugin::OnStop()
 {
-	// Cleanup and start again on start
-	if(m_hRC && wglMakeCurrent(m_hdc, m_hRC)) {
-		if(bInitialized) spoutsender.ReleaseSender();
-		wglMakeCurrent(NULL, NULL);
-		wglDeleteContext(m_hSharedRC);
-		wglDeleteContext(m_hRC);
-	}
-
-	// Destroy OpenGL window
-	if(m_hwnd) DestroyWindow(m_hwnd);
-
-	bInitialized = false;
-	bOpenGL = false;
-	m_hwnd = NULL;
-	m_hdc = NULL;
-	m_hRC = NULL;
-	m_hSharedRC = NULL;
 	bSpoutOut = false;
- 
 	return NO_ERROR;
 }
 
@@ -249,6 +235,7 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 							spoutsender.SendImage((unsigned char *)d3dlr.pBits, desc.Width, desc.Height, GL_BGRA_EXT);
 							source_surface->UnlockRect();
 						}
+
 					}
 				}
 			}
@@ -271,7 +258,6 @@ HRESULT __stdcall SpoutSenderPlugin::OnDraw()
 bool SpoutSenderPlugin::StartOpenGL()
 {
 	HGLRC hrc = NULL;
-
 	// Check to see if a context has already been created
 	if(bOpenGL && m_hdc && m_hRC) {
 		// Switch back to the primary context to check it
@@ -302,7 +288,7 @@ bool SpoutSenderPlugin::InitOpenGL()
 	if(!m_hwnd || !IsWindow(m_hwnd)) {
 		m_hwnd = CreateWindowA("BUTTON",
 			            "VDJ Sender",
-				        WS_OVERLAPPEDWINDOW,
+				        WS_OVERLAPPEDWINDOW | CS_OWNDC,
 					    0, 0, 32, 32,
 						NULL, NULL, NULL, NULL);
 	}

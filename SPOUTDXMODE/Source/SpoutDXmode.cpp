@@ -1,5 +1,5 @@
 //
-//		SpoutDirectX
+//		SpoutDXmode
 //
 //		A dialog application to configure Spout DirectX mode
 //
@@ -24,7 +24,10 @@
 //		16.12.15 - build for 2.005 release as SpoutDirectX.exe
 //		24.02.16 - updated SpoutDirectX icon file to organize layers properly
 //		26.03.16 - Changed caption to SpoutDXmode
-//		30.03.16 - Rebuild for 2.005 release VS2012 /MT - SpoutDXmode.exe
+//		02.06.16 - Rebuild for 2.005 release VS2012 /MT - SpoutDXmode.exe
+//		14.01.17 - Rebuild for 2.006
+//				 - Change options to radio buttons
+//		21.01.17 - Rebuild /MD to avoid virus false positive - still postive for Qihoo-360
 //
 #include "stdafx.h"
 #include "Spout.h"
@@ -33,7 +36,9 @@
 
 Spout spout; // Spout object
 bool bDX9mode = false;  // Use DirectX 9 instead of default DirectX 11
+bool bCPUmode = false;  // Use CPU processing instead of default Graphics
 bool bMemorymode = false;  // Use MemoryShare instead of default DirectX
+bool bBuffermode = false; // OpenGL PBO buffering
 
 // NVAPI object to force NVIDIA
 nVidia g_NvApi;
@@ -55,13 +60,18 @@ bool CheckForDirectX9c();
 static HWND ParamWnd = NULL;
 static HBRUSH hbrBkgnd = NULL;
 static bool bdx9 = false;
+static bool bcpu = false;
 static bool bmemory = false;
+static bool bbuffer = false;
 static int nvidiamode = 0;
 static int comboindex = 0;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	MSG msg;
+
+	UNREFERENCED_PARAMETER(hPrevInstance);
+	UNREFERENCED_PARAMETER(lpCmdLine);
 
 	/*
 	// Debug console window so printf works
@@ -101,14 +111,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 	}
 
+	// printf("bcpu = %d, bmemory = %d, bbuffer = %d\n", bcpu, bmemory, bbuffer);
+
+	//
+	// CPU texture processing
+	//
+	if(bcpu) bCPUmode = true;
+	else     bCPUmode = false;
+	spout.interop.spoutdx.WriteDwordToRegistry((DWORD)bCPUmode, "Software\\Leading Edge\\Spout", "CPU");
+
 	//
 	// Memoryshare
 	//
 	if(bmemory) bMemorymode = true;
 	else        bMemorymode = false;
-
-	// Write the Memory mode to the registry. This is global for all apps
 	spout.interop.spoutdx.WriteDwordToRegistry((DWORD)bMemorymode, "Software\\Leading Edge\\Spout", "MemoryShare");
+
+	//
+	// OpenGL PBO buffering
+	//
+	if(bbuffer) bBuffermode = true;
+	else        bBuffermode = false;
+	spout.interop.spoutdx.WriteDwordToRegistry((DWORD)bBuffermode, "Software\\Leading Edge\\Spout", "Buffering");
+
 
 	//
 	// NVIDIA Optimus
@@ -117,6 +142,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		NvidiaMode = nvidiamode;
 		g_NvApi.ActivateNVIDIA(NvidiaMode); // will just fail for unsupported hardware
 	}
+
+	// MessageBoxA(NULL, "Finished", "SpoutDXmode", MB_OK);
 
 	return (int) msg.wParam;
 }
@@ -140,7 +167,7 @@ BOOL InitApplication(HANDLE hInstance)
   wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
   wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
   wc.lpszMenuName  = 0;  
-  wc.lpszClassName = L"SpoutDirectXWClass";
+  wc.lpszClassName = L"SpoutDXmodeWClass";
 
   return (RegisterClass(&wc));   
 }
@@ -148,6 +175,8 @@ BOOL InitApplication(HANDLE hInstance)
 //	Initialize the window and DirectX dialog
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
+	UNREFERENCED_PARAMETER(nCmdShow);
+
 	HDC hdc = NULL;
 	HGLRC hRc = NULL;
 	char windowtitle[512];
@@ -157,8 +186,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	g_hInst = hInstance;
 
 	// Create an invisible main window
-	g_hWndMain = CreateWindowA("SpoutDirectXWClass",
-                          "Spout DirectX",
+	g_hWndMain = CreateWindowA("SpoutDXmodeWClass",
+                          "SpoutDXmode",
                           WS_OVERLAPPEDWINDOW,
                           0,
                           0,
@@ -229,10 +258,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	// Spout will have read it from the registry when the sender object was created
 	bDX9mode = spout.GetDX9();
 
+	// Get the current CPU texture processing mode
+	bCPUmode = spout.GetCPUmode();
+
 	// Get the current Memoryshare mode
 	// Performs a compatibilty test and sets memorymode to the registry if not compatible
 	// The compatibility check is repeated after user selection.
 	bMemorymode = spout.GetMemoryShareMode();
+
+	// Get the current PBO buffering mode
+	bBuffermode = spout.interop.GetBufferMode();
 
 	// Get the current Optimus NVIDIA setting from the NVIDIA base profile
 	// will just fail for unsupported hardware and return 0
@@ -242,8 +277,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	if(bDX9mode) bdx9 = true;
 	else         bdx9 = false;
 
+	if(bCPUmode) bcpu = true;
+	else         bcpu = false;
+
 	if(bMemorymode) bmemory = true;
 	else            bmemory = false;
+
+	if(bBuffermode) bbuffer = true;
+	else            bbuffer = false;
+
+	// printf("bcpu = %d, bmemory = %d, bbuffer = %d\n", bcpu, bmemory, bbuffer);
 
 	nvidiamode = comboindex = NvidiaMode; // to check for changes
 
@@ -329,8 +372,11 @@ LRESULT CALLBACK DirectXDialog(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 					SetTextColor(hdcStatic, RGB(0, 128, 0));
 					SetBkColor(hdcStatic, RGB(0, 128, 0));
 					SetDlgItemTextA(hDlg, IDC_DX9TEXT1, "DirectX 9.0c installed");
-					SetDlgItemTextA(hDlg, IDC_DX9TEXT2, "( Use DirectX 9 functions instead of DirectX 11 )");
-					SetDlgItemTextA(hDlg, IDC_MEMTEXT, "( Use MemoryShare instead of DirectX )");
+					SetDlgItemTextA(hDlg, IDC_DX9TEXT2, "( DirectX 9 functions )");
+					SetDlgItemTextA(hDlg, IDC_TEXTEXT,  "( GPU texture processing )");
+					SetDlgItemTextA(hDlg, IDC_CPUTEXT,  "( CPU texture processing )");
+					SetDlgItemTextA(hDlg, IDC_MEMTEXT,  "( Shared memory )");
+					SetDlgItemTextA(hDlg, IDC_BUFTEXT,  "( OpenGL pixel buffering )");
 
 					// Hide DirectX install buttons
 					ShowWindow(GetDlgItem(hDlg, IDC_DX9_INSTALL), SW_HIDE);
@@ -382,16 +428,26 @@ LRESULT CALLBACK DirectXDialog(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 			if(bdx9) CheckDlgButton(hDlg, IDC_DX9, BST_CHECKED);
 			else     CheckDlgButton(hDlg, IDC_DX9, BST_UNCHECKED);
 
-			if(bmemory) CheckDlgButton(hDlg, IDC_MEM, BST_CHECKED);
-			else        CheckDlgButton(hDlg, IDC_MEM, BST_UNCHECKED);
+			if(bbuffer) CheckDlgButton(hDlg, IDC_BUF, BST_CHECKED);
+			else        CheckDlgButton(hDlg, IDC_BUF, BST_UNCHECKED);
+
+			// Set radio buttons
+			if(bcpu)
+				CheckRadioButton(hDlg, IDC_TEX, IDC_MEM, IDC_CPU);
+			else if(bmemory) 
+				CheckRadioButton(hDlg, IDC_TEX, IDC_MEM, IDC_MEM);
+			else       
+				CheckRadioButton(hDlg, IDC_TEX, IDC_MEM, IDC_TEX);
 
 			hwndList = GetDlgItem(hDlg, IDC_NVIDIA);
 			for (int k = 0; k < 3; k ++) {
 				strcpy_s(name, sizeof(name),  prefs[k]);
 				SendMessageA(hwndList, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)name);
 			}
+			
 			// Display an initial item in the selection field  
 			SendMessageA(hwndList, CB_SETCURSEL, (WPARAM)comboindex, (LPARAM)0);
+
 
 			return TRUE; // return TRUE  unless you set the focus to a control
 
@@ -421,6 +477,23 @@ LRESULT CALLBACK DirectXDialog(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 					DestroyWindow(hDlg);
 					break;
 
+				/*
+				case IDC_CPU :
+					if(IsDlgButtonChecked(hDlg, IDC_CPU) == BST_CHECKED)
+						EnableWindow(GetDlgItem(hDlg, IDC_MEM), FALSE);
+					else
+						EnableWindow(GetDlgItem(hDlg, IDC_MEM), TRUE);
+					break;
+
+				case IDC_MEM :
+					if(IsDlgButtonChecked(hDlg, IDC_MEM) == BST_CHECKED)
+						EnableWindow(GetDlgItem(hDlg, IDC_CPU), FALSE);
+					else
+						EnableWindow(GetDlgItem(hDlg, IDC_CPU), TRUE);
+					break;
+				*/
+
+
 				case IDOK :
 					// Set static flags according to checkboxes
 					if(IsDlgButtonChecked(hDlg, IDC_DX9) == BST_CHECKED)
@@ -428,10 +501,27 @@ LRESULT CALLBACK DirectXDialog(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 					else
 						bdx9 = false;
 
+					if(IsDlgButtonChecked(hDlg, IDC_CPU) == BST_CHECKED)
+						bcpu = true;
+					else
+						bcpu = false;
+
 					if(IsDlgButtonChecked(hDlg, IDC_MEM) == BST_CHECKED)
 						bmemory = true;
 					else
 						bmemory = false;
+
+					if(IsDlgButtonChecked(hDlg, IDC_TEX) == BST_CHECKED) {
+						printf("Texture share\n");
+						bcpu = false;
+						bmemory = false;
+					}
+
+
+					if(IsDlgButtonChecked(hDlg, IDC_BUF) == BST_CHECKED)
+						bbuffer = true;
+					else
+						bbuffer = false;
 
 					nvidiamode = comboindex; // set global NVIDIA preference flag
 

@@ -30,11 +30,14 @@
 //		05.04.16	- removed unused texture pointer from mutex access functions
 //		16.06.16	- fixed null device release in SetAdapter - https://github.com/leadedge/Spout2/issues/17
 //		01.07.16	- restored hFocusWindow in CreateDX9device (was set to NULL for testing)
+//		04.09.16	- Add create DX11 staging texture
+//		16.01.17	- Add WriteDX9surface
+//		23.01.17	- pEventQuery->Release() for writeDX9surface
 //
 // ====================================================================================
 /*
 
-		Copyright (c) 2014-2016. Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2017. Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -106,7 +109,6 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	IDirect3DDevice9Ex* pDevice;
     D3DPRESENT_PARAMETERS d3dpp;
 	D3DCAPS9 d3dCaps;
-	// int AdapterIndex = 0; // DEBUG disable temp
 	int AdapterIndex = g_AdapterIndex;
 
 	// printf("CreateDX9device : g_AdapterIndex = %d\n", g_AdapterIndex);
@@ -205,6 +207,38 @@ bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned 
 	return true;
 
 } // end CreateSharedDX9Texture
+
+
+bool spoutDirectX::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DTEXTURE9 dxTexture, LPDIRECT3DSURFACE9 source_surface)
+{
+	IDirect3DSurface9* texture_surface = NULL;
+	IDirect3DQuery9* pEventQuery=NULL;
+	HRESULT hr = 0;
+	hr = dxTexture->GetSurfaceLevel(0, &texture_surface); // shared texture surface
+	if(SUCCEEDED(hr)) {
+		// UpdateSurface
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb205857%28v=vs.85%29.aspx
+		//    The source surface must have been created with D3DPOOL_SYSTEMMEM.
+		//    The destination surface must have been created with D3DPOOL_DEFAULT.
+		//    Neither surface can be locked or holding an outstanding device context.
+		hr = pDevice->UpdateSurface(source_surface, NULL, texture_surface, NULL);
+		if(SUCCEEDED(hr)) {
+			// It is necessary to flush the command queue 
+			// or the data is not ready for the receiver to read.
+			// Adapted from : https://msdn.microsoft.com/en-us/library/windows/desktop/bb172234%28v=vs.85%29.aspx
+			// Also see : http://www.ogre3d.org/forums/viewtopic.php?f=5&t=50486
+			pDevice->CreateQuery(D3DQUERYTYPE_EVENT, &pEventQuery) ;
+			if(pEventQuery!=NULL) {
+				pEventQuery->Issue(D3DISSUE_END) ;
+				while(S_FALSE == pEventQuery->GetData(NULL, 0, D3DGETDATA_FLUSH)) ;
+				pEventQuery->Release(); // Must be released or causes a leak and reference count increment
+			}
+			return true;
+		}
+	}
+	return false;
+} // end WriteDX9surface
+
 // =========================== end DX9 =============================
 
 
@@ -228,7 +262,6 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	ID3D11Device* pd3dDevice = NULL;
 	HRESULT hr = S_OK;
 	UINT createDeviceFlags = 0;
-	// IDXGIAdapter* pAdapterDX11 = nullptr; // DEBUG temp disable
 	IDXGIAdapter* pAdapterDX11 = g_pAdapterDX11;
 	// printf("CreateDX11device : g_AdapterIndex = %d, pAdapterDX11 = [%x]\n", g_AdapterIndex, g_pAdapterDX11);
 
@@ -305,8 +338,6 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	// Quit if nothing worked
 	if( FAILED(hr))
 		return NULL;
-
-	// printf("Feature level %x\n", g_featureLevel);
 
 	// All OK
 	return pd3dDevice;
@@ -408,6 +439,63 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 }
 
+
+// Create a DirectX 11 staging texture for read and write
+bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice, 
+											unsigned int width, 
+											unsigned int height, 
+											DXGI_FORMAT format, 
+											ID3D11Texture2D** pStagingTexture)
+{
+	ID3D11Texture2D* pTexture = NULL;
+	if(pd3dDevice == NULL) return false;
+
+	pTexture = *pStagingTexture; // The texture pointer
+	if(pTexture) {
+		pTexture->Release();
+	}
+
+	D3D11_TEXTURE2D_DESC desc;
+	ZeroMemory( &desc, sizeof(desc) );
+	desc.Width = width;
+	desc.Height = height;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = format;
+	desc.SampleDesc.Count = 1;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
+    desc.Usage = D3D11_USAGE_STAGING;
+	desc.BindFlags = 0;
+
+	HRESULT res = pd3dDevice->CreateTexture2D(&desc, NULL, &pTexture);
+
+	if (res != S_OK) {
+		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
+		printf("CreateTexture2D ERROR : [0x%x]\n", res);
+		switch (res) {
+			case D3DERR_INVALIDCALL:
+				printf("    D3DERR_INVALIDCALL \n");
+				break;
+			case E_INVALIDARG:
+				printf("    E_INVALIDARG \n");
+				break;
+			case E_OUTOFMEMORY:
+				printf("    E_OUTOFMEMORY \n");
+				break;
+			default :
+				printf("    Unlisted error\n");
+				break;
+		}
+		MessageBoxA(NULL, "CreateTexture2D ERROR", "info", MB_OK);
+		return false;
+	}
+
+	*pStagingTexture = pTexture;
+
+	return true;
+
+}
+
 bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle)
 {
 	HRESULT hr;
@@ -440,8 +528,6 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	return true;
 
 }
-
-
 
 // =================================================================
 // Texture access mutex locks
@@ -635,7 +721,7 @@ int spoutDirectX::GetAdapter()
 }
 
 
-// LJ DEBUG
+// FOR DEBUGGING 
 bool spoutDirectX::FindNVIDIA(int &nAdapter)
 {
 	IDXGIFactory1* _dxgi_factory1;
@@ -672,7 +758,6 @@ bool spoutDirectX::FindNVIDIA(int &nAdapter)
 				p_output->Release();
 		}
 		*/
-
 		if(wcsstr(desc.Description, L"NVIDIA")) {
 			// printf("Found NVIDIA adapter %d (%S)\n", i, desc.Description);
 			bFound = true;
@@ -885,3 +970,5 @@ bool spoutDirectX::WriteDwordToRegistry(DWORD dwValue, const char *subkey, const
 		return false;
 
 }
+
+

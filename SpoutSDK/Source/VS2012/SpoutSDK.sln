@@ -1,7 +1,7 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SpoutSDK", "SpoutSDK.vcxproj", "{A621CCC8-67A6-4B0F-BDEE-56291B7283C0}"
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Express 2012 for Windows Desktop
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SpoutSDK", "SpoutSDK.vcxproj", "{62631E0D-AB94-4E97-AF8B-63E7E108C30E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,14 +11,14 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{A621CCC8-67A6-4B0F-BDEE-56291B7283C0}.Debug|Win32.ActiveCfg = Debug|Win32
-		{A621CCC8-67A6-4B0F-BDEE-56291B7283C0}.Debug|Win32.Build.0 = Debug|Win32
-		{A621CCC8-67A6-4B0F-BDEE-56291B7283C0}.Debug|x64.ActiveCfg = Debug|x64
-		{A621CCC8-67A6-4B0F-BDEE-56291B7283C0}.Debug|x64.Build.0 = Debug|x64
-		{A621CCC8-67A6-4B0F-BDEE-56291B7283C0}.Release|Win32.ActiveCfg = Release|Win32
-		{A621CCC8-67A6-4B0F-BDEE-56291B7283C0}.Release|Win32.Build.0 = Release|Win32
-		{A621CCC8-67A6-4B0F-BDEE-56291B7283C0}.Release|x64.ActiveCfg = Release|x64
-		{A621CCC8-67A6-4B0F-BDEE-56291B7283C0}.Release|x64.Build.0 = Release|x64
+		{62631E0D-AB94-4E97-AF8B-63E7E108C30E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{62631E0D-AB94-4E97-AF8B-63E7E108C30E}.Debug|Win32.Build.0 = Debug|Win32
+		{62631E0D-AB94-4E97-AF8B-63E7E108C30E}.Debug|x64.ActiveCfg = Debug|x64
+		{62631E0D-AB94-4E97-AF8B-63E7E108C30E}.Debug|x64.Build.0 = Debug|x64
+		{62631E0D-AB94-4E97-AF8B-63E7E108C30E}.Release|Win32.ActiveCfg = Release|Win32
+		{62631E0D-AB94-4E97-AF8B-63E7E108C30E}.Release|Win32.Build.0 = Release|Win32
+		{62631E0D-AB94-4E97-AF8B-63E7E108C30E}.Release|x64.ActiveCfg = Release|x64
+		{62631E0D-AB94-4E97-AF8B-63E7E108C30E}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

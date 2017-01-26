@@ -318,6 +318,7 @@ public:
 		// User controlled
 		bool bSpoutOut; // Spout output on or off
 		bool bUseDX11; // Spout DirectX mode
+		bool bMemoryMode; // Spout memoryshare mode
 
 		unsigned int g_Width;
 		unsigned int g_Height;

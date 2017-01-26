@@ -60,10 +60,14 @@
 	16.05.16 - Changed Version numbering to allow the Max Package manager
 			   to show 2.0.4 -> 2.0.5 for the package, VS2010 option removed.
 	20.06.16 - Removed frame number testing
-			 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.9
-			 
+			 - Added check for jitter texture in draw
+			 - Added check for zero dimensions in SaveOpenGLstate
+	21.06.16 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.10
+	23.06.16 - change back to 2.004 logic for access locks for texture read/write
+	26.01.17 - Rebuild for Spout 2.006 VS2012 /MT - Vers 2.006.0
+
 			 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-		Copyright (c) 2016, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2017, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -413,11 +417,11 @@ t_jit_err jit_gl_spout_receiver_dest_closing(t_jit_gl_spout_receiver *x)
 	GLuint height = (GLuint)jit_attr_getlong(x->output, ps_height);
 
 	// Release receiver if initialized
-	SaveOpenGLstate(x, width, height, previousFBO, previousMatrixMode, previousActiveTexture, vpdim);
 	if(x->bInitialized)	{
+		SaveOpenGLstate(x, width, height, previousFBO, previousMatrixMode, previousActiveTexture, vpdim);
 		x->myReceiver->ReleaseReceiver();
+		RestoreOpenGLstate(x, previousFBO, previousMatrixMode, previousActiveTexture, vpdim);
 	}
-	RestoreOpenGLstate(x, previousFBO, previousMatrixMode, previousActiveTexture, vpdim);
 
 	x->bInitialized = false; // Initialize again in draw
 	x->bDestClosing = true;
@@ -487,6 +491,10 @@ t_jit_err jit_gl_spout_receiver_draw(t_jit_gl_spout_receiver *x)
 	GLuint texname	= (GLuint)jit_attr_getlong(x->output, ps_glid);
 	GLuint width	= (GLuint)jit_attr_getlong(x->output, ps_width);
 	GLuint height	= (GLuint)jit_attr_getlong(x->output, ps_height);
+
+	if(texname == 0 || width == 0 || height == 0) {
+		return JIT_ERR_NONE;
+	}
 
 	// TODO: necessary ? 
 	// Syphon comment : JKC says no unless context changed above? should be set during draw for you. 
@@ -666,28 +674,30 @@ void SaveOpenGLstate(t_jit_gl_spout_receiver *x, GLuint width, GLuint height, GL
 	glGetFloatv(GL_VIEWPORT, vpdim);
 
 	// Scale width and height to the current viewport size
-	vpScaleX = width/(float)x->g_Width;			// vpdim[2]/(float)x->g_Width;
-	vpScaleY = height/(float)x->g_Height;		// vpdim[3]/(float)x->g_Height;
-	vpWidth  = (float)x->g_Width  * vpScaleX;
-	vpHeight = (float)x->g_Height * vpScaleY;
-	vpx = vpy = 0;
+	if(width > 0 && x->g_Width > 0 && height > 0 && x->g_Height > 0) {
+		vpScaleX = width/(float)x->g_Width;			// vpdim[2]/(float)x->g_Width;
+		vpScaleY = height/(float)x->g_Height;		// vpdim[3]/(float)x->g_Height;
+		vpWidth  = (float)x->g_Width  * vpScaleX;
+		vpHeight = (float)x->g_Height * vpScaleY;
+		vpx = vpy = 0;
 
-	// User selection flag to preserve aspect ratio or not
-	if(x->aspect == 1) {
-		// back to original aspect ratio
-		as = (float)x->g_Width/(float)x->g_Height;
-		if(x->g_Width > x->g_Height) {
-			fy = vpWidth/as;
-			vpy = (int)(vpHeight-fy)/2;
-			vpHeight = fy;
+		// User selection flag to preserve aspect ratio or not
+		if(x->aspect == 1) {
+			// back to original aspect ratio
+			as = (float)x->g_Width/(float)x->g_Height;
+			if(x->g_Width > x->g_Height) {
+				fy = vpWidth/as;
+				vpy = (int)(vpHeight-fy)/2;
+				vpHeight = fy;
+			}
+			else {
+				fx = vpHeight/as;
+				vpx = (int)(vpWidth-fx)/2;
+				vpWidth = fx;
+			}
 		}
-		else {
-			fx = vpHeight/as;
-			vpx = (int)(vpWidth-fx)/2;
-			vpWidth = fx;
-		}
+		glViewport((int)vpx, (int)vpy, (int)vpWidth, (int)vpHeight);
 	}
-	glViewport((int)vpx, (int)vpy, (int)vpWidth, (int)vpHeight);
 
 	glMatrixMode(GL_PROJECTION);
     glPushMatrix();

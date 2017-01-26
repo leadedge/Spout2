@@ -144,6 +144,7 @@ copy /y /v "C:\OPENFRAMEWORKS71VS\apps\SpoutSDK\SpoutLibrary\Win32\Release\Spout
       <AdditionalDependencies>opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -167,39 +168,37 @@ copy /y /v "C:\OPENFRAMEWORKS71VS\apps\SpoutSDK\SpoutLibrary\Win32\Release\Spout
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\SpoutDirectX.cpp" />
-    <ClCompile Include="..\..\SpoutGLDXinterop.cpp" />
-    <ClCompile Include="..\..\SpoutGLextensions.cpp" />
-    <ClCompile Include="..\..\SpoutMemoryShare.cpp" />
-    <ClCompile Include="..\..\SpoutReceiver.cpp" />
-    <ClCompile Include="..\..\SpoutSDK.cpp" />
-    <ClCompile Include="..\..\SpoutSender.cpp" />
-    <ClCompile Include="..\..\SpoutSenderMemory.cpp" />
-    <ClCompile Include="..\..\SpoutSenderNames.cpp" />
-    <ClCompile Include="..\..\SpoutSharedMemory.cpp" />
-    <ClCompile Include="SpoutLibrary.cpp" />
+    <ClCompile Include="..\..\SpoutSDK\SpoutCopy.cpp" />
+    <ClCompile Include="..\..\SpoutSDK\SpoutDirectX.cpp" />
+    <ClCompile Include="..\..\SpoutSDK\SpoutGLDXinterop.cpp" />
+    <ClCompile Include="..\..\SpoutSDK\SpoutGLextensions.cpp" />
+    <ClCompile Include="..\..\SpoutSDK\SpoutMemoryShare.cpp" />
+    <ClCompile Include="..\..\SpoutSDK\SpoutReceiver.cpp" />
+    <ClCompile Include="..\..\SpoutSDK\SpoutSDK.cpp" />
+    <ClCompile Include="..\..\SpoutSDK\SpoutSender.cpp" />
+    <ClCompile Include="..\..\SpoutSDK\SpoutSenderNames.cpp" />
+    <ClCompile Include="..\..\SpoutSDK\SpoutSharedMemory.cpp" />
+    <ClCompile Include="..\Source\SpoutLibrary.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Spout.h" />
-    <ClInclude Include="..\..\SpoutCommon.h" />
-    <ClInclude Include="..\..\SpoutDirectX.h" />
-    <ClInclude Include="..\..\SpoutGLDXinterop.h" />
-    <ClInclude Include="..\..\SpoutGLextensions.h" />
-    <ClInclude Include="..\..\SpoutMemoryShare.h" />
-    <ClInclude Include="..\..\SpoutReceiver.h" />
-    <ClInclude Include="..\..\SpoutSDK.h" />
-    <ClInclude Include="..\..\SpoutSender.h" />
-    <ClInclude Include="..\..\SpoutSenderMemory.h" />
-    <ClInclude Include="..\..\SpoutSenderNames.h" />
-    <ClInclude Include="..\..\SpoutSharedMemory.h" />
-    <ClInclude Include="SpoutLibrary.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="..\..\Spout.ico" />
+    <ClInclude Include="..\..\SpoutSDK\Spout.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutCommon.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutCopy.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutDirectX.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutGLDXinterop.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutGLextensions.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutMemoryShare.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutReceiver.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutSDK.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutSender.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutSenderNames.h" />
+    <ClInclude Include="..\..\SpoutSDK\SpoutSharedMemory.h" />
+    <ClInclude Include="..\Source\SpoutLibrary.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

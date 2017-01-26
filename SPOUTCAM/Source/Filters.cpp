@@ -140,7 +140,31 @@
 	11.03.16 - Major change for ReceiveImage into a local texture and rgb buffer and rescaling functions
 	25.03.16 - Revised isExtensionSupported for glGetStringi
 	20.05.16 - Remove testing of sender selection - not working.
-			 - Rebuild for 2.005 release  VS2012 /MT
+	09.06.16 - Rebuild for 2.005 release  VS2012 /MT
+	18.06.16 - Changes to ReceiveImage to use BGR filter buffer directly if possible
+	23.06.16 - change back to 2.004 logic for access locks for texture read/write
+	30.06.16 - VLC debugging added assert throughout
+			   OK with vlc-2.2.0-win32
+			   OK with vlc-2.2.1-win32
+			   Does not crash with vlc-2.2.2-win32, but format is vertical and no image
+			   Crash with vlc-2.2.3-win32
+			   Crash with vlc-2.2.4-win32
+			   OK with vlc-3.0.0-20160613-2343-git-win32 - 13th June - earliest nightly build
+			   OK with vlc-3.0.0-20160629-0242-git-win32 - 29th June - latest nightly build
+	03.06.16 - Rebuild with VS2015 / Windows 8
+			   Rebuilt base classes - Note http://tmhare.mvps.org/faqs.htm#section_compile
+			   You have the "Treat wchar_t as built-in type (Yes (/Zc:wchar_t))"
+			   (under Project Properties -> C++ -> Language)
+	10.07.16   Modified for "SpoutCamConfig" for starting fps and resolution
+	13.07.16   Update for VS2015
+	29.07.16   Update with memcpy optimisations in Spout SDK
+	11.08.16   Debugging - SpoutControls to use sender selected by SpoutCamConfig if it is running
+	06.10.16   Removed SpoutControls for release
+			   Removed ASSERT debugging
+			   Default resolution and frame rate so that the behaviour is the same as previous versions
+	10.01.17   Start change to Spout 2.006
+	23.01.17   Rebuild for Spout 2.006
+
 
 */
 
@@ -169,7 +193,7 @@ CUnknown * WINAPI CVCam::CreateInstance(LPUNKNOWN lpunk, HRESULT *phr)
 	FILE* pCout; // should really be freed on exit 
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutCam ~~ 30-03-16\n");
+	printf("SpoutCam ~~ 10-01-16\n");
 	*/
 
     CUnknown *punk = new CVCam(lpunk, phr);
@@ -195,6 +219,9 @@ CVCam::CVCam(LPUNKNOWN lpunk, HRESULT *phr) :
 // This method calls IUnknown::AddRef on the pointer it returns.
 HRESULT CVCam::QueryInterface(REFIID riid, void **ppv)
 {
+
+	// ASSERT(*ppv); // LJ DEBUG
+
 	//Forward request for IAMStreamConfig & IKsPropertySet to the pin
     if(riid == _uuidof(IAMStreamConfig) || 
 		riid == _uuidof(IAMDroppedFrames)  ||
@@ -209,6 +236,8 @@ HRESULT CVCam::QueryInterface(REFIID riid, void **ppv)
 // If a filter cannot deliver data for some reason, it returns VFW_S_CANT_CUE. 
 HRESULT CVCam::GetState(DWORD dw, FILTER_STATE *pState)
 {
+	// ASSERT(pState); // LJ DEBUG
+
 	CheckPointer(pState, E_POINTER);
 	*pState = m_State;
 	if (m_State == State_Paused) {
@@ -225,6 +254,8 @@ STDMETHODIMP CVCam::JoinFilterGraph(
 		__inout_opt IFilterGraph * pGraph,
 		__in_opt LPCWSTR pName)
 {
+	// ASSERT(pGraph); // LJ DEBUG
+
 	HRESULT hr = CBaseFilter::JoinFilterGraph(pGraph, pName);
 	return hr;
 }
@@ -345,42 +376,96 @@ HRESULT STDMETHODCALLTYPE CVCam::Unregister( void)
 CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
     CSourceStream(NAME("SpoutCam"), phr, pParent, pPinName), m_pParent(pParent)
 {
+	// ASSERT(phr); // LJ DEBUG
+	// ASSERT(pParent); // LJ DEBUG
 
 	bMemoryMode		= false; // Default mode is texture, true means memoryshare
 	bDX9mode        = false; // Not currently used
+	bPBOmode        = false; // Increased speed ?
+	bBGRmode        = false;
 	bInvert         = true;  // Not currently used
 	bInitialized	= false; // Spoutcam reiver
 	bGLinitialized	= false; // OpenGL
 	bDisconnected	= false; // Has to connect before can disconnect or it will never connect
 	glContext		= NULL;  // Context is established within this application
-	g_Width			= 640;	 // if there is no Sender, getmediatype will use defaults
-	g_Height		= 480; 
-	g_SenderWidth	= 640;	 // give it an initial size - this will be changed if a sender is running at start
-	g_SenderHeight	= 480;
 	g_senderBuffer  = NULL;  // local rgb buffer the same size as the sender (can be a different size to the filter)
+	g_Width			= 640;	 // give it an initial size - this will be changed if a sender is running at start
+	g_Height		= 480;
+	g_SenderWidth	= 640;
+	g_SenderHeight	= 480;
 	g_SenderName[0] = 0;
 
-	//
-	// On startup get the active Sender name if any.
-	//
-	if(receiver.GetActiveSender(g_SenderName)) {
-		// Set the global width and height
-		receiver.GetImageSize(g_SenderName, g_SenderWidth, g_SenderHeight, bMemoryMode);
-		g_Width  = g_SenderWidth;
-		g_Height = g_SenderHeight;
+	// Retrieve fps and resolution from registry "SpoutCamConfig"
+	//		o Fps
+	//			10	0
+	//			15	1
+	//			25	2
+	//			30	3
+	//			50	4
+	//			60	5 (default)
+
+	dwFps = 5;     // Fps from SpoutCamConfig (default 5 = 60)
+	if(!receiver.spout.interop.spoutdx.ReadDwordFromRegistry(&dwFps, "Software\\Leading Edge\\SpoutCam", "fps")) {
+		dwFps = 3;
+		g_FrameTime = 166667;
+	}
+	else {
+		SetFps(dwFps);
 	}
 
+	// printf("Fps = %d, FrameTime = %d\n", dwFps, g_FrameTime);
 
+	//		o Resolution
+	//			Sender			0
+	//			320 x 240		1
+	//			640 x 360		2
+	//			640 x 480		3 (default if no sender)
+	//			800 x 600		4
+	//			1024 x 720		5	
+	//			1024 x 768		6
+	//			1280 x 720		7
+	//			1280 x 960		8
+	//			1280 x 1024		9
+	//			1920 x 1080		10
+	//
+	dwResolution = 0;     // Resolution from SpoutCamConfig (default 0 = active sender)
+	if(receiver.spout.interop.spoutdx.ReadDwordFromRegistry(&dwResolution, "Software\\Leading Edge\\SpoutCam", "resolution")) {
+		// if there is no Sender, getmediatype will use the default resolution setting
+		SetResolution(dwResolution);
+	}
+
+	// No sender pre-defined - is one running ?
+	// TODO : starting resolution ?
+	SharedTextureInfo info;
+	if(dwResolution == 0) { // Use active sender
+		// Use the active sender if any
+		if(receiver.GetActiveSender(g_SenderName)) {
+			if (receiver.spout.interop.senders.getSharedInfo(g_SenderName, &info)) {
+				// If not fixed to the selected resolution, use the sender width and height
+				g_Width  = info.width;
+				g_Height = info.height;
+			}
+		}
+	}
+	
+	//
+	// Find out whether memoryshare mode is selected by SpoutDXmode
 	// Cannot use receiver.GetMemoryShareMode() here because 
 	// it requires an OpenGL context, so look at the registry directly.
+	//
 	DWORD dwMemory = 0;
 	if(receiver.spout.interop.spoutdx.ReadDwordFromRegistry(&dwMemory, "Software\\Leading Edge\\Spout", "MemoryShare")) {
 		if(dwMemory == 1) {
 			bMemoryMode = true;
 		}
+		// printf("bMemoryMode = %d\n", bMemoryMode);
 	}
 
-	bDX9mode = receiver.GetDX9(); // Currently not used, might use this flag later
+	// int sharemode = receiver.spout.interop.GetShareMode();
+	// printf("sharemode = %d\n", sharemode);
+
+	m_Fps = dwFps;
+	m_Resolution = dwResolution;
 
 	// Set mediatype to shared width and height or if it did not connect set defaults
 	GetMediaType(4, &m_mt);
@@ -391,24 +476,95 @@ CVCamStream::CVCamStream(HRESULT *phr, CVCam *pParent, LPCWSTR pPinName) :
 
 }
 
+void CVCamStream::SetFps(DWORD dwFps)
+{
+	// The desired average display time of the video frames, in 100-nanosecond units. 
+	// 10fps = 1000000
+	// 15fps =  666667
+	// 25fps =  400000
+	// 30fps =  333333
+	// 50fps =  200000
+	// 60fps =  166667
+	switch(dwFps) {
+		case 0 :
+			g_FrameTime = 1000000; // 10
+			break;
+		case 1 :
+			g_FrameTime = 666667; // 15
+			break;
+		case 2 :
+			g_FrameTime = 400000; // 25
+			break;
+		case 3 :
+			g_FrameTime = 333333; // 30
+			break;
+		case 4 :
+			g_FrameTime = 200000; // 50
+			break;
+		case 5 :
+			g_FrameTime = 166667; // 60
+			break;
+		default :
+			g_FrameTime = 166667; // default 60
+			break;
+	}
+}
+
+
+void CVCamStream::SetResolution(DWORD dwResolution)
+{
+	switch(dwResolution) {
+		// Case 0 - use the active sender or default
+		case 1 :
+			g_Width  = 320; // 1 
+			g_Height = 240;
+			break;
+		case 2 :
+			g_Width  = 640; // 2
+			g_Height = 360;
+			break;
+		case 3 :
+			g_Width  = 640; // 3 (default)
+			g_Height = 480;
+			break;
+		case 4 :
+			g_Width  = 800; // 4
+			g_Height = 600;
+			break;
+		case 5 :
+			g_Width  = 1024; // 5
+			g_Height = 720;
+			break;
+		case 6 :
+			g_Width  = 1024; // 6
+			g_Height = 768;
+			break;
+		case 7 :
+			g_Width  = 1280; // 7
+			g_Height = 720;
+			break;
+		case 8 :
+			g_Width  = 1280; // 8
+			g_Height = 960;
+			break;
+		case 9 :
+			g_Width  = 1280; // 9
+			g_Height = 1024;
+			break;
+		case 10 :
+			g_Width  = 1920; // 10
+			g_Height = 1080;
+			break;
+		default :
+			g_Width  = 640; // 3 (default)
+			g_Height = 480;
+			break;
+	}
+}
+
 CVCamStream::~CVCamStream()
 {
-	/*
-	DWORD dwSpoutPanel = 1;
-	char sendername[256];
-	sendername[0] = 0;
 
-	if(!m_pParent->IsActive() && !bDisconnected) {
-		// Is there an instance running and a sender running ?
-		if(receiver.spout.ReadPathFromRegistry(sendername, "Software\\Leading Edge\\SpoutCam\\", "Sender")) {
-			if(sendername[0] != 0) { // a SpoutCam instance has started
-				receiver.SelectSenderPanel(); // Choose the active sender
-				// Write a registry flag to inform the other instance
-				receiver.spout.interop.spoutdx.WriteDwordToRegistry(dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel");
-			}
-		}
-	}
-	*/
 
 	HGLRC ctx = wglGetCurrentContext();
 	if(ctx != NULL) {
@@ -428,7 +584,9 @@ CVCamStream::~CVCamStream()
 } 
 
 HRESULT CVCamStream::QueryInterface(REFIID riid, void **ppv)
-{   
+{  
+	// ASSERT(*ppv); // LJ DEBUG
+
 	// Standard OLE stuff
     if(riid == _uuidof(IAMStreamConfig))
         *ppv = (IAMStreamConfig*)this;
@@ -455,14 +613,18 @@ HRESULT CVCamStream::QueryInterface(REFIID riid, void **ppv)
 //////////////////////////////////////////////////////////////////////////
 HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 {
+
 	unsigned int imagesize, width, height;
 	long l, lDataLen;
 	bool bResult = false;
-	// DWORD dwSpoutPanel = 0;
 	HRESULT hr=S_OK;;
     BYTE *pData;
-	VIDEOINFOHEADER *pvi = (VIDEOINFOHEADER *) m_mt.Format();
 
+	// ASSERT(pms); // LJ DEBUG
+	// ASSERT(m_mt); // LJ DEBUG
+	// ASSERT(pvi); // LJ DEBUG
+
+	VIDEOINFOHEADER *pvi = (VIDEOINFOHEADER *) m_mt.Format();
 
 	// If graph is inactive stop cueing samples
 	if(!m_pParent->IsActive()) {
@@ -476,6 +638,8 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 	
 	// What Time is it REALLY ???
 	// m_pClock is returned NULL with Skype, but OK for YawCam and VLC
+	// ASSERT(m_pClock); // LJ DEBUG
+
 	m_pParent->GetSyncSource(&m_pClock); 
 	if(m_pClock) {
 		m_pClock->GetTime(&refSync1);
@@ -531,7 +695,6 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 		return NOERROR;
 	}
 
-
 	// Get the current frame size for texture transfers
     imagesize = (unsigned int)pvi->bmiHeader.biSizeImage;
 	width = (unsigned int)pvi->bmiHeader.biWidth;
@@ -559,43 +722,10 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 		if(!receiver.GetActiveSender(g_ActiveSender)) {
 			if(bInitialized) {
 				receiver.ReleaseReceiver();
-				bInitialized = false;
-				/*
-				// Reset the registry entries for SpoutCam
-				dwSpoutPanel = 0;
-				receiver.spout.interop.spoutdx.WriteDwordToRegistry(dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel");
-				receiver.spout.WritePathToRegistry("", "Software\\Leading Edge\\SpoutCam\\", "Sender");
-				*/
 			}
+			bInitialized = false;
 			goto ShowStatic;
 		}
-
-		/*
-		// Has SpoutPanel been opened
-		HANDLE hMutex = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
-		if(hMutex) {
-			bSpoutPanelOpened = true;
-			// We opened it so close it, otherwise it is never released
-			CloseHandle(hMutex);
-		}
-		else {
-			// Wait for SpoutPanel to close
-			if(bSpoutPanelOpened) {
-				// Check the registry for the SpoutPanel flag
-				dwSpoutPanel = 0;
-				if(receiver.spout.interop.spoutdx.ReadDwordFromRegistry(&dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel")) {
-					if(dwSpoutPanel == 1) {
-						if(bInitialized) receiver.ReleaseReceiver();
-						bInitialized = false; // start again
-					}
-				}
-				// Reset the registry flag
-				dwSpoutPanel = 0;
-				receiver.spout.interop.spoutdx.WriteDwordToRegistry(dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel");
-				bSpoutPanelOpened = false;
-			}
-		} // end SpoutPanel check
-		*/
 
 		// everything ready
 		if(!bInitialized) {
@@ -619,7 +749,12 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 				// Found a sender so initialize the receiver
 				if(receiver.CreateReceiver(g_SenderName, g_SenderWidth, g_SenderHeight)) {
 					
-					// Create a local rgb buffer for data tranfser from the shared texture
+					// printf("Created receiver %s %dx%d (global %dx%d)\n", g_SenderName, g_SenderWidth, g_SenderHeight, g_Width, g_Height);
+
+					// Set the sender to the registry for SpoutCamConfig
+					receiver.spout.WritePathToRegistry(g_SenderName, "Software\\Leading Edge\\SpoutCam", "sendername");
+
+					// Create a local rgb buffer for data tranfser from the shared texture if necessary
 					if(g_senderBuffer) free((void *)g_senderBuffer);
 					g_senderBuffer = (unsigned char *)malloc(g_SenderWidth*g_SenderHeight*3*sizeof(unsigned char));
 							
@@ -635,12 +770,24 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 			} // end found a sender
 		} // end not initialized
 		else {
-
 			// Receive the shared texture or memoryshare pixels into a local rgba OpenGL texture
-			width = g_SenderWidth; // for sender size check
+			width  = g_SenderWidth; // for sender size check
 			height = g_SenderHeight;
 
-			if(receiver.ReceiveImage(g_SenderName, width, height, g_senderBuffer, GL_RGB)) {
+			// glBGRmode = GL_RGB or GL_BGR_EXT depending on extension availability
+
+			// Let OpenGL do the Invert and pixel format conversion
+			// Use a local buffer if the filter size is different to the sender being received
+			// or GL_BGR_EXT is not supported, otherwise receive directly into the filter bgr buffer
+			if(g_SenderWidth != g_Width || g_SenderHeight != g_Height || glBGRmode == GL_RGB) {
+				bResult = receiver.ReceiveImage(g_SenderName, width, height, g_senderBuffer, glBGRmode, true);
+			}
+			else {
+				// If already using GL_BGR_EXT and the sizes match, receive directly into pData (BGR)
+				bResult = receiver.ReceiveImage(g_SenderName, width, height, (unsigned char *)pData, glBGRmode, true);
+			}
+
+			if(bResult) {
 
 				// Sender size check
 				if(g_SenderWidth != width || g_SenderHeight != height) {
@@ -652,14 +799,21 @@ HRESULT CVCamStream::FillBuffer(IMediaSample *pms)
 					NumFrames++;
 					return NOERROR;					
 				}
-
+				
+				// For different sender and filter sizes, resample into the filter buffer.
 				if(g_SenderWidth != g_Width || g_SenderHeight != g_Height) {
-					// For different sender and filter sizes, resample the sender buffer into the filter buffer.
-					rgb2bgrResample(g_senderBuffer, (unsigned char *)pData, g_SenderWidth, g_SenderHeight, g_Width, g_Height, true);
+					if(glBGRmode == GL_RGB) {
+						rgb2bgrResample(g_senderBuffer, (unsigned char *)pData, g_SenderWidth, g_SenderHeight, g_Width, g_Height);
+					}
+					else {
+						bgr2bgrResample(g_senderBuffer, (unsigned char *)pData, g_SenderWidth, g_SenderHeight, g_Width, g_Height);
+					}
 				}
 				else {
-					// Otherwise if the buffer dimensions match just convert rgb to bgr
-					rgb2bgr((void *)g_senderBuffer, (void *)pData, g_SenderWidth, g_SenderHeight, true);
+					// conversion is only needed if GL_BGR_EXT is not supported and the received buffer is RGB
+					if(glBGRmode == GL_RGB)  {
+						rgb2bgr(g_senderBuffer, (unsigned char *)pData, g_SenderWidth, g_SenderHeight);
+					}
 				}
 
 				NumFrames++;
@@ -695,6 +849,8 @@ ShowStatic :
 // Ignore quality management messages sent from the downstream filter
 STDMETHODIMP CVCamStream::Notify(IBaseFilter * pSender, Quality q)
 {
+	// ASSERT(pSender); // LJ DEBUG
+
     return E_NOTIMPL;
 } // Notify
 
@@ -705,7 +861,11 @@ STDMETHODIMP CVCamStream::Notify(IBaseFilter * pSender, Quality q)
 //////////////////////////////////////////////////////////////////////////
 HRESULT CVCamStream::SetMediaType(const CMediaType *pmt)
 {
-	DECLARE_PTR(VIDEOINFOHEADER, pvi, pmt->Format());
+	ASSERT(pmt); // LJ DEBUG
+
+	// LJ DEBUG
+	// warning C4189: 'pvi' : local variable is initialized but not referenced
+	// DECLARE_PTR(VIDEOINFOHEADER, pvi, pmt->Format());
     
 	// Pass the call up to my base class
 	HRESULT hr = CSourceStream::SetMediaType(pmt);
@@ -716,6 +876,7 @@ HRESULT CVCamStream::SetMediaType(const CMediaType *pmt)
 // See Directshow help topic for IAMStreamConfig for details on this method
 HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType *pmt)
 {
+	// ASSERT(pmt); // LJ DEBUG
 	unsigned int width, height;
 
 	if(iPosition < 0) {
@@ -755,9 +916,11 @@ HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType *pmt)
 	pvi->bmiHeader.biSizeImage			= GetBitmapSize(&pvi->bmiHeader);
 
 	// The desired average display time of the video frames, in 100-nanosecond units. 
-	// 60fps = 166667
-	// 30fps = 333333
-	pvi->AvgTimePerFrame = 166667; // 60fps
+	// 10fps = 1000000
+	// 15fps =  666667
+	// 30fps =  333333
+	// 60fps =  166667
+	pvi->AvgTimePerFrame = g_FrameTime; // From SpoutCamConfig - 60fps default
 
     SetRectEmpty(&(pvi->rcSource)); // we want the whole image area rendered.
     SetRectEmpty(&(pvi->rcTarget)); // no particular destination rectangle
@@ -781,6 +944,8 @@ HRESULT CVCamStream::GetMediaType(int iPosition, CMediaType *pmt)
 // This method is called to see if a given output format is supported
 HRESULT CVCamStream::CheckMediaType(const CMediaType *pMediaType)
 {
+	// ASSERT(pMediaType); // LJ DEBUG
+
 	if(*pMediaType != m_mt) 
         return E_INVALIDARG;
 
@@ -798,6 +963,9 @@ HRESULT CVCamStream::CheckMediaType(const CMediaType *pMediaType)
 //
 HRESULT CVCamStream::DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROPERTIES *pProperties)
 {
+	// ASSERT(pAlloc); // LJ DEBUG
+	// ASSERT(pProperties); // LJ DEBUG
+
     CAutoLock cAutoLock(m_pFilter->pStateLock());
     HRESULT hr = NOERROR;
 
@@ -806,6 +974,7 @@ HRESULT CVCamStream::DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROPERTIE
     pProperties->cbBuffer = pvi->bmiHeader.biSizeImage;
 
 	// printf("CVCamStream::DecideBufferSize()\n");
+	// MessageBoxA(NULL, "CVCamStream::DecideBufferSize 1", "SpoutCam", MB_OK);
 
     ASSERT(pProperties->cbBuffer);
 
@@ -820,6 +989,8 @@ HRESULT CVCamStream::DecideBufferSize(IMemAllocator *pAlloc, ALLOCATOR_PROPERTIE
 	// Is this allocator unsuitable?
     if(Actual.cbBuffer < pProperties->cbBuffer) return E_FAIL;
 
+	// MessageBoxA(NULL, "CVCamStream::DecideBufferSize end", "SpoutCam", MB_OK);
+
     return NOERROR;
 
 } // DecideBufferSize
@@ -830,9 +1001,11 @@ HRESULT CVCamStream::OnThreadCreate()
 {
     m_rtLastTime = 0;
 	dwLastTime = 0;
-	IMediaSample* pSample = NULL;
+	// IMediaSample* pSample = NULL;
 	NumDroppedFrames = 0;
 	NumFrames = 0;
+	
+	// MessageBoxA(NULL, "CVCamStream::OnThreadCreate", "SpoutCam", MB_OK);
 
     return NOERROR;
 
@@ -844,21 +1017,28 @@ HRESULT CVCamStream::OnThreadCreate()
 //////////////////////////////////////////////////////////////////////////
 HRESULT STDMETHODCALLTYPE CVCamStream::SetFormat(AM_MEDIA_TYPE *pmt)
 {
+	// ASSERT(pmt); // LJ DEBUG
+
+	// MessageBoxA(NULL, "CVCamStream::SetFormat", "SpoutCam", MB_OK);
+
 	// http://kbi.theelude.eu/?p=161
 	if(!pmt) return S_OK; // Default? red5
 
 	VIDEOINFOHEADER *pvi = (VIDEOINFOHEADER *)(pmt->pbFormat);
 	VIDEOINFOHEADER *mvi = (VIDEOINFOHEADER *)(m_mt.Format ());
+
+	// ASSERT(pvi); // LJ DEBUG
+	// ASSERT(mvi); // LJ DEBUG
+
 	if(pvi->bmiHeader.biHeight !=mvi->bmiHeader.biHeight || 
 		pvi->bmiHeader.biWidth  != mvi->bmiHeader.biWidth || 
 		pvi->bmiHeader.biBitCount !=mvi->bmiHeader.biBitCount  )
 		return VFW_E_INVALIDMEDIATYPE;	
 
-	// fps
-	// if(pvi->AvgTimePerFrame <10000000/30)
-	if(pvi->AvgTimePerFrame <10000000/60)
+	// maximum fps - minimum frame time
+	if(pvi->AvgTimePerFrame < 10000000/60)
 		return VFW_E_INVALIDMEDIATYPE;
-	if(pvi->AvgTimePerFrame <1)
+	if(pvi->AvgTimePerFrame < 1)
 		return VFW_E_INVALIDMEDIATYPE;
 
     return S_OK;
@@ -866,6 +1046,8 @@ HRESULT STDMETHODCALLTYPE CVCamStream::SetFormat(AM_MEDIA_TYPE *pmt)
 
 HRESULT STDMETHODCALLTYPE CVCamStream::GetFormat(AM_MEDIA_TYPE **ppmt)
 {
+	// MessageBoxA(NULL, "CVCamStream::GetFormat", "SpoutCam", MB_OK);
+
     *ppmt = CreateMediaType(&m_mt);
     return S_OK;
 }
@@ -882,14 +1064,19 @@ HRESULT STDMETHODCALLTYPE CVCamStream::GetStreamCaps(int iIndex, AM_MEDIA_TYPE *
 
 	unsigned int width, height;
 
+	// MessageBoxA(NULL, "CVCamStream::GetStreamCaps", "SpoutCam", MB_OK);
+
     *pmt = CreateMediaType(&m_mt);
+
+	// ASSERT(pmt); // LJ DEBUG
+
     DECLARE_PTR(VIDEOINFOHEADER, pvi, (*pmt)->pbFormat);
 
 	if (iIndex == 0) iIndex = 1;
 
 	if(g_Width == 0 || g_Height == 0) {
-		width  = 320;
-		height = 240;
+		width  = 640;
+		height = 480;
 	}
 	else {
 		// as per sending app
@@ -985,8 +1172,10 @@ HRESULT STDMETHODCALLTYPE CVCamStream::GetDroppedInfo (long lSize,long *plArraym
 
 HRESULT STDMETHODCALLTYPE CVCamStream::GetAverageFrameSize (long* plAverageSize)
 {
+	// MessageBoxA(NULL, "CVCamStream::GetAverageFrameSize", "SpoutCam", MB_OK);
+
 	if(!plAverageSize)return E_POINTER;
-	*plAverageSize=307200;
+	*plAverageSize=307200; // 640x480
 	return S_OK;
 }
 
@@ -998,6 +1187,7 @@ HRESULT STDMETHODCALLTYPE CVCamStream::GetAverageFrameSize (long* plAverageSize)
 HRESULT CVCamStream::Set(REFGUID guidPropSet, DWORD dwID, void *pInstanceData, 
                         DWORD cbInstanceData, void *pPropData, DWORD cbPropData)
 {
+	
 	// Set: Cannot set any properties.
     return E_NOTIMPL;
 }
@@ -1013,6 +1203,8 @@ HRESULT CVCamStream::Get(
     DWORD *pcbReturned     // Return the size of the property.
 	)
 {
+
+	// MessageBoxA(NULL, "CVCamStream::Get", "SpoutCam", MB_OK);
 
     if (guidPropSet != AMPROPSETID_Pin)             return E_PROP_SET_UNSUPPORTED;
     if (dwPropID != AMPROPERTY_PIN_CATEGORY)        return E_PROP_ID_UNSUPPORTED;
@@ -1030,6 +1222,8 @@ HRESULT CVCamStream::Get(
 // QuerySupported: Query whether the pin supports the specified property.
 HRESULT CVCamStream::QuerySupported(REFGUID guidPropSet, DWORD dwPropID, DWORD *pTypeSupport)
 {
+	// MessageBoxA(NULL, "CVCamStream::QuerySupported", "SpoutCam", MB_OK);
+
     if (guidPropSet != AMPROPSETID_Pin) return E_PROP_SET_UNSUPPORTED;
     if (dwPropID != AMPROPERTY_PIN_CATEGORY) return E_PROP_ID_UNSUPPORTED;
     // We support getting this property, but not setting it.
@@ -1090,13 +1284,7 @@ HRESULT STDMETHODCALLTYPE CVCamStream::ReceiveConnection(IPin *pConnector, const
 HRESULT STDMETHODCALLTYPE CVCamStream::Disconnect( void)
 {
 	bDisconnected = true;
-
-	/*
-	// Reset the registry entries for SpoutCam
-	DWORD dwSpoutPanel = 0;
-	receiver.spout.interop.spoutdx.WriteDwordToRegistry(dwSpoutPanel, "Software\\Leading Edge\\SpoutCam\\", "SpoutPanel");
-	receiver.spout.WritePathToRegistry("", "Software\\Leading Edge\\SpoutCam\\", "Sender");
-	*/
+	// MessageBoxA(NULL, "CVCamStream::Disconnect", "SpoutCam", MB_OK);
 
 	return CSourceStream::Disconnect( );
 }
@@ -1158,8 +1346,10 @@ HRESULT CVCamStream::Active(void)  {
 bool CVCamStream::InitOpenGL()
 {
 	HDC hdc = NULL;
-	HWND hwnd = NULL;
+	// HWND hwnd = NULL;
 	HGLRC hRc = NULL;
+
+	// MessageBoxA(NULL, "CVCamStream::InitOpenGL 1", "SpoutCam", MB_OK);
 
 	glContext = wglGetCurrentContext();
 	// printf("InitOpenGL (ctx = %d)\n", glContext);
@@ -1258,6 +1448,22 @@ bool CVCamStream::InitOpenGL()
 
 	} // end no glcontext 
 
+
+	// Get the various modes now there is an OpenGL context
+	bDX9mode = receiver.GetDX9(); // Currently not used, might use this flag later
+
+	// PBO for texture transfer
+	bPBOmode = true;
+	receiver.spout.SetBufferMode(true);
+
+	// Are BGRA extensions available ?
+	bBGRmode = receiver.spout.IsBGRAavailable();
+	if(bBGRmode) 
+		glBGRmode = GL_BGR_EXT;
+	else
+		glBGRmode = GL_RGB;
+
+
 	return true;
 
 } // end InitOpenGL
@@ -1267,7 +1473,7 @@ bool CVCamStream::InitOpenGL()
 void CVCamStream::GLerror() {
 	GLenum err;
 	while ((err = glGetError()) != GL_NO_ERROR) {
-		printf("GL error = %d (0x%x)\n", err, err);
+		// printf("GL error = %d (0x%x)\n", err, err);
 		// printf("GL error = %d (0x%x) %s\n", err, err, gluErrorString(err));
 	}
 }	
@@ -1378,5 +1584,86 @@ void CVCamStream::rgb2bgrResample(unsigned char* source, unsigned char* dest,
 	}
 }
 
+void CVCamStream::bgr2bgrResample(unsigned char* source, unsigned char* dest, 
+								  unsigned int sourceWidth, unsigned int sourceHeight, 
+								  unsigned int destWidth, unsigned int destHeight, bool bInvert)
+{
+	unsigned char *srcBuffer = (unsigned char *)source; // void to unsigned char pointer
+	unsigned char *dstBuffer = (unsigned char *)dest;
 
+	float x_ratio = (float)sourceWidth/(float)destWidth ;
+	float y_ratio = (float)sourceHeight/(float)destHeight ;
+	float px, py ; 
+	unsigned int i, j;
+	unsigned int pixel, nearestMatch;
+	for(i = 0; i<destHeight; i++) {
+		for(j = 0; j<destWidth; j++) {
+			px = floor((float)j*x_ratio);
+			py = floor((float)i*y_ratio);
+			if(bInvert)
+				pixel = (destHeight-i-1)*destWidth*3 + j*3; // flip vertically
+			else
+				pixel = i*destWidth*3 + j*3;
+			nearestMatch = (int)(py*sourceWidth*3 + px*3);
+			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 0];
+			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
+			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 2];
+		}
+	}
+}
+
+/*
+bool CVCamStream::FlipRgbBuffer(const unsigned char *src, 
+								  unsigned char *dst, 
+								  unsigned int width, 
+								  unsigned int height, 
+								  GLenum glFormat) 
+{
+	unsigned char *From, *To;
+	int pitch;
+
+	if(glFormat == GL_RGB)
+		pitch = width*3;
+	else
+		pitch = width*4;
+
+	From = (unsigned char *)src;
+	To = dst;
+	
+	unsigned int line_s = 0;
+	unsigned int line_t = (height-1)*pitch;
+
+	for(unsigned int y = 0; y<height; y++) {
+		CopyMemory((void *)(To+line_t), (void *)(From+line_s), pitch);
+		line_s += pitch;
+		line_t -= pitch;
+	}
+
+	return true;
+}
+*/
+
+//
+// Update the sender from the registry
+//
+bool CVCamStream::UpdateSender()
+{
+	// printf("CVCamStream::UpdateSender()\n");
+
+	// Has a sender been selected by SpoutCam config ?
+	SharedTextureInfo info;
+	char sendername[256];
+	if (receiver.spout.ReadPathFromRegistry(sendername, "Software\\Leading Edge\\SpoutCam", "sendername")) {
+		if(sendername[0]) {
+			// Does the sender exist ?
+			if (receiver.spout.interop.senders.getSharedInfo(sendername, &info)) {
+				strcpy_s(g_SenderName, 256, sendername);
+				// Set active if not already so it is detected before CreateReceiver
+				receiver.SetActiveSender(g_SenderName);
+			}
+		}
+		return true;
+	}
+	return false;
+}
 

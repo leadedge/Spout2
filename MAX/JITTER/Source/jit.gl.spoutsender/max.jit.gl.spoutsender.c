@@ -18,7 +18,9 @@
 			 - Recompiled /MT Spout 2.005 - 32bit VS2012 - Version 2.010.12
 	16.05.16 - Changed Version numbering to allow the Max Package manager
 			   to show 2.0.4 -> 2.0.5 for the package, VS2010 option removed.
-	02.06.16 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.10
+	21.06.16 - Recompiled /MT Spout 2.005 - 64bit and 32bit VS2012 - Version 2.0.5.10
+	15.01.17 - Update to Spout 2.006
+			   Vers 2.006.0
 
 	----------------------------------------------------
 		
@@ -29,7 +31,7 @@
 
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-		Copyright (c) 2015-2016 - Lynn Jarvis. All rights reserved.
+		Copyright (c) 2015-2017 - Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -89,9 +91,9 @@ int C74_EXPORT main(void)
 	t_class *maxclass, *jitclass;
 
 	#ifdef ENV64BIT
-	post("jit_gl_spout_sender - Vers 2.0.5.10 (64 bit)");
+	post("jit_gl_spout_sender - Vers 2.0.6.0 (64 bit)");
 	#else
-	post("jit_gl_spout_sender - Vers 2.0.5.10 (32 bit)");
+	post("jit_gl_spout_sender - Vers 2.0.6.0 (32 bit)");
 	#endif
 
 

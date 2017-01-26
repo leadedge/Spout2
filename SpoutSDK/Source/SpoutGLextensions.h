@@ -31,7 +31,7 @@
 //
 /*
 
-		Copyright (c) 2014-2016, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2017, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -71,18 +71,15 @@
 #include <windows.h>
 #include <stdio.h> // for debug print
 #ifdef USE_GLEW
-#include <GL\glew.h>
-#include <GL\wglew.h> // wglew.h and glxew.h, which define the available WGL and GLX extensions
-#endif
-
-
-// For Max/Msp Jitter
-#ifndef USE_GLEW
-#include <GL\GL.h>
-#ifndef USE_FBO_EXTENSIONS
-#include "jit.gl.h"
-#define glDeleteFramebuffersEXT	(_jit_gl_get_proctable()->DeleteFramebuffersEXT)
-#endif
+	#include <GL\glew.h>
+	#include <GL\wglew.h> // wglew.h and glxew.h, which define the available WGL and GLX extensions
+#else
+	#include <GL\GL.h>
+	#ifndef USE_FBO_EXTENSIONS
+		// For Max/Msp Jitter
+		#include "jit.gl.h"
+		#define glDeleteFramebuffersEXT	(_jit_gl_get_proctable()->DeleteFramebuffersEXT)
+	#endif
 #endif
 
 #ifndef GL_CLAMP_TO_EDGE

@@ -524,7 +524,11 @@ SPOUT NOTES :
 	15.09.15 - Recompile for 2.005 release - revised memoryshare SDK
 	08.11.15 - removed directX9/directX11 option for 2.005
 			 - OpenSender and milkdropfs.cpp - removed XRGB format option
-	30.03.16 - Rebuild for Spout 2.005
+	02.06.16 - Rebuild for Spout 2.005
+	22.01.17 - Create sender with default ARGB format
+			 - Clear alpha to white in milkdropfs.cpp
+			 - Rebuild for Spout 2.006
+
 
 */
 
@@ -968,7 +972,7 @@ void CPlugin::MyPreInitialize()
 	bInitialized = false;
 	bSpoutOut = true; // User on/off toggle
 	// bUseDX11 = false; // Set true to use DirectX11 - DX9 by default - picked up from config file
-	bMemoryMode = false; // texture share by default
+	// bMemoryMode = false; // texture share by default
 	bSpoutChanged = false; // set to write config on exit
 	// DirectX 11 mode uses a format that is incompatible with DirectX 9 receivers
 	// DirectX9 mode can fail with some drivers. Noted on Intel/NVIDIA laptop.
@@ -9890,6 +9894,7 @@ void CPlugin::GenCompPShaderText(char *szShaderText, float brightness, float ve_
 //
 bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 {
+	bool bDX9 = false;
 
 	if(!InitOpenGL()) {
 		return false;
@@ -9902,16 +9907,9 @@ bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 
 	// This is a sender so create one
 	// This can be DirectX 11 which is the default
-	// The default DirectX 11 texture format is DXGI_FORMAT_B8G8R8A8_UNORM but we need X8 instead of A8
-
-	// To use DirectX 9 we need to specify that first
-	// Flag option for DX9 of DX11
-	// LJ DEBUG - check directX mode for 2.005
-
+	// Create with default format because X8R8G8B8 
+	// alpha is cleared before pixels are sent to Spout
 	if(spoutsender.CreateSender(WinampSenderName, width, height)) {
-		// printf("    Created sender %dx%d OK\n", width, height);
-		// Check for memoryshare mode
-		bMemoryMode = spoutsender.GetMemoryShareMode();
 		g_Width  = width;
 		g_Height = height;
 		bSpoutOut = true;
@@ -9935,15 +9933,6 @@ bool CPlugin::OpenSender(unsigned int width, unsigned int height)
 		// We have to set the shared texture format as D3DFMT_X8R8G8B8 so that receivers know it
 		// because the default format argument is zero and that assumes D3DFMT_A8R8G8B8
 		bRet = spoutsender.CreateSender(WinampSenderName, width, height, (DWORD)D3DFMT_X8R8G8B8);
-	}
-
-	if(bRet) {
-		// printf("    Created sender %dx%d OK\n", width, height);
-		g_Width  = width;
-		g_Height = height;
-		bSpoutOut = true;
-		bInitialized = true;
-		return true;
 	}
 	*/
 

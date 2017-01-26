@@ -1305,13 +1305,18 @@ void CPlugin::RenderFrame(int bRedraw)
 				// Lock the surface using some flags for optimization
 				hr = offscreen_surface->LockRect(&d3dlr, NULL, D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_READONLY);
 				if(SUCCEEDED(hr)) {
-					
 					// Can find the backbuffer format here, but a variable format isn't
-					// implemented so the user has to set up for X8R8G8B8
-
+					// implemented so the user has to set up for X8R8G8B8.
+					// Clear alpha to white so that rgba can be used in Processing
+					unsigned char *src = (unsigned char *)d3dlr.pBits;
+					for(unsigned int i=0; i<g_Height; i++) {
+						for(unsigned int j=0; j<g_Width*4; j+=4) {
+							src+=3;
+							*src++ = 255;
+						}
+					}
 					// Pass the pixels to spout
 					spoutsender.SendImage((const unsigned char *)d3dlr.pBits, g_Width, g_Height, GL_BGRA_EXT); // 2.005
-
 				}
 			}
 		}

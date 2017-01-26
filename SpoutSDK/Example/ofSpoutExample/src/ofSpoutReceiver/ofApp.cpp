@@ -1,12 +1,15 @@
 /*
 
-	Spout OpenFrameworks Receiver example - ofApp.cpp
+	Spout OpenFrameworks Receiver example
 
     Visual Studio using the Spout SDK
 
     Search for SPOUT for additions to a typical Openframeworks application
 
-	Copyright (C) 2015-2016 Lynn Jarvis.
+	Copyright (C) 2017 Lynn Jarvis.
+
+	03.08.15 - Created project
+	10.01.17 - Update for Spout 2.006
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -30,20 +33,14 @@ void ofApp::setup(){
 
 	ofBackground(0, 0, 0);
 
-	// Set the window title to show that it is a Spout Receiver
-	ofSetWindowTitle("OF Spout Receiver");
-	// Set the window icon from resources
-	SetClassLong(GetActiveWindow(), GCL_HICON, (LONG)LoadIconA(GetModuleHandle(NULL), MAKEINTRESOURCEA(IDI_ICON1)));
-
-	spoutreceiver = new SpoutReceiver; // Create a Spout receiver object
-	bInitialized  = false;             // Spout receiver initialization
-	SenderName[0] = 0;                 // the name will be filled when the receiver connects to a sender
+	ofSetWindowTitle("OF Spout Receiver"); // Set the window title to show that it is a Spout Receiver
+	bInitialized  = false; // Spout receiver initialization
+	SenderName[0] = 0; // the name will be filled when the receiver connects to a sender
 
 	// Allocate a texture for shared texture transfers
 	// An openFrameWorks texture is used so that it can be drawn.
 	g_Width  = ofGetWidth();
 	g_Height = ofGetHeight();
-
 	myTexture.allocate(g_Width, g_Height, GL_RGBA);
 
 } // end setup
@@ -60,11 +57,8 @@ void ofApp::draw() {
 	char str[256];
 	ofSetColor(255);
 	unsigned int width, height;
-	char tempname[256]; // temp name
 
-	// A render window must be available for Spout initialization
-	// and might not be available in "update", so do it now
-	// when there is definitely a render window.
+	// ====== SPOUT =====
 	//
 	// INITIALIZE A RECEIVER
 	//
@@ -76,8 +70,7 @@ void ofApp::draw() {
 	// "CreateReceiver" will update the passed name, and dimensions.
 	if(!bInitialized) {
 		// Create the receiver and specify true to attempt to connect to the active sender
-		if(spoutreceiver->CreateReceiver(SenderName, width, height, true)) {
-
+		if(spoutreceiver.CreateReceiver(SenderName, width, height, true)) {
 			// Is the size of the detected sender different ?
 			if(width != g_Width || height != g_Height ) {
 				// The sender dimensions have changed so update the global width and height
@@ -106,10 +99,8 @@ void ofApp::draw() {
 		height = g_Height;
 
 		// Try to receive into the local the texture at the current size
-		// NOTE: If a host calls ReceiveTexture with a framebuffer object bound,
-		// include the FBO id in the ReceiveTexture call so that the binding is restored
-		// afterwards because Spout makes use of its own FBO for intermediate rendering.
-		if(spoutreceiver->ReceiveTexture(SenderName, width, height, myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
+		if(spoutreceiver.ReceiveTexture(SenderName, width, height, 
+			myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
 
 			//	If the width and height are changed, the local texture has to be resized.
 			if(width != g_Width || height != g_Height ) {
@@ -123,19 +114,19 @@ void ofApp::draw() {
 				return; // quit for next round
 			}
 
-			// Otherwise draw the texture and fill the screen
+			// Otherwise draw the texture
 			myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 			// Show what it is receiving
 			sprintf(str, "Receiving from : [%s]", SenderName);
 			ofDrawBitmapString(str, 20, 20);
-			sprintf(str, "RH click select sender", SenderName);
+			sprintf(str, "RH click select sender");
 			ofDrawBitmapString(str, 15, ofGetHeight()-20);
 		}
 		else {
 			// A texture read failure might happen if the sender
 			// is closed. Release the receiver and start again.
-			spoutreceiver->ReleaseReceiver();
+			spoutreceiver.ReleaseReceiver();
 			bInitialized = false;
 			return;
 		}
@@ -153,17 +144,19 @@ void ofApp::draw() {
 void ofApp::exit() {
 
     // ====== SPOUT =====
-	spoutreceiver->ReleaseReceiver(); // Release the receiver
+	if(bInitialized) 
+		spoutreceiver.ReleaseReceiver(); // Release the receiver
 
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
 
+	// ====== SPOUT =====
 	if(button == 2) { // rh button
 		// Open the sender selection panel
 		// Spout must have been installed
-		spoutreceiver->SelectSenderPanel();
+		spoutreceiver.SelectSenderPanel();
 	}
 }
 

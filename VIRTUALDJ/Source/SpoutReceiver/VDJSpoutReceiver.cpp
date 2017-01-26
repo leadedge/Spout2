@@ -41,13 +41,15 @@
 //		18.02.16	Added an optional define "SPOUTEFFECT" to compile as an effect plugin
 //					Should be copied to the "Plugins\VideoEffect" folder as "VDJSpoutEffect"
 //					Version 1.09
-//		29.03.16 - rebuild for Spout 2.005 release Version 1.10
+//		23.06.16 - rebuild for Spout 2.005 release Version 1.10
 //				   VS2012 /MT
+//		23.01.17 - Rebuild for 2.006 VS2012 /MD
+//				   Version 1.11
 //
 //
 //		------------------------------------------------------------
 //
-//		Copyright (C) 2015-2016. Lynn Jarvis, Leading Edge. Pty. Ltd.
+//		Copyright (C) 2015-2017. Lynn Jarvis, Leading Edge. Pty. Ltd.
 //
 //		This program is free software: you can redistribute it and/or modify
 //		it under the terms of the GNU Lesser General Public License as published by
@@ -87,7 +89,7 @@ SpoutReceiverPlugin::SpoutReceiverPlugin()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("VDJSpoutReceiver - 1.10\n");
+	printf("VDJSpoutReceiver - 1.11\n");
 	*/
 
 	// DirectX9
@@ -134,10 +136,10 @@ HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 	infos->Description = (char *)"Receives frames from a Spout Sender\nas an effect plugin\nSpout : http://Spout.zeal.co/";
 #else
 	infos->PluginName = (char *)"VDJSpoutReceiver";
-	infos->Description = (char *)"Receives frames from a Spout Sender\nSpout : http://Spout.zeal.co/";
+	infos->Description = (char *)"Receives frames from a Spout Sender\nas a visualisation plugin\nSpout : http://Spout.zeal.co/";
 #endif
 
-	infos->Version = (char *)"v1.10n";
+	infos->Version = (char *)"v1.11n";
     infos->Bitmap = NULL;
 
 #ifndef SPOUTEFFECT

@@ -76,10 +76,10 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | BS_TOP | BS_MULTILINE | WS_TABSTOP,22,139,227,10
 
 	// SPOUT
-    CONTROL         "Enable Spout output [default: ON]", IDC_CB_SPOUTOUT,
+    CONTROL         "Enable Spout [default: ON]", IDC_CB_SPOUTOUT,
                     "Button",BS_AUTOCHECKBOX | BS_TOP | BS_MULTILINE | WS_TABSTOP,22,155,227,10
-    CONTROL         "Enable Spout DirectX 11 mode [default: OFF]", IDC_CB_SPOUTDX11,
-                    "Button",BS_AUTOCHECKBOX | BS_TOP | BS_MULTILINE | WS_TABSTOP,22,166,227,10
+    // CONTROL         "Enable Spout DirectX 11 mode [default: OFF]", IDC_CB_SPOUTDX11,
+    //                "Button",BS_AUTOCHECKBOX | BS_TOP | BS_MULTILINE | WS_TABSTOP,22,166,227,10
 
 	/*
 	CONTROL         "Start milkdrop with preset lock [scroll lock key] ON",IDC_CB_SCROLLON,

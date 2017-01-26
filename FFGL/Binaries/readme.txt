@@ -1,6 +1,13 @@
-“SpoutReceiver2.dll” and “SpoutSender2.dll” are 32bit FreeframeGL plugins that provide Spout output and Spout input for host applications that support FreeframeGL.
+FREEFRAMEGL
 
-They are not needed if Spout is integrated in the application itself.
+“SpoutReceiver2.dll” and “SpoutSender2.dll” are 32bit FreeframeGL plugins that provide Spout output and input for host applications that support FreeframeGL.
+
+Spout Sender - Vers 3.020
+Spout Receiver - Vers 3.030
+
+They are needed if Spout is not integrated in the application itself.
+
+The versions for Spout 2.006 include CPU texture sharing.
 
 The dlls must be copied into the plugin folder that has been defined for the the host application.
 

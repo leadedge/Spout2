@@ -22,10 +22,14 @@
 //		14.11.15	- changed functions to "const char *" where required
 //		18.11.15	- added CheckReceiver so that DrawSharedTexture can be used by a receiver
 //		18.06.16	- Add invert to ReceiveImage
+//		17.09.16	- removed CheckSpout2004() from constructor
+//		13.01.17	- Add SetCPUmode, GetCPUmode, SetBufferMode, GetBufferMode
+//					- Add HostFBO arg to DrawSharedTexture
+//		15.01.17	- Add GetShareMode, SetShareMode
 //
 // ====================================================================================
 /*
-		Copyright (c) 2014-2016, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2017, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -52,9 +56,7 @@
 
 SpoutReceiver::SpoutReceiver()
 {
-	bInv = false; // 2.005 default
-	// 2.004 - 2.005 transition to set invert true, otherwise 2.005 default is false
-	bInv = spout.interop.CheckSpout2004();
+
 }
 
 
@@ -132,9 +134,9 @@ int  SpoutReceiver::GetSenderCount()
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert)
+bool SpoutReceiver::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
 {
-	return spout.DrawSharedTexture(max_x, max_y, aspect, bInvert);
+	return spout.DrawSharedTexture(max_x, max_y, aspect, bInvert, HostFBO);
 }
 
 
@@ -183,6 +185,41 @@ bool SpoutReceiver::GetMemoryShareMode()
 	return spout.GetMemoryShareMode();
 }
 
+//---------------------------------------------------------
+bool SpoutReceiver::SetCPUmode(bool bCPU)
+{
+	return (spout.SetCPUmode(bCPU));
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetCPUmode()
+{
+	return (spout.GetCPUmode());
+}
+
+//---------------------------------------------------------
+int SpoutReceiver::GetShareMode()
+{
+	return (spout.GetShareMode());
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::SetShareMode(int mode)
+{
+	return (spout.SetShareMode(mode));
+}
+
+//---------------------------------------------------------
+void SpoutReceiver::SetBufferMode(bool bActive)
+{
+	spout.SetBufferMode(bActive);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetBufferMode()
+{
+	return spout.GetBufferMode();
+}
 
 //---------------------------------------------------------
 bool SpoutReceiver::SetDX9(bool bDX9)

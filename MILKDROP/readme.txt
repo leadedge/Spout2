@@ -1,5 +1,4 @@
-Milkdrop visualization plugin for Winamp
-
+MILKDROP PLUGIN
 
 vis_milk2.dll is a 32bit visualization plugin for Winamp modified for Spout output.
 
@@ -26,10 +25,8 @@ The selected settings are saved when the Visualizer is stopped.
 
 Notes :
 
-Milkdrop for Winamp is DirectX9 code and is compatible only with early
-versions of Visual Studio compiler. Compatibility is not guaranteed as
-time goes on. Currently the plugin works with all applications built
-using the Spout 2.005 SDK but will not work with applications using the
-SpoutLibrary dll.
+Milkdrop for Winamp is compatible only with early versions of Visual Studio compiler.
+
+Currently the plugin works with all applications built using the Spout 2.006 SDK and the SpoutLibrary dll.
 
 ================================================================

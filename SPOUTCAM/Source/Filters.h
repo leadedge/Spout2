@@ -6,7 +6,7 @@
 //	Updated 03.01.14 - cleanup
 //	Updated 10.04.14
 //	28.09.15 - updated with modifications by John MacCormick, 2012.
-//
+//	10.07.16   Modified for "SpoutCamConfig" for starting fps and resolution
 //
 
 #pragma once
@@ -15,8 +15,11 @@
 
 // #define GLEW_STATIC // to use glew32s.lib instead of glew32.lib otherwise there is a redefinition error
 
-#include "../../../SpoutSDK/Spout.h"
-#include "../../../SpoutSDK/SpoutMemoryShare.h" //for initial memoryshare detection
+#include "../../../SpoutSDK3/Spout.h"
+#include "../../../SpoutSDK3/SpoutControls.h"
+
+#include "../../../SpoutSDK3/SpoutMemoryShare.h" //for initial memoryshare detection
+
 // #include <glut.h>
 #include <streams.h>
 
@@ -151,6 +154,14 @@ public:
     HRESULT SetMediaType(const CMediaType *pmt);
     HRESULT OnThreadCreate(void);
 
+	int m_Fps;
+	int m_Resolution;
+	bool m_bLock;
+	
+	void SetFps(DWORD dwFps);
+	void SetResolution(DWORD dwResolution);
+	bool UpdateSender();
+
 
 	// ============== IPC functions ==============
 	//
@@ -166,19 +177,28 @@ public:
 
 	bool bMemoryMode;				// true = memory, false = texture
 	bool bDX9mode;
+	bool bPBOmode;
+	bool bBGRmode;
 	bool bInvert;
 	bool bDebug;
 	bool bInitialized;
 	bool bGLinitialized;
 	bool bDisconnected;				// Sender had started but it has stopped or changed image size
-	bool bSpoutPanelOpened;         // User has not activated SpoutPanel
+	// bool bSpoutPanelOpened;         // User has not activated SpoutPanel
+
+	GLenum glBGRmode;
 
 	unsigned int g_Width;			// The global filter image width
 	unsigned int g_Height;			// The global filter image height
 	unsigned int g_SenderWidth;		// The global sender image width
 	unsigned int g_SenderHeight;	// The glonbal sender image height
 	unsigned char *g_senderBuffer;	// Local rgb buffer the same size as the sender
-	
+
+	DWORD dwFps;					// Fps from SpoutCamConfig
+	DWORD dwResolution;				// Resolution from SpoutCamConfig
+	DWORD dwLock;                    // Fix to the selected resolution
+	int g_FrameTime;                // Frame time to use based on fps selection
+
 	bool InitOpenGL();
 	void GLerror();
 	
@@ -187,7 +207,12 @@ public:
 						 unsigned int sourceWidth, unsigned int sourceHeight, 
 						 unsigned int destWidth, unsigned int destHeight, 
 						 bool bInvert = false);
-	
+	void bgr2bgrResample(unsigned char* source, unsigned char* dest, 
+						 unsigned int sourceWidth, unsigned int sourceHeight, 
+						 unsigned int destWidth, unsigned int destHeight, 
+						 bool bInvert = false);
+	// bool FlipRgbBuffer(const unsigned char *src, unsigned char *dst, unsigned int width, unsigned int height, GLenum glFormat) ;
+
 private:
 
 	CVCam *m_pParent;

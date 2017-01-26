@@ -6,3 +6,4 @@ The examples also require all the files from the Spout SDK. These are in the SPO
 
 The receiver examples depend on SpoutPanel.exe to select senders. It's path is detected from the registry after installation. Otherwise it must be copied to the folder for the binary.
 
+Prebuilt binaries are no longer included.

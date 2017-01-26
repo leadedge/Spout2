@@ -1,10 +1,8 @@
 /*
 
-	Spout - Receiver example
+	Spout OpenFrameworks Receiver example
 
-    Visual Studio 2012 using the Spout SDK
-
-	Copyright (C) 2015 Lynn Jarvis.
+	Copyright (C) 2015-2017 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -23,7 +21,6 @@
 #pragma once
 
 #include "ofMain.h"
-#include "resource.h" // for custom icon
 #include "..\..\..\SpoutSDK\Spout.h" // Spout SDK
 
 class ofApp : public ofBaseApp{
@@ -34,10 +31,10 @@ class ofApp : public ofBaseApp{
 		void exit();
 		void mousePressed(int x, int y, int button);
 	
-		SpoutReceiver *spoutreceiver; // A Spout receiver object
-		bool bInitialized;		      // Initialization result
-		ofTexture myTexture;	      // Texture used for texture share transfers
-		char SenderName[256];	      // Sender name used by a receiver
-		int g_Width, g_Height;        // Used for checking sender size change
+		SpoutReceiver spoutreceiver; // A Spout receiver object
+		bool bInitialized;		     // Initialization result
+		ofTexture myTexture;	     // Texture used for texture share transfers
+		char SenderName[256];	     // Sender name used by a receiver
+		int g_Width, g_Height;       // Used for checking sender size change
 
 };

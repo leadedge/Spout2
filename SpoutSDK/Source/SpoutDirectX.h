@@ -5,7 +5,7 @@
 	DirectX functions to manage DirectX 11 texture sharing
 
 
-		Copyright (c) 2014 - 2016, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014 - 2017, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -57,12 +57,13 @@ class SPOUT_DLLEXP spoutDirectX {
 		IDirect3D9Ex* CreateDX9object(); // Create a DirectX9 object
 		IDirect3DDevice9Ex* CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd);	// Create a DirectX9 device
 		bool CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle);
+		bool WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DTEXTURE9 dxTexture, LPDIRECT3DSURFACE9 source_surface);
 
 		// DX11
 		ID3D11Device* CreateDX11device(); // Create a DX11 device
 		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pSharedTexture, HANDLE &dxShareHandle);
+		bool CreateDX11StagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
 		bool OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle);
-		// void CloseDX11();
 
 		// Output adapter selection
 		int GetNumAdapters(); // Get the number of graphics adapters in the system

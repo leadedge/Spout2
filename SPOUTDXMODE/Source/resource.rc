@@ -14,24 +14,32 @@
 // Dialog resources
 //
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-IDD_DIRECTXBOX DIALOG 0, 0, 238, 132
+IDD_DIRECTXBOX DIALOG 0, 0, 218, 203
 STYLE DS_3DLOOK | DS_CENTER | DS_MODALFRAME | DS_SHELLFONT | WS_CAPTION | WS_VISIBLE | WS_POPUP | WS_SYSMENU
 CAPTION "SpoutDXmode"
 FONT 8, "Ms Shell Dlg"
 {
-    GROUPBOX        "DirectX / MemoryShare", -1, 14, 9, 210, 59, 0, WS_EX_LEFT
-    PUSHBUTTON      "Web Installer", IDC_DX9_INSTALL, 114, 21, 44, 14, NOT WS_TABSTOP, WS_EX_LEFT
-    PUSHBUTTON      "Download", IDC_DX9_DOWNLOAD, 161, 21, 36, 14, NOT WS_TABSTOP, WS_EX_LEFT
-    LTEXT           "ab", IDC_DX9TEXT0, 22, 24, 9, 9, SS_LEFT, WS_EX_LEFT
-    LTEXT           "DirectX 9.0c installed", IDC_DX9TEXT1, 33, 24, 79, 9, SS_LEFT, WS_EX_LEFT
-    AUTOCHECKBOX    "&DirectX 9", IDC_DX9, 22, 39, 46, 8, 0, WS_EX_LEFT
-    LTEXT           "", IDC_DX9TEXT2, 72, 39, 148, 10, SS_LEFT, WS_EX_LEFT
-    AUTOCHECKBOX    "&Memory", IDC_MEM, 22, 54, 49, 8, 0, WS_EX_LEFT
-    LTEXT           "", IDC_MEMTEXT, 71, 54, 149, 10, SS_LEFT, WS_EX_LEFT
-    GROUPBOX        "NVIDIA global processor ( high performance required for Spout )", -1, 14, 70, 210, 32, 0, WS_EX_LEFT
-    COMBOBOX        IDC_NVIDIA, 18, 82, 140, 57, CBS_DROPDOWN | CBS_HASSTRINGS, WS_EX_LEFT
-    DEFPUSHBUTTON   "OK", IDOK, 75, 109, 36, 14, 0, WS_EX_LEFT
-    PUSHBUTTON      "Cancel", IDCANCEL, 117, 109, 35, 14, 0, WS_EX_LEFT
+    GROUPBOX        "Share mode", -1, 14, 87, 190, 53, 0, WS_EX_LEFT
+    GROUPBOX        "Options", -1, 14, 42, 190, 41, 0, WS_EX_LEFT
+    AUTOCHECKBOX    "&DirectX 9", IDC_DX9, 22, 55, 46, 8, 0, WS_EX_LEFT
+    AUTORADIOBUTTON "Texture", IDC_TEX, 22, 99, 39, 8, WS_TABSTOP, WS_EX_LEFT
+    AUTORADIOBUTTON "CPU", IDC_CPU, 22, 112, 30, 8, WS_TABSTOP, WS_EX_LEFT
+    AUTORADIOBUTTON "Memory", IDC_MEM, 22, 125, 41, 8, WS_TABSTOP, WS_EX_LEFT
+    AUTOCHECKBOX    "Buffer", IDC_BUF, 22, 68, 47, 8, 0, WS_EX_LEFT
+    LTEXT           "", IDC_TEXTEXT, 72, 98, 124, 10, SS_LEFT, WS_EX_LEFT
+    COMBOBOX        IDC_NVIDIA, 19, 157, 140, 57, CBS_DROPDOWN | CBS_HASSTRINGS, WS_EX_LEFT
+    DEFPUSHBUTTON   "OK", IDOK, 67, 184, 36, 14, 0, WS_EX_LEFT
+    PUSHBUTTON      "Cancel", IDCANCEL, 109, 184, 35, 14, 0, WS_EX_LEFT
+    PUSHBUTTON      "Web Installer", IDC_DX9_INSTALL, 114, 18, 44, 14, NOT WS_TABSTOP, WS_EX_LEFT
+    PUSHBUTTON      "Download", IDC_DX9_DOWNLOAD, 161, 18, 36, 14, NOT WS_TABSTOP, WS_EX_LEFT
+    GROUPBOX        "DirectX 9", -1, 14, 9, 190, 29, 0, WS_EX_LEFT
+    LTEXT           "ab", IDC_DX9TEXT0, 22, 21, 9, 9, SS_LEFT, WS_EX_LEFT
+    LTEXT           "DirectX 9.0c installed", IDC_DX9TEXT1, 33, 21, 79, 9, SS_LEFT, WS_EX_LEFT
+    LTEXT           "", IDC_DX9TEXT2, 72, 55, 124, 10, SS_LEFT, WS_EX_LEFT
+    LTEXT           "", IDC_CPUTEXT, 72, 111, 124, 10, SS_LEFT, WS_EX_LEFT
+    LTEXT           "", IDC_MEMTEXT, 72, 124, 124, 10, SS_LEFT, WS_EX_LEFT
+    LTEXT           "", IDC_BUFTEXT, 72, 68, 124, 10, SS_LEFT, WS_EX_LEFT
+    GROUPBOX        "NVIDIA global processor", -1, 14, 145, 190, 32, 0, WS_EX_LEFT
 }
 
 
@@ -63,12 +71,12 @@ VS_VERSION_INFO VERSIONINFO
         {
             VALUE "CompanyName", "Leading Edge Pty Ltd\0"
             VALUE "FileDescription", "Spout configuration program\0"
-            VALUE "FileVersion", "1.01\0"
-            VALUE "InternalName", "Spout DirectX\0"
-            VALUE "LegalCopyright", "Copyright \251 Leading Edge Pty Ltd 2015\0"
+            VALUE "FileVersion", "1.001\0"
+            VALUE "InternalName", "SpoutDXmode\0"
+            VALUE "LegalCopyright", "Copyright \251 Leading Edge Pty Ltd 2015-2017\0"
             VALUE "OriginalFilename", "SpoutDXmode.exe\0"
-            VALUE "ProductName", "Spout Configuration\0"
-            VALUE "ProductVersion", "1.01\0"
+            VALUE "ProductName", "Spout\0"
+            VALUE "ProductVersion", "1.001\0"
         }
     }
     BLOCK "VarFileInfo"

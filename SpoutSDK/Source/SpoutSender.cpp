@@ -21,11 +21,14 @@
 //					- currently not used - see SpoutSDK.cpp CreateSender
 //		14.11.15	- changed functions to "const char *" where required
 //		17.03.16	- changed to const unsigned char for Sendimage buffer
+//		17.09.16	- removed CheckSpout2004() from constructor
+//		13.01.17	- Add SetCPUmode, GetCPUmode, SetBufferMode, GetBufferMode
+//		15.01.17	- Add GetShareMode, SetShareMode
 //
 // ====================================================================================
 /*
 
-		Copyright (c) 2014-2016, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2017, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -52,9 +55,7 @@
 
 SpoutSender::SpoutSender()
 {
-	bInv = false; // 2.005 default
-	// 2.004 - 2.005 transition to set invert true, otherwise 2.005 default is false
-	bInv = spout.interop.CheckSpout2004();
+
 }
 
 
@@ -127,6 +128,42 @@ bool SpoutSender::GetMemoryShareMode()
 	return spout.GetMemoryShareMode();
 }
 
+//---------------------------------------------------------
+bool SpoutSender::SetCPUmode(bool bCPU)
+{
+	return (spout.SetCPUmode(bCPU));
+}
+
+//---------------------------------------------------------
+bool SpoutSender::GetCPUmode()
+{
+	return (spout.GetCPUmode());
+}
+
+
+//---------------------------------------------------------
+int SpoutSender::GetShareMode()
+{
+	return (spout.GetShareMode());
+}
+
+//---------------------------------------------------------
+bool SpoutSender::SetShareMode(int mode)
+{
+	return (spout.SetShareMode(mode));
+}
+
+//---------------------------------------------------------
+void SpoutSender::SetBufferMode(bool bActive)
+{
+	spout.SetBufferMode(bActive);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::GetBufferMode()
+{
+	return spout.GetBufferMode();
+}
 
 //---------------------------------------------------------
 bool SpoutSender::SetDX9(bool bDX9)

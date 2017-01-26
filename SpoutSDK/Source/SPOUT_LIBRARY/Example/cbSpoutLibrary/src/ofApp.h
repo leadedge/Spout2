@@ -1,8 +1,10 @@
 /*
 
-	Spout OpenFrameworks Sender Receiver example
+	Spout - Sender example
 
-	Copyright (C) 2016 Lynn Jarvis.
+    Visual Studio 2012 using the Spout SDK
+
+	Copyright (C) 2015 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -21,33 +23,22 @@
 #pragma once
 
 #include "ofMain.h"
-#include "SpoutLibrary.h" // for the Spout SDK dll
-
+#include "SpoutLibrary.h" // for Spout SDK library
 
 class ofApp : public ofBaseApp{
 	public:
 		void setup();
 		void update();
 		void draw();
-
-		void mousePressed(int x, int y, int button);
 		void exit();
-
-		SPOUTLIBRARY * spoutsender;						// A sender object
-		bool bSenderInitialized;						// Sender initialization result
-		char senderName[256];							// Sender name
-		GLuint senderTexture;							// OpenGL texture used by the sender
-		ofImage senderImage;							// Texture image for the sender demo graphics
-		unsigned int g_Width, g_Height;					// Global width and height - used by the sender
-
-		SPOUTLIBRARY * spoutreceiver;					// A receiver object
-		bool bReceverInitialized;						// Receiver initialization result
-		bool bReceived;									// Has the receiver received anything
-		char receiverName[256];							// Sender name that the receiver to connects to 
-		ofImage receiverImage;							// Texture image used by the receiver
-		unsigned int receiverWidth, receiverHeight;		// Width and height of the receiver
-
-		bool bMemoryShare;
+		void windowResized(int w, int h);
+	
+		SPOUTLIBRARY *spoutsender; // A sender object
+		char sendername[256];      // Sender name
+		GLuint sendertexture;      // Local OpenGL texture used for sharing
+		bool bInitialized;         // Initialization result
+		ofImage myTextureImage;    // Texture image for the 3D demo
+		float rotX, rotY;
 		bool InitGLtexture(GLuint &texID, unsigned int width, unsigned int height);
 
 };
