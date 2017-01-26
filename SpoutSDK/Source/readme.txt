@@ -24,3 +24,11 @@ in the Spout SDK classes are available. However, it is only suitable for
 use with Visual Studio compilers. For other compilers, see the C compatible
 dll in the SPOUT_LIBRARY folder.
 
+CHANGES REQUIRED FOR SPOUT 2.006
+
+o Include spoutCopy.cpp/h in your project.
+o Include the fbo ID as an argument in DrawSharedTexture if an fbo is currently bound.
+o There are new functions to get and set sharing mode if you require them.
+
+The SDK should rebuild without any further action. If you are using a dll, there are updated binaries for the Spout and SpoutLibrary dlls.
+
