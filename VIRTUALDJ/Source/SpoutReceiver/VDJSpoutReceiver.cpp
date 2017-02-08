@@ -43,8 +43,8 @@
 //					Version 1.09
 //		23.06.16 - rebuild for Spout 2.005 release Version 1.10
 //				   VS2012 /MT
-//		23.01.17 - Rebuild for 2.006 VS2012 /MD
-//				   Version 1.11
+//		23.01.17 - Rebuild for 2.006 VS2012 /MD - Version 1.11
+//		08.02.17 - Reset closing flag on InitDevice - Version 1.12
 //
 //
 //		------------------------------------------------------------
@@ -89,7 +89,7 @@ SpoutReceiverPlugin::SpoutReceiverPlugin()
 	FILE* pCout;
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("VDJSpoutReceiver - 1.11\n");
+	printf("VDJSpoutReceiver - 1.12\n");
 	*/
 
 	// DirectX9
@@ -118,7 +118,7 @@ SpoutReceiverPlugin::SpoutReceiverPlugin()
 
 SpoutReceiverPlugin::~SpoutReceiverPlugin()
 {
-
+	
 }
 
 HRESULT __stdcall SpoutReceiverPlugin::OnLoad()
@@ -139,7 +139,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnGetPluginInfo(TVdjPluginInfo8 *infos)
 	infos->Description = (char *)"Receives frames from a Spout Sender\nas a visualisation plugin\nSpout : http://Spout.zeal.co/";
 #endif
 
-	infos->Version = (char *)"v1.11n";
+	infos->Version = (char *)"v1.12n";
     infos->Bitmap = NULL;
 
 #ifndef SPOUTEFFECT
@@ -164,6 +164,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnStop()
 // When DirectX/OpenGL is initialized or closed, these functions will be called
 HRESULT __stdcall  SpoutReceiverPlugin::OnDeviceInit() 
 {
+	bIsClosing = false; // is not closing
 	return S_OK;
 }
 
