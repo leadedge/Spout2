@@ -1,4 +1,4 @@
-/**
+Ôªø/**
 
 	spoutGLDXinterop.cpp
 
@@ -190,6 +190,7 @@
 					- CleanupInterop after sender creation fail
 					- CleanupDX9 change to prevent crash with Milkdrop
 					- add pQuery->Release() to FlushWait
+		04.02.17	- corrected test for fbo blit extension
 
 */
 
@@ -486,7 +487,7 @@ bool spoutGLDXinterop::DX11available()
 //
 // https://code.google.com/p/chromium/issues/detail?id=106438
 //
-// NOTES : On a ìnormalî system EnumDisplayDevices and IDXGIAdapter::GetDesc always concur
+// NOTES : On a ‚Äúnormal‚Äù system EnumDisplayDevices and IDXGIAdapter::GetDesc always concur
 // i.e. the device that owns the head will be the device that performs the rendering. 
 // On an Optimus system IDXGIAdapter::GetDesc will return whichever device has been selected for rendering.
 // So on an Optimus system it is possible that IDXGIAdapter::GetDesc will return the dGPU whereas 
@@ -1642,18 +1643,18 @@ bool spoutGLDXinterop::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, 
 			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 			if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 
-				// Default invert flag is false so do the flip to get it the right way up if the user wants that
-				if(bInvert) {
-					// Blit method with checks - 0.75 - 0.85 msec
-					// copy one texture buffer to the other while flipping upside down (OpenGL and DirectX have different texture origins)
-					glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
-										 width, height, // srcX1, srcY1
-										 0, height,		// dstX0, dstY0,
-										 width, 0,		// dstX1, dstY1,
-										 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
-				}
-				else { 
-					if(m_bBLITavailable) {
+				if(m_bBLITavailable) {
+					// Default invert flag is false so do the flip to get it the right way up if the user wants that
+					if(bInvert) {
+						// Blit method with checks - 0.75 - 0.85 msec
+						// copy one texture buffer to the other while flipping upside down (OpenGL and DirectX have different texture origins)
+						glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
+											 width, height, // srcX1, srcY1
+											 0, height,		// dstX0, dstY0,
+											 width, 0,		// dstX1, dstY1,
+											 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
+					}
+					else { 
 						// Do not flip during blit
 						glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
 											 width, height,	// srcX1, srcY1
@@ -1661,12 +1662,13 @@ bool spoutGLDXinterop::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, 
 											 width, height,	// dstX1, dstY1,
 											 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
 					}
-					else {
-						// Copy from the fbo (input texture attached) to the shared texture
-						glBindTexture(GL_TEXTURE_2D, m_glTexture);
-						glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-						glBindTexture(GL_TEXTURE_2D, 0);
-					}
+				}
+				else {
+					// No fbo blit extension
+					// Copy from the fbo (input texture attached) to the shared texture
+					glBindTexture(GL_TEXTURE_2D, m_glTexture);
+					glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+					glBindTexture(GL_TEXTURE_2D, 0);
 				}
 			}
 			else {
@@ -1720,17 +1722,17 @@ bool spoutGLDXinterop::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, u
 
 			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 			if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-				// Flip if the user wants that
-				if(bInvert) {
-					// copy one texture buffer to the other while flipping upside down
-					glBlitFramebufferEXT(0,     0,		// srcX0, srcY0, 
-										 width, height, // srcX1, srcY1
-										 0,     height,	// dstX0, dstY0,
-										 width, 0,		// dstX1, dstY1,
-										 GL_COLOR_BUFFER_BIT, GL_LINEAR);
-				}
-				else { 
-					if(m_bBLITavailable) {
+				if(m_bBLITavailable) {
+					// Flip if the user wants that
+					if(bInvert) {
+						// copy one texture buffer to the other while flipping upside down
+						glBlitFramebufferEXT(0,     0,		// srcX0, srcY0, 
+											 width, height, // srcX1, srcY1
+											 0,     height,	// dstX0, dstY0,
+											 width, 0,		// dstX1, dstY1,
+											 GL_COLOR_BUFFER_BIT, GL_LINEAR);
+					}
+					else { 
 						// Do not flip during blit
 						glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
 											 width, height,	// srcX1, srcY1
@@ -1738,12 +1740,13 @@ bool spoutGLDXinterop::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, u
 											 width, height,	// dstX1, dstY1,
 											 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
 					}
-					else {
-						// Copy from the fbo (shared texture attached) to the dest texture
-						glBindTexture(TextureTarget, TextureID);
-						glCopyTexSubImage2D(TextureTarget, 0, 0, 0, 0, 0, width, height);
-						glBindTexture(TextureTarget, 0);
-					}
+				}
+				else { 
+					// No fbo blit extension available
+					// Copy from the fbo (shared texture attached) to the dest texture
+					glBindTexture(TextureTarget, TextureID);
+					glCopyTexSubImage2D(TextureTarget, 0, 0, 0, 0, 0, width, height);
+					glBindTexture(TextureTarget, 0);
 				}
 			}
 			else {
@@ -2109,7 +2112,7 @@ void spoutGLDXinterop::FlushWait()
 
 	// For a receiver, make sure that the GPU is finished processing commands before accessing the 
 	// staging texture and before the sender fills the shared texture again on the next frame.
-	// For a sender, make sure the SopyResource fnction has completed before the receiver application
+	// For a sender, make sure the CopyResource fnction has completed before the receiver application
 	// accesses the shared texture.
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476578%28v=vs.85%29.aspx
 	ZeroMemory(&queryDesc, sizeof(queryDesc));
@@ -3969,19 +3972,18 @@ bool spoutGLDXinterop::CopyTexture(	GLuint SourceID,
 
 	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-		// Default invert flag is false so do the flip to get it the right way up if the user wants that
-		if(bInvert) {
-			// Blit method with checks - 0.75 - 0.85 msec
-			// copy one texture buffer to the other while flipping upside down 
-			// (OpenGL and DirectX have different texture origins)
-			glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
-								 width, height, // srcX1, srcY1
-								 0, height,		// dstX0, dstY0,
-								 width, 0,		// dstX1, dstY1,
-								 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
-		}
-		else { 
-			if(m_bBLITavailable) {
+		if(m_bBLITavailable) {
+			if(bInvert) {
+				// Blit method with checks - 0.75 - 0.85 msec
+				// copy one texture buffer to the other while flipping upside down 
+				// (OpenGL and DirectX have different texture origins)
+				glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
+									 width, height, // srcX1, srcY1
+									 0, height,		// dstX0, dstY0,
+									 width, 0,		// dstX1, dstY1,
+									 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
+			}
+			else { 
 				// Do not flip during blit
 				glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
 									 width, height,	// srcX1, srcY1
@@ -3989,11 +3991,13 @@ bool spoutGLDXinterop::CopyTexture(	GLuint SourceID,
 									 width, height,	// dstX1, dstY1,
 									 GL_COLOR_BUFFER_BIT, GL_NEAREST); // GLbitfield mask, GLenum filter
 			}
-			else {
-				glBindTexture(DestTarget, DestID);
-				glCopyTexSubImage2D(DestTarget, 0, 0, 0, 0, 0, width, height);
-				glBindTexture(DestTarget, 0);
-			}
+		}
+		else {
+			// No fbo blit extension
+			// Copy from the fbo (source texture attached) to the dest texture
+			glBindTexture(DestTarget, DestID);
+			glCopyTexSubImage2D(DestTarget, 0, 0, 0, 0, 0, width, height);
+			glBindTexture(DestTarget, 0);
 		}
 	}
 	else {

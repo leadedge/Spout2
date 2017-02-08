@@ -260,6 +260,8 @@ bool loadPBOextensions()
 #endif
 }
 
+
+
 bool InitializeGlew()
 {
 #ifdef USE_GLEW
@@ -301,6 +303,8 @@ bool InitializeGlew()
 unsigned int loadGLextensions() {
 	
 	unsigned int caps = 0; // as per elio glextensions
+
+	// printf("loadGLextensions\n");
 
 #ifdef USE_GLEW
 	InitializeGlew(); // probably needs failure check

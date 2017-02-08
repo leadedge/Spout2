@@ -115,7 +115,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool SetShareMode(int mode);
 
 		bool IsBGRAavailable(); // are the bgra extensions available
-		bool IsPBOavailable(); // Are pbo extensions supported
+		bool IsPBOavailable();  // Are pbo extensions supported
 		void SetBufferMode(bool bActive); // Set the pbo availability on or off
 		bool GetBufferMode();
 
