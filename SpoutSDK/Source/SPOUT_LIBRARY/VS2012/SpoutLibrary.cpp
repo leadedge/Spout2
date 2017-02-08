@@ -16,6 +16,7 @@
 //				 - Add HostFBO arg to DrawSharedTexture
 //		17.01.17 - Add GetShareMode, SetShareMode
 //		23.01.17 - Rebuild for Spout 2.006 - VS2012 /MT
+//		08.01.17 - Rebuild - VS2012 /MT
 //
 //
 /*
