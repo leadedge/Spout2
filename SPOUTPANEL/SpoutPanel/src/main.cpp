@@ -102,6 +102,8 @@
 //	16.01.17 - Rebuild VS2012
 //	21.01.17 - include zero char in command line checks
 //	22.01.17 - rebuild VS2012 /MD to avoid virus false postive
+//	10.02.17 - Fixed command line for Message Box
+//			 - Version 2.20
 //
 #include <windows.h>
 #include <vector>
@@ -182,14 +184,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutPanel 2.19\n");
+	printf("SpoutPanel 2.20\n");
 	*/
+
 
 	// Find the current active window to restore to the top when SpoutPanel quits
 	hWnd = GetForegroundWindow();
 
 	// Check for arguments
 	// printf("CmdLine [%s]\n", lpCmdLine);
+
 	UserMessage[0] = 0;
 	bFileOpen = false;
 	bFontOpen = false;
@@ -198,10 +202,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	argc = ParseCommandline();
 	if( argc > 1) { // 0 = "SpoutPanel"
+
+		// printf("Argc = %d\n", argc);
+
 		hWnd = GetActiveWindow();
 		EnableWindow(hWnd, FALSE);
 		for( i=1; i <argc; i++ ) {
+			
 			// printf("Arg[%d] = [%s]\n", i, argv[i]);
+
 			// Argument /DX9 or default
 			if(strcmp(argv[i], "/DX9") == 0) {
 				// printf("DX9 mode\n");
@@ -236,12 +245,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				bFileOpen = false;
 				bFontOpen = false;
 				bMemoryMode = false;
+				if(lpCmdLine && lpCmdLine[0]) {
+					// No listed args, but a command line so send a user message
+					// printf("text arg [%s]\n", lpCmdLine);
+					strcpy_s(UserMessage, 512, (char *)lpCmdLine); // Message to be shown instead of sender list
+				}
+				else {
+					// printf("No text arg\n");
+					UserMessage[0] = 0; // make sure this is not an un-initialized string
+				}
 			}
 		}
 		EnableWindow(hWnd, TRUE);
 	}
 	else {
-		// printf("Argc is zero\n");
+		printf("Argc is zero\n");
 		if(lpCmdLine && lpCmdLine[0]) {
 			// No listed args, but a command line so send a user message
 			// printf("text arg [%s]\n", lpCmdLine);
