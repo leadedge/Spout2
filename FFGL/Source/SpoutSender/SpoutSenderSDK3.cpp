@@ -8,7 +8,7 @@
 	Note fix to FFGL.cpp to allow setting string parameters
 	http://resolume.com/forum/viewtopic.php?f=14&t=10324
 
-	Now rewritten with Spout SDK - Version 3
+	Now rewritten with Spout SDK - Version 2.006
 
 	See also SpoutReceiver.cpp
 	
@@ -80,7 +80,10 @@
 	10.01.17 - Changed : ID LJ56, Name SpoutSender3
 	23.01.17 - Name changed back to SpoutSender2
 			 - Rebuild for Spout 2.006 VS2012 /MD - Version 3.020
-
+	08.01.17 - Rebuild with current SDK
+	16.04.17 - Change ID back to LJ46 due to problems with Isadora
+			   Update version number to 3.020 in PluginInfo
+			   Rebuild VS2012 /MD
 */
 #include "SpoutSenderSDK3.h"
 #include <FFGL.h>
@@ -96,12 +99,12 @@
 static CFFGLPluginInfo PluginInfo (
 
 	SpoutSenderSDK3::CreateInstance,		// Create method
-	"LJ56",									// Plugin unique ID - LJ note 4 chars only
+	"LJ46",									// Plugin unique ID - LJ note 4 chars only
 	"SpoutSender2",							// Plugin name - LJ note 16 chars only ! see freeframe.h
 	1,										// API major version number
 	005,									// API minor version number - FFGL 1.5
 	3,										// Plugin major version number
-	18,									    // Plugin minor version number
+	20,									    // Plugin minor version number
 	FF_EFFECT,								// Plugin type
 	"Spout Sender - Vers 3.020\nSends textures to Spout Receivers\n\nSender Name : enter a sender name\nUpdate : update the name entry", // Plugin description
 	"S P O U T - Version 2.006\nspout.zeal.co"		// About

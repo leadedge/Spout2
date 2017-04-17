@@ -1,6 +1,6 @@
 ﻿/*
 	
-	SpoutReceiver3.dll
+	SpoutReceiver2.dll
 
 	Lynn Jarvis - spout.zeal.co
 
@@ -101,6 +101,10 @@
 			   Change name to SpoutReceiverSDK3
 	23.01.17 - Name changed back to SpoutReceiver2
 			 - Rebuild for Spout 2.006 VS2012 /MD - Version 3.030
+	08.01.17 - Rebuild with current SDK
+	16.04.17 - Change ID back to LJ48 due to problems with Isadora
+			   Update version number to 3.030 in PluginInfo
+			   Rebuild VS2012 /MD
 
 
 */
@@ -119,12 +123,12 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 static CFFGLPluginInfo PluginInfo (
 	SpoutReceiverSDK3::CreateInstance,				// Create method
-	"LJ58",										// Plugin unique ID
+	"LJ48",										// Plugin unique ID
 	"SpoutReceiver2",							// Plugin name (receive texture from DX)
 	1,											// API major version number
 	5,											// API minor version number
 	3,											// Plugin major version number
-	29,										    // Plugin minor version number
+	30,										    // Plugin minor version number
 	FF_SOURCE,									// Plugin type
 	"Spout Receiver - Vers 3.030\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	"S P O U T - Version 2.006\nspout.zeal.co"		// About
@@ -192,7 +196,7 @@ SpoutReceiverSDK3::SpoutReceiverSDK3()
 		bStarted = true;
 	}
 
-	// Get share mode
+	// Get share mode for debugging
 	// ShareMode = receiver.spout.interop.GetShareMode();
 	// printf("ShareMode = %d\n", ShareMode);
 
