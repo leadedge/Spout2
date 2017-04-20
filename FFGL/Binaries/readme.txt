@@ -17,5 +17,11 @@ http://troikatronix.com/support/kb/using-spout-ffgl-video-sharing/
 
 Refer to the Spout pdf manual for more details. For other applications refer to their documentation.
 
+==========================
+Update since 2.006 release
+16.04.17 - rebuild with VS2012 with original IDs for Isadora
+
+
+
 
 
