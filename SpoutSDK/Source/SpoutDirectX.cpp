@@ -33,6 +33,7 @@
 //		04.09.16	- Add create DX11 staging texture
 //		16.01.17	- Add WriteDX9surface
 //		23.01.17	- pEventQuery->Release() for writeDX9surface
+//		24.04.17	- Added MessageBox error warnings in CreateSharedDX11Texture
 //
 // ====================================================================================
 /*
@@ -354,8 +355,10 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 {
 	ID3D11Texture2D* pTexture;
 	
-	if(pd3dDevice == NULL)
-		MessageBoxA(NULL, "CreateSharedDX11Texture NULL device", "SpoutSender", MB_OK);
+	if(pd3dDevice == NULL) {
+		MessageBoxA(NULL, "CreateSharedDX11Texture NULL device", "SpoutDirectX", MB_OK);
+		return false;
+	}
 
 	//
 	// Create a new shared DX11 texture
@@ -400,21 +403,29 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 	if (res != S_OK) {
 		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
-		printf("spoutDirectX::CreateSharedDX11Texture ERROR : [0x%x]\n", res);
+		// printf("spoutDirectX::CreateSharedDX11Texture ERROR : [0x%x]\n", res);
+		char temp[256];
+		sprintf_s(temp, 256, "CreateSharedDX11Texture ERROR : [0x%x]\n", res);
+
 		switch (res) {
 			case D3DERR_INVALIDCALL:
-				printf("    D3DERR_INVALIDCALL \n");
+				// printf("    D3DERR_INVALIDCALL \n");
+				strcat_s(temp, 256, "    The method call is invalid.");
 				break;
 			case E_INVALIDARG:
-				printf("    E_INVALIDARG \n");
+				// printf("    E_INVALIDARG \n");
+				strcat_s(temp, 256, "    An invalid parameter was passed.");
 				break;
 			case E_OUTOFMEMORY:
-				printf("    E_OUTOFMEMORY \n");
+				// printf("    E_OUTOFMEMORY \n");
+				strcat_s(temp, 256, "    Direct3D could not allocate sufficient memory.");
 				break;
 			default :
-				printf("    Unlisted error\n");
+				// printf("    Unlisted error\n");
+				strcat_s(temp, 256, "    Unlisted error");
 				break;
 		}
+		MessageBoxA(NULL, temp, "SpoutDirectX", MB_OK);
 		return false;
 	}
 
@@ -425,7 +436,8 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	// interface and then calling GetSharedHandle.
 	IDXGIResource* pOtherResource(NULL);
 	if(pTexture->QueryInterface( __uuidof(IDXGIResource), (void**)&pOtherResource) != S_OK) {
-		printf("    QueryInterface error\n");
+		// printf("    QueryInterface error\n");
+		MessageBoxA(NULL, "CreateSharedDX11Texture : QueryInterface error", "SpoutDirectX", MB_OK);
 		return false;
 	}
 
@@ -771,6 +783,16 @@ bool spoutDirectX::FindNVIDIA(int &nAdapter)
 	if(bFound) {
 		printf("Found NVIDIA adapter %d (%S)\n", i, desc.Description);
 		nAdapter = i;
+		// LJ DEBUG
+		//	0x10DE	NVIDIA
+		//	0x163C	intel
+		//	0x8086  Intel
+		//	0x8087  Intel
+		// printf("Vendor    = %d [0x%X]\n", desc.VendorId, desc.VendorId);
+		// printf("Revision  = %d [0x%X]\n", desc.Revision, desc.Revision);
+		// printf("Device ID = %d [0x%X]\n", desc.DeviceId, desc.DeviceId);
+		// printf("SubSys ID = %d [0x%X]\n", desc.SubSysId, desc.SubSysId);
+
 		return true;
 	}
 
@@ -794,8 +816,8 @@ int spoutDirectX::GetNumAdapters()
 	for ( i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
 		DXGI_ADAPTER_DESC	desc;
 		adapter1_ptr->GetDesc( &desc );
-		printf( "Adapter(%d) : %S\n", i, desc.Description );
-		printf( "  Vendor Id : %d\n", desc.VendorId );
+		// printf( "Adapter(%d) : %S\n", i, desc.Description );
+		// printf( "  Vendor Id : %d\n", desc.VendorId );
 		// printf( "  Dedicated System Memory : %.0f MiB\n", (float)desc.DedicatedSystemMemory / (1024.f * 1024.f) );
 		// printf( "  Dedicated Video Memory : %.0f MiB\n", (float)desc.DedicatedVideoMemory / (1024.f * 1024.f) );
 		// printf( "  Shared System Memory : %.0f MiB\n", (float)desc.SharedSystemMemory / (1024.f * 1024.f) );
@@ -807,9 +829,9 @@ int spoutDirectX::GetNumAdapters()
 		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
 			DXGI_OUTPUT_DESC	desc_out;
 			p_output->GetDesc( &desc_out );
-			printf( "  Output : %d\n", j );
-			printf( "    Name %S\n", desc_out.DeviceName );
-			printf( "    Attached to desktop : (%d) %s\n", desc_out.AttachedToDesktop, desc_out.AttachedToDesktop ? "yes" : "no" );
+			// printf( "  Output : %d\n", j );
+			// printf( "    Name %S\n", desc_out.DeviceName );
+			// printf( "    Attached to desktop : (%d) %s\n", desc_out.AttachedToDesktop, desc_out.AttachedToDesktop ? "yes" : "no" );
 			// printf( "    Rotation : %d\n", desc_out.Rotation );
 			// printf( "    Left     : %d\n", desc_out.DesktopCoordinates.left );
 			// printf( "    Top      : %d\n", desc_out.DesktopCoordinates.top );
