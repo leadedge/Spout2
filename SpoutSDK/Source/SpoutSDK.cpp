@@ -104,6 +104,7 @@
 //		15.01.17	- Add GetShareMode, SetShareMode
 //		18.01.17	- GetImageSize redundant for 2.006
 //		22.01.17	- include zero char in SelectSenderPanel NULL arg checks
+//		25.05.17	- corrected SendImage UpdateSender to use passed width and height
 //
 // ================================================================
 /*
@@ -345,7 +346,7 @@ bool Spout::SendImage(const unsigned char* pixels,
 
 	// width, g_Width should all be the same
 	if(width != g_Width || height != g_Height)
-		UpdateSender(g_SharedMemoryName, g_Width, g_Height);
+		return(UpdateSender(g_SharedMemoryName, width, height));
 
 	// Only RGBA, BGRA, RGB, BGR supported
 	if(!(glformat == GL_RGBA || glFormat == 0x80E1 || glformat == GL_RGB || glFormat == 0x80E0))
