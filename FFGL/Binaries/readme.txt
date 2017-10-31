@@ -20,7 +20,9 @@ Refer to the Spout pdf manual for more details. For other applications refer to 
 ==========================
 Update since 2.006 release
 16.04.17 - rebuild with VS2012 with original IDs for Isadora
-
+31.10.17 - Close receiver on receivetexture fail
+           https://github.com/leadedge/Spout2/issues/25
+           Version 3.031
 
 
 
