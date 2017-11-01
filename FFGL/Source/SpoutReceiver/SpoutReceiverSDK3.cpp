@@ -105,7 +105,9 @@
 	16.04.17 - Change ID back to LJ48 due to problems with Isadora
 			   Update version number to 3.030 in PluginInfo
 			   Rebuild VS2012 /MD
-
+	31.10.17 - close receiver on receivetexture fail
+			   https://github.com/leadedge/Spout2/issues/25
+			   Version 3.031
 
 */
 #include "SpoutReceiverSDK3.h"
@@ -128,9 +130,9 @@ static CFFGLPluginInfo PluginInfo (
 	1,											// API major version number
 	5,											// API minor version number
 	3,											// Plugin major version number
-	30,										    // Plugin minor version number
+	31,										    // Plugin minor version number
 	FF_SOURCE,									// Plugin type
-	"Spout Receiver - Vers 3.030\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
+	"Spout Receiver - Vers 3.031\nReceives textures from Spout Senders\n\nSender Name : enter a sender name\nUpdate : update the name entry\nSelect : select a sender using 'SpoutPanel'\nAspect : preserve aspect ratio of the received sender", // Plugin description
 	"S P O U T - Version 2.006\nspout.zeal.co"		// About
 );
 
@@ -295,6 +297,11 @@ DWORD SpoutReceiverSDK3::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 
 			// All matches so draw the shared texture
 			DrawReceivedTexture(myTexture, GL_TEXTURE_2D,  g_Width, g_Height);
+		}
+		else {
+			// The sender has closed
+			receiver.ReleaseReceiver();
+			bInitialized = false;
 		}
 	}
 
