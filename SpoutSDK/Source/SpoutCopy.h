@@ -49,35 +49,39 @@ class SPOUT_DLLEXP spoutCopy {
 		spoutCopy();
 		~spoutCopy();
 
+		static unsigned int PixelSize(GLenum glFormat) {
+			return (glFormat == GL_RGB || glFormat == GL_BGR_EXT) ? 3 : 4;
+		}
+
 		void CopyPixels(const unsigned char *src, unsigned char *dst,
 						unsigned int width, unsigned int height, 
-						GLenum glFormat = GL_RGBA, bool bInvert = false);
+						GLenum glFormat = GL_RGBA, bool bInvert = false) const;
 
 		bool FlipBuffer(const unsigned char *src, unsigned char *dst,
 						unsigned int width, unsigned int height,
-						GLenum glFormat = GL_RGBA);
+						GLenum glFormat = GL_RGBA) const;
 
-		void memcpy_sse2(void* dst, void* src, size_t size);
+		void memcpy_sse2(void* dst, const void* src, size_t size) const;
 
-		void rgba2bgra(void* rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false);
-		void bgra2rgba(void* bgra_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false);
+		void rgba2bgra(const void* rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		void bgra2rgba(const void* bgra_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 
-		void rgba_bgra(void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false);
-		void rgba_bgra_sse2(void *rgba_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false);
-		void rgba_bgra_ssse3(void *rgba_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false);
+		void rgba_bgra(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		void rgba_bgra_sse2(const void *rgba_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		void rgba_bgra_ssse3(const void *rgba_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 		
 		// TODO avoid redundancy
-		void rgb2rgba (void* rgb_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false);
-		void bgr2rgba (void* bgr_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false);
+		void rgb2rgba (const void* rgb_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		void bgr2rgba (const void* bgr_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 
-		void rgb2bgra (void* rgb_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false);
-		void bgr2bgra (void* bgr_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false);
+		void rgb2bgra (const void* rgb_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		void bgr2bgra (const void* bgr_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 
-		void rgba2rgb (void* rgba_source, void *rgb_dest,  unsigned int width, unsigned int height, bool bInvert = false);
-		void rgba2bgr (void* rgba_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false);
+		void rgba2rgb (const void* rgba_source, void *rgb_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
+		void rgba2bgr (const void* rgba_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 
-		void bgra2rgb (void* bgra_source, void *rgb_dest,  unsigned int width, unsigned int height, bool bInvert = false);
-		void bgra2bgr (void* bgra_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false);
+		void bgra2rgb (const void* bgra_source, void *rgb_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
+		void bgra2bgr (const void* bgra_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 
 	private :
 
