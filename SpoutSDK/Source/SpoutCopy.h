@@ -61,15 +61,9 @@ class SPOUT_DLLEXP spoutCopy {
 						unsigned int width, unsigned int height,
 						GLenum glFormat = GL_RGBA) const;
 
-		void memcpy_sse2(void* dst, const void* src, size_t size) const;
-
 		void rgba2bgra(const void* rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 		void bgra2rgba(const void* bgra_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 
-		void rgba_bgra(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
-		void rgba_bgra_sse2(const void *rgba_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
-		void rgba_bgra_ssse3(const void *rgba_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
-		
 		// TODO avoid redundancy
 		void rgb2rgba (const void* rgb_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 		void bgr2rgba (const void* bgr_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
@@ -83,13 +77,16 @@ class SPOUT_DLLEXP spoutCopy {
 		void bgra2rgb (const void* bgra_source, void *rgb_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 		void bgra2bgr (const void* bgra_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 
-	private :
-
+	protected:
 		void CheckSSE();
 		bool m_bSSE2;
 		bool m_bSSE3;
 		bool m_bSSSE3;
 
+		void memcpy_sse2(void* dst, const void* src, size_t size) const;
+		void rgba_bgra(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		void rgba_bgra_sse2(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		void rgba_bgra_ssse3(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 };
 
 #endif

@@ -358,7 +358,7 @@ void spoutCopy::rgba_bgra_sse2(const void *rgba_source, void *bgra_dest, unsigne
 //
 //	Approximately 15% faster than SSE2 function
 //
-void spoutCopy::rgba_bgra_ssse3(const void *rgba_source,  void *rgba_dest, unsigned int width, unsigned int height, bool bInvert) const
+void spoutCopy::rgba_bgra_ssse3(const void *rgba_source,  void *bgra_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
 	// Shuffling mask (RGBA -> BGRA) x 4, in reverse byte order
 	static const __m128i m = _mm_set_epi8(15,12,13,14,11,8,9,10,7,4,5,6,3,0,1,2);
@@ -367,7 +367,7 @@ void spoutCopy::rgba_bgra_ssse3(const void *rgba_source,  void *rgba_dest, unsig
 
 		// Start of buffer
 		auto source = static_cast<const unsigned __int32 *>(rgba_source); // unsigned int = 4 bytes
-		auto dest   = static_cast<unsigned __int32 *>(rgba_dest);
+		auto dest   = static_cast<unsigned __int32 *>(bgra_dest);
 
 		// Increment to current line
 		if(bInvert) {
