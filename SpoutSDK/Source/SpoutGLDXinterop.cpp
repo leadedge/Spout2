@@ -2377,6 +2377,8 @@ bool spoutGLDXinterop::WriteDX11texture (GLuint TextureID, GLuint TextureTarget,
 				else {
 					PrintFBOstatus(status);
 				}
+				// restore the previous fbo - default is 0
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 			}
 		}
 		g_pImmediateContext->Unmap(g_pStagingTexture, 0);
