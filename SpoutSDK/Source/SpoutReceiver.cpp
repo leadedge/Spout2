@@ -68,9 +68,9 @@ SpoutReceiver::~SpoutReceiver()
 
 
 //---------------------------------------------------------
-bool SpoutReceiver::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
+bool SpoutReceiver::ReceiveTexture(char* name, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, bool bInvert)
 {
-	return spout.ReceiveTexture(name, width, height, TextureID, TextureTarget, bInvert, HostFBO);
+	return spout.ReceiveTexture(name, width, height, TextureID, TextureTarget, bInvert);
 }
 
 
@@ -80,10 +80,9 @@ bool SpoutReceiver::ReceiveImage(char* Sendername,
 								 unsigned int &height, 
 								 unsigned char* pixels, 
 								 GLenum glFormat, 
-								 bool bInvert,
-								 GLuint HostFBO)
+								 bool bInvert)
 {
-	return spout.ReceiveImage(Sendername, width, height, pixels, glFormat, bInvert, HostFBO);
+	return spout.ReceiveImage(Sendername, width, height, pixels, glFormat, bInvert);
 }
 
 
@@ -134,9 +133,9 @@ int  SpoutReceiver::GetSenderCount()
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
+bool SpoutReceiver::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert)
 {
-	return spout.DrawSharedTexture(max_x, max_y, aspect, bInvert, HostFBO);
+	return spout.DrawSharedTexture(max_x, max_y, aspect, bInvert);
 }
 
 

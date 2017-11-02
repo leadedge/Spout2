@@ -284,8 +284,7 @@ DWORD SpoutReceiverSDK3::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 		//	Success : Returns the sender name, width and height and a local copy of the shared texture
 		//	Failure : No sender detected
 		//
-		// Important - pass the host FBO to restore the binding
-		if(receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D, false, pGL->HostFBO)) {
+		if(receiver.ReceiveTexture(SenderName, width, height, myTexture, GL_TEXTURE_2D, false)) {
 			// Received the texture OK, but the sender or texture dimensions could have changed
 			// Reset the global width and height so that the viewport can be set for aspect ratio control
 			if(width != g_Width || height != g_Height) {
