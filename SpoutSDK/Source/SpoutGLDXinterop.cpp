@@ -196,6 +196,13 @@
 
 #include "spoutGLDXinterop.h"
 
+static GLuint saveAndSetFramebufferBinding(GLuint newFBO) {
+	GLint savedFBO;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &savedFBO);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, newFBO);
+	return savedFBO;
+}
+
 spoutGLDXinterop::spoutGLDXinterop() {
 
 	m_hWnd           = NULL;
@@ -1413,21 +1420,21 @@ bool spoutGLDXinterop::isOptimus()
 
 bool spoutGLDXinterop::WriteTexture (GLuint TextureID, GLuint TextureTarget,
 									 unsigned int width, unsigned int height,
-									 bool bInvert, GLuint HostFBO)
+									 bool bInvert)
 {
 	if(m_bUseMemory) { // Memoryshare
-		return(WriteMemory(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+		return(WriteMemory(TextureID, TextureTarget, width, height, bInvert));
 	}
 	else if(m_bUseCPU) { // DirectX CPU
 		if(GetDX9()) {
-			return(WriteDX9texture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+			return(WriteDX9texture(TextureID, TextureTarget, width, height, bInvert));
 		}
 		else {
-			return(WriteDX11texture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+			return(WriteDX11texture(TextureID, TextureTarget, width, height, bInvert));
 		}
 	}
 	else if(m_bGLDXavailable) { // GL/DX interop
-		return(WriteGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+		return(WriteGLDXtexture(TextureID, TextureTarget, width, height, bInvert));
 	}
 	else {
 		return false;
@@ -1436,19 +1443,19 @@ bool spoutGLDXinterop::WriteTexture (GLuint TextureID, GLuint TextureTarget,
 
 bool spoutGLDXinterop::ReadTexture (GLuint TextureID, GLuint TextureTarget,
 									unsigned int width, unsigned int height,
-									bool bInvert, GLuint HostFBO)
+									bool bInvert)
 {
 	if(m_bUseMemory) { // Memoryshare
-		return(ReadMemory(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+		return(ReadMemory(TextureID, TextureTarget, width, height, bInvert));
 	}
 	else if(m_bUseCPU) { // DirectX CPU
 		if(GetDX9())
-			return(ReadDX9texture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+			return(ReadDX9texture(TextureID, TextureTarget, width, height, bInvert));
 		else
-			return(ReadDX11texture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+			return(ReadDX11texture(TextureID, TextureTarget, width, height, bInvert));
 	}
 	else if(m_bGLDXavailable) { // GL/DX interop
-		return(ReadGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+		return(ReadGLDXtexture(TextureID, TextureTarget, width, height, bInvert));
 		// return true;
 	}
 	else {
@@ -1458,7 +1465,7 @@ bool spoutGLDXinterop::ReadTexture (GLuint TextureID, GLuint TextureTarget,
 
 bool spoutGLDXinterop::WriteTexturePixels (const unsigned char *pixels, 
 										   unsigned int width, unsigned int height, 
-										   GLenum glFormat, bool bInvert, GLuint HostFBO)
+										   GLenum glFormat, bool bInvert)
 {
 	if(m_bUseMemory) { // Memoryshare
 		return(WriteMemoryPixels(pixels, width, height, glFormat, bInvert));
@@ -1472,7 +1479,7 @@ bool spoutGLDXinterop::WriteTexturePixels (const unsigned char *pixels,
 		}
 	}
 	else if(m_bGLDXavailable) { // GL/DX interop
-		return(WriteGLDXpixels(pixels, width, height, glFormat, bInvert, HostFBO));
+		return(WriteGLDXpixels(pixels, width, height, glFormat, bInvert));
 	}
 	else {
 		return false;
@@ -1481,7 +1488,7 @@ bool spoutGLDXinterop::WriteTexturePixels (const unsigned char *pixels,
 
 bool spoutGLDXinterop::ReadTexturePixels (unsigned char *pixels,
 										  unsigned int width, unsigned int height, 
-										  GLenum glFormat, bool bInvert, GLuint HostFBO)
+										  GLenum glFormat, bool bInvert)
 {
 	if(m_bUseMemory) { // Memoryshare
 		return(ReadMemoryPixels(pixels, width, height, glFormat, bInvert));
@@ -1493,14 +1500,14 @@ bool spoutGLDXinterop::ReadTexturePixels (unsigned char *pixels,
 			return(ReadDX11pixels(pixels, width, height, glFormat, bInvert));
 	}
 	else if(m_bGLDXavailable) { // GL/DX interop
-		return(ReadGLDXpixels(pixels, width, height, glFormat, bInvert, HostFBO));
+		return(ReadGLDXpixels(pixels, width, height, glFormat, bInvert));
 	}
 	else {
 		return false;
 	}
 }
 
-bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
+bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert)
 {
 	if(m_bUseMemory) { // Memoryshare
 		return(DrawSharedMemory(max_x, max_y, aspect, bInvert));
@@ -1508,10 +1515,10 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect,
 	else if(m_bUseCPU) { // DirectX CPU
 		// Default invert is true for GL/DX interop, but a DirectX texture is already inverted
 		if(GetDX9()) {
-			return(DrawDX9texture(max_x, max_y, aspect, !bInvert, HostFBO));
+			return(DrawDX9texture(max_x, max_y, aspect, !bInvert));
 		}
 		else {
-			return(DrawDX11texture(max_x, max_y, aspect, !bInvert, HostFBO));
+			return(DrawDX11texture(max_x, max_y, aspect, !bInvert));
 		}
 	}
 	else if(m_bGLDXavailable) { // GL/DX interop
@@ -1525,19 +1532,19 @@ bool spoutGLDXinterop::DrawSharedTexture(float max_x, float max_y, float aspect,
 bool spoutGLDXinterop::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget,
 									   unsigned int width, unsigned int height,
 									   float max_x, float max_y, float aspect,
-									   bool bInvert, GLuint HostFBO)
+									   bool bInvert)
 {
 	if(m_bUseMemory) { // Memoryshare
 		return(DrawToSharedMemory(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert));
 	}
 	else if(m_bUseCPU) { // DirectX CPU
 		if(GetDX9()) 
-			return(DrawToDX9texture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO));
+			return(DrawToDX9texture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert));
 		else
-			return(DrawToDX11texture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO));
+			return(DrawToDX11texture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert));
 	}
 	else if(m_bGLDXavailable) { // GL/DX interop
-		return(DrawToGLDXtexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO));
+		return(DrawToGLDXtexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert));
 	}
 	else {
 		return false;
@@ -1612,7 +1619,7 @@ bool spoutGLDXinterop::UnBindSharedTexture()
 //
 // COPY AN OPENGL TEXTURE TO THE SHARED OPENGL TEXTURE
 // 
-bool spoutGLDXinterop::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
+bool spoutGLDXinterop::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert)
 {
 	GLenum status;
 
@@ -1630,7 +1637,7 @@ bool spoutGLDXinterop::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, 
 			// which should have been already created
 
 			// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+			const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 
 			// Attach the Input texture to the color buffer in our frame buffer - note texturetarget 
 			glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, TextureTarget, TextureID, 0);
@@ -1675,8 +1682,8 @@ bool spoutGLDXinterop::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, 
 				PrintFBOstatus(status);
 			}
 
-			// restore the previous fbo - default is 0
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+			// restore the previous framebuffer object binding
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
@@ -1698,7 +1705,7 @@ bool spoutGLDXinterop::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, 
 //
 // COPY FROM THE SHARED OPENGL TEXTURE TO AN OPENGL TEXTURE
 //
-bool spoutGLDXinterop::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
+bool spoutGLDXinterop::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert)
 {
 	GLenum status;
 
@@ -1710,7 +1717,7 @@ bool spoutGLDXinterop::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, u
 		if(LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
 
 			// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+			const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 
 			// Attach the Input texture (the shared texture) to the color buffer in our frame buffer - note texturetarget 
 			glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
@@ -1755,8 +1762,8 @@ bool spoutGLDXinterop::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, u
 
 			glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT); // 04.01.16
 
-			// restore the previous fbo - default is 0
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+			// restore the previous framebuffer object binding
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 
 			// unlock dx object
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
@@ -1779,8 +1786,7 @@ bool spoutGLDXinterop::WriteGLDXpixels(const unsigned char *pixels,
 	                                      unsigned int width, 
 										  unsigned int height, 
 										  GLenum glFormat,
-										  bool bInvert,
-										  GLuint HostFBO)
+										  bool bInvert)
 {
 	GLenum glformat = glFormat;
 
@@ -1804,7 +1810,7 @@ bool spoutGLDXinterop::WriteGLDXpixels(const unsigned char *pixels,
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
 	// Write the local texture to the shared texture and invert if necessary
-	WriteTexture(m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
+	WriteTexture(m_TexID, GL_TEXTURE_2D, width, height, bInvert);
 
 	return true;
 
@@ -1817,8 +1823,7 @@ bool spoutGLDXinterop::ReadGLDXpixels(unsigned char *pixels,
 										 unsigned int width, 
 										 unsigned int height, 
 										 GLenum glFormat,
-										 bool bInvert, 
-										 GLuint HostFBO)
+										 bool bInvert)
 {
 	GLenum status;
 	GLenum glformat = glFormat;
@@ -1840,18 +1845,15 @@ bool spoutGLDXinterop::ReadGLDXpixels(unsigned char *pixels,
 			CheckOpenGLTexture(m_TexID, GL_RGBA, width, height, m_TexWidth, m_TexHeight);
 
 			// Copy the shared texture to the local texture, inverting if necessary
-			CopyTexture(m_glTexture, GL_TEXTURE_2D, m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
+			CopyTexture(m_glTexture, GL_TEXTURE_2D, m_TexID, GL_TEXTURE_2D, width, height, bInvert);
 
 			// Extract the pixels from the local texture - changing to the user passed format
 			if(IsPBOavailable()) { // PBO method
-				UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, pixels, glFormat, false, HostFBO);
+				UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, pixels, glFormat, false);
 			}
 			else {
-				//
-				// fbo attachment method - current fbo has to be passed in
-				//
 				// Bind our local fbo
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
+				const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 				// Attach the local rgba texture to the color buffer in our frame buffer
 				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_TexID, 0);
 				status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -1862,8 +1864,8 @@ bool spoutGLDXinterop::ReadGLDXpixels(unsigned char *pixels,
 				else {
 					PrintFBOstatus(status);
 				}
-				// restore the previous fbo - default is 0
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+				// restore the previous framebuffer object binding
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 			}
 	
 			glPixelStorei(GL_PACK_ALIGNMENT, 4);
@@ -1888,7 +1890,7 @@ bool spoutGLDXinterop::ReadGLDXpixels(unsigned char *pixels,
 bool spoutGLDXinterop::DrawToGLDXtexture(GLuint TextureID, GLuint TextureTarget, 
 										   unsigned int width, unsigned int height, 
 										   float max_x, float max_y, float aspect, 
-										   bool bInvert, GLuint HostFBO)
+										   bool bInvert)
 {
 	GLenum status;
 
@@ -1905,7 +1907,7 @@ bool spoutGLDXinterop::DrawToGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 			// Draw the input texture into the shared texture via an fbo
 
 			// Bind our fbo and attach the shared texture to it
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+			const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 			glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
 			
 			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -1951,13 +1953,13 @@ bool spoutGLDXinterop::DrawToGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 			}
 			else {
 				PrintFBOstatus(status);
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 				UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 				spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 				return false;
 			}
-			// restore the previous fbo - default is 0
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+			// restore the previous framebuffer object binding
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
 	}
@@ -2203,7 +2205,7 @@ bool spoutGLDXinterop::LoadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 bool spoutGLDXinterop::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
 										   unsigned int width, unsigned int height, 
 										   unsigned char *data, GLenum glFormat, 
-										   bool bInvert, GLuint HostFBO)
+										   bool bInvert)
 {
 	void *pboMemory = NULL;
 	int channels = 4; // RGBA or RGB
@@ -2227,7 +2229,7 @@ bool spoutGLDXinterop::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarge
 	NextPboIndex = (PboIndex + 1) % 2;
 
 	// Attach the texture to an FBO
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+	const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, TextureTarget, TextureID, 0);
 
 	// Set the target framebuffer to read
@@ -2256,7 +2258,7 @@ bool spoutGLDXinterop::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarge
 	else {
 		GLerror(); // soak up the error for Processing
 		glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 		return false;
 	}
 	
@@ -2264,7 +2266,7 @@ bool spoutGLDXinterop::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarge
 	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
 	
 	// Restore the previous fbo binding
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 
 
 	return true;
@@ -2313,7 +2315,7 @@ bool spoutGLDXinterop::CheckStagingTexture(unsigned int width, unsigned int heig
 //
 bool spoutGLDXinterop::WriteDX11texture (GLuint TextureID, GLuint TextureTarget, 
 										 unsigned int width, unsigned int height, 
-										 bool bInvert, GLuint HostFBO)
+										 bool bInvert)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource;
 	HRESULT hr;
@@ -2341,16 +2343,16 @@ bool spoutGLDXinterop::WriteDX11texture (GLuint TextureID, GLuint TextureTarget,
 	if(SUCCEEDED(hr)) {
 		// Copy the user OpenGL texture data directly to the staging texture
 		if(IsPBOavailable()) { // PBO method
-			UnloadTexturePixels(TextureID, TextureTarget, width, height, (unsigned char *)mappedSubResource.pData, GL_BGRA_EXT, bInvert, HostFBO);
+			UnloadTexturePixels(TextureID, TextureTarget, width, height, (unsigned char *)mappedSubResource.pData, GL_BGRA_EXT, bInvert);
 		}
 		else {
 			if(bInvert) {
 				// Create or resize a local OpenGL texture
 				CheckOpenGLTexture(m_TexID, GL_RGBA, width, height, m_TexWidth, m_TexHeight);
 				// Copy the user texture to the local texture - necessary for inversion
-				CopyTexture(TextureID, TextureTarget, m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
-				// Bind our local fbo - current fbo has to be passed in
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
+				CopyTexture(TextureID, TextureTarget, m_TexID, GL_TEXTURE_2D, width, height, bInvert);
+				// Bind our local fbo
+				const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 				// Attach the local rgba texture to the color buffer in our frame buffer
 				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_TexID, 0);
 				GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -2361,12 +2363,12 @@ bool spoutGLDXinterop::WriteDX11texture (GLuint TextureID, GLuint TextureTarget,
 				else {
 					PrintFBOstatus(status);
 				}
-				// restore the previous fbo - default is 0
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+				// restore the previous framebuffer object binding
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 			}
 			else {
 				// No invert so use the user texture
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
+				const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 				// Attach the user rgba texture to the color buffer in our frame buffer
 				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, TextureTarget, TextureID, 0);
 				GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -2377,8 +2379,8 @@ bool spoutGLDXinterop::WriteDX11texture (GLuint TextureID, GLuint TextureTarget,
 				else {
 					PrintFBOstatus(status);
 				}
-				// restore the previous fbo - default is 0
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+				// restore the previous framebuffer object binding
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 			}
 		}
 		g_pImmediateContext->Unmap(g_pStagingTexture, 0);
@@ -2400,8 +2402,7 @@ bool spoutGLDXinterop::ReadDX11texture (GLuint TextureID,
 										GLuint TextureTarget, 
 										unsigned int width, 
 										unsigned int height, 
-										bool bInvert,
-										GLuint HostFBO)
+										bool bInvert)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource;
 	HRESULT hr;
@@ -2440,7 +2441,7 @@ bool spoutGLDXinterop::ReadDX11texture (GLuint TextureID,
 						glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, dataPointer);
 						glBindTexture(GL_TEXTURE_2D, 0);
 						// Copy the local texture to the user texture and invert as necessary
-						CopyTexture(m_TexID, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert, HostFBO);
+						CopyTexture(m_TexID, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert);
 					}
 					else {
 						// Copy the DX11 pixels to the user texture
@@ -2579,14 +2580,12 @@ bool spoutGLDXinterop::ReadDX11pixels (unsigned char *pixels,
 // Draw the shared DirectX 11 texture
 // equivalent to DrawSharedTexture for the shared OpenGL texture
 //
-bool spoutGLDXinterop::DrawDX11texture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
+bool spoutGLDXinterop::DrawDX11texture(float max_x, float max_y, float aspect, bool bInvert)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource;
 	HRESULT hr;
 	void * dataPointer = NULL;
 	unsigned int width, height;
-
-	UNREFERENCED_PARAMETER(HostFBO);
 
 	// Only for DX11 mode
 	if(GetDX9())
@@ -2658,7 +2657,7 @@ bool spoutGLDXinterop::DrawDX11texture(float max_x, float max_y, float aspect, b
 bool spoutGLDXinterop::DrawToDX11texture(GLuint TextureID, GLuint TextureTarget, 
 										 unsigned int width, unsigned int height, 
 										 float max_x, float max_y, 
-										 float aspect, bool bInvert, GLuint HostFBO)
+										 float aspect, bool bInvert)
 {
 	GLenum status;
 
@@ -2676,7 +2675,7 @@ bool spoutGLDXinterop::DrawToDX11texture(GLuint TextureID, GLuint TextureTarget,
 	if(m_fbo == 0) glGenFramebuffersEXT(1, &m_fbo); 
 
 	// Draw the shared texture into the user texture via an fbo
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+	const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 
 	// Destination is the fbo with local texture attached
 	glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_TexID, 0);
@@ -2726,15 +2725,15 @@ bool spoutGLDXinterop::DrawToDX11texture(GLuint TextureID, GLuint TextureTarget,
 	}
 	else {
 		PrintFBOstatus(status);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 		return false;
 	}
 
-	// restore the previous fbo - default is 0
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+	// restore the previous framebuffer object binding
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 
 	// Copy the result in the local OpenGL texture to the DX11 shared texture
-	return(WriteDX11texture(m_TexID, GL_TEXTURE_2D, width, height, false, HostFBO));
+	return(WriteDX11texture(m_TexID, GL_TEXTURE_2D, width, height, false));
 
 } // end DrawToDX11texture
 
@@ -2804,8 +2803,7 @@ bool spoutGLDXinterop::WriteDX9texture (GLuint TextureID,
 										GLuint TextureTarget, 
 										unsigned int width, 
 										unsigned int height, 
-										bool bInvert,
-										GLuint HostFBO)
+										bool bInvert)
 {
 	D3DLOCKED_RECT d3dlr; // LockRect for data transfer
 	HRESULT hr;
@@ -2825,18 +2823,18 @@ bool spoutGLDXinterop::WriteDX9texture (GLuint TextureID,
 	CheckOpenGLTexture(m_TexID, GL_RGBA, width, height, m_TexWidth, m_TexHeight);
 
 	// Copy the user texture to the local texture - necessary for inversion
-	CopyTexture(TextureID, TextureTarget, m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
+	CopyTexture(TextureID, TextureTarget, m_TexID, GL_TEXTURE_2D, width, height, bInvert);
 
 	// Lock the system memory surface for write
 	hr = g_DX9surface->LockRect(&d3dlr, NULL, D3DLOCK_DISCARD);
 	if(SUCCEEDED(hr)) {
 		// Extract the pixels from the local OpenGL texture to the BGRA staging texture buffer
 		if(IsPBOavailable()) { // PBO method
-			UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, (unsigned char *)d3dlr.pBits, GL_BGRA_EXT, false, HostFBO);
+			UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, (unsigned char *)d3dlr.pBits, GL_BGRA_EXT, false);
 		}
 		else { 
-			// Bind our local fbo - current fbo has to be passed in
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
+			// Bind our local fbo
+			const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 			// Attach the local rgba texture to the color buffer in our frame buffer
 			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_TexID, 0);
 			GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -2847,8 +2845,8 @@ bool spoutGLDXinterop::WriteDX9texture (GLuint TextureID,
 			else {
 				PrintFBOstatus(status);
 			}
-			// restore the previous fbo - default is 0
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+			// restore the previous framebuffer object binding
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 		}
 		g_DX9surface->UnlockRect();
 
@@ -2868,8 +2866,7 @@ bool spoutGLDXinterop::ReadDX9texture (GLuint TextureID,
 									   GLuint TextureTarget, 
 									   unsigned int width, 
 									   unsigned int height, 
-									   bool bInvert,
-									   GLuint HostFBO)
+									   bool bInvert)
 {
 	D3DLOCKED_RECT d3dlr; // LockRect for data transfer
 	HRESULT hr;
@@ -2909,7 +2906,7 @@ bool spoutGLDXinterop::ReadDX9texture (GLuint TextureID,
 						glBindTexture(GL_TEXTURE_2D, 0);
 					}
 					// Copy the local texture to the user texture and invert as necessary
-					CopyTexture(m_TexID, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert, HostFBO);
+					CopyTexture(m_TexID, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert);
 					g_DX9surface->UnlockRect();
 				}
 				if(SharedTextureSurface) SharedTextureSurface->Release();
@@ -3053,14 +3050,12 @@ bool spoutGLDXinterop::ReadDX9pixels (unsigned char *pixels,
 // Draw the shared DirectX 9 texture
 // equivalent to DrawSharedTexture for the shared OpenGL texture
 //
-bool spoutGLDXinterop::DrawDX9texture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
+bool spoutGLDXinterop::DrawDX9texture(float max_x, float max_y, float aspect, bool bInvert)
 {
 	IDirect3DSurface9 * SharedTextureSurface = NULL;
 	D3DLOCKED_RECT d3dlr; // LockRect for data transfer
 	HRESULT hr;
 	unsigned int width, height;
-
-	UNREFERENCED_PARAMETER(HostFBO);
 
 	// Only for DX9 mode
 	if(!GetDX9())
@@ -3139,7 +3134,7 @@ bool spoutGLDXinterop::DrawDX9texture(float max_x, float max_y, float aspect, bo
 bool spoutGLDXinterop::DrawToDX9texture(GLuint TextureID, GLuint TextureTarget, 
 										unsigned int width, unsigned int height, 
 										float max_x, float max_y, float aspect, 
-										bool bInvert, GLuint HostFBO)
+										bool bInvert)
 {
 	// bool bRet = false;
 	GLenum status;
@@ -3156,7 +3151,7 @@ bool spoutGLDXinterop::DrawToDX9texture(GLuint TextureID, GLuint TextureTarget,
 
 
 	// Draw the input texture into the local texture via an fbo
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+	const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 	// Destination is the fbo with local texture attached
 	glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_TexID, 0);
 	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -3198,15 +3193,15 @@ bool spoutGLDXinterop::DrawToDX9texture(GLuint TextureID, GLuint TextureTarget,
 	}
 	else {
 		PrintFBOstatus(status);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 		return false;
 	}
 
-	// restore the previous fbo - default is 0
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+	// restore the previous framebuffer object binding
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 
 	// Copy the result in the local OpenGL texture to the shared DX9 texture
-	return(WriteDX9texture (m_TexID, GL_TEXTURE_2D, width, height, false, HostFBO));
+	return(WriteDX9texture (m_TexID, GL_TEXTURE_2D, width, height, false));
 
 } // end DrawToDX9texture
 
@@ -3640,8 +3635,7 @@ bool spoutGLDXinterop::WriteMemory (GLuint TexID,
 									GLuint TextureTarget, 
 									unsigned int width, 
 									unsigned int height, 
-									bool bInvert,
-									GLuint HostFBO)
+									bool bInvert)
 {
 
 	unsigned char *pBuffer = memoryshare.LockSenderMemory();
@@ -3655,12 +3649,12 @@ bool spoutGLDXinterop::WriteMemory (GLuint TexID,
 	// Copy the user texture to the local rgba texture and invert as necessary
 	// There is not much speed gain bypassing the intermediate texture
 	// so create it and then it will always be RGBA for the functions to follow
-	CopyTexture(TexID, TextureTarget, m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
+	CopyTexture(TexID, TextureTarget, m_TexID, GL_TEXTURE_2D, width, height, bInvert);
 
 	// Read the local opengl texture into the rgba memory map buffer
 	// Use PBO if supported
 	if(IsPBOavailable()) {
-		UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, pBuffer, GL_RGBA, false, HostFBO);
+		UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, pBuffer, GL_RGBA, false);
 	}
 	else {
 		// printf("glGetTexImage\n");
@@ -3682,8 +3676,7 @@ bool spoutGLDXinterop::ReadMemory(GLuint TexID,
 								  GLuint TextureTarget,
 								  unsigned int width,
 								  unsigned int height,
-								  bool bInvert,
-								  GLuint HostFBO)
+								  bool bInvert)
 {
 	unsigned char *pBuffer = memoryshare.LockSenderMemory();
 	if(!pBuffer) return false;
@@ -3702,7 +3695,7 @@ bool spoutGLDXinterop::ReadMemory(GLuint TexID,
 	}
 
 	// Copy the local rgba texture to the user texture and invert as necessary
-	CopyTexture(m_TexID, GL_TEXTURE_2D, TexID, TextureTarget, width, height, bInvert, HostFBO);
+	CopyTexture(m_TexID, GL_TEXTURE_2D, TexID, TextureTarget, width, height, bInvert);
 
 	memoryshare.UnlockSenderMemory();
 	
@@ -3780,7 +3773,7 @@ bool spoutGLDXinterop::ReadMemoryPixels(unsigned char *pixels, unsigned int widt
 bool spoutGLDXinterop::DrawToSharedMemory(GLuint TexID, GLuint TextureTarget, 
 										  unsigned int width, unsigned int height, 
 										  float max_x, float max_y, float aspect, 
-										  bool bInvert, GLuint HostFBO)
+										  bool bInvert)
 {
 	unsigned int memWidth, memHeight;
 	GLenum status;
@@ -3808,7 +3801,7 @@ bool spoutGLDXinterop::DrawToSharedMemory(GLuint TexID, GLuint TextureTarget,
 	//
 	// Draw the input texture into the local texture via an fbo
 	//
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+	const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 
 	// Destination is the fbo with local texture attached
 	glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_TexID, 0);
@@ -3857,18 +3850,18 @@ bool spoutGLDXinterop::DrawToSharedMemory(GLuint TexID, GLuint TextureTarget,
 	}
 	else {
 		PrintFBOstatus(status);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 		memoryshare.UnlockSenderMemory();
 		return false;
 	}
 
-	// restore the previous fbo - default is 0
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+	// restore the previous framebuffer object binding
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 
 	// Now read the local opengl texture into the memory map buffer
 	// Use PBO if supported
 	if(IsPBOavailable()) {
-		UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, pBuffer, GL_RGBA, false, HostFBO);
+		UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, pBuffer, GL_RGBA, false);
 	}
 	else {
 		glBindTexture(GL_TEXTURE_2D, m_TexID);
@@ -3952,8 +3945,7 @@ bool spoutGLDXinterop::CopyTexture(	GLuint SourceID,
 									GLuint DestTarget,
 									unsigned int width, 
 									unsigned int height, 
-									bool bInvert, 
-									GLuint HostFBO)
+									bool bInvert)
 {
 	GLenum status;
 
@@ -3962,7 +3954,7 @@ bool spoutGLDXinterop::CopyTexture(	GLuint SourceID,
 		glGenFramebuffersEXT(1, &m_fbo); 
 
 	// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+	const GLuint savedFBO = saveAndSetFramebufferBinding(m_fbo);
 
 	// Attach the Source texture to the color buffer in our frame buffer
 	glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
@@ -4004,12 +3996,12 @@ bool spoutGLDXinterop::CopyTexture(	GLuint SourceID,
 	}
 	else {
 		PrintFBOstatus(status);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 		return false;
 	}
 
-	// restore the previous fbo - default is 0
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+	// restore the previous framebuffer object binding
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 
 	return true;
 

@@ -72,12 +72,12 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool setSharedInfo(char* sharedMemoryName, SharedTextureInfo* info);
 
 		// Texture functions
-		bool WriteTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true,  GLuint HostFBO=0);
-		bool ReadTexture (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false, GLuint HostFBO=0);
-		bool WriteTexturePixels(const unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
-		bool ReadTexturePixels (unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
-		bool DrawSharedTexture (float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
-		bool DrawToSharedTexture (GLuint TexID, GLuint TexTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
+		bool WriteTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true);
+		bool ReadTexture (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false);
+		bool WriteTexturePixels(const unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
+		bool ReadTexturePixels (unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
+		bool DrawSharedTexture (float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true);
+		bool DrawToSharedTexture (GLuint TexID, GLuint TexTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false);
 		bool BindSharedTexture();
 		bool UnBindSharedTexture();
 		
@@ -89,7 +89,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
 								 unsigned int width, unsigned int height,
 								 unsigned char *data, GLenum glFormat = GL_RGBA,
-								 bool bInvert = false, GLuint HostFBO = 0);
+								 bool bInvert = false);
 
 		bool LoadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
 							   unsigned int width, unsigned int height,
@@ -164,7 +164,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool InitOpenGL();
 		bool CloseOpenGL();
 		bool CopyTexture(GLuint SourceID, GLuint SourceTarget, GLuint DestID, GLuint DestTarget,
-						 unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
+						 unsigned int width, unsigned int height, bool bInvert);
 		void InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
 		void CheckOpenGLTexture(GLuint &texID, GLenum GLformat,
 								unsigned int newWidth, unsigned int newHeight,
@@ -234,40 +234,40 @@ protected:
 		bool setSharedTextureInfo(const char* sharedMemoryName);
 
 		// GL/DX interop texture functions
-		bool WriteGLDXtexture (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true,  GLuint HostFBO=0);
-		bool ReadGLDXtexture  (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false, GLuint HostFBO=0);
-		bool WriteGLDXpixels  (const unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
-		bool ReadGLDXpixels   (unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
+		bool WriteGLDXtexture (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true);
+		bool ReadGLDXtexture  (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false);
+		bool WriteGLDXpixels  (const unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
+		bool ReadGLDXpixels   (unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
 		bool DrawGLDXtexture  (float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true);
-		bool DrawToGLDXtexture(GLuint TexID, GLuint TexTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
+		bool DrawToGLDXtexture(GLuint TexID, GLuint TexTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false);
 
 		// DX11 staging texture functions for CPU access
-		bool WriteDX11texture (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false, GLuint HostFBO=0);
-		bool ReadDX11texture  (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false, GLuint HostFBO=0);
+		bool WriteDX11texture (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false);
+		bool ReadDX11texture  (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false);
 		bool WriteDX11pixels  (const unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false);
 		bool ReadDX11pixels   (unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false);
-		bool DrawDX11texture  (float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO=0);
-		bool DrawToDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
+		bool DrawDX11texture  (float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false);
+		bool DrawToDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false);
 		bool CheckStagingTexture(unsigned int width, unsigned int height);
 		void FlushWait();
 
 		// DX9 surface functions for CPU access
 		bool WriteDX9surface (LPDIRECT3DSURFACE9 source_surface);
-		bool WriteDX9texture (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false, GLuint HostFBO=0);
-		bool ReadDX9texture  (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false, GLuint HostFBO=0);
+		bool WriteDX9texture (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false);
+		bool ReadDX9texture  (GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=false);
 		bool WriteDX9pixels  (const unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false);
 		bool ReadDX9pixels   (unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false);
-		bool DrawDX9texture  (float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
-		bool DrawToDX9texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
+		bool DrawDX9texture  (float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false);
+		bool DrawToDX9texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false);
 		bool CheckDX9surface (unsigned int width, unsigned int height);
 
 		// Memoryshare functions
-		bool WriteMemory (GLuint TexID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false,  GLuint HostFBO=0);
-		bool ReadMemory  (GLuint TexID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false,  GLuint HostFBO=0);
+		bool WriteMemory (GLuint TexID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false);
+		bool ReadMemory  (GLuint TexID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false);
 		bool WriteMemoryPixels (const unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
 		bool ReadMemoryPixels  (unsigned char *pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
 		bool DrawSharedMemory  (float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false);
-		bool DrawToSharedMemory(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
+		bool DrawToSharedMemory(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false);
 
 		// Utility
 		bool OpenDeviceKey(const char* key, int maxsize, char *description, char *version);

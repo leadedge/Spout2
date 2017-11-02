@@ -322,14 +322,14 @@ void Spout::ReleaseReceiver()
 
 
 // If the local texure has changed dimensions this will return false
-bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
+bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert)
 {
 	// width, g_Width should all be the same
 	// (the application resets the size of any texture that is being sent out)
 	if(width != g_Width || height != g_Height) 
 		return(UpdateSender(g_SharedMemoryName, width, height));
 	else
-		return(interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+		return(interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert));
 
 } // end SendTexture
 
@@ -340,8 +340,7 @@ bool Spout::SendImage(const unsigned char* pixels,
 					  unsigned int width, 
 					  unsigned int height, 
 					  GLenum glFormat, 
-					  bool bInvert,
-					  GLuint HostFBO)
+					  bool bInvert)
 {
 	// bool bResult = true;
 	GLenum glformat = glFormat;
@@ -365,7 +364,7 @@ bool Spout::SendImage(const unsigned char* pixels,
 	}
 
 	// Write the pixel data to the rgba shared texture from the user pixel format
-	return(interop.WriteTexturePixels(pixels, width, height, glformat, bInvert, HostFBO));
+	return(interop.WriteTexturePixels(pixels, width, height, glformat, bInvert));
 
 } // end SendImage
 
@@ -378,8 +377,7 @@ bool Spout::ReceiveTexture(char* name,
 						   unsigned int &height, 
 						   GLuint TextureID, 
 						   GLuint TextureTarget, 
-						   bool bInvert, 
-						   GLuint HostFBO)
+						   bool bInvert)
 {
 	bool bConnected = true;
 	// printf("Spout::ReceiveTexture(%s), %d, %d, [%x], [%x] (bInvert = %d)\n", name, width, height, TextureID, TextureTarget, bInvert);
@@ -417,7 +415,7 @@ bool Spout::ReceiveTexture(char* name,
 	if(TextureID > 0 && TextureTarget > 0) {
 		// If a valid texture was passed, read the shared texture into it.
 		// Otherwise skip it. All the other checks for name and size are already done.
-		return(interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height, bInvert, HostFBO));
+		return(interop.ReadTexture(TextureID, TextureTarget, g_Width, g_Height, bInvert));
 	}
 	else {
 		// Just depend on the shared texture being updated and don't return one
@@ -435,8 +433,7 @@ bool Spout::ReceiveImage(char* name,
 						 unsigned int &height, 
 						 unsigned char* pixels, 
 						 GLenum glFormat,
-						 bool bInvert, 
-						 GLuint HostFBO)
+						 bool bInvert)
 {
 	bool bConnected = true;
 	GLenum glformat = glFormat;
@@ -466,7 +463,7 @@ bool Spout::ReceiveImage(char* name,
 
 	// Read the shared texture into the pixel buffer
 	// Functions handle the formats supported
-	return(interop.ReadTexturePixels(pixels, width, height, glformat, bInvert, HostFBO));
+	return(interop.ReadTexturePixels(pixels, width, height, glformat, bInvert));
 
 }  // end ReceiveImage
 
@@ -646,16 +643,16 @@ bool Spout::UnBindSharedTexture()
 
 
 //---------------------------------------------------------
-bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
+bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert)
 {
-	return(interop.DrawSharedTexture(max_x, max_y, aspect, bInvert, HostFBO));
+	return(interop.DrawSharedTexture(max_x, max_y, aspect, bInvert));
 }
 
 
 
 //---------------------------------------------------------
 // 
-bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
+bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert)
 {
 	// Allow for change of sender size, even though the draw is independent of the 
 	// shared texture size, otherwise receivers will get a constant size for this sender
@@ -666,7 +663,7 @@ bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned
 			return(UpdateSender(g_SharedMemoryName, width, height));
 		}
 	}
-	return(interop.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO));
+	return(interop.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert));
 
 }
 

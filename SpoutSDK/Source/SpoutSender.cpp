@@ -88,23 +88,23 @@ void SpoutSender::ReleaseSender(DWORD dwMsec)
 
 
 //---------------------------------------------------------
-bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
+bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
 {
-	return spout.SendImage(pixels, width, height, glFormat, bInvert, HostFBO);
+	return spout.SendImage(pixels, width, height, glFormat, bInvert);
 }
 
 
 //---------------------------------------------------------
-bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
+bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget,  unsigned int width, unsigned int height, bool bInvert)
 {
-	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert);
 }
 
 
 //---------------------------------------------------------
-bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
+bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert)
 {
-	return spout.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO);
+	return spout.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert);
 }
 
 

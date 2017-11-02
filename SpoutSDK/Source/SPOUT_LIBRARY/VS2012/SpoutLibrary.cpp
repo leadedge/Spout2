@@ -63,24 +63,24 @@ class SPOUTImpl : public SPOUTLIBRARY
 		// Sender
 		bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
 		bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
-		bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
+		bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true);
 		bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false);
 		void ReleaseSender(DWORD dwMsec = 0);
 
 		// Receiver
 		bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
 		void ReleaseReceiver();
-		bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
+		bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false);
 		bool SelectSenderPanel(const char* message = NULL);
-		bool ReceiveImage   (char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
+		bool ReceiveImage   (char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false);
 		bool CheckReceiver	(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 		bool GetImageSize   (char* sendername, unsigned int &width, unsigned int &height, bool &bMemoryMode);	
 
 		bool BindSharedTexture();
 		bool UnBindSharedTexture();
 	
-		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
-		bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
+		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true);
+		bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false);
 
 		int  GetSenderCount ();
 		bool GetSenderName  (int index, char* sendername, int MaxSize = 256);
@@ -136,9 +136,9 @@ bool SPOUTImpl::UpdateSender(const char* Sendername, unsigned int width, unsigne
 	return spoutSDK->CreateSender(Sendername, width, height);
 }
 
-bool SPOUTImpl::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
+bool SPOUTImpl::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert)
 {
-	return spoutSDK->SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+	return spoutSDK->SendTexture(TextureID, TextureTarget, width, height, bInvert);
 }
 
 bool SPOUTImpl::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
@@ -164,9 +164,9 @@ void SPOUTImpl::ReleaseReceiver()
 	spoutSDK->ReleaseReceiver();
 }
 
-bool SPOUTImpl::ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
+bool SPOUTImpl::ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, bool bInvert)
 {
-	return spoutSDK->ReceiveTexture(Sendername, width, height, TextureID, TextureTarget, bInvert, HostFBO);
+	return spoutSDK->ReceiveTexture(Sendername, width, height, TextureID, TextureTarget, bInvert);
 }
 
 
@@ -175,9 +175,9 @@ bool SPOUTImpl::SelectSenderPanel(const char* message)
 	return spoutSDK->SelectSenderPanel(message);
 }
 
-bool SPOUTImpl::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFBO)
+bool SPOUTImpl::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat, bool bInvert)
 {
-	return spoutSDK->ReceiveImage(Sendername, width, height, pixels, glFormat, bInvert, HostFBO);
+	return spoutSDK->ReceiveImage(Sendername, width, height, pixels, glFormat, bInvert);
 }
 
 bool SPOUTImpl::CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected)
@@ -200,14 +200,14 @@ bool SPOUTImpl::UnBindSharedTexture()
 	return spoutSDK->UnBindSharedTexture();
 }
 
-bool SPOUTImpl::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
+bool SPOUTImpl::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert)
 {
-	return spoutSDK->DrawSharedTexture(max_x, max_y, aspect, bInvert, HostFBO);
+	return spoutSDK->DrawSharedTexture(max_x, max_y, aspect, bInvert);
 }
 
-bool SPOUTImpl::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
+bool SPOUTImpl::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert)
 {
-	return spoutSDK->DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO);
+	return spoutSDK->DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert);
 }
 
 int  SPOUTImpl::GetSenderCount()
