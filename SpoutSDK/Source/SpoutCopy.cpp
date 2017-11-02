@@ -110,8 +110,6 @@ void spoutCopy::FlipBuffer(const unsigned char *src,
 		line_s += pitch;
 		line_t -= pitch;
 	}
-
-	return true;
 }
 
 
