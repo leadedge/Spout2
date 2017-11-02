@@ -227,8 +227,7 @@ DWORD SpoutSenderSDK3::ProcessOpenGL(ProcessOpenGLStruct *pGL)
 	}
 
 	// Render the Freeframe texture into the shared texture
-	// Important - pass the FFGL host FBO to restore the binding because Spout uses a local fbo
-	sender.DrawToSharedTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height, (float)maxCoords.s, (float)maxCoords.t, 1.0f, true, pGL->HostFBO);
+	sender.DrawToSharedTexture(InputTexture.Handle, GL_TEXTURE_2D,  m_Width, m_Height, (float)maxCoords.s, (float)maxCoords.t, 1.0f, true);
 
 	return FF_SUCCESS;
 

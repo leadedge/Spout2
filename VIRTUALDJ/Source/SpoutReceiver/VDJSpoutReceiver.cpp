@@ -360,7 +360,7 @@ HRESULT __stdcall SpoutReceiverPlugin::OnDraw()
 }
 
 
-bool SpoutReceiverPlugin::ReceiveTexture(char* name, unsigned int &width, unsigned int &height) // , GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
+bool SpoutReceiverPlugin::ReceiveTexture(char* name, unsigned int &width, unsigned int &height) // , GLuint TextureID, GLuint TextureTarget, bool bInvert)
 {
 	char activename[256];
 	unsigned int newWidth, newHeight;

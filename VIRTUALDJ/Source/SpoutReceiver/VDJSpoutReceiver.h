@@ -82,7 +82,7 @@ private:
 
 	bool CreateReceiver(char* sendername, unsigned int &width, unsigned int &height, bool bActive);
 	bool OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& theHeight);
-	// bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO=0);
+	// bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false);
 	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height);
 
 };
