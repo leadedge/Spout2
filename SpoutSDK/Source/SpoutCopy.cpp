@@ -85,7 +85,7 @@ void spoutCopy::CopyPixels(const unsigned char *source,
 
 
 
-bool spoutCopy::FlipBuffer(const unsigned char *src, 
+void spoutCopy::FlipBuffer(const unsigned char *src, 
 						   unsigned char *dst,
 						   unsigned int width,
 						   unsigned int height,

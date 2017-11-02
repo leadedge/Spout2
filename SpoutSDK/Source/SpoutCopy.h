@@ -57,7 +57,7 @@ class SPOUT_DLLEXP spoutCopy {
 						unsigned int width, unsigned int height, 
 						GLenum glFormat = GL_RGBA, bool bInvert = false) const;
 
-		bool FlipBuffer(const unsigned char *src, unsigned char *dst,
+		void FlipBuffer(const unsigned char *src, unsigned char *dst,
 						unsigned int width, unsigned int height,
 						GLenum glFormat = GL_RGBA) const;
 
