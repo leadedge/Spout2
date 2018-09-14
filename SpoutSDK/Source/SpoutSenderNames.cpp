@@ -773,7 +773,7 @@ void spoutSenderNames::writeBufferFromSenderSet(const std::set<std::string>& Sen
 		// move the buffer pointer on for the next Sender name
 		buf += SpoutMaxSenderNameLen;
 		i++;
-		if(i > maxSenders) break; // do not exceed the size of the local buffer
+		if(i >= maxSenders) break; // do not exceed the size of the local buffer
 	}
 
 	// If we haven't totally filled the sender list, 
