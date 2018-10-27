@@ -104,6 +104,11 @@
 //	22.01.17 - rebuild VS2012 /MD to avoid virus false postive
 //	10.02.17 - Fixed command line for Message Box
 //			 - Version 2.20
+//	01.03.18 - Read maxsenders registry entry because this is a new instance of SpoutSenderNames
+//			   https://github.com/leadedge/Spout2/issues/33
+//			 - Version 2.21 - VS2012
+// 27.10.18 - fixed string corruption reporting maximum senders
+//			 - Version 2.22 - VS2012
 //
 #include <windows.h>
 #include <vector>
@@ -184,9 +189,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	FILE* pCout; // should really be freed on exit
 	AllocConsole();
 	freopen_s(&pCout, "CONOUT$", "w", stdout); 
-	printf("SpoutPanel 2.20\n");
+	printf("SpoutPanel 2.22\n");
 	*/
-
 
 	// Find the current active window to restore to the top when SpoutPanel quits
 	hWnd = GetForegroundWindow();
@@ -259,7 +263,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		EnableWindow(hWnd, TRUE);
 	}
 	else {
-		printf("Argc is zero\n");
+		// printf("Argc is zero\n");
 		if(lpCmdLine && lpCmdLine[0]) {
 			// No listed args, but a command line so send a user message
 			// printf("text arg [%s]\n", lpCmdLine);
@@ -284,6 +288,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		if(dwMode == 1) {
 			bCPUmode = true;
 		}
+	}
+
+	// Read maxsenders registry entry because this is a new instance of SpoutSenderNames
+	DWORD dwSenders = 10;
+	if (ReadDwordFromRegistry(&dwSenders, "Software\\Leading Edge\\Spout", "MaxSenders")) {
+		sendernames.SetMaxSenders(dwSenders);
 	}
 
 	// LJ DEBUG
@@ -647,6 +657,8 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							// printf("    Height  %d\n", info.height);
 							// printf("    Format  %d\n", info.format);
 							// printf("    Handle  %u (%x)\n", info.shareHandle, info.shareHandle);
+							// memset((void *)temp, 512, 32);
+
 								switch(info.format) {
 									// DX9
 									case 0 : // default unknown
@@ -725,10 +737,11 @@ INT_PTR CALLBACK SenderListDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 							// ====================================================
 							// 25.02.16 - get the maximum number of senders
 							// Only works if SpoutDXmode has set the registry entry
+							// 27.10.18 - fixed string corruption with sprintf_s to tmp
 							DWORD dwSenders = 0;
 							if(ReadDwordFromRegistry(&dwSenders, "Software\\Leading Edge\\Spout", "MaxSenders")) {
 								char tmp[32];
-								// sprintf(tmp, "\nMaximum number of senders : %d", dwSenders);
+								sprintf_s(tmp, 32,  "\nMax senders : %d", dwSenders);
 								strcat_s(temp, 512, tmp);
 							}
 							// ====================================================
@@ -1143,7 +1156,7 @@ int ParseCommandline()
 	WCHAR  *wcCommandLine;
 	LPWSTR *argw;
 
-	// Get a WCHAR version of the parsed commande line
+	// Get a WCHAR version of the parsed command line
 	wcCommandLine = GetCommandLineW();
 	if (*wcCommandLine == NULL) {
 		// printf("NULL command line\n");
