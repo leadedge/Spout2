@@ -6,7 +6,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-		Copyright (c) 2014-2017, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2018, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -191,6 +191,8 @@
 					- CleanupDX9 change to prevent crash with Milkdrop
 					- add pQuery->Release() to FlushWait
 		04.02.17	- corrected test for fbo blit extension
+		11.11.18	- Correct release of DX11 immediate context
+					  TODO : DX9 leak checking
 
 */
 
@@ -460,6 +462,8 @@ bool spoutGLDXinterop::OpenDirectX11()
 	if(g_pd3dDevice == NULL) {
 		return false;
 	}
+	// 11.11.18
+	g_pImmediateContext = spoutdx.GetImmediateContext();
 
 	return true;
 }
@@ -477,8 +481,16 @@ bool spoutGLDXinterop::DX11available()
 	if(pd3dDevice == NULL)
 		return false;
 
+	// 11.11.18
+	// Clear state and flush context to prevent deferred device release
+	spoutdx.GetImmediateContext()->ClearState();
+	spoutdx.GetImmediateContext()->Flush();
+	// Release the global immediate context in SpoutDirectX
+	spoutdx.GetImmediateContext()->Release();
+
 	// Close it because not initialized yet and is just a test
-	pd3dDevice->Release();
+	ULONG refcount = pd3dDevice->Release();
+	// printf("DX11available - device release refcount = %ld\n", refcount);
 
 	return true;
 }
@@ -634,7 +646,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 
 	// Needs an openGL context to work
 	if(!wglGetCurrentContext()) {
-		MessageBoxA(NULL, "CreateInterop - no GL context", "SPOUT", MB_OK|MB_ICONEXCLAMATION);
+		// MessageBoxA(NULL, "CreateInterop - no GL context", "SPOUT", MB_OK|MB_ICONEXCLAMATION);
 		return false;
 	}
 
@@ -966,8 +978,8 @@ bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height
 			g_pStagingTexture->Release();
 			g_pStagingTexture = NULL;
 			// Flush is needed or there is a GPU memory leak
-			if (!g_pImmediateContext) g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
-			if (g_pImmediateContext) g_pImmediateContext->Flush();
+			if (g_pImmediateContext)
+				g_pImmediateContext->Flush();
 		}
 		if(!spoutdx.CreateDX11StagingTexture(g_pd3dDevice, width, height, DX11format, &g_pStagingTexture)) {
 			printf("    DX11 create staging texture failed\n");	
@@ -1098,26 +1110,39 @@ void spoutGLDXinterop::CleanupDX9(bool bExit)
 
 void spoutGLDXinterop::CleanupDX11(bool bExit)
 {
+
+	// printf("CleanupDX11 - g_pd3dDevice = %d\n", g_pd3dDevice);
+
 	if (g_pd3dDevice != NULL) {
-		if (!g_pImmediateContext) g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
 		if (g_pSharedTexture != NULL) {
 			g_pSharedTexture->Release();
 			g_pSharedTexture = NULL;
 			// 14.07.16 - flush is needed or there is a GPU memory leak
-			if (g_pImmediateContext) g_pImmediateContext->Flush();
+			if (g_pImmediateContext) 
+				g_pImmediateContext->Flush();
 		}
 
 		// DX11 staging texture
 		if(g_pStagingTexture != NULL) {
 			g_pStagingTexture->Release();
 			g_pStagingTexture = NULL;
-			if (g_pImmediateContext) g_pImmediateContext->Flush();
+			if (g_pImmediateContext) 
+				g_pImmediateContext->Flush();
 		}
 
-		if (bExit) {
+		// 11.11.18 - release device
+		// if (bExit) {
+			// Clear state and flush context to prevent deferred device release
+			if (g_pImmediateContext) {
+				g_pImmediateContext->ClearState();
+				g_pImmediateContext->Flush();
+				// Release the global immediate context in SpoutDirectX
+				g_pImmediateContext->Release();
+				g_pImmediateContext = NULL;
+			}
 			g_pd3dDevice->Release();
 			g_pd3dDevice = NULL;
-		}
+		// }
 	}
 }
 
@@ -1906,6 +1931,10 @@ bool spoutGLDXinterop::DrawToGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 
 			// Bind our fbo and attach the shared texture to it
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+			
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 			glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
 			
 			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -1947,7 +1976,6 @@ bool spoutGLDXinterop::DrawToGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 
 				glBindTexture(TextureTarget, 0);
 				glDisable(TextureTarget);
-
 			}
 			else {
 				PrintFBOstatus(status);
@@ -2038,12 +2066,10 @@ bool spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture)
 		return false;
 	}
 
-	if(!g_pImmediateContext)
-		g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
-
 	// Wait for access to the texture
 	if(spoutdx.CheckAccess(m_hAccessMutex)) {
-		g_pImmediateContext->CopyResource(g_pSharedTexture, *texture);
+		if(g_pImmediateContext)
+			g_pImmediateContext->CopyResource(g_pSharedTexture, *texture);
 		// Wait for access to the shared texture sor the receiver can read it straight away
 		FlushWait();
 		spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
@@ -2071,11 +2097,9 @@ bool spoutGLDXinterop::ReadTexture(ID3D11Texture2D** texture)
 		return false;
 	}
 
-	if(!g_pImmediateContext)
-		g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
-
 	if(spoutdx.CheckAccess(m_hAccessMutex)) {
-		g_pImmediateContext->CopyResource(*texture, g_pSharedTexture);
+		if(g_pImmediateContext)
+			g_pImmediateContext->CopyResource(*texture, g_pSharedTexture);
 		spoutdx.AllowAccess(m_hAccessMutex); // Allow access to the texture
 		return true;
 	}
@@ -2106,25 +2130,25 @@ void spoutGLDXinterop::FlushWait()
 	// the flush and wait is necessary. For WriteTexture "the copy has not necessarily executed
 	// by the time the method returns". The sender has to ensure that the copy is complete so
 	// that the receiver will get the new frame.
-	if(!g_pImmediateContext) 
-		g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
-	g_pImmediateContext->Flush();
+	if(g_pImmediateContext) {
+		g_pImmediateContext->Flush();
 
-	// For a receiver, make sure that the GPU is finished processing commands before accessing the 
-	// staging texture and before the sender fills the shared texture again on the next frame.
-	// For a sender, make sure the CopyResource fnction has completed before the receiver application
-	// accesses the shared texture.
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476578%28v=vs.85%29.aspx
-	ZeroMemory(&queryDesc, sizeof(queryDesc));
-	queryDesc.Query = D3D11_QUERY_EVENT; 
-	// When the GPU is finished, ID3D11DeviceContext::GetData will return S_OK.
-	// When using this type of query, ID3D11DeviceContext::Begin is disabled.
-	ZeroMemory(&queryDesc, sizeof(queryDesc));
-	queryDesc.Query = D3D11_QUERY_EVENT; 
-	g_pd3dDevice->CreateQuery(&queryDesc, &pQuery);
-	g_pImmediateContext->End(pQuery);
-	while( S_OK != g_pImmediateContext->GetData(pQuery, NULL, 0, 0));
-	pQuery->Release();
+		// For a receiver, make sure that the GPU is finished processing commands before accessing the 
+		// staging texture and before the sender fills the shared texture again on the next frame.
+		// For a sender, make sure the CopyResource fnction has completed before the receiver application
+		// accesses the shared texture.
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476578%28v=vs.85%29.aspx
+		ZeroMemory(&queryDesc, sizeof(queryDesc));
+		queryDesc.Query = D3D11_QUERY_EVENT; 
+		// When the GPU is finished, ID3D11DeviceContext::GetData will return S_OK.
+		// When using this type of query, ID3D11DeviceContext::Begin is disabled.
+		ZeroMemory(&queryDesc, sizeof(queryDesc));
+		queryDesc.Query = D3D11_QUERY_EVENT; 
+		g_pd3dDevice->CreateQuery(&queryDesc, &pQuery);
+		g_pImmediateContext->End(pQuery);
+		while( S_OK != g_pImmediateContext->GetData(pQuery, NULL, 0, 0));
+		pQuery->Release();
+	}
 
 }
 
@@ -2334,61 +2358,60 @@ bool spoutGLDXinterop::WriteDX11texture (GLuint TextureID, GLuint TextureTarget,
 	// Copy OpenGL texture pixels to the staging texture
 	//
 
-	// Get context
-	if(!g_pImmediateContext) g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
-	// Get a pointer to the staging texture data
-	hr = g_pImmediateContext->Map(g_pStagingTexture, 0, D3D11_MAP_WRITE, 0, &mappedSubResource);
-	if(SUCCEEDED(hr)) {
-		// Copy the user OpenGL texture data directly to the staging texture
-		if(IsPBOavailable()) { // PBO method
-			UnloadTexturePixels(TextureID, TextureTarget, width, height, (unsigned char *)mappedSubResource.pData, GL_BGRA_EXT, bInvert, HostFBO);
-		}
-		else {
-			if(bInvert) {
-				// Create or resize a local OpenGL texture
-				CheckOpenGLTexture(m_TexID, GL_RGBA, width, height, m_TexWidth, m_TexHeight);
-				// Copy the user texture to the local texture - necessary for inversion
-				CopyTexture(TextureID, TextureTarget, m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
-				// Bind our local fbo - current fbo has to be passed in
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
-				// Attach the local rgba texture to the color buffer in our frame buffer
-				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_TexID, 0);
-				GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-				if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-					// read the pixels from the OpenGL framebuffer into the BGRA DX11 texture
-					glReadPixels(0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, mappedSubResource.pData);
-				}
-				else {
-					PrintFBOstatus(status);
-				}
-				// restore the previous fbo - default is 0
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+	if(g_pImmediateContext) {
+		// Get a pointer to the staging texture data
+		hr = g_pImmediateContext->Map(g_pStagingTexture, 0, D3D11_MAP_WRITE, 0, &mappedSubResource);
+		if(SUCCEEDED(hr)) {
+			// Copy the user OpenGL texture data directly to the staging texture
+			if(IsPBOavailable()) { // PBO method
+				UnloadTexturePixels(TextureID, TextureTarget, width, height, (unsigned char *)mappedSubResource.pData, GL_BGRA_EXT, bInvert, HostFBO);
 			}
 			else {
-				// No invert so use the user texture
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
-				// Attach the user rgba texture to the color buffer in our frame buffer
-				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, TextureTarget, TextureID, 0);
-				GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-				if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-					// read the pixels from the OpenGL framebuffer into the BGRA DX11 texture
-					glReadPixels(0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, mappedSubResource.pData);
+				if(bInvert) {
+					// Create or resize a local OpenGL texture
+					CheckOpenGLTexture(m_TexID, GL_RGBA, width, height, m_TexWidth, m_TexHeight);
+					// Copy the user texture to the local texture - necessary for inversion
+					CopyTexture(TextureID, TextureTarget, m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
+					// Bind our local fbo - current fbo has to be passed in
+					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
+					// Attach the local rgba texture to the color buffer in our frame buffer
+					glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_TexID, 0);
+					GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+					if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+						// read the pixels from the OpenGL framebuffer into the BGRA DX11 texture
+						glReadPixels(0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, mappedSubResource.pData);
+					}
+					else {
+						PrintFBOstatus(status);
+					}
+					// restore the previous fbo - default is 0
+					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 				}
 				else {
-					PrintFBOstatus(status);
+					// No invert so use the user texture
+					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo); 
+					// Attach the user rgba texture to the color buffer in our frame buffer
+					glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, TextureTarget, TextureID, 0);
+					GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+					if(status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+						// read the pixels from the OpenGL framebuffer into the BGRA DX11 texture
+						glReadPixels(0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, mappedSubResource.pData);
+					}
+					else {
+						PrintFBOstatus(status);
+					}
 				}
-				// restore the previous fbo - default is 0
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 			}
-		}
-		g_pImmediateContext->Unmap(g_pStagingTexture, 0);
+			g_pImmediateContext->Unmap(g_pStagingTexture, 0);
 
-		// Write the staging texture to the shared texture
-		return WriteTexture(&g_pStagingTexture);
+			// Write the staging texture to the shared texture
+			return WriteTexture(&g_pStagingTexture);
+		}
 
 	} // endif DX11 map OK
 
 	return false;
+
 } // end WriteDX11texture
 
 
@@ -2422,36 +2445,37 @@ bool spoutGLDXinterop::ReadDX11texture (GLuint TextureID,
 	if(ReadTexture(&g_pStagingTexture)) {
 		FlushWait(); // Wait for access to the staging texture
 		// Map the staging texture resource to access the pixels
-		if(!g_pImmediateContext) g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
-		hr = g_pImmediateContext->Map(g_pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
-		if(SUCCEEDED(hr)) {
-			// Get a pointer to the staging texture data
-			dataPointer = mappedSubResource.pData;
-			if(dataPointer) {
-				if(IsPBOavailable()) { // PBO method
-					LoadTexturePixels(TextureID, TextureTarget, width, height, (const unsigned char *)dataPointer, GL_BGRA_EXT, bInvert);
-				}
-				else {
-					if(bInvert) {
-						// Create or resize a local OpenGL texture
-						CheckOpenGLTexture(m_TexID, GL_RGBA, width, height, m_TexWidth, m_TexHeight);
-						// Copy the DX11 pixels to it
-						glBindTexture(GL_TEXTURE_2D, m_TexID);
-						glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, dataPointer);
-						glBindTexture(GL_TEXTURE_2D, 0);
-						// Copy the local texture to the user texture and invert as necessary
-						CopyTexture(m_TexID, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert, HostFBO);
+		if(g_pImmediateContext) {
+			hr = g_pImmediateContext->Map(g_pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
+			if(SUCCEEDED(hr)) {
+				// Get a pointer to the staging texture data
+				dataPointer = mappedSubResource.pData;
+				if(dataPointer) {
+					if(IsPBOavailable()) { // PBO method
+						LoadTexturePixels(TextureID, TextureTarget, width, height, (const unsigned char *)dataPointer, GL_BGRA_EXT, bInvert);
 					}
 					else {
-						// Copy the DX11 pixels to the user texture
-						glBindTexture(TextureTarget, TextureID);
-						glTexSubImage2D(TextureTarget, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, dataPointer);
-						glBindTexture(TextureTarget, 0);
+						if(bInvert) {
+							// Create or resize a local OpenGL texture
+							CheckOpenGLTexture(m_TexID, GL_RGBA, width, height, m_TexWidth, m_TexHeight);
+							// Copy the DX11 pixels to it
+							glBindTexture(GL_TEXTURE_2D, m_TexID);
+							glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, dataPointer);
+							glBindTexture(GL_TEXTURE_2D, 0);
+							// Copy the local texture to the user texture and invert as necessary
+							CopyTexture(m_TexID, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert, HostFBO);
+						}
+						else {
+							// Copy the DX11 pixels to the user texture
+							glBindTexture(TextureTarget, TextureID);
+							glTexSubImage2D(TextureTarget, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, dataPointer);
+							glBindTexture(TextureTarget, 0);
+						}
 					}
 				}
+				g_pImmediateContext->Unmap(g_pStagingTexture, 0);
+				return true;
 			}
-			g_pImmediateContext->Unmap(g_pStagingTexture, 0);
-			return true;
 		} // endif DX11 map OK
 	} // endif ReadTexture OK
 	return false;
@@ -2484,32 +2508,33 @@ bool spoutGLDXinterop::WriteDX11pixels (const unsigned char *pixels,
 		return false;
 	
 	// Copy the pixels to the staging texture
-	if(!g_pImmediateContext) g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
-	hr = g_pImmediateContext->Map(g_pStagingTexture, 0, D3D11_MAP_WRITE, 0, &mappedSubResource);
-	if(SUCCEEDED(hr)) {
-		// Get a pointer to the staging texture data
-		dataPointer = mappedSubResource.pData;
-		if(dataPointer) {
-			// Write the user pixel buffer to the staging texture
-			switch(glFormat) {
-				case GL_BGRA_EXT: // direct copy
-					spoutcopy.CopyPixels(pixels, (unsigned char *)dataPointer, width, height, GL_RGBA, bInvert);
-					break;
-				case GL_RGBA: // Convert the rgba pixels to bgra for the DX11 texture
-					spoutcopy.rgba2bgra((void *)pixels, dataPointer, width, height, bInvert);
-					break;
-				case GL_RGB: // Convert the rgb pixels to bgra for the DX11 texture
-					spoutcopy.rgb2bgra((void *)pixels, dataPointer, width, height, bInvert);
-					break;
-				case GL_BGR_EXT: // Convert the bgr pixels to bgra for the DX11 texture
-					spoutcopy.bgr2bgra((void *)pixels, dataPointer, width, height, bInvert);
-					break;
-				default:
-					break;
+	if(g_pImmediateContext) {
+		hr = g_pImmediateContext->Map(g_pStagingTexture, 0, D3D11_MAP_WRITE, 0, &mappedSubResource);
+		if(SUCCEEDED(hr)) {
+			// Get a pointer to the staging texture data
+			dataPointer = mappedSubResource.pData;
+			if(dataPointer) {
+				// Write the user pixel buffer to the staging texture
+				switch(glFormat) {
+					case GL_BGRA_EXT: // direct copy
+						spoutcopy.CopyPixels(pixels, (unsigned char *)dataPointer, width, height, GL_RGBA, bInvert);
+						break;
+					case GL_RGBA: // Convert the rgba pixels to bgra for the DX11 texture
+						spoutcopy.rgba2bgra((void *)pixels, dataPointer, width, height, bInvert);
+						break;
+					case GL_RGB: // Convert the rgb pixels to bgra for the DX11 texture
+						spoutcopy.rgb2bgra((void *)pixels, dataPointer, width, height, bInvert);
+						break;
+					case GL_BGR_EXT: // Convert the bgr pixels to bgra for the DX11 texture
+						spoutcopy.bgr2bgra((void *)pixels, dataPointer, width, height, bInvert);
+						break;
+					default:
+						break;
+				}
+				// Unmap and copy the staging texture resource to the shared texture
+				g_pImmediateContext->Unmap(g_pStagingTexture, 0);
+				return WriteTexture(&g_pStagingTexture);
 			}
-			// Unmap and copy the staging texture resource to the shared texture
-			g_pImmediateContext->Unmap(g_pStagingTexture, 0);
-			return WriteTexture(&g_pStagingTexture);
 		} // endif pointer OK
 	} // endif DX11 map OK
 	return false;
@@ -2544,30 +2569,31 @@ bool spoutGLDXinterop::ReadDX11pixels (unsigned char *pixels,
 	if(ReadTexture(&g_pStagingTexture)) {
 		FlushWait(); // Wait for access to the staging texture
 		// Map the resource so we can access the pixels
-		if(!g_pImmediateContext) g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
-		hr = g_pImmediateContext->Map(g_pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
-		if(SUCCEEDED(hr)) {
-			// Get a pointer to the staging texture data
-			dataPointer = mappedSubResource.pData;
-			// Write the the bgra staging texture to the user pixel buffer
-			switch(glFormat) {
-				case GL_BGRA_EXT: // direct copy
-					spoutcopy.CopyPixels((unsigned char *)dataPointer, pixels, width, height, GL_RGBA, bInvert);
-					break;
-				case GL_RGBA:
-					spoutcopy.bgra2rgba(dataPointer, (void *)pixels, width, height, bInvert);
-					break;
-				case GL_RGB:
-					spoutcopy.bgra2rgb(dataPointer, (void *)pixels, width, height, bInvert);
-					break;
-				case GL_BGR_EXT:
-					spoutcopy.bgra2bgr(dataPointer, (void *)pixels, width, height, bInvert);
-					break;
-				default:
-					break;
+		if(g_pImmediateContext) {
+			hr = g_pImmediateContext->Map(g_pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
+			if(SUCCEEDED(hr)) {
+				// Get a pointer to the staging texture data
+				dataPointer = mappedSubResource.pData;
+				// Write the the bgra staging texture to the user pixel buffer
+				switch(glFormat) {
+					case GL_BGRA_EXT: // direct copy
+						spoutcopy.CopyPixels((unsigned char *)dataPointer, pixels, width, height, GL_RGBA, bInvert);
+						break;
+					case GL_RGBA:
+						spoutcopy.bgra2rgba(dataPointer, (void *)pixels, width, height, bInvert);
+						break;
+					case GL_RGB:
+						spoutcopy.bgra2rgb(dataPointer, (void *)pixels, width, height, bInvert);
+						break;
+					case GL_BGR_EXT:
+						spoutcopy.bgra2bgr(dataPointer, (void *)pixels, width, height, bInvert);
+						break;
+					default:
+						break;
+				}
+				g_pImmediateContext->Unmap(g_pStagingTexture, 0);
+				return true;
 			}
-			g_pImmediateContext->Unmap(g_pStagingTexture, 0);
-			return true;
 		} // endif DX11 map OK
 	} // endif ReadTexture OK
 
@@ -2606,44 +2632,45 @@ bool spoutGLDXinterop::DrawDX11texture(float max_x, float max_y, float aspect, b
 	if(ReadTexture(&g_pStagingTexture)) {
 		FlushWait(); // Wait for access to the staging texture
 		// Map the staging texture resource to access the pixels
-		if(!g_pImmediateContext) g_pd3dDevice->GetImmediateContext(&g_pImmediateContext);
-		hr = g_pImmediateContext->Map(g_pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
-		if(SUCCEEDED(hr)) {
-			// Get a pointer to the staging texture data
-			dataPointer = mappedSubResource.pData;
-			if(dataPointer) {
+		if(g_pImmediateContext) {
+			hr = g_pImmediateContext->Map(g_pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
+			if(SUCCEEDED(hr)) {
+				// Get a pointer to the staging texture data
+				dataPointer = mappedSubResource.pData;
+				if(dataPointer) {
 
-				// Copy the DX11 pixels to it
-				glBindTexture(GL_TEXTURE_2D, m_TexID);
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, dataPointer);
-				glBindTexture(GL_TEXTURE_2D, 0);
+					// Copy the DX11 pixels to it
+					glBindTexture(GL_TEXTURE_2D, m_TexID);
+					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, dataPointer);
+					glBindTexture(GL_TEXTURE_2D, 0);
 
-				// Draw the local texture and invert as necessary
-				SaveOpenGLstate(width, height);
-				glEnable(GL_TEXTURE_2D);
-				glBindTexture(GL_TEXTURE_2D, m_TexID); // bind texture
-				glColor4f(1.f, 1.f, 1.f, 1.f);
-				glBegin(GL_QUADS);
-				if(bInvert) {
-					// DirectX coordinates are already inverted
-					glTexCoord2f(0.0,   0.0);	glVertex2f(-aspect,-1.0); // lower left
-					glTexCoord2f(0.0,   max_y);	glVertex2f(-aspect, 1.0); // upper left
-					glTexCoord2f(max_x, max_y);	glVertex2f( aspect, 1.0); // upper right
-					glTexCoord2f(max_x, 0.0);	glVertex2f( aspect,-1.0); // lower right
+					// Draw the local texture and invert as necessary
+					SaveOpenGLstate(width, height);
+					glEnable(GL_TEXTURE_2D);
+					glBindTexture(GL_TEXTURE_2D, m_TexID); // bind texture
+					glColor4f(1.f, 1.f, 1.f, 1.f);
+					glBegin(GL_QUADS);
+					if(bInvert) {
+						// DirectX coordinates are already inverted
+						glTexCoord2f(0.0,   0.0);	glVertex2f(-aspect,-1.0); // lower left
+						glTexCoord2f(0.0,   max_y);	glVertex2f(-aspect, 1.0); // upper left
+						glTexCoord2f(max_x, max_y);	glVertex2f( aspect, 1.0); // upper right
+						glTexCoord2f(max_x, 0.0);	glVertex2f( aspect,-1.0); // lower right
+					}
+					else {
+						glTexCoord2f(0.0,	max_y);	glVertex2f(-aspect,-1.0); // lower left
+						glTexCoord2f(0.0,	0.0);	glVertex2f(-aspect, 1.0); // upper left
+						glTexCoord2f(max_x, 0.0);	glVertex2f( aspect, 1.0); // upper right
+						glTexCoord2f(max_x, max_y);	glVertex2f( aspect,-1.0); // lower right
+					}
+					glEnd();
+					glBindTexture(GL_TEXTURE_2D, 0); // unbind shared texture
+					glDisable(GL_TEXTURE_2D);
+					RestoreOpenGLstate();
 				}
-				else {
-					glTexCoord2f(0.0,	max_y);	glVertex2f(-aspect,-1.0); // lower left
-					glTexCoord2f(0.0,	0.0);	glVertex2f(-aspect, 1.0); // upper left
-					glTexCoord2f(max_x, 0.0);	glVertex2f( aspect, 1.0); // upper right
-					glTexCoord2f(max_x, max_y);	glVertex2f( aspect,-1.0); // lower right
-				}
-				glEnd();
-				glBindTexture(GL_TEXTURE_2D, 0); // unbind shared texture
-				glDisable(GL_TEXTURE_2D);
-				RestoreOpenGLstate();
+				g_pImmediateContext->Unmap(g_pStagingTexture, 0);
+				return true;
 			}
-			g_pImmediateContext->Unmap(g_pStagingTexture, 0);
-			return true;
 		} // endif DX11 map OK
 	} // endif ReadTexture OK
 
@@ -3154,7 +3181,6 @@ bool spoutGLDXinterop::DrawToDX9texture(GLuint TextureID, GLuint TextureTarget,
 	// Create or resize a local OpenGL texture
 	CheckOpenGLTexture(m_TexID, GL_RGBA, width, height, m_TexWidth, m_TexHeight);
 
-
 	// Draw the input texture into the local texture via an fbo
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 	// Destination is the fbo with local texture attached
@@ -3164,6 +3190,7 @@ bool spoutGLDXinterop::DrawToDX9texture(GLuint TextureID, GLuint TextureTarget,
 
 		// Draw the input texture
 		glColor4f(1.f, 1.f, 1.f, 1.f);
+
 		glEnable(TextureTarget);
 		glBindTexture(TextureTarget, TextureID);
 		GLfloat tc[4][2] = {0};

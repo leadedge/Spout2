@@ -33,12 +33,13 @@
 //		04.09.16	- Add create DX11 staging texture
 //		16.01.17	- Add WriteDX9surface
 //		23.01.17	- pEventQuery->Release() for writeDX9surface
-//		24.04.17	- Added MessageBox error warnings in CreateSharedDX11Texture
+//		24.04.17	- Add MessageBox error warnings in CreateSharedDX11Texture
+//		11.11.18	- Add GetImmediateContext()
 //
 // ====================================================================================
 /*
 
-		Copyright (c) 2014-2017. Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2018. Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -344,6 +345,11 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	return pd3dDevice;
 
 } // end CreateDX11device
+
+ID3D11DeviceContext* spoutDirectX::GetImmediateContext()
+{
+	return g_pImmediateContext;
+}
 
 
 bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice, 
@@ -783,7 +789,6 @@ bool spoutDirectX::FindNVIDIA(int &nAdapter)
 	if(bFound) {
 		printf("Found NVIDIA adapter %d (%S)\n", i, desc.Description);
 		nAdapter = i;
-		// LJ DEBUG
 		//	0x10DE	NVIDIA
 		//	0x163C	intel
 		//	0x8086  Intel

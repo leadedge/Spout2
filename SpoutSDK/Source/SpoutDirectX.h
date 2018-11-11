@@ -61,6 +61,7 @@ class SPOUT_DLLEXP spoutDirectX {
 
 		// DX11
 		ID3D11Device* CreateDX11device(); // Create a DX11 device
+		ID3D11DeviceContext* GetImmediateContext();
 		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pSharedTexture, HANDLE &dxShareHandle);
 		bool CreateDX11StagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
 		bool OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle);
@@ -85,6 +86,8 @@ class SPOUT_DLLEXP spoutDirectX {
 
 		// For debugging only - to toggle texture access locks disable/enable
 		bool bUseAccessLocks;
+
+
 
 	protected:
 
