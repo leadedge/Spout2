@@ -193,6 +193,7 @@
 		04.02.17	- corrected test for fbo blit extension
 		11.11.18	- Correct release of DX11 immediate context
 					  TODO : DX9 leak checking
+		12.11.18	- Always release DX9 device. Fix Milkdrop crash.
 
 */
 
@@ -1077,6 +1078,8 @@ void spoutGLDXinterop::CleanupDirectX(bool bExit)
 
 void spoutGLDXinterop::CleanupDX9(bool bExit)
 {
+	ULONG refcount = 0;
+
 	if (m_pD3D != NULL) {
 		// 01.09.14 - texture release was missing for a receiver - caused a VRAM leak
 		// If an existing texture exists, CreateTexture can fail with and "unknown error"
@@ -1092,18 +1095,21 @@ void spoutGLDXinterop::CleanupDX9(bool bExit)
 			g_DX9surface = NULL;
 		}
 
-		if (bExit) {
+		// if (bExit) {
 			// 25.08.15 - release device before the object !
 			// 22.01.17 - will crash if refcount is 1 for MilkDrop. TODO - why
-			/*
-			if (m_pDevice != NULL)
-				m_pDevice->Release();
-			*/
+			// 12.11.18 - must always be freed, not only on exit. Device recreated for a new sender.
+			if (m_pDevice != NULL) 
+				refcount = m_pDevice->Release();
+
 			if (m_pD3D != NULL)
-				m_pD3D->Release();
+				refcount = m_pD3D->Release();
+			// printf("DX9 release - refcount = %d\n", refcount);
+
 			m_pDevice = NULL;
 			m_pD3D = NULL;
-		}
+		// }
+
 	}
 
 }
