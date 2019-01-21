@@ -1,6 +1,6 @@
-SPOUTDXMODE
+SPOUTSETTINGS
 
-SpoutDXmode is a utility program to change the operation mode for Spout applications.
+SpoutSettings is a utility program to change the operation mode for Spout applications.
 
 
 DirectX 9
@@ -37,6 +37,9 @@ The mode of operation can be changed to enable the high performance NVIDIA graph
 
 This will not have any effect if the computer does not have Optimus graphics or is not NVIDIA.
 
+Maximum Senders
+
+Sets the maximum number of simultaneous Spout senders. For this to apply, all running Spout applications must have been built with the 2.005 SDK or later. Applications built with 2.004 or earlier will be limited to the default of 10 senders.
 
 
 
