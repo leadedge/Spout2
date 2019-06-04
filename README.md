@@ -44,7 +44,7 @@ PROCESSING\
 Un-install Spout 2.006 from the import manager.\
 Close and restart Processing to delete the library.\
 Install the 2.007 Spout library manually.\
-https://github.com/processing/processing/wiki/How-to-Install-a-Contributed-Library\
+https://github.com/processing/processing/wiki/How-to-Install-a-Contributed-Library \
   Unzip spout-7.zip to create a "spout" folder (you will need to rename from "spout-7").\
   Copy the spout folder with all it's contents to the "libraries"\
   folder within your Processing sketchbook folder.\
@@ -66,18 +66,18 @@ VISUAL STUDIO RUNTIME\
 If you do not have Visual Studio 2017 installed and experience reports of missing dlls, you may need to install the VS2017 runtime. The installer files are located in the SPOUTSDK\VS2017-runtime folder. On a 64 bit system, run vc_redist.x64.exe before vc_redist.x86.exe.
 
 REMOVAL\
-To completely remove Spout from your system :\
-1) Start > Run > Regedit\
+To completely remove Spout from your system
+1) Start > Run > Regedit
      Click on HKEY_CURRENT_USER\
      Edit > Find > Spout\
      Look for and delete : HKEY_CURRENT_USER\Software\Leading Edge\Spout\
      Or if there are no ther Spout applications installed, remove :\
-     HKEY_CURRENT_USER\Software\Leading Edge\
-2) Start the 2.007 Spout demo sender.\
+     HKEY_CURRENT_USER\Software\Leading Edge
+2) Start the 2.007 Spout demo sender.
      Help > Diagnostics > Logs will open the folder in File Explorer.\
      Close the demo sender.\	
      Back out one level to "Roaming" and delete the "Spout" folder.\
    Alternatively : Start > Run > %appdata%\
      This will open the "C:\Users\User\AppData\Roaming" folder.\
-     Find the "Spout" folder and delete it.\
+     Find the "Spout" folder and delete it.
      
