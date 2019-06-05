@@ -1,7 +1,0 @@
-#include <windows.h>
-#include "resource.h"
-//
-// Icon resources
-//
-LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-IDI_ICON1          ICON           ".\\Spout.ico"
