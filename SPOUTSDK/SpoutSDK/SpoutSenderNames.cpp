@@ -49,7 +49,10 @@
 			   Possible problem for multiple receivers and larger maps > 10 senders.
 	02.08.18 - #include <intrin.h> for __movsd intrinsic for VS2017
 	15.09.18 - move maxsenders registry read from the spoutGLDXinterop class
-	
+	06.06.19 - Increase default maximum sender names from 10 to 256 = 64K
+			   RegisterSenderName - check for exceed maximum number of senders
+			   SetMaxSenders - set max to the registry for other applications to read
+			   	
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2019, Lynn Jarvis. All rights reserved.
 
@@ -83,8 +86,9 @@ spoutSenderNames::spoutSenderNames() {
 	m_senders = new std::unordered_map<std::string, SpoutSharedMemory*>();
 
 	// 15.09.18 - moved from interop class
-	// If SpoutSettings has been used, read the user setting
-	DWORD dwSenders = 10; // default maximum number of senders
+	// 06.06.19 - increase default maximum number of senders from 10 to 256
+	// Read the registry key if it exists
+	DWORD dwSenders = 256; // default maximum number of senders
 	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MaxSenders", &dwSenders);
 	// If the registry read fails, the default will be used
 	m_MaxSenders = (int)dwSenders;
@@ -121,6 +125,14 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 
 	// Register the sender name in the list of spout senders
 	readSenderSetFromBuffer(pBuf, SenderNames, m_MaxSenders);
+
+	// Check whether the sender registration will exceed the maximum number of senders
+	// If this fails, just skip the registration
+	if ((int)SenderNames.size() == m_MaxSenders) {
+		SpoutLogWarning("spoutSenderNames::RegisterSenderName - Sender exceeds max senders (%d)", m_MaxSenders);
+		m_senderNames.Unlock();
+		return true;
+	}
 
 	//
 	// Add the Sender name to the set of names
@@ -395,6 +407,9 @@ void spoutSenderNames::SetMaxSenders(int maxSenders)
 {
 	SpoutLogNotice("spoutSenderNames::SetMaxSenders - Setting max senders to %d", maxSenders);
 	m_MaxSenders = maxSenders;
+	// Set to the registry so that other applications will read the new maximum size
+	WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MaxSenders", (DWORD)maxSenders);
+
 }
 
 
@@ -825,7 +840,7 @@ bool spoutSenderNames::CreateSenderSet()
 	// Set up Shared Memory for all the sender names
 
 	// The map will be created using m_MaxSenders unless a map already exists
-	// in which case the map size will be the same as wen it was created.
+	// in which case the map size will be the same as when it was created.
 	// If it was created by a 2.004 app this will have a maximum of 10 senders.
 
 	SpoutCreateResult result = m_senderNames.Create("SpoutSenderNames", m_MaxSenders*SpoutMaxSenderNameLen);

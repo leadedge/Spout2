@@ -35,6 +35,12 @@
 
 using namespace spoututils;
 
+// LJ DEBUG
+#if _MSC_VER >= 1900
+#include <chrono> // c++11 timer
+#include <thread>
+#endif
+
 class SPOUT_DLLEXP spoutFrameCount {
 
 	public:
@@ -88,7 +94,14 @@ protected :
 
 	// Fps control
 	double m_millisForFrame;
-	double m_startTime;
+
+#if _MSC_VER >= 1900
+	// Avoid C4251 warnings in SpoutLibrary by using pointers
+	std::chrono::steady_clock::time_point * m_FrameStartPtr;
+	std::chrono::steady_clock::time_point * m_FrameEndPtr;
+#else
+	double m_FrameStart;
+#endif
 
 	// PC timer
 	double PCFreq;

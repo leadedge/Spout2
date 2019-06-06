@@ -20,6 +20,7 @@
 //		02.04.19	- Profile timing functions
 //		24.04.19	- Add HoldFps
 //		19.05.19	- Clean up
+//		05.06.19	- HoldFps - use std::chrono if VS2015 or greater
 //
 // ====================================================================================
 //
@@ -62,8 +63,6 @@ spoutFrameCount::spoutFrameCount()
 	m_LastFrameCount = 0L;
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
-	m_millisForFrame = 0.0;
-	m_startTime = 0.0;
 	m_lastFrame = 0.0;
 
 	// Default sender fps is system refresh rate
@@ -72,6 +71,15 @@ spoutFrameCount::spoutFrameCount()
 	// User registry setting is checked in EnableFrameCount
 	m_bFrameCount = false; // default not set
 	m_bDisabled = false;
+
+	// Initialize fps control
+	m_millisForFrame = 0.0;
+#if _MSC_VER >= 1900
+	m_FrameStartPtr = new std::chrono::steady_clock::time_point;
+	m_FrameEndPtr = new std::chrono::steady_clock::time_point;
+#else
+	m_FrameStart = 0.0;
+#endif
 
 	// Initialize counter
 	PCFreq = 0.0;
@@ -83,6 +91,11 @@ spoutFrameCount::spoutFrameCount()
 // -----------------------------------------------
 spoutFrameCount::~spoutFrameCount()
 {
+
+#if _MSC_VER >= 1900
+	if (m_FrameStartPtr) delete m_FrameStartPtr;
+	if (m_FrameEndPtr) delete m_FrameEndPtr;
+#endif
 
 	// Close the frame count semaphore.
 	if (m_hCountSemaphore) CloseHandle(m_hCountSemaphore);
@@ -394,12 +407,7 @@ long spoutFrameCount::GetSenderFrame()
 // Must be called every frame.
 // The sender will then signal a new frame at the target rate.
 // Purpose is control rather than accuracy.
-//
-// Sleep is variable. 1 fps inaccuracy is typical for higher rates and smaller sleep times.
-// Accuracy for lower rates, e.g. 30, is acceptable.
-// timeBeginPeriod/timeEndPeriod is not used because it is system-wide.
-// std::chrono is not used because it is not supported by SpoutLibrary
-// and not supported by Visual Studio < VS2015.
+// Use std::chrono if supported by the compiler VS2015 or greater
 //
 void spoutFrameCount::HoldFps(int fps)
 {
@@ -409,19 +417,40 @@ void spoutFrameCount::HoldFps(int fps)
 
 	double framerate = static_cast<double>(fps);
 
-	if (m_startTime == 0) {
-		m_startTime = GetCounter();
-		m_millisForFrame = 1000.0 / framerate;
+#if _MSC_VER >= 1900
+	// Initialize frame time at target rate
+	if (m_millisForFrame == 0.0) {
+		m_millisForFrame = 1000.0 / framerate; // msec per frame
+		*m_FrameStartPtr = std::chrono::steady_clock::now();
 		SpoutLogNotice("spoutFrameCount::HoldFps(%d)", fps);
 	}
 	else {
-		double elapsedTime = GetCounter() - m_startTime; // msec
+		*m_FrameEndPtr = std::chrono::steady_clock::now();
+		// milliseconds elapsed
+		double elapsedTime = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(*m_FrameEndPtr - *m_FrameStartPtr).count() / 1000.);
+		// Sleep to reach the target frame time
+		if (elapsedTime < m_millisForFrame) { // milliseconds
+			std::this_thread::sleep_for(std::chrono::milliseconds((long)(m_millisForFrame - elapsedTime)));
+		}
+		// Set start time for the next frame
+		*m_FrameStartPtr = std::chrono::steady_clock::now();
+	}
+#else
+	if (m_millisForFrame == 0) {
+		m_millisForFrame = 1000.0 / framerate;
+		m_FrameStart = GetCounter();
+		SpoutLogNotice("spoutFrameCount::HoldFps(%d)", fps);
+	}
+	else {
+		double elapsedTime = GetCounter() - m_FrameStart; // msec
 		// Sleep to reach the target frame time
 		if (elapsedTime < m_millisForFrame)
-			Sleep((DWORD)(m_millisForFrame - elapsedTime)); // can be slightly high
+			Sleep((DWORD)(m_millisForFrame - elapsedTime)); // can be slighly high
 		// Set start time for the next frame
-		m_startTime = GetCounter();
+		m_FrameStart = GetCounter();
 	}
+#endif
+
 }
 
 // =================================================================
@@ -490,7 +519,6 @@ bool spoutFrameCount::CheckAccess()
 
 	dwWaitResult = WaitForSingleObject(m_hAccessMutex, 67); // 4 frames at 60fps
 	if (dwWaitResult == WAIT_OBJECT_0) {
-		// printf("CheckAccess - mutex wait OK\n");
 		// The state of the object is signalled.
 		return true;
 	}
@@ -545,7 +573,6 @@ void spoutFrameCount::UpdateSenderFps(long framecount) {
 		double frametime = thisFrame - m_lastFrame;
 
 		// Set the start time for the next frame
-		// StartCounter();
 		m_lastFrame = thisFrame;
 
 		// Msecs per frame if more than one frame has been produced by the sender

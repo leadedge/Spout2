@@ -25,6 +25,7 @@
 //		24.05.19 - Add OpenSpoutConsole for debugging
 //		03.06.19 - Add CloseSpoutConsole for debugging
 //		04-06-19 - Re-build for 32 bit and 64 bit - VS2017 /MT
+//		06-06-19 - Re-build for 256 max senders - 32 bit and 64 bit - VS2017 /MT
 //
 /*
 		Copyright (c) 2016-2019, Lynn Jarvis. All rights reserved.

@@ -1,0 +1,8 @@
+06.06.19
+SpoutSenderNames
+    Increase default maximum sender names from 10 to 256 = 64K
+    RegisterSenderName - check for exceed maximum number of senders
+    SetMaxSenders - set max to the registry for other applications to read
+SpoutSettings
+    Remove user setting of maximum sender size
+    Write the maximum to the registry if it does not exist or is less

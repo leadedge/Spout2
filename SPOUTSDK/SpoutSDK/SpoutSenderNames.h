@@ -142,7 +142,6 @@ protected:
 		bool setActiveSenderName (const char* SenderName);
 		bool getActiveSenderName (char SenderName[SpoutMaxSenderNameLen]);
 
-
 		// Goes through the full list of sender names and cleans up
 		// any that shouldn't still be around
 		void cleanSenderSet();
@@ -160,7 +159,7 @@ protected:
 		// Make this a pointer to avoid size differences between compilers
 		// if the .dll is compiled with something different
 		std::unordered_map<std::string, SpoutSharedMemory*>*	m_senders;
-		int m_MaxSenders; // user defined maximum for the number of senders - development testing only
+		int m_MaxSenders; // maximum number of senders via registry
 
 };
 
