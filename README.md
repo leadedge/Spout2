@@ -45,11 +45,13 @@ Un-install Spout 2.006 from the import manager.\
 Close and restart Processing to delete the library.\
 Install the 2.007 Spout library manually.\
 https://github.com/processing/processing/wiki/How-to-Install-a-Contributed-Library \
-  Unzip spout-7.zip to create a "spout" folder (you will need to rename from "spout-7").\
+  Unzip spout-7.zip to create a "spout" folder
   Copy the spout folder with all it's contents to the "libraries"\
   folder within your Processing sketchbook folder.\
 Example sketches are in : ..\libraries\spout\examples and are well commented.\
 Existing 2.006 sketches should work OK apart from the receiver where you will need to add "spout.drawTexture();" after receiving the texture. The Processing repository will be updated before 2.007 release.
+NOTE: the 2.007 library has been compiled with Java 8 and the minimum version of Processing is 3.0 (REV 0246).
+The 2.006 library was compiled with Java 7 and will work with versions of Processing back to 2.2.1.
 
 FREEFRAMEGL\
 Freeframe plugins remain part of the Spout distribution for programs that still need them.\
