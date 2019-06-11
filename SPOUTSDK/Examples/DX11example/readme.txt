@@ -8,6 +8,7 @@ Tutorial07 - receiver
 
 The following source files of the Spout SDK are required :
 
+SpoutCommon.h
 SpoutDirectX.cpp
 SpoutFrameCount.cpp
 SpoutSenderNames.cpp

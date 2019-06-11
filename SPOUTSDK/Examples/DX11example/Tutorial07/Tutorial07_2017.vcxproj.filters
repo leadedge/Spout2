@@ -30,6 +30,7 @@
     <ClCompile Include="..\..\..\SpoutSDK\SpoutUtils.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
+    <ClCompile Include="SpoutDX.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Tutorial07.cpp" />
@@ -57,6 +58,7 @@
     <ClInclude Include="..\..\..\SpoutSDK\SpoutUtils.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
+    <ClInclude Include="SpoutDX.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Tutorial07.fx">

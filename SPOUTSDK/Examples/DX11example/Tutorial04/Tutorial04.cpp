@@ -24,10 +24,7 @@
 #include "resource.h"
 
 // SPOUT
-#include "..\..\..\SpoutSDK\SpoutSenderNames.h" // for sender creation and update
-#include "..\..\..\SpoutSDK\SpoutDirectX.h" // for creating a shared texture
-#include "..\..\..\SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "..\..\..\SpoutSDK\SpoutUtils.h" // for logging utilites
+#include "SpoutDX.h"
 
 using namespace DirectX;
 
@@ -74,20 +71,7 @@ XMMATRIX                g_View;
 XMMATRIX                g_Projection;
 
 // SPOUT
-spoutSenderNames spoutsender;
-spoutDirectX spoutdx;
-spoutFrameCount frame;
-ID3D11Texture2D* g_pSharedTexture = nullptr;
-HANDLE g_dxShareHandle = NULL;
-unsigned int g_Width = 0;
-unsigned int g_Height = 0;
-char g_SenderName[256];
-bool bSpoutInitialized = false;
-// FPS calcs
-double startTime = 0.0;
-double elapsedTime = 0.0;
-double millisForFrame = 33.3333; // 30 fps
-
+spoutDX spoutSender;
 
 //--------------------------------------------------------------------------------------
 // Forward declarations
@@ -111,6 +95,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT
 	// Optionally enable logging to catch Spout warnings and errors
 	// EnableSpoutLog();
+	// EnableSpoutLogFile("Tutorial04.log);
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
@@ -137,14 +122,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         }
     }
 
+	spoutSender.CloseSender();
     CleanupDevice();
-
-	// SPOUT
-	if (g_pSharedTexture)
-		g_pSharedTexture->Release();
-
-	if (bSpoutInitialized)
-		spoutsender.ReleaseSenderName(g_SenderName);
 
     return ( int )msg.wParam;
 }
@@ -198,13 +177,6 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
 		(GetSystemMetrics(SM_CYSCREEN) - (rc.bottom - rc.top)) / 2,
 		(rc.right - rc.left),
 		(rc.bottom - rc.top), false);
-
-	// Initialize variables
-	g_dxShareHandle = NULL;
-	g_Width = 0;
-	g_Height = 0;
-	g_SenderName[0] = 0;
-	bSpoutInitialized = false;
 
     ShowWindow( g_hWnd, nCmdShow );
 	
@@ -563,8 +535,10 @@ HRESULT InitDevice()
 //--------------------------------------------------------------------------------------
 void CleanupDevice()
 {
-    if( g_pImmediateContext ) g_pImmediateContext->ClearState();
+	// SPOUT
+	spoutSender.CloseSender();
 
+    if( g_pImmediateContext ) g_pImmediateContext->ClearState();
     if( g_pConstantBuffer ) g_pConstantBuffer->Release();
     if( g_pVertexBuffer ) g_pVertexBuffer->Release();
     if( g_pIndexBuffer ) g_pIndexBuffer->Release();
@@ -578,6 +552,7 @@ void CleanupDevice()
     if( g_pImmediateContext ) g_pImmediateContext->Release();
     if( g_pd3dDevice1 ) g_pd3dDevice1->Release();
     if( g_pd3dDevice ) g_pd3dDevice->Release();
+
 }
 
 
@@ -664,81 +639,12 @@ void Render()
 	//
 	// SPOUT
 	//
-
 	// Get the swap chain's backbuffer to a texture
 	ID3D11Texture2D* pBackBuffer = nullptr;
 	HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
 	if (SUCCEEDED(hr)) {
-
-		// Get the backbuffer details
-		D3D11_TEXTURE2D_DESC desc;
-		ZeroMemory(&desc, sizeof(desc));
-		pBackBuffer->GetDesc(&desc);
-
-		// If a sender has not been initialized yet, create one
-		if (!bSpoutInitialized) {
-
-			// Save width and height to test for sender size changes
-			g_Width = desc.Width;
-			g_Height = desc.Height;
-
-			//
-			// Create a local shared texture the same size and format as the backbuffer
-			// in this case DXGI_FORMAT_R8G8B8A8_UNORM
-			//
-			// Compatible formats
-			//
-			// DX9 compatible formats
-			// DXGI_FORMAT_R8G8B8A8_UNORM; // default DX11 format - compatible with DX9 (28)
-			// DXGI_FORMAT_B8G8R8A8_UNORM; // compatible DX11 format - works with DX9 (87)
-			// DXGI_FORMAT_B8G8R8X8_UNORM; // compatible DX11 format - works with DX9 (88)
-			//
-			// Other formats that work with DX11 but not with DX9
-			// DXGI_FORMAT_R16G16B16A16_FLOAT
-			// DXGI_FORMAT_R16G16B16A16_SNORM
-			// DXGI_FORMAT_R10G10B10A2_UNORM
-			//
-			spoutdx.CreateSharedDX11Texture(g_pd3dDevice, g_Width, g_Height, desc.Format, &g_pSharedTexture, g_dxShareHandle);
-
-			// Create a sender, specifying the same texture format
-			strcpy_s(g_SenderName, 256, "Tutorial04");
-			bSpoutInitialized = spoutsender.CreateSender(g_SenderName, g_Width, g_Height, g_dxShareHandle, (DWORD)desc.Format);
-
-			// Create a sender mutex for access to the shared texture
-			frame.CreateAccessMutex(g_SenderName);
-
-			// Enable frame counting so the receiver gets frame number and fps
-			frame.EnableFrameCount(g_SenderName);
-
-		}
-		// Otherwise check for change of render size
-		// This tutorial creates a window without the resize border.
-		// But this is an example of how to manage size changes in your application.
-		else if (g_Width != desc.Width || g_Height != desc.Height) {
-			// Initialized but has the source texture changed size ?
-			g_Width = desc.Width;
-			g_Height = desc.Height;
-			// Release and re-create the local shared texture to match
-			g_pSharedTexture->Release();
-			spoutdx.CreateSharedDX11Texture(g_pd3dDevice, g_Width, g_Height, desc.Format, &g_pSharedTexture, g_dxShareHandle);
-			// Update the sender	
-			spoutsender.UpdateSender(g_SenderName, g_Width, g_Height, g_dxShareHandle);
-		}
-
-		// Access the sender shared texture
-		if (frame.CheckAccess()) {
-			// Copy the backbuffer to the sender's shared texture
-			// CopyResource uses the GPU but there are some limitations :
-			// https://docs.microsoft.com/en-us/windows/desktop/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
-			g_pImmediateContext->CopyResource(g_pSharedTexture, pBackBuffer);
-			// Flush and wait until CopyResource is finished
-			// so that the receiver can read this frame.
-			spoutdx.FlushWait(g_pd3dDevice, g_pImmediateContext);
-			// Signal a new frame while the mutex is still locked
-			frame.SetNewFrame();
-			// Allow access to the shared texture
-			frame.AllowAccess();
-		}
+		// SendDXtexture handles sender creation and resizing
+		spoutSender.SendTexture("Tutorial04", g_pd3dDevice, pBackBuffer);
 	}
 
     //
@@ -753,6 +659,6 @@ void Render()
 	// This is not necessary if the application already has
 	// fps control but in this example rendering is done
 	// during idle time and render rate can be extremely high.
-	frame.HoldFps(30);
+	spoutSender.HoldFps(30);
 
 }

@@ -403,6 +403,7 @@
     <ClCompile Include="..\..\..\SpoutSDK\SpoutSenderNames.cpp" />
     <ClCompile Include="..\..\..\SpoutSDK\SpoutSharedMemory.cpp" />
     <ClCompile Include="..\..\..\SpoutSDK\SpoutUtils.cpp" />
+    <ClCompile Include="SpoutDX.cpp" />
     <ClCompile Include="Tutorial04.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -412,6 +413,7 @@
     <ClInclude Include="..\..\..\SpoutSDK\SpoutSharedMemory.h" />
     <ClInclude Include="..\..\..\SpoutSDK\SpoutUtils.h" />
     <CLInclude Include="resource.h" />
+    <ClInclude Include="SpoutDX.h" />
     <ResourceCompile Include="Tutorial04.rc" />
   </ItemGroup>
   <ItemGroup>
