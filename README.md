@@ -49,7 +49,7 @@ https://github.com/processing/processing/wiki/How-to-Install-a-Contributed-Libra
   Copy the spout folder with all it's contents to the "libraries"\
   folder within your Processing sketchbook folder.\
 Example sketches are in : ..\libraries\spout\examples and are well commented.\
-Existing 2.006 sketches should work OK apart from the receiver where you will need to add "spout.drawTexture();" after receiving the texture. The Processing repository will be updated before 2.007 release.
+Existing 2.006 sketches should work OK apart from the receiver where you will need to add "spout.drawTexture();" after receiving the texture. The Processing repository will be updated before 2.007 release.\
 NOTE: the 2.007 library has been compiled with Java 8 and the minimum version of Processing is 3.0 (REV 0246).
 The 2.006 library was compiled with Java 7 and will work with versions of Processing back to 2.2.1.
 
