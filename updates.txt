@@ -6,3 +6,7 @@ SpoutSenderNames
 SpoutSettings
     Remove user setting of maximum sender size
     Write the maximum to the registry if it does not exist or is less
+11.06.19
+    Updated DirectX examples with a new class file to simplify application code.
+    Updated Processing library zip file to the download version with the latest build.
+	Updated Readme with details of Java versions for the latest library.
