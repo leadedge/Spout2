@@ -10,3 +10,10 @@ SpoutSettings
     Updated DirectX examples with a new class file to simplify application code.
     Updated Processing library zip file to the download version with the latest build.
 	Updated Readme with details of Java versions for the latest library.
+20.06.19
+SpoutPanel
+	Move mutex check to the start
+	Added bad read check for command line in case calling application has crashed
+	Increase width of dialog for SpoutMessageBox
+SpoutSettings
+	Restored user selection of maximum sender size -  Version 1.009
