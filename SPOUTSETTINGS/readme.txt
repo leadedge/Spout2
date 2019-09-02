@@ -4,15 +4,13 @@ SpoutSettings is a utility program to change the operation mode for Spout applic
 
 DirectX 9
 
-If DirectX9c is not installed you will see buttons to download the web installer or to download the installer file. DirectX 9c is required for DirectX 9 functions.
+If DirectX9c is not installed you will see buttons to download the web installer or to download the installer file. DirectX 9c is required for DirectX 9 functions. However, DirectX 9 mode is only necessary if the hardware requires it. This has been noted for certain Intel graphics. The option is disabled if NVIDIA hardware is detected. To over-ride this, start the program with a command line argument "SpoutSettings -DX9".
 
 Options
 
 o DirectX 9   - switch between DirectX 9 and DirectX 11 functions.
 o Buffer      - use OpenGL pixel buffering to copy data GPU < > CPU.
 o Frame count - activate frame counting for sender and receivers.
-
-DirectX 9 mode is only necessary if the hardware requires it. This has been noted for certain Intel graphics.
 
 Pixel buffering is used for memory share mode for transfer of textures to and from CPU memory. A ring buffer of four pixel buffers is used so that delay is minimised. Buffering is faster but might result in latency. Test for your application.
 
@@ -43,6 +41,7 @@ Maximum Senders
 
 Sets the maximum number of simultaneous Spout senders. For this to apply, all running Spout applications must have been built with the 2.005 SDK or later. Applications built with 2.004 or earlier will be limited to the default of 10 senders.
 
+Registry
 
-
+All selected options are saved in the registry under "Computer\HKEY_CURRENT_USER\Software\Leading Edge\Spout".
 
