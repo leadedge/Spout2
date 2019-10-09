@@ -4,7 +4,7 @@ SpoutSettings is a utility program to change the operation mode for Spout applic
 
 DirectX 9
 
-If DirectX9c is not installed you will see buttons to download the web installer or to download the installer file. DirectX 9c is required for DirectX 9 functions. However, DirectX 9 mode is only necessary if the hardware requires it. This has been noted for certain Intel graphics. The option is disabled if NVIDIA hardware is detected. To over-ride this, start the program with a command line argument "SpoutSettings -DX9".
+If DirectX9c is not installed you will see buttons to download the web installer or to download the installer file. DirectX 9c is required for DirectX 9 functions. However, DirectX 9 mode is only necessary if the hardware requires it. This has been noted for certain Intel graphics. Some applications perform poorly with DirectX 9 mode and NVIDIA hardware. A warning is given if selected and NVIDIA hardware is detected.
 
 Options
 
