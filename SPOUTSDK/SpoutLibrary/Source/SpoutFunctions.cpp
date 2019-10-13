@@ -51,19 +51,20 @@ SpoutFunctions::SpoutFunctions() {
 	m_SenderName[0] = 0;
 	m_TextureID = 0;
 	m_TextureTarget = 0;
-	m_bInvert = false;
+	m_bInvert = false; // default false for a receiver in case SetupReceiver is not used
 	m_bUpdate = false;
 	m_bUseActive = false;
+	m_bConnected = false;
 	m_Width = 0;
 	m_Height = 0;
 
 };
 
 SpoutFunctions::~SpoutFunctions() {
-	if(bIsSending)
-		CloseSender();
+	if (bIsSending)
+		ReleaseSender();
 	else
-		CloseReceiver();
+		ReleaseReceiver();
 };
 
 // ---------------------------------------------------------------
@@ -79,37 +80,11 @@ bool SpoutFunctions::SetupSender(const char* SenderName,
 	unsigned int width, unsigned int height, bool bInvert, DWORD dwFormat)
 {
 	strcpy_s(m_SenderName, 256, SenderName);
-	m_bInvert = bInvert;
+	m_bInvert = bInvert; // default true
 	m_Width = width;
 	m_Height = height;
+	bIsSending = true;
 	return CreateSender(m_SenderName, m_Width, m_Height, dwFormat);
-}
-
-//---------------------------------------------------------
-void SpoutFunctions::Update(unsigned int width, unsigned int height)
-{
-	if (width != m_Width || height != m_Height) {
-		UpdateSender(m_SenderName, width, height);
-		m_Width = width;
-		m_Height = height;
-	}
-}
-
-//---------------------------------------------------------
-bool SpoutFunctions::IsInitialized()
-{
-	return spout.IsSpoutInitialized();
-}
-
-//---------------------------------------------------------
-void SpoutFunctions::CloseSender()
-{
-	if (IsInitialized())
-		ReleaseSender();
-	m_SenderName[0] = 0;
-	m_bInvert = true;
-	m_Width = 0;
-	m_Height = 0;
 }
 
 //---------------------------------------------------------
@@ -179,7 +154,7 @@ void SpoutFunctions::SetupReceiver(unsigned int width, unsigned int height, bool
 {
 	// CreateReceiver will use the active sender
 	// unless the user has specified a sender to 
-	// connect to usint SetReceiverName
+	// connect to using SetReceiverName
 	m_SenderNameSetup[0] = 0;
 	m_SenderName[0] = 0;
 	m_bUseActive = true;
@@ -189,6 +164,7 @@ void SpoutFunctions::SetupReceiver(unsigned int width, unsigned int height, bool
 	m_Height = height;
 	m_bInvert = bInvert;
 	m_bUpdate = false;
+	m_bConnected = false;
 
 }
 
@@ -214,17 +190,7 @@ bool SpoutFunctions::IsUpdated()
 //---------------------------------------------------------
 bool SpoutFunctions::IsConnected()
 {
-	return spout.IsSpoutInitialized();
-}
-
-//---------------------------------------------------------
-void SpoutFunctions::CloseReceiver()
-{
-	ReleaseReceiver();
-	// Restore the sender name that the user specified in SetupReceiver
-	strcpy_s(m_SenderName, 256, m_SenderNameSetup);
-	m_Width = 0;
-	m_Height = 0;
+	return m_bConnected;
 }
 
 //---------------------------------------------------------
@@ -244,6 +210,7 @@ bool SpoutFunctions::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, 
 			// Signal the application to update the receiving texture size
 			// Retrieved with a call to the Updated function
 			m_bUpdate = true;
+			m_bConnected = true;
 			return true;
 		}
 	}
@@ -275,7 +242,7 @@ bool SpoutFunctions::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, 
 		}
 		else {
 			// receiving failed
-			CloseReceiver();
+			ReleaseReceiver();
 			return false;
 		}
 	}
@@ -293,6 +260,7 @@ bool SpoutFunctions::ReceiveImageData(unsigned char *pixels, GLenum glFormat, GL
 	if (!IsConnected()) {
 		if (CreateReceiver(m_SenderName, m_Width, m_Height, m_bUseActive)) {
 			m_bUpdate = true;
+			m_bConnected = true;
 			return true;
 		}
 	}
@@ -325,7 +293,7 @@ bool SpoutFunctions::ReceiveImageData(unsigned char *pixels, GLenum glFormat, GL
 		}
 		else {
 			// receiving failed
-			CloseReceiver();
+			ReleaseReceiver();
 			return false;
 		}
 	}
@@ -393,20 +361,45 @@ bool SpoutFunctions::IsFrameCountEnabled()
 //---------------------------------------------------------
 bool SpoutFunctions::CreateSender(const char* name, unsigned int width, unsigned int height, DWORD dwFormat)
 {
+	// bIsSending and m_bInvert are false in constructor unless 2.007 SetupSender has been used
+	if (!bIsSending)
+		m_bInvert = true;
 	bIsSending = true;
+
+	// Save class variables
+	strcpy_s(m_SenderName, 256, name);
+	m_Width = width;
+	m_Height = height;
+
 	return spout.CreateSender(name, width, height, dwFormat);
 }
 
 //---------------------------------------------------------
 bool SpoutFunctions::UpdateSender(const char* name, unsigned int width, unsigned int height)
 {
-	return spout.UpdateSender(name, width, height);
+	bool bRet = false;
+	// For a name change, close the sender and set up again
+	if (strcmp(name, m_SenderName) != 0) {
+		ReleaseSender();
+		bRet = SetupSender(name, width, height, m_bInvert);
+	}
+	else if (width != m_Width || height != m_Height) {
+		m_Width = width;
+		m_Height = height;
+		bRet = spout.UpdateSender(m_SenderName, m_Width, m_Height);
+	}
+	return bRet;
 }
 
 //---------------------------------------------------------
 void SpoutFunctions::ReleaseSender(DWORD dwMsec)
 {
-	spout.ReleaseSender(dwMsec);
+	if (IsInitialized())
+		spout.ReleaseSender(dwMsec);
+	m_SenderName[0] = 0;
+	m_bInvert = true;
+	m_Width = 0;
+	m_Height = 0;
 }
 
 //---------------------------------------------------------
@@ -414,16 +407,6 @@ bool SpoutFunctions::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigne
 {
 	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
 }
-
-/*
-#ifdef legacyOpenGL
-//---------------------------------------------------------
-bool SpoutFunctions::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
-{
-	return spout.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO);
-}
-#endif
-*/
 
 //---------------------------------------------------------
 bool SpoutFunctions::SendFboTexture(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
@@ -453,7 +436,21 @@ bool SpoutFunctions::CreateReceiver(char* name, unsigned int &width, unsigned in
 //---------------------------------------------------------
 void SpoutFunctions::ReleaseReceiver()
 {
+	// Reset class variables for 2.007 functions
+	m_Width = 0;
+	m_Height = 0;
+	m_bUpdate = false;
+	m_bConnected = false;
+
+	// Restore the starting sender name if the user specified one in SetupReceiver
+	if (m_SenderNameSetup[0])
+		strcpy_s(m_SenderName, 256, m_SenderNameSetup);
+	else
+		m_SenderName[0] = 0;
+
+	// Release resources
 	spout.ReleaseReceiver();
+
 }
 
 //---------------------------------------------------------
@@ -461,16 +458,6 @@ bool SpoutFunctions::ReceiveTexture(char* name, unsigned int &width, unsigned in
 {
 	return spout.ReceiveTexture(name, width, height, TextureID, TextureTarget, bInvert, HostFBO);
 }
-
-/*
-#ifdef legacyOpenGL
-//---------------------------------------------------------
-bool SpoutFunctions::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
-{
-	return spout.DrawSharedTexture(max_x, max_y, aspect, bInvert, HostFBO);
-}
-#endif
-*/
 
 //---------------------------------------------------------
 bool SpoutFunctions::ReceiveImage(char* Sendername,
@@ -494,6 +481,12 @@ bool SpoutFunctions::SelectSenderPanel(const char* message)
 bool SpoutFunctions::CheckReceiver(char* name, unsigned int &width, unsigned int &height, bool &bConnected)
 {
 	return spout.CheckReceiver(name, width, height, bConnected);
+}
+
+//---------------------------------------------------------
+bool SpoutFunctions::IsInitialized()
+{
+	return spout.IsSpoutInitialized();
 }
 
 //---------------------------------------------------------
@@ -543,7 +536,7 @@ bool SpoutFunctions::SetActiveSender(const char* Sendername)
 //---------------------------------------------------------
 bool SpoutFunctions::GetDX9()
 {
-	return spout.interop.isDX9();
+	return spout.interop.GetDX9();
 }
 
 //---------------------------------------------------------
@@ -652,7 +645,6 @@ int SpoutFunctions::GetAdapter()
 //---------------------------------------------------------
 bool SpoutFunctions::CreateOpenGL()
 {
-	printf("SpoutFunctions::CreateOpenGL()\n");
 	return spout.CreateOpenGL();
 }
 

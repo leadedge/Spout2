@@ -32,7 +32,7 @@
 #ifndef __SpoutFunctions__
 #define __SpoutFunctions__
 
-#include "..\..\SpoutSDK\spoutSDK.h"
+#include "..\..\SpoutSDK\spout.h"
 
 using namespace spoututils;
 
@@ -49,13 +49,10 @@ public:
 	// Spout SDK functions
 	//
 
-	// 2.007 functions
+	// New for 2.007
 
 	// Sender
 	bool SetupSender(const char* SenderName, unsigned int width, unsigned int height, bool bInvert = true, DWORD dwFormat = 0);
-	void Update(unsigned int width, unsigned int height);
-	bool IsInitialized();
-	void CloseSender();
 	bool SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
 	bool SendFboData(GLuint FboID);
 	bool SendImageData(const unsigned char* pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0);
@@ -70,7 +67,6 @@ public:
 	void SetReceiverName(const char * SenderName);
 	bool IsUpdated();
 	bool IsConnected();
-	void CloseReceiver();
 	void SelectSender();
 	bool ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
 	bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0);
@@ -94,11 +90,6 @@ public:
 	bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
 	void ReleaseSender(DWORD dwMsec = 0);
 	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
-/*
-#ifdef legacyOpenGL
-	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
-#endif
-*/
 	bool SendFboTexture(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
 	bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 	void RemovePadding(const unsigned char *source, unsigned char *dest, unsigned int width, unsigned int height, unsigned int source_stride, GLenum glFormat = GL_RGBA);
@@ -107,15 +98,11 @@ public:
 	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
 	void ReleaseReceiver();
 	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
-/*
-#ifdef legacyOpenGL
-	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
-#endif
-*/
 	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 	bool SelectSenderPanel(const char* message = NULL);
 	bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 
+	bool IsInitialized();
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
 
@@ -155,8 +142,6 @@ public:
 private:
 
 	bool bIsSending;
-
-	// Sender - Receiver
 	char m_SenderNameSetup[256];
 	char m_SenderName[256];
 	GLuint m_TextureID;
@@ -164,6 +149,7 @@ private:
 	bool m_bInvert;
 	bool m_bUpdate;
 	bool m_bUseActive;
+	bool m_bConnected;
 	unsigned int m_Width;
 	unsigned int m_Height;
 

@@ -26,6 +26,13 @@
 //		03.06.19 - Add CloseSpoutConsole for debugging
 //		04-06-19 - Re-build for 32 bit and 64 bit - VS2017 /MT
 //		06-06-19 - Re-build for 256 max senders - 32 bit and 64 bit - VS2017 /MT
+//		18.06.19 - Change sender Update to include sender name
+//		26.09.19 - Remove redundant 2.007 functions for single class
+//				 - Remove Update and use UpdateSender
+//				 - Remove CloseSender/CloseReceiver and use ReleaseSender/ReleaseSender
+//		29.09.19 - Change IsDX9 to GetDX9 to avoid repeated compatibility test
+//		09.10.19 - Add WriteDX9surface and SetDX9device
+//				   Re-build for 32 bit and 64 bit - VS2017 /MT
 //
 /*
 		Copyright (c) 2016-2019, Lynn Jarvis. All rights reserved.
@@ -69,14 +76,12 @@ class SPOUTImpl : public SPOUTLIBRARY
 	private : // Spout SDK functions
 
 		//
-		// 2.007
+		// New for 2.007
 		//
 
 		// Sender
 		bool SetupSender(const char* SenderName, unsigned int width, unsigned int height, bool bInvert = true, DWORD dwFormat = 0);
-		void Update(unsigned int width, unsigned int height);
 		bool IsInitialized();
-		void CloseSender();
 		bool SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
 		bool SendFboData(GLuint FboID);
 		bool SendImageData(const unsigned char* pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0);
@@ -93,7 +98,6 @@ class SPOUTImpl : public SPOUTLIBRARY
 		bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0);
 		bool IsUpdated();
 		bool IsConnected();
-		void CloseReceiver();
 		void SelectSender();
 		const char * GetSenderName();
 		unsigned int GetSenderWidth();
@@ -105,6 +109,10 @@ class SPOUTImpl : public SPOUTLIBRARY
 		// Common
 		void DisableFrameCount();
 		bool IsFrameCountEnabled();
+
+		// DX9 application support
+		bool SetDX9device(IDirect3DDevice9Ex* pDevice);
+		bool WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface);
 
 		// Log utilities
 		void OpenSpoutConsole();
@@ -199,7 +207,6 @@ class SPOUTImpl : public SPOUTLIBRARY
 // 2.007
 //
 
-
 //
 // Sender
 //
@@ -212,16 +219,6 @@ bool SPOUTImpl::SetupSender(const char* sendername, unsigned int width, unsigned
 bool SPOUTImpl::IsInitialized()
 {
 	return spoutSDK->IsInitialized();
-}
-
-void SPOUTImpl::Update(unsigned int width, unsigned int height)
-{
-	spoutSDK->Update(width, height);
-}
-
-void SPOUTImpl::CloseSender()
-{
-	spoutSDK->CloseSender();
 }
 
 bool SPOUTImpl::SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo)
@@ -298,11 +295,6 @@ bool SPOUTImpl::IsConnected()
 	return spoutSDK->IsConnected();
 }
 
-void SPOUTImpl::CloseReceiver()
-{
-	spoutSDK->CloseReceiver();
-}
-
 void SPOUTImpl::SelectSender()
 {
 	spoutSDK->SelectSender();
@@ -348,6 +340,18 @@ void SPOUTImpl::DisableFrameCount()
 bool SPOUTImpl::IsFrameCountEnabled()
 {
 	return spoutSDK->spout.interop.frame.IsFrameCountEnabled();
+}
+
+// Support for DirectX9 applications
+
+bool SPOUTImpl::SetDX9device(IDirect3DDevice9Ex* pDevice)
+{
+	return  spoutSDK->spout.interop.SetDX9device(pDevice);
+}
+
+bool SPOUTImpl::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface)
+{
+	return spoutSDK->spout.interop.WriteDX9surface(pDevice, surface);
 }
 
 
@@ -509,7 +513,7 @@ bool SPOUTImpl::CreateSender(const char *Sendername, unsigned int width, unsigne
 
 bool SPOUTImpl::UpdateSender(const char* Sendername, unsigned int width, unsigned int height)
 {
-	return spoutSDK->CreateSender(Sendername, width, height);
+	return spoutSDK->UpdateSender(Sendername, width, height);
 }
 
 bool SPOUTImpl::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
