@@ -471,15 +471,16 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 	hMutex = CreateMutexA(NULL, FALSE, (LPCSTR)szMutexName);
 
 	if (hMutex == NULL) {
-		spoututils::SpoutLogError("spoutFrameCount::CreateAccessMutex - access mutex NULL invalid handle");
+		SpoutLogError("spoutFrameCount::CreateAccessMutex - access mutex NULL invalid handle");
 		return false;
 	}
 	else {
 		errnum = GetLastError();
 		if (errnum == ERROR_INVALID_HANDLE) {
-			spoututils::SpoutLogError("spoutFrameCount::CreateAccessMutex - access mutex [%s] invalid handle", szMutexName);
+			SpoutLogError("spoutFrameCount::CreateAccessMutex - access mutex [%s] invalid handle", szMutexName);
 			return false;
 		}
+		SpoutLogNotice("spoutFrameCount::CreateAccessMutex - access mutex [%s] - 0x%x", szMutexName, hMutex);
 	}
 
 	m_hAccessMutex = hMutex;

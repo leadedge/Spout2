@@ -56,7 +56,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		IDirect3D9Ex* CreateDX9object(); // Create a DirectX9 object
 		IDirect3DDevice9Ex* CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd);	// Create a DirectX9 device
 		bool CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle);
-		bool WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DTEXTURE9 dxTexture, LPDIRECT3DSURFACE9 source_surface);
+		bool WriteDX9memory (IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface, LPDIRECT3DTEXTURE9 dxTexture);
+		bool WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface, LPDIRECT3DTEXTURE9 dxTexture);
 
 		// DX11
 		ID3D11Device* CreateDX11device(); // Create a DX11 device

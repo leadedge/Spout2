@@ -40,14 +40,10 @@ class SPOUT_DLLEXP SpoutSender {
 	SpoutSender();
     ~SpoutSender();
 
-	// 2.007 functions
+	// New for 2.007
 
 	// Set up starting values for a sender
 	bool SetupSender(const char* SenderName, unsigned int width, unsigned int height, bool bInvert = true, DWORD dwFormat = 0);
-	// Update sender dimensions
-	void Update(unsigned int width, unsigned int height);
-	// Close sender and release resources
-	void CloseSender();
 	// Send texture data
 	bool SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
 	// Send texture data attached to an fbo
@@ -64,16 +60,17 @@ class SPOUT_DLLEXP SpoutSender {
 	double GetFps();
 	// Sender frame rate control
 	void HoldFps(int fps);
-
 	// Disable frame counting for this application
 	void DisableFrameCount();
 	// Return frame count status
 	bool IsFrameCountEnabled();
 
-	// functions 2.006 and earlier
+	//
+	// 2.006 and earlier
+	//
 
 	bool OpenSpout();
-	bool CreateSender(const char* Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
+	bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
 	bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
 	void ReleaseSender(DWORD dwMsec = 0);
 	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true, GLuint HostFBO = 0);

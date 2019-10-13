@@ -39,6 +39,10 @@
 //		19.03.19	- Change IsInitialized to IsConnected
 //		05.04.19	- Change GetSenderName(index, ..) to GetSender
 //					  Create const char * GetSenderName for receiver class
+//		18.09.19	- Remove UseDX9 from GetDX9 to avoid registry change
+//					- Remove reset of m_SenderNameSetup from SetupReceiver
+//					- Add connected test to IsUpdated
+//					- Remove redundant CloseReceiver
 //
 // ====================================================================================
 /*
@@ -74,7 +78,7 @@ SpoutReceiver::SpoutReceiver()
 	m_TextureID = 0;
 	m_TextureTarget = 0;
 	m_bInvert = false;
-	m_bUseActive = false;
+	m_bUseActive = true;
 	m_Width = 0;
 	m_Height = 0;
 	m_bUpdate = false;
@@ -84,20 +88,22 @@ SpoutReceiver::SpoutReceiver()
 //---------------------------------------------------------
 SpoutReceiver::~SpoutReceiver()
 {
-	CloseReceiver();
+	ReleaseReceiver();
 }
 
+//
 // ================= 2.007 functions ======================
-
+//
 
 //---------------------------------------------------------
 void SpoutReceiver::SetupReceiver(unsigned int width, unsigned int height, bool bInvert)
 {
 	// CreateReceiver will use the active sender unless the user 
 	// has specified a sender to connect to using SetReceiverName
-	m_SenderNameSetup[0] = 0;
-	m_SenderName[0] = 0;
-	m_bUseActive = true;
+	if (!m_SenderNameSetup[0]) {
+		m_SenderName[0] = 0;
+		m_bUseActive = true;
+	}
 
 	// Record details for subsequent functions
 	m_Width = width;
@@ -119,6 +125,8 @@ void SpoutReceiver::SetReceiverName(const char * SenderName)
 }
 
 //---------------------------------------------------------
+//	o Connect to a sender and inform the application to update texture dimensions
+//  o Receive texture data from the sender and write to the user texture
 bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo)
 {
 	m_bUpdate = false;
@@ -127,7 +135,7 @@ bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, G
 	if (!IsConnected()) {
 		if (CreateReceiver(m_SenderName, m_Width, m_Height, m_bUseActive)) {
 			// Signal the application to update the receiving texture size
-			// Retrieved with a call to the Updated function
+			// Retrieved with a call to the IsUpdated function
 			m_bUpdate = true;
 			m_bConnected = true;
 			return true;
@@ -152,16 +160,16 @@ bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, G
 				m_Height = height;
 				// Signal the application to update the receiving texture
 				m_bUpdate = true;
-				return true;
 			}
 			else {
 				// Read the shared texture to the user texture
-				return spout.interop.ReadTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, false, HostFbo);
+				spout.interop.ReadTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, m_bInvert, HostFbo);
 			}
+			return true;
 		}
 		else {
 			// receiving failed
-			CloseReceiver();
+			ReleaseReceiver();
 			return false;
 		}
 	}
@@ -172,6 +180,8 @@ bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, G
 }
 
 //---------------------------------------------------------
+//	o Connect to a sender and inform the application to update buffer dimensions
+//  o Receive pixel data from the sender and write to the user buffer
 bool SpoutReceiver::ReceiveImageData(unsigned char *pixels, GLenum glFormat, GLuint HostFbo)
 {
 	m_bUpdate = false;
@@ -211,7 +221,7 @@ bool SpoutReceiver::ReceiveImageData(unsigned char *pixels, GLenum glFormat, GLu
 		}
 		else {
 			// receiving failed
-			CloseReceiver();
+			ReleaseReceiver();
 			return false;
 		}
 	}
@@ -222,12 +232,14 @@ bool SpoutReceiver::ReceiveImageData(unsigned char *pixels, GLenum glFormat, GLu
 }
 
 //---------------------------------------------------------
+//  If updated, the application must update the receiving texture
+//  before the next call to ReceiveTextureData or ReceiveImageData.
 bool SpoutReceiver::IsUpdated()
 {
-	// Return whether the application texture needs updating.
-	// The application must update the receiving texture before
-	// the next call to ReceiveTextureData when the update flag is reset.
-	return m_bUpdate;
+	if (IsConnected())
+		return m_bUpdate;
+	else
+		return false;
 }
 
 //---------------------------------------------------------
@@ -237,18 +249,7 @@ bool SpoutReceiver::IsConnected()
 }
 
 //---------------------------------------------------------
-void SpoutReceiver::CloseReceiver()
-{
-	ReleaseReceiver();
-	// Restore the sender name that the user specified in SetupReceiver
-	strcpy_s(m_SenderName, 256, m_SenderNameSetup);
-	m_Width = 0;
-	m_Height = 0;
-	m_bUpdate = false;
-	m_bConnected = false;
-}
-
-//---------------------------------------------------------
+// Equivalent to SelectSenderPanel with no message option
 void SpoutReceiver::SelectSender()
 {
 	SelectSenderPanel();
@@ -302,7 +303,9 @@ bool SpoutReceiver::IsFrameCountEnabled()
 	return spout.interop.frame.IsFrameCountEnabled();
 }
 
+//
 // ================= end 2.007 functions ===================
+//
 
 
 //---------------------------------------------------------
@@ -320,6 +323,17 @@ bool SpoutReceiver::CreateReceiver(char* name, unsigned int &width, unsigned int
 //---------------------------------------------------------
 void SpoutReceiver::ReleaseReceiver()
 {
+	// Reset class variables for 2.007 functions
+	m_Width = 0;
+	m_Height = 0;
+	m_bUpdate = false;
+	m_bConnected = false;
+	// Restore the starting sender name if the user specified one in SetupReceiver
+	if (m_SenderNameSetup[0])
+		strcpy_s(m_SenderName, 256, m_SenderNameSetup);
+	else
+		m_SenderName[0] = 0;
+	// Release resources
 	spout.ReleaseReceiver();
 }
 
@@ -449,7 +463,7 @@ void SpoutReceiver::SetBufferMode(bool bActive)
 //---------------------------------------------------------
 bool SpoutReceiver::GetDX9()
 {
-	return spout.interop.isDX9();
+	return spout.interop.GetDX9();
 }
 
 //---------------------------------------------------------

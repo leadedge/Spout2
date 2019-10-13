@@ -43,6 +43,10 @@
 //		13.11.18	- Remove staging texture functons
 //		16.12.18	- Move FlushWait from interop class
 //		03.01.19	- Changed to revised registry functions in SpoutUtils
+//		27.06.19	- Restored release of existing texture in CreateSharedDX11Texture
+//		03.07.19	- Added pointer checks in OpenDX11shareHandle
+//		18.09.19	- Changed initial log from notice to to verbose
+//					  for CreateSharedDX9Texture and CreateSharedDX11Texture
 //
 // ====================================================================================
 /*
@@ -174,8 +178,10 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 // For a RECEIVER : the sharehandle is valid and a handle to the existing shared texture is created
 bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle)
 {
-
-	SpoutLogNotice("spoutDirectX::CreateSharedDX9Texture(pDevice = 0x%Ix, width = %d, height = %d, format = %d", (intptr_t)pDevice, width, height, format);
+	if (!pDevice) {
+		SpoutLogError("spoutDirectX::CreateSharedDX9Texture - NULL DX9 device");
+		return false;
+	}
 
 	if(dxTexture != NULL) dxTexture->Release();
 
@@ -192,7 +198,7 @@ bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned 
 	// USAGE, format and size for sender and receiver must all match
 	if ( res != D3D_OK ) {
 		char tmp[256];
-		sprintf_s(tmp, 256, "spoutDirectX::CreateSharedDX9Texture error - ");
+		sprintf_s(tmp, 256, "spoutDirectX::CreateSharedDX9Texture error (%x) - ", res);
 		switch (res) {
 			case D3DERR_INVALIDCALL:
 				strcat_s(tmp, 256, "D3DERR_INVALIDCALL");
@@ -216,24 +222,57 @@ bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned 
 } // end CreateSharedDX9Texture
 
 
-bool spoutDirectX::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DTEXTURE9 dxTexture, LPDIRECT3DSURFACE9 source_surface)
+bool spoutDirectX::WriteDX9memory(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 source_surface, LPDIRECT3DTEXTURE9 dxTexture)
 {
 	IDirect3DSurface9* texture_surface = NULL;
-	IDirect3DQuery9* pEventQuery=NULL;
-	
-	HRESULT hr = dxTexture->GetSurfaceLevel(0, &texture_surface); // shared texture surface
-	if(SUCCEEDED(hr)) {
+	IDirect3DQuery9* pEventQuery = NULL;
+	HRESULT hr = 0;
+	hr = dxTexture->GetSurfaceLevel(0, &texture_surface); // shared texture surface
+	if (SUCCEEDED(hr)) {
 		// UpdateSurface
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb205857%28v=vs.85%29.aspx
 		//    The source surface must have been created with D3DPOOL_SYSTEMMEM.
 		//    The destination surface must have been created with D3DPOOL_DEFAULT.
 		//    Neither surface can be locked or holding an outstanding device context.
 		hr = pDevice->UpdateSurface(source_surface, NULL, texture_surface, NULL);
-		if(SUCCEEDED(hr)) {
+		if (SUCCEEDED(hr)) {
 			// It is necessary to flush the command queue 
 			// or the data is not ready for the receiver to read.
 			// Adapted from : https://msdn.microsoft.com/en-us/library/windows/desktop/bb172234%28v=vs.85%29.aspx
 			// Also see : http://www.ogre3d.org/forums/viewtopic.php?f=5&t=50486
+			pDevice->CreateQuery(D3DQUERYTYPE_EVENT, &pEventQuery);
+			if (pEventQuery != NULL) {
+				pEventQuery->Issue(D3DISSUE_END);
+				while (S_FALSE == pEventQuery->GetData(NULL, 0, D3DGETDATA_FLUSH));
+				pEventQuery->Release(); // Must be released or causes a leak and reference count increment
+			}
+			return true;
+		}
+	}
+
+	SpoutLogError("spoutDirectX::WriteDX9surface(%d, %d, %d) failed", pDevice, dxTexture, source_surface);
+
+	return false;
+} // end WriteDX9surface
+
+//
+// COPY FROM A GPU DX9 SURFACE TO THE SHARED DX9 TEXTURE
+//
+//    The source surface must have been created using the same device as the texture
+//
+bool spoutDirectX::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface, LPDIRECT3DTEXTURE9 dxTexture)
+{
+	IDirect3DSurface9* texture_surface = NULL;
+	HRESULT hr = dxTexture->GetSurfaceLevel(0, &texture_surface); // destination texture surface
+	if (SUCCEEDED(hr)) {
+		// StretchRect is a GPU copy
+		hr = pDevice->StretchRect(surface, NULL, texture_surface, NULL, D3DTEXF_NONE);
+		if(SUCCEEDED(hr)) {
+			// It is necessary to flush the command queue
+			// or the data is not ready for the receiver to read.
+			// Adapted from : https://msdn.microsoft.com/en-us/library/windows/desktop/bb172234%28v=vs.85%29.aspx
+			// Also see : http://www.ogre3d.org/forums/viewtopic.php?f=5&t=50486
+			IDirect3DQuery9* pEventQuery = NULL;
 			pDevice->CreateQuery(D3DQUERYTYPE_EVENT, &pEventQuery) ;
 			if(pEventQuery!=NULL) {
 				pEventQuery->Issue(D3DISSUE_END) ;
@@ -244,10 +283,11 @@ bool spoutDirectX::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DTEXTUR
 		}
 	}
 
-	SpoutLogError("spoutDirectX::WriteDX9surface(0x%Ix, 0x%x, 0x%x) failed", (intptr_t)pDevice, dxTexture, source_surface);
+	SpoutLogError("spoutDirectX::WriteDX9surface(0x%x, 0x%x) failed", surface, dxTexture);
 
 	return false;
-} // end WriteDX9surface
+}
+
 
 // =========================== end DX9 =============================
 
@@ -378,14 +418,18 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 		return false; // 12.06.18
 	}
 
-	SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
-	SpoutLogNotice("    pDevice = 0x%Ix, width = %d, height = %d, format = %d", (intptr_t)pd3dDevice, width, height, format);
-
 	//
 	// Create a new shared DX11 texture
 	//
 
 	pTexture = *pSharedTexture; // The texture pointer
+
+	// 27.06.19
+	// Release the texture if it already exists
+	if (pTexture) ReleaseDX11Texture(pd3dDevice, pTexture);
+
+	SpoutLogVerbose("spoutDirectX::CreateSharedDX11Texture");
+	SpoutLogVerbose("    pDevice = 0x%Ix, width = %d, height = %d, format = %d", (intptr_t)pd3dDevice, width, height, format);
 
 	// Textures being shared from D3D9 to D3D11 have the following restrictions (LJ - D3D11 to D3D9 ?).
 	//		Textures must be 2D
@@ -419,7 +463,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	desc.ArraySize			= 1;
 
 	HRESULT res = pd3dDevice->CreateTexture2D(&desc, NULL, &pTexture);
-
+	
 	if (res != S_OK) {
 		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
 		char tmp[256];
@@ -469,6 +513,12 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 {
 	// SpoutLogNotice("spoutDirectX::OpenDX11shareHandle : device = 0x%Ix, sharedtexture = 0x%x, sharehandle = 0x%x", (intptr_t)pDevice, ppSharedTexture, dxShareHandle);
 
+	// Check m_pImmediateContext for DX11
+	if (!pDevice || !m_pImmediateContext || !ppSharedTexture || !dxShareHandle) {
+		SpoutLogError("spoutDirectX::OpenDX11shareHandle - null sources");
+		return false;
+	}
+
 	// To share a resource between a Direct3D 9 device and a Direct3D 11 device 
 	// the texture must have been created using the pSharedHandle argument of CreateTexture.
 	// The shared Direct3D 9 handle is then passed to OpenSharedResource in the hResource argument.
@@ -478,9 +528,9 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 		SpoutLogError("spoutDirectX::OpenDX11shareHandle failed");
 		return false;
 	}
-	
-	// Can get sender format here
+
 	/*
+	// Can get sender format here
 	ID3D11Texture2D * texturePointer = *ppSharedTexture;
 	D3D11_TEXTURE2D_DESC td;
 	texturePointer->GetDesc(&td);
@@ -828,6 +878,7 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 		return 0;
 
 	unsigned long refcount = pTexture->Release();
+
 	if (m_pImmediateContext) {
 		m_pImmediateContext->ClearState();
 		m_pImmediateContext->Flush();

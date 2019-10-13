@@ -35,7 +35,6 @@
 
 using namespace spoututils;
 
-// LJ DEBUG
 #if _MSC_VER >= 1900
 #include <chrono> // c++11 timer
 #include <thread>

@@ -39,11 +39,13 @@ class SPOUT_DLLEXP SpoutReceiver {
 	SpoutReceiver();
     ~SpoutReceiver();
 
-	// 2.007 functions
+	//
+	// New for 2.007
+	//
 
 	// Set up starting values for a receiver
 	void SetupReceiver(unsigned int width, unsigned int height, bool bInvert = false);
-	// Set the sender name to connect to
+	// Specify the sender to connect to
 	void SetReceiverName(const char * SenderName);
 	// Receive texture data
 	bool ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
@@ -53,10 +55,8 @@ class SPOUT_DLLEXP SpoutReceiver {
 	bool IsUpdated();
 	// Return whether connected to a sender
 	bool IsConnected();
-	// Close receiver and free resources
-	void CloseReceiver();
-	// Open the user sender selection dialog
-	void SelectSender();
+	// Return whether the received frame is new
+	bool IsFrameNew();
 	// Return the connected sender name
 	const char * GetSenderName();
 	// Return the connected sender width
@@ -67,15 +67,16 @@ class SPOUT_DLLEXP SpoutReceiver {
 	double GetSenderFps();
 	// Return the connected sender frame number
 	long GetSenderFrame();
-	// Return whether the received frame is new
-	bool IsFrameNew();
-
 	// Disable frame counting for this application
 	void DisableFrameCount();
 	// Return frame count status
 	bool IsFrameCountEnabled();
+	// Open the user sender selection dialog
+	void SelectSender();
 
-	// functions 2.006 and earlier
+	//
+	// 2.006 and earlier
+	//
 
 	bool OpenSpout();
 	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);

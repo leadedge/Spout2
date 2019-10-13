@@ -88,7 +88,7 @@ spoutSenderNames::spoutSenderNames() {
 	// 15.09.18 - moved from interop class
 	// 06.06.19 - increase default maximum number of senders from 10 to 256
 	// Read the registry key if it exists
-	DWORD dwSenders = 256; // default maximum number of senders
+	DWORD dwSenders = 256; // default maximum number of senders. 06-06-19 increased from 10
 	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MaxSenders", &dwSenders);
 	// If the registry read fails, the default will be used
 	m_MaxSenders = (int)dwSenders;
@@ -433,8 +433,8 @@ bool spoutSenderNames::GetSenderInfo(const char* sendername, unsigned int &width
 #else
 		dxShareHandle = (HANDLE)info.shareHandle;
 #endif
-		// dxShareHandle = (HANDLE)info.shareHandle;
 		dwFormat      = info.format;
+
 		return true;
 	}
 	return false;

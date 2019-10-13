@@ -256,6 +256,14 @@
 					  https://github.com/leadedge/Spout2/issues/41
 		25.05.19	- Do not fail for null return of PBO mapping in LoadTexturePixels and UnloadTexturePixels
 		30.05.19	- Use CopyTexture in SetSharedTextureData instead of duplicated code.
+		16.06.19	- Change dash to "|" for all 2.007 fatal notices
+		27.06.19	- Removed release of shared texture in CreateDX11interop
+					  Texture released in SpoutDirectX class by CreateSharedDX11Texture
+		10.09.19	- Corrected header file #include "SpoutFramecount.h" to "SpoutFrameCount.h"
+		18.09.19	- Remove Registry write from UseDX9 and SetMemoryShareMode
+		09.10.19	- Revise WriteDX9surface to use application device
+					  Add SetDX9device to set application device
+		13.10.19	- Add WriteTextureReadback
 
 */
 
@@ -394,13 +402,13 @@ bool spoutGLDXinterop::GLDXcompatible()
 	// OpenGL device context is needed
 	HDC hdc = wglGetCurrentDC();
 	if (!hdc) {
-		SpoutLogFatal("spoutGLDXinterop::GLDXcompatible - Cannot get GL device context");
+		SpoutLogFatal("spoutGLDXinterop::GLDXcompatible | Cannot get GL device context");
 		return false;
 	}
 
 	// If OpenGL extensions fail to load quit now
 	if (!LoadGLextensions()) {
-		SpoutLogFatal("spoutGLDXinterop::GLDXcompatible - OpenGL extensions failed to load");
+		SpoutLogFatal("spoutGLDXinterop::GLDXcompatible | OpenGL extensions failed to load");
 		return false;
 	}
 
@@ -614,6 +622,8 @@ bool spoutGLDXinterop::OpenDirectX11()
 	// Retrieve the context pointer
 	g_pImmediateContext = spoutdx.GetImmediateContext();
 
+	SpoutLogNotice("    Device 0x%Ix : Context 0x%Ix", g_pd3dDevice, g_pImmediateContext);
+
 	return true;
 }
 
@@ -807,7 +817,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 
 	// Needs an openGL context to work
 	if(!wglGetCurrentContext()) {
-		SpoutLogFatal("spoutGLDXinterop::CreateInterop - no GL context");
+		SpoutLogFatal("spoutGLDXinterop::CreateInterop | no GL context");
 		return false;
 	}
 
@@ -815,7 +825,6 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 	// Texture format tests
 	//
 	// DX9 compatible formats
-	// DXGI_FORMAT_R8G8B8A8_UNORM; // default DX11 format - compatible with DX9 (28)
 	// DXGI_FORMAT_B8G8R8A8_UNORM; // compatible DX11 format - works with DX9 (87)
 	// DXGI_FORMAT_B8G8R8X8_UNORM; // compatible DX11 format - works with DX9 (88)
 	//
@@ -867,7 +876,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 	// Otherwise m_dxShareHandle is set by getSharedTextureInfo and is the
 	// shared texture handle of the Sender texture
 	if (bReceive && !getSharedTextureInfo(sendername)) {
-		SpoutLogFatal("spoutGLDXinterop::CreateInterop - Cannot retrieve sender information");
+		SpoutLogFatal("spoutGLDXinterop::CreateInterop | Cannot retrieve sender information");
 		return false;
 	}
 
@@ -881,7 +890,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 			|| m_TextureInfo.format == 22
 			|| m_TextureInfo.format == 21
 			|| m_TextureInfo.format == 87)) {
-			SpoutLogFatal("spoutGLDXinterop::CreateInterop - Incompatible sender texture format %d", m_TextureInfo.format);
+			SpoutLogFatal("spoutGLDXinterop::CreateInterop | Incompatible sender texture format %d", m_TextureInfo.format);
 			return false;
 		}
 	}
@@ -889,20 +898,18 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 	// Make sure DirectX has been initialized
 	// Creates a global pointer to the DirectX device (DX11 g_pd3dDevice or DX9 m_pDevice)
 	if(!OpenDirectX(hWnd, m_bUseDX9)) {
-		SpoutLogFatal("spoutGLDXinterop::CreateInterop - Cannot open DirectX");
+		SpoutLogFatal("spoutGLDXinterop::CreateInterop | Cannot open DirectX");
 		return false;
 	}
 
 	// Create an fbo for copying textures
 	if(m_fbo > 0) {
 		// Delete the fbo before the texture so that any texture attachment is released
-		SpoutLogNotice("spoutGLDXinterop::CreateInterop - re-creating fbo");
+		// SpoutLogNotice("spoutGLDXinterop::CreateInterop - re-creating fbo");
 		glDeleteFramebuffersEXT(1, &m_fbo);
 		m_fbo = 0;
 	}
-	else {
-		SpoutLogNotice("spoutGLDXinterop::CreateInterop - creating fbo");
-	}
+	// else SpoutLogNotice("spoutGLDXinterop::CreateInterop - creating fbo");
 	glGenFramebuffersEXT(1, &m_fbo); 
 
 	// Create a local opengl texture that will be linked to a shared DirectX texture
@@ -921,8 +928,8 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 		bRet = CreateDX11interop(width, height, format, bReceive);
 
 	if(!bRet) {
-		CleanupInterop(); // release everything
-		SpoutLogFatal("spoutGLDXinterop::CreateInterop - Cannot create DirectX/OpenGL interop");
+		CleanupInterop(); // release everything for this class
+		SpoutLogFatal("spoutGLDXinterop::CreateInterop | Cannot create DirectX/OpenGL interop");
 		return false;
 	}
 
@@ -936,7 +943,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 		// by SpoutPanel and by the texture formats above
 		if(!senders.CreateSender(sendername, width, height, m_dxShareHandle, format)) {
 			CleanupInterop(); // 22.01.17 - Release
-			SpoutLogFatal("spoutGLDXinterop::CreateInterop - Cannot create Spout sender");
+			SpoutLogFatal("spoutGLDXinterop::CreateInterop | Cannot create Spout sender");
 			return false;
 		}
 	}
@@ -1000,7 +1007,6 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 
 }
 
-
 //
 // =================== DX9 ===============================
 //
@@ -1011,6 +1017,9 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 //
 bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive) 
 {
+
+	// printf("CreateDX9interop(%dx%d, [Format = %d], %d (m_pDevice = %x)\n", width, height, dwFormat, bReceive, m_pDevice);
+
 	// The shared texture handle of the Sender texture "m_dxShareHandle" 
 	// is already set by getSharedTextureInfo, but should be NULL for a sender
 	if (!bReceive) {
@@ -1018,9 +1027,10 @@ bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height,
 		// with new local handle m_dxShareHandle for a sender
 		m_dxShareHandle = NULL; // A sender creates a new texture
 	}
-	
+
 	// Safety in case an application has crashed
 	if (m_dxTexture != NULL) {
+		// printf("   releasing texture\n");
 		m_dxTexture->Release();
 	}
 	m_dxTexture = NULL;
@@ -1030,13 +1040,13 @@ bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height,
 	// For a SENDER : the sharehandle is NULL and a new texture is created
 	// For a RECEIVER : the sharehandle is valid and becomes a handle to the existing shared texture
 	// USAGE is D3DUSAGE_RENDERTARGET
-	if(!spoutdx.CreateSharedDX9Texture(m_pDevice,
-									   width,
-									   height,
-									   (D3DFORMAT)dwFormat,  // default is D3DFMT_A8R8G8B8
-									   m_dxTexture,
-									   m_dxShareHandle)) {
-		SpoutLogFatal("spoutGLDXinterop::CreateDX9interop - CreateSharedDX9Texture failed");
+	if (!spoutdx.CreateSharedDX9Texture(m_pDevice,
+		width,
+		height,
+		(D3DFORMAT)dwFormat,  // default is D3DFMT_A8R8G8B8
+		m_dxTexture,
+		m_dxShareHandle)) {
+		// printf("    CreateSharedDX9Texture failed\n");
 		return false;
 	}
 
@@ -1045,29 +1055,25 @@ bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height,
 	// by calling wglDXRegisterObjectNV which returns a handle to the interop object
 	// (the shared texture) (m_hInteropObject)
 	// When a sender size changes, the new texture has to be re-registered
-	if(m_hInteropDevice != NULL &&  m_hInteropObject != NULL) {
+	if (m_hInteropDevice != NULL && m_hInteropObject != NULL) {
+		// printf("CreateInterop - wglDXUnregisterObjectNV\n");
 		wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
 		m_hInteropObject = NULL;
 	}
-	m_hInteropObject = LinkGLDXtextures(m_pDevice, m_dxTexture, m_dxShareHandle, m_glTexture); 
-	if(!m_hInteropObject) {
-		SpoutLogError("spoutGLDXinterop::CreateDX9interop - LinkGLDXtextures failed");
+	m_hInteropObject = LinkGLDXtextures(m_pDevice, m_dxTexture, m_dxShareHandle, m_glTexture);
+	if (!m_hInteropObject) {
+		// printf("    DX9 LinkGLDXtextures failed\n");
 		return false;
 	}
 
 	return true;
 }
 
-
 //
 // =================== DX11 ==============================
 //
 bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive ) 
 {
-	if (g_pSharedTexture) {
-		spoutdx.ReleaseDX11Texture(g_pd3dDevice, g_pSharedTexture);
-	}
-	g_pSharedTexture = NULL;
 
 	// Create or use a shared DirectX texture that will be linked
 	// to the OpenGL texture and get it's share handle for sharing textures
@@ -1081,10 +1087,10 @@ bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height
 		// otherwise create a new shared DirectX resource g_pSharedTexture 
 		// with local handle m_dxShareHandle for a sender
 		m_dxShareHandle = NULL; // A sender creates a new texture with a new share handle
-		if(!spoutdx.CreateSharedDX11Texture(g_pd3dDevice,
-											width, height, 
-											(DXGI_FORMAT)dwFormat, // default is DXGI_FORMAT_B8G8R8A8_UNORM
-											&g_pSharedTexture, m_dxShareHandle)) {
+		if (!spoutdx.CreateSharedDX11Texture(g_pd3dDevice,
+			width, height,
+			(DXGI_FORMAT)dwFormat, // default is DXGI_FORMAT_B8G8R8A8_UNORM
+			&g_pSharedTexture, m_dxShareHandle)) {
 			SpoutLogError("spoutGLDXinterop::CreateDX11interop - CreateSharedDX11Texture failed");
 			return false;
 		}
@@ -1352,29 +1358,31 @@ void spoutGLDXinterop::CleanupDirectX()
 
 void spoutGLDXinterop::CleanupDX9()
 {
+	// LJ DEBUG
+	// 04.10.19 - do not block if m_pD3D exists
+	SpoutLogNotice("spoutGLDXinterop::CleanupDX9()");
+
+	// 01.09.14 - texture release was missing for a receiver - caused a VRAM leak
+	// If an existing texture exists, CreateTexture can fail with and "unknown error"
+	// 25.08.15 - moved before release of device
+	if (m_dxTexture != NULL) {
+		m_dxTexture->Release();
+		m_dxTexture = NULL;
+	}
+
+	// 25.08.15 - release device before the object !
+	// 22.01.17 - will crash if refcount is 1 for MilkDrop.
+	// 12.11.18 - must always be freed, not only on exit. Fix for MilkDop.
+	//            Device recreated for a new sender.
+	// 08.10.19 - do not release device if DX9 object does not exist
 	if (m_pD3D != NULL) {
-
-		SpoutLogNotice("spoutGLDXinterop::CleanupDX9()");
-
-		// 01.09.14 - texture release was missing for a receiver - caused a VRAM leak
-		// If an existing texture exists, CreateTexture can fail with and "unknown error"
-		// 25.08.15 - moved before release of device
-		if (m_dxTexture != NULL) {
-			m_dxTexture->Release();
-			m_dxTexture = NULL;
-		}
-
-		// 25.08.15 - release device before the object !
-		// 22.01.17 - will crash if refcount is 1 for MilkDrop.
-		// 12.11.18 - must always be freed, not only on exit. Fix for MilkDop.
-		//            Device recreated for a new sender.
 		if (m_pDevice != NULL)
 			m_pDevice->Release();
-		if (m_pD3D != NULL)
-			m_pD3D->Release();
-		m_pDevice = NULL;
-		m_pD3D = NULL;
+		m_pD3D->Release();
 	}
+
+	m_pDevice = NULL;
+	m_pD3D = NULL;
 
 }
 
@@ -1384,17 +1392,24 @@ void spoutGLDXinterop::CleanupDX11()
 
 		SpoutLogNotice("spoutGLDXinterop::CleanupDX11()");
 
-		unsigned long refcount = spoutdx.ReleaseDX11Texture(g_pd3dDevice, g_pSharedTexture);
+		unsigned long refcount = 0;
 
-		// Important to set pointer to NULL or it will crash if released again
-		g_pSharedTexture = NULL;
+		if (g_pd3dDevice) {
 
-		// 12.11.18 - To avoid memory leak with dynamic objects
-		//            must always be freed, not only on exit.
-		//            Device recreated for a new sender.
-		refcount = spoutdx.ReleaseDX11Device(g_pd3dDevice);
-		if (refcount > 0)
-			SpoutLogWarning("CleanupDX11:ReleaseDX11Device - refcount = %d", refcount);
+			if (g_pSharedTexture)
+				refcount = spoutdx.ReleaseDX11Texture(g_pd3dDevice, g_pSharedTexture);
+
+			// Important to set pointer to NULL or it will crash if released again
+			g_pSharedTexture = nullptr;
+
+			// 12.11.18 - To avoid memory leak with dynamic objects
+			//            must always be freed, not only on exit.
+			//            Device recreated for a new sender.
+			refcount += spoutdx.ReleaseDX11Device(g_pd3dDevice);
+
+			if (refcount > 0)
+				SpoutLogWarning("CleanupDX11:CleanupDX11() - refcount = %d", refcount);
+		}
 
 		// NULL the pointers
 		g_pImmediateContext = NULL;
@@ -1409,15 +1424,19 @@ void spoutGLDXinterop::CleanupDX11()
 void spoutGLDXinterop::CleanupInterop()
 {
 
+	// LJ DEBUG
+	// 04.10.19 - Release OpenGL objects etc. even if DX9 has been released
+	// TODO - DX11?
+
 	// Skip if already done
 	if (m_hInteropDevice == NULL && m_hInteropObject == NULL
 		&& m_fbo == 0 && m_pbo[0] == 0 
 		&& m_glTexture == 0 && m_TexID == 0
-		&& g_pd3dDevice == NULL && g_pImmediateContext == NULL
-		&& m_pD3D == NULL && m_pDevice == NULL
+		// LJ DEBUG && g_pd3dDevice == NULL && g_pImmediateContext == NULL
+		// LJ DEBUG && m_pD3D == NULL && m_pDevice == NULL
 		&& g_pSharedTexture == NULL && m_dxTexture == NULL
 		&& m_bInitialized == false) {
-		SpoutLogNotice("spoutGLDXinterop::CleanupInterop - closed");
+		SpoutLogNotice("spoutGLDXinterop::CleanupInterop - already closed");
 		return;
 	}
 
@@ -2119,6 +2138,119 @@ bool spoutGLDXinterop::ReadGLDXpixels(unsigned char* pixels,
 
 
 //
+// Set the DX9 device externally
+//
+// The sender shared texture is created using this device so it must be DX9ex.
+// Direct3D 10.0, Direct3D 9c, and older Direct3D runtimes do not support shared surfaces.
+// See: https://docs.microsoft.com/en-us/windows/win32/direct3darticles/surface-sharing-between-windows-graphics-apis
+//
+bool spoutGLDXinterop::SetDX9device(IDirect3DDevice9Ex* pDevice)
+{
+	if (!GetDX9()) {
+		SpoutLogError("spoutGLDXinterop::SetDX9device - only for DX9 mode");
+		return false;
+	}
+
+	// The Spout DX9 object is not used if the device is set externally
+	if (m_pD3D) {
+		m_pD3D->Release();
+		// If set externally, the device is also released externally,
+		// so it must not be released in this class.
+		// The Spout DX9 device can be released here because
+		// it will not be released again if m_pD3D is NULL
+		if (m_pDevice) 
+			m_pDevice->Release();
+		m_pD3D = NULL;
+		m_pDevice = NULL;
+	}
+
+	SpoutLogNotice("spoutGLDXinterop::SetDX9device (%x)", pDevice);
+
+	// Already initialized ?
+	if (pDevice != NULL && m_pDevice == pDevice) {
+		SpoutLogWarning("SetDX9device - Device (%x) already initialized", pDevice);
+	}
+
+	// Set the Spout DX9 device to the application device
+	m_pDevice = pDevice;
+
+	return true;
+}
+
+//
+// Write a DirectX 9 system memory surface to the shared texture (sizes must be the same)
+//
+bool spoutGLDXinterop::WriteDX9memory(LPDIRECT3DSURFACE9 source_surface)
+{
+	// Only for DX9 mode
+	if (!source_surface || !GetDX9())
+		return false;
+
+	if (frame.CheckAccess()) {
+		if (spoutdx.WriteDX9memory(m_pDevice, source_surface, m_dxTexture)) {
+			frame.SetNewFrame();
+			frame.AllowAccess();
+			return true;
+		}
+	}
+
+	frame.AllowAccess();
+
+	return false;
+
+} // end WriteDX9memory
+
+
+//
+// COPY FROM A GPU DX9 SURFACE TO THE SHARED DX9 TEXTURE
+//
+// Surface and shared texture must have been created with the same device
+// See : SetDX9device
+//
+bool spoutGLDXinterop::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface)
+{
+	// Only for DX9 mode
+	if (!GetDX9()) {
+		SpoutLogError("spoutGLDXinterop::WriteDX9surface - only for DX9 mode");
+		return false;
+	}
+
+	if (!surface) {
+		SpoutLogError("spoutGLDXinterop::WriteDX9surface - null surface");
+		return false;
+	}
+
+	if (!pDevice) {
+		SpoutLogError("spoutGLDXinterop::WriteDX9surface - null device");
+		return false;
+	}
+
+	// The device must match
+	// if (m_pD3D || pDevice != m_pDevice) {
+	if (pDevice != m_pDevice) {
+		SpoutLogError("spoutGLDXinterop::WriteDX9surface - invalid device\n    Use SetDX9device");
+		return false;
+	}
+
+
+	// Wait for access to the texture
+	if (frame.CheckAccess()) {
+		// Write the surface to the shared texture
+		if (spoutdx.WriteDX9surface(m_pDevice, surface, m_dxTexture)) {
+			// Necessary flush and wait done by WriteDX9surface
+			// Increment the sender frame counter
+			frame.SetNewFrame();
+			// Release mutex and allow access to the texture
+			frame.AllowAccess();
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
+//
 // DX11 versions - https://github.com/DashW/Spout2
 //
 
@@ -2145,19 +2277,24 @@ bool spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture)
 	(*texture)->GetDesc(&desc);
 	if(desc.Width != m_TextureInfo.width || desc.Height != m_TextureInfo.height) {
 		SpoutLogWarning("spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture) sizes do not match");
-		SpoutLogVerbose("    texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_TextureInfo.width, m_TextureInfo.height);
+		SpoutLogWarning("    texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_TextureInfo.width, m_TextureInfo.height);
 		return false;
 	}
 
+	// printf("texture (%dx%d) : sender (%dx%d)\n", desc.Width, desc.Height, m_TextureInfo.width, m_TextureInfo.height);
+
 	// Wait for access to the texture
 	if(frame.CheckAccess()) {
+
 		g_pImmediateContext->CopyResource(g_pSharedTexture, *texture);
+
 		// Wait for access to the shared texture so the receiver can read it straight away
 		spoutdx.FlushWait(g_pd3dDevice, g_pImmediateContext);
 		// Increment the sender frame counter
 		frame.SetNewFrame();
 		// Release mutex and allow access to the texture
 		frame.AllowAccess();
+
 		bRet = true;
 	}
 
@@ -2191,6 +2328,77 @@ bool spoutGLDXinterop::ReadTexture(ID3D11Texture2D** texture)
 	return true;
 
 } // end ReadTexture
+
+
+//
+// COPY A DX11 TEXTURE TO THE SHARED DX11 TEXTURE
+// COPY THE LINKED OPENGL TEXTURE BACK TO AN OPENGL TEXTURE
+//
+bool spoutGLDXinterop::WriteTextureReadback(ID3D11Texture2D** texture,
+											GLuint TextureID, GLuint TextureTarget,
+											unsigned int width, unsigned int height,
+											bool bInvert, GLuint HostFBO)	
+{
+	// Only for DX11 mode
+	if (!texture || GetDX9() || !g_pImmediateContext) {
+		SpoutLogWarning("spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture) failed");
+		if (GetDX9())
+			SpoutLogWarning("    only for DX11");
+		if (!texture)
+			SpoutLogWarning("    ID3D11Texture2D** NULL");
+		if (!g_pImmediateContext)
+			SpoutLogVerbose("    pImmediateContext NULL");
+		return false;
+	}
+
+	if (m_hInteropDevice == NULL || m_hInteropObject == NULL) {
+		SpoutLogWarning("spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture) no interop device");
+		return false;
+	}
+
+	bool bRet = false;
+	D3D11_TEXTURE2D_DESC desc = { 0 };
+
+	(*texture)->GetDesc(&desc);
+	if (desc.Width != m_TextureInfo.width || desc.Height != m_TextureInfo.height) {
+		SpoutLogWarning("spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture) sizes do not match");
+		SpoutLogWarning("    texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_TextureInfo.width, m_TextureInfo.height);
+		return false;
+	}
+
+	// Wait for access to the texture
+	if (frame.CheckAccess()) {
+
+		bRet = true;
+
+		// Copy the DirectX texture to the shared texture
+		g_pImmediateContext->CopyResource(g_pSharedTexture, *texture);
+
+		// Wait for access to the shared texture so the receiver can read it straight away
+		spoutdx.FlushWait(g_pd3dDevice, g_pImmediateContext);
+
+		// Copy the linked OpenGL texture back to the user texture
+		if (width != m_TextureInfo.width || height != m_TextureInfo.height) {
+			SpoutLogWarning("spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture) sizes do not match");
+			SpoutLogWarning("    OpenGL texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_TextureInfo.width, m_TextureInfo.height);
+			bRet = false;
+		}
+		else if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+			bRet = GetSharedTextureData(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+			if(!bRet)
+				SpoutLogWarning("spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture) readback failed");
+		}
+
+		// Increment the sender frame counter
+		frame.SetNewFrame();
+		// Release mutex and allow access to the texture
+		frame.AllowAccess();
+	}
+
+	return bRet;
+}
+
 
 
 //
@@ -2468,12 +2676,12 @@ HRESULT spoutGLDXinterop::UnlockInteropObject(HANDLE hDevice, HANDLE *hObject)
 
 
 // Set DX9 off or not with a DX11 compatibility check
-// Returns false if SetDX9(false) failed due to DX11 copmaptibility check
+// Application only - does not affect user settings
+// Returns false if failed due to DX11 compatibility check
+// TODO - clarify SetDX9 and USeDX9
 bool spoutGLDXinterop::UseDX9(bool bDX9)
 {
 	bool bRet = false;
-
-	SpoutLogNotice("spoutGLDXinterop::UseDX9(%d)", bDX9);
 
 	if(bDX9 == true) {
 		// Request to set to DirectX 9
@@ -2483,19 +2691,14 @@ bool spoutGLDXinterop::UseDX9(bool bDX9)
 	}
 	// Check for DirectX 11 availability if the user requested it
 	else if(DX11available()) {
-		SpoutLogNotice("    using DX11");
 		m_bUseDX9 = false;
 		bRet = true;
 	}
 	else {
 		// Set to use DirectX 9 if DirectX 11 is not available
-		SpoutLogNotice("    DX11 not available using DX9");
+		SpoutLogError("spoutGLDXinterop::UseDX9 - DX11 not available, using DX9");
 		m_bUseDX9 = true;
 		bRet = false;
-	}
-
-	if(!WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "DX9", (DWORD)m_bUseDX9)) {
-		return false;
 	}
 
 	return bRet;
@@ -2507,6 +2710,7 @@ bool spoutGLDXinterop::UseDX9(bool bDX9)
 // The user can call this after the UseDX9 call as well as testing for it's false return.
 bool spoutGLDXinterop::isDX9()
 {
+
 	if(!DX11available()) {
 		SpoutLogWarning("spoutGLDXinterop::isDX9() - DX11 not available using DX9");
 		m_bUseDX9 = true;
@@ -2518,6 +2722,7 @@ bool spoutGLDXinterop::isDX9()
 }
 
 // Set flag - does not require OpenGL context - UseDX9 does
+// Resets user setting
 bool spoutGLDXinterop::SetDX9(bool bDX9)
 {
 	if(WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "DX9", (DWORD)m_bUseDX9)) {
@@ -2548,11 +2753,8 @@ bool spoutGLDXinterop::GetMemoryShareMode()
 // User set by the SpoutDXmode utility
 bool spoutGLDXinterop::SetMemoryShareMode(bool bMem)
 {
-	if(WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", (DWORD)bMem)) {
-		m_bUseMemory = bMem;
-		return true;
-	}
-	return false;
+	m_bUseMemory = bMem;
+	return true;
 }
 
 //

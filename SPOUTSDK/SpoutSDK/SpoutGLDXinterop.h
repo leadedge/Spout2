@@ -39,7 +39,7 @@
 #include "SpoutSenderNames.h"
 #include "SpoutMemoryShare.h"
 #include "SpoutCopy.h"
-#include "SpoutFramecount.h"
+#include "SpoutFrameCount.h"
 
 #include <windowsx.h>
 #include <d3d9.h>	// DX9
@@ -90,9 +90,18 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool DrawToSharedTexture(GLuint TexID, GLuint TexTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
 #endif
 
+		// DX9 application support
+		bool WriteDX9memory(LPDIRECT3DSURFACE9 source_surface);
+		bool SetDX9device(IDirect3DDevice9Ex* pDevice);
+		bool WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface);
+
 		// DX11 shared texture write and read
-		bool WriteTexture(ID3D11Texture2D** texture);
 		bool ReadTexture (ID3D11Texture2D** texture);
+		bool WriteTexture(ID3D11Texture2D** texture);
+		bool WriteTextureReadback(ID3D11Texture2D** texture,
+			GLuint TextureID, GLuint TextureTarget,
+			unsigned int width, unsigned int height,
+			bool bInvert = false, GLuint HostFBO = 0);
 
 		// PBO functions for external access
 		bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget, 

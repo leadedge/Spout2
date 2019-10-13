@@ -22,6 +22,7 @@
 //		04-08-14	- revise CheckSpoutPanel
 //		05-08-14	- default true for setverticalsync in sender and receiver classes
 //		11-08-14	- fixed incorrect name arg in OpenReceiver for ReceiveTexture / ReceiveImage
+//					2.004 release 19-08-14
 //		24-08-14	- changed back to WM_PAINT message instead of RedrawWindow due to FFGL receiver bug appearing again
 //		27-08-14	- removed texture init check from SelectSenderPanel
 //		29-08-14	- changed SelectSenderPanel to use revised SpoutPanel with user message support
@@ -97,6 +98,7 @@
 //		04.05.16	- SetPBOavailable(true/false) added to enable/disable pbo functions
 //		07.05.16	- SetPBOavailable changed to SetBufferMode
 //		18.06.16	- Add invert to ReceiveImage
+//					2.005 release 23-06-16
 //		29.06.16	- Added ReportMemory() for debugging
 //					- Changed OpenSpout to fail for DX9 if no hwnd
 //					  https://github.com/leadedge/Spout2/issues/18
@@ -105,13 +107,13 @@
 //		18.01.17	- GetImageSize redundant for 2.006
 //		22.01.17	- include zero char in SelectSenderPanel NULL arg checks
 //		25.05.17	- corrected SendImage UpdateSender to use passed width and height
+//			2.006 release 08-02-17
 //
 //		VS2015
 //
 //		02.06.17	- Registry functions moved to SpoutUtils
 //		06.06.17	- Added GLDXavailable to OpenSpout
 //		09.06.17	- removed g_TexID - not used
-//
 //		05.10.17	- https://github.com/leadedge/Spout2/issues/24
 //					- OpenReceiver simplify code
 //					- CheckSpoutPanel simplify code, remove text file sender retrieval
@@ -144,6 +146,8 @@
 //		05.03.19	- Add log notice for ReleaseSender
 //		05.04.19	- Change GetSenderName to GetSender
 //					  Reserve const char * GetSenderName for receiver class
+//		17.06.19	- Fix missing log warning argument in UpdateSender
+//		26.06.19	- Cleanup changes to UpdateSender
 //
 // ================================================================
 /*
@@ -223,15 +227,14 @@ Spout::~Spout()
 //
 // Public functions
 //
-
 bool Spout::CreateSender(const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat)
 {
-	SpoutLogNotice("Spout::CreateSender [%s] (%dx%d)", sendername, width, height);
-
 	// Make sure Spout has been initialized and OpenGL context is available
 	// Global render window handle g_hWnd is also set in OpenSpout
 	if(!OpenSpout())
 		return false;
+
+	SpoutLogNotice("Spout::CreateSender [%s] (%dx%d) - format %d", sendername, width, height, dwFormat);
 
 	// Release any orphaned senders if the name exists
 	// in the sender list but the shared memory info does not
@@ -250,48 +253,59 @@ bool Spout::CreateSender(const char* sendername, unsigned int width, unsigned in
 // ------------------------------------------
 bool Spout::UpdateSender(const char *sendername, unsigned int width, unsigned int height)
 {
+	// Make sure it has initialized
+	// Quit if no sender name
+	// Quit if size zero
+	if (!bInitialized || !sendername[0] || width == 0 || height == 0)
+		return false;
+
 	HANDLE hSharehandle = NULL;
 	DWORD dwFormat = 0;
-	unsigned int w, h;
-
-	// Make sure it has initialized
-	if (!bInitialized)
-		return false;
-
-	// Quit if not the current sender name
-	if (strcmp(g_SharedMemoryName, sendername) != 0)
-		return false;
+	unsigned int w = 0;
+	unsigned int h = 0;
 
 	// Is the sender still there? (use local vars to receive the details)
 	if (interop.senders.GetSenderInfo(sendername, w, h, hSharehandle, dwFormat)) {
-		SpoutLogNotice("Spout::UpdateSender [%s] from (%dx%d) to (%dx%d)", sendername, w, h, width, height);
-		if (!bMemory) {
-			// For texture share mode, re-create the sender
-			// with the new dimensions and update the sender info
+		// For a name change, close the sender and set up again
+		if (strcmp(sendername, g_SharedMemoryName) != 0) {
+			SpoutLogNotice("Spout::UpdateSender - sender change");
+			SpoutLogNotice("    From [%s] (%dx%d)", g_SharedMemoryName, g_Width, g_Height);
+			SpoutLogNotice("    To   [%s] (%dx%d)", sendername, width, height);
 			ReleaseSender();
 			CreateSender(sendername, width, height, dwFormat);
 		}
-		else {
-			// Memoryshare just has to update the sender information and the memory map size
-			interop.senders.UpdateSender(sendername, width, height, NULL, 0);
-			// Only the sender can update the memory map (see SpoutMemoryShare.cpp).
-			interop.memoryshare.UpdateSenderMemorySize(sendername, width, height);
+		else if (width != g_Width || height != g_Height) {
+			SpoutLogNotice("Spout::UpdateSender [%s] size change from (%dx%d) to (%dx%d)", sendername, g_Width, g_Height, width, height);
+			if (!bMemory) {
+				// For texture share mode, re-create the sender's directX shared texture
+				// with the new dimensions and update the sender info
+				// No need to re-initialize DirectX, only the GLDX interop
+				// which is re-registered for the new texture
+				interop.CreateInterop(g_hWnd, sendername, width, height, dwFormat, false); // false means a sender
+			}
+			else {
+				SpoutLog("    Memoryshare - updating shared memory");
+				// Memoryshare just has to update the sender information and the memory map size
+				interop.senders.UpdateSender(sendername, width, height, NULL, 0);
+				// Only the sender can update the memory map (see SpoutMemoryShare.cpp).
+				interop.memoryshare.UpdateSenderMemorySize(sendername, width, height);
+			}
 		}
 
-		//
-		// Get the new sender width, height and share handle into local globals
-		//
-		interop.senders.GetSenderInfo(g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
+		// Update class variables
+		g_Width = width;
+		g_Height = height;
+		strcpy_s(g_SharedMemoryName, 256, sendername);
 
 		return true;
 	}
-	SpoutLogWarning("Spout::UpdateSender - could not find [%s]");
-	
+	else {
+		SpoutLogWarning("Spout::UpdateSender - could not find [%s]", sendername);
+	}
 
 	return false;
 
 } // end UpdateSender
-
 
 void Spout::ReleaseSender(DWORD dwMsec) 
 {
@@ -1069,6 +1083,9 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		dwFormat = g_Format;
 		// printf("CheckSpoutPanel [%s] %dx%d\n", g_SharedMemoryName, g_Width, g_Height);
 	}
+	// else {
+		// printf("OpenReceiver [%s] %dx%d - format %d\n", Sendername, width, height, dwFormat);
+	// }
 
 	// Initialize a receiver in either memoryshare or texture mode
 	// InitReceiver tests for a valid sharehandle if not memory mode
@@ -1127,15 +1144,15 @@ bool Spout::InitSender(HWND hwnd, const char* theSendername,
 	return InitSender(hwnd, theSendername, theWidth, theHeight, theFormat, bMemory);
 }
 
-bool Spout::InitSender (HWND hwnd, const char* theSendername, 
-						unsigned int theWidth, unsigned int theHeight, 
-						DWORD theFormat, bool bMemoryMode) 
+bool Spout::InitSender(HWND hwnd, const char* theSendername,
+	unsigned int theWidth, unsigned int theHeight,
+	DWORD theFormat, bool bMemoryMode)
 {
 	char sendername[256];
 	SpoutLogNotice("Spout::InitSender [%s] %dx%d, memorymode = %d", theSendername, theWidth, theHeight, bMemoryMode);
 
 	// Quit if there is no image size to initialize with
-	if(theWidth == 0 || theHeight == 0) {
+	if (theWidth == 0 || theHeight == 0) {
 		SpoutLogFatal("Spout::InitSender - Cannot initialize sender with zero size");
 		return false;
 	}
@@ -1144,7 +1161,7 @@ bool Spout::InitSender (HWND hwnd, const char* theSendername,
 	// If it does, create an incremented name
 	int i = 1;
 	strcpy_s(sendername, 256, theSendername);
-	if(interop.senders.FindSenderName(sendername)) {
+	if (interop.senders.FindSenderName(sendername)) {
 		do {
 			sprintf_s(sendername, 256, "%s_%d", theSendername, i);
 			i++;
@@ -1157,16 +1174,16 @@ bool Spout::InitSender (HWND hwnd, const char* theSendername,
 	// OpenSpout has already loaded OpenGL extensions and set up the sharing mode to be used
 
 	// Only try DirectX if the memory mode flag has not been passed
-	if(!bMemoryMode) {
+	if (!bMemoryMode) {
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
-		if(!interop.CreateInterop(hwnd, sendername, theWidth, theHeight, theFormat, false)) {  // False for a sender
+		if (!interop.CreateInterop(hwnd, sendername, theWidth, theHeight, theFormat, false)) {  // False for a sender
 			SpoutLogFatal("Spout::InitSender - CreateInterop failed");
 			return false;
 		}
 	} // endif texture sharing
 	// DirectX is not initialized f
 	else { // Memoryshare mode
-		
+
 		//
 		// Texture creation patch removed for > Spout 2.006
 		//
@@ -1192,18 +1209,19 @@ bool Spout::InitSender (HWND hwnd, const char* theSendername,
 	interop.senders.GetSenderInfo(g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
 
 	bInitialized = true;
-	bIsSending   = true;
+	bIsSending = true;
 
 	return true;
 
 } // end InitSender
-
 
 bool Spout::InitReceiver(HWND hwnd, char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
 	// Quit if there is no image size to initialize with
 	if(width == 0 || height == 0)
 		return false;
+
+	// printf("InitReceiver [%s] %dx%d - format %d\n", sendername, width, height, dwFormat);
 
 	//
 	// ============== Set up for a RECEIVER ============
@@ -1251,7 +1269,7 @@ void Spout::SpoutCleanUp()
 {
 
 	// OK for memoryshare because all handles will be NULL 
-	interop.CleanupInterop(); // true means it is the exit so don't call wglDXUnregisterObjectNV
+	interop.CleanupInterop();
 	bDxInitOK = false;
 
 	// 04.11.15 - Close memoryshare if created for data transfer
@@ -1388,10 +1406,11 @@ bool Spout::OpenSpout()
 	if (g_hWnd > 0)
 		return true;
 
+	printf("\n"); // This is the start, so make a new line in the log
 #ifdef _M_X64
-	SpoutLogNotice("Spout::OpenSpout - 64bit 2.007");
+	SpoutLogNotice("Spout::OpenSpout - 64bit 2.007 - this 0x%x", this);
 #else
-	SpoutLogNotice("Spout::OpenSpout - 32bit 2.007");
+	SpoutLogNotice("Spout::OpenSpout - 32bit 2.007 - this 0x%x", this);
 #endif
 
 
@@ -1429,7 +1448,6 @@ bool Spout::OpenSpout()
 	return true;
 
 }
-
 
 // This is a request from within a program and Spout might not have initialized yet.
 // If set OFF the DX9 setting is returned false only after a DX11 compatibility check

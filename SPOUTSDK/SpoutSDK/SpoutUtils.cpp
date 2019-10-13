@@ -49,6 +49,7 @@
 		07.04.19 - Add SpoutLog for logging without specifying level
 		28.04.19 - Change OpenSpoutConsole() to check for existing console
 		19.05.19 - Cleanup
+		16.06.19 - Include calling process file name in SpoutMessageBox
 
 */
 #include "spoutUtils.h"
@@ -303,9 +304,16 @@ namespace spoututils {
 		char UserMessage[512];
 		char path[MAX_PATH];
 
+		// Include calling process file name in the message
+		GetModuleFileNameA(NULL, (LPSTR)path, 512);
+		PathStripPathA((LPSTR)path);
+		strcat_s(path, 512, "\n\n");
+		spoutmessage = path;
+		spoutmessage += message;
+
 		// Find if there has been a Spout installation >= 2.002 with an install path for SpoutPanel.exe
 		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
-			spoutmessage = message;
+			
 			// If a timeout has been specified, add the timeout option
 			if (dwMilliseconds > 0) {
 				spoutmessage += " /TIMEOUT-";
@@ -313,10 +321,12 @@ namespace spoututils {
 			}
 			// Open SpoutPanel text message
 			// SpoutPanel handles the timeout delay
-			if (!spoutmessage.empty())
+			if (!spoutmessage.empty()) {
 				strcpy_s(UserMessage, 512, spoutmessage.c_str());
-			else
+			}
+			else {
 				UserMessage[0] = 0; // make sure SpoutPanel does not see an un-initialized string
+			}
 
 			ZeroMemory(&ShExecInfo, sizeof(ShExecInfo));
 			ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
@@ -334,7 +344,8 @@ namespace spoututils {
 		}
 		else {
 			// Use a standard untimed topmost messagebox
-			iRet = MessageBoxA(hwnd, message, caption, (uType | MB_TOPMOST));
+			// iRet = MessageBoxA(hwnd, message, caption, (uType | MB_TOPMOST));
+			iRet = MessageBoxA(hwnd, spoutmessage.c_str(), caption, (uType | MB_TOPMOST));
 		}
 
 		return iRet;

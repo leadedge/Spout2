@@ -426,7 +426,6 @@ unsigned int loadGLextensions() {
 	// LJ DEBUG
 	// Used for testing OpenGL version
 	printf("LoadGLextensions()\n");
-
 	printf("GL_version  = %s\n", (char *)glGetString(GL_VERSION));
 	printf("GL_vendor   = %s\n", (char *)glGetString(GL_VENDOR));
 	printf("GL_renderer = %s\n", (char *)glGetString(GL_RENDERER));

@@ -41,6 +41,12 @@
 //		21.01.19	- Add Bind and UnBindSharedTexture
 //		26.02.19	- Add IsFrameCountEnabled
 //		07.05.19	- Add HoldFps
+//		18.06.19	- Change sender Update to include sender name
+//		26.06.19	- Changes to Update and spout.UpdateSender
+//		13.09.19	- UpdateSender - update class variables for 2.007 methods
+//		18.09.19	- Remove UseDX9 from GetDX9 to avoid registry change
+//		18.09.19	- Remove redundant 2.007 functions SetupSender and Update
+//					- Add invert argument to CreateSender
 //
 // ====================================================================================
 /*
@@ -77,28 +83,28 @@ SpoutSender::SpoutSender()
 	m_TextureTarget = 0;
 	m_Width = 0;
 	m_Height = 0;
-	m_bInvert = true;
+	m_bInvert = true; // default flip true because DirectX and OpenGL have different origins
+
 }
 
 //---------------------------------------------------------
 SpoutSender::~SpoutSender()
 {
-	CloseSender();
+	ReleaseSender();
 }
 
 
 // ================= 2.007 functions ======================
 
+
 //---------------------------------------------------------
 bool SpoutSender::SetupSender(const char* SenderName,
 	unsigned int width, unsigned int height, bool bInvert, DWORD dwFormat)
 {
-	strcpy_s(m_SenderName, 256, SenderName);
-	m_bInvert = bInvert; // default flip true because DirectX and OpenGL have different origins
-	m_Width = width;
-	m_Height = height;
-	return CreateSender(m_SenderName, m_Width, m_Height, dwFormat);
+	m_bInvert = bInvert;
+	return CreateSender(SenderName, width, height, dwFormat);
 }
+
 
 //---------------------------------------------------------
 bool SpoutSender::SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo)
@@ -134,30 +140,9 @@ void SpoutSender::HoldFps(int fps)
 }
 
 //---------------------------------------------------------
-void SpoutSender::Update(unsigned int width, unsigned int height)
-{
-	if (width != m_Width || height != m_Height) {
-		UpdateSender(m_SenderName, width, height);
-		m_Width = width;
-		m_Height = height;
-	}
-}
-
-//---------------------------------------------------------
 bool SpoutSender::IsInitialized()
 {
 	return spout.IsSpoutInitialized();
-}
-
-//---------------------------------------------------------
-void SpoutSender::CloseSender()
-{
-	if (IsInitialized())
-		ReleaseSender();
-	m_SenderName[0] = 0;
-	m_bInvert = true;
-	m_Width = 0;
-	m_Height = 0;
 }
 
 //---------------------------------------------------------
@@ -209,18 +194,45 @@ bool SpoutSender::OpenSpout()
 //---------------------------------------------------------
 bool SpoutSender::CreateSender(const char* name, unsigned int width, unsigned int height, DWORD dwFormat)
 {
-	return spout.CreateSender(name, width, height, dwFormat);
+	if (spout.CreateSender(name, width, height, dwFormat)) {
+		strcpy_s(m_SenderName, 256, name);
+		// Default m_bInvert for this class is true
+		// unless SetupSender has been used
+		m_Width = width;
+		m_Height = height;
+		return true;
+	}
+	return false;
+
 }
 
 //---------------------------------------------------------
 bool SpoutSender::UpdateSender(const char* name, unsigned int width, unsigned int height)
 {
-	return spout.UpdateSender(name, width, height);
+	bool bRet = false;
+	// For a name change, close the sender and set up again
+	if (strcmp(name, m_SenderName) != 0) {
+		ReleaseSender();
+		bRet = SetupSender(name, width, height, m_bInvert);
+	}
+	else if (width != m_Width || height != m_Height) {
+		// Update class variables for 2.007 methods
+		m_Width = width;
+		m_Height = height;
+		bRet = spout.UpdateSender(m_SenderName, m_Width, m_Height);
+	}
+	return bRet;
 }
 
 //---------------------------------------------------------
 void SpoutSender::ReleaseSender(DWORD dwMsec)
 {
+	// Reset class variables for 2.007 functions
+	m_SenderName[0] = 0;
+	m_bInvert = true;
+	m_Width = 0;
+	m_Height = 0;
+	// Release resources
 	spout.ReleaseSender(dwMsec);
 }
 
@@ -320,7 +332,7 @@ bool SpoutSender::SetDX9(bool bDX9)
 //---------------------------------------------------------
 bool SpoutSender::GetDX9()
 {
-	return spout.interop.isDX9();
+	return spout.interop.GetDX9();
 }
 
 //---------------------------------------------------------
