@@ -48,11 +48,11 @@ void ofApp::setup(){
 	//
 	// You can instead, or additionally, specify output to a text file
 	// with the extension of your choice
-	//    EnableSpoutLogFile("SpoutLibrary Sender.log");
+	//    EnableSpoutLogFile("OF Spout Graphics Sender.log");
 	//
 	// The log file is re-created every time the application starts
 	// unless you specify to append to the existing one :
-	//    EnableSpoutLogFile("SpoutLibrary Sender.log", true);
+	//    EnableSpoutLogFile("OF Spout Graphics Sender.log", true);
 	//
 	// The file is saved in the %AppData% folder 
 	//    C:>Users>username>AppData>Roaming>Spout
@@ -137,7 +137,7 @@ void ofApp::draw() {
 	if (bResized) {
 		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
 		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
-		sender.Update(senderwidth, senderheight);
+		sender.UpdateSender(sendername, senderwidth, senderheight);
 		bResized = false;
 	}
 	
@@ -156,8 +156,8 @@ void ofApp::draw() {
 	ofDrawBox(0.4*myFbo.getHeight()); // draw the box
 	myBoxImage.unbind();
 	ofPopMatrix();
-	rotX += 1.0;
-	rotY += 1.0;
+	rotX += 0.6;
+	rotY += 0.6;
 	
 	// Option 1 : Send fbo data while the fbo is bound
 	// with a texture attached to point 0
@@ -187,7 +187,8 @@ void ofApp::draw() {
 	// Show sender fps and framecount if selected
 	if (sender.GetFrame() > 0) {
 		str += " fps ";
-		str += ofToString((int)roundf(sender.GetFps())); str += " : frame  ";
+		str += ofToString((int)roundf(sender.GetFps()));
+		str += " : frame  ";
 		str += ofToString(sender.GetFrame());
 	}
 	else {
@@ -196,9 +197,14 @@ void ofApp::draw() {
 	}
 	ofDrawBitmapString(str, 20, 30);
 
+	//
 	// Applications without frame rate control can call this
 	// function to introduce the required delay between frames.
-	sender.HoldFps(30);
+	//
+	// Note : if you change to HoldFps(30) fps in this example,
+	// the cube will rotate more slowly (increase RotX and RotY).
+	//
+	// sender.HoldFps(30);
 	
 
 }
@@ -206,7 +212,7 @@ void ofApp::draw() {
 //--------------------------------------------------------------
 void ofApp::exit() {
 	// Close the sender on exit
-	sender.CloseSender();
+	sender.ReleaseSender();
 }
 
 //--------------------------------------------------------------

@@ -44,21 +44,16 @@ void ofApp::setup(){
 	EnableSpoutLog();
 
 	// Optional : set up the receiver.
-	// This is optional because the receiver dimensions are established
-	// when a sender is connected and the receiving texture/buffer size
-	// can be reset when an update signal is received - see "update()"
-	// The function can be used to reset the receiver if necessary.
-	// receiver.SetupReceiver(ofGetWidth(), ofGetHeight());
-
-	// Optional : flip the received texture/image.
-	// This function can be called at any time before receiving.
-	// receiver.SetReceiverInvert(true);
+	// This is optional because the receiving texture/buffer size
+	// can be reset when a sender update signal is received - see "update()"
+	// The option to invert of "flip" the received texture can be set here - default is false.
+	// The function can be also used to reset the receiver if necessary.
+	// receiver.SetupReceiver(ofGetWidth(), ofGetHeight()); // invert true or false
 
 	// Optional : specify the sender to connect to.
 	// The receiver will not connect to any other unless the user selects one.
 	// If that sender closes, the receiver will wait for the nominated sender to open.
-	// To reset this behaviour, call "SetupReceiver".
-	// receiver.SetReceiverName("Spout DX11 Sender");
+	// receiver.SetupReceiver("Spout DX11 Sender", ofGetWidth(), ofGetHeight());
 
 } // end setup
 
@@ -81,16 +76,16 @@ void ofApp::draw() {
 	// Optionally include the ID of an fbo if one is currently bound
 
 	// Option 1 : Receive texture data
-	// receiver.ReceiveTextureData(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget);
-	// myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
+	receiver.ReceiveTextureData(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget);
+	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	// Option 2 : Receive pixel data
 	// Specify RGB for this example. Default is RGBA.
-	if (receiver.ReceiveImageData(myImage.getPixels().getData(), GL_RGB)) {
+	// if (receiver.ReceiveImageData(myImage.getPixels().getData(), GL_RGB)) {
 		// Openframeworks image update is necessary because the pixels have been changed externally
-		myImage.update();
-	}
-	myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
+		// myImage.update();
+	// }
+	// myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	// On-screen display
 	showInfo();
@@ -137,7 +132,7 @@ void ofApp::showInfo() {
 
 //--------------------------------------------------------------
 void ofApp::exit() {
-	receiver.CloseReceiver();
+	receiver.ReleaseReceiver();
 }
 
 //--------------------------------------------------------------

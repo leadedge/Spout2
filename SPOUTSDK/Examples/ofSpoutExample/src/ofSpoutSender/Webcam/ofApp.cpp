@@ -54,7 +54,7 @@ void ofApp::update() {
 	// Check for change of webcam resolution
 	if (sender.GetWidth() != (unsigned int)vidGrabber.getWidth()
 		|| sender.GetHeight() != (unsigned int)vidGrabber.getHeight()) {
-		sender.Update((unsigned int)vidGrabber.getWidth(), (unsigned int)vidGrabber.getHeight());
+		sender.UpdateSender(sendername.c_str(), (unsigned int)vidGrabber.getWidth(), (unsigned int)vidGrabber.getHeight());
 	}
 }
 
@@ -97,7 +97,7 @@ void ofApp::draw() {
 
 //--------------------------------------------------------------
 void ofApp::exit() {
-	// Close the sender on exit
-	sender.CloseSender(); 
+	// Release the sender on exit
+	sender.ReleaseSender(); 
 }
 
