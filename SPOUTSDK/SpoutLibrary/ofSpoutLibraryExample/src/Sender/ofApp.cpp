@@ -61,8 +61,8 @@ void ofApp::setup(){
 
 	ofBackground(10, 100, 140);
 
- 	strcpy_s(sendername, 256, "SpoutLibrary Sender"); // We need a sender name for Spout
-	ofSetWindowTitle(sendername); // show it on the title bar
+ 	strcpy_s(senderName, 256, "SpoutLibrary Sender"); // We need a sender name for Spout
+	ofSetWindowTitle(senderName); // show it on the title bar
 
 	spoutsender = GetSpout(); // Create an instance of the Spout library
 	if (!spoutsender) {
@@ -139,7 +139,7 @@ void ofApp::setup(){
 	// Default is true because the shared DirectX texture 
 	// and OpenGL textures have different origins
 	// In this example, the data from the fbo is already inverted so set false
-	spoutsender->SetupSender(sendername, senderwidth, senderheight, false);
+	spoutsender->SetupSender(senderName, senderwidth, senderheight, false);
 
 	// Optional : set the frame rate of the application.
 	// If the user has selected "Frame count" in SpoutSettings
@@ -173,7 +173,7 @@ void ofApp::draw() {
 	if (bResized) {
 		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
 		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
-		spoutsender->Update(senderwidth, senderheight);
+		spoutsender->UpdateSender(senderName, senderwidth, senderheight);
 		bResized = false;
 	}
 
@@ -196,8 +196,8 @@ void ofApp::draw() {
 	spoutsender->SendFboData(myFbo.getId());
 
 	myFbo.end();
-	rotX += 1.0;
-	rotY += 1.0;
+	rotX += 0.6;
+	rotY += 0.6;
 
 	// Show the result
 	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
@@ -213,7 +213,7 @@ void ofApp::draw() {
 	// Show what it is sending
 	ofSetColor(255);
 	std::string str = "Sending as : ";
-	str += sendername; str += " (";
+	str += senderName; str += " (";
 	str += ofToString(spoutsender->GetWidth()); str += "x";
 	str += ofToString(spoutsender->GetHeight()); str += ")";
 
@@ -231,7 +231,7 @@ void ofApp::draw() {
 
 	// Applications without frame rate control can call this
 	// function to introduce the required delay between frames.
-	spoutsender->HoldFps(30);
+	// spoutsender->HoldFps(30);
 
 
 }
@@ -239,7 +239,7 @@ void ofApp::draw() {
 //--------------------------------------------------------------
 void ofApp::exit() {
 	// Close the sender on exit
-	spoutsender->CloseSender();
+	spoutsender->ReleaseSender();
 	// Release the library
 	spoutsender->Release();
 }

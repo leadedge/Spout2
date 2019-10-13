@@ -31,6 +31,7 @@
 #include <windows.h>
 #include <GL/GL.h>
 #include <string>
+#include <d3d9.h>
 
 #define SPOUTLIBRARY_EXPORTS // defined for this DLL. The application imports rather than exports
 
@@ -62,7 +63,7 @@ struct SPOUTLIBRARY
 {
 
 	// -----------------------------------------
-	// 2.007 functions
+	// New for 2.007
 	//
 
 	//
@@ -73,10 +74,6 @@ struct SPOUTLIBRARY
 	virtual bool SetupSender(const char* SenderName, unsigned int width, unsigned int height, bool bInvert = true, DWORD dwFormat = 0) = 0;
 	// Is the sender initialized
 	virtual bool IsInitialized() = 0;
-	// Update sender dimensions
-	virtual void Update(unsigned int width, unsigned int height) = 0;
-	// Close sender and release resources
-	virtual void CloseSender() = 0;
 	// Send texture data
 	virtual bool SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0) = 0;
 	// Send texture data attached to an fbo
@@ -109,8 +106,6 @@ struct SPOUTLIBRARY
 	virtual bool IsUpdated() = 0;
 	// Return whether connected to a sender
 	virtual bool IsConnected() = 0;
-	// Close receiver and free resources
-	virtual void CloseReceiver() = 0;
 	// Open the user sender selection dialog
 	virtual void SelectSender() = 0;
 	// Return the connected sender name
@@ -134,6 +129,15 @@ struct SPOUTLIBRARY
 	virtual void DisableFrameCount() = 0;
 	// Return frame count status
 	virtual bool IsFrameCountEnabled() = 0;
+
+	//
+	// DX9 application support
+	//
+
+	// Set the DX9ex object and device from the application
+	virtual bool SetDX9device(IDirect3DDevice9Ex* pDevice) = 0;
+	// Write a DX9 surface to the spout sender shared texture
+	virtual bool WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface) = 0;
 
 	//
 	// Log utilities
@@ -187,7 +191,7 @@ struct SPOUTLIBRARY
 	// -----------------------------------------
 
 	//
-	// Functions 2.006 and earlier
+	// 2.006 and earlier
 	//
 
 	// Sender

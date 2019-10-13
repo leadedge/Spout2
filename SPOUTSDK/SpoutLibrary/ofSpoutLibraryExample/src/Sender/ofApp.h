@@ -34,7 +34,7 @@ class ofApp : public ofBaseApp{
 		void mouseReleased(int x, int y, int button);
 
 		SPOUTLIBRARY * spoutsender; // A sender object pointer
-		char sendername[256]; // Sender name
+		char senderName[256]; // Sender name
 		unsigned int senderwidth; // Dimensions of sender and fbo can be
 		unsigned int senderheight; // independent of the application window
 		ofImage myBoxImage; // Image for the 3D demo
