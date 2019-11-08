@@ -47,6 +47,7 @@
 //		03.07.19	- Added pointer checks in OpenDX11shareHandle
 //		18.09.19	- Changed initial log from notice to to verbose
 //					  for CreateSharedDX9Texture and CreateSharedDX11Texture
+//		08.11.19	- removed immediate context check from OpenDX11shareHandle
 //
 // ====================================================================================
 /*
@@ -117,10 +118,10 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	D3DCAPS9 d3dCaps;
 	int AdapterIndex = m_AdapterIndex;
 
-	SpoutLogNotice("spoutDirectX::CreateDX9device - adapter = %d, hWnd = 0x%x", AdapterIndex, hWnd);
+	// SpoutLogNotice("spoutDirectX::CreateDX9device - adapter = %d, hWnd = 0x%x", AdapterIndex, hWnd);
 
     ZeroMemory(&d3dpp, sizeof(d3dpp));
-    d3dpp.Windowed		= TRUE;						// windowed and not full screen
+    d3dpp.Windowed		= true;						// windowed and not full screen
     d3dpp.SwapEffect	= D3DSWAPEFFECT_DISCARD;	// discard old frames
     d3dpp.hDeviceWindow	= hWnd;						// set the window to be used by D3D
 
@@ -132,7 +133,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	// Set a dummy resolution - we don't render anything
     d3dpp.BackBufferWidth		 = 1920;
     d3dpp.BackBufferHeight		 = 1080;
-	d3dpp.EnableAutoDepthStencil = FALSE;
+	d3dpp.EnableAutoDepthStencil = false;
 	d3dpp.AutoDepthStencilFormat = D3DFMT_D24S8;
 	d3dpp.BackBufferCount		 = 1;
 
@@ -314,7 +315,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	UINT createDeviceFlags = 0;
 	IDXGIAdapter* pAdapterDX11 = m_pAdapterDX11;
 
-	SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (%d)", m_pAdapterDX11);
+	// SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (%d)", m_pAdapterDX11);
 
 #if defined(_DEBUG)
 	// If the project is in a debug build, enable debugging via SDK Layers with this flag.
@@ -428,8 +429,8 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	// Release the texture if it already exists
 	if (pTexture) ReleaseDX11Texture(pd3dDevice, pTexture);
 
-	SpoutLogVerbose("spoutDirectX::CreateSharedDX11Texture");
-	SpoutLogVerbose("    pDevice = 0x%Ix, width = %d, height = %d, format = %d", (intptr_t)pd3dDevice, width, height, format);
+	// SpoutLogVerbose("spoutDirectX::CreateSharedDX11Texture");
+	// SpoutLogVerbose("    pDevice = 0x%Ix, width = %d, height = %d, format = %d", (intptr_t)pd3dDevice, width, height, format);
 
 	// Textures being shared from D3D9 to D3D11 have the following restrictions (LJ - D3D11 to D3D9 ?).
 	//		Textures must be 2D
@@ -511,10 +512,8 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle)
 {
-	// SpoutLogNotice("spoutDirectX::OpenDX11shareHandle : device = 0x%Ix, sharedtexture = 0x%x, sharehandle = 0x%x", (intptr_t)pDevice, ppSharedTexture, dxShareHandle);
 
-	// Check m_pImmediateContext for DX11
-	if (!pDevice || !m_pImmediateContext || !ppSharedTexture || !dxShareHandle) {
+	if (!pDevice || !ppSharedTexture || !dxShareHandle) {
 		SpoutLogError("spoutDirectX::OpenDX11shareHandle - null sources");
 		return false;
 	}
@@ -561,7 +560,7 @@ bool spoutDirectX::SetAdapter(int index)
 	char adaptername[128];
 	IDXGIAdapter* pAdapter = nullptr;
 
-	SpoutLogNotice("spoutDirectX::SetAdapter(%d)\n", index);
+	// SpoutLogNotice("spoutDirectX::SetAdapter(%d)\n", index);
 
 	m_AdapterIndex = D3DADAPTER_DEFAULT; // DX9
 	m_pAdapterDX11 = nullptr; // DX11
