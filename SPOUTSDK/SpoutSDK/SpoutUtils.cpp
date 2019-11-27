@@ -50,6 +50,9 @@
 		28.04.19 - Change OpenSpoutConsole() to check for existing console
 		19.05.19 - Cleanup
 		16.06.19 - Include calling process file name in SpoutMessageBox
+		13.10.19 - Corrected EnableSpoutLogFile for a filename without an extension
+				   Changed default extension from "txt" to "log"
+		27.11.19 - Prevent multiple logs for warnings and errors
 
 */
 #include "spoutUtils.h"
@@ -147,22 +150,26 @@ namespace spoututils {
 			PathRemoveBackslashA(fname);
 			logPath.clear();
 
-			if (PathIsFileSpecA(fname)) {
+			if (PathIsDirectoryA(fname)) {
+				// Path without a filename
+				logPath = fname;
+				logPath += "\\SpoutLog.log";
+			}
+			else if (PathIsFileSpecA(fname)) {
+				printf("PathIsFileSpec\n");
 				// Filename without a path
+				// Add an extension if none supplied
+				if (!PathFindExtensionA(fname)[0])
+					strcat_s(fname, MAX_PATH, ".log");
 				logPath = _getLogPath();
 				logPath += "\\";
 				logPath += fname;
-			}
-			else if (PathIsDirectoryA(fname)) {
-				// Existing path without a filename
-				logPath = fname;
-				logPath += "\\SpoutLog.txt";
 			}
 			else if (PathFindFileNameA(fname)) {
 				// Full path with a filename
 				// Add an extension if none supplied
 				if (!PathFindExtensionA(fname)[0])
-					strcat_s(fname, MAX_PATH, ".txt");
+					strcat_s(fname, MAX_PATH, ".log");
 				logPath = fname;
 			}
 			// logPath is empty if all options fail
@@ -542,6 +549,8 @@ namespace spoututils {
 	// Perform the log
 	void _doLog(SpoutLogLevel level, const char* format, va_list args)
 	{
+		char currentLog[128];
+		std::string logString;
 
 		if (bEnableLog
 			&& level != SPOUT_LOG_SILENT
@@ -549,23 +558,12 @@ namespace spoututils {
 			&& level >= CurrentLogLevel
 			&& format != nullptr) {
 
-			if (!logPath.empty()) {
-				// Log file output - append the current log
-				logFile.open(logPath, logFile.app);
-				if (logFile.is_open()) {
-					char name[128];
-					char tmp[128];
-					name[0] = 0;
-					vsprintf_s(tmp, 128, format, args);
-					if (level != SPOUT_LOG_NONE && level != SPOUT_LOG_VERBOSE) {
-						sprintf_s(name, 128, "[%s] ", _levelName(level).c_str());
-					}
-					logFile << name << tmp << std::endl;
-					logFile.close();
-				}
-			}
+			// Construct the current log
+			vsprintf_s(currentLog, 128, format, args);
+			logString = currentLog;
 
-			if(bConsole) {
+			if (bConsole) {
+				// For console output, allow multiple warnings
 				FILE* out = stdout;
 				if (level != SPOUT_LOG_NONE && level != SPOUT_LOG_VERBOSE) {
 					fprintf(out, "[%s] ", _levelName(level).c_str());
@@ -574,16 +572,30 @@ namespace spoututils {
 				fprintf(out, "\n");
 			}
 
-			// Save the last log if error or fatal
-			if (level > SPOUT_LOG_WARNING) {
-				char tmp[128];
-				vsprintf_s(tmp, 128, format, args);
-				LastSpoutLog = tmp; // last error
+			// Save the last log for warning or fatal
+			if (level >= SPOUT_LOG_WARNING) {
+				// Prevent multiple logs by comparing with the last
+				if (logString == LastSpoutLog)
+					return;
+				// Fatal error will quit - we want to know why
+				if (level == SPOUT_LOG_FATAL) {
+					SpoutMessageBox(NULL, LastSpoutLog.c_str(), "Spout", MB_OK);
+				}
+				LastSpoutLog = logString; // update the last log
 			}
 
-			// Fatal error will quit - we want to know why
-			if (level == SPOUT_LOG_FATAL) {
-				SpoutMessageBox(NULL, LastSpoutLog.c_str(), "Spout", MB_OK);
+			if (!logPath.empty()) {
+				// Log file output - append the current log
+				logFile.open(logPath, logFile.app);
+				if (logFile.is_open()) {
+					char name[128];
+					name[0] = 0;
+					if (level != SPOUT_LOG_NONE && level != SPOUT_LOG_VERBOSE) {
+						sprintf_s(name, 128, "[%s] ", _levelName(level).c_str());
+					}
+					logFile << name << currentLog << std::endl;
+					logFile.close();
+				}
 			}
 		}
 	}
