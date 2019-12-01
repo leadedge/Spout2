@@ -43,6 +43,8 @@
 //					- Remove reset of m_SenderNameSetup from SetupReceiver
 //					- Add connected test to IsUpdated
 //					- Remove redundant CloseReceiver
+//		28.11.19	- Remove SetupReceiver
+//					  Add invert option to ReceiveTextureData and ReceiveImageData
 //
 // ====================================================================================
 /*
@@ -73,12 +75,13 @@
 
 SpoutReceiver::SpoutReceiver()
 {
+	// CreateReceiver will use the active sender unless the user 
+	// has specified a sender to connect to using SetReceiverName
 	m_SenderNameSetup[0] = 0;
 	m_SenderName[0] = 0;
+	m_bUseActive = true;
 	m_TextureID = 0;
 	m_TextureTarget = 0;
-	m_bInvert = false;
-	m_bUseActive = true;
 	m_Width = 0;
 	m_Height = 0;
 	m_bUpdate = false;
@@ -95,24 +98,6 @@ SpoutReceiver::~SpoutReceiver()
 // ================= 2.007 functions ======================
 //
 
-//---------------------------------------------------------
-void SpoutReceiver::SetupReceiver(unsigned int width, unsigned int height, bool bInvert)
-{
-	// CreateReceiver will use the active sender unless the user 
-	// has specified a sender to connect to using SetReceiverName
-	if (!m_SenderNameSetup[0]) {
-		m_SenderName[0] = 0;
-		m_bUseActive = true;
-	}
-
-	// Record details for subsequent functions
-	m_Width = width;
-	m_Height = height;
-	m_bInvert = bInvert; // Default false
-	m_bUpdate = false;
-	m_bConnected = false;
-
-}
 
 //---------------------------------------------------------
 void SpoutReceiver::SetReceiverName(const char * SenderName)
@@ -127,11 +112,12 @@ void SpoutReceiver::SetReceiverName(const char * SenderName)
 //---------------------------------------------------------
 //	o Connect to a sender and inform the application to update texture dimensions
 //  o Receive texture data from the sender and write to the user texture
-bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo)
+bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
 	m_bUpdate = false;
 
 	// Initialization is recorded in the spout class for sender or receiver
+	// m_Width or m_Height are established when the reciver connects to a sender
 	if (!IsConnected()) {
 		if (CreateReceiver(m_SenderName, m_Width, m_Height, m_bUseActive)) {
 			// Signal the application to update the receiving texture size
@@ -162,8 +148,8 @@ bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, G
 				m_bUpdate = true;
 			}
 			else {
-				// Read the shared texture to the user texture
-				spout.interop.ReadTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, m_bInvert, HostFbo);
+				// Read the shared texture to the user texture and invert as necessary
+				spout.interop.ReadTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
 			}
 			return true;
 		}
@@ -182,11 +168,12 @@ bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, G
 //---------------------------------------------------------
 //	o Connect to a sender and inform the application to update buffer dimensions
 //  o Receive pixel data from the sender and write to the user buffer
-bool SpoutReceiver::ReceiveImageData(unsigned char *pixels, GLenum glFormat, GLuint HostFbo)
+bool SpoutReceiver::ReceiveImageData(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
 	m_bUpdate = false;
 
 	if (!IsConnected()) {
+		// m_Width or m_Height are established when the reciver connects to a sender
 		if (CreateReceiver(m_SenderName, m_Width, m_Height, m_bUseActive)) {
 			m_bUpdate = true;
 			m_bConnected = true;
@@ -199,7 +186,7 @@ bool SpoutReceiver::ReceiveImageData(unsigned char *pixels, GLenum glFormat, GLu
 		unsigned int width = m_Width;
 		unsigned int height = m_Height;
 		// Receive a shared image but don't read it into the user pixels yet
-		if (ReceiveImage(sendername, width, height, NULL)) {
+		if (ReceiveImage(sendername, width, height, NULL, glFormat, bInvert)) {
 			// Test for sender name or size change
 			if (width != m_Width
 				|| height != m_Height
@@ -214,9 +201,9 @@ bool SpoutReceiver::ReceiveImageData(unsigned char *pixels, GLenum glFormat, GLu
 				return true;
 			}
 			else {
-				// Read the shared texture or memory directly into the pixel buffer
+				// Read the shared texture or memory directly into the pixel buffer and invert as necessary
 				// Copy functions handle the formats supported
-				return spout.interop.ReadTexturePixels(m_SenderName, pixels, width, height, glFormat, m_bInvert, HostFbo);
+				return spout.interop.ReadTexturePixels(m_SenderName, pixels, width, height, glFormat, bInvert, HostFbo);
 			}
 		}
 		else {
@@ -328,11 +315,19 @@ void SpoutReceiver::ReleaseReceiver()
 	m_Height = 0;
 	m_bUpdate = false;
 	m_bConnected = false;
+	m_TextureID = 0;
+	m_TextureTarget = 0;
+
 	// Restore the starting sender name if the user specified one in SetupReceiver
-	if (m_SenderNameSetup[0])
+	if (m_SenderNameSetup[0]) {
 		strcpy_s(m_SenderName, 256, m_SenderNameSetup);
-	else
+		m_bUseActive = false;
+	}
+	else {
 		m_SenderName[0] = 0;
+		m_bUseActive = true;
+	}
+
 	// Release resources
 	spout.ReleaseReceiver();
 }

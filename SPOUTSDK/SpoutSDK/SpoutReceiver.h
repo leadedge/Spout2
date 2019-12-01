@@ -43,14 +43,12 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// New for 2.007
 	//
 
-	// Set up starting values for a receiver
-	void SetupReceiver(unsigned int width, unsigned int height, bool bInvert = false);
-	// Specify the sender to connect to
+	// Specify a sender for the receiver to connect to
 	void SetReceiverName(const char * SenderName);
 	// Receive texture data
-	bool ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
+	bool ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, bool bInvert = false, GLuint HostFbo = 0);
 	// Receive pixel data
-	bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0);
+	bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
 	// Return whether the connected sender has changed
 	bool IsUpdated();
 	// Return whether connected to a sender
@@ -130,7 +128,6 @@ protected :
 	char m_SenderName[256];
 	GLuint m_TextureID;
 	GLuint m_TextureTarget;
-	bool m_bInvert;
 	bool m_bUpdate;
 	bool m_bUseActive;
 	bool m_bConnected;
