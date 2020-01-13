@@ -47,6 +47,7 @@
 //		18.09.19	- Remove UseDX9 from GetDX9 to avoid registry change
 //		18.09.19	- Remove redundant 2.007 functions SetupSender and Update
 //					- Add invert argument to CreateSender
+//		15.10.19	- Check zero width and height for SendData functions 
 //
 // ====================================================================================
 /*
@@ -102,6 +103,7 @@ bool SpoutSender::SetupSender(const char* SenderName,
 	unsigned int width, unsigned int height, bool bInvert, DWORD dwFormat)
 {
 	m_bInvert = bInvert;
+	// m_Width and m_Height are set by CreateSender
 	return CreateSender(SenderName, width, height, dwFormat);
 }
 
@@ -109,7 +111,7 @@ bool SpoutSender::SetupSender(const char* SenderName,
 //---------------------------------------------------------
 bool SpoutSender::SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo)
 {
-	if (IsInitialized())
+	if (IsInitialized() && m_Width > 0 && m_Height > 0)
 		return SendTexture(TextureID, TextureTarget, m_Width, m_Height, m_bInvert, HostFbo);
 	else
 		return false;
@@ -118,7 +120,7 @@ bool SpoutSender::SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint
 //---------------------------------------------------------
 bool SpoutSender::SendFboData(GLuint FboID)
 {
-	if (IsInitialized())
+	if (IsInitialized() && m_Width > 0 && m_Height > 0)
 		return SendFboTexture(FboID, m_Width, m_Height, m_bInvert);
 	else
 		return false;
@@ -127,7 +129,7 @@ bool SpoutSender::SendFboData(GLuint FboID)
 //---------------------------------------------------------
 bool SpoutSender::SendImageData(const unsigned char* pixels, GLenum glFormat, GLuint HostFbo)
 {
-	if (IsInitialized())
+	if (IsInitialized() && m_Width > 0 && m_Height > 0)
 		return SendImage(pixels, m_Width, m_Height, glFormat, m_bInvert, HostFbo);
 	else
 		return false;

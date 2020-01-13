@@ -74,8 +74,13 @@ class SPOUT_DLLEXP spoutCopy {
 		void bgr2bgra (const void* bgr_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 
 		void rgba2rgb (const void* rgba_source, void *rgb_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
+		void rgba2rgbResample(const unsigned char* source, unsigned char* dest,
+			unsigned int sourceWidth, unsigned int sourceHeight,
+			unsigned int destWidth, unsigned int destHeight, bool bInvert = false);
 		void rgba2bgr (const void* rgba_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
-
+		void rgba2bgrResample(const unsigned char* source, unsigned char* dest,
+			unsigned int sourceWidth, unsigned int sourceHeight,
+			unsigned int destWidth, unsigned int destHeight, bool bInvert = false);
 		void bgra2rgb (const void* bgra_source, void *rgb_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 		void bgra2bgr (const void* bgra_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 

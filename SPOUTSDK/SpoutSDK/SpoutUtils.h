@@ -48,6 +48,7 @@
 
 #pragma comment(lib, "Shell32.lib") // for shellexecute
 #pragma comment(lib, "shlwapi.lib") // for path functions
+#pragma comment(lib, "Advapi32.lib") // for registry functions
 
 namespace spoututils {
 

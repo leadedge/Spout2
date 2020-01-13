@@ -227,10 +227,19 @@ bool spoutSenderNames::FindSenderName(const char* Sendername)
 {
 	std::string namestring;
 	std::set<std::string> SenderNames;
+
+	std::set<std::string>::iterator iter;
 	
 	if(Sendername[0]) { // was a valid name passed
 		// Get the current list to update the passed list
 		if(GetSenderSet(SenderNames)) {
+			// LJ DEBUG
+			if (SenderNames.size() > 0) {
+				for (iter = SenderNames.begin(); iter != SenderNames.end(); iter++) {
+					namestring = *iter;
+				}
+			}
+
 			// Does the name exist
 			if(SenderNames.find(Sendername) != SenderNames.end() ) {
 				return true;
@@ -1048,7 +1057,7 @@ bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
 	// Close and try to reopen
 	CloseMap(m_pSenderNamesMap, m_hSenderNamesMap);
 
-	hMap2 = OpenFileMappingA (FILE_MAP_ALL_ACCESS, FALSE, "SpoutSenderNames");
+	hMap2 = OpenFileMappingA (FILE_MAP_ALL_ACCESS, false, "SpoutSenderNames");
 	if(hMap2) {
 		// printf("    Sendernames map [%x] did not close\n", hMap2);
 		CloseHandle(hMap2);

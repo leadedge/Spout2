@@ -53,6 +53,8 @@
 		13.10.19 - Corrected EnableSpoutLogFile for a filename without an extension
 				   Changed default extension from "txt" to "log"
 		27.11.19 - Prevent multiple logs for warnings and errors
+		22.12.19 - add pragma in header for registry function lbraries
+				   Remove calling process name from SpoutMessageBox
 
 */
 #include "spoutUtils.h"
@@ -156,7 +158,6 @@ namespace spoututils {
 				logPath += "\\SpoutLog.log";
 			}
 			else if (PathIsFileSpecA(fname)) {
-				printf("PathIsFileSpec\n");
 				// Filename without a path
 				// Add an extension if none supplied
 				if (!PathFindExtensionA(fname)[0])
@@ -311,16 +312,11 @@ namespace spoututils {
 		char UserMessage[512];
 		char path[MAX_PATH];
 
-		// Include calling process file name in the message
-		GetModuleFileNameA(NULL, (LPSTR)path, 512);
-		PathStripPathA((LPSTR)path);
-		strcat_s(path, 512, "\n\n");
-		spoutmessage = path;
-		spoutmessage += message;
+		spoutmessage = message;
 
 		// Find if there has been a Spout installation >= 2.002 with an install path for SpoutPanel.exe
 		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
-			
+
 			// If a timeout has been specified, add the timeout option
 			if (dwMilliseconds > 0) {
 				spoutmessage += " /TIMEOUT-";
@@ -449,7 +445,8 @@ namespace spoututils {
 				return true;
 		}
 		// Quit if the key does not exist
-		SpoutLogWarning("ReadPathFromRegistry - could not open subkey [%s]", subkey);
+		SpoutLogWarning("ReadPathFromRegistry - could not open subkey [%s] Error (%ld)", subkey, regres);
+
 		return false;
 	}
 

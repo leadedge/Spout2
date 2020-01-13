@@ -138,8 +138,8 @@ class SPOUT_DLLEXP Spout {
 	bool SetAdapter(int index = 0); // Set required graphics adapter for output
 	int  GetAdapter(); // Get the SpoutDirectX global adapter index
 
+	// General utilities
 	bool GetHostPath(const char *sendername, char *hostpath, int maxchars); // The path of the host that produced the sender
-
 	int  GetVerticalSync();
 	bool SetVerticalSync(bool bSync = true);
 

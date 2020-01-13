@@ -247,7 +247,7 @@ void spoutFrameCount::SetNewFrame()
 		// Release the frame counting semaphore to increase it's count.
 		// so that the receiver can retrieve the new count.
 		// Increment by 2 because WaitForSingleObject decremented it.
-		if (ReleaseSemaphore(m_hCountSemaphore, 2, NULL) == FALSE) {
+		if (ReleaseSemaphore(m_hCountSemaphore, 2, NULL) == false) {
 			SpoutLogError("spoutFrameCount::SetNewFrame - ReleaseSemaphore failed");
 		}
 		else {
@@ -298,7 +298,7 @@ bool spoutFrameCount::GetNewFrame()
 		// The next time round it will either be the same count because
 		// the receiver released it, or increased because the sender
 		// released and incremented it.
-		if (ReleaseSemaphore(m_hCountSemaphore, 1, &framecount) == FALSE) {
+		if (ReleaseSemaphore(m_hCountSemaphore, 1, &framecount) == false) {
 			SpoutLogError("spoutFrameCount::GetNewFrame - ReleaseSemaphore failed");
 			return true; // do not block
 		}
@@ -468,7 +468,7 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 	sprintf_s((char*)szMutexName, 300, "%s_SpoutAccessMutex", SenderName);
 
 	// Create or open mutex depending, on whether it already exists or not
-	hMutex = CreateMutexA(NULL, FALSE, (LPCSTR)szMutexName);
+	hMutex = CreateMutexA(NULL, false, (LPCSTR)szMutexName);
 
 	if (hMutex == NULL) {
 		SpoutLogError("spoutFrameCount::CreateAccessMutex - access mutex NULL invalid handle");
@@ -610,7 +610,7 @@ double spoutFrameCount::GetRefreshRate()
 {
 	double frequency = 60.0;
 	DEVMODE DevMode;
-	BOOL bResult = TRUE;
+	BOOL bResult = true;
 	DWORD dwCurrentSettings = 0;
 	DevMode.dmSize = sizeof(DEVMODE);
 	// Test all the graphics modes

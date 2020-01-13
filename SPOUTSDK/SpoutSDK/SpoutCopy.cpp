@@ -38,6 +38,7 @@
 	17.10.18 - Change FlipBuffer to void
 	13.11.18 - const changes as per Engel (https://github.com/leadedge/Spout2/pull/26)
 	27.11.18 - Add RemovePadding
+	17.10.19 - Add rgba2bgrResample and bgra2bgrResample for SpoutCam
 
 */
 #include "spoutCopy.h"
@@ -690,3 +691,65 @@ void spoutCopy::bgra2bgr(const void *bgra_source, void *bgr_dest, unsigned int w
 
 
 } // end bgra2bgr
+
+
+// Adapted from :
+// http://tech-algorithm.com/articles/nearest-neighbor-image-scaling/
+// http://www.cplusplus.com/forum/general/2615/#msg10482
+// TODO - clean up
+void spoutCopy::rgba2rgbResample(const unsigned char* source, unsigned char* dest,
+	unsigned int sourceWidth, unsigned int sourceHeight,
+	unsigned int destWidth, unsigned int destHeight, bool bInvert)
+{
+	unsigned char *srcBuffer = (unsigned char *)source; // bgra source
+	unsigned char *dstBuffer = (unsigned char *)dest; // bgr dest
+
+	float x_ratio = (float)sourceWidth / (float)destWidth;
+	float y_ratio = (float)sourceHeight / (float)destHeight;
+	float px, py;
+	unsigned int i, j;
+	unsigned int pixel, nearestMatch;
+	for (i = 0; i < destHeight; i++) {
+		for (j = 0; j < destWidth; j++) {
+			px = floor((float)j*x_ratio);
+			py = floor((float)i*y_ratio);
+			if (bInvert)
+				pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
+			else
+				pixel = i * destWidth * 3 + j * 3;
+			nearestMatch = (int)(py*sourceWidth * 4 + px * 4);
+			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 0];
+			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
+			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 2];
+		}
+	}
+}
+
+void spoutCopy::rgba2bgrResample(const unsigned char* source, unsigned char* dest,
+	unsigned int sourceWidth, unsigned int sourceHeight,
+	unsigned int destWidth, unsigned int destHeight, bool bInvert)
+{
+	unsigned char *srcBuffer = (unsigned char *)source; // bgra source
+	unsigned char *dstBuffer = (unsigned char *)dest; // bgr dest
+
+	float x_ratio = (float)sourceWidth / (float)destWidth;
+	float y_ratio = (float)sourceHeight / (float)destHeight;
+	float px, py;
+	unsigned int i, j;
+	unsigned int pixel, nearestMatch;
+	for (i = 0; i < destHeight; i++) {
+		for (j = 0; j < destWidth; j++) {
+			px = floor((float)j*x_ratio);
+			py = floor((float)i*y_ratio);
+			if (bInvert)
+				pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
+			else
+				pixel = i * destWidth * 3 + j * 3;
+			nearestMatch = (int)(py*sourceWidth * 4 + px * 4);
+			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 0];
+			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
+			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 2];
+		}
+	}
+}
+

@@ -114,7 +114,7 @@ SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 	mutexName = name;
 	mutexName += "_mutex";
 
-	m_hMutex = CreateMutexA(NULL, FALSE, mutexName.c_str());
+	m_hMutex = CreateMutexA(NULL, false, mutexName.c_str());
 
 	if (!m_hMutex) {
 		Close();
@@ -141,7 +141,7 @@ bool SpoutSharedMemory::Open(const char* name)
 		return true;
 	}
 
-	m_hMap = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, (LPCSTR)name);
+	m_hMap = OpenFileMappingA(FILE_MAP_ALL_ACCESS, false, (LPCSTR)name);
 	if (m_hMap == NULL)	{
 		return false;
 	}
@@ -156,7 +156,7 @@ bool SpoutSharedMemory::Open(const char* name)
 	mutexName = name;
 	mutexName += "_mutex";
 
-	m_hMutex = CreateMutexA(NULL, FALSE, mutexName.c_str());
+	m_hMutex = CreateMutexA(NULL, false, mutexName.c_str());
 	if (!m_hMutex) {
 		Close();
 		return false;
