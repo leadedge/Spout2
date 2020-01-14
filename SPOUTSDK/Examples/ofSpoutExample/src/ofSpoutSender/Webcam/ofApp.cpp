@@ -6,7 +6,7 @@
 	OpenFrameworks 10
 	Visual Studio 2017
 
-	Copyright (C) 2019 Lynn Jarvis.
+	Copyright (C) 2020 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -34,14 +34,17 @@ void ofApp::setup(){
 	ofSetWindowTitle(sendername); // show it on the title bar
 
  	// Set up the webcam for the sender
-	vidGrabber.setDeviceID(0);
-	vidGrabber.setDesiredFrameRate(30); // try to set this frame rate
+	// vidGrabber.listDevices(); // To show all webcams
+	// vidGrabber.setDeviceID(0); // Use the default webcam or change as required
+	// Try to set this frame rate
+	// (For SpoutCam use SpoutCamSettings instead)
+	vidGrabber.setDesiredFrameRate(30);
 	vidGrabber.setup(640, 480); // try to grab at this size. 
 	cout << "Initialized webcam (" << vidGrabber.getWidth() << " x " << vidGrabber.getHeight() << ")" << endl;
 
-	// Set up the Spout sender with it's name
+	// Create the Spout sender with it's name
 	// and the size of the the webcam texture
-	sender.SetupSender(sendername.c_str(),
+	sender.CreateSender(sendername.c_str(),
 		(unsigned int)vidGrabber.getWidth(),
 		(unsigned int)vidGrabber.getHeight());
 
@@ -64,23 +67,29 @@ void ofApp::draw() {
 
 	ofSetColor(255);
 
+	if (!vidGrabber.isInitialized())
+		return;
+
 	vidGrabber.draw(0, 0, ofGetWidth(), ofGetHeight());
 
-	if (sender.IsInitialized() && vidGrabber.isInitialized()) {
-		// Send the webcam texture if the frame is new
-		// Spout receivers will receive at this rate and detect the fps
-		// The tested webcam rate was 15 fps
+	if (sender.IsInitialized()) {
+		// If Frame count is enabled in SpoutSettings, 
+		// you can send the webcam texture if the frame is new.
+		// Receivers will receive at this rate and detect the sender fps.
+		// If frame count is disabled, isFrameNew always returns true.
+		// Then the send is every cycle and receivers will see the Openframeworks fps.
 		if (vidGrabber.isFrameNew()) {
-			// Send the webcam texture
+			// Send the webcam texture data
 			sender.SendTextureData(vidGrabber.getTexture().getTextureData().textureID,
-				vidGrabber.getTexture().getTextureData().textureTarget);
+				vidGrabber.getTexture().getTextureData().textureTarget, false);
 		}
+
 		// Show what it is sending
 		std::string str = "Sending as : ";
 		str += sendername; str += " (";
 		str += ofToString(sender.GetWidth()); str += "x";
 		str += ofToString(sender.GetHeight()); str += ")";
-		// Show sender fps and framecount if selected
+		// Show sender fps and framecount if selected in SpoutSettings
 		if (sender.GetFrame() > 0) {
 			str += " fps: ";
 			str += ofToString((int)roundf(sender.GetFps())); str += " frame : ";

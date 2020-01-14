@@ -6,7 +6,7 @@
 	OpenFrameworks 10
 	Visual Studio 2017
 
-	Copyright (C) 2019 Lynn Jarvis.
+	Copyright (C) 2020 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -97,12 +97,9 @@ void ofApp::setup(){
 	// Create an image for optional pixel transfer
 	myPixels.allocate(senderwidth, senderheight, GL_RGBA);
 
-	// Set up the Spout sender with it's name and size
-	// Optional : set whether to invert the outgoing texture
-	// Default is true because the shared DirectX texture 
-	// and OpenGL textures have different origins
-	// In this example, the data from the fbo is already inverted so set false
-	sender.SetupSender(sendername, senderwidth, senderheight, false);
+	// Create a Spout sender with it's name, size and optional DirectX texture format
+	// (Defaults : DX9 - D3DFMT_A8B8G8R8, DX11 - DXGI_FORMAT_B8G8R8A8_UNORM)
+	sender.CreateSender(sendername, senderwidth, senderheight);
 
 	// Optional : set the frame rate of the application.
 	// If the user has selected "Frame count" in SpoutSettings
@@ -120,7 +117,14 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update() {
-
+	// Check for sender size change (See windowResized() for more detail)
+	// For other applications, this could be done before rendering
+	if (bResized) {
+		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
+		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
+		sender.UpdateSender(sendername, senderwidth, senderheight);
+		bResized = false;
+	}
 }
 
 //--------------------------------------------------------------
@@ -129,17 +133,6 @@ void ofApp::draw() {
 	// Quit if the sender is not initialized
 	if (!sender.IsInitialized())
 		return;
-
-	// Check for sender size change
-	// See windowResized() for more detail
-	// This could be done in Update but here we are sure
-	// changes are made before rendering
-	if (bResized) {
-		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
-		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
-		sender.UpdateSender(sendername, senderwidth, senderheight);
-		bResized = false;
-	}
 	
 	// Draw 3D graphics demo into the fbo
 	// This could be anything for your application
@@ -158,10 +151,13 @@ void ofApp::draw() {
 	ofPopMatrix();
 	rotX += 0.6;
 	rotY += 0.6;
+
+	// In this example, the fbo texture is already inverted
+	// so set the sending invert option false for all functions
 	
-	// Option 1 : Send fbo data while the fbo is bound
-	// with a texture attached to point 0
-	sender.SendFboData(myFbo.getId());
+	// Option 1 : Send the data of the texture
+	// attached to point 0 while the fbo is bound
+	sender.SendFboData(myFbo.getId(), false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
@@ -171,11 +167,11 @@ void ofApp::draw() {
 
 	// Option 2 : Send texture data
 	// sender.SendTextureData(myFbo.getTexture().getTextureData().textureID,
-		// myFbo.getTexture().getTextureData().textureTarget);
+		// myFbo.getTexture().getTextureData().textureTarget, false);
 
 	// Option 3 : Send pixel data
 	// myFbo.readToPixels(myPixels);
-	// sender.SendImageData(myPixels.getData());
+	// sender.SendImageData(myPixels.getData(), GL_RGBA, false);
 
 	// Show what it is sending
 	ofSetColor(255);

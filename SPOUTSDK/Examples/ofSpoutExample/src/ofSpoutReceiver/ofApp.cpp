@@ -4,7 +4,7 @@
 
     Visual Studio using the Spout SDK
 
-	Copyright (C) 2019 Lynn Jarvis.
+	Copyright (C) 2020 Lynn Jarvis.
 
 	Spout 2.007
 	OpenFrameworks 10
@@ -33,27 +33,17 @@ void ofApp::setup(){
 	ofBackground(0, 0, 0);
 
 	// Allocate an RGBA texture to receive from the sender
-	// It will be resized later to match the sender - see Update()
+	// It can be resized later to match the sender - see Update()
 	myTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 
-	// Allocate an RGB image for this example
+	// Also allocate an RGB image for this example
 	// it can also be RGBA, BGRA or BGR
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
 
-	// Optional : enable logging
-	EnableSpoutLog();
-
-	// Optional : set up the receiver.
-	// This is optional because the receiving texture/buffer size
-	// can be reset when a sender update signal is received - see "update()"
-	// The option to invert of "flip" the received texture can be set here - default is false.
-	// The function can be also used to reset the receiver if necessary.
-	// receiver.SetupReceiver(ofGetWidth(), ofGetHeight()); // invert true or false
-
-	// Optional : specify the sender to connect to.
-	// The receiver will not connect to any other unless the user selects one.
-	// If that sender closes, the receiver will wait for the nominated sender to open.
-	// receiver.SetupReceiver("Spout DX11 Sender", ofGetWidth(), ofGetHeight());
+	// Optionally specify the sender to connect to.
+	// The application will not connect to any other unless the user selects one.
+	// If that sender closes, the application will wait for the nominated sender to open.
+	// receiver.SetReceiverName("Spout DX11 Sender");
 
 } // end setup
 
@@ -79,13 +69,33 @@ void ofApp::draw() {
 	receiver.ReceiveTextureData(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget);
 	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 
+	/*
 	// Option 2 : Receive pixel data
 	// Specify RGB for this example. Default is RGBA.
-	// if (receiver.ReceiveImageData(myImage.getPixels().getData(), GL_RGB)) {
-		// Openframeworks image update is necessary because the pixels have been changed externally
-		// myImage.update();
-	// }
-	// myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
+	if (receiver.ReceiveImageData(myImage.getPixels().getData(), GL_RGB)) {
+		// ofImage update is necessary because the pixels have been changed externally
+		myImage.update();
+	}
+	myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
+	*/
+
+	/*
+	// Option 3 : Receive a shared texture and use locally
+	if(receiver.ReceiveTextureData()) {
+		// Get the shared texture ID
+		GLuint texID = receiver.GetSenderTextureID();
+		// Bind to get access to the shared texture
+		receiver.BindSharedTexture();
+		// Do something with it
+		// For this example, copy the shared texture to the local texture
+		receiver.spout.interop.CopyTexture(texID, GL_TEXTURE_2D,
+			myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget,
+			receiver.GetSenderWidth(), receiver.GetSenderHeight(), false, 0);
+		receiver.UnBindSharedTexture();
+	}
+	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
+	*/
+
 
 	// On-screen display
 	showInfo();
@@ -113,10 +123,9 @@ void ofApp::showInfo() {
 		}
 		else {
 			sprintf_s(str, 256, "Receiving : [%s] (%dx%d)",
-				receiver.GetSenderName(), // sender name
-				receiver.GetSenderWidth(), // width
-				receiver.GetSenderHeight()); // height 
-
+				receiver.GetSenderName(),
+				receiver.GetSenderWidth(),
+				receiver.GetSenderHeight());
 		}
 		ofDrawBitmapString(str, 10, 20);
 		sprintf_s(str, 256, "RH click select sender");
