@@ -32,10 +32,19 @@
 //				 - Remove CloseSender/CloseReceiver and use ReleaseSender/ReleaseSender
 //		29.09.19 - Change IsDX9 to GetDX9 to avoid repeated compatibility test
 //		09.10.19 - Add WriteDX9surface and SetDX9device
+//		22.10.19 - Add include guard in SpoutLibrary.h
+//				 - Add SendFboTexture
+//				 - Relocate ReleaseSender
 //				   Re-build for 32 bit and 64 bit - VS2017 /MT
+//		27.11.19 - Re-build for revised Spout SDK - 32 bit and 64 bit - VS2017 / MT
+//		18.01.20 - Add CopyTexture, GetSenderTextureID. Update receiver example
+//		19.01.20 - Remove send data functions
+//				   Change SendFboTexture to SendFbo
+//		20.01.20 - Change GetSenderTextureID() to GetSharedTextureID
+//				   Re-build for revised Spout SDK - 32 bit and 64 bit - VS2017 / MT
 //
 /*
-		Copyright (c) 2016-2019, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2020, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -76,15 +85,10 @@ class SPOUTImpl : public SPOUTLIBRARY
 	private : // Spout SDK functions
 
 		//
-		// New for 2.007
+		// 2.007
 		//
 
 		// Sender
-		bool SetupSender(const char* SenderName, unsigned int width, unsigned int height, bool bInvert = true, DWORD dwFormat = 0);
-		bool IsInitialized();
-		bool SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
-		bool SendFboData(GLuint FboID);
-		bool SendImageData(const unsigned char* pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0);
 		unsigned int GetWidth();
 		unsigned int GetHeight();
 		long GetFrame();
@@ -92,10 +96,9 @@ class SPOUTImpl : public SPOUTLIBRARY
 		void HoldFps(int fps);
 
 		// Receiver
-		void SetupReceiver(unsigned int width, unsigned int height, bool bInvert = false);
 		void SetReceiverName(const char * SenderName);
-		bool ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
-		bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0);
+		bool ReceiveTextureData(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
+		bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
 		bool IsUpdated();
 		bool IsConnected();
 		void SelectSender();
@@ -148,9 +151,10 @@ class SPOUTImpl : public SPOUTLIBRARY
 		// Sender
 		bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
 		bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
-		bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
-		bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false);
 		void ReleaseSender(DWORD dwMsec = 0);
+		bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
+		bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
+		bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false);
 
 		// Receiver
 		bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
@@ -160,9 +164,11 @@ class SPOUTImpl : public SPOUTLIBRARY
 		bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
 		bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 
+		bool IsInitialized();
 		bool BindSharedTexture();
 		bool UnBindSharedTexture();
-	
+		GLuint GetSharedTextureID();
+
 		int  GetSenderCount();
 		bool GetSender(int index, char* sendername, int MaxSize = 256);
 		bool GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
@@ -194,6 +200,10 @@ class SPOUTImpl : public SPOUTLIBRARY
 		// OpenGL
 		bool CreateOpenGL();
 		bool CloseOpenGL();
+		bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
+			GLuint DestID, GLuint DestTarget,
+			unsigned int width, unsigned int height,
+			bool bInvert = false, GLuint HostFBO = 0);
 
 		//
 		// Release the class instance
@@ -210,31 +220,6 @@ class SPOUTImpl : public SPOUTLIBRARY
 //
 // Sender
 //
-
-bool SPOUTImpl::SetupSender(const char* sendername, unsigned int width, unsigned int height, bool bInvert, DWORD dwFormat)
-{
-	return spoutSDK->SetupSender(sendername, width, height, bInvert, dwFormat);
-}
-
-bool SPOUTImpl::IsInitialized()
-{
-	return spoutSDK->IsInitialized();
-}
-
-bool SPOUTImpl::SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo)
-{
-	return spoutSDK->SendTextureData(TextureID, TextureTarget, HostFbo);
-}
-
-bool SPOUTImpl::SendFboData(GLuint FboID)
-{
-	return spoutSDK->SendFboData(FboID);
-}
-
-bool SPOUTImpl::SendImageData(const unsigned char* pixels, GLenum glFormat, GLuint HostFbo)
-{
-	return spoutSDK->SendImageData(pixels, glFormat, HostFbo);
-}
 
 unsigned int SPOUTImpl::GetWidth()
 {
@@ -265,24 +250,19 @@ void SPOUTImpl::HoldFps(int fps)
 // Receiver
 //
 
-void SPOUTImpl::SetupReceiver(unsigned int width, unsigned int height, bool bInvert)
-{
-	spoutSDK->SetupReceiver(width, height, bInvert);
-}
-
 void SPOUTImpl::SetReceiverName(const char* SenderName)
 {
 	spoutSDK->SetReceiverName(SenderName);
 }
 
-bool SPOUTImpl::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo)
+bool SPOUTImpl::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
-	return spoutSDK->ReceiveTextureData(TextureID, TextureTarget, HostFbo);
+	return spoutSDK->ReceiveTextureData(TextureID, TextureTarget, bInvert, HostFbo);
 }
 
-bool SPOUTImpl::ReceiveImageData(unsigned char *pixels, GLenum glFormat, GLuint HostFbo)
+bool SPOUTImpl::ReceiveImageData(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
-	return spoutSDK->ReceiveImageData(pixels, glFormat, HostFbo);
+	return spoutSDK->ReceiveImageData(pixels, glFormat, bInvert, HostFbo);
 }
 
 bool SPOUTImpl::IsUpdated()
@@ -516,19 +496,24 @@ bool SPOUTImpl::UpdateSender(const char* Sendername, unsigned int width, unsigne
 	return spoutSDK->UpdateSender(Sendername, width, height);
 }
 
+void SPOUTImpl::ReleaseSender(DWORD dwMsec)
+{
+	spoutSDK->ReleaseSender(dwMsec);
+}
+
 bool SPOUTImpl::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
 	return spoutSDK->SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
 }
 
+bool SPOUTImpl::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
+{
+	return spoutSDK->SendFbo(FboID, width, height, bInvert);
+}
+
 bool SPOUTImpl::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
 {
 	return spoutSDK->SendImage(pixels, width, height, glFormat, bInvert);
-}
-
-void SPOUTImpl::ReleaseSender(DWORD dwMsec)
-{
-	spoutSDK->ReleaseSender(dwMsec);
 }
 
 // 
@@ -565,6 +550,11 @@ bool SPOUTImpl::CheckReceiver(char* Sendername, unsigned int &width, unsigned in
 	return spoutSDK->CheckReceiver(Sendername, width, height, bConnected);
 }
 
+bool SPOUTImpl::IsInitialized()
+{
+	return spoutSDK->IsInitialized();
+}
+
 bool SPOUTImpl::BindSharedTexture()
 {
 	return spoutSDK->BindSharedTexture();
@@ -573,6 +563,11 @@ bool SPOUTImpl::BindSharedTexture()
 bool SPOUTImpl::UnBindSharedTexture()
 {
 	return spoutSDK->UnBindSharedTexture();
+}
+
+GLuint SPOUTImpl::GetSharedTextureID()
+{
+	return spoutSDK->GetSharedTextureID();
 }
 
 int  SPOUTImpl::GetSenderCount()
@@ -688,6 +683,7 @@ int  SPOUTImpl::GetAdapter()
 	return spoutSDK->GetAdapter();
 }
 
+// OpenGL utilities
 bool SPOUTImpl::CreateOpenGL()
 {
 	return spoutSDK->spout.interop.CreateOpenGL();
@@ -697,6 +693,16 @@ bool SPOUTImpl::CloseOpenGL()
 {
 	return spoutSDK->spout.interop.CloseOpenGL();
 }
+
+bool SPOUTImpl::CopyTexture(GLuint SourceID, GLuint SourceTarget,
+	GLuint DestID, GLuint DestTarget,
+	unsigned int width, unsigned int height,
+	bool bInvert, GLuint HostFBO)
+{
+	return spoutSDK->spout.interop.CopyTexture(SourceID, SourceTarget, DestID, DestTarget,
+		width, height, bInvert, HostFBO);
+}
+
 
 
 // Class function

@@ -4,7 +4,7 @@
 //	Spout SDK dll compatible with any C++ compiler
 //
 /*
-		Copyright (c) 2016-2019, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2020, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -27,11 +27,16 @@
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
+#pragma once
+
+#ifndef __SpoutLibrary__
+#define __SpoutLibrary__
 
 #include <windows.h>
 #include <GL/GL.h>
 #include <string>
 #include <d3d9.h>
+
 
 #define SPOUTLIBRARY_EXPORTS // defined for this DLL. The application imports rather than exports
 
@@ -63,23 +68,13 @@ struct SPOUTLIBRARY
 {
 
 	// -----------------------------------------
-	// New for 2.007
+	// 2.007
 	//
 
 	//
 	// Sender
 	//
 
-	// Set up starting values for a sender
-	virtual bool SetupSender(const char* SenderName, unsigned int width, unsigned int height, bool bInvert = true, DWORD dwFormat = 0) = 0;
-	// Is the sender initialized
-	virtual bool IsInitialized() = 0;
-	// Send texture data
-	virtual bool SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0) = 0;
-	// Send texture data attached to an fbo
-	virtual bool SendFboData(GLuint FboID) = 0;
-	// Send pixel data
-	virtual bool SendImageData(const unsigned char* pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0) = 0;
 	// Return sender width
 	virtual unsigned int GetWidth() = 0;
 	// Return sender height
@@ -94,14 +89,12 @@ struct SPOUTLIBRARY
 	//
 	// Receiver
 	//
-	// Set up starting values for a receiver
-	virtual void SetupReceiver(unsigned int width, unsigned int height, bool bInvert = false) = 0;
 	// Set the sender name to connect to
 	virtual void SetReceiverName(const char* SenderName) = 0;
 	// Receive texture data
-	virtual bool ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0) = 0;
+	virtual bool ReceiveTextureData(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0) = 0;
 	// Receive pixel data
-	virtual bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0) = 0;
+	virtual bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0) = 0;
 	// Return whether the connected sender has changed
 	virtual bool IsUpdated() = 0;
 	// Return whether connected to a sender
@@ -196,9 +189,10 @@ struct SPOUTLIBRARY
 
 	// Sender
 	virtual bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0) = 0;
-	virtual void ReleaseSender(DWORD dwMsec = 0) = 0;
 	virtual bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height) = 0;
+	virtual void ReleaseSender(DWORD dwMsec = 0) = 0;
 	virtual bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0) = 0;
+	virtual bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true) = 0;
 	virtual bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false) = 0;
 
 	// Receiver
@@ -208,8 +202,10 @@ struct SPOUTLIBRARY
 	virtual bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0) = 0;
 	virtual bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected) = 0;
 
+	virtual bool IsInitialized() = 0;
 	virtual bool BindSharedTexture() = 0;
 	virtual bool UnBindSharedTexture() = 0;
+	virtual GLuint GetSharedTextureID() = 0;
 
 	virtual int  GetSenderCount() = 0;
 	virtual bool GetSender(int index, char* sendername, int MaxSize = 256) = 0;
@@ -243,6 +239,11 @@ struct SPOUTLIBRARY
 	// OpenGL
 	virtual bool CreateOpenGL() = 0;
 	virtual bool CloseOpenGL() = 0;
+	virtual bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
+		GLuint DestID, GLuint DestTarget,
+		unsigned int width, unsigned int height,
+		bool bInvert = false, GLuint HostFBO = 0) = 0;
+
 	
 	// Library release function
     virtual void Release() = 0;
@@ -256,5 +257,5 @@ typedef SPOUTLIBRARY* SPOUTHANDLE;
 // Factory function that creates instances of the SPOUT object.
 extern "C" SPOUTAPI SPOUTHANDLE WINAPI GetSpout(VOID);
 
-
+#endif
 ////////////////////////////////////////////////////////////////////////////////

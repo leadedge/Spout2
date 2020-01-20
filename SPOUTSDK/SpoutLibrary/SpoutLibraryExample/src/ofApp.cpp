@@ -22,22 +22,21 @@
 	   #include "SpoutLibrary.h"
 
 	2) create a spout sender object pointer
-	    SPOUTLIBRARY * spoutsender;
+	    SPOUTLIBRARY * sender;
 
 	3) Create an instance of the library
-	    spoutsender = GetSpout(); 
+	    sender = GetSpout(); 
 
 	4) Use the object as usual :
-	    spoutsender->SetupSender etc.
+	    sender->CreateSender etc.
 
 	Compare with the graphics sender example using the Spout SDK source files.
 
 	Spout 2.007
 	OpenFrameworks 10
 	Visual Studio 2017
-	Apr 03 2019
 
-	Copyright (C) 2019 Lynn Jarvis.
+	Copyright (C) 2020 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -61,18 +60,18 @@ void ofApp::setup(){
 
 	ofBackground(10, 100, 140);
 
- 	strcpy_s(senderName, 256, "SpoutLibrary Sender"); // We need a sender name for Spout
-	ofSetWindowTitle(senderName); // show it on the title bar
+ 	strcpy_s(sendername, 256, "SpoutLibrary Sender"); // We need a sender name for Spout
+	ofSetWindowTitle(sendername); // show it on the title bar
 
-	spoutsender = GetSpout(); // Create an instance of the Spout library
-	if (!spoutsender) {
+	sender = GetSpout(); // Create an instance of the Spout library
+	if (!sender) {
 		MessageBoxA(NULL, "Load Spout library failed", "Spout Sender", MB_ICONERROR);
 		exit();
 	}
 
 	//
 	// Optional : enable Spout logging to detect warnings and errors
-	    spoutsender->EnableSpoutLog();
+	sender->EnableSpoutLog();
 	//
 	// Output is to a console window.
 	//
@@ -81,15 +80,15 @@ void ofApp::setup(){
 	// (3) SPOUT_LOG_WARNING : (4) SPOUT_LOG_ERROR   : (5) SPOUT_LOG_FATAL
 	// For example, to show only warnings and errors (you shouldn't see any)
 	// or leave set to Notice to see more information.
-	//    spoutsender->SetSpoutLogLevel(SPOUT_LOG_WARNING);
+	//    sender->SetSpoutLogLevel(SPOUT_LOG_WARNING);
 	//
 	// You can instead, or also, specify output to a text file
 	// with the extension of your choice
-	//    spoutsender->EnableSpoutLogFile("SpoutLibrary Sender.log");
+	//    sender->EnableSpoutLogFile("SpoutLibrary Sender.log");
 	//
 	// The log file is re-created every time the application starts
 	// unless you specify to append to the existing one :
-	//    spoutsender->EnableSpoutLogFile("SpoutLibrary Sender.log", true);
+	//    sender->EnableSpoutLogFile("SpoutLibrary Sender.log", true);
 	//
 	// The file is saved in the %AppData% folder 
 	//    C:>Users>username>AppData>Roaming>Spout
@@ -97,23 +96,23 @@ void ofApp::setup(){
 	// After the application has run you can find and examine the log file
 	//
 	// This folder can also be shown in Windows Explorer directly from the application.
-	//	spoutsender->ShowSpoutLogs();
+	//	sender->ShowSpoutLogs();
 	//
 	// Or the entire log can be returned as a string
-	//	std::string logstring = spoutsender->GetSpoutLog();
+	//	std::string logstring = sender->GetSpoutLog();
 	//
 	// You can create your own logs
 	// For example :
-	//	spoutsender->SpoutLog("SpoutLog test");
+	//	sender->SpoutLog("SpoutLog test");
 	//
 	// You can also specify the logging level :
 	// For example :
-	//    spoutsender->SpoutLogNotice("Important notice");
+	//    sender->SpoutLogNotice("Important notice");
 	// or :
-	//    spoutsender->SpoutLogFatal("This should not happen");
+	//    sender->SpoutLogFatal("This should not happen");
 	// or :
-	//    spoutsender->SetSpoutLogLevel(1);
-	//    spoutsender->SpoutLogVerbose("Message");
+	//    sender->SetSpoutLogLevel(1);
+	//    sender->SpoutLogVerbose("Message");
 	//
 
 	// 3D drawing setup for the demo 
@@ -134,12 +133,10 @@ void ofApp::setup(){
 	// Create an image for optional pixel transfer
 	myPixels.allocate(senderwidth, senderheight, GL_RGBA);
 
-	// Set up the Spout sender with it's name and size
-	// Optional : set whether to invert the outgoing texture
-	// Default is true because the shared DirectX texture 
-	// and OpenGL textures have different origins
-	// In this example, the data from the fbo is already inverted so set false
-	spoutsender->SetupSender(senderName, senderwidth, senderheight, false);
+	// Create a Spout sender with it's name, size and optional DirectX texture format
+	// (Defaults : DX9 - D3DFMT_A8B8G8R8, DX11 - DXGI_FORMAT_B8G8R8A8_UNORM)
+	sender->CreateSender(sendername, senderwidth, senderheight);
+
 
 	// Optional : set the frame rate of the application.
 	// If the user has selected "Frame count" in SpoutSettings
@@ -156,26 +153,23 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update() {
-
+	// Check for sender size change (See windowResized() for more detail)
+	// For other applications, this could be done before rendering
+	if (bResized) {
+		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
+		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
+		sender->UpdateSender(sendername, senderwidth, senderheight);
+		bResized = false;
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 
 	// Quit if the sender is not initialized
-	if (!spoutsender->IsInitialized())
+	if (!sender->IsInitialized())
 		return;
 
-	// Check for sender size change
-	// See windowResized() for more detail
-	// This could be done in Update but here we are sure
-	// changes are made before rendering
-	if (bResized) {
-		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
-		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
-		spoutsender->UpdateSender(senderName, senderwidth, senderheight);
-		bResized = false;
-	}
 
 	// Draw 3D graphics demo into the fbo
 	// This could be anything for your application
@@ -192,8 +186,11 @@ void ofApp::draw() {
 	myBoxImage.unbind();
 	ofPopMatrix();
 
+	// In this example, the fbo texture is already inverted
+	// so set the sending invert option false for all functions
+
 	// Option 1 : Send an fbo while the fbo is bound
-	spoutsender->SendFboData(myFbo.getId());
+	sender->SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
 	rotX += 0.6;
@@ -203,25 +200,26 @@ void ofApp::draw() {
 	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	// Option 2 : Send a texture
-	// spoutsender->SendTextureData(myFbo.getTexture().getTextureData().textureID,
-		// myFbo.getTexture().getTextureData().textureTarget);
+	// sender->SendTexture(myFbo.getTexture().getTextureData().textureID,
+		// myFbo.getTexture().getTextureData().textureTarget,
+		// senderwidth, senderheight, false);
 
 	// Option 3 : Send pixels
 	// myFbo.readToPixels(myPixels);
-	// spoutsender->SendImageData(myPixels.getData());
+	// sender->SendImage(myPixels.getData(), senderwidth, senderheight, GL_RGBA, false);
 
 	// Show what it is sending
 	ofSetColor(255);
 	std::string str = "Sending as : ";
-	str += senderName; str += " (";
-	str += ofToString(spoutsender->GetWidth()); str += "x";
-	str += ofToString(spoutsender->GetHeight()); str += ")";
+	str += sendername; str += " (";
+	str += ofToString(sender->GetWidth()); str += "x";
+	str += ofToString(sender->GetHeight()); str += ")";
 
 	// Show sender fps and framecount if selected
-	if (spoutsender->GetFrame() > 0) {
+	if (sender->GetFrame() > 0) {
 		str += " fps ";
-		str += ofToString((int)roundf(spoutsender->GetFps())); str += " : frame  ";
-		str += ofToString(spoutsender->GetFrame());
+		str += ofToString((int)roundf(sender->GetFps())); str += " : frame  ";
+		str += ofToString(sender->GetFrame());
 	}
 	else {
 		// Show Openframeworks fps
@@ -231,7 +229,11 @@ void ofApp::draw() {
 
 	// Applications without frame rate control can call this
 	// function to introduce the required delay between frames.
-	// spoutsender->HoldFps(30);
+	//
+	// Note : if you change to HoldFps(30) fps in this example,
+	// the cube will rotate more slowly (increase RotX and RotY).
+	//
+	// sender->HoldFps(30);
 
 
 }
@@ -239,9 +241,9 @@ void ofApp::draw() {
 //--------------------------------------------------------------
 void ofApp::exit() {
 	// Close the sender on exit
-	spoutsender->ReleaseSender();
+	sender->ReleaseSender();
 	// Release the library
-	spoutsender->Release();
+	sender->Release();
 }
 
 //--------------------------------------------------------------
@@ -270,7 +272,7 @@ void ofApp::windowResized(int w, int h)
 	// how sender size change can be managed if necessary.
 	//
 	if (w > 0 && h > 0) {
-		if (w != (int)spoutsender->GetWidth() || h != (int)spoutsender->GetHeight()) {
+		if (w != (int)sender->GetWidth() || h != (int)sender->GetHeight()) {
 			// Change the sender dimensions here
 			// the changes will take effect in Draw()
 			senderwidth = (unsigned int)ofGetWidth();

@@ -164,7 +164,7 @@ void ofApp::showInfo() {
 
 //--------------------------------------------------------------
 void ofApp::exit() {
-	receiver->ReleaseReceiver();
+	receiver->CloseReceiver();
 }
 
 //--------------------------------------------------------------

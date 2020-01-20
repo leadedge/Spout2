@@ -4,7 +4,7 @@
 //	Spout SDK functions
 //
 /*
-		Copyright (c) 2016-2019, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2020, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -49,13 +49,9 @@ public:
 	// Spout SDK functions
 	//
 
-	// New for 2.007
+	// 2.007
 
 	// Sender
-	bool SetupSender(const char* SenderName, unsigned int width, unsigned int height, bool bInvert = true, DWORD dwFormat = 0);
-	bool SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
-	bool SendFboData(GLuint FboID);
-	bool SendImageData(const unsigned char* pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0);
 	unsigned int GetWidth();
 	unsigned int GetHeight();
 	long GetFrame();
@@ -63,13 +59,12 @@ public:
 	void HoldFps(int fps);
 
 	// Receiver
-	void SetupReceiver(unsigned int width, unsigned int height, bool bInvert = false);
 	void SetReceiverName(const char * SenderName);
+	bool ReceiveTextureData(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
+	bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
 	bool IsUpdated();
 	bool IsConnected();
 	void SelectSender();
-	bool ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
-	bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0);
 	const char * GetSenderName();
 	unsigned int GetSenderWidth();
 	unsigned int GetSenderHeight();
@@ -90,7 +85,7 @@ public:
 	bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
 	void ReleaseSender(DWORD dwMsec = 0);
 	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
-	bool SendFboTexture(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
+	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
 	bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 	void RemovePadding(const unsigned char *source, unsigned char *dest, unsigned int width, unsigned int height, unsigned int source_stride, GLenum glFormat = GL_RGBA);
 
@@ -105,6 +100,7 @@ public:
 	bool IsInitialized();
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
+	GLuint GetSharedTextureID();
 
 	int  GetSenderCount();
 	bool GetSender(int index, char* sendername, int MaxSize = 256);
@@ -146,12 +142,12 @@ private:
 	char m_SenderName[256];
 	GLuint m_TextureID;
 	GLuint m_TextureTarget;
-	bool m_bInvert;
+	DWORD m_dwFormat;
+	unsigned int m_Width;
+	unsigned int m_Height;
 	bool m_bUpdate;
 	bool m_bUseActive;
 	bool m_bConnected;
-	unsigned int m_Width;
-	unsigned int m_Height;
 
 
 };
