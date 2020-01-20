@@ -20,7 +20,7 @@
 //			23.11.18	- Fix test for wglDXCloseDeviceNV in loadInteropExtensions
 //
 
-	Copyright (c) 2014-2019, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -421,47 +421,6 @@ unsigned int loadGLextensions() {
 #ifdef USE_GLEW
 	InitializeGlew(); // probably needs failure check
 #endif
-
-	/*
-	// LJ DEBUG
-	// Used for testing OpenGL version
-	printf("LoadGLextensions()\n");
-	printf("GL_version  = %s\n", (char *)glGetString(GL_VERSION));
-	printf("GL_vendor   = %s\n", (char *)glGetString(GL_VENDOR));
-	printf("GL_renderer = %s\n", (char *)glGetString(GL_RENDERER));
-	// printf("gl_extensions = %s\n", reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS)));
-	int major, minor = -1;
-	glGetIntegerv(GL_MAJOR_VERSION, &major);
-	glGetIntegerv(GL_MINOR_VERSION, &minor);
-	printf("  Major : %d\n", major);
-	printf("  Minor : %d\n", minor);
-	int profile_mask = -1;
-	glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profile_mask);
-	printf("Profile mask : %d\n", profile_mask);
-	// This can contain the bits GL_CONTEXT_CORE_PROFILE_BIT
-	// or GL_CONTEXT_COMPATIBILITY_PROFILE_BIT, but not both at the same time.
-	if (profile_mask & GL_CONTEXT_CORE_PROFILE_BIT)
-		printf("    GL_CONTEXT_CORE_PROFILE_BIT\n");
-	if (profile_mask & GL_CONTEXT_COMPATIBILITY_PROFILE_BIT)
-		printf("    GL_CONTEXT_COMPATIBILITY_PROFILE_BIT\n");
-	int context_flags = -1;
-	glGetIntegerv(GL_CONTEXT_FLAGS, &context_flags);
-	printf("Context flags : %d\n", context_flags);
-	if (context_flags & GL_CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT)
-		printf("    GL_CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT\n");
-	if (context_flags & GL_CONTEXT_FLAG_DEBUG_BIT)
-		printf("    GL_CONTEXT_FLAG_DEBUG_BIT\n");
-	if (context_flags & GL_CONTEXT_FLAG_ROBUST_ACCESS_BIT)
-		printf("    GL_CONTEXT_FLAG_ROBUST_ACCESS_BIT\n");
-	if (context_flags & GL_CONTEXT_FLAG_NO_ERROR_BIT)
-		printf("    GL_CONTEXT_FLAG_NO_ERROR_BIT\n");
-	// printf("gl_shading_language = %s\n", reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
-
-	if (GL_VERSION >= 3.0)
-		printf("OpenGL 3-4\n");
-	else
-		printf("OpenGL 2\n");
-	*/
 
 	// Check for FBO extensions first - no use continuing without them
 	if (loadFBOextensions()) {

@@ -7,7 +7,7 @@
 	https://www.opengl.org/registry/specs/NV/DX_interop.txt
 
 
-	Copyright (c) 2014-2019, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -84,6 +84,8 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		
 		bool BindSharedTexture();
 		bool UnBindSharedTexture();
+		GLuint GetSharedTextureID();
+
 		
 #ifdef legacyOpenGL
 		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
@@ -197,7 +199,6 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 
 		void SaveOpenGLstate(unsigned int width, unsigned int height, bool bFitWindow = true);
 		void RestoreOpenGLstate();
-		GLuint GetGLtextureID(); // Get OpenGL shared texture ID
 		bool GLerror();
 		void PrintFBOstatus(GLenum status);
 

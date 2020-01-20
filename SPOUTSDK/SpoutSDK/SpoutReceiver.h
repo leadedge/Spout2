@@ -40,13 +40,13 @@ class SPOUT_DLLEXP SpoutReceiver {
     ~SpoutReceiver();
 
 	//
-	// New for 2.007
+	// 2.007
 	//
 
 	// Specify a sender for the receiver to connect to
 	void SetReceiverName(const char * SenderName);
 	// Receive texture data
-	bool ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, bool bInvert = false, GLuint HostFbo = 0);
+	bool ReceiveTextureData(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
 	// Receive pixel data
 	bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
 	// Return whether the connected sender has changed
@@ -89,7 +89,8 @@ class SPOUT_DLLEXP SpoutReceiver {
 
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
-	
+	GLuint GetSharedTextureID();
+
 	int  GetSenderCount();
 	bool GetSender(int index, char* Sendername, int MaxSize = 256);
 	bool GetSenderInfo(const char* Sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
@@ -119,6 +120,12 @@ class SPOUT_DLLEXP SpoutReceiver {
 	bool GetHostPath(const char *sendername, char *hostpath, int maxchars); // The path of the host that produced the sender
 	int  GetVerticalSync();
 	bool SetVerticalSync(bool bSync = true);
+
+	// OpenGL utility
+	bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
+		GLuint DestID, GLuint DestTarget,
+		unsigned int width, unsigned int height,
+		bool bInvert = false, GLuint HostFBO = 0);
 
 	Spout spout; // for access to all functions
 

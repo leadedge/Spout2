@@ -6,7 +6,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2014-2019, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -264,6 +264,7 @@
 		09.10.19	- Revise WriteDX9surface to use application device
 					  Add SetDX9device to set application device
 		13.10.19	- Add WriteTextureReadback
+		20.01.20	- Changed GetGLtextureID() to GetSharedTextureID()
 
 */
 
@@ -1815,6 +1816,10 @@ bool spoutGLDXinterop::UnBindSharedTexture()
 
 } // end UnBindSharedTexture
 
+GLuint spoutGLDXinterop::GetSharedTextureID()
+{
+	return m_glTexture;
+}
 
 // ----------------------------------------------------------
 //		Access to texture using DX/GL interop functions
@@ -2805,12 +2810,6 @@ bool spoutGLDXinterop::SetShareMode(int mode)
 	}
 
 	return false;
-}
-
-
-GLuint spoutGLDXinterop::GetGLtextureID()
-{
-	return m_glTexture;
 }
 
 

@@ -148,10 +148,13 @@
 //					  Reserve const char * GetSenderName for receiver class
 //		17.06.19	- Fix missing log warning argument in UpdateSender
 //		26.06.19	- Cleanup changes to UpdateSender
+//		13.01.20	- Removed sleep time for SpoutPanel to open
+//		19.01.20	- Change SendFboTexture to SendFbo
+//		20.01.20	- Corrected SendFbo for width/height < shared texture
 //
 // ================================================================
 /*
-	Copyright (c) 2014-2019, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -331,15 +334,18 @@ void Spout::ReleaseSender(DWORD dwMsec)
 // Width and height are the used portion and only the used part is copied.
 // Only available for GL/DX texture write - tested in spoutGLDXinterop::WriteTexture
 //
-bool Spout::SendFboTexture(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
+bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
 {
 	// The fbo must be bound with a texture attached
 	// Completeness tested in WriteGLDXtexture
 	// gives GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT
 	// if no images are attached to the framebuffer.
-	return SendTexture(0, 0, width, height, bInvert, FboID);
+	if (width < g_Width || height < g_Height) {
+		return(UpdateSender(g_SharedMemoryName, width, height));
+	}
+	return interop.WriteTexture(0, 0, width, height, bInvert, FboID);
 
-} // end SendFboTexture
+} // end SendFbo
 
 
 //---------------------------------------------------------
@@ -817,7 +823,7 @@ bool Spout::SelectSenderPanel(const char *message)
 		m_ShExecInfo.nShow = SW_SHOW;
 		m_ShExecInfo.hInstApp = NULL;	
 		ShellExecuteExA(&m_ShExecInfo);
-		Sleep(125); // allow time for SpoutPanel to open nominally 0.125s
+		// Sleep(125); // allow time for SpoutPanel to open nominally 0.125s
 		//
 		// The flag "bSpoutPanelOpened" is set here to indicate that the user
 		// has opened the panel to select a sender. This flag is local to 

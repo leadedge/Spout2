@@ -3,7 +3,7 @@
 					SpoutSender.h
  
 
-	Copyright (c) 2014-2019, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -40,16 +40,10 @@ class SPOUT_DLLEXP SpoutSender {
 	SpoutSender();
     ~SpoutSender();
 
-	// New for 2.007
+	//
+	// 2.007
+	//
 
-	// Set up starting values for a sender
-	bool SetupSender(const char* SenderName, unsigned int width, unsigned int height, bool bInvert = true, DWORD dwFormat = 0);
-	// Send texture data
-	bool SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo = 0);
-	// Send texture data attached to an fbo
-	bool SendFboData(GLuint FboID);
-	// Send pixel data
-	bool SendImageData(const unsigned char* pixels, GLenum glFormat = GL_RGBA, GLuint HostFbo = 0);
 	// Return sender width
 	unsigned int GetWidth();
 	// Return sender height
@@ -73,8 +67,8 @@ class SPOUT_DLLEXP SpoutSender {
 	bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
 	bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
 	void ReleaseSender(DWORD dwMsec = 0);
-	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true, GLuint HostFBO = 0);
-	bool SendFboTexture(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
+	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
+	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
 #ifdef legacyOpenGL
 	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
 #endif
@@ -118,7 +112,7 @@ protected :
 	char m_SenderName[256];
 	GLuint m_TextureID;
 	GLuint m_TextureTarget;
-	bool m_bInvert;
+	DWORD m_dwFormat;
 	unsigned int m_Width;
 	unsigned int m_Height;
 

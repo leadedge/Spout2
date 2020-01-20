@@ -54,7 +54,7 @@
 			   SetMaxSenders - set max to the registry for other applications to read
 			   	
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	Copyright (c) 2014-2019, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -233,13 +233,11 @@ bool spoutSenderNames::FindSenderName(const char* Sendername)
 	if(Sendername[0]) { // was a valid name passed
 		// Get the current list to update the passed list
 		if(GetSenderSet(SenderNames)) {
-			// LJ DEBUG
 			if (SenderNames.size() > 0) {
 				for (iter = SenderNames.begin(); iter != SenderNames.end(); iter++) {
 					namestring = *iter;
 				}
 			}
-
 			// Does the name exist
 			if(SenderNames.find(Sendername) != SenderNames.end() ) {
 				return true;

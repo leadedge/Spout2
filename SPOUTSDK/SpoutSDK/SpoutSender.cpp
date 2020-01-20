@@ -1,8 +1,6 @@
 ﻿//
 //		SpoutSender
 //
-//		Wrapper class so that a sender object can be created independent of a receiver
-//
 // ====================================================================================
 //		Revisions :
 //
@@ -48,11 +46,14 @@
 //		18.09.19	- Remove redundant 2.007 functions SetupSender and Update
 //					- Add invert argument to CreateSender
 //		15.10.19	- Check zero width and height for SendData functions 
+//		13.01.20	- Remove send data functions and replace with overloads of 2.006 functions
+//		19.01.20	- Remove send data functions entirely to simplify
+//					- Change SendFboTexture to SendFbo
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2019, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -84,7 +85,7 @@ SpoutSender::SpoutSender()
 	m_TextureTarget = 0;
 	m_Width = 0;
 	m_Height = 0;
-	m_bInvert = true; // default flip true because DirectX and OpenGL have different origins
+	m_dwFormat = 0;
 
 }
 
@@ -96,56 +97,6 @@ SpoutSender::~SpoutSender()
 
 
 // ================= 2.007 functions ======================
-
-
-//---------------------------------------------------------
-bool SpoutSender::SetupSender(const char* SenderName,
-	unsigned int width, unsigned int height, bool bInvert, DWORD dwFormat)
-{
-	m_bInvert = bInvert;
-	// m_Width and m_Height are set by CreateSender
-	return CreateSender(SenderName, width, height, dwFormat);
-}
-
-
-//---------------------------------------------------------
-bool SpoutSender::SendTextureData(GLuint TextureID, GLuint TextureTarget, GLuint HostFbo)
-{
-	if (IsInitialized() && m_Width > 0 && m_Height > 0)
-		return SendTexture(TextureID, TextureTarget, m_Width, m_Height, m_bInvert, HostFbo);
-	else
-		return false;
-}
-
-//---------------------------------------------------------
-bool SpoutSender::SendFboData(GLuint FboID)
-{
-	if (IsInitialized() && m_Width > 0 && m_Height > 0)
-		return SendFboTexture(FboID, m_Width, m_Height, m_bInvert);
-	else
-		return false;
-}
-
-//---------------------------------------------------------
-bool SpoutSender::SendImageData(const unsigned char* pixels, GLenum glFormat, GLuint HostFbo)
-{
-	if (IsInitialized() && m_Width > 0 && m_Height > 0)
-		return SendImage(pixels, m_Width, m_Height, glFormat, m_bInvert, HostFbo);
-	else
-		return false;
-}
-
-//---------------------------------------------------------
-void SpoutSender::HoldFps(int fps)
-{
-	spout.interop.frame.HoldFps(fps);
-}
-
-//---------------------------------------------------------
-bool SpoutSender::IsInitialized()
-{
-	return spout.IsSpoutInitialized();
-}
 
 //---------------------------------------------------------
 unsigned int SpoutSender::GetWidth()
@@ -160,15 +111,26 @@ unsigned int SpoutSender::GetHeight()
 }
 
 //---------------------------------------------------------
+long SpoutSender::GetFrame()
+{
+	return (spout.interop.frame.GetSenderFrame());
+}
+//---------------------------------------------------------
 double SpoutSender::GetFps()
 {
 	return (spout.interop.frame.GetSenderFps());
 }
 
 //---------------------------------------------------------
-long SpoutSender::GetFrame()
+void SpoutSender::HoldFps(int fps)
 {
-	return (spout.interop.frame.GetSenderFrame());
+	spout.interop.frame.HoldFps(fps);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::IsInitialized()
+{
+	return spout.IsSpoutInitialized();
 }
 
 //---------------------------------------------------------
@@ -186,7 +148,6 @@ bool SpoutSender::IsFrameCountEnabled()
 // ================= end 2.007 functions ===================
 
 
-
 //---------------------------------------------------------
 bool SpoutSender::OpenSpout()
 {
@@ -198,12 +159,20 @@ bool SpoutSender::CreateSender(const char* name, unsigned int width, unsigned in
 {
 	if (spout.CreateSender(name, width, height, dwFormat)) {
 		strcpy_s(m_SenderName, 256, name);
-		// Default m_bInvert for this class is true
-		// unless SetupSender has been used
 		m_Width = width;
 		m_Height = height;
+		m_dwFormat = dwFormat;
 		return true;
 	}
+	else {
+		m_SenderName[0] = 0;
+		m_TextureID = 0;
+		m_TextureTarget = 0;
+		m_Width = 0;
+		m_Height = 0;
+		m_dwFormat = 0;
+	}
+
 	return false;
 
 }
@@ -215,10 +184,10 @@ bool SpoutSender::UpdateSender(const char* name, unsigned int width, unsigned in
 	// For a name change, close the sender and set up again
 	if (strcmp(name, m_SenderName) != 0) {
 		ReleaseSender();
-		bRet = SetupSender(name, width, height, m_bInvert);
+		bRet = CreateSender(name, width, height, m_dwFormat);
 	}
 	else if (width != m_Width || height != m_Height) {
-		// Update class variables for 2.007 methods
+		// For sender update, only width and height are necessary
 		m_Width = width;
 		m_Height = height;
 		bRet = spout.UpdateSender(m_SenderName, m_Width, m_Height);
@@ -229,11 +198,11 @@ bool SpoutSender::UpdateSender(const char* name, unsigned int width, unsigned in
 //---------------------------------------------------------
 void SpoutSender::ReleaseSender(DWORD dwMsec)
 {
-	// Reset class variables for 2.007 functions
+	// Reset class variables
 	m_SenderName[0] = 0;
-	m_bInvert = true;
 	m_Width = 0;
 	m_Height = 0;
+	m_dwFormat = 0;
 	// Release resources
 	spout.ReleaseSender(dwMsec);
 }
@@ -241,13 +210,19 @@ void SpoutSender::ReleaseSender(DWORD dwMsec)
 //---------------------------------------------------------
 bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
-	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+	if (IsInitialized()	&& width > 0 && height > 0 && width == m_Width && height == m_Height)
+		return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+	else
+		return false;
 }
 
 //---------------------------------------------------------
-bool SpoutSender::SendFboTexture(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
+bool SpoutSender::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
 {
-	return spout.SendFboTexture(FboID, width, height, bInvert);
+	if (IsInitialized() && width > 0 && height > 0 && width == m_Width && height == m_Height)
+		return spout.SendFbo(FboID, width, height, bInvert);
+	else
+		return false;
 }
 
 #ifdef legacyOpenGL
@@ -261,7 +236,10 @@ bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, un
 //---------------------------------------------------------
 bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
-	return spout.SendImage(pixels, width, height, glFormat, bInvert, HostFBO);
+	if (IsInitialized() && width > 0 && height > 0 && width == m_Width && height == m_Height)
+		return spout.SendImage(pixels, width, height, glFormat, bInvert, HostFBO);
+	else
+		return false;
 }
 
 //---------------------------------------------------------
