@@ -104,8 +104,8 @@ void ofApp::setup(){
 	// Optional : set the frame rate of the application.
 	// If the user has selected "Frame count" in SpoutSettings
 	// a receiver will detect this rate.
-	// Applications without frame rate control can use 
-	// a Spout function "HoldFps" to control frame rate (see Draw())
+	// Applications without frame rate control can use "HoldFps" 
+	// to control frame rate (see Draw())
 	// ofSetFrameRate(30);
 
 	// Local update flag for window size change
@@ -155,9 +155,8 @@ void ofApp::draw() {
 	// In this example, the fbo texture is already inverted
 	// so set the sending invert option false for all functions
 	
-	// Option 1 : Send the data of the texture
-	// attached to point 0 while the fbo is bound
-	sender.SendFboData(myFbo.getId(), false);
+	// Option 1 : Send the texture attached to point 0 while the fbo is bound
+	sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
@@ -165,13 +164,14 @@ void ofApp::draw() {
 	// Show the result sized to the application window
 	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
 
-	// Option 2 : Send texture data
-	// sender.SendTextureData(myFbo.getTexture().getTextureData().textureID,
-		// myFbo.getTexture().getTextureData().textureTarget, false);
+	// Option 2 : Send texture
+	// sender.SendTexture(myFbo.getTexture().getTextureData().textureID,
+		// myFbo.getTexture().getTextureData().textureTarget,
+		// senderwidth, senderheight, false);
 
-	// Option 3 : Send pixel data
+	// Option 3 : Send image pixels
 	// myFbo.readToPixels(myPixels);
-	// sender.SendImageData(myPixels.getData(), GL_RGBA, false);
+	// sender.SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
 
 	// Show what it is sending
 	ofSetColor(255);

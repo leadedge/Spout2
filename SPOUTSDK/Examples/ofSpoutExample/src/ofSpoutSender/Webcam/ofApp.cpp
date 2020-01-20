@@ -56,7 +56,7 @@ void ofApp::update() {
 	vidGrabber.update();
 	// Check for change of webcam resolution
 	if (sender.GetWidth() != (unsigned int)vidGrabber.getWidth()
-		|| sender.GetHeight() != (unsigned int)vidGrabber.getHeight()) {
+	|| sender.GetHeight() != (unsigned int)vidGrabber.getHeight()) {
 		sender.UpdateSender(sendername.c_str(), (unsigned int)vidGrabber.getWidth(), (unsigned int)vidGrabber.getHeight());
 	}
 }
@@ -79,9 +79,10 @@ void ofApp::draw() {
 		// If frame count is disabled, isFrameNew always returns true.
 		// Then the send is every cycle and receivers will see the Openframeworks fps.
 		if (vidGrabber.isFrameNew()) {
-			// Send the webcam texture data
-			sender.SendTextureData(vidGrabber.getTexture().getTextureData().textureID,
-				vidGrabber.getTexture().getTextureData().textureTarget, false);
+			// Send the webcam texture
+			sender.SendTexture(vidGrabber.getTexture().getTextureData().textureID,
+				vidGrabber.getTexture().getTextureData().textureTarget,
+				(unsigned int)vidGrabber.getWidth(), (unsigned int)vidGrabber.getHeight(), false);
 		}
 
 		// Show what it is sending
