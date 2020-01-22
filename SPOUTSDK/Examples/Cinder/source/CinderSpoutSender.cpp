@@ -6,7 +6,7 @@
 		Nothing fancy about this, just the basics.
 
 	==========================================================================
-	Copyright (C) 2014-2019 Lynn Jarvis.
+	Copyright (C) 2014-2020 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -38,6 +38,8 @@
 	30-03-16 - Rebuild for Spout 2.005 release - VS2012 /MT
 	17-01-17 - Rebuild for Spout 2.006 release - VS2012 /MT
 	11-05-19 - Revise and rebuild for Spout 2.007 release - VS2012 /MT
+	18-06-19 - Revise sender Update function and rebuild for Spout 2.007 release - VS2012 /MT
+	22.01.10 - Update for latest 2.007 changes - VS2012 /MT
 
 	
 */
@@ -157,13 +159,8 @@ void SpoutBoxApp::setup()
 	// Set a sender name
 	SenderName = "CINDER Spout Sender"; 
 
-	// Set up the Spout sender with that name and the fbo dimensions
-	spoutsender.SetupSender(SenderName.c_str(), myFbo.getWidth(), myFbo.getHeight());
-
-	// Option : set whether to flip output texture
-	// Default is true because the shared DirectX texture 
-	// and OpenGL textures have different origins
-	// spoutsender.SetSenderInvert(false);
+	// Create a Spout sender with that name and the fbo dimensions
+	spoutsender.CreateSender(SenderName.c_str(), myFbo.getWidth(), myFbo.getHeight());
 
 	// Option : set the frame rate of the application.
 	// If the user has selected "Frame count" in SpoutSettings
@@ -171,7 +168,7 @@ void SpoutBoxApp::setup()
 	// Applications without frame rate control can use 
 	// a Spout function HoldFps to control frame rate (see Update())
 	// If the default Cinder frame rate is 30 we will boost it a bit
-	// to see the Spout function working.
+	// so we see the Spout HoldFps function working.
 	setFrameRate(60.0);
 
 }
@@ -179,7 +176,7 @@ void SpoutBoxApp::setup()
 
 void SpoutBoxApp::shutdown()
 {
-	spoutsender.CloseSender();
+	spoutsender.ReleaseSender();
 }
 
 
@@ -192,7 +189,7 @@ void SpoutBoxApp::update()
 
 	// Optionally control frame rate
 	// This must be called every frame
-	spoutsender.HoldFps(50);
+	spoutsender.HoldFps(30);
 
 }
 
@@ -206,7 +203,7 @@ void SpoutBoxApp::resize()
 	if(spoutsender.GetWidth() != getWindowWidth() || spoutsender.GetHeight() != getWindowHeight()) {
 		myFbo.reset();
 		myFbo = gl::Fbo(getWindowWidth(), getWindowHeight());
-		spoutsender.Update(getWindowWidth(), getWindowHeight());
+		spoutsender.UpdateSender(SenderName.c_str(), getWindowWidth(), getWindowHeight());
 	}
 }
 
@@ -233,7 +230,7 @@ void SpoutBoxApp::draw()
 	cubeTexture.unbind();
 
 	// Option : Send an fbo while the fbo is bound
-	spoutsender.SendFboData(myFbo.getId());
+	spoutsender.SendFbo(myFbo.getId(), getWindowWidth(), getWindowHeight());
 
 	myFbo.unbindFramebuffer();
 
@@ -241,12 +238,14 @@ void SpoutBoxApp::draw()
 	myFbo.blitToScreen(myFbo.getBounds(), getWindowBounds());
 
 	// Option : send a texture
-	// spoutsender.SendTextureData(myFbo.getTexture().getId(), myFbo.getTexture().getTarget());
+	// spoutsender.SendTexture(myFbo.getTexture().getId(),
+		// myFbo.getTexture().getTarget(),
+		// getWindowWidth(), getWindowHeight());
 
 	// Option : send pixels
-	// Surface mySurface(myFbo.getTexture());
 	// Invert because they come from the fbo bottom up
-	// spoutsender.SendImageData(mySurface.getData(), myFbo.getWidth(), myFbo.getHeight(), GL_RGBA, true);
+	// Surface mySurface(myFbo.getTexture());
+	// spoutsender.SendImage(mySurface.getData(), myFbo.getWidth(), myFbo.getHeight(), GL_RGBA, true);
 
 	// Show what it is sending
 	showInfo();

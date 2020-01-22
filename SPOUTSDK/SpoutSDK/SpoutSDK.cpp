@@ -151,6 +151,7 @@
 //		13.01.20	- Removed sleep time for SpoutPanel to open
 //		19.01.20	- Change SendFboTexture to SendFbo
 //		20.01.20	- Corrected SendFbo for width/height < shared texture
+//		21.01.20	- Remove auto sender update in send functions
 //
 // ================================================================
 /*
@@ -330,19 +331,23 @@ void Spout::ReleaseSender(DWORD dwMsec)
 //---------------------------------------------------------
 // Send texture attached to the currently bound fbo
 //
-// The input texture can be larger than the shared texture
+// If this function is used instead of the equivalent in the SpoutSender class,
+// the input texture can be larger than the shared texture.
 // Width and height are the used portion and only the used part is copied.
-// Only available for GL/DX texture write - tested in spoutGLDXinterop::WriteTexture
+// Only available for GL/DX texture write, not memoryshare
+// (see spoutGLDXinterop::WriteTexture)
+//
+// The fbo must be bound with a texture attached
+// Completeness tested in WriteGLDXtexture
+// gives GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT
+// if no images are attached to the framebuffer.
 //
 bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
 {
-	// The fbo must be bound with a texture attached
-	// Completeness tested in WriteGLDXtexture
-	// gives GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT
-	// if no images are attached to the framebuffer.
-	if (width < g_Width || height < g_Height) {
-		return(UpdateSender(g_SharedMemoryName, width, height));
-	}
+	// For texture sharing, the fbo must be equal to or larger than the shared texture
+	if (GetMemoryShareMode() || !IsSpoutInitialized() || width == 0 || height == 0 || width < g_Width || height < g_Height)
+		return false;
+
 	return interop.WriteTexture(0, 0, width, height, bInvert, FboID);
 
 } // end SendFbo
@@ -352,11 +357,8 @@ bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool 
 // If the local texture has changed dimensions this will return false
 bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
-	// width, g_Width should all be the same
-	// (the application resets the size of any texture that is being sent out)
-	if (width != g_Width || height != g_Height) {
-		return(UpdateSender(g_SharedMemoryName, width, height));
-	}
+	if (!IsSpoutInitialized() || width == 0 || height == 0 || width != g_Width || height != g_Height)
+		return false;
 
 	return interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
 
@@ -369,6 +371,9 @@ bool Spout::SendImage(const unsigned char* pixels,
 {
 	GLenum glformat = glFormat;
 
+	if (!IsSpoutInitialized() || width == 0 || height == 0 || width != g_Width || height != g_Height)
+		return false;
+
 	if (!pixels)
 		return false;
 
@@ -377,9 +382,9 @@ bool Spout::SendImage(const unsigned char* pixels,
 	if (!(glformat == GL_RGBA || glFormat == 0x80E1 || glformat == GL_RGB || glFormat == 0x80E0))
 		return false;
 
-	// width, g_Width should all be the same
+	// Dimensions should be the same as the sender
 	if (width != g_Width || height != g_Height)
-		return(UpdateSender(g_SharedMemoryName, width, height));
+		return false;
 
 	// Check for BGRA support
 	if (!interop.IsBGRAavailable()) {
@@ -685,8 +690,8 @@ bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned
 	// Allow for change of sender size, even though the draw is independent of the 
 	// shared texture size, otherwise receivers will get a constant size for this sender
 	if(!bMemory) {
-		// width, g_Width should all be the same
 		// width and height are the size of the texture that is being drawn to.
+		// width, g_Width should all be the same
 		if(width != g_Width || height != g_Height) {
 			return(UpdateSender(g_SharedMemoryName, width, height));
 		}

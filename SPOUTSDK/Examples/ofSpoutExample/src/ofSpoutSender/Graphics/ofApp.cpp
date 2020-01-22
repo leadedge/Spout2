@@ -117,14 +117,16 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update() {
-	// Check for sender size change (See windowResized() for more detail)
-	// For other applications, this could be done before rendering
+
+	// See windowResized() for more detail.
 	if (bResized) {
 		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
 		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
+		// Update the sender to match the changed dimensions
 		sender.UpdateSender(sendername, senderwidth, senderheight);
 		bResized = false;
 	}
+
 }
 
 //--------------------------------------------------------------
@@ -214,27 +216,22 @@ void ofApp::exit() {
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h) 
 {
-	// "bResized" is a local flag to signal that update of
-	// sender dimensions is necessary to retain the size of the screen.
-	// The sending fbo and pixel buffer must also be re-sized
+	// "bResized" is a local flag to signal that the sending
+	// fbo, texture or pixel buffer must be re-sized
 	//
 	// A flag is used because Update() and Draw() are not called while
 	// the window is being resized, so texture or image re-allocation
 	// can be done after the mouse button is released.
-	// This prevents multiple re-allocation as the window is stretched.
+	//
+	// This prevents multiple re-allocation and sender update as the window is stretched.
 	// If Openframeworks is not used, a Windows application with 
 	// a message loop can monitor "WM_EXITSIZEMOVE".
 	//
-	// Re-allocation is not actually necessary for this application
-	// because the fbo size is independent of the window, but it shows
-	// how sender size change can be managed if necessary.
-	//
 	if (w > 0 && h > 0) {
 		if (w != (int)sender.GetWidth() || h != (int)sender.GetHeight()) {
-			// Change the sender dimensions here
-			// the changes will take effect in Draw()
-			senderwidth = (unsigned int)ofGetWidth();
-			senderheight = (unsigned int)ofGetHeight();
+			// Flag to change dimensions. Re-allocation is done in Update().
+			senderwidth = w;
+			senderheight = h;
 			bResized = true;
 		}
 	}

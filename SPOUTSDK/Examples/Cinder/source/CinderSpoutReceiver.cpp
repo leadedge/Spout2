@@ -3,7 +3,7 @@
 		Spout receiver for Cinder
 
 	==========================================================================
-	Copyright (C) 2014-2019 Lynn Jarvis.
+	Copyright (C) 2014-2020 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -37,6 +37,7 @@
 	30.03.16 - Rebuild for 2.005 release - VS2012 /MT
 	17.01.16 - Rebuild for 2.006 release - VS2012 /MT
 	11.05.19 - Revise and rebuild for 2.007 release - VS2012 /MT
+	22.01.10 - Update for latest 2.007 changes - VS2012 /MT
 
 */
 
@@ -82,21 +83,9 @@ void SpoutBoxApp::setup()
 	// It will be resized to match the sender when the receiver connects
 	spoutTexture =  gl::Texture(getWindowWidth(), getWindowHeight());
 
-	// Optional : set up the receiver.
-	// This is optional because the receiver dimensions are established
-	// when a sender is connected and the receiving texture/buffer size
-	// can be reset when an update signal is received - see "update()"
-	// The function can be used to reset the receiver if necessary.
-	// receiver.SetupReceiver(ofGetWidth(), ofGetHeight());
-
-	// Optional : flip the received texture/image.
-	// This function can be called at any time before receiving.
-	// receiver.SetReceiverInvert(true);
-
 	// Optional : specify the sender to connect to.
 	// The receiver will not connect to any other unless the user selects one.
 	// If that sender closes, the application will wait for the nominated sender to open.
-	// To reset this behaviour, call "SetupReceiver".
 	// spoutreceiver.SetReceiverName("Spout DX11 Sender");
 
 }
@@ -120,7 +109,7 @@ void SpoutBoxApp::update()
 
 void SpoutBoxApp::shutdown()
 {
-	spoutreceiver.CloseReceiver();
+	spoutreceiver.ReleaseReceiver();
 }
 
 
@@ -128,7 +117,7 @@ void SpoutBoxApp::mouseDown(MouseEvent event)
 {
 	// Select a sender
 	if( event.isRightDown() ) { 
-		spoutreceiver.SelectSenderPanel();
+		spoutreceiver.SelectSender();
 	}
 }
 

@@ -49,6 +49,7 @@
 //		13.01.20	- Remove send data functions and replace with overloads of 2.006 functions
 //		19.01.20	- Remove send data functions entirely to simplify
 //					- Change SendFboTexture to SendFbo
+//		21.01.20	- Remove auto sender update in send functions
 //
 // ====================================================================================
 /*
@@ -210,19 +211,14 @@ void SpoutSender::ReleaseSender(DWORD dwMsec)
 //---------------------------------------------------------
 bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
-	if (IsInitialized()	&& width > 0 && height > 0 && width == m_Width && height == m_Height)
-		return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
-	else
-		return false;
+	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
 }
 
 //---------------------------------------------------------
+// Send texture attached to the currently bound fbo
 bool SpoutSender::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
 {
-	if (IsInitialized() && width > 0 && height > 0 && width == m_Width && height == m_Height)
-		return spout.SendFbo(FboID, width, height, bInvert);
-	else
-		return false;
+	return spout.SendFbo(FboID, width, height, bInvert);
 }
 
 #ifdef legacyOpenGL
@@ -236,10 +232,7 @@ bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, un
 //---------------------------------------------------------
 bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
-	if (IsInitialized() && width > 0 && height > 0 && width == m_Width && height == m_Height)
-		return spout.SendImage(pixels, width, height, glFormat, bInvert, HostFBO);
-	else
-		return false;
+	return spout.SendImage(pixels, width, height, glFormat, bInvert, HostFBO);
 }
 
 //---------------------------------------------------------

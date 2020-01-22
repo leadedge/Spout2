@@ -56,7 +56,7 @@ void ofApp::update() {
 	vidGrabber.update();
 	// Check for change of webcam resolution
 	if (sender.GetWidth() != (unsigned int)vidGrabber.getWidth()
-	|| sender.GetHeight() != (unsigned int)vidGrabber.getHeight()) {
+		|| sender.GetHeight() != (unsigned int)vidGrabber.getHeight()) {
 		sender.UpdateSender(sendername.c_str(), (unsigned int)vidGrabber.getWidth(), (unsigned int)vidGrabber.getHeight());
 	}
 }

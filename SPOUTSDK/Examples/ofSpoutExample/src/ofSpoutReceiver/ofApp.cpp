@@ -82,10 +82,10 @@ void ofApp::draw() {
 	/*
 	// Option 3 : Receive a shared texture and use locally
 	if(receiver.ReceiveTextureData()) {
-		// Get the shared texture ID
-		GLuint texID = receiver.GetSharedTextureID();
 		// Bind to get access to the shared texture
 		receiver.BindSharedTexture();
+		// Get the shared texture ID
+		GLuint texID = receiver.GetSharedTextureID();
 		// Do something with it
 		// For this example, copy the shared texture to the local texture
 		receiver.CopyTexture(texID, GL_TEXTURE_2D,
