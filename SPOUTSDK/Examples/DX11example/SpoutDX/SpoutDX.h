@@ -4,7 +4,7 @@
 
 			Sender and receiver for DirectX applications
 
-	Copyright (c) 2014-2019, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -32,9 +32,13 @@
 #ifndef __spoutDX__
 #define __spoutDX__
 
+#include "..\..\..\SpoutSDK\SpoutCommon.h" // for dll build and utilities
 #include "..\..\..\SpoutSDK\SpoutSenderNames.h" // for sender creation and update
-#include "..\..\..\SpoutSDK\SpoutDirectX.h" // for creating a shared texture
+#include "..\..\..\SpoutSDK\SpoutDirectX.h" // for creating DX11 textures
 #include "..\..\..\SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "..\..\..\SpoutSDK\SpoutCopy.h" // for pixel copy
+#include "..\..\..\SpoutSDK\SpoutMemoryShare.h" // for memoryshare fallback support
+#include "..\..\..\SpoutSDK\SpoutUtils.h" // Registry utiities
 
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
@@ -47,13 +51,17 @@ class SPOUT_DLLEXP spoutDX {
 	spoutDX();
     ~spoutDX();
 
+	bool OpenDirectX11();
+	void CleanupDX11();
+
 	//
 	// SENDER
 	//
-	// Send a texture (creates and updates a sender)
+
+	// Send a DX11 texture (creates and updates a sender)
 	bool SendTexture(const char* sendername, ID3D11Device* pDevice, ID3D11Texture2D* pTexture);
 	// Close sender and free resources
-	void CloseSender();
+	void ReleaseSender();
 	// Hold frame rate
 	void HoldFps(int fps);
 	// Get width
@@ -71,10 +79,17 @@ class SPOUT_DLLEXP spoutDX {
 
 	// Set the sender name to connect to
 	void SetReceiverName(const char * SenderName);
-	// Receive a shared texture from a sender
+	// Receive a DX11 texture from a sender
 	bool ReceiveTexture(ID3D11Device* pd3dDevice);
+	// Receive pixels from a sender via DX11 staging texture
+	bool ReceiveImage(unsigned char * pData);
+	// Receive pixels from a sender via DX11 staging texture to an rgb buffer of variable size
+	bool ReceiveRGBimage(unsigned char * pData, unsigned int sourceWidth, unsigned int sourceHeight, bool bInvert = false);
+	// Receive pixels from sender shared memory (Spout memory mode must be selected)
+	bool ReceiveMemory(const char* sendername, unsigned char* pixels,
+		unsigned int width, unsigned int height, GLenum glFormat, bool bInvert);
 	// Close receiver and free resources
-	void CloseReceiver();
+	void ReleaseReceiver();
 	// Open the user sender selection dialog
 	void SelectSender();
 	// Return whether connected to a sender
@@ -113,22 +128,31 @@ class SPOUT_DLLEXP spoutDX {
 	int  GetAdapter(); // Get the current adapter index
 	bool SetAdapter(int index = 0); // Set required graphics adapter for output
 	// Utilities
+	bool GetDX9();
 	bool GetMemoryShareMode();
-	bool SetMemoryShareMode(bool bMem = true);
 	int  GetMaxSenders(); // Get maximum senders allowed
 	void SetMaxSenders(int maxSenders); // Set maximum senders allowed
 
 protected :
 
-	bool CreateDX11Texture(ID3D11Device* pd3dDevice, unsigned int width, unsigned int height,
-		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
+	void SetupReceiver(unsigned int width, unsigned int height);
+	bool CreateDX11Texture(ID3D11Device* pd3dDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
+	bool CreateDX11StagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
+	bool CheckStagingTexture(unsigned int width, unsigned int height);
+	bool ReadRGBApixels(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
+	bool ReadRGBpixels(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
 	bool CheckSpoutPanel(char *sendername, int maxchars);
 
 	spoutSenderNames spoutsender;
 	spoutDirectX spoutdx;
 	spoutFrameCount frame;
+	spoutCopy spoutcopy;
+	spoutMemoryShare memoryshare;
 
+	ID3D11Device* m_pd3dDevice;
+	ID3D11DeviceContext* m_pImmediateContext; // DX11
 	ID3D11Texture2D* m_pSenderTexture;
+	ID3D11Texture2D* m_pStagingTexture;
 	ID3D11Texture2D* m_pSharedTexture;
 	HANDLE m_dxShareHandle;
 	DWORD m_dwFormat;
@@ -137,8 +161,10 @@ protected :
 	unsigned int m_Width;
 	unsigned int m_Height;
 	bool bSpoutInitialized;
-	bool bSpoutConnected;
-	bool bSpoutUpdated;
+	bool m_bConnected;
+	bool m_bUpdate;
+	bool m_bInvert;
+	bool m_bUseActive;
 	bool bSpoutPanelOpened;
 	bool bSpoutPanelActive;
 	SHELLEXECUTEINFOA g_ShExecInfo;

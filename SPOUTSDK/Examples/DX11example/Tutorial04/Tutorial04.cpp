@@ -24,7 +24,7 @@
 #include "resource.h"
 
 // SPOUT
-#include "SpoutDX.h"
+#include "..\SpoutDX\SpoutDX.h"
 
 using namespace DirectX;
 
@@ -122,7 +122,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         }
     }
 
-	spoutSender.CloseSender();
+	spoutSender.ReleaseSender();
     CleanupDevice();
 
     return ( int )msg.wParam;
@@ -536,7 +536,7 @@ HRESULT InitDevice()
 void CleanupDevice()
 {
 	// SPOUT
-	spoutSender.CloseSender();
+	spoutSender.ReleaseSender();
 
     if( g_pImmediateContext ) g_pImmediateContext->ClearState();
     if( g_pConstantBuffer ) g_pConstantBuffer->Release();

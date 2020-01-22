@@ -25,7 +25,7 @@
 #include "resource.h"
 
 // SPOUT
-#include "SpoutDX.h"
+#include "..\SpoutDX\SpoutDX.h"
 
 using namespace DirectX;
 
@@ -111,15 +111,14 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     UNREFERENCED_PARAMETER( lpCmdLine );
 
 	// SPOUT
-	// Set up the receiver
 
 	// Optionally enable Spout logging
 	// EnableSpoutLog();
 	// EnableSpoutLogFile("Tutorial07.log")
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
-	// Optionally set the sewnder name to receive from
-	// spoutreceiver.SetReceiverName("Spout DX11 Sender");
+	// Optionally set the sender name to receive from
+	spoutreceiver.SetReceiverName("Spout DX11 Sender");
 
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
@@ -146,7 +145,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     }
 
 	// SPOUT
-	spoutreceiver.CloseReceiver();
+	spoutreceiver.ReleaseReceiver();
 	if (g_pSpoutTextureRV)
 		g_pSpoutTextureRV->Release();
 

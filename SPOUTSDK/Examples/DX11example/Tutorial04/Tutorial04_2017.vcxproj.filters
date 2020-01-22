@@ -12,6 +12,9 @@
     <Filter Include="SpoutSDK">
       <UniqueIdentifier>{bed9d875-d37f-4304-bc33-4edb3eeb6d05}</UniqueIdentifier>
     </Filter>
+    <Filter Include="SpoutDX">
+      <UniqueIdentifier>{439acae0-ece1-4e7f-8a7b-007cd58b8083}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Tutorial04.cpp" />
@@ -30,7 +33,15 @@
     <ClCompile Include="..\..\..\SpoutSDK\SpoutUtils.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
-    <ClCompile Include="SpoutDX.cpp" />
+    <ClCompile Include="..\SpoutDX\SpoutDX.cpp">
+      <Filter>SpoutDX</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutSDK\SpoutMemoryShare.cpp">
+      <Filter>SpoutSDK</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutSDK\SpoutCopy.cpp">
+      <Filter>SpoutSDK</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CLInclude Include="resource.h">
@@ -54,7 +65,18 @@
     <ClInclude Include="..\..\..\SpoutSDK\SpoutUtils.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
-    <ClInclude Include="SpoutDX.h" />
+    <ClInclude Include="..\SpoutDX\SpoutDX.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutSDK\SpoutCommon.h">
+      <Filter>SpoutSDK</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutSDK\SpoutMemoryShare.h">
+      <Filter>SpoutSDK</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutSDK\SpoutCopy.h">
+      <Filter>SpoutSDK</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Tutorial04.fx">
