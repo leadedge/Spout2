@@ -54,10 +54,10 @@ class SPOUT_DLLEXP SpoutSender {
 	double GetFps();
 	// Sender frame rate control
 	void HoldFps(int fps);
-	// Disable frame counting for this application
-	void DisableFrameCount();
 	// Return frame count status
 	bool IsFrameCountEnabled();
+	// Disable frame counting for this application
+	void DisableFrameCount();
 
 	//
 	// 2.006 and earlier
@@ -78,7 +78,7 @@ class SPOUT_DLLEXP SpoutSender {
 	bool IsInitialized();
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
-	bool SelectSenderPanel(const char* message = NULL);
+	GLuint GetSharedTextureID();
 
 	bool GetDX9();
 	bool SetDX9(bool bDX9 = true); // set to use DirectX 9 (default is DirectX 11)
@@ -100,8 +100,14 @@ class SPOUT_DLLEXP SpoutSender {
 	int  GetMaxSenders(); // Get maximum senders allowed
 	void SetMaxSenders(int maxSenders); // Set maximum senders allowed
 	bool GetHostPath(const char* sendername, char* hostpath, int maxchars); // The path of the host that produced the sender
-	bool SetVerticalSync(bool bSync = true);
 	int  GetVerticalSync();
+	bool SetVerticalSync(bool bSync = true);
+
+	// OpenGL utility
+	bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
+		GLuint DestID, GLuint DestTarget,
+		unsigned int width, unsigned int height,
+		bool bInvert = false, GLuint HostFBO = 0);
 
 	bool SenderDebug(char* Sendername, int size);
 

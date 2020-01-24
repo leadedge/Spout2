@@ -50,6 +50,8 @@
 //		19.01.20	- Remove send data functions entirely to simplify
 //					- Change SendFboTexture to SendFbo
 //		21.01.20	- Remove auto sender update in send functions
+//		24.01.20	- Add GetSharedTextureID and CopyTexture for sender as well as receiver
+//					- Removed SelectSenderPanel from sender
 //
 // ====================================================================================
 /*
@@ -243,12 +245,6 @@ void SpoutSender::RemovePadding(const unsigned char *source, unsigned char *dest
 }
 
 //---------------------------------------------------------
-bool SpoutSender::SelectSenderPanel(const char* message)
-{
-	return spout.SelectSenderPanel(message);
-}
-
-//---------------------------------------------------------
 bool SpoutSender::BindSharedTexture()
 {
 	return spout.BindSharedTexture();
@@ -258,6 +254,12 @@ bool SpoutSender::BindSharedTexture()
 bool SpoutSender::UnBindSharedTexture()
 {
 	return spout.UnBindSharedTexture();
+}
+
+//---------------------------------------------------------
+GLuint SpoutSender::GetSharedTextureID()
+{
+	return spout.interop.GetSharedTextureID();
 }
 
 //---------------------------------------------------------
@@ -376,17 +378,26 @@ bool SpoutSender::GetHostPath(const char* sendername, char* hostpath, int maxcha
 }
 
 //---------------------------------------------------------
+int SpoutSender::GetVerticalSync()
+{
+	return spout.interop.GetVerticalSync();
+}
+
+//---------------------------------------------------------
 bool SpoutSender::SetVerticalSync(bool bSync)
 {
 	return spout.interop.SetVerticalSync(bSync);
 }
 
 //---------------------------------------------------------
-int SpoutSender::GetVerticalSync()
+bool SpoutSender::CopyTexture(GLuint SourceID, GLuint SourceTarget,
+	GLuint DestID, GLuint DestTarget,
+	unsigned int width, unsigned int height,
+	bool bInvert, GLuint HostFBO)
 {
-	return spout.interop.GetVerticalSync();
+	return spout.interop.CopyTexture(SourceID, SourceTarget, DestID, DestTarget,
+		width, height, bInvert, HostFBO);
 }
-
 
 //------------------ debugging aid only --------------------
 bool SpoutSender::SenderDebug(char* Sendername, int size)
