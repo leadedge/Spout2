@@ -51,7 +51,8 @@
 //					- Change SendFboTexture to SendFbo
 //		21.01.20	- Remove auto sender update in send functions
 //		24.01.20	- Add GetSharedTextureID and CopyTexture for sender as well as receiver
-//					- Removed SelectSenderPanel from sender
+//					- Removed SelectSenderPanel
+//		25.01.20	- Remove GetDX9compatible and SetDX9compatible
 //
 // ====================================================================================
 /*
@@ -308,29 +309,6 @@ bool SpoutSender::SetDX9(bool bDX9)
 bool SpoutSender::GetDX9()
 {
 	return spout.interop.GetDX9();
-}
-
-//---------------------------------------------------------
-void SpoutSender::SetDX9compatible(bool bCompatible)
-{
-	if(bCompatible) {
-		// DX11 -> DX9 only works if the DX11 format is set to DXGI_FORMAT_B8G8R8A8_UNORM
-		spout.interop.SetDX11format(DXGI_FORMAT_B8G8R8A8_UNORM);
-	}
-	else {
-		// DX11 -> DX11 only
-		spout.interop.SetDX11format(DXGI_FORMAT_R8G8B8A8_UNORM);
-	}
-}
-
-//---------------------------------------------------------
-bool SpoutSender::GetDX9compatible()
-{
-	if(spout.interop.DX11format == DXGI_FORMAT_B8G8R8A8_UNORM)
-		return true;
-	else
-		return false;
-	
 }
 
 //---------------------------------------------------------

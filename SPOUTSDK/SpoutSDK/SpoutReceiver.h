@@ -2,7 +2,7 @@
 
 			SpoutReceiver.h
 
-	Copyright (c) 2014-2019, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -106,9 +106,6 @@ class SPOUT_DLLEXP SpoutReceiver {
 	bool SetShareMode(int mode);
 	bool GetBufferMode();
 	void SetBufferMode(bool bActive); // Set the pbo availability on or off
-
-	bool GetDX9compatible();
-	void SetDX9compatible(bool bCompatible = true);
 
 	int  GetNumAdapters(); // Get the number of graphics adapters in the system
 	bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name

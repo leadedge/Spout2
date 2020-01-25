@@ -50,6 +50,7 @@
 //					  Updated receiver example
 //		18.01.20	- Add CopyTexture. Update receiver example
 //		20.01.20	- Changed GetSenderTextureID() to GetSharedTextureID
+//		25.01.20	- Remove GetDX9compatible and SetDX9compatible
 //
 // ====================================================================================
 /*
@@ -479,28 +480,6 @@ bool SpoutReceiver::GetDX9()
 bool SpoutReceiver::SetDX9(bool bDX9)
 {
 	return spout.interop.UseDX9(bDX9);
-}
-
-//---------------------------------------------------------
-bool SpoutReceiver::GetDX9compatible()
-{
-	if (spout.interop.DX11format == DXGI_FORMAT_B8G8R8A8_UNORM)
-		return true;
-	else
-		return false;
-}
-
-//---------------------------------------------------------
-void SpoutReceiver::SetDX9compatible(bool bCompatible)
-{
-	if(bCompatible) {
-		// DX11 -> DX9 only works if the DX11 format is set to DXGI_FORMAT_B8G8R8A8_UNORM
-		spout.interop.SetDX11format(DXGI_FORMAT_B8G8R8A8_UNORM);
-	}
-	else {
-		// DX11 -> DX11 only
-		spout.interop.SetDX11format(DXGI_FORMAT_R8G8B8A8_UNORM);
-	}
 }
 
 //---------------------------------------------------------

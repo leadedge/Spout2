@@ -89,9 +89,6 @@ class SPOUT_DLLEXP SpoutSender {
 	bool GetBufferMode();
 	void SetBufferMode(bool bActive); // Set the pbo availability on or off
 
-	bool GetDX9compatible();
-	void SetDX9compatible(bool bCompatible = true); // DirectX 11 format compatible with DirectX 9
-
 	int  GetNumAdapters(); // Get the number of graphics adapters in the system
 	bool GetAdapterName(int index, char* adaptername, int maxchars); // Get an adapter name
 	int  GetAdapter(); // Get the current adapter index
@@ -114,6 +111,19 @@ class SPOUT_DLLEXP SpoutSender {
 	Spout spout; // For access to all functions
 
 protected :
+
+	//---------------------------------------------------------
+	void SpoutSender::SetDX9compatible(bool bCompatible)
+	{
+		if (bCompatible) {
+			// DX11 -> DX9 only works if the DX11 format is set to DXGI_FORMAT_B8G8R8A8_UNORM
+			spout.interop.SetDX11format(DXGI_FORMAT_B8G8R8A8_UNORM);
+		}
+		else {
+			// DX11 -> DX11 only
+			spout.interop.SetDX11format(DXGI_FORMAT_R8G8B8A8_UNORM);
+		}
+	}
 
 	char m_SenderName[256];
 	GLuint m_TextureID;
