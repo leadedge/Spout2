@@ -95,7 +95,6 @@ class SPOUT_DLLEXP Spout {
 	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
 	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 	bool SelectSenderPanel(const char* message = NULL);
-	bool CheckReceiver(char* sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 	bool IsSpoutInitialized(); // sender or receiver
 
 #ifdef legacyOpenGL
@@ -116,8 +115,10 @@ class SPOUT_DLLEXP Spout {
 	bool SetActiveSender(const char* Sendername);
 	
 	// Utilities
-	bool SetDX9(bool bDX9 = true); // User request to use DirectX 9 (default is DirectX 11)
 	bool GetDX9(); // Return the flag that has been set
+	bool SetDX9(bool bDX9 = true); // User request to use DirectX 9 (default is DirectX 11)
+	void SetDX9format(D3DFORMAT textureformat);
+	void SetDX11format(DXGI_FORMAT textureformat);
 	bool SetMemoryShareMode(bool bMem = true);
 	bool GetMemoryShareMode();
 	int  GetShareMode();
@@ -146,6 +147,11 @@ class SPOUT_DLLEXP Spout {
 	// OpenGL utilities
 	bool CreateOpenGL();
 	bool CloseOpenGL();
+
+	// Public for other classes
+	bool OpenReceiver(char *name, unsigned int& width, unsigned int& height);
+	bool InitReceiver(HWND hwnd, char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat);
+	bool CheckReceiver(char* sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 
 	// Public for debugging only
 	bool CheckSpoutPanel();
@@ -218,9 +224,6 @@ class SPOUT_DLLEXP Spout {
 	bool bUseActive; // Use the active sender for CreateReceiver
 	SHELLEXECUTEINFOA m_ShExecInfo;
 
-	bool OpenReceiver(char *name, unsigned int& width, unsigned int& height);
-	bool InitReceiver(HWND hwnd, char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat);
-	
 	bool InitSender(HWND hwnd, const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat);
 	bool InitSender(HWND hwnd, const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bMemoryMode);
 

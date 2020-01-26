@@ -244,7 +244,7 @@ bool Spout::CreateSender(const char* sendername, unsigned int width, unsigned in
 	// in the sender list but the shared memory info does not
 	CleanSenders();
 
-	// Initialize as a sender in either texture, cpu or memoryshare mode
+	// Initialize as a sender for either texture or memoryshare mode
 	return(InitSender(g_hWnd, sendername, width, height, dwFormat, bMemory));
 
 } // end CreateSender
@@ -407,6 +407,9 @@ void Spout::RemovePadding(const unsigned char *source, unsigned char *dest,
 }
 
 //---------------------------------------------------------
+// Make sure Spout has been initialized
+// Try to find the sender with the name passed
+// or use the active sender if sender name set to zero
 bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height, bool bActive)
 {
 	char UserName[256];
@@ -526,134 +529,6 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height,
 
 
 }  // end ReceiveImage
-
-//---------------------------------------------------------
-//
-// CheckReceiver
-//
-// If not yet inititalized, connect to the name provided or the active sender
-//
-// Check to see the whether the user has selected another sender
-//
-// Check that the sender is present
-//
-// Check current global values for change with those passed in
-//      o any changes, re-initialize the receiver  
-//
-// Set bConnected to true if the sender is OK
-// Set bConnected to false if the sender is closed
-//
-// Return false if the calling application needs to make any changes
-//		o changed values are returned to the caller.
-//
-// Return true if there have been no changes to the sender
-//
-bool Spout::CheckReceiver(char* name, unsigned int &width, unsigned int &height, bool &bConnected)
-{
-	char newname[256];
-	unsigned int senderwidth = 0;
-	unsigned int senderheight = 0;
-	DWORD dwFormat = 0;
-	HANDLE hShareHandle = NULL;	
-
-	// printf("CheckReceiver(%dx%d\n", width, height);
-	
-	// Has it initialized yet ?
-	if(!bInitialized) {
-		// The name passed is the name to try to connect to unless the bUseActive flag is set
-		// or the name begins with char 0 in which case it will try to find the active sender
-		// Width and height are passed back as well
-		if(name[0] != 0)
-			strcpy_s(newname, 256, name);
-		else
-			newname[0] = 0;
-
-		if(OpenReceiver(newname, senderwidth, senderheight)) {
-			// OpenReceiver will also set the global name, width, height and format
-			// Pass back the new name, width and height to the caller
-			// The change has to be detected by the application
-			strcpy_s(name, 256, newname);
-			width  = senderwidth;
-			height = senderheight;
-			bConnected = true; // user needs to check
-			return false;
-		}
-		else {
-			// Initialization failure - the sender is not there 
-			// Quit to let the app try again
-			bConnected = false;
-			return false;
-		}
-	} // endif not initialized
-
-
-	// Check to see if SpoutPanel has been opened
-	// If it has been opened, the globals are reset
-	// (g_SharedMemoryName, g_Width, g_Height, g_Format)
-	// and the sender name will be different to that passed 
-	CheckSpoutPanel();
-
-	// Set initial values to current globals to check for change with those passed in
-	strcpy_s(newname, 256, g_SharedMemoryName);
-	senderwidth = g_Width;
-	senderheight = g_Height;
-	hShareHandle = g_ShareHandle;
-	dwFormat = g_Format;
-	
-	// Is the sender there ?
-	if(interop.senders.CheckSender(newname, senderwidth, senderheight, hShareHandle, dwFormat)) {
-		// The sender exists, but has the width, height, texture format changed from those passed in
-		if(senderwidth > 0 && senderheight > 0) {
-			if(senderwidth  != width
-			|| senderheight != height
-			|| dwFormat  != g_Format
-			|| strcmp(name, g_SharedMemoryName) != 0 ) { // test of original name allows for CheckSpoutPanel above
-				SpoutLogNotice("Spout::CheckReceiver : sender change from (%s) %dx%d to (%s) %dx%d", name, width, height, g_SharedMemoryName, senderwidth, senderheight);
-				// Re-initialize the receiver
-				// OpenReceiver will also set the global name, width, height and format
-				if(OpenReceiver(g_SharedMemoryName, senderwidth, senderheight)) {
-					g_Width = senderwidth;
-					g_Height = senderheight;
-					g_ShareHandle = hShareHandle; // 09.09.15
-					g_Format = dwFormat; // 09.09.15
-					// Return the new sender name and dimensions
-					// Changes have to be detected by the application
-					width  = g_Width;
-					height = g_Height;
-					bConnected = true; // user needs to check for changes
-					strcpy_s(name, 256, g_SharedMemoryName);
-					return false;
-				} // OpenReceiver OK
-				else {
-					// need what here
-					bConnected = false;
-					return false;
-				}
-			} // width, height, format or name have changed
-			// The sender exists and there are no changes
-			// Drop through to return true
-		} // width and height are zero
-		else {
-			// need what here
-			bConnected = false;
-			return false;
-		}
-	} // endif CheckSender found a sender
-	else {
-		// printf("CheckReceiver : CheckSender did not find the sender\n");
-		g_SharedMemoryName[0] = 0; // sender no longer exists
-		// 01.06.15 - safety
-		ReleaseReceiver(); // Start again
-		bConnected = false;
-		return false;
-	} // CheckSender did not find the sender - probably closed
-
-	// The sender exists and there are no changes
-	bConnected = true;
-
-	return true;
-
-}
 
 //---------------------------------------------------------
 bool Spout::IsSpoutInitialized()
@@ -1054,6 +929,16 @@ bool Spout::CloseOpenGL()
 //	05.10.17 - simplify code (also changes to CheckSpoutPanel and InitReceiver)
 //  09.03.18 - note change to FindSender in SpoutSenderNames so that the sendernames
 //  map is not accessed every frame by a receiver when looking for a named sender
+//
+// Make sure Spout has been initialized and OpenGL context is available
+// A valid name is sent and the user does not want to use the active sender
+// The name begins with a null character, or the bUseActive flag has been set
+// Find if the sender exists or, if a null name given, return the active sender if that exists
+// Return width, height, sharehandle and format.
+// Initialize a receiver in either memoryshare or texture mode
+// InitReceiver tests for a valid sharehandle if not memory mode
+// InitReceiver resets the global name, width, height, sharehandle and format.
+//
 bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& theHeight)
 {
 	char Sendername[256]; // user entered Sender name
@@ -1272,6 +1157,133 @@ bool Spout::InitReceiver(HWND hwnd, char* sendername, unsigned int width, unsign
 
 } // end InitReceiver
 
+//---------------------------------------------------------
+//
+// CheckReceiver
+//
+// If not yet inititalized, connect to the name provided or the active sender
+//
+// Check to see the whether the user has selected another sender
+//
+// Check that the sender is present
+//
+// Check current global values for change with those passed in
+//      o any changes, re-initialize the receiver  
+//
+// Set bConnected to true if the sender is OK
+// Set bConnected to false if the sender is closed
+//
+// Return false if the calling application needs to make any changes
+//		o changed values are returned to the caller.
+//
+// Return true if there have been no changes to the sender
+//
+bool Spout::CheckReceiver(char* name, unsigned int &width, unsigned int &height, bool &bConnected)
+{
+	char newname[256];
+	unsigned int senderwidth = 0;
+	unsigned int senderheight = 0;
+	DWORD dwFormat = 0;
+	HANDLE hShareHandle = NULL;
+
+	// printf("CheckReceiver(%dx%d\n", width, height);
+
+	// Has it initialized yet ?
+	if (!bInitialized) {
+		// The name passed is the name to try to connect to unless the bUseActive flag is set
+		// or the name begins with char 0 in which case it will try to find the active sender
+		// Width and height are passed back as well
+		if (name[0] != 0)
+			strcpy_s(newname, 256, name);
+		else
+			newname[0] = 0;
+
+		if (OpenReceiver(newname, senderwidth, senderheight)) {
+			// OpenReceiver will also set the global name, width, height and format
+			// Pass back the new name, width and height to the caller
+			// The change has to be detected by the application
+			strcpy_s(name, 256, newname);
+			width = senderwidth;
+			height = senderheight;
+			bConnected = true; // user needs to check
+			return false;
+		}
+		else {
+			// Initialization failure - the sender is not there 
+			// Quit to let the app try again
+			bConnected = false;
+			return false;
+		}
+	} // endif not initialized
+
+
+	// Check to see if SpoutPanel has been opened
+	// If it has been opened, the globals are reset
+	// (g_SharedMemoryName, g_Width, g_Height, g_Format)
+	// and the sender name will be different to that passed 
+	CheckSpoutPanel();
+
+	// Set initial values to current globals to check for change with those passed in
+	strcpy_s(newname, 256, g_SharedMemoryName);
+	senderwidth = g_Width;
+	senderheight = g_Height;
+	hShareHandle = g_ShareHandle;
+	dwFormat = g_Format;
+
+	// Is the sender there ?
+	if (interop.senders.CheckSender(newname, senderwidth, senderheight, hShareHandle, dwFormat)) {
+		// The sender exists, but has the width, height, texture format changed from those passed in
+		if (senderwidth > 0 && senderheight > 0) {
+			if (senderwidth != width
+				|| senderheight != height
+				|| dwFormat != g_Format
+				|| strcmp(name, g_SharedMemoryName) != 0) { // test of original name allows for CheckSpoutPanel above
+				SpoutLogNotice("Spout::CheckReceiver : sender change from (%s) %dx%d to (%s) %dx%d", name, width, height, g_SharedMemoryName, senderwidth, senderheight);
+				// Re-initialize the receiver
+				// OpenReceiver will also set the global name, width, height and format
+				if (OpenReceiver(g_SharedMemoryName, senderwidth, senderheight)) {
+					g_Width = senderwidth;
+					g_Height = senderheight;
+					g_ShareHandle = hShareHandle; // 09.09.15
+					g_Format = dwFormat; // 09.09.15
+					// Return the new sender name and dimensions
+					// Changes have to be detected by the application
+					width = g_Width;
+					height = g_Height;
+					bConnected = true; // user needs to check for changes
+					strcpy_s(name, 256, g_SharedMemoryName);
+					return false;
+				} // OpenReceiver OK
+				else {
+					// need what here
+					bConnected = false;
+					return false;
+				}
+			} // width, height, format or name have changed
+			// The sender exists and there are no changes
+			// Drop through to return true
+		} // width and height are zero
+		else {
+			// need what here
+			bConnected = false;
+			return false;
+		}
+	} // endif CheckSender found a sender
+	else {
+		// printf("CheckReceiver : CheckSender did not find the sender\n");
+		g_SharedMemoryName[0] = 0; // sender no longer exists
+		// 01.06.15 - safety
+		ReleaseReceiver(); // Start again
+		bConnected = false;
+		return false;
+	} // CheckSender did not find the sender - probably closed
+
+	// The sender exists and there are no changes
+	bConnected = true;
+
+	return true;
+
+}
 
 //
 // SpoutCleanup
@@ -1404,11 +1416,13 @@ bool Spout::CheckSpoutPanel()
 //
 // OpenSpout
 //
-// Sets sharing mode flags for this class :
+// Compatibility test for use or GL/DX interop
+// Sets sharing mode flags for this class, either Texture or memoryshare :
 //    bDxInitOK - DirectX initialized OK - can use either GL/DX or CPU sharing modes
 //    bMemory   - using memoryshare mode
-// CPU texture sharing mode is held in the SpoutGLDXinterop class
 //
+
+
 // Failure is final.
 //
 bool Spout::OpenSpout()
@@ -1430,7 +1444,7 @@ bool Spout::OpenSpout()
 	//
 	//     o Load extensions and check for availability and function
 	//     o For texture share mode, open DirectX and check for availability
-	//     o Set flags for either Texture, CPU or memoryshare
+	//     o Set flags for either Texture or memoryshare
 	//
 	// If the compatibility test fails, either LoadGLextensions failed
 	// or OpenDirectX failed for texture sharing and nothing can continue
@@ -1460,6 +1474,12 @@ bool Spout::OpenSpout()
 
 }
 
+// Just return the flag that has been set
+bool Spout::GetDX9()
+{
+	return interop.GetDX9();
+}
+
 // This is a request from within a program and Spout might not have initialized yet.
 // If set OFF the DX9 setting is returned false only after a DX11 compatibility check
 bool Spout::SetDX9(bool bDX9)
@@ -1467,13 +1487,17 @@ bool Spout::SetDX9(bool bDX9)
 	return(interop.UseDX9(bDX9));
 }
 
-
-// Just return the flag that has been set
-bool Spout::GetDX9()
+// Set the DirectX 9 format fo texture sharing
+void Spout::SetDX9format(D3DFORMAT textureformat)
 {
-	return interop.GetDX9();
+	interop.SetDX9format(textureformat);
 }
 
+// Set the DirectX 11 format fo texture sharing
+void Spout::SetDX11format(DXGI_FORMAT textureformat)
+{
+	interop.SetDX11format(textureformat);
+}
 
 // Set graphics adapter for Spout output
 bool Spout::SetAdapter(int index)

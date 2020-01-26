@@ -483,6 +483,17 @@ bool SpoutReceiver::SetDX9(bool bDX9)
 }
 
 //---------------------------------------------------------
+void SpoutReceiver::SetDX9format(D3DFORMAT textureformat)
+{
+	spout.SetDX9format(textureformat);
+}
+
+//---------------------------------------------------------
+void SpoutReceiver::SetDX11format(DXGI_FORMAT textureformat)
+{
+	spout.SetDX11format(textureformat);
+}
+//---------------------------------------------------------
 int SpoutReceiver::GetAdapter()
 {
 	return spout.GetAdapter();

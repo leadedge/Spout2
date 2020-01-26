@@ -312,6 +312,18 @@ bool SpoutSender::GetDX9()
 }
 
 //---------------------------------------------------------
+void SpoutSender::SetDX9format(D3DFORMAT textureformat)
+{
+	spout.SetDX9format(textureformat);
+}
+
+//---------------------------------------------------------
+void SpoutSender::SetDX11format(DXGI_FORMAT textureformat)
+{
+	spout.SetDX11format(textureformat);
+}
+
+//---------------------------------------------------------
 bool SpoutSender::SetAdapter(int index)
 {
 	return spout.SetAdapter(index);

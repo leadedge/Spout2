@@ -82,6 +82,8 @@ class SPOUT_DLLEXP SpoutSender {
 
 	bool GetDX9();
 	bool SetDX9(bool bDX9 = true); // set to use DirectX 9 (default is DirectX 11)
+	void SetDX9format(D3DFORMAT textureformat);
+	void SetDX11format(DXGI_FORMAT textureformat);
 	bool GetMemoryShareMode();
 	bool SetMemoryShareMode(bool bMem = true);
 	int  GetShareMode();
