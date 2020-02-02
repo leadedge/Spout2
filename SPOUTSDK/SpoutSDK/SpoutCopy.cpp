@@ -39,6 +39,7 @@
 	13.11.18 - const changes as per Engel (https://github.com/leadedge/Spout2/pull/26)
 	27.11.18 - Add RemovePadding
 	17.10.19 - Add rgba2bgrResample and bgra2bgrResample for SpoutCam
+	02.02.20 - Add rgba2rgbaResample and row pitch to all resamplers
 
 */
 #include "spoutCopy.h"
@@ -693,12 +694,43 @@ void spoutCopy::bgra2bgr(const void *bgra_source, void *bgr_dest, unsigned int w
 } // end bgra2bgr
 
 
+
 // Adapted from :
 // http://tech-algorithm.com/articles/nearest-neighbor-image-scaling/
 // http://www.cplusplus.com/forum/general/2615/#msg10482
-// TODO - clean up
+void spoutCopy::rgba2rgbaResample(const unsigned char* source, unsigned char* dest,
+	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
+	unsigned int destWidth, unsigned int destHeight, bool bInvert)
+{
+	unsigned char *srcBuffer = (unsigned char *)source; // bgra source
+	unsigned char *dstBuffer = (unsigned char *)dest; // bgr dest
+
+	// horizontal and vertical ratios between the original image and the to be scaled image
+	float x_ratio = (float)sourceWidth / (float)destWidth;
+	float y_ratio = (float)sourceHeight / (float)destHeight;
+	float px, py;
+	unsigned int i, j;
+	unsigned int pixel, nearestMatch;
+	for (i = 0; i < destHeight; i++) {
+		for (j = 0; j < destWidth; j++) {
+			px = floor((float)j*x_ratio);
+			py = floor((float)i*y_ratio);
+			if (bInvert)
+				pixel = (destHeight - i - 1)*destWidth * 4 + j * 4; // flip vertically
+			else
+				pixel = i * destWidth * 4 + j * 4;
+			nearestMatch = (unsigned int)(py*sourcePitch + px * 4);
+			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 0];
+			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
+			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 2];
+			dstBuffer[pixel + 3] = srcBuffer[nearestMatch + 3];
+		}
+	}
+}
+
+
 void spoutCopy::rgba2rgbResample(const unsigned char* source, unsigned char* dest,
-	unsigned int sourceWidth, unsigned int sourceHeight,
+	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 	unsigned int destWidth, unsigned int destHeight, bool bInvert)
 {
 	unsigned char *srcBuffer = (unsigned char *)source; // bgra source
@@ -717,7 +749,7 @@ void spoutCopy::rgba2rgbResample(const unsigned char* source, unsigned char* des
 				pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
 			else
 				pixel = i * destWidth * 3 + j * 3;
-			nearestMatch = (int)(py*sourceWidth * 4 + px * 4);
+			nearestMatch = (unsigned int)(py*sourcePitch + px * 4);
 			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 0];
 			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
 			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 2];
@@ -726,7 +758,7 @@ void spoutCopy::rgba2rgbResample(const unsigned char* source, unsigned char* des
 }
 
 void spoutCopy::rgba2bgrResample(const unsigned char* source, unsigned char* dest,
-	unsigned int sourceWidth, unsigned int sourceHeight,
+	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 	unsigned int destWidth, unsigned int destHeight, bool bInvert)
 {
 	unsigned char *srcBuffer = (unsigned char *)source; // bgra source
@@ -745,7 +777,7 @@ void spoutCopy::rgba2bgrResample(const unsigned char* source, unsigned char* des
 				pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
 			else
 				pixel = i * destWidth * 3 + j * 3;
-			nearestMatch = (int)(py*sourceWidth * 4 + px * 4);
+			nearestMatch = (int)(py*sourcePitch + px * 4);
 			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 0];
 			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
 			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 2];

@@ -60,13 +60,16 @@ class SPOUT_DLLEXP spoutCopy {
 		void memcpy_sse2(void* dst, const void* src, size_t size) const;
 
 		void rgba2bgra(const void* rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		void rgba2rgbaResample(const unsigned char* source, unsigned char* dest,
+			unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
+			unsigned int destWidth, unsigned int destHeight, bool bInvert = false);
 		void bgra2rgba(const void* bgra_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 		
 		void RemovePadding(const unsigned char *source, unsigned char *dest,
 			unsigned int width, unsigned int height,
 			unsigned int source_stride, GLenum glFormat) const;
 
-		// TODO avoid redundancy
+		// TODO : avoid redundancy
 		void rgb2rgba (const void* rgb_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 		void bgr2rgba (const void* bgr_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 
@@ -75,11 +78,11 @@ class SPOUT_DLLEXP spoutCopy {
 
 		void rgba2rgb (const void* rgba_source, void *rgb_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 		void rgba2rgbResample(const unsigned char* source, unsigned char* dest,
-			unsigned int sourceWidth, unsigned int sourceHeight,
+			unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 			unsigned int destWidth, unsigned int destHeight, bool bInvert = false);
 		void rgba2bgr (const void* rgba_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 		void rgba2bgrResample(const unsigned char* source, unsigned char* dest,
-			unsigned int sourceWidth, unsigned int sourceHeight,
+			unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 			unsigned int destWidth, unsigned int destHeight, bool bInvert = false);
 		void bgra2rgb (const void* bgra_source, void *rgb_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 		void bgra2bgr (const void* bgra_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
