@@ -52,6 +52,7 @@
 	06.06.19 - Increase default maximum sender names from 10 to 256 = 64K
 			   RegisterSenderName - check for exceed maximum number of senders
 			   SetMaxSenders - set max to the registry for other applications to read
+	25.02.20 - Correct FindSenderName. Always returned true for one sender.
 			   	
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
@@ -225,9 +226,8 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 // Test to see if the Sender name exists in the sender set
 bool spoutSenderNames::FindSenderName(const char* Sendername)
 {
-	std::string namestring;
+	std::string namestring = "";
 	std::set<std::string> SenderNames;
-
 	std::set<std::string>::iterator iter;
 	
 	if(Sendername[0]) { // was a valid name passed
@@ -239,12 +239,11 @@ bool spoutSenderNames::FindSenderName(const char* Sendername)
 				}
 			}
 			// Does the name exist
-			if(SenderNames.find(Sendername) != SenderNames.end() ) {
+			if (SenderNames.find(Sendername) != SenderNames.end()) {
 				return true;
 			}
 		}
 	}
-
 	return false;
 }
 
@@ -713,7 +712,6 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 #else
 		hSharehandle = (HANDLE)info.shareHandle;
 #endif
-		// hSharehandle	= (HANDLE)info.shareHandle;
 		dwFormat		= (DWORD)info.format;
 		return true;
 	}
