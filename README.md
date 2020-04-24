@@ -1,18 +1,14 @@
-"Spout2" is a revision of "Spout" (http://spout.zeal.co/), 
-a video frame sharing system for Microsoft Windows, which 
-allows applications for Microsoft Windows to share OpenGL 
-textures in a similar way to Syphon for the Mac.
+["Spout"](http://spout.zeal.co/) is a video frame sharing system for Microsoft Windows, which allows applications for Microsoft Windows to share OpenGL textures in a similar way to Syphon for the Mac.
 
-Spout2 has been completely re-written and supports DirectX 11
-textures. The initial release is compatible with existing 
-DirectX 9 Spout plugins and applications.
+Spout supports DirectX 9, DirectX 11 and OpenGL textures and includes a developer SDK and sample applications. If you are interested in assisting with development testing, please contact us using the GitHub repository email.
 
-Spout2 includes a developer SDK and sample applications. 
-SpoutSDK is preliminary pending testing and is subject to change. 
-If you are interested in assisting with development testing,
-please contact us on the Spout developer forum : 
+Your support will help the project continue and develop.
 
-http://spout.zeal.co/forums/forum/spout/developer/
+[![](https://www.paypalobjects.com/en_AU/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=P4P4QJZBT87PJ)  
 
-SpoutSDK is licenced under the Simplified BSD licence.
+
+
+
+
+
 
