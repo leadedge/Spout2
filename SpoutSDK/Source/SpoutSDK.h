@@ -49,7 +49,7 @@
 
 
 #include "SpoutCommon.h"
-#include "spoutMemoryShare.h"
+#include "SpoutMemoryShare.h"
 #include "SpoutSenderNames.h"
 #include "SpoutGLDXinterop.h"
 

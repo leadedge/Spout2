@@ -50,7 +50,7 @@
 #include "SpoutSharedMemory.h"
 
 // functions will finally go into SpoutGLDXinterop
-// #include "spoutGLDXinterop.h"
+// #include "SpoutGLDXinterop.h"
 
 using namespace std;
 

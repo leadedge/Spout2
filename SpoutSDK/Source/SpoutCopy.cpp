@@ -37,7 +37,7 @@
 		04.01.17 - Added rgb2bgra, bgr2bgra, bgra2rgb, bgra2bgr
 
 */
-#include "spoutCopy.h"
+#include "SpoutCopy.h"
 
 spoutCopy::spoutCopy() {
 	m_bSSE2 = false;

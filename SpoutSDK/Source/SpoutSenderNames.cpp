@@ -69,7 +69,7 @@
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 */
-#include "spoutSenderNames.h"
+#include "SpoutSenderNames.h"
 #include <assert.h>
 
 spoutSenderNames::spoutSenderNames() {
