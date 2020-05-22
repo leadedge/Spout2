@@ -40,7 +40,7 @@
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "spoutGLextensions.h"
+#include "SpoutGLextensions.h"
 
 #ifndef USE_GLEW
 

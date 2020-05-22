@@ -40,7 +40,7 @@
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 */
-#include "spoutMemoryShare.h"
+#include "SpoutMemoryShare.h"
 #include <assert.h>
 
 spoutMemoryShare::spoutMemoryShare() {

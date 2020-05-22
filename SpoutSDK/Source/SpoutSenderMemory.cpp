@@ -38,7 +38,7 @@
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 */
-#include "spoutSenderMemory.h"
+#include "SpoutSenderMemory.h"
 #include <assert.h>
 
 spoutSenderMemory::spoutSenderMemory() {

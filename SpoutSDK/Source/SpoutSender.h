@@ -31,7 +31,7 @@
 #ifndef __SpoutSender__
 #define __SpoutSender__
 
-#include "spoutSDK.h"
+#include "SpoutSDK.h"
 
 class SPOUT_DLLEXP SpoutSender {
 
