@@ -43,7 +43,7 @@
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "spoutGLextensions.h"
+#include "SpoutGLextensions.h"
 
 #ifndef USE_GLEW
 
@@ -98,7 +98,7 @@ glUnmapBufferPROC						glUnmapBufferEXT				= NULL;
 
 //-------------------
 // Copy extensions
-// TODO : future use
+// (for future use)
 //-------------------
 #ifdef USE_COPY_EXTENSIONS
 PFNGLCOPYIMAGESUBDATAPROC glCopyImageSubData = NULL;

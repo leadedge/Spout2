@@ -31,7 +31,7 @@
 #ifndef __SpoutSender__
 #define __SpoutSender__
 
-#include "spoutSDK.h"
+#include "SpoutSDK.h"
 
 class SPOUT_DLLEXP SpoutSender {
 
@@ -44,41 +44,53 @@ class SPOUT_DLLEXP SpoutSender {
 	// 2.007
 	//
 
-	// Return sender width
+	// Send texture
+	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
+	// Send texture attached to fbo
+	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
+	// Send image
+	bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
+	// Sender name
+	const char * GetName();
+	// Sender width
 	unsigned int GetWidth();
-	// Return sender height
+	// Sender height
 	unsigned int GetHeight();
-	// Return sender frame number
-	long GetFrame();
-	// Return sender frame rate
+	// Sender frame rate
 	double GetFps();
+	// Sender frame number
+	long GetFrame();
 	// Sender frame rate control
 	void HoldFps(int fps);
-	// Return frame count status
+	// Frame count status
 	bool IsFrameCountEnabled();
 	// Disable frame counting for this application
 	void DisableFrameCount();
+	// Get sender shared texture ID
+	GLuint GetSharedTextureID();
+
+	// OpenGL utility
+	bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
+		GLuint DestID, GLuint DestTarget,
+		unsigned int width, unsigned int height,
+		bool bInvert = false, GLuint HostFBO = 0);
 
 	//
-	// 2.006 and earlier
+	// 2.006 compatibility
 	//
 
 	bool OpenSpout();
-	bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
-	bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
+	bool CreateSender(const char *sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
+	bool UpdateSender(const char* sendername, unsigned int width, unsigned int height);
 	void ReleaseSender(DWORD dwMsec = 0);
-	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
-	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
 #ifdef legacyOpenGL
 	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
 #endif
-	bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 	void RemovePadding(const unsigned char *source, unsigned char *dest, unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
 	
 	bool IsInitialized();
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
-	GLuint GetSharedTextureID();
 
 	bool GetDX9();
 	bool SetDX9(bool bDX9 = true); // set to use DirectX 9 (default is DirectX 11)
@@ -86,8 +98,8 @@ class SPOUT_DLLEXP SpoutSender {
 	void SetDX11format(DXGI_FORMAT textureformat);
 	bool GetMemoryShareMode();
 	bool SetMemoryShareMode(bool bMem = true);
-	int  GetShareMode();
-	bool SetShareMode(int mode);
+	int  GetShareMode(); // Get sharing mode : 0 - texture, 1, 2 - memory
+	bool SetShareMode(int mode); // Set sharing mode : 0 - texture, 1, 2 - memory
 	bool GetBufferMode();
 	void SetBufferMode(bool bActive); // Set the pbo availability on or off
 
@@ -102,30 +114,11 @@ class SPOUT_DLLEXP SpoutSender {
 	int  GetVerticalSync();
 	bool SetVerticalSync(bool bSync = true);
 
-	// OpenGL utility
-	bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
-		GLuint DestID, GLuint DestTarget,
-		unsigned int width, unsigned int height,
-		bool bInvert = false, GLuint HostFBO = 0);
-
 	bool SenderDebug(char* Sendername, int size);
 
 	Spout spout; // For access to all functions
 
 protected :
-
-	//---------------------------------------------------------
-	void SpoutSender::SetDX9compatible(bool bCompatible)
-	{
-		if (bCompatible) {
-			// DX11 -> DX9 only works if the DX11 format is set to DXGI_FORMAT_B8G8R8A8_UNORM
-			spout.interop.SetDX11format(DXGI_FORMAT_B8G8R8A8_UNORM);
-		}
-		else {
-			// DX11 -> DX11 only
-			spout.interop.SetDX11format(DXGI_FORMAT_R8G8B8A8_UNORM);
-		}
-	}
 
 	char m_SenderName[256];
 	GLuint m_TextureID;

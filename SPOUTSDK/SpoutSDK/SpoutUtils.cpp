@@ -54,10 +54,12 @@
 				   Changed default extension from "txt" to "log"
 		27.11.19 - Prevent multiple logs for warnings and errors
 		22.12.19 - add pragma in header for registry function lbraries
-				   Remove calling process name from SpoutMessageBox
+		22.12.19 - Remove calling process name from SpoutMessageBox
+		18.02.20 - Remove messagebox for Fatal errors
+		19.05.20 - Add missing LPCSTR cast in SpoutMessageBox ShellExecute
 
 */
-#include "spoutUtils.h"
+#include "SpoutUtils.h"
 
 namespace spoututils {
 
@@ -314,40 +316,44 @@ namespace spoututils {
 
 		spoutmessage = message;
 
+		// If a timeout has been specified, add the timeout option
+		if (dwMilliseconds > 0) {
+			spoutmessage += " /TIMEOUT-";
+			spoutmessage += std::to_string((unsigned long long)dwMilliseconds);
+		}
+		if (!spoutmessage.empty()) {
+			strcpy_s(UserMessage, 512, spoutmessage.c_str());
+		}
+		else {
+			UserMessage[0] = 0; // make sure SpoutPanel does not see an un-initialized string
+		}
+
 		// Find if there has been a Spout installation >= 2.002 with an install path for SpoutPanel.exe
 		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
-
-			// If a timeout has been specified, add the timeout option
-			if (dwMilliseconds > 0) {
-				spoutmessage += " /TIMEOUT-";
-				spoutmessage += std::to_string((unsigned long long)dwMilliseconds);
-			}
-			// Open SpoutPanel text message
-			// SpoutPanel handles the timeout delay
-			if (!spoutmessage.empty()) {
-				strcpy_s(UserMessage, 512, spoutmessage.c_str());
+			// Does the file exist ?
+			if (_access(path, 0) != -1) {
+				// Open SpoutPanel text message
+				// SpoutPanel handles the timeout delay
+				ZeroMemory(&ShExecInfo, sizeof(ShExecInfo));
+				ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+				ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+				ShExecInfo.hwnd = NULL;
+				ShExecInfo.lpVerb = NULL;
+				ShExecInfo.lpFile = (LPCSTR)path;
+				ShExecInfo.lpParameters = (LPCSTR)UserMessage;
+				ShExecInfo.lpDirectory = NULL;
+				ShExecInfo.nShow = SW_SHOW;
+				ShExecInfo.hInstApp = NULL;
+				ShellExecuteExA(&ShExecInfo);
+				// Returns straight away here but multiple instances of SpoutPanel
+				// are prevented in it's WinMain procedure by the mutex.
 			}
 			else {
-				UserMessage[0] = 0; // make sure SpoutPanel does not see an un-initialized string
+				iRet = MessageBoxA(hwnd, spoutmessage.c_str(), caption, (uType | MB_TOPMOST));
 			}
-
-			ZeroMemory(&ShExecInfo, sizeof(ShExecInfo));
-			ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-			ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-			ShExecInfo.hwnd = NULL;
-			ShExecInfo.lpVerb = NULL;
-			ShExecInfo.lpFile = (LPCSTR)path;
-			ShExecInfo.lpParameters = UserMessage;
-			ShExecInfo.lpDirectory = NULL;
-			ShExecInfo.nShow = SW_SHOW;
-			ShExecInfo.hInstApp = NULL;
-			ShellExecuteExA(&ShExecInfo);
-			// Returns straight away here but multiple instances of SpoutPanel
-			// are prevented in it's WinMain procedure by the mutex.
 		}
 		else {
 			// Use a standard untimed topmost messagebox
-			// iRet = MessageBoxA(hwnd, message, caption, (uType | MB_TOPMOST));
 			iRet = MessageBoxA(hwnd, spoutmessage.c_str(), caption, (uType | MB_TOPMOST));
 		}
 
@@ -449,8 +455,7 @@ namespace spoututils {
 
 		return false;
 	}
-
-
+	
 	bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath)
 	{
 		HKEY  hRegKey = NULL;
@@ -574,10 +579,6 @@ namespace spoututils {
 				// Prevent multiple logs by comparing with the last
 				if (logString == LastSpoutLog)
 					return;
-				// Fatal error will quit - we want to know why
-				if (level == SPOUT_LOG_FATAL) {
-					SpoutMessageBox(NULL, LastSpoutLog.c_str(), "Spout", MB_OK);
-				}
 				LastSpoutLog = logString; // update the last log
 			}
 
@@ -596,8 +597,7 @@ namespace spoututils {
 			}
 		}
 	}
-
-
+	
 	// Get the default log file path
 	std::string _getLogPath()
 	{
@@ -649,8 +649,7 @@ namespace spoututils {
 			return "";
 		}
 	}
-
-
+	
 	// Log to file with optional append 
 	void _logtofile(bool append)
 	{
@@ -708,4 +707,4 @@ namespace spoututils {
 	}
 
 
-}
+} // end namespace spoututils

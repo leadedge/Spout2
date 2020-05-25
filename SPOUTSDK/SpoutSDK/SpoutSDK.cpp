@@ -152,6 +152,8 @@
 //		19.01.20	- Change SendFboTexture to SendFbo
 //		20.01.20	- Corrected SendFbo for width/height < shared texture
 //		21.01.20	- Remove auto sender update in send functions
+//					  Remove debug print from InitSender
+//		25.05.20	- Correct filename case for all #includes throughout
 //
 // ================================================================
 /*
@@ -640,7 +642,6 @@ bool Spout::GetBufferMode()
 	return interop.GetBufferMode();
 }
 
-
 // SelectSenderPanel - used by a receiver
 // Optional message argument
 bool Spout::SelectSenderPanel(const char *message)
@@ -776,7 +777,6 @@ bool Spout::SelectSenderPanel(const char *message)
 
 } // end SelectSenderPanel
 
-
 // 22.02.15 - Used to find the SpoutPanel version
 // http://stackoverflow.com/questions/940707/how-do-i-programatically-get-the-version-of-a-dll-or-exe-file
 //
@@ -830,9 +830,6 @@ bool Spout::FindFileVersion(const char *FilePath, DWORD &versMS, DWORD &versLS)
 	return true;
 
 }
-// ======================
-
-
 
 int Spout::GetSenderCount() {
 	std::set<std::string> SenderNameSet;
@@ -841,7 +838,6 @@ int Spout::GetSenderCount() {
 	}
 	return 0;
 }
-
 
 //
 // Get a sender name given an index into the sender names set
@@ -977,11 +973,7 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		height = g_Height;
 		sharehandle = g_ShareHandle;
 		dwFormat = g_Format;
-		// printf("CheckSpoutPanel [%s] %dx%d\n", g_SharedMemoryName, g_Width, g_Height);
 	}
-	// else {
-		// printf("OpenReceiver [%s] %dx%d - format %d\n", Sendername, width, height, dwFormat);
-	// }
 
 	// Initialize a receiver in either memoryshare or texture mode
 	// InitReceiver tests for a valid sharehandle if not memory mode
@@ -1319,7 +1311,6 @@ void Spout::SpoutCleanUp()
 
 }
 
-
 //
 // ========= USER SELECTION PANEL TEST =====
 //
@@ -1421,8 +1412,6 @@ bool Spout::CheckSpoutPanel()
 //    bDxInitOK - DirectX initialized OK - can use either GL/DX or CPU sharing modes
 //    bMemory   - using memoryshare mode
 //
-
-
 // Failure is final.
 //
 bool Spout::OpenSpout()
@@ -1507,13 +1496,11 @@ bool Spout::SetAdapter(int index)
 
 }
 
-
 // Get current adapter index
 int Spout::GetAdapter()
 {
 	return interop.GetAdapter();
 }
-
 
 // Get the number of graphics adapters in the system
 int Spout::GetNumAdapters()
@@ -1521,20 +1508,17 @@ int Spout::GetNumAdapters()
 	return interop.GetNumAdapters();
 }
 
-
 // Get an adapter name
 bool Spout::GetAdapterName(int index, char *adaptername, int maxchars)
 {
 	return interop.GetAdapterName(index, adaptername, maxchars);
 }
 
-
 // Get the path of the host that produced the sender
 bool Spout::GetHostPath(const char *sendername, char *hostpath, int maxchars)
 {
 	return interop.GetHostPath(sendername, hostpath, maxchars);
 }
-
 
 int Spout::ReportMemory()
 {

@@ -32,6 +32,8 @@
 #include <string>
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
+#include <d3d11.h> // for keyed mutex texture access
+#pragma comment (lib, "d3d11.lib")
 
 using namespace spoututils;
 
@@ -62,7 +64,11 @@ class SPOUT_DLLEXP spoutFrameCount {
 	bool GetNewFrame(); // Receiver read the semaphore count
 	void CleanupFrameCount(); // For cleanup functions
 
-	// Mutex for shared texture access
+	// Mutex locks including DirectX 11 keyed mutex
+	bool CheckTextureAccess(ID3D11Texture2D* D3D11texture = nullptr);
+	void AllowTextureAccess(ID3D11Texture2D* D3D11texture = nullptr);
+
+	// Named mutex for shared texture access
 	bool CreateAccessMutex(const char * SenderName);
 	void CloseAccessMutex();
 	bool CheckAccess();
@@ -70,8 +76,13 @@ class SPOUT_DLLEXP spoutFrameCount {
 
 protected :
 
-	// Texture access mutex
+	// Texture access named mutex
 	HANDLE m_hAccessMutex;
+
+	// DX11 keyed mutex checks
+	bool CheckKeyedAccess(ID3D11Texture2D* D3D11texture);
+	void AllowKeyedAccess(ID3D11Texture2D* D3D11texture);
+	bool IsKeyedMutex(ID3D11Texture2D* D3D11texture);
 
 	// Frame count semaphore
 	bool m_bFrameCount; // User selection of frame count in SpoutSettings

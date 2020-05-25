@@ -33,11 +33,8 @@
 #define __spoutDirectX__
 
 #include "SpoutCommon.h"
-#include <windowsx.h>
 #include <d3d9.h>
 #include <d3d11.h>
-#include <string>
-#include <iostream>
 
 #pragma comment (lib, "d3d9.lib")
 #pragma comment (lib, "d3d11.lib")

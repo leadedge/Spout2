@@ -47,7 +47,7 @@
 #include <gl/gl.h>
 #include <gl/glu.h> // For glerror
 #include <shlwapi.h> // for path functions
-#include "spoutGLextensions.h" // include last due to redefinition problems with OpenCL
+#include "SpoutGLextensions.h" // include last due to redefinition problems with OpenCL
 
 using namespace spoututils;
 
@@ -72,21 +72,22 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool CreateInterop(HWND hWnd, const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
 		void CleanupInterop();
 
-		bool getSharedInfo(char* sharedMemoryName, SharedTextureInfo* info);
-		bool setSharedInfo(char* sharedMemoryName, SharedTextureInfo* info);
+		// Direct read/write of sender shared mempry block
+		bool getSharedInfo(const char* sharedMemoryName, SharedTextureInfo* info);
+		bool setSharedInfo(const char* sharedMemoryName, SharedTextureInfo* info);
 
-		// Texture functions
+		// Texture read/write
 		bool WriteTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert=true,  GLuint HostFBO=0);
 		bool ReadTexture(const char* sendername, GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
 		
+		// Pixel read/write
 		bool WriteTexturePixels(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 		bool ReadTexturePixels (const char* sendername, unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
 		
+		// Direct shared texture access
 		bool BindSharedTexture();
 		bool UnBindSharedTexture();
 		GLuint GetSharedTextureID();
-
-		
 #ifdef legacyOpenGL
 		bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
 		bool DrawToSharedTexture(GLuint TexID, GLuint TexTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
@@ -117,17 +118,17 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 							   bool bInvert = false);
 
 		// DX9
-		bool m_bUseDX9; // Use DX11 (default) or DX9
 		bool GetDX9();
 		bool SetDX9(bool bDX9);
+
+		bool m_bUseDX9; // Use DX11 (default) or DX9
+		bool m_bUseGLDX; // Use GPU texture processing
+		bool m_bUseMemory; // Use memoryshare
 		bool UseDX9(bool bDX9); // Includes DX11 compatibility check
 		bool isDX9(); // Test for DX11 in case it failed to initialize
-
-		bool m_bUseGLDX; // Use GPU texture processing
 		bool GLDXcompatible();
 		bool GLDXready();
 
-		bool m_bUseMemory; // Use memoryshare
 		bool SetMemoryShareMode(bool bMem = true);
 		bool GetMemoryShareMode();
 		int  GetShareMode(); // 0 - memory, 1 - cpu, 2 - texture
@@ -152,7 +153,6 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		
 		bool GetHostPath(const char* sendername, char* hostpath, int maxchars); // The path of the host that produced the sender
 		int GetSpoutVersion(); // Get Spout version (2.005 and greater)
-		bool isOptimus(); // Detect Optimus graphics dlls
 
 		// DX9
 		D3DFORMAT DX9format; // the DX9 texture format to be used
@@ -206,13 +206,13 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		IDirect3DDevice9Ex* m_pDevice;     // DX9 device
 		LPDIRECT3DTEXTURE9 m_dxTexture;    // the shared DX9 texture
 		HANDLE m_dxShareHandle;            // the shared DX texture handle
-		ID3D11Device* g_pd3dDevice;        // DX11 device
-		ID3D11Texture2D* g_pSharedTexture; // The shared DX11 texture
+		ID3D11Device* m_pd3dDevice;        // DX11 device
+		ID3D11Texture2D* m_pSharedTexture; // The shared DX11 texture
 
 protected:
 
-		int m_SpoutVersion;     // Spout version held in this class for fast access
-		bool m_bInitialized;	  // this instance initialized flag
+		int m_SpoutVersion;       // Spout version held in this class for fast access
+		bool m_bInitialized;      // this instance initialized flag
 		bool m_bExtensionsLoaded; // extensions have been loaded
 		unsigned int m_caps;      // extension capabilities
 
@@ -244,7 +244,7 @@ protected:
 		HWND m_hwndButton;
 		HGLRC m_hRc;
 
-		ID3D11DeviceContext* g_pImmediateContext; // DX11
+		ID3D11DeviceContext* m_pImmediateContext; // DX11
 		IDirect3D9Ex* m_pD3D; // DX9
 
 		// Interop

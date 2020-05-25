@@ -51,6 +51,9 @@
 //		18.01.20	- Add CopyTexture. Update receiver example
 //		20.01.20	- Changed GetSenderTextureID() to GetSharedTextureID
 //		25.01.20	- Remove GetDX9compatible and SetDX9compatible
+//		25.01.20	- Change ReceiveTextureData and ReceiveImageData to overloads
+//		26.04.20	- Reset the update flag in IsUpdated
+//		30.04.20	- Add ReceiveTexture()
 //
 // ====================================================================================
 /*
@@ -106,21 +109,47 @@ SpoutReceiver::~SpoutReceiver()
 
 
 //---------------------------------------------------------
+// Specify the sender for a receiver to connect to
 void SpoutReceiver::SetReceiverName(const char * SenderName)
 {
 	if (SenderName && SenderName[0]) {
 		strcpy_s(m_SenderNameSetup, 256, SenderName);
 		strcpy_s(m_SenderName, 256, SenderName);
-		m_bUseActive = false; // the user has specified a sender to connect to
+		m_bUseActive = false; // the user has specified a sender to connect to (default true)
 	}
 }
 
+
 //---------------------------------------------------------
-//	o Connect to a sender and inform the application to update texture dimensions
-//  o Receive texture data from the sender and write to the user texture
-bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
+//	Receive from a sender
+//  The sender shared texture can then be accessed using :
+//		BindSharedTexture();
+//		UnBindSharedTexture();
+//
+bool SpoutReceiver::ReceiveTexture()
 {
-	m_bUpdate = false;
+	return ReceiveTexture(0, 0);
+}
+
+//---------------------------------------------------------
+// Receive a texture from a sender
+//
+//	o Connect to a sender
+//	o Set class variables for sender name, width and height
+//  o If the sender has changed size, set a flag for the application to update receiving texture
+//  o Copy the sender shared texture to the user texture
+//
+//  For no texture ID or target, the sender texture can be accessed using :
+//		BindSharedTexture();
+//		UnBindSharedTexture();
+//		GetSharedTextureID()
+//
+bool SpoutReceiver::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
+{
+	// Return if flagged for update
+	// The update flag is reset when the receiving application calls IsUpdated()
+	if (m_bUpdate)
+		return true;
 
 	// Initialization is recorded in the spout class for sender or receiver
 	// m_Width or m_Height are established when the receiver connects to a sender
@@ -156,7 +185,7 @@ bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, b
 			else {
 				// For a valid texture ID and target, read the shared texture
 				// to the user texture and invert as necessary
-				if(TextureID > 0 && TextureTarget > 0)
+				if (TextureID > 0 && TextureTarget > 0)
 					spout.interop.ReadTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
 			}
 			return true;
@@ -174,14 +203,20 @@ bool SpoutReceiver::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, b
 }
 
 //---------------------------------------------------------
-//	o Connect to a sender and inform the application to update buffer dimensions
-//  o Receive pixel data from the sender and write to the user buffer
-bool SpoutReceiver::ReceiveImageData(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
+// Receive image pixels from a sender
+//
+//	o Connect to a sender and set class variables for sender name, width and height
+//  o If the sender has changed size, inform the application to update the receiving buffer
+//  o Receive pixel data from a sender and write to the user buffer
+//  o Set class variables for sender name, width and height
+bool SpoutReceiver::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
-	m_bUpdate = false;
+	// Return if flagged for update
+	if (m_bUpdate)
+		return true;
 
 	if (!IsConnected()) {
-		// m_Width or m_Height are established when the reciver connects to a sender
+		// m_SenderName, m_Width and m_Height are established when the reciever connects to a sender
 		if (CreateReceiver(m_SenderName, m_Width, m_Height, m_bUseActive)) {
 			m_bUpdate = true;
 			m_bConnected = true;
@@ -189,12 +224,14 @@ bool SpoutReceiver::ReceiveImageData(unsigned char *pixels, GLenum glFormat, boo
 		}
 	}
 	else {
+		// Save current sender details
 		char sendername[256];
 		strcpy_s(sendername, 256, m_SenderName);
 		unsigned int width = m_Width;
 		unsigned int height = m_Height;
 		// Receive a shared image but don't read it into the user pixels yet
-		if (ReceiveImage(sendername, width, height, NULL, glFormat, bInvert)) {
+		// All tests for sender existence and user selection are made
+		if (spout.ReceiveImage(sendername, width, height, NULL, glFormat, bInvert)) {
 			// Test for sender name or size change
 			if (width != m_Width
 				|| height != m_Height
@@ -221,21 +258,21 @@ bool SpoutReceiver::ReceiveImageData(unsigned char *pixels, GLenum glFormat, boo
 			return false;
 		}
 	}
-
 	// No connection
 	return false;
-
 }
 
 //---------------------------------------------------------
+// Check for sender change
 //  If updated, the application must update the receiving texture
 //  before the next call to ReceiveTextureData or ReceiveImageData.
 bool SpoutReceiver::IsUpdated()
 {
-	if (IsConnected())
-		return m_bUpdate;
-	else
-		return false;
+	bool bRet = m_bUpdate;
+	// Reset the update flag
+	m_bUpdate = false;
+	return bRet;
+
 }
 
 //---------------------------------------------------------

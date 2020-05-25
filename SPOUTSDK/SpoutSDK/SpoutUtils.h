@@ -33,7 +33,6 @@
 #ifndef __spoutUtils__ // standard way as well
 #define __spoutUtils__
 
-#include "SpoutCommon.h"
 #include <windows.h>
 #include <stdio.h> // for console
 #include <iostream> // std::cout, std::end

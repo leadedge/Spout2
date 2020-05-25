@@ -53,6 +53,7 @@
 //		24.01.20	- Add GetSharedTextureID and CopyTexture for sender as well as receiver
 //					- Removed SelectSenderPanel
 //		25.01.20	- Remove GetDX9compatible and SetDX9compatible
+//		28.04.20	- Add GetName() - get sender name
 //
 // ====================================================================================
 /*
@@ -101,6 +102,66 @@ SpoutSender::~SpoutSender()
 
 
 // ================= 2.007 functions ======================
+
+//---------------------------------------------------------
+// Send texture
+bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
+{
+	// Return if a sender has not been created yet
+	if (!m_SenderName || !m_SenderName[0])
+		return false;
+	
+	// Check for change of texture size
+	if (m_Width != width || m_Height != height)
+		return UpdateSender(m_SenderName, width, height);
+
+	// All clear to send the texture
+	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+
+}
+
+//---------------------------------------------------------
+// Send texture attached to the currently bound fbo
+bool SpoutSender::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
+{
+	// Return if a sender has not been created yet
+	if (!m_SenderName || !m_SenderName[0])
+		return false;
+	
+	// Check for change of texture size
+	if (m_Width != width || m_Height != height)
+		return UpdateSender(m_SenderName, width, height);
+
+	// All clear to send the fbo texture
+	return spout.SendFbo(FboID, width, height, bInvert);
+
+}
+
+//---------------------------------------------------------
+// Send a pixel image
+bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
+{
+	// Return if a sender has not been created yet
+	if (!m_SenderName || !m_SenderName[0])
+		return false;
+
+	// Check for change of texture size
+	else if (m_Width != width || m_Height != height)
+		return UpdateSender(m_SenderName, width, height);
+
+	// All clear to send the image
+	return spout.SendImage(pixels, width, height, glFormat, bInvert, HostFBO);
+
+}
+
+//---------------------------------------------------------
+const char * SpoutSender::GetName()
+{
+	char name[256];
+	if(spout.GetSpoutSenderName(name, 256))
+		strcpy_s(m_SenderName, 256, name);
+	return m_SenderName;
+}
 
 //---------------------------------------------------------
 unsigned int SpoutSender::GetWidth()
@@ -211,19 +272,6 @@ void SpoutSender::ReleaseSender(DWORD dwMsec)
 	spout.ReleaseSender(dwMsec);
 }
 
-//---------------------------------------------------------
-bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
-{
-	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
-}
-
-//---------------------------------------------------------
-// Send texture attached to the currently bound fbo
-bool SpoutSender::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
-{
-	return spout.SendFbo(FboID, width, height, bInvert);
-}
-
 #ifdef legacyOpenGL
 //---------------------------------------------------------
 bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
@@ -231,12 +279,6 @@ bool SpoutSender::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, un
 	return spout.DrawToSharedTexture(TextureID, TextureTarget, width, height, max_x, max_y, aspect, bInvert, HostFBO);
 }
 #endif
-
-//---------------------------------------------------------
-bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
-{
-	return spout.SendImage(pixels, width, height, glFormat, bInvert, HostFBO);
-}
 
 //---------------------------------------------------------
 void SpoutSender::RemovePadding(const unsigned char *source, unsigned char *dest,

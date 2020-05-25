@@ -17,6 +17,7 @@
 	23.10.18 - Allow for RGB size buffers
 	27.10.18 - Added log warnings
 	13.11.18 - Remove using std namespace
+	14.04.20 - Set senderMem pointer to null in CloseSenderMemory
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
@@ -43,7 +44,7 @@
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 */
-#include "spoutMemoryShare.h"
+#include "SpoutMemoryShare.h"
 #include <assert.h>
 
 spoutMemoryShare::spoutMemoryShare() {
@@ -60,7 +61,6 @@ spoutMemoryShare::~spoutMemoryShare() {
 	m_Height = 0;
 	
 }
-
 
 // SENDER : Create a sender named shared memory map
 // RECEIVER : Attach to an existing named shared memory map
@@ -98,7 +98,6 @@ bool spoutMemoryShare::CreateSenderMemory(const char *sendername, unsigned int w
 	return true;
 		
 } // end CreateSenderMemory
-
 
 // SENDER : Update a sender shared memory map size
 // Only the sender can update the memory map size by creating a new one because 
@@ -139,8 +138,6 @@ bool spoutMemoryShare::UpdateSenderMemorySize(const char *sendername, unsigned i
 		
 } // end UpdateSenderMemorySize
 
-
-
 // RECEIVER : Open an existing named shared memory map
 bool spoutMemoryShare::OpenSenderMemory(const char *sendername)
 {
@@ -148,22 +145,21 @@ bool spoutMemoryShare::OpenSenderMemory(const char *sendername)
 
 	// Create a name for the map from the sender name
 	namestring += "_map";
-
 	// Create a new shared memory class object for this receiver
-	if(!senderMem) senderMem = new SpoutSharedMemory();
+	if (!senderMem)
+		senderMem = new SpoutSharedMemory();
 
 	// Open the sender's shared memory map.
 	// This also creates a mutex for the receiver
 	// to lock and unlock the map for reads.
 	if(!senderMem->Open(namestring.c_str()) ) {
-		SpoutLogWarning("spoutMemoryShare::OpenSenderMemory - open shared memory failed");
+		// SpoutLogWarning("spoutMemoryShare::OpenSenderMemory - open shared memory failed");
 		return false;
 	}
 
 	return true;
 		
 } // end OpenSenderMemory
-
 
 // Return the global shared memory size
 bool spoutMemoryShare::GetSenderMemorySize(unsigned int &width, unsigned int &height)
@@ -177,18 +173,15 @@ bool spoutMemoryShare::GetSenderMemorySize(unsigned int &width, unsigned int &he
 		
 } // end GetSenderMemorySize
 
-
-
 //	Close the sender shared memory map
 void spoutMemoryShare::CloseSenderMemory()
 {
 	if(senderMem) senderMem->Close();
+	senderMem = nullptr;
 	m_Width = 0;
 	m_Height = 0;
 		
 } // end CloseSenderMemory
-
-
 
 void spoutMemoryShare::ReleaseSenderMemory()
 {

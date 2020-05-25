@@ -42,7 +42,7 @@
 	02.02.20 - Add rgba2rgbaResample and row pitch to all resamplers
 
 */
-#include "spoutCopy.h"
+#include "SpoutCopy.h"
 
 spoutCopy::spoutCopy() {
 	m_bSSE2 = false;

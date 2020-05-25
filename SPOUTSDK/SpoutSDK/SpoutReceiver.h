@@ -30,7 +30,7 @@
 #ifndef __SpoutReceiver__
 #define __SpoutReceiver__
 
-#include "spoutSDK.h"
+#include "SpoutSDK.h"
 
 class SPOUT_DLLEXP SpoutReceiver {
 
@@ -43,53 +43,62 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// 2.007
 	//
 
-	// Specify a sender for the receiver to connect to
+	// Specify a sender for receiver connection
 	void SetReceiverName(const char * SenderName);
+	// Receive from sender
+	bool ReceiveTexture();
 	// Receive texture data
-	bool ReceiveTextureData(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
+	bool ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert = false, GLuint HostFbo = 0);
 	// Receive pixel data
-	bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
-	// Return whether the connected sender has changed
+	bool ReceiveImage(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
+	// Sender has changed
 	bool IsUpdated();
-	// Return whether connected to a sender
+	// Connected to a sender
 	bool IsConnected();
-	// Return whether the received frame is new
+	// Received frame is new
 	bool IsFrameNew();
-	// Return the connected sender name
+	// Sender name
 	const char * GetSenderName();
-	// Return the connected sender width
+	// Sender width
 	unsigned int GetSenderWidth();
-	// Return the connected sender height
+	// Sender height
 	unsigned int GetSenderHeight();
-	// Return the connected sender frame rate
+	// Sender frame rate
 	double GetSenderFps();
-	// Return the connected sender frame number
+	// Sender frame number
 	long GetSenderFrame();
+	// Sender selection dialog
+	void SelectSender();
+	// Frame count status
+	bool IsFrameCountEnabled();
 	// Disable frame counting for this application
 	void DisableFrameCount();
-	// Return frame count status
-	bool IsFrameCountEnabled();
-	// Open the user sender selection dialog
-	void SelectSender();
+	// Get sender shared texture ID
+	GLuint GetSharedTextureID();
+
+	// OpenGL utility
+	bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
+		GLuint DestID, GLuint DestTarget,
+		unsigned int width, unsigned int height,
+		bool bInvert = false, GLuint HostFBO = 0);
 
 	//
-	// 2.006 and earlier
+	// 2.006 compatibility
 	//
 
 	bool OpenSpout();
 	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
 	void ReleaseReceiver();
 	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
-#ifdef legacyOpenGL
-	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
-#endif	
 	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
 	void RemovePadding(const unsigned char *source, unsigned char *dest, unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
 	bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
-	GLuint GetSharedTextureID();
+#ifdef legacyOpenGL
+	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
+#endif	
 
 	int  GetSenderCount();
 	bool GetSender(int index, char* Sendername, int MaxSize = 256);
@@ -119,12 +128,6 @@ class SPOUT_DLLEXP SpoutReceiver {
 	bool GetHostPath(const char *sendername, char *hostpath, int maxchars); // The path of the host that produced the sender
 	int  GetVerticalSync();
 	bool SetVerticalSync(bool bSync = true);
-
-	// OpenGL utility
-	bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
-		GLuint DestID, GLuint DestTarget,
-		unsigned int width, unsigned int height,
-		bool bInvert = false, GLuint HostFBO = 0);
 
 	Spout spout; // for access to all functions
 
