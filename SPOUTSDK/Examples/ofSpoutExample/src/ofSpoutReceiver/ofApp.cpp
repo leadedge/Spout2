@@ -30,13 +30,16 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
 
+	// Optional logging (see sender example)
+	// EnableSpoutLog();
+
 	ofBackground(0, 0, 0);
 
 	// Allocate an RGBA texture to receive from the sender
 	// It can be resized later to match the sender - see Update()
 	myTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 
-	// Also allocate an RGB image for this example
+	// Allocate an RGB image for this example
 	// it can also be RGBA, BGRA or BGR
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
 
@@ -62,17 +65,17 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	// ReceiveTextureData or ReceiveImageData connect to and receive from a sender
+	// ReceiveTexture or ReceiveImage connect to and receive from a sender
 	// Optionally include the ID of an fbo if one is currently bound
 
-	// Option 1 : Receive texture data
-	receiver.ReceiveTextureData(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget);
+	// Option 1 : Receive texture
+	receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget);
 	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	/*
 	// Option 2 : Receive pixel data
 	// Specify RGB for this example. Default is RGBA.
-	if (receiver.ReceiveImageData(myImage.getPixels().getData(), GL_RGB)) {
+	if (receiver.ReceiveImage(myImage.getPixels().getData(), GL_RGB)) {
 		// ofImage update is necessary because the pixels have been changed externally
 		myImage.update();
 	}
@@ -80,8 +83,8 @@ void ofApp::draw() {
 	*/
 
 	/*
-	// Option 3 : Receive a shared texture and use locally
-	if(receiver.ReceiveTextureData()) {
+	// Option 3 : Receive a shared texture to access directly
+	if(receiver.ReceiveTexture()) {
 		// Bind to get access to the shared texture
 		receiver.BindSharedTexture();
 		// Get the shared texture ID
@@ -89,13 +92,13 @@ void ofApp::draw() {
 		// Do something with it
 		// For this example, copy the shared texture to the local texture
 		receiver.CopyTexture(texID, GL_TEXTURE_2D,
-			myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget,
+			myTexture.getTextureData().textureID,
+			myTexture.getTextureData().textureTarget,
 			receiver.GetSenderWidth(), receiver.GetSenderHeight());
 		receiver.UnBindSharedTexture();
 	}
 	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 	*/
-
 
 	// On-screen display
 	showInfo();

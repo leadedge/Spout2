@@ -35,7 +35,8 @@ void ofApp::setup(){
 	
 	// Optional : enable Spout logging to detect warnings and errors
 	// Logging functions are in the "spoututils" namespace so they can be called directly.
-	EnableSpoutLog();
+	// EnableSpoutLog();
+
 	//
 	// Output is to a console window.
 	//
@@ -87,7 +88,6 @@ void ofApp::setup(){
 	rotY = 0.0f;
 
 	// Set the sender size here 
-	// This example uses an fbo which can be different from the window size
 	senderwidth = ofGetWidth();
 	senderheight = ofGetHeight();
 
@@ -108,24 +108,11 @@ void ofApp::setup(){
 	// to control frame rate (see Draw())
 	// ofSetFrameRate(30);
 
-	// Local update flag for window size change
-	bResized = false;
-	
-
 } // end setup
 
 
 //--------------------------------------------------------------
 void ofApp::update() {
-
-	// See windowResized() for more detail.
-	if (bResized) {
-		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
-		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
-		// Update the sender to match the changed dimensions
-		sender.UpdateSender(sendername, senderwidth, senderheight);
-		bResized = false;
-	}
 
 }
 
@@ -136,6 +123,11 @@ void ofApp::draw() {
 	if (!sender.IsInitialized())
 		return;
 	
+	// All sending functions check the sending dimensions
+	// and update the sender if necessary
+	// In this example, the fbo texture is already inverted
+	// so set the invert option false for all sending functions
+
 	// Draw 3D graphics demo into the fbo
 	// This could be anything for your application
 	// - - - - - - - - - - - - - - - - 
@@ -154,17 +146,12 @@ void ofApp::draw() {
 	rotX += 0.6;
 	rotY += 0.6;
 
-	// In this example, the fbo texture is already inverted
-	// so set the sending invert option false for all functions
-	
 	// Option 1 : Send the texture attached to point 0 while the fbo is bound
+	// (Not available for memoryshare mode)
 	sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
-
-	// Show the result sized to the application window
-	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	// Option 2 : Send texture
 	// sender.SendTexture(myFbo.getTexture().getTextureData().textureID,
@@ -174,6 +161,9 @@ void ofApp::draw() {
 	// Option 3 : Send image pixels
 	// myFbo.readToPixels(myPixels);
 	// sender.SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
+
+	// Show the result sized to the application window
+	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	// Show what it is sending
 	ofSetColor(255);
@@ -216,25 +206,12 @@ void ofApp::exit() {
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h) 
 {
-	// "bResized" is a local flag to signal that the sending
-	// fbo, texture or pixel buffer must be re-sized
-	//
-	// A flag is used because Update() and Draw() are not called while
-	// the window is being resized, so texture or image re-allocation
-	// can be done after the mouse button is released.
-	//
-	// This prevents multiple re-allocation and sender update as the window is stretched.
-	// If Openframeworks is not used, a Windows application with 
-	// a message loop can monitor "WM_EXITSIZEMOVE".
-	//
+	// Update the sending fbo, texture or image
 	if (w > 0 && h > 0) {
-		if (w != (int)sender.GetWidth() || h != (int)sender.GetHeight()) {
-			// Flag to change dimensions. Re-allocation is done in Update().
-			senderwidth = w;
-			senderheight = h;
-			bResized = true;
-		}
+		senderwidth = w;
+		senderheight = h;
+		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
+		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
 	}
-
 }
 
