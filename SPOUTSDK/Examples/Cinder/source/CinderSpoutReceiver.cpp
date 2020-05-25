@@ -37,7 +37,8 @@
 	30.03.16 - Rebuild for 2.005 release - VS2012 /MT
 	17.01.16 - Rebuild for 2.006 release - VS2012 /MT
 	11.05.19 - Revise and rebuild for 2.007 release - VS2012 /MT
-	22.01.10 - Update for latest 2.007 changes - VS2012 /MT
+	22.01.20 - Update for latest 2.007 changes - VS2012 /MT
+	25.05.20 - Update for latest 2.007 changes - VS2012 /MT
 
 */
 
@@ -131,7 +132,7 @@ void SpoutBoxApp::draw()
 
 	// ReceiveTexture connects to and receives from a sender
 	// Optionally include the ID of an fbo if one is currently bound
-	spoutreceiver.ReceiveTextureData(spoutTexture.getId(), spoutTexture.getTarget());
+	spoutreceiver.ReceiveTexture(spoutTexture.getId(), spoutTexture.getTarget());
 
 	// Draw the texture and fill the screen
 	gl::draw(spoutTexture, getWindowBounds());
