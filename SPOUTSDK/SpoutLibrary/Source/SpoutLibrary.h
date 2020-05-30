@@ -75,13 +75,15 @@ struct SPOUTLIBRARY
 	// Sender
 	//
 
-	// Return sender width
+	// Sender name
+	virtual const char * GetName() = 0;
+	// Sender width
 	virtual unsigned int GetWidth() = 0;
-	// Return sender height
+	// Sender height
 	virtual unsigned int GetHeight() = 0;
-	// Return sender frame number
+	// Sender frame number
 	virtual long GetFrame() = 0;
-	// Return sender frame rate
+	// Sender frame rate
 	virtual double GetFps() = 0;
 	// Sender frame rate control
 	virtual void HoldFps(int fps) = 0;
@@ -91,10 +93,10 @@ struct SPOUTLIBRARY
 	//
 	// Set the sender name to connect to
 	virtual void SetReceiverName(const char* SenderName) = 0;
-	// Receive texture data
-	virtual bool ReceiveTextureData(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0) = 0;
-	// Receive pixel data
-	virtual bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0) = 0;
+	// Receive texture from sender
+	virtual bool ReceiveTexture(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0) = 0;
+	// Receive image pixels
+	virtual bool ReceiveImage(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0) = 0;
 	// Return whether the connected sender has changed
 	virtual bool IsUpdated() = 0;
 	// Return whether connected to a sender
@@ -184,7 +186,7 @@ struct SPOUTLIBRARY
 	// -----------------------------------------
 
 	//
-	// 2.006 and earlier
+	// 2.006  compatibility
 	//
 
 	// Sender
@@ -198,8 +200,6 @@ struct SPOUTLIBRARY
 	// Receiver
 	virtual bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false) = 0;
 	virtual void ReleaseReceiver() = 0;
-	virtual bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0) = 0;
-	virtual bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0) = 0;
 	virtual bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected) = 0;
 
 	virtual bool IsInitialized() = 0;
@@ -228,7 +228,6 @@ struct SPOUTLIBRARY
 	virtual bool GetHostPath(const char *sendername, char *hostpath, int maxchars) = 0; // The path of the host that produced the sender
 	virtual int  GetVerticalSync() = 0;
 	virtual bool SetVerticalSync(bool bSync = true) = 0;
-	virtual bool SelectSenderPanel(const char* message = NULL) = 0;
 
 	// Adapter functions
 	virtual int  GetNumAdapters() = 0; // Get the number of graphics adapters in the system

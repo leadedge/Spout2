@@ -1,7 +1,7 @@
 /*
 
 	Spout OpenFrameworks Graphics Sender example
-	using the SpoutLibrary C-compatible dll
+	using the 2.007 SpoutLibrary C-compatible dll
 
 	1) Copy SpoutLibrary.h to the source files "src" folder
 	
@@ -145,22 +145,13 @@ void ofApp::setup(){
 	// a Spout function "HoldFps" to control frame rate (see Draw())
 	// ofSetFrameRate(30);
 
-	// Local update flag for window size change
-	bResized = false;
 
 } // end setup
 
 
 //--------------------------------------------------------------
 void ofApp::update() {
-	// Check for sender size change (See windowResized() for more detail)
-	// For other applications, this could be done before rendering
-	if (bResized) {
-		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
-		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
-		sender->UpdateSender(sendername, senderwidth, senderheight);
-		bResized = false;
-	}
+
 }
 
 //--------------------------------------------------------------
@@ -170,43 +161,47 @@ void ofApp::draw() {
 	if (!sender->IsInitialized())
 		return;
 
+	// All sending functions check the sending dimensions
+	// and update the sender if necessary
+	// In this example, the fbo texture is already inverted
+	// so set the invert option false for all sending functions
 
 	// Draw 3D graphics demo into the fbo
 	// This could be anything for your application
+	// - - - - - - - - - - - - - - - - 
 	myFbo.begin();
 	// Clear to reset the background and depth buffer
 	// Clear background alpha to opaque for the receiver
 	ofClear(10, 100, 140, 255);
 	ofPushMatrix();
-	ofTranslate((float)ofGetWidth() / 2.0, (float)ofGetHeight() / 2.0, 0);
+	ofTranslate(myFbo.getWidth() / 2.0, myFbo.getHeight() / 2.0, 0);
 	ofRotateYDeg(rotX); // rotate
 	ofRotateXDeg(rotY);
 	myBoxImage.bind(); // bind our box face image
-	ofDrawBox(0.4*(float)ofGetHeight()); // draw the box
+	ofDrawBox(0.4*myFbo.getHeight()); // draw the box
 	myBoxImage.unbind();
 	ofPopMatrix();
-
-	// In this example, the fbo texture is already inverted
-	// so set the sending invert option false for all functions
-
-	// Option 1 : Send an fbo while the fbo is bound
-	sender->SendFbo(myFbo.getId(), senderwidth, senderheight, false);
-
-	myFbo.end();
 	rotX += 0.6;
 	rotY += 0.6;
 
-	// Show the result
-	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
+	// Option 1 : Send the texture attached to point 0 while the fbo is bound
+	// (Not available for memoryshare mode)
+	sender->SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
-	// Option 2 : Send a texture
+	myFbo.end();
+	// - - - - - - - - - - - - - - - - 
+
+	// Option 2 : Send texture
 	// sender->SendTexture(myFbo.getTexture().getTextureData().textureID,
 		// myFbo.getTexture().getTextureData().textureTarget,
 		// senderwidth, senderheight, false);
 
-	// Option 3 : Send pixels
+	// Option 3 : Send image pixels
 	// myFbo.readToPixels(myPixels);
-	// sender->SendImage(myPixels.getData(), senderwidth, senderheight, GL_RGBA, false);
+	// sender.SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
+
+	// Show the result sized to the application window
+	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	// Show what it is sending
 	ofSetColor(255);
@@ -218,7 +213,8 @@ void ofApp::draw() {
 	// Show sender fps and framecount if selected
 	if (sender->GetFrame() > 0) {
 		str += " fps ";
-		str += ofToString((int)roundf(sender->GetFps())); str += " : frame  ";
+		str += ofToString((int)roundf(sender->GetFps()));
+		str += " : frame  ";
 		str += ofToString(sender->GetFrame());
 	}
 	else {
@@ -227,6 +223,7 @@ void ofApp::draw() {
 	}
 	ofDrawBitmapString(str, 20, 30);
 
+	//
 	// Applications without frame rate control can call this
 	// function to introduce the required delay between frames.
 	//
@@ -234,6 +231,7 @@ void ofApp::draw() {
 	// the cube will rotate more slowly (increase RotX and RotY).
 	//
 	// sender->HoldFps(30);
+
 
 
 }
@@ -256,29 +254,12 @@ void ofApp::mouseReleased(int x, int y, int button)
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h) 
 {
-	// "bResized" is a local flag to signal that update of
-	// sender dimensions is necessary to retain the size of the screen.
-	// The sending fbo and pixel buffer must also be re-sized
-	//
-	// A flag is used because Update() and Draw() are not called while
-	// the window is being resized, so texture or image re-allocation
-	// can be done after the mouse button is released.
-	// This prevents multiple re-allocation as the window is stretched.
-	// If Openframeworks is not used, a Windows application with 
-	// a message loop can monitor "WM_EXITSIZEMOVE".
-	//
-	// Re-allocation is not actually necessary for this application
-	// because the fbo size is independent of the window, but it shows
-	// how sender size change can be managed if necessary.
-	//
+	// Update the sending fbo, texture or image
 	if (w > 0 && h > 0) {
-		if (w != (int)sender->GetWidth() || h != (int)sender->GetHeight()) {
-			// Change the sender dimensions here
-			// the changes will take effect in Draw()
-			senderwidth = (unsigned int)ofGetWidth();
-			senderheight = (unsigned int)ofGetHeight();
-			bResized = true;
-		}
+		senderwidth = w;
+		senderheight = h;
+		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
+		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
 	}
 
 }

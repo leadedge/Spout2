@@ -41,6 +41,8 @@
 //		19.01.20 - Remove send data functions
 //				   Change SendFboTexture to SendFbo
 //		20.01.20 - Change GetSenderTextureID() to GetSharedTextureID
+//		30.05.20 - Change SendTextureData/SendImageData back to SendTexture/SendImage
+//				   Remove 2.006 overloads. Library is now exclusively 2.007.
 //				   Re-build for revised Spout SDK - 32 bit and 64 bit - VS2017 / MT
 //
 /*
@@ -89,6 +91,7 @@ class SPOUTImpl : public SPOUTLIBRARY
 		//
 
 		// Sender
+		const char * GetName();
 		unsigned int GetWidth();
 		unsigned int GetHeight();
 		long GetFrame();
@@ -97,8 +100,8 @@ class SPOUTImpl : public SPOUTLIBRARY
 
 		// Receiver
 		void SetReceiverName(const char * SenderName);
-		bool ReceiveTextureData(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
-		bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
+		bool ReceiveTexture(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
+		bool ReceiveImage(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
 		bool IsUpdated();
 		bool IsConnected();
 		void SelectSender();
@@ -145,7 +148,7 @@ class SPOUTImpl : public SPOUTLIBRARY
 		bool FindSubKey(HKEY hKey, const char *subkey);
 
 		//
-		// 2.006 and earlier
+		// 2.006  compatibility
 		//
 
 		// Sender
@@ -159,9 +162,6 @@ class SPOUTImpl : public SPOUTLIBRARY
 		// Receiver
 		bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
 		void ReleaseReceiver();
-		bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
-		bool SelectSenderPanel(const char* message = NULL);
-		bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
 		bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 
 		bool IsInitialized();
@@ -221,6 +221,11 @@ class SPOUTImpl : public SPOUTLIBRARY
 // Sender
 //
 
+const char * SPOUTImpl::GetName()
+{
+	return spoutSDK->GetName();
+}
+
 unsigned int SPOUTImpl::GetWidth()
 {
 	return spoutSDK->GetWidth();
@@ -255,14 +260,14 @@ void SPOUTImpl::SetReceiverName(const char* SenderName)
 	spoutSDK->SetReceiverName(SenderName);
 }
 
-bool SPOUTImpl::ReceiveTextureData(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
+bool SPOUTImpl::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
-	return spoutSDK->ReceiveTextureData(TextureID, TextureTarget, bInvert, HostFbo);
+	return spoutSDK->ReceiveTexture(TextureID, TextureTarget, bInvert, HostFbo);
 }
 
-bool SPOUTImpl::ReceiveImageData(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
+bool SPOUTImpl::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
-	return spoutSDK->ReceiveImageData(pixels, glFormat, bInvert, HostFbo);
+	return spoutSDK->ReceiveImage(pixels, glFormat, bInvert, HostFbo);
 }
 
 bool SPOUTImpl::IsUpdated()
@@ -527,22 +532,6 @@ bool SPOUTImpl::CreateReceiver(char* Sendername, unsigned int &width, unsigned i
 void SPOUTImpl::ReleaseReceiver()
 {
 	spoutSDK->ReleaseReceiver();
-}
-
-bool SPOUTImpl::ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
-{
-	return spoutSDK->ReceiveTexture(Sendername, width, height, TextureID, TextureTarget, bInvert, HostFBO);
-}
-
-
-bool SPOUTImpl::SelectSenderPanel(const char* message)
-{
-	return spoutSDK->SelectSenderPanel(message);
-}
-
-bool SPOUTImpl::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFBO)
-{
-	return spoutSDK->ReceiveImage(Sendername, width, height, pixels, glFormat, bInvert, HostFBO);
 }
 
 bool SPOUTImpl::CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected)

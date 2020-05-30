@@ -52,6 +52,7 @@ public:
 	// 2.007
 
 	// Sender
+	const char * GetName();
 	unsigned int GetWidth();
 	unsigned int GetHeight();
 	long GetFrame();
@@ -60,8 +61,8 @@ public:
 
 	// Receiver
 	void SetReceiverName(const char * SenderName);
-	bool ReceiveTextureData(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
-	bool ReceiveImageData(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
+	bool ReceiveTexture(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
+	bool ReceiveImage(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
 	bool IsUpdated();
 	bool IsConnected();
 	void SelectSender();
@@ -77,7 +78,7 @@ public:
 	bool IsFrameCountEnabled();
 
 	//
-	// 2.006 and earlier
+	// 2.006  compatibility
 	//
 
 	// Sender
@@ -92,9 +93,6 @@ public:
 	// Receiver
 	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
 	void ReleaseReceiver();
-	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
-	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
-	bool SelectSenderPanel(const char* message = NULL);
 	bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 
 	bool IsInitialized();
