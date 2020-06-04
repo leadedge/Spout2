@@ -18,7 +18,7 @@ SpoutDirectX.h\
 SpoutFrameCount.h\
 SpoutSenderNames.h\
 SpoutSharedMemory.h\
-SpoutUtils.h\
+SpoutUtils.h  
 
 To build these examples, retain the folder structure of the Spout distribution.\
 The Spout SDK files should be in a folder "SpoutSDK" two levels above the example solution folder.
