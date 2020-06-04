@@ -30,8 +30,8 @@ The Spout SDK files should be in a folder "SpoutSDK" two levels above the exampl
 		          Tutorial04.sln <- Visual Studio 2017 solution
 				  .
 				  . 
-			  Tutorial07 <- Receiver example
-			      Tutorial07.sln <- Visual Studio 2017 solution
+		      Tutorial07 <- Receiver example
+		          Tutorial07.sln <- Visual Studio 2017 solution
 				  .
 				  .
 
