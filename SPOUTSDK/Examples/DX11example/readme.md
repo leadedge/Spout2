@@ -1,26 +1,26 @@
-Examples of how to use the Spout SDK with DirectX textures without using OpenGL.
+Examples of how to use the Spout SDK with DirectX textures without using OpenGL.\
 Based on D3D11 tutorials by Chuck Walbourn updated for Visual Studio 2017 and the Windows 10 SDK.
 
  https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
 
-Tutorial04 - sender
+Tutorial04 - sender\
 Tutorial07 - receiver
 
 The following source files of the Spout SDK are required :
 
-SpoutCommon.h
-SpoutDirectX.cpp
-SpoutFrameCount.cpp
-SpoutSenderNames.cpp
-SpoutSharedMemory.cpp
-SpoutUtils.cpp
-SpoutDirectX.h
-SpoutFrameCount.h
-SpoutSenderNames.h
-SpoutSharedMemory.h
-SpoutUtils.h
+SpoutCommon.h\
+SpoutDirectX.cpp\
+SpoutFrameCount.cpp\
+SpoutSenderNames.cpp\
+SpoutSharedMemory.cpp\
+SpoutUtils.cpp\
+SpoutDirectX.h\
+SpoutFrameCount.h\
+SpoutSenderNames.h\
+SpoutSharedMemory.h\
+SpoutUtils.h\
 
-To build these examples, retain the folder structure of the Spout distribution.
+To build these examples, retain the folder structure of the Spout distribution.\
 The Spout SDK files should be in a folder "SpoutSDK" two levels above the example solution folder.
 
       SpoutSDK <- this folder has all the Spout SDK source files in it 
