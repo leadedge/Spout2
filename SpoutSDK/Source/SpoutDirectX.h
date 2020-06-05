@@ -36,15 +36,12 @@
 #include <windowsx.h>
 #include <d3d9.h>
 #include <d3d11.h>
-// #include <DXGI.h> // LJ DEBUG
-#include <string>
 #include <iostream>
 
 #pragma comment (lib, "d3d9.lib")
 #pragma comment (lib, "d3d11.lib")
 #pragma comment (lib, "DXGI.lib")
 
-using namespace std;
 
 class SPOUT_DLLEXP spoutDirectX {
 

@@ -35,6 +35,7 @@
 //		23.01.17	- pEventQuery->Release() for writeDX9surface
 //		24.04.17	- Add MessageBox error warnings in CreateSharedDX11Texture
 //		11.11.18	- Add GetImmediateContext()
+//		05.06.20	- remove using namespace std and <string> include in header
 //
 // ====================================================================================
 /*

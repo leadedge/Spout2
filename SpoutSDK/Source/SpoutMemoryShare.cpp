@@ -14,6 +14,7 @@
 	25.09.15 - set sendermem object pointer to NULL in constructor
 	11.10.15 - introduced global width and height and GetSenderMemorySize function
 	29.02.16 - cleanup
+	05.06.20 - removed "using namespace std" from header
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	Copyright (c) 2014-2017, Lynn Jarvis. All rights reserved.
@@ -63,7 +64,7 @@ spoutMemoryShare::~spoutMemoryShare() {
 // RECEIVER : Attach to an existing named shared memory map
 bool spoutMemoryShare::CreateSenderMemory(const char *sendername, unsigned int width, unsigned int height)
 {
-	string namestring = sendername;
+	std::string namestring = sendername;
 
 	// Create a name for the map from the sender name
 	namestring += "_map";
@@ -99,7 +100,7 @@ bool spoutMemoryShare::CreateSenderMemory(const char *sendername, unsigned int w
 // so a new map cannot be created by a receiver.
 bool spoutMemoryShare::UpdateSenderMemorySize(const char *sendername, unsigned int width, unsigned int height)
 {
-	string namestring = sendername;
+	std::string namestring = sendername;
 
 	namestring += "_map";
 
@@ -130,7 +131,7 @@ bool spoutMemoryShare::UpdateSenderMemorySize(const char *sendername, unsigned i
 // RECEIVER : Open an existing named shared memory map
 bool spoutMemoryShare::OpenSenderMemory(const char *sendername)
 {
-	string namestring = sendername;
+	std::string namestring = sendername;
 
 	// Create a name for the map from the sender name
 	namestring += "_map";

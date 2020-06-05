@@ -42,8 +42,6 @@
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
 
-using namespace std;
-
 class SPOUT_DLLEXP spoutMemoryShare {
 
 	public:
