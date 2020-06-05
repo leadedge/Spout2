@@ -109,6 +109,7 @@
 //					  https://github.com/leadedge/Spout2/issues/24
 //					  temporary changes to allow selection of a sender 
 //					  when a name is provided for CreateReceiver
+//		05.06.20	- corrected std variables without namespace
 //
 // ================================================================
 /*
@@ -929,7 +930,7 @@ bool Spout::FindFileVersion(const char *FilePath, DWORD &versMS, DWORD &versLS)
 
 
 int Spout::GetSenderCount() {
-	std::set<string> SenderNameSet;
+	std::set<std::string> SenderNameSet;
 	if(interop.senders.GetSenderNames(&SenderNameSet)) {
 		return((int)SenderNameSet.size());
 	}
@@ -944,9 +945,9 @@ int Spout::GetSenderCount() {
 // sendernameMaxSize - in
 bool Spout::GetSenderName(int index, char* sendername, int sendernameMaxSize)
 {
-	std::set<string> SenderNameSet;
-	std::set<string>::iterator iter;
-	string namestring;
+	std::set<std::string> SenderNameSet;
+	std::set<std::string>::iterator iter;
+	std::string namestring;
 	char name[256];
 	int i;
 
@@ -1433,7 +1434,7 @@ bool Spout::CheckSpoutPanel()
 					newname[0] = 0;
 					if(!ReadPathFromRegistry(newname, "Software\\Leading Edge\\SpoutPanel", "Sendername")) {
 						// Otherwise try the text file method
-						string line;
+						std::string line;
 						HMODULE module;
 						char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
 					
@@ -1443,7 +1444,7 @@ bool Spout::CheckSpoutPanel()
 						_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
 						_makepath_s(path, MAX_PATH, drive, dir, "spoutpanel", ".txt");
 						
-						ifstream infile(path, ios::in);
+						std::ifstream infile(path, std::ios::in);
 						if (infile.is_open()) {
 							if(getline(infile, line)) {
 								strcpy_s(newname, 256, line.c_str());

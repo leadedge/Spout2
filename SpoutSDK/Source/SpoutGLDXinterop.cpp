@@ -194,6 +194,7 @@
 		11.11.18	- Correct release of DX11 immediate context
 					  TODO : DX9 leak checking
 		12.11.18	- Always release DX9 device. Fix Milkdrop crash.
+		05.06.20	- corrected std variables without namespace
 
 */
 
@@ -347,7 +348,7 @@ bool spoutGLDXinterop::OpenDeviceKey(const char* key, int maxsize, char *descrip
 	DWORD dwSize, dwKey;  
 	char output[256];
 	strcpy_s(output, 256, key);
-	string SubKey = strstr(output, "System");
+	std::string SubKey = strstr(output, "System");
 
 	// Convert all slash to double slash using a C++ string function
 	// to get subkey string required to extract registry information
