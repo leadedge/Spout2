@@ -26,7 +26,8 @@ o There are new functions to get and set sharing mode if you require them.
 
 The SDK should rebuild without any further action. If you are using a dll, there are updated binaries for the Spout and SpoutLibrary dlls.
 
-CMAKE
+CMAKE\
+for build under MinGW with GCC / Clang
 
 Thanks to https://github.com/jcelerier
 
