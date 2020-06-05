@@ -23,7 +23,6 @@ add_library(Spout
   SpoutReceiver.h
   SpoutSDK.h
   SpoutSender.h
-  SpoutSenderMemory.h
   SpoutSenderNames.h
   SpoutSharedMemory.h
   SpoutCopy.cpp
@@ -34,7 +33,6 @@ add_library(Spout
   SpoutReceiver.cpp
   SpoutSDK.cpp
   SpoutSender.cpp
-  SpoutSenderMemory.cpp
   SpoutSenderNames.cpp
   SpoutSharedMemory.cpp
 )
