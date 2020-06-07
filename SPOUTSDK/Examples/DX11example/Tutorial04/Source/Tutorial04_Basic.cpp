@@ -9,9 +9,8 @@
 //
 // This is a stand-alone version using methods directly from the Spout SDK classes.
 // It is saved as "Tutorial04_Basic.cpp" in the Source folder.
-// Please compare with a version using the "SpoutDX" support class "Tutorial04_SpoutDX.cpp"
-// which could be suitable for your application. This also supports Memoryshare mode.
-// Please note that the SpoutDX class is subject to change.
+// Please compare with "Tutorial04_SpoutDX.cpp" which uses a support class 
+// to contains the methods required and could be suitable for your application.
 // Copy the required file to the build folder and rename to "Tutorial04.cpp"
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -711,11 +710,14 @@ void Render()
 				// Check the sender mutex for access the shared texture
 				// in case a receiver is holding it
 				if (frame.CheckTextureAccess()) {
-					// Copy the backbuffer texture to the sender's shared texture
-					if (CopyTexture(g_pd3dDevice, pBackBuffer, g_pSharedTexture)) {
-						// Signal a new frame while the mutex is still locked
-						frame.SetNewFrame();
-					}
+					g_pImmediateContext->CopyResource(g_pSharedTexture, pBackBuffer);
+					// CopyResource is asynchronous
+					// Here we can wait for it to complete so the
+					// receiver can read the new data straight away
+					// Test performance impact before use
+					// spoutdx.FlushWait(g_pd3dDevice, g_pImmediateContext);
+					// Signal a new frame while the mutex is locked
+					frame.SetNewFrame();
 					// Allow access to the shared texture
 					frame.AllowTextureAccess();
 				}
@@ -752,7 +754,8 @@ bool CopyTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pSourceTexture, ID3D
 		if (pImmediateContext) {
 			pImmediateContext->CopyResource(pDestTexture, pSourceTexture);
 			// Make sure that CopyResource has completed
-			spoutdx.FlushWait(pd3dDevice, pImmediateContext);
+			// Test performance impact before use
+			// spoutdx.FlushWait(pd3dDevice, pImmediateContext);
 			pImmediateContext->Release();
 			return true;
 		}

@@ -9,9 +9,8 @@
 //
 // This is a stand-alone version using methods directly from the Spout SDK classes.
 // It is saved as "Tutorial07_Basic.cpp" in the Source folder.
-// Please compare with a version using the "SpoutDX" support class "Tutorial07_SpoutDX.cpp"
-// which could be suitable for your application. This also supports Memoryshare mode.
-// Please note that the SpoutDX class is subject to change.
+// Please compare with "Tutorial07_SpoutDX.cpp" which uses a support class 
+// to contains the methods required and could be suitable for your application.
 // Copy the required file to the build folder and rename to "Tutorial07.cpp"
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -137,7 +136,6 @@ void Render();
 bool ReceiveSpoutTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTexture);
 bool CheckSpoutPanel(char *sendername, int maxchars = 256);
 bool OpenSpoutPanel();
-bool CopyTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pSourceTexture, ID3D11Texture2D* pDestTexture);
 
 
 //--------------------------------------------------------------------------------------
@@ -156,7 +154,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// Default log file path is "C:\Users\username\AppData\Roaming\Spout\"
-	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
+	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // Show only warnings and errors
 
 	// Initialize Spout variables
 	g_pReceivedTexture = nullptr;
@@ -789,8 +787,7 @@ void Render()
 		// The received texture has been updated
 		// In this example, create a shader resource view to texture the cube
 
-		if (g_pSpoutTextureRV)
-			g_pSpoutTextureRV->Release();
+		if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 		g_pSpoutTextureRV = nullptr;
 
 		// Get the format of the received texture
@@ -921,7 +918,6 @@ bool ReceiveSpoutTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTexture)
 			}
 			else {
 				// Go no further 
-				// TODO : handle error
 				return false;
 			}
 		}
@@ -957,12 +953,20 @@ bool ReceiveSpoutTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTexture)
 				if (frame.GetNewFrame()) {
 					// Here is where the sender's shared texture can be safely accessed.
 					// In this example we will copy it to the local texture
-					if (CopyTexture(pd3dDevice, pSharedTexture, *ppTexture)) {
+					ID3D11DeviceContext* pImmediateContext = nullptr;
+					pd3dDevice->GetImmediateContext(&pImmediateContext);
+					if (pImmediateContext) {
+						pImmediateContext->CopyResource(*ppTexture, pSharedTexture);
+						// CopyResource is asynchronous
+						// Here we can wait for it to complete
+						// Test performance impact before use
+						// spoutdx.FlushWait(pd3dDevice, pImmediateContext);
+						pImmediateContext->Release();
 						// Allow texture access before returning
 						frame.AllowTextureAccess(pSharedTexture);
 						// Return true to use the updated texture
 						return true;
-					} // Texture copy successful
+					}
 				} // New frame from the sender
 				// Allow texture access if it was not a new frame
 				frame.AllowTextureAccess(pSharedTexture);
@@ -978,10 +982,9 @@ bool ReceiveSpoutTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTexture)
 
 		// The connected sender closed
 
-		// Release the receiving texture
-		if (pTexture)
-			pTexture->Release();
-		*ppTexture = nullptr;
+		// The receiving texture does not have to be released if not received
+		// It is updated when connected to a sender
+		// It should be released when the program closes
 
 		// Zero the name if you want to look for the active sender next time
 		if(bUseActive) g_SenderName[0] = 0;
@@ -1203,21 +1206,3 @@ bool OpenSpoutPanel()
 } // end OpenSpoutPanel
 
 
-//
-// Copy a source texture to a destination texture
-//
-bool CopyTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pSourceTexture, ID3D11Texture2D* pDestTexture)
-{
-	if (pSourceTexture && pDestTexture) {
-		ID3D11DeviceContext* pImmediateContext = nullptr;
-		pd3dDevice->GetImmediateContext(&pImmediateContext);
-		if (pImmediateContext) {
-			pImmediateContext->CopyResource(pDestTexture, pSourceTexture);
-			// Make sure that CopyResource has completed
-			spoutdx.FlushWait(pd3dDevice, pImmediateContext);
-			pImmediateContext->Release();
-			return true;
-		}
-	}
-	return false;
-}

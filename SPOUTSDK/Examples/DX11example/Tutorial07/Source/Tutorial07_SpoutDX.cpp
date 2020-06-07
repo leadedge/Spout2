@@ -1,9 +1,19 @@
 //--------------------------------------------------------------------------------------
 // File: Tutorial07.cpp
 //
-// Adapted for SPOUT input (http://spout.zeal.co/)
+// - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// Adapted for SPOUT output (http://spout.zeal.co/)
 // from : https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
 // Search on "SPOUT" for additions.
+// Version to send using 2.007 methods
+//
+// This is a using the "SpoutDX" support class
+// It is saved as "Tutorial07_SpoutDX.cpp" in the Source folder.
+// Please compare with a stand-alone version "Tutorial07_Basic.cpp"
+// using methods directly from the Spout SDK classes.
+// Copy the required file to the build folder and rename to "Tutorial07.cpp"
+//
+// - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
 // This application demonstrates texturing
 //
@@ -90,7 +100,8 @@ XMFLOAT4                            g_vMeshColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 // SPOUT
 spoutDX spoutreceiver;
-ID3D11ShaderResourceView*           g_pSpoutTextureRV = nullptr;
+ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr;
+ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
 
 //--------------------------------------------------------------------------------------
 // Forward declarations
@@ -113,12 +124,13 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT
 
 	// Optionally enable Spout logging
-	// EnableSpoutLog();
-	// EnableSpoutLogFile("Tutorial07.log")
+	// OpenSpoutConsole(); // Console only for debugging
+	// EnableSpoutLog(); // Log to console
+	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
 	// Optionally set the sender name to receive from
-	spoutreceiver.SetReceiverName("Spout DX11 Sender");
+	// spoutreceiver.SetReceiverName("Spout DX11 Sender");
 
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
@@ -148,6 +160,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	spoutreceiver.ReleaseReceiver();
 	if (g_pSpoutTextureRV)
 		g_pSpoutTextureRV->Release();
+	if (g_pReceivedTexture)
+		g_pReceivedTexture->Release();
 
 	CleanupDevice();
 
@@ -728,46 +742,47 @@ void Render()
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// SPOUT
 	//
+	// Receive a sender texture
+	if (spoutreceiver.ReceiveTexture(g_pd3dDevice, &g_pReceivedTexture)) {
 
-	// Try to receive a sender texture
-	if(spoutreceiver.ReceiveTexture(g_pd3dDevice)) {
-
-		// The sender's shared texture has been copied to a texture within the
-		// SpoutDX class and is now available for use :
-
-		// ID3D11Texture2D* spoutreceiver.GetSenderTexture();
-		// unsigned int GetSenderWidth();
-		// unsigned int GetSenderHeight();
-		// DXGI_FORMAT GetSenderTextureFormat();
-
-		// In this example, a shader resource view of the texture is created
-
-		// If the sender has changed, the shader resource view or local texture has to be reset.
+		// The texture passed in will have been updated
+		// by copy from the sender's shared texture
+		//
+		// Sender details can be retrieved with :
+		//		const char * GetSenderName();
+		//		unsigned int GetSenderWidth();
+		//		unsigned int GetSenderHeight();
+		//		DXGI_FORMAT GetSenderFormat();
+		//		HANDLE GetSenderHandle;
+		//
+		// The receiver can also query the sender frame number and rate
+		//		long GetSenderFrame();
+		//		double GetSenderFps();
+		//
 		if (spoutreceiver.IsUpdated()) {
 
-			if (g_pSpoutTextureRV)
-				g_pSpoutTextureRV->Release();
+			// The receiving texture has been updated from a new sender frame
+			// Any action required by the receiver can be done here
+			// In this example, a shader resource view of the texture is created
+
+			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 			g_pSpoutTextureRV = nullptr;
 
 			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
 			ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
-			shaderResourceViewDesc.Format = spoutreceiver.GetSenderTextureFormat(); // Matching format is important
+			shaderResourceViewDesc.Format = spoutreceiver.GetSenderFormat(); // Matching format is important
 			shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 			shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
 			shaderResourceViewDesc.Texture2D.MipLevels = 1;
-			g_pd3dDevice->CreateShaderResourceView(spoutreceiver.GetSenderTexture(), &shaderResourceViewDesc, &g_pSpoutTextureRV);
+			g_pd3dDevice->CreateShaderResourceView(g_pReceivedTexture, &shaderResourceViewDesc, &g_pSpoutTextureRV);
 
 		}
 
 	}
-	else {
-		// There is no sender or the connected sender closed
-		// Release local resources
-		if (g_pSpoutTextureRV)
-			g_pSpoutTextureRV->Release();
-		g_pSpoutTextureRV = nullptr;
-	}
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// The receiving texture does not have to be released if not received
+	// It is updated when connected to a sender
+	// It should be released when the program closes
+
 
 	// Rotate cube around the origin
 	// g_World = XMMatrixRotationY(t);
@@ -829,4 +844,3 @@ void Render()
 
 
 }
-

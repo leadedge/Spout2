@@ -1,9 +1,19 @@
 //--------------------------------------------------------------------------------------
 // File: Tutorial04.cpp
 //
+// - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Adapted for SPOUT output (http://spout.zeal.co/)
 // from : https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
 // Search on "SPOUT" for additions.
+// Version to send using 2.007 methods
+//
+// This is a using the "SpoutDX" support class
+// It is saved as "Tutorial04_SpoutDX.cpp" in the Source folder.
+// Please compare with a stand-alone version "Tutorial04_Basic.cpp"
+// using methods directly from the Spout SDK classes 
+// Copy the required file to the build folder and rename to "Tutorial04.cpp"
+//
+// - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
 // This application displays a 3D cube using Direct3D 11
 //
@@ -93,9 +103,10 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     UNREFERENCED_PARAMETER( lpCmdLine );
 
 	// SPOUT
-	// Optionally enable logging to catch Spout warnings and errors
-	// EnableSpoutLog();
-	// EnableSpoutLogFile("Tutorial04.log);
+	// Optionally enable Spout logging
+	// OpenSpoutConsole(); // Console only for debugging
+	// EnableSpoutLog(); // Log to console
+	// EnableSpoutLogFile("Tutorial04.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
@@ -106,6 +117,10 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         CleanupDevice();
         return 0;
     }
+
+	// SPOUT
+	// Give the sender a name
+	spoutSender.SetSenderName("Tutorial04");
 
     // Main message loop
     MSG msg = {0};
@@ -122,7 +137,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         }
     }
 
+	// SPOUT
 	spoutSender.ReleaseSender();
+
     CleanupDevice();
 
     return ( int )msg.wParam;
@@ -243,7 +260,6 @@ HRESULT InitDevice()
 	// SPOUT note
 	// GL/DX interop Spec
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
-
     D3D_DRIVER_TYPE driverTypes[] =
     {
         D3D_DRIVER_TYPE_HARDWARE,
@@ -535,9 +551,6 @@ HRESULT InitDevice()
 //--------------------------------------------------------------------------------------
 void CleanupDevice()
 {
-	// SPOUT
-	spoutSender.ReleaseSender();
-
     if( g_pImmediateContext ) g_pImmediateContext->ClearState();
     if( g_pConstantBuffer ) g_pConstantBuffer->Release();
     if( g_pVertexBuffer ) g_pVertexBuffer->Release();
@@ -639,12 +652,11 @@ void Render()
 	//
 	// SPOUT
 	//
-	// Get the swap chain's backbuffer to a texture
+	// Get the swap chain's backbuffer to a texture for sending
 	ID3D11Texture2D* pBackBuffer = nullptr;
 	HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
 	if (SUCCEEDED(hr)) {
-		// SendDXtexture handles sender creation and resizing
-		spoutSender.SendTexture("Tutorial04", g_pd3dDevice, pBackBuffer);
+		spoutSender.SendTexture(g_pd3dDevice, pBackBuffer);
 	}
 
     //
@@ -655,10 +667,10 @@ void Render()
 	//
 	// SPOUT - fps control
 	//
-	// Hold a target frame rate - e.g. 30fps
+	// Hold a target frame rate - e.g. 60 or 30fps
 	// This is not necessary if the application already has
 	// fps control but in this example rendering is done
 	// during idle time and render rate can be extremely high.
-	spoutSender.HoldFps(30);
+	spoutSender.HoldFps(60);
 
 }
