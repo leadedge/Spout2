@@ -34,6 +34,7 @@
 #include "resource.h"
 
 // SPOUT
+// Change path as required
 #include "..\..\..\SpoutSDK\SpoutSenderNames.h" // for sender creation and update
 #include "..\..\..\SpoutSDK\SpoutDirectX.h" // for creating a shared texture
 #include "..\..\..\SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
@@ -117,10 +118,10 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// SPOUT
 	// Optionally enable logging to catch Spout warnings and errors
-	// OpenSpoutConsole(); // console only for debugging
-	// EnableSpoutLog();
-	// EnableSpoutLogFile("Tutorial04.log);
-	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
+	// OpenSpoutConsole(); // Console only for debugging
+	// EnableSpoutLog(); // Log to console
+	// EnableSpoutLogFile("Tutorial04.log); // Log to file
+	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // Show only warnings and errors
 	
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
@@ -685,7 +686,7 @@ void Render()
 		pBackBuffer->GetDesc(&desc);
 		if (desc.Width != 0 || desc.Height != 0) {
 			if (!bSpoutInitialized) {
-				// Now that we have a texture size and format create a sender
+				// Now that we have a texture size and format, create a sender
 				g_Width = desc.Width;
 				g_Height = desc.Height;
 				// Create a shared texture of the same size for the sender
@@ -711,11 +712,9 @@ void Render()
 				// in case a receiver is holding it
 				if (frame.CheckTextureAccess()) {
 					g_pImmediateContext->CopyResource(g_pSharedTexture, pBackBuffer);
-					// CopyResource is asynchronous
-					// Here we can wait for it to complete so the
+					// Wait for CopyResource to complete so the
 					// receiver can read the new data straight away
-					// Test performance impact before use
-					// spoutdx.FlushWait(g_pd3dDevice, g_pImmediateContext);
+					// See comments in the FlushWait function
 					// Signal a new frame while the mutex is locked
 					frame.SetNewFrame();
 					// Allow access to the shared texture
@@ -737,7 +736,7 @@ void Render()
 	// This is not necessary if the application already has
 	// fps control but in this example rendering is done
 	// during idle time and render rate can be extremely high.
-	frame .HoldFps(60);
+	frame.HoldFps(60);
 
 }
 
@@ -754,8 +753,9 @@ bool CopyTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pSourceTexture, ID3D
 		if (pImmediateContext) {
 			pImmediateContext->CopyResource(pDestTexture, pSourceTexture);
 			// Make sure that CopyResource has completed
-			// Test performance impact before use
-			// spoutdx.FlushWait(pd3dDevice, pImmediateContext);
+			// Test performance impact
+			// See comments in the FlushWait function
+			spoutdx.FlushWait(pd3dDevice, pImmediateContext);
 			pImmediateContext->Release();
 			return true;
 		}
