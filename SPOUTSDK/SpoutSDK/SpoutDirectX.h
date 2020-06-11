@@ -58,7 +58,7 @@ class SPOUT_DLLEXP spoutDirectX {
 
 		// DX11
 		ID3D11Device* CreateDX11device(); // Create a DX11 device
-		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pSharedTexture, HANDLE &dxShareHandle);
+		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppSharedTexture, HANDLE &dxShareHandle);
 		bool OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle);
 
 		// Output adapter selection

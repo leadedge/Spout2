@@ -462,12 +462,10 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 {
 	bool bConnected = true;
 
-	// printf("Spout::ReceiveTexture(%s), %d, %d, [%x], [%x] (bInvert = %d)\n", name, width, height, TextureID, TextureTarget, bInvert);
-
 	// Test for sender change and user selection
 	if (!CheckReceiver(name, width, height, bConnected)) {
-		// Failure can mean changes to the connected sender (return true)
-		// Or that the sender is no longer there (return false)
+		// Failure can mean changes to the connected sender (return bConnected = true)
+		// Or that the sender is no longer there (return bConnected = false)
 		return bConnected;
 	}
 
@@ -497,8 +495,6 @@ bool Spout::ReceiveImage(char* name, unsigned int &width, unsigned int &height,
 {
 	bool bConnected = true;
 	GLenum glformat = glFormat;
-
-	// printf("Spout::ReceiveImage (%s, %dx%d) - format = %x\n", name, width, height, glFormat);
 
 	// Only RGBA, BGRA, RGB and BGR supported
 	if(!(glformat == GL_RGBA || glFormat == 0x80E1  || glFormat == GL_RGB || glFormat == 0x80E0))
@@ -1109,8 +1105,6 @@ bool Spout::InitReceiver(HWND hwnd, char* sendername, unsigned int width, unsign
 	if(width == 0 || height == 0)
 		return false;
 
-	// printf("InitReceiver [%s] %dx%d - format %d\n", sendername, width, height, dwFormat);
-
 	//
 	// ============== Set up for a RECEIVER ============
 	//
@@ -1177,8 +1171,6 @@ bool Spout::CheckReceiver(char* name, unsigned int &width, unsigned int &height,
 	unsigned int senderheight = 0;
 	DWORD dwFormat = 0;
 	HANDLE hShareHandle = NULL;
-
-	// printf("CheckReceiver(%dx%d\n", width, height);
 
 	// Has it initialized yet ?
 	if (!bInitialized) {
@@ -1262,7 +1254,6 @@ bool Spout::CheckReceiver(char* name, unsigned int &width, unsigned int &height,
 		}
 	} // endif CheckSender found a sender
 	else {
-		// printf("CheckReceiver : CheckSender did not find the sender\n");
 		g_SharedMemoryName[0] = 0; // sender no longer exists
 		// 01.06.15 - safety
 		ReleaseReceiver(); // Start again
@@ -1344,7 +1335,9 @@ bool Spout::CheckSpoutPanel()
 			// otherwise on the next round it will test for the mutex closed
 			if(hMutex) bSpoutPanelActive = true;
 		}
-		else if (!hMutex) { // It has now closed
+		else if (!hMutex) {
+			
+			// SpoutPanel has been activated and has now closed
 
 			bSpoutPanelOpened = false; // Don't do this part again
 			bSpoutPanelActive = false;
@@ -1386,7 +1379,6 @@ bool Spout::CheckSpoutPanel()
 							g_Height = height;
 							g_ShareHandle = hShareHandle;
 							g_Format = dwFormat;
-							// printf("[%s], %dx%d, %x, %x\n", g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
 							bRet = true; // will pass on next call to receivetexture
 
 						} // endif valid sender name
@@ -1394,7 +1386,7 @@ bool Spout::CheckSpoutPanel()
 				} // endif SpoutPanel OK
 			} // got the exit code
 		} // endif no mutex so SpoutPanel has closed
-		if (hMutex) CloseHandle(hMutex);
+		if (hMutex)	CloseHandle(hMutex);
 
 		return bRet;
 	} // SpoutPanel has not been opened

@@ -338,8 +338,13 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	// m_featureLevel is the feature level used
 	// 11.0 = 0xb000
 	// 11.1 = 0xb001
-	// TODO - check for 11.1 and multiple passes if feature level fails
-	// NT share handle requires D3D_FEATURE_LEVEL_11_1
+	// Supporting 11.1 limits compatibility
+	// Note from NVIDIA forums :
+	//  Not all DirectX 11.1 features are software features.
+	//  Target Independent Rasterization requires hardware support
+	//  so we can not make DX11 GPUs fully DX11.1 complaint.
+	// Note from D3D11 Walbourn examples :
+	//	DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1
 	D3D_FEATURE_LEVEL featureLevels[] =	{
 		// D3D_FEATURE_LEVEL_11_1,
 		D3D_FEATURE_LEVEL_11_0,
@@ -351,7 +356,6 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 
 	// To allow for multiple graphics cards we will use m_pAdapterDX11
 	// Which is set by SetAdapter before initializing DirectX
-
 	if(pAdapterDX11) {
 			hr = D3D11CreateDevice( pAdapterDX11,
 									D3D_DRIVER_TYPE_UNKNOWN,
@@ -363,6 +367,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 									&pd3dDevice,
 									&m_featureLevel,
 									&m_pImmediateContext );
+
 	} // endif adapter set
 	else {
 		
@@ -392,6 +397,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 			if(SUCCEEDED(hr))
 				break;
 		}
+
 	} // endif no adapter set
 	
 	// Quit if nothing worked
@@ -411,7 +417,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 											unsigned int width, 
 											unsigned int height, 
 											DXGI_FORMAT format, 
-											ID3D11Texture2D** pSharedTexture,
+											ID3D11Texture2D** ppSharedTexture,
 											HANDLE &dxShareHandle)
 {
 	ID3D11Texture2D* pTexture;
@@ -425,9 +431,8 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	// Create a new shared DX11 texture
 	//
 
-	pTexture = *pSharedTexture; // The texture pointer
+	pTexture = *ppSharedTexture; // The texture pointer
 
-	// 27.06.19
 	// Release the texture if it already exists
 	if (pTexture) ReleaseDX11Texture(pd3dDevice, pTexture);
 
@@ -472,7 +477,6 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	desc.MipLevels			= 1;
 	desc.ArraySize			= 1;
 
-
 	HRESULT res = pd3dDevice->CreateTexture2D(&desc, NULL, &pTexture);
 	
 	if (res != S_OK) {
@@ -512,9 +516,9 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	pOtherResource->GetSharedHandle(&dxShareHandle); 
 	pOtherResource->Release();
 
-	*pSharedTexture = pTexture;
+	*ppSharedTexture = pTexture;
 
-	SpoutLogNotice("    pTexture = 0x%Ix", pTexture);
+	// SpoutLogNotice("    pTexture = 0x%Ix", pTexture);
 
 	return true;
 
@@ -891,7 +895,6 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 		return 0;
 
 	unsigned long refcount = pTexture->Release();
-
 	if (refcount > 0) 
 		SpoutLogWarning("spoutDirectX::ReleaseDX11Texture - refcount = %d", refcount);
 
@@ -935,23 +938,29 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 
 void spoutDirectX::FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext)
 {
-
-	// TODO : pd3dDevice not used
 	if (!pd3dDevice || !pImmediateContext)
 		return;
 
-	// ==================================================
-	// Tests confirm that for a sender the following code
-	// eliminates jerky texture access by a receiver.
+	// ======================================================
+	// Repeated tests confirm that for a sender the following
+	// code eliminates jerky texture access by a receiver.
+	// Not required for the receiver
+	// ======================================================
 
 	// CopyResource is an asynchronous call.
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb205132%28v=vs.85%29.aspx#Performance_Considerations
 	// "the copy has not necessarily executed by the time the method returns".
-
+	//
 	// A flush is necessary to finish the command queue and make
 	// sure the copy command gets sent to the GPU immediately
+	
 	// (Approx 250 microseconds 0.25 msec)
 	pImmediateContext->Flush();
+
+	// Microsoft docs :
+	// Because Flush operates asynchronously, it can return either before or after
+	// the GPU finishes executing the queued graphics commands.
+	// However, the graphics commands eventually always complete.
 
 	// Wait for the copy to finish.
 	// (Approx 550 microseconds 0.55 msec)

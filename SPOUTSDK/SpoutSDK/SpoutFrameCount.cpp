@@ -286,8 +286,10 @@ bool spoutFrameCount::GetNewFrame()
 
 	// A receiver creates of opens a named semaphore when it connects to a sender
 	// Do not block if semaphore creation failed so that ReceiveTexture can still be called
-	if (!m_hCountSemaphore)
+	if (!m_hCountSemaphore) {
+		printf("No count sempaphore\n");
 		return true;
+	}
 
 	// Access the frame count semaphore
 	DWORD dwWaitResult = WaitForSingleObject(m_hCountSemaphore, 0);
@@ -475,21 +477,15 @@ void spoutFrameCount::HoldFps(int fps)
 bool spoutFrameCount::CheckTextureAccess(ID3D11Texture2D* D3D11texture)
 {
 	if (IsKeyedMutex(D3D11texture)) {
-		// Use the texture keyed mutex
-		if (CheckKeyedAccess(D3D11texture))
-			return true;
+		return CheckKeyedAccess(D3D11texture);
 	}
 	else {
-		// Use the sender named mutex
-		if (CheckAccess())
-			return true;
+		return CheckAccess();
 	}
-	return false;
 }
 
 void spoutFrameCount::AllowTextureAccess(ID3D11Texture2D* D3D11texture)
 {
-	// Release mutex and allow access to the texture
 	if (IsKeyedMutex(D3D11texture))
 		AllowKeyedAccess(D3D11texture);
 	else
@@ -507,19 +503,31 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 	sprintf_s((char*)szMutexName, 300, "%s_SpoutAccessMutex", SenderName);
 
 	// Create or open mutex depending, on whether it already exists or not
+	//  - A sender will create one.
+	//  - A receiver will open for a specific sender.
+	//    A receiver should not open a mutex until a sender is found to connect to.
+	//    If that sender does not have a mutex, one will be created
+	//    and will always be available to the receiver.
+	//
 	hMutex = CreateMutexA(NULL, false, (LPCSTR)szMutexName);
 
 	if (hMutex == NULL) {
-		SpoutLogError("spoutFrameCount::CreateAccessMutex - access mutex NULL invalid handle");
+		SpoutLogError("spoutFrameCount::CreateAccessMutex - NULL invalid handle");
 		return false;
 	}
 	else {
 		errnum = GetLastError();
 		if (errnum == ERROR_INVALID_HANDLE) {
-			SpoutLogError("spoutFrameCount::CreateAccessMutex - access mutex [%s] invalid handle", szMutexName);
+			SpoutLogError("spoutFrameCount::CreateAccessMutex - [%s] invalid handle", szMutexName);
 			return false;
 		}
-		SpoutLogNotice("spoutFrameCount::CreateAccessMutex - access mutex [%s] - 0x%x", szMutexName, hMutex);
+		// Here we can find if the mutex already exists
+		else if (errnum == ERROR_ALREADY_EXISTS) {
+			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s] already exists", szMutexName);
+		}
+		else {
+			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s] created - 0x%x", szMutexName, hMutex);
+		}
 	}
 
 	m_hAccessMutex = hMutex;
@@ -539,22 +547,22 @@ void spoutFrameCount::CloseAccessMutex()
 
 // -----------------------------------------------
 // Check whether any other process is holding the lock
-// and wait for access for 4 frames if so.
+// and wait for access for up to 4 frames if so.
 // For receiving from Version 1 apps with no mutex lock,
 // a reader will have created the mutex and will have
-// sole access and rely on the interop locks
+// sole access and rely on the interop locks.
 bool spoutFrameCount::CheckAccess()
 {
 	// Don't block if no mutex for Spout1 apps
-	// or if called when the sender has closed
-	// AllowAccess also tests for a null handle
+	// or if called when the sender has closed.
+	// AllowAccess also tests for a null handle.
 	if (!m_hAccessMutex)
 		return true;
 
 	// Typically 2-3 microseconds.
 	// 10 receivers - no increase.
 
-	DWORD dwWaitResult = WaitForSingleObject(m_hAccessMutex, 67); // 4 frames at 60fps
+	DWORD dwWaitResult = WaitForSingleObject(m_hAccessMutex, 67); // timeout 4 frames at 60fps
 	switch (dwWaitResult) {
 		case WAIT_OBJECT_0 :
 			// The state of the object is signalled.
@@ -597,6 +605,16 @@ void spoutFrameCount::AllowAccess()
 
 
 // Keyed mutex check
+//
+// Microsoft docs :
+// When a surface is created using the D3D10_RESOURCE_MISC_SHARED_KEYEDMUTEX 
+// value of the D3D10_RESOURCE_MISC_FLAG enumeration, you must call the 
+// AcquireSync method before rendering to the surface. You must call the 
+// ReleaseSync method when you are done rendering to a surface.
+//
+// Tests show that if a texture has been created with a keyed mutex it must
+// be used in place of the sender named mutex or CopyResource fails
+//
 bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 {
 	// 85-90 microseconds
@@ -636,7 +654,6 @@ void spoutFrameCount::AllowKeyedAccess(ID3D11Texture2D* pTexture)
 	// 22-24 microseconds
 
 	if (pTexture) {
-
 		IDXGIKeyedMutex* pDXGIKeyedMutex;
 		pTexture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
 		if (pDXGIKeyedMutex) {
@@ -652,8 +669,9 @@ bool spoutFrameCount::IsKeyedMutex(ID3D11Texture2D* D3D11texture)
 	if (D3D11texture) {
 		D3D11_TEXTURE2D_DESC desc;
 		D3D11texture->GetDesc(&desc);
-		if (desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)
+		if (desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX) {
 			return true;
+		}
 	}
 	// Return to access by another method if no keyed mutex
 	return false;

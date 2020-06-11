@@ -662,7 +662,8 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 {
 	SharedTextureInfo info;
 
-	//	For a receiver check the user entered Sender name, if one, to see if it exists
+	// Check the user entered Sender name to see if it exists
+
 	if(sendername[0] == 0) {
 		// Passed name was null, so find the active sender
 		if(!GetActiveSender(sendername))

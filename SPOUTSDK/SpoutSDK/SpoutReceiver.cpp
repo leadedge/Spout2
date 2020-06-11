@@ -148,21 +148,28 @@ bool SpoutReceiver::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool 
 {
 	// Return if flagged for update
 	// The update flag is reset when the receiving application calls IsUpdated()
-	if (m_bUpdate)
+	if (m_bUpdate) {
+		// printf("m_bUpdate\n");
 		return true;
+	}
 
 	// Initialization is recorded in the spout class for sender or receiver
 	// m_Width or m_Height are established when the receiver connects to a sender
+	// m_SenderName is established if no connecting name has been specified
 	if (!IsConnected()) {
 		if (CreateReceiver(m_SenderName, m_Width, m_Height, m_bUseActive)) {
 			// Signal the application to update the receiving texture size
 			// Retrieved with a call to the IsUpdated function
 			m_bUpdate = true;
 			m_bConnected = true;
+			printf("Created [%s] %dx%d\n", m_SenderName, m_Width, m_Height);
 			return true;
 		}
 	}
 	else {
+
+		// printf("Receiving\n");
+
 		// Save sender name and dimensions to test for change
 		char name[256];
 		strcpy_s(name, 256, m_SenderName);
@@ -265,14 +272,13 @@ bool SpoutReceiver::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bI
 //---------------------------------------------------------
 // Check for sender change
 //  If updated, the application must update the receiving texture
-//  before the next call to ReceiveTextureData or ReceiveImageData.
+//  before the next call to ReceiveTexture or ReceiveImage
 bool SpoutReceiver::IsUpdated()
 {
 	bool bRet = m_bUpdate;
 	// Reset the update flag
 	m_bUpdate = false;
 	return bRet;
-
 }
 
 //---------------------------------------------------------
