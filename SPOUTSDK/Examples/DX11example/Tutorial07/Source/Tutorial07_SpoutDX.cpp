@@ -649,6 +649,11 @@ HRESULT InitDevice()
     cbChangesOnResize.mProjection = XMMatrixTranspose( g_Projection );
     g_pImmediateContext->UpdateSubresource( g_pCBChangeOnResize, 0, nullptr, &cbChangesOnResize, 0, 0 );
 
+	// SPOUT
+	// Create a receiving texture
+	// The texture size and format are updated after connecting to a sender
+	spoutreceiver.CreateDX11texture(g_pd3dDevice, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, &g_pReceivedTexture);
+
     return S_OK;
 }
 
@@ -744,9 +749,11 @@ void Render()
 	//
 	// Receive a sender texture
 	if (spoutreceiver.ReceiveTexture(g_pd3dDevice, &g_pReceivedTexture)) {
-
-		// The texture passed in will have been updated
-		// by copy from the sender's shared texture
+		//
+		// If no texture ponter is passed in, a receiving texture
+		// is created within the SpoutDX class and the pointer can be
+		// retrieved with :
+		//		ID3D11Texture2D* GetTexture();
 		//
 		// Sender details can be retrieved with :
 		//		const char * GetSenderName();
@@ -759,15 +766,22 @@ void Render()
 		//		long GetSenderFrame();
 		//		double GetSenderFps();
 		//
+		// Re-create the receiving texture if the sender size does not match
 		if (spoutreceiver.IsUpdated()) {
 
-			// The receiving texture has been updated from a new sender frame
-			// Any action required by the receiver can be done here
+			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
+			g_pReceivedTexture = nullptr;
+			spoutreceiver.CreateDX11texture(g_pd3dDevice,
+						spoutreceiver.GetSenderWidth(),
+						spoutreceiver.GetSenderHeight(),
+						spoutreceiver.GetSenderFormat(),
+						&g_pReceivedTexture);
+
+			// Any other action required by the receiver can be done here
 			// In this example, a shader resource view of the texture is created
 
 			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 			g_pSpoutTextureRV = nullptr;
-
 			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
 			ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
 			shaderResourceViewDesc.Format = spoutreceiver.GetSenderFormat(); // Matching format is important
@@ -775,14 +789,8 @@ void Render()
 			shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
 			shaderResourceViewDesc.Texture2D.MipLevels = 1;
 			g_pd3dDevice->CreateShaderResourceView(g_pReceivedTexture, &shaderResourceViewDesc, &g_pSpoutTextureRV);
-
 		}
-
 	}
-	// The receiving texture does not have to be released if not received
-	// It is updated when connected to a sender
-	// It should be released when the program closes
-
 
 	// Rotate cube around the origin
 	// g_World = XMMatrixRotationY(t);

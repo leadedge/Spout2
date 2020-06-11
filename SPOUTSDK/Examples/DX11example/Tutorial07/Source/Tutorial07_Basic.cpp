@@ -167,13 +167,6 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	bSpoutInitialized = false;
 	bUseActive = true;
 
-	// Optionally set the sender name to receive from
-	// and signal not to connect to the active sender.
-	// The receiver will only connect to that sender.
-	// The user can over-ride this by selecting another.
-	// strcpy_s(g_SenderName, 256, "Spout DX11 Sender");
-	// bUseActive = false; 
-
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
 
@@ -182,6 +175,13 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         CleanupDevice();
         return 0;
     }
+
+	// Optionally set name of the sender to receive from
+	// and signal not to connect to the active sender.
+	// The receiver will only connect to that sender.
+	// The user can over-ride this by selecting another.
+	// strcpy_s(g_SenderName, 256, "Spout DX11 Sender");
+	// bUseActive = false; 
 
     // Main message loop
     MSG msg = {0};
@@ -784,14 +784,18 @@ void Render()
 	// SPOUT
 	if (ReceiveSpoutTexture(g_pd3dDevice, &g_pReceivedTexture)) {
 
-		// The received texture has been updated
-		// In this example, create a shader resource view to texture the cube
+		// The received texture has been updated.
+		// Sender width, height and texture format can be 
+		// retrieved from the texture description.
+		
+		// Any action required by the receiver can be done here.
+		// In this example, a shader resource view of the texture is created.
 
 		if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 		g_pSpoutTextureRV = nullptr;
 
-		// Get the format of the received texture
-		// Matching format for the shader resource view is important
+		// Get the format of the received texture.
+		// Matching format for the shader resource view is important.
 		D3D11_TEXTURE2D_DESC td;
 		g_pReceivedTexture->GetDesc(&td);
 
@@ -910,7 +914,7 @@ bool ReceiveSpoutTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTexture)
 			g_Height = height;
 
 			// Create the receiving texture.
-			// This does not have to be shared.
+			// This does not have to be shared but the Spout function is convenient.
 			HANDLE textureHandle = NULL; // dummy handle for the Spout function
 			if (spoutdx.CreateSharedDX11Texture(pd3dDevice,
 				g_Width, g_Height, (DXGI_FORMAT)dwFormat, // Format is the same as the sender
@@ -928,7 +932,7 @@ bool ReceiveSpoutTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTexture)
 
 		// Set up if not initialized yet
 		if (!bSpoutInitialized) {
-			// Open a named mutex for access to the sender's shared texture
+			// Open a named mutex to control access to the sender's shared texture
 			frame.CreateAccessMutex(g_SenderName);
 			// Enable frame counting to get the sender frame number and fps
 			frame.EnableFrameCount(g_SenderName);
@@ -957,9 +961,10 @@ bool ReceiveSpoutTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTexture)
 					pd3dDevice->GetImmediateContext(&pImmediateContext);
 					if (pImmediateContext) {
 						pImmediateContext->CopyResource(*ppTexture, pSharedTexture);
-						// CopyResource is asynchronous
-						// Here we can wait for it to complete
-						// Test performance impact before use
+						// CopyResource is asynchronous.
+						// Here we can wait for it to complete so the
+						// new data is available straight away.
+						// Test before use. See comments in the FlushWait function.
 						// spoutdx.FlushWait(pd3dDevice, pImmediateContext);
 						pImmediateContext->Release();
 						// Allow texture access before returning
