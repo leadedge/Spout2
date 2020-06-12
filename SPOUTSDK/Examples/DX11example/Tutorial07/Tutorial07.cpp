@@ -178,6 +178,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// Optionally set the name of the sender to receive from
 	// The receiver will only connect to that sender.
 	// The user can over-ride this by selecting another.
+	// See also for reset of name in render
 	// strcpy_s(g_SenderName, 256, "Spout DX11 Sender");
 
     // Main message loop
@@ -787,8 +788,22 @@ void Render()
 	unsigned int width = g_Width;
 	unsigned int height = g_Height;
 
-	// If SpoutPanel has been opened, the sender name could be different.
-	CheckSpoutPanel(g_SenderName);
+	// If SpoutPanel has been opened, the sender name could be different
+	char sendername[256];
+	if (CheckSpoutPanel(sendername)) {
+		// Reset everything for a new sender name
+		if (strcmp(sendername, g_SenderName) != 0) {
+			if (bSpoutInitialized) {
+				frame.CloseAccessMutex();
+				frame.CleanupFrameCount();
+				g_Width = 0;
+				g_Height = 0;
+				bSpoutInitialized = false;
+				bNewFrame = false;
+			}
+			strcpy_s(g_SenderName, 256, sendername);
+		}
+	}
 
 	// Find if the sender exists.
 	// For an empty name string, the active sender is returned if that exists.
