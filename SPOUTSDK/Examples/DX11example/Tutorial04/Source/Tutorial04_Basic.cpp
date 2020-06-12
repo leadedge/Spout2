@@ -9,8 +9,8 @@
 //
 // This is a stand-alone version using methods directly from the Spout SDK classes.
 // It is saved as "Tutorial04_Basic.cpp" in the Source folder.
-// Please compare with "Tutorial04_SpoutDX.cpp" which uses a support class 
-// to contains the methods required and could be suitable for your application.
+// Please compare with a version using the "SpoutDX" support class "Tutorial04_SpoutDX.cpp"
+// which could be suitable for your application.
 // Copy the required file to the build folder and rename to "Tutorial04.cpp"
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -34,7 +34,7 @@
 #include "resource.h"
 
 // SPOUT
-// Change path as required
+// Change paths as required
 #include "..\..\..\SpoutSDK\SpoutSenderNames.h" // for sender creation and update
 #include "..\..\..\SpoutSDK\SpoutDirectX.h" // for creating a shared texture
 #include "..\..\..\SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
@@ -95,7 +95,7 @@ unsigned int g_Height = 0;
 ID3D11Texture2D* g_pSharedTexture = nullptr; // Texture to be shared
 HANDLE g_dxShareHandle = NULL; // Share handle for the sender
 bool bSpoutInitialized = false;
-bool CopyTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pSourceTexture, ID3D11Texture2D* pDestTexture);
+
 
 //--------------------------------------------------------------------------------------
 // Forward declarations
@@ -118,10 +118,10 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// SPOUT
 	// Optionally enable logging to catch Spout warnings and errors
-	// OpenSpoutConsole(); // Console only for debugging
-	// EnableSpoutLog(); // Log to console
-	// EnableSpoutLogFile("Tutorial04.log); // Log to file
-	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // Show only warnings and errors
+	// OpenSpoutConsole(); // console only for debugging
+	// EnableSpoutLog();
+	// EnableSpoutLogFile("Tutorial04.log);
+	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
@@ -686,7 +686,7 @@ void Render()
 		pBackBuffer->GetDesc(&desc);
 		if (desc.Width != 0 || desc.Height != 0) {
 			if (!bSpoutInitialized) {
-				// Now that we have a texture size and format, create a sender
+				// Now that we have a texture, we can create a sender
 				g_Width = desc.Width;
 				g_Height = desc.Height;
 				// Create a shared texture of the same size for the sender
@@ -701,7 +701,7 @@ void Render()
 				frame.EnableFrameCount(g_SenderName);
 				bSpoutInitialized = true;
 			}
-			// Otherwise check for change of rendering size
+			// If the sender is already created, check for change of rendering size
 			else if (g_Width != desc.Width || g_Height != desc.Height) {
 				spoutSender.UpdateSender(g_SenderName, g_Width, g_Height, NULL, 0);
 			}
@@ -711,11 +711,13 @@ void Render()
 				// Check the sender mutex for access the shared texture
 				// in case a receiver is holding it
 				if (frame.CheckTextureAccess()) {
+					// Copy the backbuffer texture to the sender's shared texture
 					g_pImmediateContext->CopyResource(g_pSharedTexture, pBackBuffer);
-					// Wait for CopyResource to complete so the
-					// receiver can read the new data straight away
-					// See comments in the FlushWait function
-					// Signal a new frame while the mutex is locked
+					// Make sure that CopyResource has completed
+					// so that receivers can access the new data straight away
+					// Refer to comments in the FlushWait function
+					spoutdx.FlushWait(g_pd3dDevice, g_pImmediateContext);
+					// Signal a new frame while the mutex is still locked
 					frame.SetNewFrame();
 					// Allow access to the shared texture
 					frame.AllowTextureAccess();
@@ -736,29 +738,6 @@ void Render()
 	// This is not necessary if the application already has
 	// fps control but in this example rendering is done
 	// during idle time and render rate can be extremely high.
-	frame.HoldFps(60);
+	frame .HoldFps(60);
 
-}
-
-//
-// SPOUT
-//
-// Copy a source texture to a destination texture
-//
-bool CopyTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pSourceTexture, ID3D11Texture2D* pDestTexture)
-{
-	if (pSourceTexture && pDestTexture) {
-		ID3D11DeviceContext* pImmediateContext = nullptr;
-		pd3dDevice->GetImmediateContext(&pImmediateContext);
-		if (pImmediateContext) {
-			pImmediateContext->CopyResource(pDestTexture, pSourceTexture);
-			// Make sure that CopyResource has completed
-			// Test performance impact
-			// See comments in the FlushWait function
-			spoutdx.FlushWait(pd3dDevice, pImmediateContext);
-			pImmediateContext->Release();
-			return true;
-		}
-	}
-	return false;
 }

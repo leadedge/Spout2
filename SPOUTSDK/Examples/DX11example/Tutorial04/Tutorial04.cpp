@@ -1,9 +1,19 @@
 //--------------------------------------------------------------------------------------
 // File: Tutorial04.cpp
 //
+// - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Adapted for SPOUT output (http://spout.zeal.co/)
 // from : https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
 // Search on "SPOUT" for additions.
+// Version to send using 2.007 methods
+//
+// This is a stand-alone version using methods directly from the Spout SDK classes.
+// It is saved as "Tutorial04_Basic.cpp" in the Source folder.
+// Please compare with a version using the "SpoutDX" support class "Tutorial04_SpoutDX.cpp"
+// which could be suitable for your application.
+// Copy the required file to the build folder and rename to "Tutorial04.cpp"
+//
+// - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
 // This application displays a 3D cube using Direct3D 11
 //
@@ -24,7 +34,11 @@
 #include "resource.h"
 
 // SPOUT
-#include "..\SpoutDX\SpoutDX.h"
+// Change paths as required
+#include "..\..\..\SpoutSDK\SpoutSenderNames.h" // for sender creation and update
+#include "..\..\..\SpoutSDK\SpoutDirectX.h" // for creating a shared texture
+#include "..\..\..\SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "..\..\..\SpoutSDK\SpoutUtils.h" // for logging utilites
 
 using namespace DirectX;
 
@@ -71,7 +85,17 @@ XMMATRIX                g_View;
 XMMATRIX                g_Projection;
 
 // SPOUT
-spoutDX spoutSender;
+spoutSenderNames spoutSender;
+spoutDirectX spoutdx;
+spoutFrameCount frame;
+
+char g_SenderName[256];
+unsigned int g_Width = 0;
+unsigned int g_Height = 0;
+ID3D11Texture2D* g_pSharedTexture = nullptr; // Texture to be shared
+HANDLE g_dxShareHandle = NULL; // Share handle for the sender
+bool bSpoutInitialized = false;
+
 
 //--------------------------------------------------------------------------------------
 // Forward declarations
@@ -94,7 +118,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// SPOUT
 	// Optionally enable logging to catch Spout warnings and errors
-	// OpenSpoutConsole(); // Console only for debugging
+	// OpenSpoutConsole(); // console only for debugging
 	// EnableSpoutLog();
 	// EnableSpoutLogFile("Tutorial04.log);
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
@@ -109,7 +133,10 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     }
 
 	// Give the sender a name
-	spoutSender.SetSenderName("Tutorial04");
+	strcpy_s(g_SenderName, 256, "Tutorial04");
+
+	// Create a sender mutex for access to the shared texture
+	frame.CreateAccessMutex(g_SenderName);
 
     // Main message loop
     MSG msg = {0};
@@ -126,7 +153,11 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         }
     }
 
-	spoutSender.ReleaseSender();
+	// SPOUT
+	spoutSender.ReleaseSenderName(g_SenderName);
+	if (g_pSharedTexture)
+		g_pSharedTexture->Release();
+
     CleanupDevice();
 
     return ( int )msg.wParam;
@@ -181,6 +212,10 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
 		(GetSystemMetrics(SM_CYSCREEN) - (rc.bottom - rc.top)) / 2,
 		(rc.right - rc.left),
 		(rc.bottom - rc.top), false);
+
+	g_Width = rc.right - rc.left;
+	g_Height = rc.bottom - rc.top;
+
 
     ShowWindow( g_hWnd, nCmdShow );
 	
@@ -644,8 +679,51 @@ void Render()
 	ID3D11Texture2D* pBackBuffer = nullptr;
 	HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
 	if (SUCCEEDED(hr)) {
-		// SendDXtexture handles sender creation and resizing
-		spoutSender.SendTexture(g_pd3dDevice, pBackBuffer);
+
+		// Get the texture details
+		D3D11_TEXTURE2D_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+		pBackBuffer->GetDesc(&desc);
+		if (desc.Width != 0 || desc.Height != 0) {
+			if (!bSpoutInitialized) {
+				// Now that we have a texture, we can create a sender
+				g_Width = desc.Width;
+				g_Height = desc.Height;
+				// Create a shared texture of the same size for the sender
+				// The format should match that of the local texture (backbuffer in this case)
+				// This should be either DXGI_FORMAT_B8G8R8A8_UNORM or DXGI_FORMAT_R8G8B8A8_UNORM
+				spoutdx.CreateSharedDX11Texture(g_pd3dDevice, g_Width, g_Height, desc.Format, &g_pSharedTexture, g_dxShareHandle);
+				// Create a sender using the shared texture share-handle
+				spoutSender.CreateSender(g_SenderName, g_Width, g_Height, g_dxShareHandle, (DWORD)desc.Format);
+				// Create a sender mutex for access to the shared texture
+				frame.CreateAccessMutex(g_SenderName);
+				// Enable frame counting for sender frame number and fps
+				frame.EnableFrameCount(g_SenderName);
+				bSpoutInitialized = true;
+			}
+			// If the sender is already created, check for change of rendering size
+			else if (g_Width != desc.Width || g_Height != desc.Height) {
+				spoutSender.UpdateSender(g_SenderName, g_Width, g_Height, NULL, 0);
+			}
+
+			if(bSpoutInitialized) {
+				// Send the texture
+				// Check the sender mutex for access the shared texture
+				// in case a receiver is holding it
+				if (frame.CheckTextureAccess()) {
+					// Copy the backbuffer texture to the sender's shared texture
+					g_pImmediateContext->CopyResource(g_pSharedTexture, pBackBuffer);
+					// Make sure that CopyResource has completed
+					// so that receivers can access the new data straight away
+					// Refer to comments in the FlushWait function
+					spoutdx.FlushWait(g_pd3dDevice, g_pImmediateContext);
+					// Signal a new frame while the mutex is still locked
+					frame.SetNewFrame();
+					// Allow access to the shared texture
+					frame.AllowTextureAccess();
+				}
+			}
+		}
 	}
 
     //
@@ -660,6 +738,6 @@ void Render()
 	// This is not necessary if the application already has
 	// fps control but in this example rendering is done
 	// during idle time and render rate can be extremely high.
-	spoutSender.HoldFps(60);
+	frame .HoldFps(60);
 
 }
