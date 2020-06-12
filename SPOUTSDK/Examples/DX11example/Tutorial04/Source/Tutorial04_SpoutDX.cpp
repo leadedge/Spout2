@@ -1,9 +1,19 @@
 //--------------------------------------------------------------------------------------
 // File: Tutorial04.cpp
 //
+// - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Adapted for SPOUT output (http://spout.zeal.co/)
 // from : https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
 // Search on "SPOUT" for additions.
+// Version to send using 2.007 methods
+//
+// This is a sender using the "SpoutDX" support class
+// It is saved as "Tutorial04_SpoutDX.cpp" in the Source folder.
+// Please compare with a stand-alone version using methods directly
+// from the Spout SDK classes "Tutorial04_Basic.cpp"
+// Copy the required file to the build folder and rename to "Tutorial04.cpp"
+//
+// - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
 // This application displays a 3D cube using Direct3D 11
 //
@@ -95,8 +105,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT
 	// Optionally enable logging to catch Spout warnings and errors
 	// OpenSpoutConsole(); // Console only for debugging
-	// EnableSpoutLog();
-	// EnableSpoutLogFile("Tutorial04.log);
+	// EnableSpoutLog(); // Log to console
+	// EnableSpoutLogFile("Tutorial04.log); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
@@ -126,7 +136,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         }
     }
 
+	// SPOUT
 	spoutSender.ReleaseSender();
+
     CleanupDevice();
 
     return ( int )msg.wParam;
@@ -247,7 +259,6 @@ HRESULT InitDevice()
 	// SPOUT note
 	// GL/DX interop Spec
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
-
     D3D_DRIVER_TYPE driverTypes[] =
     {
         D3D_DRIVER_TYPE_HARDWARE,
@@ -640,11 +651,11 @@ void Render()
 	//
 	// SPOUT
 	//
-	// Get the swap chain's backbuffer to a texture
+	// Get the swap chain's backbuffer to a texture for sending
 	ID3D11Texture2D* pBackBuffer = nullptr;
 	HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
 	if (SUCCEEDED(hr)) {
-		// SendDXtexture handles sender creation and resizing
+		// SendTexture handles sender creation and resizing
 		spoutSender.SendTexture(g_pd3dDevice, pBackBuffer);
 	}
 
