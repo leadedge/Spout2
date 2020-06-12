@@ -7,10 +7,10 @@
 // Search on "SPOUT" for additions.
 // Version to receive to an application texture with 2.007 methods
 //
-// This is a stand-alone version using methods directly from the Spout SDK classes.
-// It is saved as "Tutorial07_Basic.cpp" in the Source folder.
-// Please compare with "Tutorial07_SpoutDX.cpp" which uses a support class 
-// to contains the methods required and could be suitable for your application.
+// This is a stand-alone version of a receiver using methods
+// directly from the Spout SDK classes.  It is saved as "Tutorial07_Basic.cpp"
+// in the Source folder. Please compare with "Tutorial07_SpoutDX.cpp" which
+// uses a support class and could be suitable for your application.
 // Copy the required file to the build folder and rename to "Tutorial07.cpp"
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -35,6 +35,7 @@
 #include "resource.h"
 
 // SPOUT
+// Change paths as required
 #include "..\..\..\SpoutSDK\SpoutSenderNames.h" // for sender creation and update
 #include "..\..\..\SpoutSDK\SpoutDirectX.h" // for creating a shared texture
 #include "..\..\..\SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
@@ -112,16 +113,15 @@ spoutFrameCount frame;
 ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
 ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view of the texture
 char g_SenderName[256]; // Sender name
-unsigned int g_Width = 0; // Texture width
-unsigned int g_Height = 0; // Texture height
-long g_senderframe = 0; // Current sender frame number
+unsigned int g_Width = 0; // Sender width
+unsigned int g_Height = 0; // sender height
+long g_senderframe = 0; // Sender frame number
 double g_senderfps = 0.0; // Sender frame rate
+bool bNewFrame = false; // The received frame is new
 bool bSpoutInitialized = false; // Initialized for the connected sender
-bool bUseActive = true; // Connect to the active sender
 bool bSpoutPanelOpened = false; // User opened sender selection panel
 bool bSpoutPanelActive = false; // Selection panel is still open
 SHELLEXECUTEINFOA g_ShExecInfo; // Global info so the exit code can be tested
-
 
 //--------------------------------------------------------------------------------------
 // Forward declarations
@@ -133,9 +133,8 @@ LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
 
 // SPOUT functions
-bool ReceiveSpoutTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTexture);
-bool CheckSpoutPanel(char *sendername, int maxchars = 256);
 bool OpenSpoutPanel();
+bool CheckSpoutPanel(char *sendername, int maxchars = 256);
 
 
 //--------------------------------------------------------------------------------------
@@ -164,9 +163,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	g_Height = 0;
 	g_senderframe = 0;
 	g_senderfps = 0.0;
+	bNewFrame = false;
 	bSpoutInitialized = false;
-	bUseActive = true;
-
+	
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
 
@@ -176,12 +175,10 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         return 0;
     }
 
-	// Optionally set name of the sender to receive from
-	// and signal not to connect to the active sender.
+	// Optionally set the name of the sender to receive from
 	// The receiver will only connect to that sender.
 	// The user can over-ride this by selecting another.
 	// strcpy_s(g_SenderName, 256, "Spout DX11 Sender");
-	// bUseActive = false; 
 
     // Main message loop
     MSG msg = {0};
@@ -778,34 +775,137 @@ void Render()
         if( timeStart == 0 )
             timeStart = timeCur;
         t = ( timeCur - timeStart ) / 1000.0f;
-		t /= 2.0f; // SPOUT - slow it down a bit
+		t /= 2.0f; // SPOUT - slow the cube rotation down a bit
     }
 
+	//
 	// SPOUT
-	if (ReceiveSpoutTexture(g_pd3dDevice, &g_pReceivedTexture)) {
+	//
+
+	// Set the initial width and height to current globals.
+	// New width and height are returned from the sender.
+	unsigned int width = g_Width;
+	unsigned int height = g_Height;
+
+	// If SpoutPanel has been opened, the sender name could be different.
+	CheckSpoutPanel(g_SenderName);
+
+	// Find if the sender exists.
+	// For an empty name string, the active sender is returned if that exists.
+	// Return the sender name, width, height, sharehandle and format.
+	DWORD dwFormat = 0;
+	HANDLE dxShareHandle = NULL;
+	if (spoutsender.FindSender(g_SenderName, width, height, dxShareHandle, dwFormat)) {
+
+		// Set up if not initialized yet
+		if (!bSpoutInitialized) {
+			// Open a named mutex to control access to the sender's shared texture
+			frame.CreateAccessMutex(g_SenderName);
+			// Enable frame counting to get the sender frame number and fps
+			frame.EnableFrameCount(g_SenderName);
+			bSpoutInitialized = true;
+		}
+
+		// Check for size change
+		if (g_Width != width || g_Height != height) {
+
+			// Update globals for subsequent size checks
+			g_Width = width;
+			g_Height = height;
+
+			// Create or re-create the receiving texture.
+			HANDLE textureHandle = NULL; // dummy handle for the Spout function
+			spoutdx.CreateSharedDX11Texture(g_pd3dDevice,
+				g_Width, g_Height, (DXGI_FORMAT)dwFormat, // Format is the same as the sender
+				&g_pReceivedTexture, textureHandle);
+		
+		}
+
+		// Retrieve the sender's shared texture pointer using the share handle
+		ID3D11Texture2D* pSharedTexture = nullptr;
+		if (spoutdx.OpenDX11shareHandle(g_pd3dDevice, &pSharedTexture, dxShareHandle)) {
+
+			// Access the sender shared texture
+			// (See comments in the CheckTextureAccess function)
+			if (frame.CheckTextureAccess(pSharedTexture)) {
+
+				// Optionally check whether the sender has produced a new frame.
+				// This is not required, but will avoid un-necessary processing for every frame.
+
+				// This must be done within a sender mutex lock so that
+				// the sender will not write to the texture and increment the 
+				// count while a receiver is reading it.
+				if (frame.GetNewFrame()) {
+					// Here is where the sender's shared texture can be safely accessed.
+					// In this example we will copy it to the local texture
+					g_pImmediateContext->CopyResource(g_pReceivedTexture, pSharedTexture);
+					// Set an update flag (see below)
+					bNewFrame = true;
+					// Wait for CopyResource to finish so the texture update is complete
+					// (see comments in the FlushWait function)
+					spoutdx.FlushWait(g_pd3dDevice, g_pImmediateContext);
+				} // New frame from the sender
+				// Allow texture access if it was not a new frame
+				frame.AllowTextureAccess(pSharedTexture);
+			} // Accessed sender's shared texture
+		} // Retrieved sender shared texture pointer
 
 		// The received texture has been updated.
-		// Sender width, height and texture format can be 
-		// retrieved from the texture description.
-		
 		// Any action required by the receiver can be done here.
-		// In this example, a shader resource view of the texture is created.
 
-		if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
-		g_pSpoutTextureRV = nullptr;
+		// In this example, a shader resource view of the texture
+		// is created after receiving a new frame. 
+		if (bNewFrame) {
 
-		// Get the format of the received texture.
-		// Matching format for the shader resource view is important.
-		D3D11_TEXTURE2D_DESC td;
-		g_pReceivedTexture->GetDesc(&td);
+			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+			g_pSpoutTextureRV = nullptr;
 
-		D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-		ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
-		shaderResourceViewDesc.Format = td.Format;
-		shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
-		shaderResourceViewDesc.Texture2D.MipLevels = 1;
-		g_pd3dDevice->CreateShaderResourceView(g_pReceivedTexture, &shaderResourceViewDesc, &g_pSpoutTextureRV);
+			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
+			ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
+			// Matching format for the shader resource view is important.
+			shaderResourceViewDesc.Format = (DXGI_FORMAT)dwFormat;
+			shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
+			shaderResourceViewDesc.Texture2D.MipLevels = 1;
+			g_pd3dDevice->CreateShaderResourceView(g_pReceivedTexture, &shaderResourceViewDesc, &g_pSpoutTextureRV);
+
+			bNewFrame = false; // reset the new frame flag
+		}
+
+		// The receiver can also query the sender frame number and rate
+		g_senderframe = frame.GetSenderFrame();
+		g_senderfps = frame.GetSenderFps();
+
+	} // sender exists
+	else {
+
+		// A sender was not found or the connected sender closed
+
+		// The receiving texture does not have to be released if not received
+		// It is updated when connected to a sender
+		// It should be released when the program closes
+
+		if (bSpoutInitialized) {
+			
+			// Zero the name if you want to look for the active sender next time
+			// Leave it as set to connect to the same sender
+			g_SenderName[0] = 0;
+			
+			// Zero width and height so that they are reset
+			g_Width = 0;
+			g_Height = 0;
+
+			// Close the named access mutex and frame counting
+			frame.CloseAccessMutex();
+			frame.CleanupFrameCount();
+
+			// Clear the spout texture resource view so render uses the default
+			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+			g_pSpoutTextureRV = nullptr;
+
+			// Initialize them again when a sender is found
+			bSpoutInitialized = false;
+		}
 
 	}
 
@@ -879,209 +979,12 @@ void Render()
 
 }
 
-//
-// SPOUT
-//
-
-bool ReceiveSpoutTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTexture)
-{
-
-	ID3D11Texture2D* pTexture = *ppTexture; // The texture pointer
-
-	// Set the initial width and height to current globals.
-	// width and height are returned from the sender.
-	unsigned int width = g_Width;
-	unsigned int height = g_Height;
-
-	// Check to see if SpoutPanel has been opened.
-	// If it has been opened, the sender name will be different.
-	// The only thing we monitor is the sender's texture size.
-	CheckSpoutPanel(g_SenderName);
-
-	// Find if the sender exists.
-	// For an empty name string, the active sender is returned if that exists.
-	// Return the name, width, height, sharehandle and format.
-	DWORD dwFormat = 0;
-	HANDLE dxShareHandle = NULL;
-	if (spoutsender.FindSender(g_SenderName, width, height, dxShareHandle, dwFormat)) {
-		
-		// For this example we receive to a local texture.
-		// Check for sender size change and create or re-create the receiving texture.
-		if (g_Width != width || g_Height != height) {
-
-			// Update global size variables
-			g_Width = width;
-			g_Height = height;
-
-			// Create the receiving texture.
-			// This does not have to be shared but the Spout function is convenient.
-			HANDLE textureHandle = NULL; // dummy handle for the Spout function
-			if (spoutdx.CreateSharedDX11Texture(pd3dDevice,
-				g_Width, g_Height, (DXGI_FORMAT)dwFormat, // Format is the same as the sender
-				ppTexture, textureHandle)) {
-			}
-			else {
-				// Go no further 
-				return false;
-			}
-		}
-
-		// Save the sender's width and height for subsequent size checks
-		g_Width = width;
-		g_Height = height;
-
-		// Set up if not initialized yet
-		if (!bSpoutInitialized) {
-			// Open a named mutex to control access to the sender's shared texture
-			frame.CreateAccessMutex(g_SenderName);
-			// Enable frame counting to get the sender frame number and fps
-			frame.EnableFrameCount(g_SenderName);
-			bSpoutInitialized = true;
-		}
-
-		// Retrieve the sender's shared texture pointer using the share handle
-		ID3D11Texture2D* pSharedTexture = nullptr; // Sender shared texture
-		if (spoutdx.OpenDX11shareHandle(pd3dDevice, &pSharedTexture, dxShareHandle)) {
-
-			// Access the sender shared texture
-			// If the texture has a keyed mutex, that will be used
-			// otherwise the sender mutex will be used
-			if (frame.CheckTextureAccess(pSharedTexture)) {
-
-				// Optionally check whether the sender has produced a new frame.
-				// This is not required, but will avoid un-necessary processing for every frame.
-
-				// This must be done within a sender mutex lock so that
-				// the sender will not write to the texture and increment the 
-				// count while a receiver is reading it.
-				if (frame.GetNewFrame()) {
-					// Here is where the sender's shared texture can be safely accessed.
-					// In this example we will copy it to the local texture
-					ID3D11DeviceContext* pImmediateContext = nullptr;
-					pd3dDevice->GetImmediateContext(&pImmediateContext);
-					if (pImmediateContext) {
-						pImmediateContext->CopyResource(*ppTexture, pSharedTexture);
-						// CopyResource is asynchronous.
-						// Here we can wait for it to complete so the
-						// new data is available straight away.
-						// Test before use. See comments in the FlushWait function.
-						// spoutdx.FlushWait(pd3dDevice, pImmediateContext);
-						pImmediateContext->Release();
-						// Allow texture access before returning
-						frame.AllowTextureAccess(pSharedTexture);
-						// Return true to use the updated texture
-						return true;
-					}
-				} // New frame from the sender
-				// Allow texture access if it was not a new frame
-				frame.AllowTextureAccess(pSharedTexture);
-			} // Accessed sender's shared texture
-		} // Retrieved sender shared texture pointer
-
-		// The receiver can query the sender frame number and rate
-		g_senderframe = frame.GetSenderFrame();
-		g_senderfps = frame.GetSenderFps();
-
-	} // sender exists
-	else {
-
-		// The connected sender closed
-
-		// The receiving texture does not have to be released if not received
-		// It is updated when connected to a sender
-		// It should be released when the program closes
-
-		// Zero the name if you want to look for the active sender next time
-		if(bUseActive) g_SenderName[0] = 0;
-
-		// Zero width and height so that they are reset
-		g_Width = 0;
-		g_Height = 0;
-
-		// Close the named access mutex and frame counting
-		frame.CloseAccessMutex();
-		frame.CleanupFrameCount();
-
-		// Initialize them again when a sender is found
-		bSpoutInitialized = false;
-	}
-
-	return false;
-}
-
 
 //
 // The following functions are adapted from equivalents in SpoutSDK.cpp
 // for applications not using the entire Spout SDK.
 //
 
-//
-// Check whether SpoutPanel opened and return the new sender name
-//
-bool CheckSpoutPanel(char *sendername, int maxchars)
-{
-	// If SpoutPanel has been activated, test if the user has clicked OK
-	if (bSpoutPanelOpened) { // User has activated spout panel
-
-		SharedTextureInfo TextureInfo;
-		HANDLE hMutex = NULL;
-		DWORD dwExitCode;
-		char newname[256];
-		bool bRet = false;
-
-		// Must find the mutex to signify that SpoutPanel has opened
-		// and then wait for the mutex to close
-		hMutex = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
-
-		// Has it been activated 
-		if (!bSpoutPanelActive) {
-			// If the mutex has been found, set the active flag true and quit
-			// otherwise on the next round it will test for the mutex closed
-			if (hMutex) bSpoutPanelActive = true;
-		}
-		else if (!hMutex) { // It has now closed
-			bSpoutPanelOpened = false; // Don't do this part again
-			bSpoutPanelActive = false;
-			// call GetExitCodeProcess() with the hProcess member of SHELLEXECUTEINFO
-			// to get the exit code from SpoutPanel
-			if (g_ShExecInfo.hProcess) {
-				GetExitCodeProcess(g_ShExecInfo.hProcess, &dwExitCode);
-				// Only act if exit code = 0 (OK)
-				if (dwExitCode == 0) {
-					// SpoutPanel has been activated and OK clicked
-					// Test the active sender which should have been set by SpoutPanel
-					newname[0] = 0;
-					if (!spoutsender.GetActiveSender(newname)) {
-						// Otherwise the sender might not be registered.
-						// SpoutPanel always writes the selected sender name to the registry.
-						if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "Sendername", newname)) {
-							// Register the sender if it exists
-							if (newname[0] != 0) {
-								if (spoutsender.getSharedInfo(newname, &TextureInfo)) {
-									// Register in the list of senders and make it the active sender
-									spoutsender.RegisterSenderName(newname);
-									spoutsender.SetActiveSender(newname);
-								}
-							}
-						}
-					}
-					// Now do we have a valid sender name ?
-					if (newname[0] != 0) {
-						// Pass back the new name
-						strcpy_s(sendername, maxchars, newname);
-						bRet = true;
-					} // endif valid sender name
-				} // endif SpoutPanel OK
-			} // got the exit code
-		} // endif no mutex so SpoutPanel has closed
-		// If we opened the mutex, close it now or it is never released
-		if (hMutex) CloseHandle(hMutex);
-		return bRet;
-	} // SpoutPanel has not been opened
-
-	return false;
-
-}
 
 //
 // Pop up SpoutPanel to allow the user to select a sender
@@ -1210,4 +1113,71 @@ bool OpenSpoutPanel()
 
 } // end OpenSpoutPanel
 
+//
+// Check whether SpoutPanel was opened and return the new sender name
+//
+bool CheckSpoutPanel(char *sendername, int maxchars)
+{
+	// If SpoutPanel has been activated, test if the user has clicked OK
+	if (bSpoutPanelOpened) { // User has activated spout panel
+
+		SharedTextureInfo TextureInfo;
+		HANDLE hMutex = NULL;
+		DWORD dwExitCode;
+		char newname[256];
+		bool bRet = false;
+
+		// Must find the mutex to signify that SpoutPanel has opened
+		// and then wait for the mutex to close
+		hMutex = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
+
+		// Has it been activated 
+		if (!bSpoutPanelActive) {
+			// If the mutex has been found, set the active flag true and quit
+			// otherwise on the next round it will test for the mutex closed
+			if (hMutex) bSpoutPanelActive = true;
+		}
+		else if (!hMutex) { // It has now closed
+			bSpoutPanelOpened = false; // Don't do this part again
+			bSpoutPanelActive = false;
+			// call GetExitCodeProcess() with the hProcess member of SHELLEXECUTEINFO
+			// to get the exit code from SpoutPanel
+			if (g_ShExecInfo.hProcess) {
+				GetExitCodeProcess(g_ShExecInfo.hProcess, &dwExitCode);
+				// Only act if exit code = 0 (OK)
+				if (dwExitCode == 0) {
+					// SpoutPanel has been activated and OK clicked
+					// Test the active sender which should have been set by SpoutPanel
+					newname[0] = 0;
+					if (!spoutsender.GetActiveSender(newname)) {
+						// Otherwise the sender might not be registered.
+						// SpoutPanel always writes the selected sender name to the registry.
+						if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "Sendername", newname)) {
+							// Register the sender if it exists
+							if (newname[0] != 0) {
+								if (spoutsender.getSharedInfo(newname, &TextureInfo)) {
+									// Register in the list of senders and make it the active sender
+									spoutsender.RegisterSenderName(newname);
+									spoutsender.SetActiveSender(newname);
+								}
+							}
+						}
+					}
+					// Now do we have a valid sender name ?
+					if (newname[0] != 0) {
+						// Pass back the new name
+						strcpy_s(sendername, maxchars, newname);
+						bRet = true;
+					} // endif valid sender name
+				} // endif SpoutPanel OK
+			} // got the exit code
+		} // endif no mutex so SpoutPanel has closed
+		// If we opened the mutex, close it now or it is never released
+		if (hMutex) CloseHandle(hMutex);
+		return bRet;
+	} // SpoutPanel has not been opened
+
+	return false;
+
+}
 

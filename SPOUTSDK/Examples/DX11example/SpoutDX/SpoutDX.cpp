@@ -241,8 +241,26 @@ bool spoutDX::ReceiveTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTextu
 	DWORD dwFormat = 0;
 	HANDLE dxShareHandle = NULL;
 
-	// If SpoutPanel has been opened, the sender name will be different.
-	CheckSpoutPanel(m_SenderName, 256);
+	// If SpoutPanel has been opened, the sender name could be different
+	char sendername[256];
+	if (CheckSpoutPanel(sendername, 256)) {
+		// Reset everything for a new sender name
+		// leave everything if the same sender was selected
+		if (strcmp(sendername, m_SenderName) != 0) {
+			if (m_bSpoutInitialized) {
+				frame.CloseAccessMutex();
+				frame.CleanupFrameCount();
+				m_Width = 0;
+				m_Height = 0;
+				if (!m_SenderNameSetup[0])
+					m_SenderName[0] = 0;
+				m_bSpoutInitialized = false;
+				m_bConnected = false;
+				m_bUpdated = false;
+			}
+			strcpy_s(m_SenderName, 256, sendername);
+		}
+	}
 
 	// Find if the sender exists.
 	// For an empty name string, the active sender is returned.
@@ -250,9 +268,7 @@ bool spoutDX::ReceiveTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTextu
 
 		// Check for texture size changes
 		if (m_Width != width || m_Height != height) {
-
 			// printf("Changed sender size %dx%d to %dx%d\n", m_Width, m_Height, width, height);
-
 			// If no texture pointer is passed in
 			// create or re-create a receiving texture
 			if (!ppTexture) {
@@ -284,13 +300,13 @@ bool spoutDX::ReceiveTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTextu
 			m_bUpdated = true;
 
 			// If a pointer was passed in, return to update the receiving texture
+			// m_bUpdated is reset when the application calls IsUpdated()
 			if(ppTexture)
 				return true;
 
 			// If not, continue to copy the sender's shared texture.
 			// The application can still detect change with IsUpdated()
 			// to use the new received texture
-
 		}
 
 		if (!ppTexture)
@@ -325,7 +341,14 @@ bool spoutDX::ReceiveTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTextu
 			// Zero width and height so that they are reset when a sender is found
 			m_Width = 0;
 			m_Height = 0;
+			// If a connecting sender name has not been specified
+			// zero the sender name so that the active sender is 
+			// found the next time round
+			if (!m_SenderNameSetup[0])
+				m_SenderName[0] = 0;
 		}
+		// Reset update and connection flags
+		m_bUpdated = false;
 		m_bConnected = false;
 		// Initialize again when a sender is found
 		m_bSpoutInitialized = false;

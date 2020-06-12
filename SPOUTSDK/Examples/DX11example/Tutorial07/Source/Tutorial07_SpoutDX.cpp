@@ -7,7 +7,7 @@
 // Search on "SPOUT" for additions.
 // Version to send using 2.007 methods
 //
-// This is a using the "SpoutDX" support class
+// This is a receiver using the "SpoutDX" support class
 // It is saved as "Tutorial07_SpoutDX.cpp" in the Source folder.
 // Please compare with a stand-alone version "Tutorial07_Basic.cpp"
 // using methods directly from the Spout SDK classes.
@@ -129,7 +129,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
-	// Optionally set the sender name to receive from
+	// Optionally set the name of the sender to receive from
+	// The receiver will only connect to that sender.
+	// The user can over-ride this by selecting another.
 	// spoutreceiver.SetReceiverName("Spout DX11 Sender");
 
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
@@ -741,7 +743,7 @@ void Render()
         if( timeStart == 0 )
             timeStart = timeCur;
         t = ( timeCur - timeStart ) / 1000.0f;
-		t /= 2.0f; // SPOUT - slow it down a bit
+		t /= 2.0f; // SPOUT - slow the cube rotation down a bit
     }
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -749,11 +751,12 @@ void Render()
 	//
 	// Receive a sender texture
 	if (spoutreceiver.ReceiveTexture(g_pd3dDevice, &g_pReceivedTexture)) {
+
 		//
-		// If no texture ponter is passed in, a receiving texture
-		// is created within the SpoutDX class and the pointer can be
-		// retrieved with :
+		// If no texture pointer is passed in, a receiving texture is created
+		// within the SpoutDX class and the pointer can be  retrieved with :
 		//		ID3D11Texture2D* GetTexture();
+		// If a texture pointer has been passed in, this function will return null.
 		//
 		// Sender details can be retrieved with :
 		//		const char * GetSenderName();
@@ -766,7 +769,7 @@ void Render()
 		//		long GetSenderFrame();
 		//		double GetSenderFps();
 		//
-		// Re-create the receiving texture if the sender size does not match
+		// Re-create the receiving texture if the sender size changed
 		if (spoutreceiver.IsUpdated()) {
 
 			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
@@ -778,18 +781,34 @@ void Render()
 						&g_pReceivedTexture);
 
 			// Any other action required by the receiver can be done here
-			// In this example, a shader resource view of the texture is created
+			// In this example, clear the shader resource view
+			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+			g_pSpoutTextureRV = nullptr;
 
+		}
+
+		// A texture has been received
+
+		// In this example, a shader resource view is created if the frame is new
+		if (spoutreceiver.IsFrameNew()) {
 			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 			g_pSpoutTextureRV = nullptr;
 			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
 			ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
-			shaderResourceViewDesc.Format = spoutreceiver.GetSenderFormat(); // Matching format is important
+			// Matching format with the sender is important
+			shaderResourceViewDesc.Format = spoutreceiver.GetSenderFormat();
 			shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 			shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
 			shaderResourceViewDesc.Texture2D.MipLevels = 1;
 			g_pd3dDevice->CreateShaderResourceView(g_pReceivedTexture, &shaderResourceViewDesc, &g_pSpoutTextureRV);
 		}
+
+	}
+	else {
+		// A sender was not found or the connected sender closed
+		// Clear the spout texture resource view so render uses the default
+		if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+		g_pSpoutTextureRV = nullptr;
 	}
 
 	// Rotate cube around the origin
