@@ -856,9 +856,6 @@ void Render()
 					g_pImmediateContext->CopyResource(g_pReceivedTexture, pSharedTexture);
 					// Set an update flag (see below)
 					bNewFrame = true;
-					// Wait for CopyResource to finish so the texture update is complete
-					// (see comments in the FlushWait function)
-					spoutdx.FlushWait(g_pd3dDevice, g_pImmediateContext);
 				} // New frame from the sender
 				// Allow texture access if it was not a new frame
 				frame.AllowTextureAccess(pSharedTexture);
