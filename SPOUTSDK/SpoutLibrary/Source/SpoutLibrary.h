@@ -109,6 +109,7 @@ struct SPOUTLIBRARY
 	virtual unsigned int GetSenderWidth() = 0;
 	// Return the connected sender height
 	virtual unsigned int GetSenderHeight() = 0;
+	virtual DWORD GetSenderFormat() = 0;
 	// Return the connected sender frame number
 	virtual long GetSenderFrame() = 0;
 	// Return the connected sender frame rate

@@ -69,6 +69,7 @@ public:
 	const char * GetSenderName();
 	unsigned int GetSenderWidth();
 	unsigned int GetSenderHeight();
+	DWORD GetSenderFormat();
 	double GetSenderFps();
 	long GetSenderFrame();
 	bool IsFrameNew();

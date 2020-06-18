@@ -294,6 +294,20 @@ unsigned int SpoutFunctions::GetSenderHeight()
 	return m_Height;
 }
 
+DWORD SpoutFunctions::GetSenderFormat()
+{
+	if (m_SenderName[0] == 0 || m_Width == 0 || m_Height == 0)
+		return 0;
+
+	HANDLE dxShareHandle = NULL;
+	unsigned int width, height;
+	DWORD dwFormat = 0;
+	if (GetSenderInfo(m_SenderName, width, height, dxShareHandle, dwFormat)) {
+		return dwFormat;
+	}
+	return 0;
+}
+
 //---------------------------------------------------------
 long SpoutFunctions::GetSenderFrame()
 {

@@ -44,6 +44,8 @@
 //		30.05.20 - Change SendTextureData/SendImageData back to SendTexture/SendImage
 //				   Remove 2.006 overloads. Library is now exclusively 2.007.
 //				   Re-build for revised Spout SDK - 32 bit and 64 bit - VS2017 / MT
+//		18.06.20 - Add GetSenderFormat()
+//				   Re-build 32/64 bit - VS2017 / MT
 //
 /*
 		Copyright (c) 2016-2020, Lynn Jarvis. All rights reserved.
@@ -108,6 +110,7 @@ class SPOUTImpl : public SPOUTLIBRARY
 		const char * GetSenderName();
 		unsigned int GetSenderWidth();
 		unsigned int GetSenderHeight();
+		DWORD GetSenderFormat();
 		double GetSenderFps();
 		long GetSenderFrame();
 		bool IsFrameNew();
@@ -298,6 +301,11 @@ unsigned int SPOUTImpl::GetSenderWidth()
 unsigned int SPOUTImpl::GetSenderHeight()
 {
 	return spoutSDK->GetSenderHeight();
+}
+
+DWORD SPOUTImpl::GetSenderFormat()
+{
+	return spoutSDK->GetSenderFormat();
 }
 
 long SPOUTImpl::GetSenderFrame()
