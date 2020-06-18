@@ -132,7 +132,7 @@ void CleanupDevice();
 LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
 
-// SPOUT functions
+// SPOUT utility functions
 bool OpenSpoutPanel();
 bool CheckSpoutPanel(char *sendername, int maxchars = 256);
 
@@ -894,16 +894,17 @@ void Render()
 		// A sender was not found or the connected sender closed
 
 		// The receiving texture does not have to be released if not received
-		// It is updated when connected to a sender
+		// because it is updated when connected to a sender
 		// It should be released when the program closes
 
 		if (bSpoutInitialized) {
 			
 			// Zero the name if you want to look for the active sender next time
 			// Leave it as set to connect to the same sender
+			// (See "set the name of the sender" at the beginning)
 			g_SenderName[0] = 0;
 			
-			// Zero width and height so that they are reset
+			// Zero width and height to ensure they are reset
 			g_Width = 0;
 			g_Height = 0;
 
@@ -993,10 +994,13 @@ void Render()
 
 
 //
+// SPOUT
+//
+//
 // The following functions are adapted from equivalents in SpoutSDK.cpp
 // for applications not using the entire Spout SDK.
+// They allow a receiver to open a dialog for sender selection.
 //
-
 
 //
 // Pop up SpoutPanel to allow the user to select a sender

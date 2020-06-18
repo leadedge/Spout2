@@ -119,8 +119,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT
 	// Optionally enable logging to catch Spout warnings and errors
 	// OpenSpoutConsole(); // console only for debugging
-	// EnableSpoutLog();
-	// EnableSpoutLogFile("Tutorial04.log);
+	// EnableSpoutLog(); // Log to console
+	// EnableSpoutLogFile("Tutorial04.log); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
@@ -684,7 +684,7 @@ void Render()
 		D3D11_TEXTURE2D_DESC desc;
 		ZeroMemory(&desc, sizeof(desc));
 		pBackBuffer->GetDesc(&desc);
-		if (desc.Width != 0 || desc.Height != 0) {
+		if (desc.Width > 0 && desc.Height > 0) {
 			if (!bSpoutInitialized) {
 				// Now that we have a texture, we can create a sender
 				g_Width = desc.Width;
@@ -703,24 +703,31 @@ void Render()
 			}
 			// If the sender is already created, check for change of rendering size
 			else if (g_Width != desc.Width || g_Height != desc.Height) {
-				spoutSender.UpdateSender(g_SenderName, g_Width, g_Height, NULL, 0);
+				// Update the global width & height
+				g_Width = desc.Width;
+				g_Height = desc.Height;
+				// Update the sender's shared texture with the same format
+				spoutdx.CreateSharedDX11Texture(g_pd3dDevice, g_Width, g_Height, desc.Format, &g_pSharedTexture, g_dxShareHandle);
+				// Update the sender's information shared memory map
+				spoutSender.UpdateSender(g_SenderName, g_Width, g_Height, g_dxShareHandle, desc.Format);
 			}
 
+			// Send the texture
 			if(bSpoutInitialized) {
-				// Send the texture
-				// Check the sender mutex for access the shared texture
-				// in case a receiver is holding it
-				if (frame.CheckTextureAccess()) {
+				// Check the sender mutex for access the shared texture in case a receiver is holding it
+				if (frame.CheckTextureAccess(g_pSharedTexture)) {
 					// Copy the backbuffer texture to the sender's shared texture
+					// Both textures have the same size and format
 					g_pImmediateContext->CopyResource(g_pSharedTexture, pBackBuffer);
-					// Make sure that CopyResource has completed
-					// so that receivers can access the new data straight away
-					// Refer to comments in the FlushWait function
-					spoutdx.FlushWait(g_pd3dDevice, g_pImmediateContext);
+					// Note : https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11device-opensharedresource
+					// If a shared texture is updated on one device ID3D11DeviceContext::Flush must be called on that device. 
+					g_pImmediateContext->Flush();
+					// Also can wait for flush and CopyResource to complete
+					// spoutdx.Wait(g_pd3dDevice, g_pImmediateContext);
 					// Signal a new frame while the mutex is still locked
 					frame.SetNewFrame();
 					// Allow access to the shared texture
-					frame.AllowTextureAccess();
+					frame.AllowTextureAccess(g_pSharedTexture);
 				}
 			}
 		}
