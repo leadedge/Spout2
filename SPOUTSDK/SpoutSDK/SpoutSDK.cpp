@@ -971,6 +971,8 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		dwFormat = g_Format;
 	}
 
+	// printf("OpenReceiver %dx%d - format %d\n", width, height, dwFormat);
+
 	// Initialize a receiver in either memoryshare or texture mode
 	// InitReceiver tests for a valid sharehandle if not memory mode
 	if (InitReceiver(g_hWnd, Sendername, width, height, sharehandle, dwFormat)) {

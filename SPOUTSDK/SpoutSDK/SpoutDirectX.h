@@ -73,6 +73,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		unsigned long ReleaseDX11Device(ID3D11Device* pd3dDevice);
 		ID3D11DeviceContext* GetImmediateContext();
 		void FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext);
+		void Wait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext);
 
 	protected:
 

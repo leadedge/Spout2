@@ -25,6 +25,7 @@
 //		11.03.20	- General cleanup
 //					  Result switch for WaitForSingleObject
 //		05.05.20	- Mutex access timing tests documented within functions
+//		18.06.20	- Update comments
 //
 // ====================================================================================
 //
@@ -318,6 +319,9 @@ bool spoutFrameCount::GetNewFrame()
 	// Update the global frame count
 	m_FrameCount = framecount;
 
+	// DEBUG
+	// printf("GetNewFrame - last[%d] - this[%d] - elapsed[%d]\n", m_LastFrameCount, framecount, framecount-m_LastFrameCount);
+
 	// Count will still be zero for apps that do not set a frame count
 	if (framecount == 0)
 		return true;
@@ -471,9 +475,9 @@ void spoutFrameCount::HoldFps(int fps)
 //
 // Check access to the shared texture
 //
-// Use the DX11 texture keyed mutex if the texture supports it
-// otherwise use the sender named mutex
-// The texture should always be null for DX9 mode so the named mutex is used
+// Use a keyed mutex if the DX11 texture supports it
+// otherwise use the sender named mutex.
+// The DX11 texture pointer argument should always be null for DX9 mode.
 bool spoutFrameCount::CheckTextureAccess(ID3D11Texture2D* D3D11texture)
 {
 	if (IsKeyedMutex(D3D11texture)) {
@@ -612,7 +616,7 @@ void spoutFrameCount::AllowAccess()
 // AcquireSync method before rendering to the surface. You must call the 
 // ReleaseSync method when you are done rendering to a surface.
 //
-// Tests show that if a texture has been created with a keyed mutex it must
+// Tests show that if a DX11 texture has been created with a keyed mutex it must
 // be used in place of the sender named mutex or CopyResource fails
 //
 bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
@@ -670,6 +674,7 @@ bool spoutFrameCount::IsKeyedMutex(ID3D11Texture2D* D3D11texture)
 		D3D11_TEXTURE2D_DESC desc;
 		D3D11texture->GetDesc(&desc);
 		if (desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX) {
+			// printf("IsKeyed()\n");
 			return true;
 		}
 	}

@@ -274,6 +274,7 @@
 					  https://devtalk.nvidia.com/default/topic/510885/optimus-detection-c-/
 					  Added missing define check for legacy OpneGL functions
 		05.05.20	- Shared texture read/write timing tests documented within functions
+		18.06.20	- Update WriteTexture shared texture flush and comments
 
 */
 
@@ -871,14 +872,16 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 		}
 	}
 	else {
-		// DirectX 11
-		// Is this a DX11 or a DX9 sender texture?
+		// TODO : Is this a DX11 or a DX9 sender texture?
 		// A directX 11 receiver accepts DX9 formats
 		if(!bReceive && dwFormat > 0) {
 			format = (DXGI_FORMAT)dwFormat;
 			SetDX11format((DXGI_FORMAT)format); // Set the global texture format
 		}
 		else {
+			// TODO : compatible format tests
+			// printf("CreateInterop - Sender format %d - receiving format %d\n", dwFormat, (DWORD)DX11format);
+			// format = dwFormat; // Sender format
 			format = (DWORD)DX11format; // DXGI_FORMAT_B8G8R8A8_UNORM (87) default compatible with DX9
 		}
 	}
@@ -893,6 +896,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 
 	SpoutLogNotice("spoutGLDXinterop::CreateInterop [%s] %dx%d - DX format %d", sendername, width, height, format);
 
+	// TODO - move this section above ?
 	// Check the sender format for a DX9 receiver
 	// It can only be from a DX9 sender (format 0, 22, 21)
 	// or from a compatible DX11 sender (format 87)
@@ -2037,7 +2041,7 @@ bool spoutGLDXinterop::GetSharedTextureData(GLuint TextureID, GLuint TextureTarg
 	// restore the previous fbo - default is 0
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT); // 04.01.16
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-
+	
 	return bRet;
 
 }
@@ -2249,7 +2253,7 @@ bool spoutGLDXinterop::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSU
 	if (frame.CheckTextureAccess()) {
 		// Write the surface to the shared texture
 		if (spoutdx.WriteDX9surface(m_pDevice, surface, m_dxTexture)) {
-			// Necessary flush and wait done by WriteDX9surface
+			// The necessary flush and wait done by WriteDX9surface
 			// Increment the sender frame counter
 			frame.SetNewFrame();
 			// Release mutex and allow access to the texture
@@ -2266,51 +2270,6 @@ bool spoutGLDXinterop::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSU
 //
 // DX11 versions - https://github.com/DashW/Spout2
 //
-
-//
-// COPY A DX11 TEXTURE TO THE SHARED DX11 TEXTURE
-//
-bool spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture)
-{
-
-	// Only for DX11 mode
-	if (!texture || GetDX9() || !m_pImmediateContext) {
-		SpoutLogWarning("spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture) failed");
-		if (GetDX9())
-			SpoutLogWarning("    only for DX11");
-		if(!texture)
-			SpoutLogWarning("    ID3D11Texture2D** NULL");
-		if (!m_pImmediateContext)
-			SpoutLogVerbose("    pImmediateContext NULL");
-		return false;
-	}
-
-	bool bRet = false;
-	D3D11_TEXTURE2D_DESC desc = { 0 };
-
-	(*texture)->GetDesc(&desc);
-	if(desc.Width != m_TextureInfo.width || desc.Height != m_TextureInfo.height) {
-		SpoutLogWarning("spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture) sizes do not match");
-		SpoutLogWarning("    texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_TextureInfo.width, m_TextureInfo.height);
-		return false;
-	}
-
-	// printf("texture (%dx%d) : sender (%dx%d)\n", desc.Width, desc.Height, m_TextureInfo.width, m_TextureInfo.height);
-
-	// Wait for access to the shared texture
-	if(frame.CheckTextureAccess(m_pSharedTexture)) {
-		m_pImmediateContext->CopyResource(m_pSharedTexture, *texture);
-		// Wait for access to the shared texture so the receiver can read it straight away
-		spoutdx.FlushWait(m_pd3dDevice, m_pImmediateContext);
-		// Increment the sender frame counter
-		frame.SetNewFrame();
-		// Release mutex and allow access to the texture
-		frame.AllowTextureAccess(m_pSharedTexture);
-		bRet = true;
-	}
-
-	return bRet;
-}
 
 //
 // COPY FROM THE SHARED DX11 TEXTURE TO A DX11 TEXTURE
@@ -2339,6 +2298,52 @@ bool spoutGLDXinterop::ReadTexture(ID3D11Texture2D** texture)
 
 } // end ReadTexture
 
+//
+// COPY A DX11 TEXTURE TO THE SHARED DX11 TEXTURE
+//
+bool spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture)
+{
+	// Only for DX11 mode
+	if (!texture || GetDX9() || !m_pImmediateContext) {
+		SpoutLogWarning("spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture) failed");
+		if (GetDX9())
+			SpoutLogWarning("    only for DX11");
+		if (!texture)
+			SpoutLogWarning("    ID3D11Texture2D** NULL");
+		if (!m_pImmediateContext)
+			SpoutLogVerbose("    pImmediateContext NULL");
+		return false;
+	}
+
+	bool bRet = false;
+	D3D11_TEXTURE2D_DESC desc = { 0 };
+
+	(*texture)->GetDesc(&desc);
+	if (desc.Width != m_TextureInfo.width || desc.Height != m_TextureInfo.height) {
+		SpoutLogWarning("spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture) sizes do not match");
+		SpoutLogWarning("    texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_TextureInfo.width, m_TextureInfo.height);
+		return false;
+	}
+
+	// printf("texture (%dx%d) : sender (%dx%d)\n", desc.Width, desc.Height, m_TextureInfo.width, m_TextureInfo.height);
+
+	// Wait for access to the shared texture
+	if (frame.CheckTextureAccess(m_pSharedTexture)) {
+		m_pImmediateContext->CopyResource(m_pSharedTexture, *texture);
+		// Flush after update of the shared texture on this device
+		m_pImmediateContext->Flush();
+		// Optionally wait until the flush and copy complete
+		// TODO : testing required 
+		// spoutdx.hWait(m_pd3dDevice, m_pImmediateContext);
+		// Increment the sender frame counter
+		frame.SetNewFrame();
+		// Release mutex and allow access to the texture
+		frame.AllowTextureAccess(m_pSharedTexture);
+		bRet = true;
+	}
+
+	return bRet;
+}
 
 //
 // COPY A DX11 TEXTURE TO THE SHARED DX11 TEXTURE
@@ -2381,8 +2386,8 @@ bool spoutGLDXinterop::WriteTextureReadback(ID3D11Texture2D** texture,
 		bRet = true;
 		// Copy the DirectX texture to the shared texture
 		m_pImmediateContext->CopyResource(m_pSharedTexture, *texture);
-		// Wait for access to the shared texture so the receiver can read it straight away
-		spoutdx.FlushWait(m_pd3dDevice, m_pImmediateContext);
+		// Flush after update of the shared texture on this device
+		m_pImmediateContext->Flush();
 		// Copy the linked OpenGL texture back to the user texture
 		if (width != m_TextureInfo.width || height != m_TextureInfo.height) {
 			SpoutLogWarning("spoutGLDXinterop::WriteTextureReadback(ID3D11Texture2D** texture) sizes do not match");

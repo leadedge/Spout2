@@ -54,6 +54,7 @@
 //		25.01.20	- Change ReceiveTextureData and ReceiveImageData to overloads
 //		26.04.20	- Reset the update flag in IsUpdated
 //		30.04.20	- Add ReceiveTexture()
+//		17.06.20	- Add GetSenderFormat()
 //
 // ====================================================================================
 /*
@@ -162,14 +163,10 @@ bool SpoutReceiver::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool 
 			// Retrieved with a call to the IsUpdated function
 			m_bUpdate = true;
 			m_bConnected = true;
-			printf("Created [%s] %dx%d\n", m_SenderName, m_Width, m_Height);
 			return true;
 		}
 	}
 	else {
-
-		// printf("Receiving\n");
-
 		// Save sender name and dimensions to test for change
 		char name[256];
 		strcpy_s(name, 256, m_SenderName);
@@ -178,9 +175,7 @@ bool SpoutReceiver::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool 
 		// Receive a shared texture but don't read it into the user texture yet
 		if (ReceiveTexture(name, width, height)) {
 			// Test for sender name or size change
-			if (width != m_Width
-				|| height != m_Height
-				|| strcmp(name, m_SenderName) != 0) {
+			if (width != m_Width || height != m_Height || strcmp(name, m_SenderName) != 0) {
 				// Update name
 				strcpy_s(m_SenderName, 256, name);
 				// Update class dimensions
@@ -312,6 +307,20 @@ unsigned int SpoutReceiver::GetSenderHeight()
 	return m_Height;
 }
 
+//---------------------------------------------------------
+DWORD SpoutReceiver::GetSenderFormat()
+{
+	if (m_SenderName[0] == 0 || m_Width == 0 || m_Height == 0)
+		return 0;
+
+	HANDLE dxShareHandle = NULL;
+	unsigned int width, height;
+	DWORD dwFormat = 0;
+	if (GetSenderInfo(m_SenderName, width, height, dxShareHandle, dwFormat)) {
+		return dwFormat;
+	}
+	return 0;
+}
 //---------------------------------------------------------
 double SpoutReceiver::GetSenderFps()
 {

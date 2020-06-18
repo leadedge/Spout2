@@ -63,6 +63,8 @@ class SPOUT_DLLEXP SpoutReceiver {
 	unsigned int GetSenderWidth();
 	// Sender height
 	unsigned int GetSenderHeight();
+	// Sender texture format
+	DWORD GetSenderFormat();
 	// Sender frame rate
 	double GetSenderFps();
 	// Sender frame number

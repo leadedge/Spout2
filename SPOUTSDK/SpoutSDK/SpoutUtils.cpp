@@ -57,6 +57,7 @@
 		22.12.19 - Remove calling process name from SpoutMessageBox
 		18.02.20 - Remove messagebox for Fatal errors
 		19.05.20 - Add missing LPCSTR cast in SpoutMessageBox ShellExecute
+		12.06.20 - Add timing functions for testing
 
 */
 #include "SpoutUtils.h"
@@ -72,6 +73,10 @@ namespace spoututils {
 	std::string logFileName = ""; // file name for the logfile
 	std::string LastSpoutLog = "";
 	bool bConsole = false;
+#if _MSC_VER >= 1900
+	std::chrono::steady_clock::time_point start;
+	std::chrono::steady_clock::time_point end;
+#endif
 
 	// Local functions
 	std::string _getLogPath();
@@ -704,6 +709,17 @@ namespace spoututils {
 			// disable file writes and use a console instead
 			logPath = "";
 		}
+	}
+
+
+	// Timing utility functions
+	void StartTiming() {
+		start = std::chrono::steady_clock::now();
+	}
+
+	double EndTiming() {
+		end = std::chrono::steady_clock::now();
+		return static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
 	}
 
 

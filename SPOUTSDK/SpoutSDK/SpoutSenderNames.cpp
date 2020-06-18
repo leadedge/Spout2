@@ -931,7 +931,6 @@ bool spoutSenderNames::getSharedInfo(const char* sharedMemoryName, SharedTexture
 			return true;
 		}
 	}
-
 	return false;
 
 } // end getSharedInfo
