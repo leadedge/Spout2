@@ -113,6 +113,7 @@ spoutFrameCount frame;
 ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
 ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view of the texture
 char g_SenderName[256]; // Sender name
+char g_SenderNameSetup[256]; // Sender name to connect to
 unsigned int g_Width = 0; // Sender width
 unsigned int g_Height = 0; // sender height
 long g_senderframe = 0; // Sender frame number
@@ -159,6 +160,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	g_pReceivedTexture = nullptr;
 	g_pSpoutTextureRV = nullptr;
 	g_SenderName[0] = 0;
+	g_SenderNameSetup[0] = 0;
 	g_Width = 0;
 	g_Height = 0;
 	g_senderframe = 0;
@@ -179,7 +181,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// The receiver will only connect to that sender.
 	// The user can over-ride this by selecting another.
 	// See also for reset of name in render
-	// strcpy_s(g_SenderName, 256, "Spout DX11 Sender");
+	// strcpy_s(g_SenderNameSetup, 256, "Spout DX11 Sender"); // Set the starting name
+	// strcpy_s(g_SenderName, 256, "Spout DX11 Sender"); // Set the general name as well
 
     // Main message loop
     MSG msg = {0};
@@ -793,6 +796,10 @@ void Render()
 	if (CheckSpoutPanel(sendername)) {
 		// Reset everything for a new sender name
 		if (strcmp(sendername, g_SenderName) != 0) {
+
+			// LJ DEBUG
+			printf("New sender name\n");
+
 			if (bSpoutInitialized) {
 				frame.CloseAccessMutex();
 				frame.CleanupFrameCount();
@@ -899,10 +906,13 @@ void Render()
 
 		if (bSpoutInitialized) {
 			
-			// Zero the name if you want to look for the active sender next time
-			// Leave it as set to connect to the same sender
+			// If a conneting name has been specified, reset the global name to it.
+			// Otherwise zero the name to look for the active sender next time
 			// (See "set the name of the sender" at the beginning)
-			g_SenderName[0] = 0;
+			if (g_SenderNameSetup[0])
+				strcpy_s(g_SenderName, 256, g_SenderNameSetup);
+			else
+				g_SenderName[0] = 0;
 			
 			// Zero width and height to ensure they are reset
 			g_Width = 0;

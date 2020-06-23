@@ -132,7 +132,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// Optionally set the name of the sender to receive from
 	// The receiver will only connect to that sender.
 	// The user can over-ride this by selecting another.
-	// spoutreceiver.SetReceiverName("Spout DX11 Sender");
+	spoutreceiver.SetReceiverName("Spout DX11 Sender");
 
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
