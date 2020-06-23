@@ -40,6 +40,8 @@
 	27.11.18 - Add RemovePadding
 	17.10.19 - Add rgba2bgrResample and bgra2bgrResample for SpoutCam
 	02.02.20 - Add rgba2rgbaResample and row pitch to all resamplers
+	22.06.20 - Add void rgba2rgba and rgba2rgb with source pitch
+			   Correct const for some functions
 
 */
 #include "SpoutCopy.h"
@@ -282,7 +284,6 @@ void spoutCopy::CheckSSE()
 	}
 
 }
-
 
 //
 // rgba2bgra, bgra2rgba
@@ -577,14 +578,21 @@ void spoutCopy::bgr2bgra(const void *bgr_source, void *bgra_dest, unsigned int w
 } // end bgr2bgra
 
 
-void spoutCopy::rgba2rgb(const void *rgba_source, void *rgb_dest, unsigned int width, unsigned int height, bool bInvert) const
+void spoutCopy::rgba2rgb(const void *rgba_source, void *rgb_dest,
+	unsigned int width, unsigned int height,
+	unsigned int rgba_pitch, bool bInvert) const
 {
+	// RGB dest does not have padding
 	const unsigned long rgbsize = width * height * 3;
 	const unsigned long rgbpitch = width * 3;
+	const unsigned long rgba_padding = rgba_pitch-(width * 4);
+
+	// RGBA source may have padding 
+	// Dest and source must be the same dimensions otherwise
 
 	// Start of buffers
-	auto rgba = static_cast<const unsigned char *>(rgba_source); // RGBA
-	auto rgb = static_cast<unsigned char *>(rgb_dest); // RGB
+	auto rgba = static_cast<const unsigned char *>(rgba_source); // rgba/bgra
+	auto rgb = static_cast<unsigned char *>(rgb_dest); // rgb/bgr
 	if (bInvert) {
 		rgb += rgbsize; // end of rgb buffer
 		rgb -= rgbpitch; // beginning of the last rgb line
@@ -592,13 +600,14 @@ void spoutCopy::rgba2rgb(const void *rgba_source, void *rgb_dest, unsigned int w
 
 	for (unsigned int y = 0; y < height; y++) {
 		for (unsigned int x = 0; x < width; x++) {
-			// rgba source - rgb dest
 			*(rgb + 0) = *(rgba + 0); // red
 			*(rgb + 1) = *(rgba + 1); // grn
 			*(rgb + 2) = *(rgba + 2); // blu
 			rgb += 3;
 			rgba += 4;
 		}
+		rgba += rgba_padding;
+		
 		if (bInvert)
 			rgb -= rgbpitch * 2; // move up a line for invert
 	}
@@ -689,18 +698,39 @@ void spoutCopy::bgra2bgr(const void *bgra_source, void *bgr_dest, unsigned int w
 		if (bInvert)
 			bgr -= bgrpitch * 2; // move up a line for invert
 	}
-
-
 } // end bgra2bgr
 
+
+void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
+	unsigned int width, unsigned int height, unsigned int sourcePitch, bool bInvert) const
+{
+	for (unsigned int y = 0; y < height; y++) {
+		// Start of buffer
+		auto source = static_cast<const unsigned __int32 *>(rgba_source);; // unsigned int = 4 bytes
+		auto dest = static_cast<unsigned __int32 *>(rgba_dest);
+		// Increment to current line
+		if (bInvert) {
+			source += (unsigned long)((height - 1 - y)*sourcePitch/4); // pitch is line length in pixels
+			dest += (unsigned long)(y * width); // dest is not inverted
+		}
+		else {
+			source += (unsigned long)(y * sourcePitch/4);
+			dest += (unsigned long)(y * width);
+		}
+		// Copy the line
+		for (unsigned int x = 0; x < width; x++) {
+			dest[x] = source[x];
+		}
+	}
+}
 
 
 // Adapted from :
 // http://tech-algorithm.com/articles/nearest-neighbor-image-scaling/
 // http://www.cplusplus.com/forum/general/2615/#msg10482
-void spoutCopy::rgba2rgbaResample(const unsigned char* source, unsigned char* dest,
+void spoutCopy::rgba2rgbaResample(const void* source, void* dest,
 	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
-	unsigned int destWidth, unsigned int destHeight, bool bInvert)
+	unsigned int destWidth, unsigned int destHeight, bool bInvert) const
 {
 	unsigned char *srcBuffer = (unsigned char *)source; // bgra source
 	unsigned char *dstBuffer = (unsigned char *)dest; // bgr dest
@@ -729,9 +759,9 @@ void spoutCopy::rgba2rgbaResample(const unsigned char* source, unsigned char* de
 }
 
 
-void spoutCopy::rgba2rgbResample(const unsigned char* source, unsigned char* dest,
+void spoutCopy::rgba2rgbResample(const void* source, void* dest,
 	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
-	unsigned int destWidth, unsigned int destHeight, bool bInvert)
+	unsigned int destWidth, unsigned int destHeight, bool bInvert) const
 {
 	unsigned char *srcBuffer = (unsigned char *)source; // bgra source
 	unsigned char *dstBuffer = (unsigned char *)dest; // bgr dest
@@ -759,7 +789,7 @@ void spoutCopy::rgba2rgbResample(const unsigned char* source, unsigned char* des
 
 void spoutCopy::rgba2bgrResample(const unsigned char* source, unsigned char* dest,
 	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
-	unsigned int destWidth, unsigned int destHeight, bool bInvert)
+	unsigned int destWidth, unsigned int destHeight, bool bInvert) const
 {
 	unsigned char *srcBuffer = (unsigned char *)source; // bgra source
 	unsigned char *dstBuffer = (unsigned char *)dest; // bgr dest
