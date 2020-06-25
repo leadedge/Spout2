@@ -34,6 +34,7 @@
 //		22.06.20	- Add ReceiveImage and ReadRGBApixels - see also SpoutCopy
 //		23.06.20	- SetSenderName revision and testing
 //					  Clean up
+//		25.06.20	- Include texture format in update checks
 //
 // ====================================================================================
 /*
@@ -449,9 +450,8 @@ bool spoutDX::ReceiveTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTextu
 	// Find if the sender exists.
 	// For an empty name string, the active sender is returned.
 	if (spoutsender.FindSender(m_SenderName, width, height, dxShareHandle, dwFormat)) {
-
 		// Check for texture size changes
-		if (m_Width != width || m_Height != height) {
+		if (m_Width != width || m_Height != height || dwFormat != m_dwFormat) {
 			// printf("Changed sender [%s] size %dx%d to %dx%d\n", m_SenderName, m_Width, m_Height, width, height);
 			// If no texture pointer is passed in
 			// create or re-create a receiving texture
@@ -470,15 +470,14 @@ bool spoutDX::ReceiveTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTextu
 				m_pReceivedTexture = nullptr;
 			}
 
-			// Set the texture format
+			// Update global variables
+			m_Width = width;
+			m_Height = height;
 			m_dwFormat = dwFormat;
 
 			// Set the sender share handle
 			m_dxShareHandle = dxShareHandle;
 
-			// Update global variables for subsequent size checks
-			m_Width = width;
-			m_Height = height;
 
 			// Inform the receiving application that the texture has changed
 			m_bUpdated = true;
@@ -542,25 +541,26 @@ bool spoutDX::ReceiveImage(ID3D11Device* pd3dDevice, unsigned char * pData, unsi
 
 	ID3D11DeviceContext *pImmediateContext = nullptr;
 	pd3dDevice->GetImmediateContext(&pImmediateContext);
-	if (!pImmediateContext) {
+	if (!pImmediateContext)
 		return false;
-	}
 
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
-
 		// If a new sender has been found or the one connected has changed,
 		// the receiving staging texture has to be reset.
 		// The staging texture is the pixel data source
-		// It must be the same size as the sender
+		// It must be the same size and format as the sender
 		if (m_bUpdated) {
-			if (m_SenderName[0] && m_Width > 0 && m_Height > 0) {
-				CheckStagingTexture(pd3dDevice, m_Width, m_Height);
-			}
 			// Return to update the receiving image pixels if necessary
 			// If the receiving image is still a different size
 			// ReadRGBApixels will use resampling to copy from the staging texture
-			return true;
+			if (m_SenderName[0] && m_Width > 0 && m_Height > 0 && m_dwFormat > 0) {
+				CheckStagingTexture(pd3dDevice, m_Width, m_Height, m_dwFormat);
+				return true;
+			}
+			else {
+				return false;
+			}
 		}
 
 		//
@@ -608,24 +608,26 @@ bool spoutDX::ReceiveRGBimage(ID3D11Device* pd3dDevice, unsigned char * pData, u
 
 	ID3D11DeviceContext *pImmediateContext = nullptr;
 	pd3dDevice->GetImmediateContext(&pImmediateContext);
-	if (!pImmediateContext) {
+	if (!pImmediateContext)
 		return false;
-	}
 
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
-
 		// If a new sender has been found or the one connected has changed,
 		// the receiving staging texture has to be reset.
 		// The staging texture is the pixel data source
-		// It must be the same size as the sender
+		// It must be the same size and format as the sender
 		if (m_bUpdated) {
-			if (m_SenderName[0] && m_Width > 0 && m_Height > 0) {
-				CheckStagingTexture(pd3dDevice, m_Width, m_Height);
-			}
 			// Return to update the receiving image pixels if necessary
 			// If the receiving image is still a different size
 			// ReadRGBpixels will use resampling to copy from the staging texture
+			if (m_SenderName[0] && m_Width > 0 && m_Height > 0 && m_dwFormat > 0) {
+				CheckStagingTexture(pd3dDevice, m_Width, m_Height, m_dwFormat);
+				return true;
+			}
+			else {
+				return false;
+			}
 			return true;
 		}
 
@@ -634,12 +636,11 @@ bool spoutDX::ReceiveRGBimage(ID3D11Device* pd3dDevice, unsigned char * pData, u
 		//
 
 		// Access the sender shared texture
-		if (frame.CheckTextureAccess()) {
+		if (frame.CheckTextureAccess(m_pSharedTexture)) {
 			// Check if the sender has produced a new frame.
 			// This function must be called within a sender mutex lock so the sender does not
 			// write a frame and increment the frame count while a receiver is reading it.
 			if (frame.GetNewFrame()) {
-
 				if (spoutdx.OpenDX11shareHandle(pd3dDevice, &m_pSharedTexture, m_dxShareHandle)) {
 					// Use the sender's shared texture pointer for copy to the local staging texture.
 					// Copy during the mutex lock for sole access to the shared texture.
@@ -651,9 +652,8 @@ bool spoutDX::ReceiveRGBimage(ID3D11Device* pd3dDevice, unsigned char * pData, u
 				}
 			}
 			// Allow access to the shared texture
-			frame.AllowTextureAccess();
+			frame.AllowTextureAccess(m_pSharedTexture);
 		}
-
 		m_bConnected = true;
 	} // sender exists
 	else {
@@ -663,7 +663,7 @@ bool spoutDX::ReceiveRGBimage(ID3D11Device* pd3dDevice, unsigned char * pData, u
 		m_bConnected = false;
 	}
 
-	// ReceiveTexture fails if there is no sender or the connected sender closed.
+	// ReceiveRGBimage fails if there is no sender or the connected sender closed
 	return m_bConnected;
 
 }
@@ -675,8 +675,7 @@ void spoutDX::SelectSender()
 }
 
 // Check for sender change
-// If updated, the application must update the receiving texture
-// before the next call to ReceiveTexture
+// If updated, the application must update the receiving texture before the next receiving call
 bool spoutDX::IsUpdated()
 {
 	bool bRet = m_bUpdated;
@@ -952,12 +951,13 @@ bool spoutDX::ReceiveSenderData()
 	// Save sender name and dimensions to test for change
 	unsigned int width = m_Width;
 	unsigned int height = m_Height;
+	DWORD dwFormat = m_dwFormat;
 
 	// Find if the sender exists.
 	// If a name has been specified, return false if not found.
 	// For a null name, return the active sender name if that exists.
 	// Return width, height, sharehandle and format.
-	if (spoutsender.FindSender(sendername, width, height, m_dxShareHandle, m_dwFormat)) {
+	if (spoutsender.FindSender(sendername, width, height, m_dxShareHandle, dwFormat)) {
 
 		// Is it a new sender ?
 		if (!m_bConnected || strcmp(sendername, m_SenderName) != 0) {
@@ -967,9 +967,13 @@ bool spoutDX::ReceiveSenderData()
 		}
 
 		// Check for sender size changes
-		if (m_Width != width || m_Height != height) {
+		if (m_Width != width || m_Height != height || dwFormat != m_dwFormat) {
+			// printf("Sender changed :\n");
+			// printf("   From %dx%d (format %d)\n", m_Width, m_Height, m_dwFormat);
+			// printf("   To %dx%d (format %d)\n", width, height, dwFormat);
 			m_Width = width;
 			m_Height = height;
+			m_dwFormat = dwFormat;
 			m_bUpdated = true; // Return to update the receiving texture or image
 		}
 
@@ -1048,13 +1052,13 @@ bool spoutDX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 // Create a new global staging texture if it has changed size or does not exist yet
 // Required format must have been established already (m_dwFormat)
 // TODO : pass format
-bool spoutDX::CheckStagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height)
+bool spoutDX::CheckStagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DWORD dwFormat)
 {
 	D3D11_TEXTURE2D_DESC desc = { 0 };
 
 	if (m_pStagingTexture) {
 		m_pStagingTexture->GetDesc(&desc);
-		if (desc.Width != width || desc.Height != height) {
+		if (desc.Width != width || desc.Height != height || desc.Format != (DXGI_FORMAT)dwFormat) {
 			m_pStagingTexture->Release();
 			m_pStagingTexture = nullptr;
 		}
@@ -1063,7 +1067,7 @@ bool spoutDX::CheckStagingTexture(ID3D11Device* pDevice, unsigned int width, uns
 	}
 
 	if (!m_pStagingTexture) {
-		if (CreateDX11StagingTexture(pDevice, width, height, (DXGI_FORMAT)m_dwFormat, &m_pStagingTexture)) {
+		if (CreateDX11StagingTexture(pDevice, width, height, (DXGI_FORMAT)dwFormat, &m_pStagingTexture)) {
 			return true;
 		}
 	}

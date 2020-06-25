@@ -185,7 +185,7 @@ protected :
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format,
 		ID3D11Texture2D** pStagingTexture);
-	bool CheckStagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height);
+	bool CheckStagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
 	void SelectSenderPanel();
 	bool CheckSpoutPanel(char *sendername, int maxchars = 256);
 
