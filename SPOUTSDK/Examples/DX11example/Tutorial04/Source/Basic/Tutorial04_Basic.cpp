@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------
-// File: Tutorial07.cpp
+// File: Tutorial04.cpp
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Adapted for SPOUT output (http://spout.zeal.co/)
@@ -7,17 +7,17 @@
 // Search on "SPOUT" for additions.
 // Version to send using 2.007 methods
 //
-// This is a receiver using the "SpoutDX" support class
-// It is saved as "Tutorial07_SpoutDX.cpp" in the Source folder.
-// Please compare with a stand-alone version "Tutorial07_Basic.cpp"
-// using methods directly from the Spout SDK classes.
-// Copy the required file to the build folder and rename to "Tutorial07.cpp"
+// This is a stand-alone version using methods directly from the Spout SDK classes.
+// It is saved as "Tutorial04_Basic.cpp" in the Source folder.
+// Please compare with a version using the "SpoutDX" support class "Tutorial04_SpoutDX.cpp"
+// which could be suitable for your application.
+// Copy the required file to the build folder and rename to "Tutorial04.cpp"
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
-// This application demonstrates texturing
+// This application displays a 3D cube using Direct3D 11
 //
-// http://msdn.microsoft.com/en-us/library/windows/apps/ff729724.aspx
+// http://msdn.microsoft.com/en-us/library/windows/apps/ff729721.aspx
 //
 // THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 // ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO
@@ -31,11 +31,14 @@
 #include <d3dcompiler.h>
 #include <directxmath.h>
 #include <directxcolors.h>
-#include "DDSTextureLoader.h"
 #include "resource.h"
 
 // SPOUT
-#include "..\SpoutDX\SpoutDX.h"
+// Change paths as required
+#include "..\..\..\SpoutSDK\SpoutSenderNames.h" // for sender creation and update
+#include "..\..\..\SpoutSDK\SpoutDirectX.h" // for creating a shared texture
+#include "..\..\..\SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "..\..\..\SpoutSDK\SpoutUtils.h" // for logging utilites
 
 using namespace DirectX;
 
@@ -45,63 +48,54 @@ using namespace DirectX;
 struct SimpleVertex
 {
     XMFLOAT3 Pos;
-    XMFLOAT2 Tex;
+    XMFLOAT4 Color;
 };
 
-struct CBNeverChanges
-{
-    XMMATRIX mView;
-};
 
-struct CBChangeOnResize
+struct ConstantBuffer
 {
-    XMMATRIX mProjection;
-};
-
-struct CBChangesEveryFrame
-{
-    XMMATRIX mWorld;
-    XMFLOAT4 vMeshColor;
+	XMMATRIX mWorld;
+	XMMATRIX mView;
+	XMMATRIX mProjection;
 };
 
 
 //--------------------------------------------------------------------------------------
 // Global Variables
 //--------------------------------------------------------------------------------------
-HINSTANCE                           g_hInst = nullptr;
-HWND                                g_hWnd = nullptr;
-D3D_DRIVER_TYPE                     g_driverType = D3D_DRIVER_TYPE_NULL;
-D3D_FEATURE_LEVEL                   g_featureLevel = D3D_FEATURE_LEVEL_11_0;
-ID3D11Device*                       g_pd3dDevice = nullptr;
-ID3D11Device1*                      g_pd3dDevice1 = nullptr;
-ID3D11DeviceContext*                g_pImmediateContext = nullptr;
-ID3D11DeviceContext1*               g_pImmediateContext1 = nullptr;
-IDXGISwapChain*                     g_pSwapChain = nullptr;
-IDXGISwapChain1*                    g_pSwapChain1 = nullptr;
-ID3D11RenderTargetView*             g_pRenderTargetView = nullptr;
-ID3D11Texture2D*                    g_pDepthStencil = nullptr;
-ID3D11DepthStencilView*             g_pDepthStencilView = nullptr;
-ID3D11VertexShader*                 g_pVertexShader = nullptr;
-ID3D11PixelShader*                  g_pPixelShader = nullptr;
-ID3D11InputLayout*                  g_pVertexLayout = nullptr;
-ID3D11Buffer*                       g_pVertexBuffer = nullptr;
-ID3D11Buffer*                       g_pIndexBuffer = nullptr;
-ID3D11Buffer*                       g_pCBNeverChanges = nullptr;
-ID3D11Buffer*                       g_pCBChangeOnResize = nullptr;
-ID3D11Buffer*                       g_pCBChangesEveryFrame = nullptr;
-ID3D11ShaderResourceView*           g_pTextureRV = nullptr;
-ID3D11SamplerState*                 g_pSamplerLinear = nullptr;
-XMMATRIX                            g_World;
-XMMATRIX                            g_View;
-XMMATRIX                            g_Projection;
-// XMFLOAT4                            g_vMeshColor( 0.7f, 0.7f, 0.7f, 1.0f );
-// SPOUT
-XMFLOAT4                            g_vMeshColor(1.0f, 1.0f, 1.0f, 1.0f);
+HINSTANCE               g_hInst = nullptr;
+HWND                    g_hWnd = nullptr;
+D3D_DRIVER_TYPE         g_driverType = D3D_DRIVER_TYPE_NULL;
+D3D_FEATURE_LEVEL       g_featureLevel = D3D_FEATURE_LEVEL_11_0;
+ID3D11Device*           g_pd3dDevice = nullptr;
+ID3D11Device1*          g_pd3dDevice1 = nullptr;
+ID3D11DeviceContext*    g_pImmediateContext = nullptr;
+ID3D11DeviceContext1*   g_pImmediateContext1 = nullptr;
+IDXGISwapChain*         g_pSwapChain = nullptr;
+IDXGISwapChain1*        g_pSwapChain1 = nullptr;
+ID3D11RenderTargetView* g_pRenderTargetView = nullptr;
+ID3D11VertexShader*     g_pVertexShader = nullptr;
+ID3D11PixelShader*      g_pPixelShader = nullptr;
+ID3D11InputLayout*      g_pVertexLayout = nullptr;
+ID3D11Buffer*           g_pVertexBuffer = nullptr;
+ID3D11Buffer*           g_pIndexBuffer = nullptr;
+ID3D11Buffer*           g_pConstantBuffer = nullptr;
+XMMATRIX                g_World;
+XMMATRIX                g_View;
+XMMATRIX                g_Projection;
 
 // SPOUT
-spoutDX spoutreceiver;
-ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr;
-ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
+spoutSenderNames spoutSender;
+spoutDirectX spoutdx;
+spoutFrameCount frame;
+
+char g_SenderName[256];
+unsigned int g_Width = 0;
+unsigned int g_Height = 0;
+ID3D11Texture2D* g_pSharedTexture = nullptr; // Texture to be shared
+HANDLE g_dxShareHandle = NULL; // Share handle for the sender
+bool bSpoutInitialized = false;
+
 
 //--------------------------------------------------------------------------------------
 // Forward declarations
@@ -111,6 +105,7 @@ HRESULT InitDevice();
 void CleanupDevice();
 LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
+
 
 //--------------------------------------------------------------------------------------
 // Entry point to the program. Initializes everything and goes into a message processing 
@@ -122,19 +117,13 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     UNREFERENCED_PARAMETER( lpCmdLine );
 
 	// SPOUT
-
-	// Optionally enable Spout logging
-	// OpenSpoutConsole(); // Console only for debugging
+	// Optionally enable logging to catch Spout warnings and errors
+	// OpenSpoutConsole(); // console only for debugging
 	// EnableSpoutLog(); // Log to console
-	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
+	// EnableSpoutLogFile("Tutorial04.log); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
-
-	// Optionally set the name of the sender to receive from
-	// The receiver will only connect to that sender.
-	// The user can over-ride this by selecting another.
-	spoutreceiver.SetReceiverName("Spout DX11 Sender");
-
-    if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
+	
+	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
 
     if( FAILED( InitDevice() ) )
@@ -143,29 +132,33 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         return 0;
     }
 
+	// Give the sender a name
+	strcpy_s(g_SenderName, 256, "Tutorial04");
+
+	// Create a sender mutex for access to the shared texture
+	frame.CreateAccessMutex(g_SenderName);
+
     // Main message loop
     MSG msg = {0};
     while( WM_QUIT != msg.message )
-	{
+    {
         if( PeekMessage( &msg, nullptr, 0, 0, PM_REMOVE ) )
-		{
+        {
             TranslateMessage( &msg );
             DispatchMessage( &msg );
         }
         else
-		{
+        {
             Render();
         }
     }
 
 	// SPOUT
-	spoutreceiver.ReleaseReceiver();
-	if (g_pSpoutTextureRV)
-		g_pSpoutTextureRV->Release();
-	if (g_pReceivedTexture)
-		g_pReceivedTexture->Release();
+	spoutSender.ReleaseSenderName(g_SenderName);
+	if (g_pSharedTexture)
+		g_pSharedTexture->Release();
 
-	CleanupDevice();
+    CleanupDevice();
 
     return ( int )msg.wParam;
 }
@@ -195,32 +188,37 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
 
     // Create window
     g_hInst = hInstance;
-    RECT rc = { 0, 0, 640, 360 };
+
+	RECT rc = { 0, 0, 640, 360 };
     AdjustWindowRect( &rc, WS_OVERLAPPEDWINDOW, FALSE );
-    g_hWnd = CreateWindow( L"TutorialWindowClass", 
-						   L"Direct3D 11 Tutorial 7 - Spout receiver",
-                           WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-                           CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance,
-                           nullptr );
+    g_hWnd = CreateWindow(	L"TutorialWindowClass",
+							L"Direct3D 11 Tutorial 4: - Spout sender",
+							WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+							CW_USEDEFAULT, CW_USEDEFAULT, 
+							rc.right - rc.left,
+							rc.bottom - rc.top,
+							nullptr, nullptr, hInstance, nullptr );
+
     if( !g_hWnd )
         return E_FAIL;
 
 	//
 	// SPOUT
 	//
-	// Centre the window on the desktop work area
+	// Centre the window on the desktop
 	GetWindowRect(g_hWnd, &rc);
-	RECT WorkArea;
-	int WindowPosLeft = 0;
-	int WindowPosTop = 0;
-	SystemParametersInfo(SPI_GETWORKAREA, 0, (LPVOID)&WorkArea, 0);
-	WindowPosLeft += ((WorkArea.right - WorkArea.left) - (rc.right - rc.left)) / 2;
-	WindowPosTop += ((WorkArea.bottom - WorkArea.top) - (rc.bottom - rc.top)) / 2;
-	MoveWindow(g_hWnd, WindowPosLeft, WindowPosTop,
-		(rc.right - rc.left), rc.bottom - rc.top, false);
+	MoveWindow(g_hWnd,
+		(GetSystemMetrics(SM_CXSCREEN) - (rc.right - rc.left)) / 2,
+		(GetSystemMetrics(SM_CYSCREEN) - (rc.bottom - rc.top)) / 2,
+		(rc.right - rc.left),
+		(rc.bottom - rc.top), false);
 
-	ShowWindow( g_hWnd, nCmdShow );
+	g_Width = rc.right - rc.left;
+	g_Height = rc.bottom - rc.top;
 
+
+    ShowWindow( g_hWnd, nCmdShow );
+	
     return S_OK;
 }
 
@@ -300,7 +298,7 @@ HRESULT InitDevice()
         D3D_FEATURE_LEVEL_10_1,
         D3D_FEATURE_LEVEL_10_0,
     };
-    UINT numFeatureLevels = ARRAYSIZE( featureLevels );
+	UINT numFeatureLevels = ARRAYSIZE( featureLevels );
 
     for( UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++ )
     {
@@ -408,33 +406,7 @@ HRESULT InitDevice()
     if( FAILED( hr ) )
         return hr;
 
-    // Create depth stencil texture
-    D3D11_TEXTURE2D_DESC descDepth = {};
-    descDepth.Width = width;
-    descDepth.Height = height;
-    descDepth.MipLevels = 1;
-    descDepth.ArraySize = 1;
-    descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    descDepth.SampleDesc.Count = 1;
-    descDepth.SampleDesc.Quality = 0;
-    descDepth.Usage = D3D11_USAGE_DEFAULT;
-    descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-    descDepth.CPUAccessFlags = 0;
-    descDepth.MiscFlags = 0;
-    hr = g_pd3dDevice->CreateTexture2D( &descDepth, nullptr, &g_pDepthStencil );
-    if( FAILED( hr ) )
-        return hr;
-
-    // Create the depth stencil view
-    D3D11_DEPTH_STENCIL_VIEW_DESC descDSV = {};
-    descDSV.Format = descDepth.Format;
-    descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-    descDSV.Texture2D.MipSlice = 0;
-    hr = g_pd3dDevice->CreateDepthStencilView( g_pDepthStencil, &descDSV, &g_pDepthStencilView );
-    if( FAILED( hr ) )
-        return hr;
-
-    g_pImmediateContext->OMSetRenderTargets( 1, &g_pRenderTargetView, g_pDepthStencilView );
+    g_pImmediateContext->OMSetRenderTargets( 1, &g_pRenderTargetView, nullptr );
 
     // Setup the viewport
     D3D11_VIEWPORT vp;
@@ -448,7 +420,7 @@ HRESULT InitDevice()
 
     // Compile the vertex shader
     ID3DBlob* pVSBlob = nullptr;
-    hr = CompileShaderFromFile( L"Tutorial07.fx", "VS", "vs_4_0", &pVSBlob );
+    hr = CompileShaderFromFile( L"Tutorial04.fx", "VS", "vs_4_0", &pVSBlob );
     if( FAILED( hr ) )
     {
         MessageBox( nullptr,
@@ -456,35 +428,35 @@ HRESULT InitDevice()
         return hr;
     }
 
-    // Create the vertex shader
-    hr = g_pd3dDevice->CreateVertexShader( pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), nullptr, &g_pVertexShader );
-    if( FAILED( hr ) )
-    {    
-        pVSBlob->Release();
+	// Create the vertex shader
+	hr = g_pd3dDevice->CreateVertexShader( pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), nullptr, &g_pVertexShader );
+	if( FAILED( hr ) )
+	{	
+		pVSBlob->Release();
         return hr;
-    }
+	}
 
     // Define the input layout
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-    };
-    UINT numElements = ARRAYSIZE( layout );
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
+	UINT numElements = ARRAYSIZE( layout );
 
     // Create the input layout
-    hr = g_pd3dDevice->CreateInputLayout( layout, numElements, pVSBlob->GetBufferPointer(),
+	hr = g_pd3dDevice->CreateInputLayout( layout, numElements, pVSBlob->GetBufferPointer(),
                                           pVSBlob->GetBufferSize(), &g_pVertexLayout );
-    pVSBlob->Release();
-    if( FAILED( hr ) )
+	pVSBlob->Release();
+	if( FAILED( hr ) )
         return hr;
 
     // Set the input layout
     g_pImmediateContext->IASetInputLayout( g_pVertexLayout );
 
-    // Compile the pixel shader
-    ID3DBlob* pPSBlob = nullptr;
-    hr = CompileShaderFromFile( L"Tutorial07.fx", "PS", "ps_4_0", &pPSBlob );
+	// Compile the pixel shader
+	ID3DBlob* pPSBlob = nullptr;
+    hr = CompileShaderFromFile( L"Tutorial04.fx", "PS", "ps_4_0", &pPSBlob );
     if( FAILED( hr ) )
     {
         MessageBox( nullptr,
@@ -492,51 +464,29 @@ HRESULT InitDevice()
         return hr;
     }
 
-    // Create the pixel shader
-    hr = g_pd3dDevice->CreatePixelShader( pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, &g_pPixelShader );
-    pPSBlob->Release();
+	// Create the pixel shader
+	hr = g_pd3dDevice->CreatePixelShader( pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, &g_pPixelShader );
+	pPSBlob->Release();
     if( FAILED( hr ) )
         return hr;
 
     // Create vertex buffer
     SimpleVertex vertices[] =
     {
-        { XMFLOAT3( -1.0f, 1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-
-        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
-
-        { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-
-        { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, 1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-
-        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-
-        { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, 1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
+        { XMFLOAT3( -1.0f,  1.0f, -1.0f ), XMFLOAT4( 0.0f, 0.0f, 1.0f, 1.0f ) },
+        { XMFLOAT3(  1.0f,  1.0f, -1.0f ), XMFLOAT4( 0.0f, 1.0f, 0.0f, 1.0f ) },
+        { XMFLOAT3(  1.0f,  1.0f,  1.0f ), XMFLOAT4( 0.0f, 1.0f, 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f,  1.0f,  1.0f ), XMFLOAT4( 1.0f, 0.0f, 0.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT4( 1.0f, 0.0f, 1.0f, 1.0f ) },
+        { XMFLOAT3(  1.0f, -1.0f, -1.0f ), XMFLOAT4( 1.0f, 1.0f, 0.0f, 1.0f ) },
+        { XMFLOAT3(  1.0f, -1.0f,  1.0f ), XMFLOAT4( 1.0f, 1.0f, 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, -1.0f,  1.0f ), XMFLOAT4( 0.0f, 0.0f, 0.0f, 1.0f ) },
     };
-
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof( SimpleVertex ) * 24;
+    bd.ByteWidth = sizeof( SimpleVertex ) * 8;
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bd.CPUAccessFlags = 0;
+	bd.CPUAccessFlags = 0;
 
     D3D11_SUBRESOURCE_DATA InitData = {};
     InitData.pSysMem = vertices;
@@ -550,32 +500,30 @@ HRESULT InitDevice()
     g_pImmediateContext->IASetVertexBuffers( 0, 1, &g_pVertexBuffer, &stride, &offset );
 
     // Create index buffer
-    // Create vertex buffer
     WORD indices[] =
     {
         3,1,0,
         2,1,3,
 
+        0,5,4,
+        1,5,0,
+
+        3,4,7,
+        0,4,3,
+
+        1,6,5,
+        2,6,1,
+
+        2,7,6,
+        3,7,2,
+
         6,4,5,
         7,4,6,
-
-        11,9,8,
-        10,9,11,
-
-        14,12,13,
-        15,12,14,
-
-        19,17,16,
-        18,17,19,
-
-        22,20,21,
-        23,20,22
     };
-
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof( WORD ) * 36;
+    bd.ByteWidth = sizeof( WORD ) * 36; // 36 vertices needed for 12 triangles in a triangle list
     bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    bd.CPUAccessFlags = 0;
+	bd.CPUAccessFlags = 0;
     InitData.pSysMem = indices;
     hr = g_pd3dDevice->CreateBuffer( &bd, &InitData, &g_pIndexBuffer );
     if( FAILED( hr ) )
@@ -587,74 +535,35 @@ HRESULT InitDevice()
     // Set primitive topology
     g_pImmediateContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 
-    // Create the constant buffers
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(CBNeverChanges);
-    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    bd.CPUAccessFlags = 0;
-    hr = g_pd3dDevice->CreateBuffer( &bd, nullptr, &g_pCBNeverChanges );
-    if( FAILED( hr ) )
-        return hr;
-    
-    bd.ByteWidth = sizeof(CBChangeOnResize);
-    hr = g_pd3dDevice->CreateBuffer( &bd, nullptr, &g_pCBChangeOnResize );
-    if( FAILED( hr ) )
-        return hr;
-    
-    bd.ByteWidth = sizeof(CBChangesEveryFrame);
-    hr = g_pd3dDevice->CreateBuffer( &bd, nullptr, &g_pCBChangesEveryFrame );
+	// Create the constant buffer
+	bd.Usage = D3D11_USAGE_DEFAULT;
+	bd.ByteWidth = sizeof(ConstantBuffer);
+	bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	bd.CPUAccessFlags = 0;
+    hr = g_pd3dDevice->CreateBuffer( &bd, nullptr, &g_pConstantBuffer );
     if( FAILED( hr ) )
         return hr;
 
-    // Load the Texture
-    hr = CreateDDSTextureFromFile( g_pd3dDevice, L"seafloor.dds", nullptr, &g_pTextureRV );
-    if( FAILED( hr ) )
-        return hr;
-
-    // Create the sample state
-    D3D11_SAMPLER_DESC sampDesc = {};
-    sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-    sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-    sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-    sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-    sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-    sampDesc.MinLOD = 0;
-    sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
-    hr = g_pd3dDevice->CreateSamplerState( &sampDesc, &g_pSamplerLinear );
-    if( FAILED( hr ) )
-        return hr;
-
-    // Initialize the world matrices
-    g_World = XMMatrixIdentity();
+    // Initialize the world matrix
+	g_World = XMMatrixIdentity();
 
     // Initialize the view matrix
-    /*
-	XMVECTOR Eye = XMVectorSet( 0.0f, 3.0f, -6.0f, 0.0f );
-    XMVECTOR At = XMVectorSet( 0.0f, 1.0f, 0.0f, 0.0f );
-    XMVECTOR Up = XMVectorSet( 0.0f, 1.0f, 0.0f, 0.0f );
+	/*
+	XMVECTOR Eye = XMVectorSet( 0.0f, 1.0f, -5.0f, 0.0f );
+	XMVECTOR At  = XMVectorSet( 0.0f, 1.0f,  0.0f, 0.0f );
+	XMVECTOR Up  = XMVectorSet( 0.0f, 1.0f,  0.0f, 0.0f );
 	*/
 	// SPOUT - Move it up a bit
 	XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f);
-	XMVECTOR At = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-	XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	XMVECTOR At  = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+	XMVECTOR Up  = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
-    g_View = XMMatrixLookAtLH( Eye, At, Up );
-
-    CBNeverChanges cbNeverChanges;
-    cbNeverChanges.mView = XMMatrixTranspose( g_View );
-    g_pImmediateContext->UpdateSubresource( g_pCBNeverChanges, 0, nullptr, &cbNeverChanges, 0, 0 );
+	g_View = XMMatrixLookAtLH( Eye, At, Up );
 
     // Initialize the projection matrix
-    g_Projection = XMMatrixPerspectiveFovLH( XM_PIDIV4, width / (FLOAT)height, 0.01f, 100.0f );
-    
-    CBChangeOnResize cbChangesOnResize;
-    cbChangesOnResize.mProjection = XMMatrixTranspose( g_Projection );
-    g_pImmediateContext->UpdateSubresource( g_pCBChangeOnResize, 0, nullptr, &cbChangesOnResize, 0, 0 );
-
-	// SPOUT
-	// Create a receiving texture
-	// The texture size and format are updated after connecting to a sender
-	spoutreceiver.CreateDX11texture(g_pd3dDevice, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, &g_pReceivedTexture);
+	// g_Projection = XMMatrixPerspectiveFovLH( XM_PIDIV2, width / (FLOAT)height, 0.01f, 100.0f );
+	// SPOUT - Make it a bit bigger
+	g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV4, (FLOAT)width / (FLOAT)height, 0.01f, 100.0f);
 
     return S_OK;
 }
@@ -666,19 +575,12 @@ HRESULT InitDevice()
 void CleanupDevice()
 {
     if( g_pImmediateContext ) g_pImmediateContext->ClearState();
-
-    if( g_pSamplerLinear ) g_pSamplerLinear->Release();
-    if( g_pTextureRV ) g_pTextureRV->Release();
-    if( g_pCBNeverChanges ) g_pCBNeverChanges->Release();
-    if( g_pCBChangeOnResize ) g_pCBChangeOnResize->Release();
-    if( g_pCBChangesEveryFrame ) g_pCBChangesEveryFrame->Release();
+    if( g_pConstantBuffer ) g_pConstantBuffer->Release();
     if( g_pVertexBuffer ) g_pVertexBuffer->Release();
     if( g_pIndexBuffer ) g_pIndexBuffer->Release();
     if( g_pVertexLayout ) g_pVertexLayout->Release();
     if( g_pVertexShader ) g_pVertexShader->Release();
     if( g_pPixelShader ) g_pPixelShader->Release();
-    if( g_pDepthStencil ) g_pDepthStencil->Release();
-    if( g_pDepthStencilView ) g_pDepthStencilView->Release();
     if( g_pRenderTargetView ) g_pRenderTargetView->Release();
     if( g_pSwapChain1 ) g_pSwapChain1->Release();
     if( g_pSwapChain ) g_pSwapChain->Release();
@@ -704,11 +606,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
         hdc = BeginPaint( hWnd, &ps );
         EndPaint( hWnd, &ps );
         break;
-
-	// SPOUT - RH click to open SpoutPanel
-	case WM_RBUTTONDOWN:
-		spoutreceiver.SelectSender();
-		break;
 
     case WM_DESTROY:
         PostQuitMessage( 0 );
@@ -743,131 +640,111 @@ void Render()
         if( timeStart == 0 )
             timeStart = timeCur;
         t = ( timeCur - timeStart ) / 1000.0f;
-		t /= 2.0f; // SPOUT - slow the cube rotation down a bit
+		t /= 2.0f; // slow it down a bit
     }
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	// SPOUT
-	//
-	// Receive a sender texture
-	if (spoutreceiver.ReceiveTexture(g_pd3dDevice, &g_pReceivedTexture)) {
-
-		//
-		// If no texture pointer is passed in, a receiving texture is created
-		// within the SpoutDX class and the pointer can be  retrieved with :
-		//		ID3D11Texture2D* GetTexture();
-		// If a texture pointer has been passed in, this function will return null.
-		//
-		// Sender details can be retrieved with :
-		//		const char * GetSenderName();
-		//		unsigned int GetSenderWidth();
-		//		unsigned int GetSenderHeight();
-		//		DXGI_FORMAT GetSenderFormat();
-		//		HANDLE GetSenderHandle;
-		//
-		// The receiver can also query the sender frame number and rate
-		//		long GetSenderFrame();
-		//		double GetSenderFps();
-		//
-		// Re-create the receiving texture if the sender size changed
-		if (spoutreceiver.IsUpdated()) {
-
-			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
-			g_pReceivedTexture = nullptr;
-			spoutreceiver.CreateDX11texture(g_pd3dDevice,
-						spoutreceiver.GetSenderWidth(),
-						spoutreceiver.GetSenderHeight(),
-						spoutreceiver.GetSenderFormat(),
-						&g_pReceivedTexture);
-
-			// Any other action required by the receiver can be done here
-			// In this example, clear the shader resource view
-			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
-			g_pSpoutTextureRV = nullptr;
-
-		}
-
-		// A texture has been received
-
-		// In this example, a shader resource view is created if the frame is new
-		if (spoutreceiver.IsFrameNew()) {
-			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
-			g_pSpoutTextureRV = nullptr;
-			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-			ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
-			// Matching format with the sender is important
-			shaderResourceViewDesc.Format = spoutreceiver.GetSenderFormat();
-			shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-			shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
-			shaderResourceViewDesc.Texture2D.MipLevels = 1;
-			g_pd3dDevice->CreateShaderResourceView(g_pReceivedTexture, &shaderResourceViewDesc, &g_pSpoutTextureRV);
-		}
-
-	}
-	else {
-		// A sender was not found or the connected sender closed
-		// Clear the spout texture resource view so render uses the default
-		if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
-		g_pSpoutTextureRV = nullptr;
-	}
-
-	// Rotate cube around the origin
-	// g_World = XMMatrixRotationY(t);
+    //
+    // Animate the cube
+    //
+	// g_World = XMMatrixRotationY( t );
 	// SPOUT - pitch and yaw
 	g_World = XMMatrixRotationRollPitchYaw(0.0f, t, t);
-
-    // Modify the color
-	// SPOUT - remove
-    // g_vMeshColor.x = ( sinf( t * 1.0f ) + 1.0f ) * 0.5f;
-    // g_vMeshColor.y = ( cosf( t * 3.0f ) + 1.0f ) * 0.5f;
-    // g_vMeshColor.z = ( sinf( t * 5.0f ) + 1.0f ) * 0.5f;
 
     //
     // Clear the back buffer
     //
-    // g_pImmediateContext->ClearRenderTargetView( g_pRenderTargetView, Colors::MidnightBlue );
+    g_pImmediateContext->ClearRenderTargetView( g_pRenderTargetView, Colors::MidnightBlue );
+
+    //
+    // Update variables
+    //
+    ConstantBuffer cb;
+	cb.mWorld = XMMatrixTranspose( g_World );
+	cb.mView = XMMatrixTranspose( g_View );
+	cb.mProjection = XMMatrixTranspose( g_Projection );
+	g_pImmediateContext->UpdateSubresource( g_pConstantBuffer, 0, nullptr, &cb, 0, 0 );
+
+    //
+    // Renders a triangle
+    //
+	g_pImmediateContext->VSSetShader( g_pVertexShader, nullptr, 0 );
+	g_pImmediateContext->VSSetConstantBuffers( 0, 1, &g_pConstantBuffer );
+	g_pImmediateContext->PSSetShader( g_pPixelShader, nullptr, 0 );
+	g_pImmediateContext->DrawIndexed( 36, 0, 0 ); // 36 vertices needed for 12 triangles in a triangle list
+
+	//
 	// SPOUT
-	// Change backgound colour for better contrast with a blue sender
-	FLOAT backgnd[4] = { 0.39f, 0.025f, 0.0f }; // red/brown
-	g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, backgnd);
+	//
+	// Get the swap chain's backbuffer to a texture
+	ID3D11Texture2D* pBackBuffer = nullptr;
+	HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
+	if (SUCCEEDED(hr)) {
 
-    //
-    // Clear the depth buffer to 1.0 (max depth)
-    //
-    g_pImmediateContext->ClearDepthStencilView( g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0 );
+		// Get the texture details
+		D3D11_TEXTURE2D_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+		pBackBuffer->GetDesc(&desc);
+		if (desc.Width > 0 && desc.Height > 0) {
+			if (!bSpoutInitialized) {
+				// Now that we have a texture, we can create a sender
+				g_Width = desc.Width;
+				g_Height = desc.Height;
+				// Create a shared texture of the same size for the sender
+				// The format should match that of the local texture (backbuffer in this case)
+				// This should be either DXGI_FORMAT_B8G8R8A8_UNORM or DXGI_FORMAT_R8G8B8A8_UNORM
+				spoutdx.CreateSharedDX11Texture(g_pd3dDevice, g_Width, g_Height, desc.Format, &g_pSharedTexture, g_dxShareHandle);
+				// Create a sender using the shared texture share-handle
+				spoutSender.CreateSender(g_SenderName, g_Width, g_Height, g_dxShareHandle, (DWORD)desc.Format);
+				// Create a sender mutex for access to the shared texture
+				frame.CreateAccessMutex(g_SenderName);
+				// Enable frame counting for sender frame number and fps
+				frame.EnableFrameCount(g_SenderName);
+				bSpoutInitialized = true;
+			}
+			// If the sender is already created, check for change of rendering size
+			else if (g_Width != desc.Width || g_Height != desc.Height) {
+				// Update the global width & height
+				g_Width = desc.Width;
+				g_Height = desc.Height;
+				// Update the sender's shared texture with the same format
+				spoutdx.CreateSharedDX11Texture(g_pd3dDevice, g_Width, g_Height, desc.Format, &g_pSharedTexture, g_dxShareHandle);
+				// Update the sender's information shared memory map
+				spoutSender.UpdateSender(g_SenderName, g_Width, g_Height, g_dxShareHandle, desc.Format);
+			}
 
-    //
-    // Update variables that change once per frame
-    //
-    CBChangesEveryFrame cb;
-    cb.mWorld = XMMatrixTranspose( g_World );
-    cb.vMeshColor = g_vMeshColor;
-    g_pImmediateContext->UpdateSubresource( g_pCBChangesEveryFrame, 0, nullptr, &cb, 0, 0 );
-
-    //
-    // Render the cube
-    //
-    g_pImmediateContext->VSSetShader( g_pVertexShader, nullptr, 0 );
-    g_pImmediateContext->VSSetConstantBuffers( 0, 1, &g_pCBNeverChanges );
-    g_pImmediateContext->VSSetConstantBuffers( 1, 1, &g_pCBChangeOnResize );
-    g_pImmediateContext->VSSetConstantBuffers( 2, 1, &g_pCBChangesEveryFrame );
-    g_pImmediateContext->PSSetShader( g_pPixelShader, nullptr, 0 );
-    g_pImmediateContext->PSSetConstantBuffers( 2, 1, &g_pCBChangesEveryFrame );
-	
-	// SPOUT
-	// Use the sender's texture shader resource view
-	if(g_pSpoutTextureRV)	
-		g_pImmediateContext->PSSetShaderResources(0, 1, &g_pSpoutTextureRV);
-	else
-		g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
-
-    g_pImmediateContext->PSSetSamplers( 0, 1, &g_pSamplerLinear );
-    g_pImmediateContext->DrawIndexed( 36, 0, 0 );
+			// Send the texture
+			if(bSpoutInitialized) {
+				// Check the sender mutex for access the shared texture in case a receiver is holding it
+				if (frame.CheckTextureAccess(g_pSharedTexture)) {
+					// Copy the backbuffer texture to the sender's shared texture
+					// Both textures have the same size and format
+					g_pImmediateContext->CopyResource(g_pSharedTexture, pBackBuffer);
+					// Note : https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11device-opensharedresource
+					// If a shared texture is updated on one device ID3D11DeviceContext::Flush must be called on that device. 
+					g_pImmediateContext->Flush();
+					// Also can wait for flush and CopyResource to complete
+					// spoutdx.Wait(g_pd3dDevice, g_pImmediateContext);
+					// Signal a new frame while the mutex is still locked
+					frame.SetNewFrame();
+					// Allow access to the shared texture
+					frame.AllowTextureAccess(g_pSharedTexture);
+				}
+			}
+		}
+	}
 
     //
     // Present our back buffer to our front buffer
     //
     g_pSwapChain->Present( 0, 0 );
 
+	//
+	// SPOUT - fps control
+	//
+	// Hold a target frame rate - e.g. 60 or 30fps
+	// This is not necessary if the application already has
+	// fps control but in this example rendering is done
+	// during idle time and render rate can be extremely high.
+	frame .HoldFps(60);
 
 }

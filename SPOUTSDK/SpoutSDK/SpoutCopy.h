@@ -59,13 +59,17 @@ class SPOUT_DLLEXP spoutCopy {
 
 		void memcpy_sse2(void* dst, const void* src, size_t size) const;
 
-		void rgba2bgra(const void* rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
-		void rgba2rgba(const void* source, void* dest, unsigned int width, unsigned int height, unsigned int sourcePitch, bool bInvert = false) const;
-		void bgra2rgba(const void* bgra_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		void rgba2rgba(const void* source, void* dest, unsigned int width, unsigned int height,
+			unsigned int sourcePitch, bool bInvert = false) const;
+		void rgba2rgba(const void* source, void* dest, unsigned int width, unsigned int height,
+			unsigned int sourcePitch, unsigned int destPitch, bool bInvert) const;
 		void rgba2rgbaResample(const void* source, void* dest,
 			unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 			unsigned int destWidth, unsigned int destHeight, bool bInvert = false) const;
-		
+
+		void rgba2bgra(const void* rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		void bgra2rgba(const void* bgra_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+
 		void RemovePadding(const unsigned char *source, unsigned char *dest,
 			unsigned int width, unsigned int height,
 			unsigned int source_stride, GLenum glFormat) const;

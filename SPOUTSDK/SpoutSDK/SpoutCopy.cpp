@@ -709,8 +709,9 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 		auto source = static_cast<const unsigned __int32 *>(rgba_source);; // unsigned int = 4 bytes
 		auto dest = static_cast<unsigned __int32 *>(rgba_dest);
 		// Increment to current line
+		// pitch is line length in bytes. Divide by 4 to get the width in rgba pixels.
 		if (bInvert) {
-			source += (unsigned long)((height - 1 - y)*sourcePitch/4); // pitch is line length in pixels
+			source += (unsigned long)((height - 1 - y)*sourcePitch/4);
 			dest += (unsigned long)(y * width); // dest is not inverted
 		}
 		else {
@@ -724,6 +725,31 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 	}
 }
 
+void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
+	unsigned int width, unsigned int height,
+	unsigned int sourcePitch, unsigned int destPitch, bool bInvert) const
+{
+	// For all rows
+	for (unsigned int y = 0; y < height; y++) {
+		// Start of buffers
+		auto source = static_cast<const unsigned __int32 *>(rgba_source);; // unsigned int = 4 bytes
+		auto dest = static_cast<unsigned __int32 *>(rgba_dest);
+		// Increment to current line
+		// Pitch is line length in bytes. Divide by 4 to get the width in rgba pixels.
+		if (bInvert) {
+			source += (unsigned long)((height - 1 - y)*sourcePitch / 4);
+			dest += (unsigned long)(y * destPitch / 4); // dest is not inverted
+		}
+		else {
+			source += (unsigned long)(y * sourcePitch / 4);
+			dest += (unsigned long)(y * destPitch / 4);
+		}
+		// Copy the line
+		for (unsigned int x = 0; x < width; x++) {
+			dest[x] = source[x];
+		}
+	}
+}
 
 // Adapted from :
 // http://tech-algorithm.com/articles/nearest-neighbor-image-scaling/

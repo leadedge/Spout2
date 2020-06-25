@@ -33,12 +33,12 @@
 #define __spoutDX__
 
 // Change the path as required
-#include "SpoutSDK\SpoutCommon.h" // for dll build and utilities
-#include "SpoutSDK\SpoutSenderNames.h" // for sender creation and update
-#include "SpoutSDK\SpoutDirectX.h" // for creating DX11 textures
-#include "SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "SpoutSDK\SpoutCopy.h" // for pixel copy
-#include "SpoutSDK\SpoutUtils.h" // Registry utiities
+#include "..\..\..\SpoutSDK\SpoutCommon.h" // for dll build and utilities
+#include "..\..\..\SpoutSDK\SpoutSenderNames.h" // for sender creation and update
+#include "..\..\..\SpoutSDK\SpoutDirectX.h" // for creating DX11 textures
+#include "..\..\..\SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "..\..\..\SpoutSDK\SpoutCopy.h" // for pixel copy
+#include "..\..\..\SpoutSDK\SpoutUtils.h" // Registry utiities
 
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
@@ -67,6 +67,8 @@ class SPOUT_DLLEXP spoutDX {
 	void ReleaseSender();
 	// Send a texture
 	bool SendTexture(ID3D11Device* pDevice, ID3D11Texture2D* pTexture);
+	// Send an image
+	bool SendImage(ID3D11Device* pDevice, unsigned char * pData, unsigned int width, unsigned int height);
 	// Get width
 	unsigned int GetWidth();
 	// Get height
