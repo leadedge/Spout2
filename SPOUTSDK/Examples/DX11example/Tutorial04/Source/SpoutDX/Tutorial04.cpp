@@ -119,7 +119,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     }
 
 	// Give the sender a name
-	spoutSender.SetSenderName("Tutorial04");
+	// If none is specified, the executable name is used
+	spoutSender.SetSenderName("Tutorial04sender");
 
     // Main message loop
     MSG msg = {0};

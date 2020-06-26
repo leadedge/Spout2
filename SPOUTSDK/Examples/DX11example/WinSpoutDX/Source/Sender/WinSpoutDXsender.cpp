@@ -97,7 +97,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	g_pixelBuffer = new unsigned char[g_SenderWidth * g_SenderHeight * 4];
 
 	// Give the sender a name
-	sender.SetSenderName("WinSpoutDX");
+	// If no name is specified, the executable name is used
+	sender.SetSenderName("WindowsDXsender");
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
