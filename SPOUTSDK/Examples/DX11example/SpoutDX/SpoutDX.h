@@ -142,6 +142,11 @@ class SPOUT_DLLEXP spoutDX {
 	bool GetDX9();
 	bool GetMemoryShareMode();
 
+	// Utility
+	bool CreateDX11texture(ID3D11Device* pd3dDevice,
+		unsigned int width, unsigned int height,
+		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
+
 	spoutFrameCount frame;
 	spoutDirectX spoutdx;
 

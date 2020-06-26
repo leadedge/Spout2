@@ -40,6 +40,7 @@
 //					  Remove CreateDX11Texture
 //				      More SetSenderName revision and testing
 //					  General update throughout
+//		26.06.20	- Restore revised CreateDX11texture
 //
 // ====================================================================================
 /*
@@ -795,6 +796,15 @@ bool spoutDX::GetMemoryShareMode()
 	}
 	return bRet;
 }
+
+bool spoutDX::CreateDX11texture(ID3D11Device* pd3dDevice,
+	unsigned int width, unsigned int height,
+	DXGI_FORMAT format, ID3D11Texture2D** ppTexture)
+{
+	HANDLE hShare = NULL;
+	return spoutdx.CreateSharedDX11Texture(pd3dDevice, width, height, format, ppTexture, hShare);
+}
+
 
 //
 // PRIVATE
