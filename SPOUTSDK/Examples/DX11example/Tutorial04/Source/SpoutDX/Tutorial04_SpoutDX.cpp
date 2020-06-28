@@ -104,7 +104,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// SPOUT
 	// Optionally enable logging to catch Spout warnings and errors
-	// OpenSpoutConsole(); // Console only for debugging
+	OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("Tutorial04.log); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
@@ -117,6 +117,13 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         CleanupDevice();
         return 0;
     }
+
+	// SPOUT
+	// Initialize DirectX.
+	// The device pointer must be passed in if a DirectX 11.0 device is available.
+	// Otherwise a device is created and the pointer can be retrieved with GetDevice();
+	if (!spoutSender.OpenDirectX11(g_pd3dDevice))
+		return FALSE;
 
 	// Give the sender a name
 	// If none is specified, the executable name is used
@@ -657,7 +664,7 @@ void Render()
 	HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
 	if (SUCCEEDED(hr)) {
 		// SendTexture handles sender creation and resizing
-		spoutSender.SendTexture(g_pd3dDevice, pBackBuffer);
+		spoutSender.SendTexture(pBackBuffer);
 	}
 
     //

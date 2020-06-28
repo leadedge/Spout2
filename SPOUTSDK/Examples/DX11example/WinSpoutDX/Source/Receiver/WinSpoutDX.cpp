@@ -48,7 +48,6 @@ WCHAR szWindowClass[MAX_LOADSTRING];  // the main window class name
 
 // SPOUT
 HWND g_hWnd = NULL;                    // Window handle
-ID3D11Device* g_pd3dDevice = nullptr;  // DirectX 11.0 device pointer
 spoutDX receiver;                      // Receiver object
 unsigned char *pixelBuffer = nullptr;  // Receiving rgb pixel buffer
 unsigned char g_SenderName[256];       // Received sender name
@@ -96,14 +95,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     }
 
 	// SPOUT
-	// Initialize DirectX.
-	// This is not necessary for applications where 
-	// a DirectX 11.0 device is already established.
-	g_pd3dDevice = receiver.OpenDirectX11();
-	if(!g_pd3dDevice)
+	// Initialize DirectX
+	// Pass the device pointer if a DirectX 11.0 device is available
+	// Otherwise a device is created and the pointer can be retrieved with GetDevice();
+	if (!receiver.OpenDirectX11())
 		return FALSE;
 
-	// Create an initial rgba receving buffer of arbitrary size.
+	// Create an initial rgba receving buffer of arbitrary size
 	// It is resized when the receiver connects to a sender
 	g_SenderWidth = 640;
 	g_SenderWidth = 360;
@@ -118,7 +116,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		else
+		// else
 		{
 			Render();
 		}
@@ -136,16 +134,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 // SPOUT
 void Render()
 {
-	// Get pixels from the sender shared texture.
-	// ReceiveImage handles sender detection, connection and copy of pixels.
-	// The data is flipped here ready for WM_PAINT but it could also be drawn upside down.
-	if (receiver.ReceiveImage(g_pd3dDevice, pixelBuffer, g_SenderWidth, g_SenderHeight, true)) {
+	// Get pixels from the sender shared texture
+	// ReceiveImage handles sender detection, copy of pixels and re-sizing
+	// The data is flipped here ready for WM_PAINT but it could also be drawn upside down
+	if (receiver.ReceiveImage(pixelBuffer, g_SenderWidth, g_SenderHeight, true)) {
 		
 		// If IsUpdated() returns true, the sender has changed
 		if (receiver.IsUpdated()) {
-
-			// Do anything necessary for the application here.
-			// In this example we must update the receiving buffer
 
 			// Update the sender name - it could be different
 			strcpy_s((char *)g_SenderName, 256, receiver.GetSenderName());
@@ -157,6 +152,8 @@ void Render()
 			// Update the receiving buffer
 			if(pixelBuffer) delete pixelBuffer;
 			pixelBuffer = new unsigned char[g_SenderWidth * g_SenderHeight * 4];
+
+			// Do anything else necessary for the application here
 
 		}
 	}
@@ -297,6 +294,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				else {
 					// Draw the received image
+					// (Very fast - < 1 msec)
 					BITMAPINFO bmi;
 					ZeroMemory(&bmi, sizeof(BITMAPINFO));
 					bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -308,7 +306,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					bmi.bmiHeader.biCompression = BI_RGB;
 					// StretchDIBits adapts the pixel buffer received from the sender
 					// to the window size. The sender can be resized or changed.
-					SetStretchBltMode(hdc, COLORONCOLOR);
+					SetStretchBltMode(hdc, COLORONCOLOR); // Fastest method
 					StretchDIBits(hdc,
 						0, 0,
 						(dr.right - dr.left), (dr.bottom - dr.top), // destination rectangle 
@@ -350,7 +348,6 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	LPDRAWITEMSTRUCT lpdis;
 	HWND hwnd = NULL;
 	HCURSOR cursorHand = NULL;
-	HINSTANCE hInstance = GetModuleHandle(NULL);
 
     switch (message)
     {

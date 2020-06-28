@@ -46,7 +46,6 @@ WCHAR szWindowClass[MAX_LOADSTRING];  // the main window class name
 
 // SPOUT
 HWND g_hWnd = NULL;                     // Window handle
-ID3D11Device* g_pd3dDevice = nullptr;   // DirectX 11.0 device pointer
 spoutDX sender;                         // Sender object
 HBITMAP g_hBitmap = NULL;               // Image bitmap
 unsigned int g_BitmapWidth = 0;         // Image bitmap width
@@ -116,10 +115,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	// SPOUT
 	// Initialize DirectX.
-	// This is not necessary for applications where 
-	// a DirectX 11.0 device is already established.
-	g_pd3dDevice = sender.OpenDirectX11();
-	if(!g_pd3dDevice)
+	// Pass the device pointer if a DirectX 11.0 device is available.
+	// Otherwise a device is created and the pointer can be retrieved with GetDevice();
+	if (!sender.OpenDirectX11())
 		return FALSE;
 
     // Main message loop:
@@ -149,11 +147,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 // SPOUT
 void Render()
 {
+
 	// Trigger a re-paint to draw the bitmap and refresh the sending pixel buffer - see WM_PAINT
 	InvalidateRect(g_hWnd, NULL, FALSE);
 
 	// Send the pixels
-	sender.SendImage(g_pd3dDevice, g_pixelBuffer, g_SenderWidth, g_SenderHeight);
+	sender.SendImage(g_pixelBuffer, g_SenderWidth, g_SenderHeight);
 
 	//
 	// SPOUT - fps control
@@ -300,7 +299,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SelectObject(hdcMemDC, g_hBitmap);
 
 			// Stretch blit the image to the client area
-			SetStretchBltMode(hdc, HALFTONE);
+			SetStretchBltMode(hdc, COLORONCOLOR); // Fastest method
 			StretchBlt(hdc,	0, 0,
 						rcWidth, rcHeight, // client size
 						hdcMemDC, 0, 0,
@@ -321,12 +320,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				g_pixelBuffer = new unsigned char[g_SenderWidth*g_SenderHeight * 4];
 			}
 			// The sender is now the same size as the client area
-
+	
 			// Create a compatible bitmap sized to the client area
 			HBITMAP hBitmap = CreateCompatibleBitmap(hdcMemDC, rcWidth, rcHeight);
 
 			// Select the bitmap into the memory DC
-			SelectObject(hdcMemDC, hBitmap);
+			HBITMAP hOldBitmap = (HBITMAP)SelectObject(hdcMemDC, hBitmap);
 
 			// Blit the client screen into it
 			BitBlt(hdcMemDC, 0, 0,
@@ -334,27 +333,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				   rcClient.bottom - rcClient.top,
 				   hdc, 0, 0, SRCCOPY);
 
-			// Describe the memory DC bits
-			BITMAPINFOHEADER bi;
-			bi.biSize = sizeof(BITMAPINFOHEADER);
-			bi.biSizeImage = (LONG)(g_SenderWidth * g_SenderHeight * 4); // Pixel buffer size
-			bi.biWidth = (LONG)g_SenderWidth; // Width of buffer
-			bi.biHeight = -(LONG)g_SenderHeight; // Height of buffer (negative to flip the data)
-			bi.biPlanes = 1;
-			bi.biBitCount = 32; // 4 bytes per pixel
-			bi.biCompression = BI_RGB;
-			bi.biXPelsPerMeter = 0;
-			bi.biYPelsPerMeter = 0;
-			bi.biClrUsed = 0;
-			bi.biClrImportant = 0;
-
 			// Copy to our sending buffer
-			GetDIBits(hdcMemDC, hBitmap, 0, (UINT)rcHeight, (LPVOID)g_pixelBuffer, (BITMAPINFO *)&bi, DIB_RGB_COLORS);
+			GetBitmapBits(hBitmap, rcWidth*rcHeight * 4, (LPVOID)g_pixelBuffer);
 
 			// Clean up
+			SelectObject(hdcMemDC, hOldBitmap);
 			DeleteObject(hBitmap);
 			DeleteDC(hdcMemDC);
-
+		
 			EndPaint(hWnd, &ps);
 
         }

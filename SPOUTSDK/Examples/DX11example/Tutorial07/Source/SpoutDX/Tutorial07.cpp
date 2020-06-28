@@ -5,13 +5,14 @@
 // Adapted for SPOUT output (http://spout.zeal.co/)
 // from : https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
 // Search on "SPOUT" for additions.
-// Version to send using 2.007 methods
 //
-// This is a receiver using the "SpoutDX" support class
-// It is saved as "Tutorial07_SpoutDX.cpp" in the Source folder.
-// Please compare with a stand-alone version "Tutorial07_Basic.cpp"
-// using methods directly from the Spout SDK classes.
-// Copy the required file to the build folder and rename to "Tutorial07.cpp"
+// This is a receiver using the SpoutDX support class.
+// It is is saved in the "Source\SpoutDX" folder. 
+//
+// Compare with a version using methods directly from the Spout 2.007 SDK.
+// which is is saved in the "Source\Basic" folder. 
+//
+// Copy the required file to the build folder.
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
@@ -143,7 +144,13 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         return 0;
     }
 
-    // Main message loop
+	// Initialize DirectX.
+	// The device pointer must be passed in if a DirectX 11.0 device is available.
+	// Otherwise a device is created and the pointer can be retrieved with GetDevice();
+	if (!spoutreceiver.OpenDirectX11(g_pd3dDevice))
+		return FALSE;
+	
+	// Main message loop
     MSG msg = {0};
     while( WM_QUIT != msg.message )
 	{
@@ -750,13 +757,7 @@ void Render()
 	// SPOUT
 	//
 	// Receive a sender texture
-	if (spoutreceiver.ReceiveTexture(g_pd3dDevice, &g_pReceivedTexture)) {
-
-		//
-		// If no texture pointer is passed in, a receiving texture is created
-		// within the SpoutDX class and the pointer can be  retrieved with :
-		//		ID3D11Texture2D* GetTexture();
-		// If a texture pointer has been passed in, this function will return null.
+	if (spoutreceiver.ReceiveTexture(&g_pReceivedTexture)) {
 		//
 		// Sender details can be retrieved with :
 		//		const char * GetSenderName();

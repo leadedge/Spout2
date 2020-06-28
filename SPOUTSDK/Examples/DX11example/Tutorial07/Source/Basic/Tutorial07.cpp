@@ -5,13 +5,14 @@
 // Adapted for SPOUT input (http://spout.zeal.co/)
 // from : https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
 // Search on "SPOUT" for additions.
-// Version to receive to an application texture with 2.007 methods
 //
-// This is a stand-alone version of a receiver using methods
-// directly from the Spout SDK classes.  It is saved as "Tutorial07_Basic.cpp"
-// in the Source folder. Please compare with "Tutorial07_SpoutDX.cpp" which
-// uses a support class and could be suitable for your application.
-// Copy the required file to the build folder and rename to "Tutorial07.cpp"
+// This is a receiver using methods directly from the Spout 2.007 SDK.
+// It is is saved in the "Source\Basic" folder. 
+//
+// Compare with a version using the SpoutDX support class
+// which is is saved in the "Source\SpoutDX" folder. 
+//
+// Copy the required file to the build folder.
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //

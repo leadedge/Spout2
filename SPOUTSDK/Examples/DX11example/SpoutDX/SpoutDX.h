@@ -54,7 +54,8 @@ class SPOUT_DLLEXP spoutDX {
 	//
 	// DIRECTX
 	//
-	ID3D11Device* OpenDirectX11();
+	// ID3D11Device* OpenDirectX11();
+	bool OpenDirectX11(ID3D11Device* pDevice = nullptr);
 	ID3D11Device* GetDevice();
 	void CleanupDX11();
 
@@ -66,9 +67,9 @@ class SPOUT_DLLEXP spoutDX {
 	// Close sender and free resources
 	void ReleaseSender();
 	// Send a texture
-	bool SendTexture(ID3D11Device* pDevice, ID3D11Texture2D* pTexture);
+	bool SendTexture(ID3D11Texture2D* pTexture);
 	// Send an image
-	bool SendImage(ID3D11Device* pDevice, unsigned char * pData, unsigned int width, unsigned int height);
+	bool SendImage(unsigned char * pData, unsigned int width, unsigned int height);
 	// Get width
 	unsigned int GetWidth();
 	// Get height
@@ -88,11 +89,11 @@ class SPOUT_DLLEXP spoutDX {
 	// Close receiver and free resources
 	void ReleaseReceiver();
 	// Receive a DX11 texture from a sender
-	bool ReceiveTexture(ID3D11Device* pd3dDevice, ID3D11Texture2D** ppTexture = nullptr);
+	bool ReceiveTexture(ID3D11Texture2D** ppTexture = nullptr);
 	// Receive an image
-	bool ReceiveImage(ID3D11Device* pd3dDevice, unsigned char * pData, unsigned int width, unsigned int height, bool bInvert = false);
+	bool ReceiveImage(unsigned char * pixels, unsigned int width, unsigned int height, bool bInvert = false);
 	// Receive an rgb image
-	bool ReceiveRGBimage(ID3D11Device* pd3dDevice, unsigned char * pData, unsigned int width, unsigned int height, bool bInvert = false);
+	bool ReceiveRGBimage(unsigned char * pixels, unsigned int width, unsigned int height, bool bInvert = false);
 	// Open sender selection dialog
 	void SelectSender();
 	// Sender has changed
@@ -157,8 +158,9 @@ protected :
 
 	ID3D11Device* m_pd3dDevice;
 	ID3D11DeviceContext* m_pImmediateContext;
-	ID3D11Texture2D* m_pStagingTexture;
 	ID3D11Texture2D* m_pSharedTexture;
+	ID3D11Texture2D* m_pStagingTexture;
+	D3D11_MAPPED_SUBRESOURCE m_MappedSubResource;
 	HANDLE m_dxShareHandle;
 	DWORD m_dwFormat;
 	char m_SenderNameSetup[256];
@@ -171,14 +173,14 @@ protected :
 	bool m_bSpoutInitialized;
 	bool m_bSpoutPanelOpened;
 	bool m_bSpoutPanelActive;
+	bool m_bMapped;
+	bool m_bClassDevice;
 	SHELLEXECUTEINFOA m_ShExecInfo;
 
 	bool ReceiveSenderData();
-	bool ReadRGBApixels(ID3D11DeviceContext* pImmediateContext, ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
-	bool ReadRGBpixels(ID3D11DeviceContext* pImmediateContext, ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
-	bool CheckStagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
-	bool CreateDX11StagingTexture(ID3D11Device* pDevice,
-		unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
+	bool ReadRGBpixels(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
+	bool CheckStagingTexture(unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
+	bool CreateDX11StagingTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
 	void SelectSenderPanel();
 	bool CheckSpoutPanel(char *sendername, int maxchars = 256);
 
