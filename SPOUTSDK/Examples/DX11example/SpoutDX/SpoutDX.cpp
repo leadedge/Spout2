@@ -398,10 +398,6 @@ bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 	if (!m_pd3dDevice || !ppTexture)
 		return false;
 
-	ID3D11Texture2D* pTexture = *ppTexture; // The receiving texture pointer
-	if (!pTexture)
-		return false;
-
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
 		
@@ -414,6 +410,10 @@ bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 		//
 		// Found a sender
 		//
+
+		ID3D11Texture2D* pTexture = *ppTexture; // The receiving texture pointer
+		if (!pTexture)
+			return false;
 
 		// Get the sender shared texture pointer
 		if (spoutdx.OpenDX11shareHandle(m_pd3dDevice, &m_pSharedTexture, m_dxShareHandle)) {

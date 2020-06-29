@@ -104,7 +104,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// SPOUT
 	// Optionally enable logging to catch Spout warnings and errors
-	OpenSpoutConsole(); // Console only for debugging
+	// OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("Tutorial04.log); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors

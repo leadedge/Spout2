@@ -101,8 +101,9 @@ XMFLOAT4                            g_vMeshColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 // SPOUT
 spoutDX spoutreceiver;
-ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr;
 ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
+// The texture is created after connecting to a sender
+ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view of the texture
 
 //--------------------------------------------------------------------------------------
 // Forward declarations
@@ -146,10 +147,10 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// Initialize DirectX.
 	// The device pointer must be passed in if a DirectX 11.0 device is available.
-	// Otherwise a device is created and the pointer can be retrieved with GetDevice();
+	// Otherwise a device is created. The pointer can be retrieved with GetDevice();
 	if (!spoutreceiver.OpenDirectX11(g_pd3dDevice))
 		return FALSE;
-	
+
 	// Main message loop
     MSG msg = {0};
     while( WM_QUIT != msg.message )
@@ -658,11 +659,6 @@ HRESULT InitDevice()
     cbChangesOnResize.mProjection = XMMatrixTranspose( g_Projection );
     g_pImmediateContext->UpdateSubresource( g_pCBChangeOnResize, 0, nullptr, &cbChangesOnResize, 0, 0 );
 
-	// SPOUT
-	// Create a receiving texture
-	// The texture size and format are updated after connecting to a sender
-	spoutreceiver.CreateDX11texture(g_pd3dDevice, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, &g_pReceivedTexture);
-
     return S_OK;
 }
 
@@ -770,7 +766,8 @@ void Render()
 		//		long GetSenderFrame();
 		//		double GetSenderFps();
 		//
-		// Re-create the receiving texture if the sender size changed
+		// Create or re-create the receiving texture
+		// for a new sender or if the sender size changed
 		if (spoutreceiver.IsUpdated()) {
 
 			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
@@ -807,7 +804,10 @@ void Render()
 	}
 	else {
 		// A sender was not found or the connected sender closed
-		// Clear the spout texture resource view so render uses the default
+		// Release the receiving texture
+		if (g_pReceivedTexture)	g_pReceivedTexture->Release();
+		g_pReceivedTexture = nullptr;
+		// Release the texture resource view so render uses the default
 		if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 		g_pSpoutTextureRV = nullptr;
 	}
@@ -869,6 +869,5 @@ void Render()
     // Present our back buffer to our front buffer
     //
     g_pSwapChain->Present( 0, 0 );
-
 
 }
