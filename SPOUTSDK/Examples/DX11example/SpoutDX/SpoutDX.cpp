@@ -364,24 +364,6 @@ void spoutDX::SetReceiverName(const char * SenderName)
 	}
 }
 
-void spoutDX::CreateReceiver(const char * SenderName, unsigned int width, unsigned int height)
-{
-	if (m_bSpoutInitialized)
-		ReleaseReceiver();
-
-	// Create a named sender mutex for access to the sender's shared texture
-	frame.CreateAccessMutex(SenderName);
-	// Enable frame counting to get the sender frame number and fps
-	frame.EnableFrameCount(SenderName);
-	// Set class globals
-	strcpy_s(m_SenderName, 256, SenderName);
-	m_Width = width;
-	m_Height = height;
-
-	m_bSpoutInitialized = true;
-
-}
-
 void spoutDX::ReleaseReceiver()
 {
 	// Restore the sender name if one was specified by SetReceiverName
@@ -856,8 +838,7 @@ bool spoutDX::ReceiveSenderData()
 			// Release all receiver resources and initialize again with the same size.
 			CreateReceiver(sendername, m_Width, m_Height);
 		}
-
-		// Check for sender size and format changes
+		// Same sender - check for sender size and format changes
 		if (m_Width != width || m_Height != height || dwFormat != m_dwFormat) {
 			m_Width = width;
 			m_Height = height;
@@ -875,6 +856,25 @@ bool spoutDX::ReceiveSenderData()
 
 	// There is no sender or the connected sender closed
 	return false;
+
+}
+
+// Create receiver resources for a new sender
+void spoutDX::CreateReceiver(const char * SenderName, unsigned int width, unsigned int height)
+{
+	if (m_bSpoutInitialized)
+		ReleaseReceiver();
+
+	// Create a named sender mutex for access to the sender's shared texture
+	frame.CreateAccessMutex(SenderName);
+	// Enable frame counting to get the sender frame number and fps
+	frame.EnableFrameCount(SenderName);
+	// Set class globals
+	strcpy_s(m_SenderName, 256, SenderName);
+	m_Width = width;
+	m_Height = height;
+
+	m_bSpoutInitialized = true;
 
 }
 

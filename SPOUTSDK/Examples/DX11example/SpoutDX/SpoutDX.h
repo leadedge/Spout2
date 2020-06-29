@@ -84,11 +84,9 @@ class SPOUT_DLLEXP spoutDX {
 	//
 	// Set the sender to connect to
 	void SetReceiverName(const char * sendername);
-	// Set up receiver for a new sender
-	void CreateReceiver(const char * sendername, unsigned int width, unsigned int height);
 	// Close receiver and free resources
 	void ReleaseReceiver();
-	// Receive a DX11 texture from a sender
+	// Receive a texture from a sender
 	bool ReceiveTexture(ID3D11Texture2D** ppTexture = nullptr);
 	// Receive an image
 	bool ReceiveImage(unsigned char * pixels, unsigned int width, unsigned int height, bool bInvert = false);
@@ -104,7 +102,7 @@ class SPOUT_DLLEXP spoutDX {
 	bool IsFrameNew();
 	// Received sender share handle
 	HANDLE GetSenderHandle();
-	// Received sender format
+	// Received sender texture format
 	DXGI_FORMAT GetSenderFormat();
 	// Received sender name
 	const char * GetSenderName();
@@ -178,6 +176,7 @@ protected :
 	SHELLEXECUTEINFOA m_ShExecInfo;
 
 	bool ReceiveSenderData();
+	void CreateReceiver(const char * sendername, unsigned int width, unsigned int height);
 	bool ReadRGBpixels(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
 	bool CheckStagingTexture(unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
 	bool CreateDX11StagingTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
