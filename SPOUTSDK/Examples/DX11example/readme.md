@@ -18,8 +18,8 @@ SpoutUtils.h
 
 DirectX 11 examples
 
-Based on D3D11 tutorials by Chuck Walbourn updated for Visual Studio 2017 and the Windows 10 SDK.
-https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials \
+Based on D3D11 tutorials by Chuck Walbourn updated for Visual Studio 2017 and the Windows 10 SDK.\
+https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
 - Tutorial04 - sender
 - Tutorial07 - receiver
 
@@ -45,7 +45,7 @@ The Spout SDK files should be in a folder "SpoutSDK" two levels above the exampl
 	      DX11example <- the complete DX11 example folder
 		      Basic <- basic DirectX tutorial examples
 		          Tutorial04 <- DirectX sender example
-                          Tutorial07 <- DirectX receiver example
+		          Tutorial07 <- DirectX receiver example
 		      SpoutDX <- the SpoutDX support class
 			  SpoutDX.cpp
 			  SpoutDX.h
@@ -58,5 +58,6 @@ The Spout SDK files should be in a folder "SpoutSDK" two levels above the exampl
 
 Open each solution file, change to release and build. Note the requiremenst for a DATA folder for the executable of the video example.\
 For all examples, search for "SPOUT" to see the changes made to the original code.\
-Try them first from the Binaries folder. Note the requirement for FFmpeg for the Video example. Refer to the readme in WinspoutDX\Video.
+Try them first from the Binaries folder. Note the requirement for FFmpeg for the Video example.\
+Refer to the readme in WinspoutDX\Video.
 
