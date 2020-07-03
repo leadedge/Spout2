@@ -64,6 +64,8 @@ class SPOUT_DLLEXP spoutDX {
 	//
 	// Set the sender name
 	bool SetSenderName(const char* sendername = nullptr);
+	// Set the sender texture format
+	void SetSenderFormat(DXGI_FORMAT format);
 	// Close sender and free resources
 	void ReleaseSender();
 	// Send a texture
@@ -89,7 +91,7 @@ class SPOUT_DLLEXP spoutDX {
 	// Receive a texture from a sender
 	bool ReceiveTexture(ID3D11Texture2D** ppTexture = nullptr);
 	// Receive an image
-	bool ReceiveImage(unsigned char * pixels, unsigned int width, unsigned int height, bool bInvert = false);
+	bool ReceiveImage(unsigned char * pixels, bool bInvert = false);
 	// Receive an rgb image
 	bool ReceiveRGBimage(unsigned char * pixels, unsigned int width, unsigned int height, bool bInvert = false);
 	// Open sender selection dialog

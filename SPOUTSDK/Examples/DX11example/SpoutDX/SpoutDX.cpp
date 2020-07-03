@@ -43,6 +43,9 @@
 //		26.06.20	- Restore revised CreateDX11texture
 //		28.06.17	- Remove ReadRGBApixels
 //					  Change to allow class or application device
+//		30.06.20	- Due to hesitions with SpoutCam, move flush for staging texture map
+//					  from ReceiveRGBimage to ReadRGBpixels and added to ReceiveImage.
+//		03.07.20	- chnage OpenDirectX11 so it can be repeatedly called (see ReceiveImage)
 //
 // ====================================================================================
 /*
@@ -108,28 +111,25 @@ spoutDX::~spoutDX()
 // Initialize and prepare Directx 11
 bool spoutDX::OpenDirectX11(ID3D11Device* pDevice)
 {
-	// Quit if already initialized
-	if (m_pd3dDevice)
-		return true;
-
-	SpoutLogNotice("spoutDX::OpenDirectX11()");
-
-	if (pDevice) {
-		m_pd3dDevice = pDevice;
-		m_bClassDevice = false; // An existing device pointer was used
+	if (!m_pd3dDevice) {
+		SpoutLogNotice("spoutDX::OpenDirectX11()");
+		if (pDevice) {
+			m_pd3dDevice = pDevice;
+			m_bClassDevice = false; // An existing device pointer was used
+		}
+		else {
+			// Create a DirectX 11 device if not already
+			m_pd3dDevice = spoutdx.CreateDX11device();
+			if (!m_pd3dDevice)
+				return false;
+			m_bClassDevice = true; // A new class device pointer was created
+		}
+		// Retrieve the class context pointer
+		m_pd3dDevice->GetImmediateContext(&m_pImmediateContext);
 	}
-	else {
-		// Create a DirectX 11 device
-		m_pd3dDevice = spoutdx.CreateDX11device();
-		if (!m_pd3dDevice)
-			return false;
-		m_bClassDevice = true; // A new class device pointer was created
-	}
-
-	// Retrieve the class context pointer
-	m_pd3dDevice->GetImmediateContext(&m_pImmediateContext);
 
 	return true;
+
 }
 
 ID3D11Device* spoutDX::GetDevice()
@@ -178,6 +178,12 @@ bool spoutDX::SetSenderName(const char* sendername)
 		strcpy_s(m_SenderName, 256, sendername);
 	}
 	return true;
+}
+
+
+void spoutDX::SetSenderFormat(DXGI_FORMAT format)
+{
+	m_dwFormat = format;
 }
 
 void spoutDX::ReleaseSender()
@@ -275,21 +281,27 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
 
 bool spoutDX::SendImage(unsigned char * pData, unsigned int width, unsigned int height)
 {
-	if (!m_pd3dDevice || !pData)
+	// No data - no work
+	if (!pData)
 		return false;
 
+	// Make sure OpenDirect is initialized
+	if(!OpenDirectX11())
+		return false;
+
+	// The sender needs a name
 	if (!m_SenderName[0])
 		SetSenderName();
 
 	if (!m_bSpoutInitialized) {
-		// Create a class shared texture for the sender with default format
-		if (spoutdx.CreateSharedDX11Texture(m_pd3dDevice, width, height, DXGI_FORMAT_B8G8R8A8_UNORM, &m_pSharedTexture, m_dxShareHandle)) {
-			// Create a sender, specifying the same texture format
-			if (spoutsender.CreateSender(m_SenderName, width, height, m_dxShareHandle, DXGI_FORMAT_B8G8R8A8_UNORM)) {
+		// Create a class shared texture
+		// Default texture format is DXGI_FORMAT_B8G8R8A8_UNORM or set by SenderFormat
+		if (spoutdx.CreateSharedDX11Texture(m_pd3dDevice, width, height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
+			// Create a sender with the same format
+			if (spoutsender.CreateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
 				// Save width and height to test for sender size changes
 				m_Width = width;
 				m_Height = height;
-				m_dwFormat = (DWORD)DXGI_FORMAT_B8G8R8A8_UNORM; // Default
 				// Create a sender mutex for access to the shared texture
 				frame.CreateAccessMutex(m_SenderName);
 				// Enable frame counting so the receiver gets frame number and fps
@@ -306,7 +318,7 @@ bool spoutDX::SendImage(unsigned char * pData, unsigned int width, unsigned int 
 	else if (m_Width != width || m_Height != height) {
 		m_Width = width;
 		m_Height = height;
-		// Re-create the class shared texture with the new size
+		// Re-create the shared texture with the new size
 		if (m_pSharedTexture) m_pSharedTexture->Release();
 		m_pSharedTexture = nullptr;
 		spoutdx.CreateSharedDX11Texture(m_pd3dDevice, m_Width, m_Height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle);
@@ -316,7 +328,7 @@ bool spoutDX::SendImage(unsigned char * pData, unsigned int width, unsigned int 
 
 	// Check the sender mutex for access the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
-		// Update the shared texture resource
+		// Update the shared texture resource with the pixel buffer
 		m_pImmediateContext->UpdateSubresource(m_pSharedTexture, 0, NULL, pData, m_Width * 4, 0);
 		// Flush the command queue because the shared texture has been updated on this device
 		m_pImmediateContext->Flush();
@@ -445,17 +457,10 @@ bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 
 
 // Receive an rgba image from a sender via DX11 staging texture
-bool spoutDX::ReceiveImage(unsigned char * pixels, unsigned int width, unsigned int height, bool bInvert)
+bool spoutDX::ReceiveImage(unsigned char * pixels, bool bInvert)
 {
-	if (!m_pd3dDevice || !pixels)
+	if (!m_pd3dDevice)
 		return false;
-
-	// Set the initial width and height of class globals.
-	// They are reset by ReceiveSenderData when a sender is found or has changed.
-	// The application has to monitor IsUpdated() to re-allocate the receiving buffer.
-	// The new size can be retrieved with GetSenderWidth() and GetSenderHeight().
-	m_Width = width;
-	m_Height = height;
 
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
@@ -465,15 +470,17 @@ bool spoutDX::ReceiveImage(unsigned char * pixels, unsigned int width, unsigned 
 				// For a new or changed new sender, the staging texture has to be reset.
 				// The staging texture must be the same size and format as the sender.
 				CheckStagingTexture(m_Width, m_Height, m_dwFormat);
-				// Make sure all commands are done before mapping/unmapping the staging texture
-				m_pImmediateContext->Flush();
 				// Unmap the staging texture if necessary
 				if(m_bMapped) m_pImmediateContext->Unmap(m_pStagingTexture, 0);
-				// Map it for pixel access
+				// Make sure all commands are done before mapping the staging texture
+				m_pImmediateContext->Flush();
 				HRESULT hr = m_pImmediateContext->Map(m_pStagingTexture, 0, D3D11_MAP_READ, 0, &m_MappedSubResource);
 				if (SUCCEEDED(hr)) {
 					m_bMapped = true;
 					// Return to update the receiving image pixels if necessary
+					// The application can monitor IsUpdated() to re-allocate 
+					// the receiving buffer. The new size can be retrieved with
+					// GetSenderWidth() and GetSenderHeight().
 					return true;
 				}
 				else {
@@ -488,14 +495,12 @@ bool spoutDX::ReceiveImage(unsigned char * pixels, unsigned int width, unsigned 
 			}
 		}
 
-		if (!m_pStagingTexture)
+		if (!m_pStagingTexture || !pixels)
 			return false;
 
 		//
 		// Found a sender
 		//
-
-		// StartTiming();
 		// Get the sender shared texture pointer
 		if (spoutdx.OpenDX11shareHandle(m_pd3dDevice, &m_pSharedTexture, m_dxShareHandle)) {
 			// Access the sender shared texture
@@ -568,8 +573,6 @@ bool spoutDX::ReceiveRGBimage(unsigned char * pData, unsigned int width, unsigne
 				if (frame.GetNewFrame()) {
 					// Copy from the sender's shared texture to the staging texture.
 					m_pImmediateContext->CopyResource(m_pStagingTexture, m_pSharedTexture);
-					// Make sure all commands are done before mapping the staging texture
-					m_pImmediateContext->Flush();
 					// Map the staging texture to retrieve the pixels
 					ReadRGBpixels(m_pStagingTexture, pData, width, height, bInvert);
 				}
@@ -891,6 +894,8 @@ bool spoutDX::ReadRGBpixels(ID3D11Texture2D* pStagingTexture,
 
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource;
 	// Map the resource so we can access the pixels
+	// Make sure all commands are done before mapping the staging texture
+	m_pImmediateContext->Flush();
 	HRESULT hr = m_pImmediateContext->Map(pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
 	if (SUCCEEDED(hr)) {
 		// Write the staging texture to the user pixel buffer
