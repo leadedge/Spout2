@@ -11,9 +11,11 @@
 	bool SendImage(ID3D11Device* pDevice, unsigned char * pData, unsigned int width, unsigned int height);
 
     Captures the screen to a pixel buffer using Windows bitmap functions.
-    Search on "SPOUT" for additions.
+	The screen can be resized to demonstrate sender update.
 
-    Compare with DirectX 11 Tutorial04 sender example.
+    Search on "SPOUT" for additions.
+	Compare with a more extensive example sending video frames.
+    Compare also with the DirectX 11 Tutorial04 sender example using SendTexture.
 
                  Copyright(C) 2020 Lynn Jarvis.
 
@@ -150,6 +152,7 @@ void Render()
 
 	// Trigger a re-paint to draw the bitmap and refresh the sending pixel buffer - see WM_PAINT
 	InvalidateRect(g_hWnd, NULL, FALSE);
+	UpdateWindow(g_hWnd); // Update immediately
 
 	// Send the pixels
 	sender.SendImage(g_pixelBuffer, g_SenderWidth, g_SenderHeight);

@@ -7,12 +7,8 @@
 // Search on "SPOUT" for additions.
 //
 // This is a receiver using methods directly from the Spout 2.007 SDK.
-// It is is saved in the "Source\Basic" folder. 
-//
 // Compare with a version using the SpoutDX support class
-// which is is saved in the "Source\SpoutDX" folder. 
-//
-// Copy the required file to the build folder.
+// which could be suitable for your application.
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //

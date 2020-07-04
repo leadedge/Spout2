@@ -7,11 +7,12 @@
 // Search on "SPOUT" for additions.
 // Version to send using 2.007 methods
 //
-// This is a sender using the "SpoutDX" support class
-// It is saved as "Tutorial04_SpoutDX.cpp" in the Source folder.
-// Please compare with a stand-alone version using methods directly
-// from the Spout SDK classes "Tutorial04_Basic.cpp"
-// Copy the required file to the build folder and rename to "Tutorial04.cpp"
+// This is a sender using the "SpoutDX" support class using SendTexture
+//
+// bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
+//
+// Compare with a stand-alone version using methods directly from the Spout SDK classes
+// Compare also with Windows examples using SendImage.
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
@@ -121,13 +122,14 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT
 	// Initialize DirectX.
 	// The device pointer must be passed in if a DirectX 11.0 device is available.
-	// Otherwise a device is created and the pointer can be retrieved with GetDevice();
+	// Otherwise a device is created within the SpoutDX class
+	// and the pointer can be retrieved with GetDevice();
 	if (!spoutSender.OpenDirectX11(g_pd3dDevice))
 		return FALSE;
 
 	// Give the sender a name
 	// If none is specified, the executable name is used
-	spoutSender.SetSenderName("Tutorial04sender");
+	// spoutSender.SetSenderName("Tutorial04sender");
 
     // Main message loop
     MSG msg = {0};

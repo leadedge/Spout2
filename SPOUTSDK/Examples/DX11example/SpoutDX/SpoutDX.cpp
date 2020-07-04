@@ -45,7 +45,8 @@
 //					  Change to allow class or application device
 //		30.06.20	- Due to hesitions with SpoutCam, move flush for staging texture map
 //					  from ReceiveRGBimage to ReadRGBpixels and added to ReceiveImage.
-//		03.07.20	- chnage OpenDirectX11 so it can be repeatedly called (see ReceiveImage)
+//		03.07.20	- Change OpenDirectX11 so it can be repeatedly called (see ReceiveImage)
+//		04.07.20	- OpenDirectX11 check in all sending functions
 //
 // ====================================================================================
 /*
@@ -222,9 +223,15 @@ void spoutDX::ReleaseSender()
 //
 bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
 {
-	if (!m_pd3dDevice || !pTexture)
+	// Quit if no data
+	if (!pTexture)
 		return false;
 
+	// Make sure DirectX is initialized
+	if (!OpenDirectX11())
+		return false;
+
+	// The sender needs a name
 	if (!m_SenderName[0])
 		SetSenderName();
 
@@ -281,11 +288,11 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
 
 bool spoutDX::SendImage(unsigned char * pData, unsigned int width, unsigned int height)
 {
-	// No data - no work
+	// Quit if no data
 	if (!pData)
 		return false;
 
-	// Make sure OpenDirect is initialized
+	// Make sure DirectX is initialized
 	if(!OpenDirectX11())
 		return false;
 
@@ -407,7 +414,12 @@ void spoutDX::ReleaseReceiver()
 
 bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 {
-	if (!m_pd3dDevice || !ppTexture)
+	// Quit if no receiving texture
+	if (!ppTexture)
+		return false;
+
+	// Make sure DirectX is initialized
+	if (!OpenDirectX11())
 		return false;
 
 	// Try to receive texture details from a sender
@@ -419,13 +431,14 @@ bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 		if (m_bUpdated)
 			return true;
 
+		// The receiving texture is created on the first update
+		ID3D11Texture2D* pTexture = *ppTexture;
+		if (!pTexture)
+			return false;
+
 		//
 		// Found a sender
 		//
-
-		ID3D11Texture2D* pTexture = *ppTexture; // The receiving texture pointer
-		if (!pTexture)
-			return false;
 
 		// Get the sender shared texture pointer
 		if (spoutdx.OpenDX11shareHandle(m_pd3dDevice, &m_pSharedTexture, m_dxShareHandle)) {
@@ -459,7 +472,8 @@ bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 // Receive an rgba image from a sender via DX11 staging texture
 bool spoutDX::ReceiveImage(unsigned char * pixels, bool bInvert)
 {
-	if (!m_pd3dDevice)
+	// Make sure DirectX is initialized
+	if (!OpenDirectX11())
 		return false;
 
 	// Try to receive texture details from a sender
@@ -495,6 +509,7 @@ bool spoutDX::ReceiveImage(unsigned char * pixels, bool bInvert)
 			}
 		}
 
+		// The pixel buffer is created after the first update
 		if (!m_pStagingTexture || !pixels)
 			return false;
 
@@ -535,7 +550,13 @@ bool spoutDX::ReceiveImage(unsigned char * pixels, bool bInvert)
 // Receive from a sender via DX11 staging texture to an rgb buffer of variable size
 bool spoutDX::ReceiveRGBimage(unsigned char * pData, unsigned int width, unsigned int height, bool bInvert)
 {
-	if (!m_pd3dDevice || !pData)
+
+	// Quit if no receving pixels
+	if (!pData)
+		return false;
+
+	// Make sure DirectX is initialized
+	if (!OpenDirectX11())
 		return false;
 
 	// Try to receive texture details from a sender

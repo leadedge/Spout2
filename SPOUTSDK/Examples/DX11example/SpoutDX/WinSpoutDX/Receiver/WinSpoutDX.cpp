@@ -11,9 +11,9 @@
    bool ReceiveImage(ID3D11Device* pd3dDevice, unsigned char * pData, unsigned int width, unsigned int height, bool bInvert = false);
 
    Receives to a pixel buffer and displays the output using Windows bitmap functions.
-   Search on "SPOUT" for additions.
 
-   Compare with DirectX 11 Tutorial07 example.
+   Search on "SPOUT" for additions.
+   Compare with the DirectX 11 Tutorial07 example using ReceveTexture.
 
 =========================================================================
 
@@ -155,6 +155,8 @@ void Render()
 
 	// Trigger a re-paint to draw the pixel buffer - see WM_PAINT
 	InvalidateRect(g_hWnd, NULL, FALSE);
+	UpdateWindow(g_hWnd); // Update immediately
+
 
 	//
 	// SPOUT - fps control

@@ -11,7 +11,9 @@
    to load a video, decode individual frames, send using
    SendImage and display in WM_PAINT.
       
-   Compare with the WinSpoutDX image sender example.
+   Compare with the more simple image sender example.
+   Compare also with the DirectX 11 Tutorial04 sender example using SendTexture.
+
 
    FFmpeg and FFprobe are required :
    Download binaries from : https://ffmpeg.zeranoe.com/builds/
@@ -199,6 +201,7 @@ void Render()
 
 	// Trigger a re-paint to draw the frame - see WM_PAINT
 	InvalidateRect(g_hWnd, NULL, FALSE);
+	UpdateWindow(g_hWnd); // Update immediately
 
 	// Hold the video frame rate
 	sender.HoldFps((int)g_FrameRate);

@@ -8,10 +8,8 @@
 // Version to send using 2.007 methods
 //
 // This is a stand-alone version using methods directly from the Spout SDK classes.
-// It is saved as "Tutorial04_Basic.cpp" in the Source folder.
-// Please compare with a version using the "SpoutDX" support class "Tutorial04_SpoutDX.cpp"
+// Compare with a version using the "SpoutDX" support class
 // which could be suitable for your application.
-// Copy the required file to the build folder and rename to "Tutorial04.cpp"
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
