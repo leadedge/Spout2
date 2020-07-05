@@ -53,6 +53,7 @@ unsigned char *pixelBuffer = nullptr;  // Receiving rgb pixel buffer
 unsigned char g_SenderName[256];       // Received sender name
 unsigned int g_SenderWidth = 0;        // Received sender width
 unsigned int g_SenderHeight = 0;       // Received sender height
+DWORD g_SenderFormat = 0;              // Received sender format
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -139,9 +140,10 @@ void Render()
 			// Update the sender name - it could be different
 			strcpy_s((char *)g_SenderName, 256, receiver.GetSenderName());
 
-			// Update global dimensions
+			// Update globals
 			g_SenderWidth = receiver.GetSenderWidth();
 			g_SenderHeight = receiver.GetSenderHeight();
+			g_SenderFormat = receiver.GetSenderFormat();
 
 			// Update the receiving buffer
 			if(pixelBuffer)
@@ -290,29 +292,61 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					DeleteObject(backbrush);
 				}
 				else {
+					//
 					// Draw the received image
-					// (Very fast - < 1 msec)
-					BITMAPINFO bmi;
-					ZeroMemory(&bmi, sizeof(BITMAPINFO));
-					bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-					bmi.bmiHeader.biSizeImage = (LONG)(g_SenderWidth * g_SenderHeight * 4); // Pixel buffer size
-					bmi.bmiHeader.biWidth = (LONG)g_SenderWidth;   // Width of buffer
-					bmi.bmiHeader.biHeight = (LONG)g_SenderHeight;  // Height of buffer
-					bmi.bmiHeader.biPlanes = 1;
-					bmi.bmiHeader.biBitCount = 32;
-					bmi.bmiHeader.biCompression = BI_RGB;
-					// StretchDIBits adapts the pixel buffer received from the sender
-					// to the window size. The sender can be resized or changed.
-					SetStretchBltMode(hdc, COLORONCOLOR); // Fastest method
-					StretchDIBits(hdc,
-						0, 0,
-						(dr.right - dr.left), (dr.bottom - dr.top), // destination rectangle 
-						0, 0,
-						g_SenderWidth, g_SenderHeight, // source rectangle 
-						pixelBuffer,
-						&bmi,
-						DIB_RGB_COLORS,
-						SRCCOPY);
+					//
+					// If the format is BGRA it's a natural match
+					if (g_SenderFormat == 87) {
+						// Very fast (< 1msec at 1280x720)
+						BITMAPINFO bmi;
+						ZeroMemory(&bmi, sizeof(BITMAPINFO));
+						bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+						bmi.bmiHeader.biSizeImage = (LONG)(g_SenderWidth * g_SenderHeight * 4); // Pixel buffer size
+						bmi.bmiHeader.biWidth = (LONG)g_SenderWidth;   // Width of buffer
+						bmi.bmiHeader.biHeight = (LONG)g_SenderHeight;  // Height of buffer
+						bmi.bmiHeader.biPlanes = 1;
+						bmi.bmiHeader.biBitCount = 32;
+						bmi.bmiHeader.biCompression = BI_RGB;
+						// StretchDIBits adapts the pixel buffer received from the sender
+						// to the window size. The sender can be resized or changed.
+						SetStretchBltMode(hdc, COLORONCOLOR); // Fastest method
+						StretchDIBits(hdc,
+							0, 0,
+							(dr.right - dr.left), (dr.bottom - dr.top), // destination rectangle 
+							0, 0,
+							g_SenderWidth, g_SenderHeight, // source rectangle 
+							pixelBuffer,
+							&bmi,
+							DIB_RGB_COLORS,
+							SRCCOPY);
+					}
+					else {
+						// Received data is RGBA but windows draw is BGR
+						// so the extended BITMAPV4HEADER bitmap info header
+						// is required instead of BITMAPINFO
+						// This is quite slow (18-24 msec at 1280x720)
+						BITMAPV4HEADER info = { sizeof(BITMAPV4HEADER) };
+						info.bV4Width = (LONG)g_SenderWidth;
+						info.bV4Height = -(LONG)g_SenderHeight;
+						info.bV4Planes = 1;
+						info.bV4BitCount = 32;
+						info.bV4V4Compression = BI_BITFIELDS;
+						info.bV4RedMask = 0x000000FF;
+						info.bV4GreenMask = 0x0000FF00;
+						info.bV4BlueMask = 0x00FF0000;
+						info.bV4AlphaMask = 0xFF000000;
+						SetStretchBltMode(hdc, COLORONCOLOR);
+						StretchDIBits(hdc,
+							0, 0,
+							(dr.right - dr.left),
+							(dr.bottom - dr.top), // destination rectangle 
+							0, 0,
+							g_SenderWidth, g_SenderHeight, // source rectangle 
+							pixelBuffer,
+							reinterpret_cast<BITMAPINFO*>(&info),
+							DIB_RGB_COLORS,
+							SRCCOPY);
+					}
 				}
 			}
 			EndPaint(hWnd, &ps);
