@@ -47,6 +47,7 @@
 //					  from ReceiveRGBimage to ReadRGBpixels and added to ReceiveImage.
 //		03.07.20	- Change OpenDirectX11 so it can be repeatedly called (see ReceiveImage)
 //		04.07.20	- OpenDirectX11 check in all sending functions
+//		09.07.20	- Correct ReadRGBpixels for RGBA senders
 //
 // ====================================================================================
 /*
@@ -573,10 +574,7 @@ bool spoutDX::ReceiveRGBimage(unsigned char * pData, unsigned int width, unsigne
 				CheckStagingTexture(m_Width, m_Height, m_dwFormat);
 				return true;
 			}
-			else {
-				return false;
-			}
-			return true;
+			return false;
 		}
 
 		if (!m_pStagingTexture)
@@ -920,11 +918,19 @@ bool spoutDX::ReadRGBpixels(ID3D11Texture2D* pStagingTexture,
 	HRESULT hr = m_pImmediateContext->Map(pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
 	if (SUCCEEDED(hr)) {
 		// Write the staging texture to the user pixel buffer
-		// The same functions are suitable for bgra
-		if (width != m_Width || height != m_Height)
-			spoutcopy.rgba2rgbResample(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
-		else
-			spoutcopy.rgba2rgb(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert);
+		// If the texture format is RGBA it has to be converted to BGR for the staging texture copy
+		if (m_dwFormat == 28) {
+			if (width != m_Width || height != m_Height)
+				spoutcopy.rgba2bgrResample(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
+			else
+				spoutcopy.rgba2bgr(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert);
+		}
+		else {
+			if (width != m_Width || height != m_Height)
+				spoutcopy.rgba2rgbResample(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
+			else
+				spoutcopy.rgba2rgb(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert);
+		}
 		m_pImmediateContext->Unmap(m_pStagingTexture, 0);
 		return true;
 	} // endif DX11 map OK

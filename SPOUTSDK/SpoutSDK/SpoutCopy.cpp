@@ -43,6 +43,7 @@
 	22.06.20 - Add void rgba2rgba and rgba2rgb with source pitch
 			   Correct const for some functions
 	30.06.20 - Use CopyPixels instead of copy loop in rgba2rgba
+	09.07.20 - Add rgba2rgb with source stride
 
 */
 #include "SpoutCopy.h"
@@ -654,6 +655,43 @@ void spoutCopy::rgba2bgr(const void *rgba_source, void *bgr_dest, unsigned int w
 } // end rgba2bgr
 
 
+void spoutCopy::rgba2bgr(const void *rgba_source, void *bgr_dest,
+	unsigned int width, unsigned int height,
+	unsigned int rgba_pitch, bool bInvert) const
+{
+	// RGB dest does not have padding
+	const unsigned long rgbsize = width * height * 3;
+	const unsigned long rgbpitch = width * 3;
+	const unsigned long rgba_padding = rgba_pitch - (width * 4);
+
+	// RGBA source may have padding 
+	// Dest and source must be the same dimensions otherwise
+
+	// Start of buffers
+	auto rgba = static_cast<const unsigned char *>(rgba_source); // rgba/bgra
+	auto bgr = static_cast<unsigned char *>(bgr_dest); // rgb/bgr
+	if (bInvert) {
+		bgr += rgbsize; // end of rgb buffer
+		bgr -= rgbpitch; // beginning of the last rgb line
+	}
+
+	for (unsigned int y = 0; y < height; y++) {
+		for (unsigned int x = 0; x < width; x++) {
+			*(bgr + 2) = *(rgba + 0); // red
+			*(bgr + 1) = *(rgba + 1); // grn
+			*(bgr + 0) = *(rgba + 2); // blu
+			bgr += 3;
+			rgba += 4;
+		}
+		rgba += rgba_padding;
+
+		if (bInvert)
+			bgr -= rgbpitch * 2; // move up a line for invert
+	}
+
+} // end rgba2bgr
+
+
 void spoutCopy::bgra2rgb(const void *bgra_source, void *rgb_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
 	const unsigned long rgbsize = width * height * 3;
@@ -819,7 +857,7 @@ void spoutCopy::rgba2rgbResample(const void* source, void* dest,
 	}
 }
 
-void spoutCopy::rgba2bgrResample(const unsigned char* source, unsigned char* dest,
+void spoutCopy::rgba2bgrResample(const void* source, void* dest,
 	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 	unsigned int destWidth, unsigned int destHeight, bool bInvert) const
 {
