@@ -338,7 +338,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				   hdc, 0, 0, SRCCOPY);
 
 			// Copy to our sending buffer
-			GetBitmapBits(hBitmap, rcWidth*rcHeight * 4, (LPVOID)g_pixelBuffer);
+			GetBitmapBits(hBitmap, rcWidth*rcHeight*4, (LPVOID)g_pixelBuffer);
 
 			// Clean up
 			SelectObject(hdcMemDC, hOldBitmap);

@@ -45,7 +45,17 @@
 #include <shlwapi.h> // for path functions
 #include <shlobj.h> // to find the AppData folder
 
+//
+// Note that _MSC_VER may not correspond correctly if an earlier
+// platform toolset is selected for a later compiler
+// e.g. Visual Studio 2010 platform toolset for a Visual studio 2017 compiler
+// and #include <chrono> will fail. In which case, comment out the USE_CHRONO define.
+//
 #if _MSC_VER >= 1900
+#define USE_CHRONO
+#endif
+
+#ifdef USE_CHRONO
 #include <chrono> // c++11 timer
 #include <thread>
 #endif
@@ -121,7 +131,7 @@ namespace spoututils {
 	bool FindSubKey(HKEY hKey, const char *subkey);
 
 	// Timing functions for testing
-#if _MSC_VER >= 1900
+#ifdef USE_CHRONO
 	void StartTiming();
 	double EndTiming(); // microseconds elapsed
 #endif

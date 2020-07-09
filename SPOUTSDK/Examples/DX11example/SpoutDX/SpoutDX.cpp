@@ -184,7 +184,7 @@ bool spoutDX::SetSenderName(const char* sendername)
 
 void spoutDX::SetSenderFormat(DXGI_FORMAT format)
 {
-	m_dwFormat = format;
+	m_dwFormat = (DWORD)format;
 }
 
 void spoutDX::ReleaseSender()
@@ -924,7 +924,7 @@ bool spoutDX::ReadRGBpixels(ID3D11Texture2D* pStagingTexture,
 		if (width != m_Width || height != m_Height)
 			spoutcopy.rgba2rgbResample(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
 		else
-			spoutcopy.rgba2rgb(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, false);
+			spoutcopy.rgba2rgb(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert);
 		m_pImmediateContext->Unmap(m_pStagingTexture, 0);
 		return true;
 	} // endif DX11 map OK

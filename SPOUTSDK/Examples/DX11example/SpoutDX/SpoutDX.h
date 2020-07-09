@@ -150,11 +150,11 @@ class SPOUT_DLLEXP spoutDX {
 
 	spoutFrameCount frame;
 	spoutDirectX spoutdx;
+	spoutCopy spoutcopy;
 
 protected :
 
 	spoutSenderNames spoutsender;
-	spoutCopy spoutcopy;
 
 	ID3D11Device* m_pd3dDevice;
 	ID3D11DeviceContext* m_pImmediateContext;

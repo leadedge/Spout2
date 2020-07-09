@@ -42,6 +42,7 @@
 	02.02.20 - Add rgba2rgbaResample and row pitch to all resamplers
 	22.06.20 - Add void rgba2rgba and rgba2rgb with source pitch
 			   Correct const for some functions
+	30.06.20 - Use CopyPixels instead of copy loop in rgba2rgba
 
 */
 #include "SpoutCopy.h"
@@ -71,22 +72,28 @@ void spoutCopy::CopyPixels(const unsigned char *source,
 		Size = width*height * 3;
 
 	if (bInvert) {
+		// printf("flip\n");
 		FlipBuffer(source, dest, width, height, glFormat);
 	}
 	else {
-		if (width < 320 || height < 240) { // Too small for assembler
+		// if (width < 320 || height < 240) { // Too small for assembler
+		if (width < 320) { // Too small for assembler
+			// printf("memcpy\n");
 			memcpy(reinterpret_cast<void *>(dest),
 				reinterpret_cast<const void *>(source), Size);
 		}
 		else if ((Size % 16) == 0 && m_bSSE2) { // 16 byte aligned SSE assembler
+			// printf("memcpy_sse2\n");
 			memcpy_sse2(reinterpret_cast<void *>(dest),
 				reinterpret_cast<const void *>(source), Size);
 		}
 		else if ((Size % 4) == 0) { // 4 byte aligned assembler
+			// printf("_movsd\n");
 			__movsd(reinterpret_cast<unsigned long *>(dest),
 				reinterpret_cast<const unsigned long *>(source), Size / 4);
 		}
 		else { // Default is standard memcpy
+			// printf("memcpy (2)\n");
 			memcpy(reinterpret_cast<void *>(dest),
 				reinterpret_cast<const void *>(source), Size);
 		}
@@ -290,12 +297,15 @@ void spoutCopy::CheckSSE()
 //
 void spoutCopy::rgba2bgra(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
-	if (m_bSSE2 && m_bSSSE3 && ((width % 16) == 0)) // SSE3 available and 16 byte aligned width
-		rgba_bgra_sse3(rgba_source, bgra_dest, width, height, bInvert);
-	else if (m_bSSE2) // SSE2 available
-		rgba_bgra_sse2(rgba_source, bgra_dest, width, height, bInvert);
-	else
+	if ((width % 16) == 0) { // 16 byte aligned width
+		if (m_bSSE2 && m_bSSSE3) // SSE3 available
+			rgba_bgra_sse3(rgba_source, bgra_dest, width, height, bInvert);
+		else if (m_bSSE2) // SSE2 available
+			rgba_bgra_sse2(rgba_source, bgra_dest, width, height, bInvert);
+	}
+	else {
 		rgba_bgra(rgba_source, bgra_dest, width, height, bInvert);
+	}
 }
 
 
@@ -719,9 +729,7 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 			dest += (unsigned long)(y * width);
 		}
 		// Copy the line
-		for (unsigned int x = 0; x < width; x++) {
-			dest[x] = source[x];
-		}
+		CopyPixels((const unsigned char *)source, (unsigned char *)dest, width, 1);
 	}
 }
 
@@ -745,9 +753,7 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 			dest += (unsigned long)(y * destPitch / 4);
 		}
 		// Copy the line
-		for (unsigned int x = 0; x < width; x++) {
-			dest[x] = source[x];
-		}
+		CopyPixels((const unsigned char *)source, (unsigned char *)dest, width, 1);
 	}
 }
 

@@ -49,7 +49,8 @@ WCHAR szWindowClass[MAX_LOADSTRING];  // the main window class name
 // SPOUT
 HWND g_hWnd = NULL;                    // Window handle
 spoutDX receiver;                      // Receiver object
-unsigned char *pixelBuffer = nullptr;  // Receiving rgb pixel buffer
+unsigned char *pixelBuffer = nullptr;  // Receiving pixel buffer
+unsigned char *bgraBuffer = nullptr;   // Conversion buffer if required
 unsigned char g_SenderName[256];       // Received sender name
 unsigned int g_SenderWidth = 0;        // Received sender width
 unsigned int g_SenderHeight = 0;       // Received sender height
@@ -118,8 +119,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	}
 
 	// SPOUT
-	if (pixelBuffer)
-		delete pixelBuffer;
+	if (pixelBuffer) delete pixelBuffer;
+	if(bgraBuffer) delete bgraBuffer;
 	receiver.ReleaseReceiver();
 	receiver.CleanupDX11();
 
@@ -146,9 +147,12 @@ void Render()
 			g_SenderFormat = receiver.GetSenderFormat();
 
 			// Update the receiving buffer
-			if(pixelBuffer)
-				delete pixelBuffer;
+			if(pixelBuffer)	delete pixelBuffer;
 			pixelBuffer = new unsigned char[g_SenderWidth * g_SenderHeight * 4];
+
+			// Update the rgba > bgra conversion buffer
+			if (bgraBuffer) delete bgraBuffer;
+			bgraBuffer = new unsigned char[g_SenderWidth * g_SenderHeight * 4];;
 
 			// Do anything else necessary for the application here
 
@@ -216,7 +220,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, TRUE); // Allow for menu
    HWND hWnd = CreateWindowW(szWindowClass,
 	   szTitle,
-	   WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+	   WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME,
 	   CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance,
 	   nullptr);
 
@@ -282,70 +286,83 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// SPOUT
 			if (pixelBuffer) {
+
+				//
 				// Draw the received image
+				//
+
 				RECT dr = { 0 };
 				GetClientRect(hWnd, &dr);
+
+				// No sender - draw default background
 				if (!receiver.IsConnected()) {
-					// No sender - draw default background
 					HBRUSH backbrush = CreateHatchBrush(HS_DIAGCROSS, RGB(192, 192, 192));
 					FillRect(hdc, &dr, backbrush);
 					DeleteObject(backbrush);
 				}
 				else {
-					//
-					// Draw the received image
-					//
+					
+					BITMAPINFO bmi;
+					ZeroMemory(&bmi, sizeof(BITMAPINFO));
+					bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+					bmi.bmiHeader.biSizeImage = (LONG)(g_SenderWidth * g_SenderHeight * 4); // Pixel buffer size
+					bmi.bmiHeader.biWidth = (LONG)g_SenderWidth;   // Width of buffer
+					bmi.bmiHeader.biHeight = (LONG)g_SenderHeight;  // Height of buffer
+					bmi.bmiHeader.biPlanes = 1;
+					bmi.bmiHeader.biBitCount = 32;
+					bmi.bmiHeader.biCompression = BI_RGB;
+
 					// If the format is BGRA it's a natural match
 					if (g_SenderFormat == 87) {
 						// Very fast (< 1msec at 1280x720)
-						BITMAPINFO bmi;
-						ZeroMemory(&bmi, sizeof(BITMAPINFO));
-						bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-						bmi.bmiHeader.biSizeImage = (LONG)(g_SenderWidth * g_SenderHeight * 4); // Pixel buffer size
-						bmi.bmiHeader.biWidth = (LONG)g_SenderWidth;   // Width of buffer
-						bmi.bmiHeader.biHeight = (LONG)g_SenderHeight;  // Height of buffer
-						bmi.bmiHeader.biPlanes = 1;
-						bmi.bmiHeader.biBitCount = 32;
-						bmi.bmiHeader.biCompression = BI_RGB;
 						// StretchDIBits adapts the pixel buffer received from the sender
 						// to the window size. The sender can be resized or changed.
 						SetStretchBltMode(hdc, COLORONCOLOR); // Fastest method
 						StretchDIBits(hdc,
-							0, 0,
-							(dr.right - dr.left), (dr.bottom - dr.top), // destination rectangle 
-							0, 0,
-							g_SenderWidth, g_SenderHeight, // source rectangle 
+							0, 0, (dr.right - dr.left), (dr.bottom - dr.top), // destination rectangle 
+							0, 0, g_SenderWidth, g_SenderHeight, // source rectangle 
 							pixelBuffer,
-							&bmi,
-							DIB_RGB_COLORS,
-							SRCCOPY);
+							&bmi, DIB_RGB_COLORS, SRCCOPY);
 					}
 					else {
-						// Received data is RGBA but windows draw is BGR
-						// so the extended BITMAPV4HEADER bitmap info header
-						// is required instead of BITMAPINFO
-						// This is quite slow (18-24 msec at 1280x720)
-						BITMAPV4HEADER info = { sizeof(BITMAPV4HEADER) };
-						info.bV4Width = (LONG)g_SenderWidth;
-						info.bV4Height = -(LONG)g_SenderHeight;
-						info.bV4Planes = 1;
-						info.bV4BitCount = 32;
-						info.bV4V4Compression = BI_BITFIELDS;
-						info.bV4RedMask = 0x000000FF;
-						info.bV4GreenMask = 0x0000FF00;
-						info.bV4BlueMask = 0x00FF0000;
-						info.bV4AlphaMask = 0xFF000000;
-						SetStretchBltMode(hdc, COLORONCOLOR);
-						StretchDIBits(hdc,
-							0, 0,
-							(dr.right - dr.left),
-							(dr.bottom - dr.top), // destination rectangle 
-							0, 0,
-							g_SenderWidth, g_SenderHeight, // source rectangle 
-							pixelBuffer,
-							reinterpret_cast<BITMAPINFO*>(&info),
-							DIB_RGB_COLORS,
-							SRCCOPY);
+
+						//
+						// Received data is RGBA but windows draw is BGRA and conversion is required
+						//
+						// For widths divisible by 16, a high speed function is
+						// available to convert from rgba to bgra.
+						// Timing has shown that this is much faster (1-2 msec)
+						// than using BITMAPV4HEADER (18-24 msec) at 1280x720.
+						//		
+						if ((g_SenderWidth % 16) == 0) {
+							// SSE conversion from rgba to bgra
+							receiver.spoutcopy.rgba2bgra(pixelBuffer, bgraBuffer, g_SenderWidth, g_SenderHeight);
+							SetStretchBltMode(hdc, COLORONCOLOR);
+							StretchDIBits(hdc,
+								0, 0, (dr.right - dr.left), (dr.bottom - dr.top),
+								0, 0, g_SenderWidth, g_SenderHeight, bgraBuffer,
+								&bmi, DIB_RGB_COLORS, SRCCOPY);
+						}
+						else {
+							// The extended BITMAPV4HEADER bitmap info header
+							// is required instead of BITMAPINFO but can be slow.
+							BITMAPV4HEADER info = { sizeof(BITMAPV4HEADER) };
+							info.bV4Width = (LONG)g_SenderWidth;
+							info.bV4Height = -(LONG)g_SenderHeight;
+							info.bV4Planes = 1;
+							info.bV4BitCount = 32;
+							info.bV4V4Compression = BI_BITFIELDS;
+							info.bV4RedMask = 0x000000FF;
+							info.bV4GreenMask = 0x0000FF00;
+							info.bV4BlueMask = 0x00FF0000;
+							info.bV4AlphaMask = 0xFF000000;
+							SetStretchBltMode(hdc, COLORONCOLOR);
+							StretchDIBits(hdc,
+								0, 0, (dr.right - dr.left),	(dr.bottom - dr.top),
+								0, 0, g_SenderWidth, g_SenderHeight, pixelBuffer,
+								reinterpret_cast<BITMAPINFO*>(&info),
+								DIB_RGB_COLORS,	SRCCOPY);
+						}
 					}
 				}
 			}
