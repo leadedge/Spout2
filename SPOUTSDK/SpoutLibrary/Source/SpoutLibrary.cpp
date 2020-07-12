@@ -71,9 +71,34 @@
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "SpoutLibrary.h"
 #include <stdio.h>
-#include "SpoutFunctions.h"
+#include "SpoutLibrary.h"
+#include "..\..\SpoutSDK\spout.h"
+
+using namespace spoututils;
+
+class SpoutFunctions {
+
+public:
+
+	SpoutFunctions();
+	~SpoutFunctions();
+
+	SpoutSender spoutsender;
+	SpoutReceiver spoutreceiver;
+	Spout spout; // common functions
+
+};
+
+SpoutFunctions::SpoutFunctions() {
+
+};
+
+SpoutFunctions::~SpoutFunctions() {
+	spoutsender.ReleaseSender();
+	spoutreceiver.ReleaseReceiver();
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -93,6 +118,11 @@ class SPOUTImpl : public SPOUTLIBRARY
 		//
 
 		// Sender
+		void SetSenderName(const char* sendername = nullptr);
+		void ReleaseSender(DWORD dwMsec = 0);
+		bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
+		bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
+		bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
 		const char * GetName();
 		unsigned int GetWidth();
 		unsigned int GetHeight();
@@ -102,6 +132,7 @@ class SPOUTImpl : public SPOUTLIBRARY
 
 		// Receiver
 		void SetReceiverName(const char * SenderName);
+		void ReleaseReceiver();
 		bool ReceiveTexture(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
 		bool ReceiveImage(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
 		bool IsUpdated();
@@ -157,14 +188,9 @@ class SPOUTImpl : public SPOUTLIBRARY
 		// Sender
 		bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
 		bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
-		void ReleaseSender(DWORD dwMsec = 0);
-		bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
-		bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
-		bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false);
 
 		// Receiver
 		bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
-		void ReleaseReceiver();
 		bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 
 		bool IsInitialized();
@@ -224,34 +250,60 @@ class SPOUTImpl : public SPOUTLIBRARY
 // Sender
 //
 
+void SPOUTImpl::SetSenderName(const char* sendername)
+{
+	spoutSDK->spoutsender.SetSenderName(sendername);
+}
+
+void SPOUTImpl::ReleaseSender(DWORD dwMsec)
+{
+	dwMsec = 0; // Not used for 2.007
+	spoutSDK->spoutsender.ReleaseSender();
+}
+
+bool SPOUTImpl::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
+{
+	return spoutSDK->spoutsender.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+}
+
+bool SPOUTImpl::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
+{
+	return spoutSDK->spoutsender.SendFbo(FboID, width, height, bInvert);
+}
+
+bool SPOUTImpl::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
+{
+	return spoutSDK->spoutsender.SendImage(pixels, width, height, glFormat, bInvert);
+}
+
 const char * SPOUTImpl::GetName()
 {
-	return spoutSDK->GetName();
+	return spoutSDK->spoutsender.GetName();
 }
 
 unsigned int SPOUTImpl::GetWidth()
 {
-	return spoutSDK->GetWidth();
+	return spoutSDK->spoutsender.GetWidth();
 }
 
 unsigned int SPOUTImpl::GetHeight()
 {
-	return spoutSDK->GetHeight();
+	return spoutSDK->spoutsender.GetHeight();
 }
 
 long  SPOUTImpl::GetFrame()
 {
-	return spoutSDK->GetFrame();
+	return spoutSDK->spoutsender.GetFrame();
 }
 
 double SPOUTImpl::GetFps()
 {
-	return spoutSDK->GetFps();
+	return spoutSDK->spoutsender.GetFps();
 }
 
 void SPOUTImpl::HoldFps(int fps)
 {
-	return spoutSDK->HoldFps(fps);
+	return spoutSDK->spoutsender.HoldFps(fps);
 }
 
 //
@@ -260,67 +312,72 @@ void SPOUTImpl::HoldFps(int fps)
 
 void SPOUTImpl::SetReceiverName(const char* SenderName)
 {
-	spoutSDK->SetReceiverName(SenderName);
+	spoutSDK->spoutreceiver.SetReceiverName(SenderName);
+}
+
+void SPOUTImpl::ReleaseReceiver()
+{
+	spoutSDK->spoutreceiver.ReleaseReceiver();
 }
 
 bool SPOUTImpl::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
-	return spoutSDK->ReceiveTexture(TextureID, TextureTarget, bInvert, HostFbo);
+	return spoutSDK->spoutreceiver.ReceiveTexture(TextureID, TextureTarget, bInvert, HostFbo);
 }
 
 bool SPOUTImpl::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
-	return spoutSDK->ReceiveImage(pixels, glFormat, bInvert, HostFbo);
+	return spoutSDK->spoutreceiver.ReceiveImage(pixels, glFormat, bInvert, HostFbo);
 }
 
 bool SPOUTImpl::IsUpdated()
 {
-	return spoutSDK->IsUpdated();
+	return spoutSDK->spoutreceiver.IsUpdated();
 }
 
 bool SPOUTImpl::IsConnected()
 {
-	return spoutSDK->IsConnected();
+	return spoutSDK->spoutreceiver.IsConnected();
 }
 
 void SPOUTImpl::SelectSender()
 {
-	spoutSDK->SelectSender();
+	spoutSDK->spoutreceiver.SelectSender();
 }
 
 const char * SPOUTImpl::GetSenderName()
 {
-	return spoutSDK->GetSenderName();
+	return spoutSDK->spoutreceiver.GetSenderName();
 }
 
 unsigned int SPOUTImpl::GetSenderWidth()
 {
-	return spoutSDK->GetSenderWidth();
+	return spoutSDK->spoutreceiver.GetSenderWidth();
 }
 
 unsigned int SPOUTImpl::GetSenderHeight()
 {
-	return spoutSDK->GetSenderHeight();
+	return spoutSDK->spoutreceiver.GetSenderHeight();
 }
 
 DWORD SPOUTImpl::GetSenderFormat()
 {
-	return spoutSDK->GetSenderFormat();
+	return spoutSDK->spoutreceiver.GetSenderFormat();
 }
 
 long SPOUTImpl::GetSenderFrame()
 {
-	return spoutSDK->GetSenderFrame();
+	return spoutSDK->spoutreceiver.GetSenderFrame();
 }
 
 double SPOUTImpl::GetSenderFps()
 {
-	return spoutSDK->GetSenderFps();
+	return spoutSDK->spoutreceiver.GetSenderFps();
 }
 
 bool SPOUTImpl::IsFrameNew()
 {
-	return spoutSDK->IsFrameNew();
+	return spoutSDK->spoutreceiver.IsFrameNew();
 }
 
 // Common
@@ -501,32 +558,12 @@ bool SPOUTImpl::FindSubKey(HKEY hKey, const char *subkey)
 //
 bool SPOUTImpl::CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat)
 {
-	return spoutSDK->CreateSender(Sendername, width, height, dwFormat);
+	return spoutSDK->spoutsender.CreateSender(Sendername, width, height, dwFormat);
 }
 
 bool SPOUTImpl::UpdateSender(const char* Sendername, unsigned int width, unsigned int height)
 {
-	return spoutSDK->UpdateSender(Sendername, width, height);
-}
-
-void SPOUTImpl::ReleaseSender(DWORD dwMsec)
-{
-	spoutSDK->ReleaseSender(dwMsec);
-}
-
-bool SPOUTImpl::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
-{
-	return spoutSDK->SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
-}
-
-bool SPOUTImpl::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
-{
-	return spoutSDK->SendFbo(FboID, width, height, bInvert);
-}
-
-bool SPOUTImpl::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
-{
-	return spoutSDK->SendImage(pixels, width, height, glFormat, bInvert);
+	return spoutSDK->spoutsender.UpdateSender(Sendername, width, height);
 }
 
 // 
@@ -534,150 +571,145 @@ bool SPOUTImpl::SendImage(const unsigned char* pixels, unsigned int width, unsig
 //
 bool SPOUTImpl::CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive)
 {
-	return spoutSDK->CreateReceiver(Sendername, width, height, bUseActive);
-}
-
-void SPOUTImpl::ReleaseReceiver()
-{
-	spoutSDK->ReleaseReceiver();
+	return spoutSDK->spoutreceiver.CreateReceiver(Sendername, width, height, bUseActive);
 }
 
 bool SPOUTImpl::CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected)
 {
-	return spoutSDK->CheckReceiver(Sendername, width, height, bConnected);
+	return spoutSDK->spoutreceiver.CheckReceiver(Sendername, width, height, bConnected);
 }
 
 bool SPOUTImpl::IsInitialized()
 {
-	return spoutSDK->IsInitialized();
+	return spoutSDK->spout.IsSpoutInitialized();
 }
 
 bool SPOUTImpl::BindSharedTexture()
 {
-	return spoutSDK->BindSharedTexture();
+	return spoutSDK->spout.BindSharedTexture();
 }
 
 bool SPOUTImpl::UnBindSharedTexture()
 {
-	return spoutSDK->UnBindSharedTexture();
+	return spoutSDK->spout.UnBindSharedTexture();
 }
 
 GLuint SPOUTImpl::GetSharedTextureID()
 {
-	return spoutSDK->GetSharedTextureID();
+	return spoutSDK->spoutreceiver.GetSharedTextureID();
 }
 
 int  SPOUTImpl::GetSenderCount()
 {
-	return spoutSDK->GetSenderCount();
+	return spoutSDK->spoutreceiver.GetSenderCount();
 }
 
 bool SPOUTImpl::GetSender(int index, char* sendername, int MaxSize)
 {
-	return spoutSDK->GetSender(index, sendername, MaxSize);
+	return spoutSDK->spoutreceiver.GetSender(index, sendername, MaxSize);
 }
 
 bool SPOUTImpl::GetSenderInfo  (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
 {
-	return spoutSDK->GetSenderInfo (sendername, width, height, dxShareHandle, dwFormat);
+	return spoutSDK->spoutreceiver.GetSenderInfo (sendername, width, height, dxShareHandle, dwFormat);
 }
 
 bool SPOUTImpl::GetActiveSender(char* Sendername)
 {
-	return spoutSDK->GetActiveSender(Sendername);
+	return spoutSDK->spoutreceiver.GetActiveSender(Sendername);
 }
 
 bool SPOUTImpl::SetActiveSender(const char* Sendername)
 {
-	return spoutSDK->SetActiveSender(Sendername);
+	return spoutSDK->spoutreceiver.SetActiveSender(Sendername);
 }
 
 // Utilities
 bool SPOUTImpl::SetDX9(bool bDX9)
 {
-	return spoutSDK->SetDX9(bDX9);
+	return spoutSDK->spout.SetDX9(bDX9);
 }
 
 bool SPOUTImpl::GetDX9()
 {
-	return spoutSDK->GetDX9();
+	return spoutSDK->spout.GetDX9();
 }
 
 bool SPOUTImpl::SetMemoryShareMode(bool bMem)
 {
-	return spoutSDK->SetMemoryShareMode(bMem);
+	return spoutSDK->spout.SetMemoryShareMode(bMem);
 }
 
 bool SPOUTImpl::GetMemoryShareMode()
 {
-	return spoutSDK->GetMemoryShareMode();
+	return spoutSDK->spout.GetMemoryShareMode();
 }
 
 int SPOUTImpl::GetShareMode()
 {
-	return spoutSDK->GetShareMode();
+	return spoutSDK->spout.GetShareMode();
 }
 
 bool SPOUTImpl::SetShareMode(int mode)
 {
-	return spoutSDK->SetShareMode(mode);
+	return spoutSDK->spout.SetShareMode(mode);
 }
 
 void SPOUTImpl::SetBufferMode(bool bActive)
 {
-	spoutSDK->SetBufferMode(bActive);
+	spoutSDK->spout.SetBufferMode(bActive);
 }
 
 bool SPOUTImpl::GetBufferMode()
 {
-	return spoutSDK->GetBufferMode();
+	return spoutSDK->spout.GetBufferMode();
 }
 
 
 int  SPOUTImpl::GetMaxSenders()
 {
-	return spoutSDK->GetMaxSenders();
+	return spoutSDK->spout.GetMaxSenders();
 }
 
 void SPOUTImpl::SetMaxSenders(int maxSenders)
 {
-	spoutSDK->SetMaxSenders(maxSenders);
+	spoutSDK->spout.SetMaxSenders(maxSenders);
 }
 
 bool SPOUTImpl::GetHostPath(const char *sendername, char *hostpath, int maxchars)
 {
-	return spoutSDK->GetHostPath(sendername, hostpath, maxchars);
+	return spoutSDK->spout.GetHostPath(sendername, hostpath, maxchars);
 }
 
 int  SPOUTImpl::GetVerticalSync()
 {
-	return spoutSDK->GetVerticalSync();
+	return spoutSDK->spout.GetVerticalSync();
 }
 
 bool SPOUTImpl::SetVerticalSync(bool bSync)
 {
-	return spoutSDK->SetVerticalSync(bSync);
+	return spoutSDK->spout.SetVerticalSync(bSync);
 }
 
 // Adapter functions
 int  SPOUTImpl::GetNumAdapters()
 {
-	return spoutSDK->GetNumAdapters();
+	return spoutSDK->spout.GetNumAdapters();
 }
 
 bool SPOUTImpl::GetAdapterName(int index, char *adaptername, int maxchars)
 {
-	return spoutSDK->GetAdapterName(index, adaptername, maxchars);
+	return spoutSDK->spout.GetAdapterName(index, adaptername, maxchars);
 }
 
 bool SPOUTImpl::SetAdapter(int index)
 {
-	return spoutSDK->SetAdapter(index);
+	return spoutSDK->spout.SetAdapter(index);
 }
 
 int  SPOUTImpl::GetAdapter()
 {
-	return spoutSDK->GetAdapter();
+	return spoutSDK->spout.GetAdapter();
 }
 
 // OpenGL utilities
@@ -736,7 +768,6 @@ extern "C" SPOUTAPI SPOUTHANDLE APIENTRY GetSpout()
 	SPOUTImpl * pSpout = new SPOUTImpl; // the Spout class implementation
 
 	// Create a new spout SDK pointer for this class
-	// pSpout->spoutSDK = new Spout;
 	pSpout->spoutSDK = new SpoutFunctions;
 	
 	return pSpout;

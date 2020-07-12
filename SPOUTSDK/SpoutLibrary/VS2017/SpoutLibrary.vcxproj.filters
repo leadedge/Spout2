@@ -40,9 +40,6 @@
     <ClCompile Include="..\..\SpoutSDK\SpoutCopy.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\SpoutFunctions.cpp">
-      <Filter>SpoutLibrary</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\SpoutSDK\Spout.h">
@@ -89,9 +86,6 @@
     </ClInclude>
     <ClInclude Include="..\..\SpoutSDK\SpoutCopy.h">
       <Filter>SpoutSDK</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\SpoutFunctions.h">
-      <Filter>SpoutLibrary</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

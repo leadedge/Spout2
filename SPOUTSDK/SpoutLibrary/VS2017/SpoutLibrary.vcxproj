@@ -107,13 +107,8 @@
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\ofSpoutLibraryExample\src\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\ofSpoutLibraryExample\bin\SpoutLibrary_d.dll"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\ofSpoutLibraryExample\libs\SpoutLibrary_d.lib"
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\testApps\BeatDrop-1001\vis_milk2\Debug\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\testApps\BeatDrop\vis_milk2\Debug\"
-</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -130,11 +125,8 @@ copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutL
       <AdditionalDependencies>opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Debug\SpoutLibrary.lib" "D:\Qt\myApps\SpoutQT\libs\x64\Debug\SpoutLibrary_d.lib"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Debug\SpoutLibrary.dll" "D:\Qt\myApps\SpoutQT\libs\x64\Debug\SpoutLibrary_d.dll"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Debug\SpoutLibrary.dll" "D:\Qt\myApps\SpoutQT\SpoutLibrary_d.dll"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "C:\Qt\myApps\SpoutQT\libs\include"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "C:\Qt\myApps\SpoutQT\"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -160,49 +152,8 @@ copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "C:\
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Binaries\2.007\Win32\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Binaries\2.007\Win32\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Binaries\2.007\Win32\"
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\Binaries\Win32\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\Binaries\Win32\"
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\ofSpoutLibraryExample\src\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\ofSpoutLibraryExample\bin\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\ofSpoutLibraryExample\libs\"
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\ofSpoutLibraryExample\src\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\ofSpoutLibraryExample\bin\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\ofSpoutLibraryExample\libs\"
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\QT\myApps\SpoutQT\libs\Win32"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\QT\myApps\SpoutQT\libs\Win32"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\QT\myApps\SpoutQT\libs\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\QT\myApps\SpoutQT\libs"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\QT\myApps\SpoutQT\"
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\OPENFRAMEWORKS98VS\apps\myApps\SpoutVideoPlayer\libs\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS98VS\apps\myApps\SpoutVideoPlayer\libs\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS98VS\apps\myApps\SpoutVideoPlayer\bin\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\OPENFRAMEWORKS98VS\apps\myApps\SpoutVideoPlayer\libs\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\OPENFRAMEWORKS98VS\apps\myApps\SpoutVideoPlayer\src\"
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\OPENFRAMEWORKS100VS\apps\myApps\BeatDrop\spoutlibrary\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\myApps\BeatDrop\spoutlibrary\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\OPENFRAMEWORKS100VS\apps\myApps\BeatDrop\spoutlibrary\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\myApps\BeatDrop\vis_milk2\Release\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\myApps\BeatDrop\BeatDrop\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\OPENFRAMEWORKS100VS\apps\myApps\BeatDrop\vis_milk2\"
-
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\OPENFRAMEWORKS100VS\apps\testApps\BeatDrop-1001\spoutlibrary\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\testApps\BeatDrop-1001\spoutlibrary\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\OPENFRAMEWORKS100VS\apps\testApps\BeatDrop-1001\spoutlibrary\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\testApps\BeatDrop-1001\vis_milk2\Release\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\testApps\BeatDrop-1001\BeatDrop\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\OPENFRAMEWORKS100VS\apps\testApps\BeatDrop-1001\vis_milk2\"
-
-</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -226,26 +177,8 @@ copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Binaries\2.007\x64\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Release\SpoutLibrary.lib" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Binaries\2.007\x64\"
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Release\SpoutLibrary.lib" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\Binaries\x64"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Release\SpoutLibrary.dll" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\Binaries\x64"
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.cpp" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\Source\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\Source\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutFunctions.cpp" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\Source\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutFunctions.h" "D:\SPOUT_2007_INSTALL\Spout2\SPOUTSDK\SpoutLibrary\Source\"
-
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Release\SpoutLibrary.lib" "D:\QT\myApps\SpoutQT\libs\x64"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Release\SpoutLibrary.dll" "D:\QT\myApps\SpoutQT\libs\x64"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Release\SpoutLibrary.lib" "D:\QT\myApps\SpoutQT\libs\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Release\SpoutLibrary.dll" "D:\QT\myApps\SpoutQT\libs\"
-copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\QT\myApps\SpoutQT\"
-
-
-
-</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -261,7 +194,6 @@ copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\
     <ClCompile Include="..\..\SpoutSDK\SpoutSenderNames.cpp" />
     <ClCompile Include="..\..\SpoutSDK\SpoutSharedMemory.cpp" />
     <ClCompile Include="..\..\SpoutSDK\SpoutUtils.cpp" />
-    <ClCompile Include="..\Source\SpoutFunctions.cpp" />
     <ClCompile Include="..\Source\SpoutLibrary.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -279,7 +211,6 @@ copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\
     <ClInclude Include="..\..\SpoutSDK\SpoutSenderNames.h" />
     <ClInclude Include="..\..\SpoutSDK\SpoutSharedMemory.h" />
     <ClInclude Include="..\..\SpoutSDK\SpoutUtils.h" />
-    <ClInclude Include="..\Source\SpoutFunctions.h" />
     <ClInclude Include="..\Source\SpoutLibrary.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

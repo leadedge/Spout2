@@ -1,7 +1,7 @@
 /*
 
 	Spout OpenFrameworks receiver example
-	using the SpoutLibrary C-compatible dll
+	using the 2.007 SpoutLibrary C-compatible dll
 
 	1) Copy SpoutLibrary.h to the source files "src" folder
 	
@@ -22,22 +22,21 @@
 	   #include "SpoutLibrary.h"
 
 	2) Create a spout receiver object pointer
-	    SPOUTLIBRARY * spoutreceiver;
+	    SPOUTLIBRARY * receiver;
 
 	3) Create an instance of the library
-	    spoutreceiver = GetSpout(); 
+	    receiver = GetSpout(); 
 
 	4) Use the object as usual :
-	    spoutreceiver->SetupReceiver etc.
+	    receiver->SetReceiverName etc.
 
 	Compare with the receiver example using the Spout SDK source files.
 
 	Spout 2.007
 	OpenFrameworks 10
 	Visual Studio 2017
-	Apr 03 2019
 
-	Copyright (C) 2019 Lynn Jarvis.
+	Copyright (C) 2020 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -71,24 +70,16 @@ void ofApp::setup(){
 	// It will be resized later to match the sender - see Update()
 	myTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 
-	// Allocate an RGB image for this example
+	// Also allocate an RGB image for this example
 	// it can also be RGBA, BGRA or BGR
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
 
 	// Optional : enable logging
 	receiver->EnableSpoutLog();
 
-	// Optional : set up the receiver.
-	// This is optional because the receiving texture/buffer size
-	// can be reset when a sender update signal is received - see "update()"
-	// The option to flip the received texture can be set here - default is false.
-	// The function can be also used to reset the receiver if necessary.
-	// receiver->SetupReceiver(ofGetWidth(), ofGetHeight()); // invert true or false
-
-	// Optional : specify the sender to connect to.
-	// The receiver will not connect to any other unless the user selects one.
-	// If that sender closes, the receiver will wait for the nominated sender to open.
-	// To reset this behaviour, call "SetupReceiver".
+	// Optionally specify the sender to connect to.
+	// The application will not connect to any other unless the user selects one.
+	// If that sender closes, the application will wait for the nominated sender to open.
 	// receiver->SetReceiverName("Spout DX11 Sender");
 
 } // end setup
@@ -101,24 +92,46 @@ void ofApp::update() {
 	if (receiver->IsUpdated()) {
 		myTexture.allocate(receiver->GetSenderWidth(), receiver->GetSenderHeight(), GL_RGBA);
 		// Also resize the image for this example
-		myImage.resize((int)receiver->GetSenderWidth(), (int)receiver->GetSenderHeight());
+		myImage.resize(receiver->GetSenderWidth(), receiver->GetSenderHeight());
 	}
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	// Option 1 : Receive texture data
-	receiver->ReceiveTextureData(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget);
+	// ReceiveTexture and ReceiveImage connect to and receive from a sender
+	// Optionally include the ID of an fbo if one is currently bound
+
+	// Option 1 : Receive texture
+	receiver->ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget);
 	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 
-	// Option 2 : Receive pixel data
+	/*
+	// Option 2 : Receive image
 	// Specify RGB for this example. Default is RGBA.
-	// if (receiver->ReceiveImageData(myImage.getPixels().getData(), GL_RGB)) {
-		// Openframeworks image update is necessary because the pixels have been changed externally
-		// myImage.update();
-	// }
-	// myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
+	if (receiver->ReceiveImage(myImage.getPixels().getData(), GL_RGB)) {
+		// ofImage update is necessary because the pixels have been changed externally
+		myImage.update();
+	}
+	myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
+	*/
+
+	/*
+	// Option 3 : Receive a shared texture and use locally
+	if(receiver->ReceiveTexture()) {
+		// Bind to get access to the shared texture
+		receiver->BindSharedTexture();
+		// Get the shared texture ID
+		GLuint texID = receiver->GetSharedTextureID();
+		// Do something with it
+		// For this example, copy the shared texture to the local texture
+		receiver->CopyTexture(texID, GL_TEXTURE_2D,
+			myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget,
+			receiver->GetSenderWidth(), receiver->GetSenderHeight());
+		receiver->UnBindSharedTexture();
+	}
+	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
+	*/
 
 	// On-screen display
 	showInfo();
@@ -131,8 +144,7 @@ void ofApp::showInfo() {
 	char str[256];
 	ofSetColor(255);
 
-	// if (receiver->IsConnected()) {
-	if (receiver->IsInitialized()) {
+	if (receiver->IsConnected()) {
 
 		// Applications < 2.007 will return no frame count information
 		// Frame counting can also be disabled in SpoutSettings
@@ -164,7 +176,7 @@ void ofApp::showInfo() {
 
 //--------------------------------------------------------------
 void ofApp::exit() {
-	receiver->CloseReceiver();
+	receiver->ReleaseReceiver();
 }
 
 //--------------------------------------------------------------

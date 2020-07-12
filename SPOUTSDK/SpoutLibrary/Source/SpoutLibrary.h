@@ -32,9 +32,10 @@
 #ifndef __SpoutLibrary__
 #define __SpoutLibrary__
 
+// for definitions
 #include <windows.h>
-#include <GL/GL.h>
 #include <string>
+#include <GL/GL.h>
 #include <d3d9.h>
 
 
@@ -75,15 +76,25 @@ struct SPOUTLIBRARY
 	// Sender
 	//
 
-	// Sender name
+	// Set sender name
+	virtual void SetSenderName(const char* sendername = nullptr) = 0;
+	// Close sender and free resources
+	virtual void ReleaseSender(DWORD dwMsec = 0) = 0;
+	// Send texture
+	virtual bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0) = 0;
+	// Send texture attached to fbo
+	virtual bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true) = 0;
+	// Send image
+	virtual bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false) = 0;
+	// Get sender name
 	virtual const char * GetName() = 0;
-	// Sender width
+	// Get sender width
 	virtual unsigned int GetWidth() = 0;
-	// Sender height
+	// Get sender height
 	virtual unsigned int GetHeight() = 0;
-	// Sender frame number
+	// Get sender frame number
 	virtual long GetFrame() = 0;
-	// Sender frame rate
+	// Get sender frame rate
 	virtual double GetFps() = 0;
 	// Sender frame rate control
 	virtual void HoldFps(int fps) = 0;
@@ -93,6 +104,8 @@ struct SPOUTLIBRARY
 	//
 	// Set the sender name to connect to
 	virtual void SetReceiverName(const char* SenderName) = 0;
+	// Release receiver
+	virtual void ReleaseReceiver() = 0;
 	// Receive texture from sender
 	virtual bool ReceiveTexture(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0) = 0;
 	// Receive image pixels
@@ -103,18 +116,18 @@ struct SPOUTLIBRARY
 	virtual bool IsConnected() = 0;
 	// Open the user sender selection dialog
 	virtual void SelectSender() = 0;
-	// Return the connected sender name
+	// Get sender name
 	virtual const char * GetSenderName() = 0;
-	// Return the connected sender width
+	// Get sender width
 	virtual unsigned int GetSenderWidth() = 0;
-	// Return the connected sender height
+	// Get sender height
 	virtual unsigned int GetSenderHeight() = 0;
 	virtual DWORD GetSenderFormat() = 0;
-	// Return the connected sender frame number
+	// Get sender frame number
 	virtual long GetSenderFrame() = 0;
-	// Return the connected sender frame rate
+	// Get sender frame rate
 	virtual double GetSenderFps() = 0;
-	// Return whether the received frame is new
+	// Get whether the received frame is new
 	virtual bool IsFrameNew() = 0;
 
 	//
@@ -193,14 +206,8 @@ struct SPOUTLIBRARY
 	// Sender
 	virtual bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0) = 0;
 	virtual bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height) = 0;
-	virtual void ReleaseSender(DWORD dwMsec = 0) = 0;
-	virtual bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0) = 0;
-	virtual bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true) = 0;
-	virtual bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert=false) = 0;
-
 	// Receiver
 	virtual bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false) = 0;
-	virtual void ReleaseReceiver() = 0;
 	virtual bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected) = 0;
 
 	virtual bool IsInitialized() = 0;

@@ -1,6 +1,6 @@
 /*
 
-	Spout OpenFrameworks Graphics Sender example
+	Spout OpenFrameworks receiver example
 	using the 2.007 SpoutLibrary C-compatible dll
 
 	1) Copy SpoutLibrary.h to the source files "src" folder
@@ -21,16 +21,16 @@
 	1) Include SpoutLibrary.h in your application header file
 	   #include "SpoutLibrary.h"
 
-	2) create a spout sender object pointer
-	    SPOUTLIBRARY * sender;
+	2) Create a spout receiver object pointer
+	    SPOUTLIBRARY * receiver;
 
 	3) Create an instance of the library
-	    sender = GetSpout(); 
+	    receiver = GetSpout(); 
 
 	4) Use the object as usual :
-	    sender->CreateSender etc.
+	    receiver->SetReceiverName etc.
 
-	Compare with the graphics sender example using the Spout SDK source files.
+	Compare with the receiver example using the Spout SDK source files.
 
 	Spout 2.007
 	OpenFrameworks 10
@@ -58,209 +58,133 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
 
-	ofBackground(10, 100, 140);
+	ofBackground(0, 0, 0);
 
- 	strcpy_s(sendername, 256, "SpoutLibrary Sender"); // We need a sender name for Spout
-	ofSetWindowTitle(sendername); // show it on the title bar
-
-	sender = GetSpout(); // Create an instance of the Spout library
-	if (!sender) {
-		MessageBoxA(NULL, "Load Spout library failed", "Spout Sender", MB_ICONERROR);
+	receiver = GetSpout(); // Create an instance of the Spout library
+	if (!receiver) {
+		MessageBoxA(NULL, "Spout library load failed", "Spout Receiver", MB_ICONERROR);
 		exit();
 	}
 
-	//
-	// Optional : enable Spout logging to detect warnings and errors
-	sender->EnableSpoutLog();
-	//
-	// Output is to a console window.
-	//
-	// You can set the level above which the logs are shown
-	// (0) SPOUT_LOG_SILENT  : (1) SPOUT_LOG_VERBOSE : (2) SPOUT_LOG_NOTICE (default)
-	// (3) SPOUT_LOG_WARNING : (4) SPOUT_LOG_ERROR   : (5) SPOUT_LOG_FATAL
-	// For example, to show only warnings and errors (you shouldn't see any)
-	// or leave set to Notice to see more information.
-	//    sender->SetSpoutLogLevel(SPOUT_LOG_WARNING);
-	//
-	// You can instead, or also, specify output to a text file
-	// with the extension of your choice
-	//    sender->EnableSpoutLogFile("SpoutLibrary Sender.log");
-	//
-	// The log file is re-created every time the application starts
-	// unless you specify to append to the existing one :
-	//    sender->EnableSpoutLogFile("SpoutLibrary Sender.log", true);
-	//
-	// The file is saved in the %AppData% folder 
-	//    C:>Users>username>AppData>Roaming>Spout
-	// unless you specify the full path.
-	// After the application has run you can find and examine the log file
-	//
-	// This folder can also be shown in Windows Explorer directly from the application.
-	//	sender->ShowSpoutLogs();
-	//
-	// Or the entire log can be returned as a string
-	//	std::string logstring = sender->GetSpoutLog();
-	//
-	// You can create your own logs
-	// For example :
-	//	sender->SpoutLog("SpoutLog test");
-	//
-	// You can also specify the logging level :
-	// For example :
-	//    sender->SpoutLogNotice("Important notice");
-	// or :
-	//    sender->SpoutLogFatal("This should not happen");
-	// or :
-	//    sender->SetSpoutLogLevel(1);
-	//    sender->SpoutLogVerbose("Message");
-	//
+	// Allocate an RGBA texture to receive from the sender
+	// It will be resized later to match the sender - see Update()
+	myTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 
-	// 3D drawing setup for the demo 
-	ofDisableArbTex(); // Needed for ofBox texturing
-	ofEnableDepthTest(); // enable depth comparisons for the cube
-	myBoxImage.load("SpoutBox1.png"); // image for the cube texture
-	rotX = 0.0f;
-	rotY = 0.0f;
+	// Also allocate an RGB image for this example
+	// it can also be RGBA, BGRA or BGR
+	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
 
-	// Set the sender size here 
-	// This example uses an fbo which can be different from the window size
-	senderwidth = ofGetWidth();
-	senderheight = ofGetHeight();
+	// Optional : enable logging
+	receiver->EnableSpoutLog();
 
-	// Create an RGBA fbo for texture transfers
-	myFbo.allocate(senderwidth, senderheight, GL_RGBA);
-
-	// Create an image for optional pixel transfer
-	myPixels.allocate(senderwidth, senderheight, GL_RGBA);
-
-	// Create a Spout sender with it's name, size and optional DirectX texture format
-	// (Defaults : DX9 - D3DFMT_A8B8G8R8, DX11 - DXGI_FORMAT_B8G8R8A8_UNORM)
-	sender->CreateSender(sendername, senderwidth, senderheight);
-
-
-	// Optional : set the frame rate of the application.
-	// If the user has selected "Frame count" in SpoutSettings
-	// a receiver will detect this rate.
-	// Applications without frame rate control can use 
-	// a Spout function "HoldFps" to control frame rate (see Draw())
-	// ofSetFrameRate(30);
-
+	// Optionally specify the sender to connect to.
+	// The application will not connect to any other unless the user selects one.
+	// If that sender closes, the application will wait for the nominated sender to open.
+	// receiver->SetReceiverName("Spout DX11 Sender");
 
 } // end setup
 
 
 //--------------------------------------------------------------
 void ofApp::update() {
-
+	// If IsUpdated() returns true, the sender size has changed
+	// and the receiving texture or pixel buffer must be re-sized.
+	if (receiver->IsUpdated()) {
+		myTexture.allocate(receiver->GetSenderWidth(), receiver->GetSenderHeight(), GL_RGBA);
+		// Also resize the image for this example
+		myImage.resize(receiver->GetSenderWidth(), receiver->GetSenderHeight());
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	// Quit if the sender is not initialized
-	if (!sender->IsInitialized())
-		return;
+	// ReceiveTexture and ReceiveImage connect to and receive from a sender
+	// Optionally include the ID of an fbo if one is currently bound
 
-	// All sending functions check the sending dimensions
-	// and update the sender if necessary
-	// In this example, the fbo texture is already inverted
-	// so set the invert option false for all sending functions
+	// Option 1 : Receive texture
+	receiver->ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget);
+	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 
-	// Draw 3D graphics demo into the fbo
-	// This could be anything for your application
-	// - - - - - - - - - - - - - - - - 
-	myFbo.begin();
-	// Clear to reset the background and depth buffer
-	// Clear background alpha to opaque for the receiver
-	ofClear(10, 100, 140, 255);
-	ofPushMatrix();
-	ofTranslate(myFbo.getWidth() / 2.0, myFbo.getHeight() / 2.0, 0);
-	ofRotateYDeg(rotX); // rotate
-	ofRotateXDeg(rotY);
-	myBoxImage.bind(); // bind our box face image
-	ofDrawBox(0.4*myFbo.getHeight()); // draw the box
-	myBoxImage.unbind();
-	ofPopMatrix();
-	rotX += 0.6;
-	rotY += 0.6;
+	/*
+	// Option 2 : Receive image
+	// Specify RGB for this example. Default is RGBA.
+	if (receiver->ReceiveImage(myImage.getPixels().getData(), GL_RGB)) {
+		// ofImage update is necessary because the pixels have been changed externally
+		myImage.update();
+	}
+	myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
+	*/
 
-	// Option 1 : Send the texture attached to point 0 while the fbo is bound
-	// (Not available for memoryshare mode)
-	sender->SendFbo(myFbo.getId(), senderwidth, senderheight, false);
+	/*
+	// Option 3 : Receive a shared texture and use locally
+	if(receiver->ReceiveTexture()) {
+		// Bind to get access to the shared texture
+		receiver->BindSharedTexture();
+		// Get the shared texture ID
+		GLuint texID = receiver->GetSharedTextureID();
+		// Do something with it
+		// For this example, copy the shared texture to the local texture
+		receiver->CopyTexture(texID, GL_TEXTURE_2D,
+			myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget,
+			receiver->GetSenderWidth(), receiver->GetSenderHeight());
+		receiver->UnBindSharedTexture();
+	}
+	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
+	*/
 
-	myFbo.end();
-	// - - - - - - - - - - - - - - - - 
+	// On-screen display
+	showInfo();
 
-	// Option 2 : Send texture
-	// sender->SendTexture(myFbo.getTexture().getTextureData().textureID,
-		// myFbo.getTexture().getTextureData().textureTarget,
-		// senderwidth, senderheight, false);
+}
 
-	// Option 3 : Send image pixels
-	// myFbo.readToPixels(myPixels);
-	// sender.SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
+//--------------------------------------------------------------
+void ofApp::showInfo() {
 
-	// Show the result sized to the application window
-	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
-
-	// Show what it is sending
+	char str[256];
 	ofSetColor(255);
-	std::string str = "Sending as : ";
-	str += sendername; str += " (";
-	str += ofToString(sender->GetWidth()); str += "x";
-	str += ofToString(sender->GetHeight()); str += ")";
 
-	// Show sender fps and framecount if selected
-	if (sender->GetFrame() > 0) {
-		str += " fps ";
-		str += ofToString((int)roundf(sender->GetFps()));
-		str += " : frame  ";
-		str += ofToString(sender->GetFrame());
+	if (receiver->IsConnected()) {
+
+		// Applications < 2.007 will return no frame count information
+		// Frame counting can also be disabled in SpoutSettings
+		if (receiver->GetSenderFrame() > 0) {
+			sprintf_s(str, 256, "Receiving : [%s] (%dx%d : fps %2.0f : frame %d)",
+				receiver->GetSenderName(), // sender name
+				receiver->GetSenderWidth(), // width
+				receiver->GetSenderHeight(), // height 
+				receiver->GetSenderFps(), // fps
+				receiver->GetSenderFrame()); // frame since the sender started
+		}
+		else {
+			sprintf_s(str, 256, "Receiving : [%s] (%dx%d)",
+				receiver->GetSenderName(),
+				receiver->GetSenderWidth(),
+				receiver->GetSenderHeight());
+		}
+		ofDrawBitmapString(str, 10, 20);
+		sprintf_s(str, 256, "RH click select sender");
+		ofDrawBitmapString(str, 10, ofGetHeight() - 20);
+
 	}
 	else {
-		// Show Openframeworks fps
-		str += " fps : " + ofToString((int)roundf(ofGetFrameRate()));
+		sprintf_s(str, 256, "No sender detected");
+		ofDrawBitmapString(str, 20, 20);
 	}
-	ofDrawBitmapString(str, 20, 30);
-
-	//
-	// Applications without frame rate control can call this
-	// function to introduce the required delay between frames.
-	//
-	// Note : if you change to HoldFps(30) fps in this example,
-	// the cube will rotate more slowly (increase RotX and RotY).
-	//
-	// sender->HoldFps(30);
-
-
 
 }
 
 //--------------------------------------------------------------
 void ofApp::exit() {
-	// Close the sender on exit
-	sender->ReleaseSender();
-	// Release the library
-	sender->Release();
+	receiver->ReleaseReceiver();
 }
 
 //--------------------------------------------------------------
-void ofApp::mouseReleased(int x, int y, int button)
-{
-
-}
-
-
-//--------------------------------------------------------------
-void ofApp::windowResized(int w, int h) 
-{
-	// Update the sending fbo, texture or image
-	if (w > 0 && h > 0) {
-		senderwidth = w;
-		senderheight = h;
-		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
-		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
+void ofApp::mousePressed(int x, int y, int button) {
+	if (button == 2) { // rh button
+		// Open the sender selection panel
+		// Spout must have been installed
+		receiver->SelectSender();
 	}
-
 }
 
