@@ -176,7 +176,10 @@ void ofApp::showInfo() {
 
 //--------------------------------------------------------------
 void ofApp::exit() {
+	// Release the receiver
 	receiver->ReleaseReceiver();
+	// Release the library
+	receiver->Release();
 }
 
 //--------------------------------------------------------------

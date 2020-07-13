@@ -2,7 +2,7 @@ SPOUTLIBRARY
 
 "SpoutLibrary" is a C compatible DLL for using the Spout SDK with compilers other than Microsoft Visual Studio.
 
-The "VS2012", "VS2015" and "VS2017" folders contain Visual Studio projects to build the dll. The Spout SDK should be located in a folder "SpoutSDK" two levels above the project folder.
+The "VS2017" folder contains a Visual Studio 2017 project to build the dll. The Spout SDK should be located in a folder "SpoutSDK" two levels above the project folder.
 
 Open the SpoutLibrary solution, change to "Release" and build the project. SpoutLibrary.dll and SpoutLibrary.lib will be in the Win32\Release or x64\Release folder.
 

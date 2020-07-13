@@ -226,8 +226,6 @@ struct SPOUTLIBRARY
 	virtual bool GetDX9() = 0; // Return the flag that has been set
 	virtual bool SetMemoryShareMode(bool bMem = true) = 0;
 	virtual bool GetMemoryShareMode() = 0;
-	virtual int  GetShareMode() = 0;
-	virtual bool SetShareMode(int mode) = 0;
 	virtual void SetBufferMode(bool bActive) = 0;
 	virtual bool GetBufferMode() = 0;
 

@@ -45,6 +45,8 @@
 //				   Remove 2.006 overloads. Library is now exclusively 2.007.
 //				   Re-build for revised Spout SDK - 32 bit and 64 bit - VS2017 / MT
 //		18.06.20 - Add GetSenderFormat()
+//		12.07.20 - Simplify and use 2.007 sender / receiver classes
+//				 - Remove GetShareMode / SetShareMode
 //				   Re-build 32/64 bit - VS2017 / MT
 //
 /*
@@ -110,6 +112,10 @@ class SPOUTImpl : public SPOUTLIBRARY
 	public :
 
 		SpoutFunctions * spoutSDK; // Spout SDK functions object for this class
+
+		// LJ DEBUG
+		SPOUTImpl();
+		~SPOUTImpl();
 
 	private : // Spout SDK functions
 
@@ -209,8 +215,6 @@ class SPOUTImpl : public SPOUTLIBRARY
 		bool GetDX9(); // Return the flag that has been set
 		bool SetMemoryShareMode(bool bMem = true);
 		bool GetMemoryShareMode();
-		int  GetShareMode();
-		bool SetShareMode(int mode);
 		void SetBufferMode(bool bActive); // Set the pbo availability on or off
 		bool GetBufferMode();
 
@@ -239,6 +243,15 @@ class SPOUTImpl : public SPOUTLIBRARY
 		//
 		void Release();
 
+};
+
+// LJ DEBUG
+SPOUTImpl::SPOUTImpl() {
+	MessageBoxA(NULL, "SPOUTImpl", "Message", MB_OK);
+};
+
+SPOUTImpl::~SPOUTImpl() {
+	MessageBoxA(NULL, "~SPOUTImpl", "Message", MB_OK);
 };
 
 
@@ -643,16 +656,6 @@ bool SPOUTImpl::SetMemoryShareMode(bool bMem)
 bool SPOUTImpl::GetMemoryShareMode()
 {
 	return spoutSDK->spout.GetMemoryShareMode();
-}
-
-int SPOUTImpl::GetShareMode()
-{
-	return spoutSDK->spout.GetShareMode();
-}
-
-bool SPOUTImpl::SetShareMode(int mode)
-{
-	return spoutSDK->spout.SetShareMode(mode);
 }
 
 void SPOUTImpl::SetBufferMode(bool bActive)
