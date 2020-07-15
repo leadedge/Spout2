@@ -216,16 +216,13 @@ class SPOUT_DLLEXP Spout {
 	bool bDxInitOK; // DirectX initialized OK
 	bool bMemory; // Use memoryshare backup
 	bool bInitialized; // Sender or receiver has initialized
-	bool bIsSending;
-	bool bIsReceiving;
-	bool bChangeRequested;
+	bool bIsSending; // Sending rather that receiving
 	bool bSpoutPanelOpened;
 	bool bSpoutPanelActive;
 	bool bUseActive; // Use the active sender for CreateReceiver
 	SHELLEXECUTEINFOA m_ShExecInfo;
 
-	bool InitSender(HWND hwnd, const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat);
-	bool InitSender(HWND hwnd, const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bMemoryMode);
+	bool InitSender(HWND hwnd, const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bMemoryMode = false);
 
 	// Find a file version
 	bool FindFileVersion(const char *filepath, DWORD &versMS, DWORD &versLS);

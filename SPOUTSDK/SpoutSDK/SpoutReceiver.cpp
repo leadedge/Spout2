@@ -120,12 +120,40 @@ void SpoutReceiver::SetReceiverName(const char * SenderName)
 	}
 }
 
+//---------------------------------------------------------
+// Release receiver and resources
+// ready to connect to another sender
+void SpoutReceiver::ReleaseReceiver()
+{
+	// Reset class variables for 2.007 functions
+	m_Width = 0;
+	m_Height = 0;
+	m_bUpdate = false;
+	m_bConnected = false;
+	m_TextureID = 0;
+	m_TextureTarget = 0;
+
+	// Restore the starting sender name if the user specified one in SetReceiverName
+	if (m_SenderNameSetup[0]) {
+		strcpy_s(m_SenderName, 256, m_SenderNameSetup);
+		m_bUseActive = false;
+	}
+	else {
+		m_SenderName[0] = 0;
+		m_bUseActive = true;
+	}
+
+	// Release resources
+	spout.ReleaseReceiver();
+}
 
 //---------------------------------------------------------
-//	Receive from a sender
-//  The sender shared texture can then be accessed using :
+//	Receive sender shared texture
+//
+//  The texture can then be accessed using :
 //		BindSharedTexture();
 //		UnBindSharedTexture();
+//		GetSharedTextureID();
 //
 bool SpoutReceiver::ReceiveTexture()
 {
@@ -133,26 +161,21 @@ bool SpoutReceiver::ReceiveTexture()
 }
 
 //---------------------------------------------------------
-// Receive a texture from a sender
+// Receive OpenGL texture
 //
 //	o Connect to a sender
 //	o Set class variables for sender name, width and height
 //  o If the sender has changed size, set a flag for the application to update receiving texture
+//    The texture must be RGBA of dimension (width * height)
+//    and can be re-allocated is IsUpdated() returns true
 //  o Copy the sender shared texture to the user texture
-//
-//  For no texture ID or target, the sender texture can be accessed using :
-//		BindSharedTexture();
-//		UnBindSharedTexture();
-//		GetSharedTextureID()
 //
 bool SpoutReceiver::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
 	// Return if flagged for update
 	// The update flag is reset when the receiving application calls IsUpdated()
-	if (m_bUpdate) {
-		// printf("m_bUpdate\n");
+	if (m_bUpdate)
 		return true;
-	}
 
 	// Initialization is recorded in the spout class for sender or receiver
 	// m_Width or m_Height are established when the receiver connects to a sender
@@ -205,10 +228,13 @@ bool SpoutReceiver::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool 
 }
 
 //---------------------------------------------------------
-// Receive image pixels from a sender
+// Receive image pixels
 //
-//	o Connect to a sender and set class variables for sender name, width and height
+//	o Connect to a sender
+//	o Set class variables for sender name, width and height
 //  o If the sender has changed size, inform the application to update the receiving buffer
+//    The buffer must be RGBA of dimension (width * height * 4)
+//    and can be re-allocated is IsUpdated() returns true
 //  o Receive pixel data from a sender and write to the user buffer
 //  o Set class variables for sender name, width and height
 bool SpoutReceiver::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
@@ -266,7 +292,7 @@ bool SpoutReceiver::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bI
 
 //---------------------------------------------------------
 // Check for sender change
-//  If updated, the application must update the receiving texture
+//  If true, the application must update the receiving texture
 //  before the next call to ReceiveTexture or ReceiveImage
 bool SpoutReceiver::IsUpdated()
 {
@@ -366,31 +392,6 @@ bool SpoutReceiver::OpenSpout()
 bool SpoutReceiver::CreateReceiver(char* name, unsigned int &width, unsigned int &height, bool bUseActive)
 {
 	return spout.CreateReceiver(name, width, height, bUseActive);
-}
-
-//---------------------------------------------------------
-void SpoutReceiver::ReleaseReceiver()
-{
-	// Reset class variables for 2.007 functions
-	m_Width = 0;
-	m_Height = 0;
-	m_bUpdate = false;
-	m_bConnected = false;
-	m_TextureID = 0;
-	m_TextureTarget = 0;
-
-	// Restore the starting sender name if the user specified one in SetReceiverName
-	if (m_SenderNameSetup[0]) {
-		strcpy_s(m_SenderName, 256, m_SenderNameSetup);
-		m_bUseActive = false;
-	}
-	else {
-		m_SenderName[0] = 0;
-		m_bUseActive = true;
-	}
-
-	// Release resources
-	spout.ReleaseReceiver();
 }
 
 //---------------------------------------------------------

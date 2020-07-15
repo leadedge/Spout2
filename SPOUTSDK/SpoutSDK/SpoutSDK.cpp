@@ -154,6 +154,7 @@
 //		21.01.20	- Remove auto sender update in send functions
 //					  Remove debug print from InitSender
 //		25.05.20	- Correct filename case for all #includes throughout
+//		14.07.20	- Removed unused and bChangeRequested flag
 //
 // ================================================================
 /*
@@ -206,9 +207,8 @@ Spout::Spout()
 	bMemory               = false;  // User or compatibility memoryshare mode
 
 	bInitialized          = false;  // Has a sender or receiver been initialized
-	bIsSending            = false;  // A sender
-	bChangeRequested      = true;   // set for initial
 	bUseActive            = false;  // Use the active sender for CreateReceiver
+	bIsSending             = false; // Not sending yet
 	
 	bSpoutPanelOpened     = false;  // Selection panel "spoutpanel.exe" opened
 	bSpoutPanelActive     = false;  // The SpoutPanel window has been activated
@@ -220,10 +220,9 @@ Spout::Spout()
 //---------------------------------------------------------
 Spout::~Spout()
 {
-	// Close the sender memory map if it has not been done yet
-	if(bInitialized && bIsSending && g_SharedMemoryName[0] > 0) {
+	// Release the sender (does not matter if not registered)
+	if(bIsSending && g_SharedMemoryName[0])
 		interop.senders.ReleaseSenderName(g_SharedMemoryName);
-	}
 
 	// Cleanup and close directx or memoryshare
 	SpoutCleanUp();
@@ -247,7 +246,15 @@ bool Spout::CreateSender(const char* sendername, unsigned int width, unsigned in
 	CleanSenders();
 
 	// Initialize as a sender for either texture or memoryshare mode
-	return(InitSender(g_hWnd, sendername, width, height, dwFormat, bMemory));
+	if (!InitSender(g_hWnd, sendername, width, height, dwFormat, bMemory)) {
+		g_SharedMemoryName[0] = 0;
+		bIsSending = false;
+		return false;
+	}
+
+	bIsSending = true;
+
+	return true;
 
 } // end CreateSender
 
@@ -288,6 +295,14 @@ bool Spout::UpdateSender(const char *sendername, unsigned int width, unsigned in
 				// No need to re-initialize DirectX, only the GLDX interop
 				// which is re-registered for the new texture
 				interop.CreateInterop(g_hWnd, sendername, width, height, dwFormat, false); // false means a sender
+				
+				/*
+				interop.senders.UpdateSender(sendername, width, height, hSharehandle, dwFormat);
+				if (interop.GetDX9())
+					interop.CreateDX9interop(width, height, dwFormat, false);
+				else
+					interop.CreateDX11interop(width, height, dwFormat, false);
+				*/
 			}
 			else {
 				SpoutLog("    Memoryshare - updating shared memory");
@@ -315,8 +330,7 @@ bool Spout::UpdateSender(const char *sendername, unsigned int width, unsigned in
 
 void Spout::ReleaseSender(DWORD dwMsec) 
 {
-
-	if (g_SharedMemoryName[0] > 0) {
+	if (bIsSending && g_SharedMemoryName[0] > 0) {
 		SpoutLogNotice("Spout::ReleaseSender [%s]", g_SharedMemoryName);
 		interop.senders.ReleaseSenderName(g_SharedMemoryName); // if not registered it does not matter
 	}
@@ -325,7 +339,7 @@ void Spout::ReleaseSender(DWORD dwMsec)
 	bInitialized = false;
 	bIsSending = false;
 	
-	Sleep(dwMsec); // TODO - needed ?
+	Sleep(dwMsec); // Unused - keep for back-compatibility
 
 }
 
@@ -347,7 +361,7 @@ void Spout::ReleaseSender(DWORD dwMsec)
 bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
 {
 	// For texture sharing, the fbo must be equal to or larger than the shared texture
-	if (GetMemoryShareMode() || !IsSpoutInitialized() || width == 0 || height == 0 || width < g_Width || height < g_Height)
+	if (!bInitialized || bMemory || width == 0 || height == 0 || width < g_Width || height < g_Height)
 		return false;
 
 	return interop.WriteTexture(0, 0, width, height, bInvert, FboID);
@@ -359,7 +373,7 @@ bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool 
 // If the local texture has changed dimensions this will return false
 bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
-	if (!IsSpoutInitialized() || width == 0 || height == 0 || width != g_Width || height != g_Height)
+	if (!bInitialized || width == 0 || height == 0 || width != g_Width || height != g_Height)
 		return false;
 
 	return interop.WriteTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
@@ -373,10 +387,7 @@ bool Spout::SendImage(const unsigned char* pixels,
 {
 	GLenum glformat = glFormat;
 
-	if (!IsSpoutInitialized() || width == 0 || height == 0 || width != g_Width || height != g_Height)
-		return false;
-
-	if (!pixels)
+	if (!pixels || !bInitialized || width == 0 || height == 0 || width != g_Width || height != g_Height)
 		return false;
 
 	// Only RGBA, BGRA, RGB, BGR supported
@@ -1024,11 +1035,6 @@ void Spout::CleanSenders()
 
 }
 
-bool Spout::InitSender(HWND hwnd, const char* theSendername,
-	unsigned int theWidth, unsigned int theHeight, DWORD theFormat)
-{
-	return InitSender(hwnd, theSendername, theWidth, theHeight, theFormat, bMemory);
-}
 
 bool Spout::InitSender(HWND hwnd, const char* theSendername,
 	unsigned int theWidth, unsigned int theHeight,
@@ -1095,7 +1101,6 @@ bool Spout::InitSender(HWND hwnd, const char* theSendername,
 	interop.senders.GetSenderInfo(g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
 
 	bInitialized = true;
-	bIsSending = true;
 
 	return true;
 
@@ -1111,12 +1116,7 @@ bool Spout::InitReceiver(HWND hwnd, char* sendername, unsigned int width, unsign
 	// ============== Set up for a RECEIVER ============
 	//
 
-	// bChangeRequested is set when the Sender name, image size or share handle changes
-	// or the user selects another Sender - everything has to be reset if already initialized
-	if(bChangeRequested) {
-		bInitialized     = false;
-		bChangeRequested = false; // only do it once
-	}
+	bInitialized     = false;
 
 	// OpenSpout has already loaded OpenGL extensions and set up the sharing mode to be used
 	// only try dx if the memory mode flag is not set and sharehandle is not NULL
@@ -1300,7 +1300,6 @@ void Spout::SpoutCleanUp()
 
 	// Everything must be reset (see ReceiveTexture)
 	bInitialized = false;
-	bIsSending = false;
 
 }
 

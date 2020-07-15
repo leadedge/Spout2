@@ -272,9 +272,10 @@
 		29.04.20	- Use GL_LINEAR for all textures and blit
 					  Remove isOptimus() - dll detection does not work for Windows 10
 					  https://devtalk.nvidia.com/default/topic/510885/optimus-detection-c-/
-					  Added missing define check for legacy OpneGL functions
+					  Added missing define check for legacy OpenGL functions
 		05.05.20	- Shared texture read/write timing tests documented within functions
 		18.06.20	- Update WriteTexture shared texture flush and comments
+		06.07.20	- Remove log notice from CleanupInterop if already closed
 
 */
 
@@ -1444,7 +1445,7 @@ void spoutGLDXinterop::CleanupInterop()
 		&& m_glTexture == 0 && m_TexID == 0
 		&& m_pSharedTexture == NULL && m_dxTexture == NULL
 		&& m_bInitialized == false) {
-		SpoutLogNotice("spoutGLDXinterop::CleanupInterop - already closed");
+		// SpoutLogNotice("spoutGLDXinterop::CleanupInterop - already closed");
 		return;
 	}
 
@@ -1861,7 +1862,6 @@ bool spoutGLDXinterop::WriteGLDXtexture (
 		return false;
 
 	// Total time approximately 450-500 microseconds
-
 	// Wait for access to the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		// lock dx interop object
@@ -2325,8 +2325,6 @@ bool spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture)
 		return false;
 	}
 
-	// printf("texture (%dx%d) : sender (%dx%d)\n", desc.Width, desc.Height, m_TextureInfo.width, m_TextureInfo.height);
-
 	// Wait for access to the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		m_pImmediateContext->CopyResource(m_pSharedTexture, *texture);
@@ -2597,7 +2595,7 @@ bool spoutGLDXinterop::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarge
 //    operations that affect the resource on one driver are complete
 //    before the other driver takes ownership of it.
 //
-//	This function assumes only one object to 
+//	This function assumes only one object
 //
 //	Must return S_OK (0) - otherwise the error can be checked.
 //

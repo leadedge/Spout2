@@ -44,6 +44,10 @@ class SPOUT_DLLEXP SpoutSender {
 	// 2.007
 	//
 
+	// Set the sender name
+	void SetSenderName(const char* sendername = nullptr);
+	// Close sender and free resources
+	void ReleaseSender();
 	// Send texture
 	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
 	// Send texture attached to fbo
@@ -79,15 +83,16 @@ class SPOUT_DLLEXP SpoutSender {
 	// 2.006 compatibility
 	//
 
-	bool OpenSpout();
+	// Create sender
 	bool CreateSender(const char *sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
+	// Update sender
 	bool UpdateSender(const char* sendername, unsigned int width, unsigned int height);
-	void ReleaseSender(DWORD dwMsec = 0);
 #ifdef legacyOpenGL
 	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
 #endif
 	void RemovePadding(const unsigned char *source, unsigned char *dest, unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
 	
+	bool OpenSpout();
 	bool IsInitialized();
 	bool BindSharedTexture();
 	bool UnBindSharedTexture();
@@ -114,12 +119,11 @@ class SPOUT_DLLEXP SpoutSender {
 	int  GetVerticalSync();
 	bool SetVerticalSync(bool bSync = true);
 
-	bool SenderDebug(char* Sendername, int size);
-
 	Spout spout; // For access to all functions
 
 protected :
 
+	bool CheckSender(unsigned int width, unsigned int height);
 	char m_SenderName[256];
 	GLuint m_TextureID;
 	GLuint m_TextureTarget;

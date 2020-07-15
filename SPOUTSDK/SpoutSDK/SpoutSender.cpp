@@ -54,6 +54,10 @@
 //					- Removed SelectSenderPanel
 //		25.01.20	- Remove GetDX9compatible and SetDX9compatible
 //		28.04.20	- Add GetName() - get sender name
+//		19.06.20	- Remove delay argument from ReleaseSender
+//				    - Remove SenderDebug function - retain in SpoutSenderNames
+//		06.07.20	- Add SetSenderName and private CheckSender
+//		14.07.20	- CheckSender add zero dimension check
 //
 // ====================================================================================
 /*
@@ -94,26 +98,36 @@ SpoutSender::SpoutSender()
 
 }
 
+
+
+// ================= 2.007 functions ======================
+
+void SpoutSender::SetSenderName(const char* sendername)
+{
+	if (!sendername) {
+		// Get executable name as default
+		GetModuleFileNameA(NULL, m_SenderName, 256);
+		PathStripPathA(m_SenderName);
+		PathRemoveExtensionA(m_SenderName);
+	}
+	else {
+		strcpy_s(m_SenderName, 256, sendername);
+	}
+}
+
 //---------------------------------------------------------
 SpoutSender::~SpoutSender()
 {
 	ReleaseSender();
 }
 
-
-// ================= 2.007 functions ======================
-
 //---------------------------------------------------------
 // Send texture
 bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
-	// Return if a sender has not been created yet
-	if (!m_SenderName || !m_SenderName[0])
+	// Check sender name, creation and update
+	if(!CheckSender(width, height))
 		return false;
-	
-	// Check for change of texture size
-	if (m_Width != width || m_Height != height)
-		return UpdateSender(m_SenderName, width, height);
 
 	// All clear to send the texture
 	return spout.SendTexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
@@ -124,13 +138,9 @@ bool SpoutSender::SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 // Send texture attached to the currently bound fbo
 bool SpoutSender::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
 {
-	// Return if a sender has not been created yet
-	if (!m_SenderName || !m_SenderName[0])
+	// Check sender name, creation and update
+	if (!CheckSender(width, height))
 		return false;
-	
-	// Check for change of texture size
-	if (m_Width != width || m_Height != height)
-		return UpdateSender(m_SenderName, width, height);
 
 	// All clear to send the fbo texture
 	return spout.SendFbo(FboID, width, height, bInvert);
@@ -141,13 +151,9 @@ bool SpoutSender::SendFbo(GLuint FboID, unsigned int width, unsigned int height,
 // Send a pixel image
 bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
-	// Return if a sender has not been created yet
-	if (!m_SenderName || !m_SenderName[0])
+	// Check sender name, creation and update
+	if (!CheckSender(width, height))
 		return false;
-
-	// Check for change of texture size
-	else if (m_Width != width || m_Height != height)
-		return UpdateSender(m_SenderName, width, height);
 
 	// All clear to send the image
 	return spout.SendImage(pixels, width, height, glFormat, bInvert, HostFBO);
@@ -249,19 +255,22 @@ bool SpoutSender::UpdateSender(const char* name, unsigned int width, unsigned in
 	// For a name change, close the sender and set up again
 	if (strcmp(name, m_SenderName) != 0) {
 		ReleaseSender();
+		// CreateSender sets m_Width and m_Height on success
 		bRet = CreateSender(name, width, height, m_dwFormat);
 	}
 	else if (width != m_Width || height != m_Height) {
 		// For sender update, only width and height are necessary
-		m_Width = width;
-		m_Height = height;
-		bRet = spout.UpdateSender(m_SenderName, m_Width, m_Height);
+		if (spout.UpdateSender(m_SenderName, width, height)) {
+			m_Width = width;
+			m_Height = height;
+			bRet = true;
+		}
 	}
 	return bRet;
 }
 
 //---------------------------------------------------------
-void SpoutSender::ReleaseSender(DWORD dwMsec)
+void SpoutSender::ReleaseSender()
 {
 	// Reset class variables
 	m_SenderName[0] = 0;
@@ -269,7 +278,7 @@ void SpoutSender::ReleaseSender(DWORD dwMsec)
 	m_Height = 0;
 	m_dwFormat = 0;
 	// Release resources
-	spout.ReleaseSender(dwMsec);
+	spout.ReleaseSender();
 }
 
 #ifdef legacyOpenGL
@@ -357,12 +366,14 @@ bool SpoutSender::GetDX9()
 void SpoutSender::SetDX9format(D3DFORMAT textureformat)
 {
 	spout.SetDX9format(textureformat);
+	m_dwFormat = (DWORD)textureformat;
 }
 
 //---------------------------------------------------------
 void SpoutSender::SetDX11format(DXGI_FORMAT textureformat)
 {
 	spout.SetDX11format(textureformat);
+	m_dwFormat = (DWORD)textureformat;
 }
 
 //---------------------------------------------------------
@@ -431,9 +442,34 @@ bool SpoutSender::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 		width, height, bInvert, HostFBO);
 }
 
-//------------------ debugging aid only --------------------
-bool SpoutSender::SenderDebug(char* Sendername, int size)
-{
-	return spout.interop.senders.SenderDebug(Sendername, size);
+//
+// Private
+//
 
+//---------------------------------------------------------
+bool SpoutSender::CheckSender(unsigned int width, unsigned int height)
+{
+	if (width == 0 || height == 0)
+		return false;
+
+	// The sender needs a name
+	// Default is the executable name
+	if (!m_SenderName[0])
+		SetSenderName();
+
+	// Create a sender if not done yet
+	if (!spout.IsSpoutInitialized()) {
+		// Create a sender with the default format
+		// m_Width and m_Height are set by CreateSender
+		if (!CreateSender(m_SenderName, width, height))
+			return false;
+	}
+	// Initialized but has the source texture changed size ?
+	else if (m_Width != width || m_Height != height) {
+		// m_Width and m_Height are set by UpdateSender
+		if (!UpdateSender(m_SenderName, width, height))
+			return false;
+	}
+
+	return true;
 }

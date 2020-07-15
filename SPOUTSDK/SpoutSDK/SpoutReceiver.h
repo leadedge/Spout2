@@ -43,13 +43,15 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// 2.007
 	//
 
-	// Specify a sender for receiver connection
+	// Specify a sender for connection
 	void SetReceiverName(const char * SenderName);
-	// Receive from sender
+	// Release receiver
+	void ReleaseReceiver();
+	// Receive sender shared texture
 	bool ReceiveTexture();
-	// Receive texture data
+	// Receive OpenGL texture
 	bool ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert = false, GLuint HostFbo = 0);
-	// Receive pixel data
+	// Receive image pixels
 	bool ReceiveImage(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
 	// Sender has changed
 	bool IsUpdated();
@@ -90,7 +92,6 @@ class SPOUT_DLLEXP SpoutReceiver {
 
 	bool OpenSpout();
 	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
-	void ReleaseReceiver();
 	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
 	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
 	void RemovePadding(const unsigned char *source, unsigned char *dest, unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);

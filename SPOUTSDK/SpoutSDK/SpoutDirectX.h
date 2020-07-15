@@ -40,6 +40,9 @@
 #pragma comment (lib, "d3d11.lib")
 #pragma comment (lib, "DXGI.lib") // for CreateDXGIFactory1
 
+// include the Direct3D Library file
+#pragma comment (lib, "d3d11.lib")
+
 using namespace spoututils;
 
 class SPOUT_DLLEXP spoutDirectX {

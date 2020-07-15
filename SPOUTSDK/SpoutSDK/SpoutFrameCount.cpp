@@ -565,6 +565,8 @@ bool spoutFrameCount::CheckAccess()
 
 	// Typically 2-3 microseconds.
 	// 10 receivers - no increase.
+	// Note that NVIDIA "Threaded optimization" can cause delay
+	// for WaitForSingleObject and is set OFF by SpoutSettinngs
 
 	DWORD dwWaitResult = WaitForSingleObject(m_hAccessMutex, 67); // timeout 4 frames at 60fps
 	switch (dwWaitResult) {

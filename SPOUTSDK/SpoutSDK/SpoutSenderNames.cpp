@@ -173,6 +173,9 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 	std::string namestring;
 	char name[SpoutMaxSenderNameLen];
 
+	if (!Sendername[0])
+		return false;
+
 	// Create the shared memory for the sender name set if it does not exist
 	if(!CreateSenderSet()) return false;
 
@@ -195,11 +198,8 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 
 	// Get the current map to update the list
 	if(SenderNames.find(Sendername) != SenderNames.end() ) {
-
 		SenderNames.erase(Sendername); // erase the matching Sender
-
 		writeBufferFromSenderSet(SenderNames, pBuf, m_MaxSenders);
-
 		// Is there a set left ?
 		if(SenderNames.size() > 0) {
 			// This should be OK because the user selects the active sender
@@ -216,11 +216,11 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 		m_senderNames.Unlock();
 		return true;
 	}
-
 	m_senderNames.Unlock();
+
 	return false; // Sender name not in the set or no set in shared mempry
 
-} // end RemoveSender
+} // end ReleaseSenderName
 
 // Test to see if the Sender name exists in the sender set
 bool spoutSenderNames::FindSenderName(const char* Sendername)
@@ -663,7 +663,6 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 	SharedTextureInfo info;
 
 	// Check the user entered Sender name to see if it exists
-
 	if(sendername[0] == 0) {
 		// Passed name was null, so find the active sender
 		if(!GetActiveSender(sendername))

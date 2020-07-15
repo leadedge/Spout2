@@ -943,7 +943,7 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 //   If a shared texture is updated on one device ID3D11DeviceContext::Flush must be called on that device. 
 //   https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11device-opensharedresource
 //   Only the sender updates the shared texture. It is not required for the receiver.
-//   The application can either call Flush alone or combine a flush and Wait with this function.
+//   The application can either call Flush alone or combine a flush and Wait using this function.
 //
 // For an OpenGL sender :
 //   This function is not necessary, the GL/DX interop performs the necessary flushing.
@@ -956,7 +956,7 @@ void spoutDirectX::FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImm
 	// (Approx 250 microseconds 0.25 msec)
 	pImmediateContext->Flush();
 
-	// Also, CopyResource and Flush are both asynchronous.
+	// CopyResource and Flush are both asynchronous.
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb205132%28v=vs.85%29.aspx#Performance_Considerations
 	// Here we can wait for the copy and flush to finish before accessing the texture
 	// (Approx 550 microseconds 0.55 msec)
