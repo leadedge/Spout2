@@ -47,7 +47,7 @@
 //		18.06.20 - Add GetSenderFormat()
 //		12.07.20 - Simplify and use 2.007 sender / receiver classes
 //				 - Remove GetShareMode / SetShareMode
-//				   Re-build 32/64 bit - VS2017 / MT
+//		18.07.20 - Re-build 32/64 bit - VS2017 / MT
 //
 /*
 		Copyright (c) 2016-2020, Lynn Jarvis. All rights reserved.
@@ -112,10 +112,6 @@ class SPOUTImpl : public SPOUTLIBRARY
 	public :
 
 		SpoutFunctions * spoutSDK; // Spout SDK functions object for this class
-
-		// LJ DEBUG
-		SPOUTImpl();
-		~SPOUTImpl();
 
 	private : // Spout SDK functions
 
@@ -244,16 +240,6 @@ class SPOUTImpl : public SPOUTLIBRARY
 		void Release();
 
 };
-
-// LJ DEBUG
-SPOUTImpl::SPOUTImpl() {
-	MessageBoxA(NULL, "SPOUTImpl", "Message", MB_OK);
-};
-
-SPOUTImpl::~SPOUTImpl() {
-	MessageBoxA(NULL, "~SPOUTImpl", "Message", MB_OK);
-};
-
 
 // ---------------------------------------------------------------
 // 2.007

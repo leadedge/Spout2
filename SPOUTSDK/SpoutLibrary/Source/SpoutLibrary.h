@@ -122,6 +122,7 @@ struct SPOUTLIBRARY
 	virtual unsigned int GetSenderWidth() = 0;
 	// Get sender height
 	virtual unsigned int GetSenderHeight() = 0;
+	// Get sender DirectX texture format
 	virtual DWORD GetSenderFormat() = 0;
 	// Get sender frame number
 	virtual long GetSenderFrame() = 0;
@@ -140,7 +141,7 @@ struct SPOUTLIBRARY
 	virtual bool IsFrameCountEnabled() = 0;
 
 	//
-	// DX9 application support
+	// DX9 support
 	//
 
 	// Set the DX9ex object and device from the application
@@ -248,7 +249,6 @@ struct SPOUTLIBRARY
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0) = 0;
-
 	
 	// Library release function
     virtual void Release() = 0;
