@@ -154,7 +154,8 @@
 //		21.01.20	- Remove auto sender update in send functions
 //					  Remove debug print from InitSender
 //		25.05.20	- Correct filename case for all #includes throughout
-//		14.07.20	- Removed unused and bChangeRequested flag
+//		14.07.20	- Removed unused bChangeRequested flag
+//		18.07.20	- Rebuild binaries Win32 and x64 /MT VS2017
 //
 // ================================================================
 /*
