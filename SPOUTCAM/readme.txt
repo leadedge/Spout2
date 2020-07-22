@@ -2,28 +2,15 @@ SPOUTCAM
 
 SpoutCam is a virtual webcam that is also a Spout receiver.
 
-Not all applications support virtual webcams so if you have problems, uninstall Spout and re-install without the SpoutCam option selected.
-
-If SpoutCam is registered by the installer, there is no need to take any further action.
-
-However, if there has been no installation, you will be prompted to register SpoutCam when SpoutCamSettings is opened. 
-
-You can also register it manually. There are folders for 32 bit and 64 bit versions and you can install both on a 64 bit system. 
-In each folder you will find "_register_run_as_admin.bat". 
-RH click and "Run as Administrator" to register SpoutCam. 
-
-
 SPOUTCAM SETTINGS
 
-Previous versions of SpoutCam have always used use the resolution of the first sender running when it starts. But some host programs expect typical webcam formats such as 640x480 and a frame rate of 30 fps instead of the default 60fps.
+Some host programs don't accept arbitrary resolutions or 60 fps frame rate, and expect typical webcam output. "SpoutCamSettings" allows the frame rate and resolution to be specified and SpoutCam will use these settings when it starts.
 
-"SpoutCamSettings.exe" allows the frame rate and resolution for SpoutCam to be specified.
-
-For example if you are having trouble with a host program, it could be better to select "640x480" and "30fps" so that SpoutCam behaves more like a typical webcam.
+Defaults are the same as previous versions of SpoutCam - "Active sender" and "60fps". If you are having trouble with a host program, select "640x480" and "30fps" so that SpoutCam behaves more like a typical webcam.
 
 RESOLUTION
 
-The resolution actually used depends on :
+The resolution depends on :
 
   o What has been selected by SpoutCamSettings
   o Whether a sender is already running.
@@ -36,26 +23,14 @@ The resolution actually used depends on :
 
 FRAME RATE
 
-You will get better performance by selecting 60fps if the host program accepts it, and the CPU performance is sufficient for the processing required.
-
-The frame rate set is the “desired” frame rate. SpoutCam will attempt to meet that frame rate and drop frames if it cannot keep up.
-
-Some applications will not accept 60fps and might require 30fps to be selected.
+You can use 60fps if it is accepted by the host program and if the CPU performance is sufficient for the processing required. Use 30fps for best compatibility with webcams. The frame rate selected is the “desired” frame rate. SpoutCam will attempt to meet that frame rate and drop frames if it cannot keep up.
 
 REGISTER
 
-If SpoutCam has not been registered you can register with this button. 
-If it has already been registered you have the option to un-register it. 
+If an installer has been used there is an option to register SpoutCam during the installation. 
+For a portable installation, Click the REGISTER button.
+Both these installations will register both 32 bit and 64 bit versions of SpoutCam.
 
-SUMMARY
+You can also register it manually. There are folders for 32 bit and 64 bit versions and you can install both on a 64 bit system. In each folder you will find "_register_run_as_admin.bat". RH click and "Run as Administrator" to register SpoutCam. 
 
-For SpoutCam to adapt to the resolution of the sender, select "Active sender" in the settings and start the sender before starting SpoutCam. This is the most efficient way to operate because there is no image size conversion.
-
-If you want to use common webcam resolutions for compatibility reasons, select the resolution required and SpoutCam will retain that resolution.
-
-Use 30fps for best compatibility with webcams. 60fps might give better performance if it is accepted by the host program.
-
-
-
-
-
+Not all applications support virtual webcams and SpoutCam might not show up for some of them. If you have problems, you can un-register SpoutCam and Register again at any time.
