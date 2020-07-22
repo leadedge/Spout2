@@ -22,18 +22,17 @@ Help > Diagnostics > Logs.
 
 SPOUT SDK EXAMPLES\
 Example code is well commented and serves as documentation until that is updated.\
-The Openframeworks graphics sender gives the most information on new 2.007 functions.\
-The Spout SDK source is also well documented.\
-New DirectX examples show how Spout can be used without OpenGL.\
-Cinder does not support Visual Studio 2017 so the example solution file is for VS2012.\
+The Openframeworks graphics sender gives the most information on new 2.007 functions for OpenGL.\
+SpoutDirectX includes multiple examples for applications that do not use OpenGL. Refer to the readme for details.\
+Note that the example solution file for Cinder is for VS2012 and not VS2017.\
 All examples have pre-built binaries for testing.
+The Spout SDK source is also well documented.\
 
 SPOUTLIBRARY\
 Library files are updated for 2.007 and should be compatible with 2.006 applications.\
-The example is for Openframeworks and the Codeblocks example is discontinued.\
+The example is for Openframeworks and the 2.006 Codeblocks example is discontinued.\
 The library has been tested successfully with QT/MingW 32 and 64 bit.\
-Importantly use the updated SpoutLibrary.h header to build with the new library and dll files.\
-Unless you are building the library itself you don't need to include SpoutFunctions.h.
+Importantly, use the updated SpoutLibrary.h header to build with the new library and dll files.\
 
 VISUAL STUDIO\
 Visual Studio 2017 solution files should load and build straight away from their current locations.\
