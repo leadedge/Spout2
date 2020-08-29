@@ -276,6 +276,9 @@
 		05.05.20	- Shared texture read/write timing tests documented within functions
 		18.06.20	- Update WriteTexture shared texture flush and comments
 		06.07.20	- Remove log notice from CleanupInterop if already closed
+		27.08.20	- Made m_hInteropDevice and m_hInteropObject public for external access
+		29.08.20	- Add registry read of Laptop Nvidia mode in GLDXCompatible
+					  Requires SpoutSettings Version 1.018 or later
 
 */
 
@@ -492,15 +495,36 @@ bool spoutGLDXinterop::GLDXcompatible()
 			SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - OpenDirectX failed");
 		}
 
-		// Over-ride SpoutSettings memory share mode
-		WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", (DWORD)m_bUseMemory);
+		//
+		// All applications will use memoryshare mode
+		//    o If not texture share compatible
+		//    o If memoryshare mode is set by the user
+
+		//
+		// For all systems
+		// SpoutSettings records the current NVIDIA mode in the registry
+		//    0 - nvidia : 1 - integrated : 2 - auto-select : -1 not nvidia
+	
+		// For laptops with dual graphics
+		//    o If set to use Auto or Integrated, use memoryshare mode but do not change registry
+		//    o If set to use Nvidia or not Nvidia, it's still incompatible so change registry setting
+		//
+		// Users can perform diagnostics using SpoutSettings
+		//
+
+		DWORD dwMode = 2; // default for no registry, assume auto select
+		ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "NvidiaMode", &dwMode);
+
+		if (dwMode < 1) {
+			// Over-ride SpoutSettings memory share mode
+			WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", (DWORD)m_bUseMemory);
+		}
 
 		// Using either GL/DX texture or memoryshare mode
 		// OpenSpout will log the mode being used
 		// For texture share mode, CreateInterop should not report any errors
 		
 	}
-
 	return true;
 
 } // end GLDXcompatible
@@ -902,6 +926,8 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 	// It can only be from a DX9 sender (format 0, 22, 21)
 	// or from a compatible DX11 sender (format 87)
 	if(bReceive && m_bUseDX9) {
+		// printf("DX9 format %d\n", m_TextureInfo.format);
+
 		if(!(m_TextureInfo.format == 0 
 			|| m_TextureInfo.format == 22
 			|| m_TextureInfo.format == 21
@@ -1152,6 +1178,8 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 	DWORD dwError = 0;
 	char tmp[128];
 
+	// printf("spoutGLDXinterop::LinkGLDXtextures - m_hInteropDevice = 0x%x\n", m_hInteropDevice);
+
 	// Prepare the DirectX device for interoperability with OpenGL
 	// The return value is a handle to a GL/DirectX interop device.
 	if(!m_hInteropDevice) {
@@ -1179,10 +1207,13 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 		return NULL;
 	}
 
+	// printf("    Created m_hInteropDevice = 0x%x\n", m_hInteropDevice);
+
 	// prepare shared resource
 	// wglDXSetResourceShareHandle does not need to be called for DirectX
 	// version 10 and 11 resources. Calling this function for DirectX 10
 	// and 11 resources is not an error but has no effect.
+	// Error when dxShareHandle is NULL
 	try {
 		bResult = wglDXSetResourceShareHandleNV(pSharedTexture, dxShareHandle);
 	}
@@ -1213,9 +1244,9 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 
 	if (!hInteropObject) {
 		dwError = GetLastError();
-		// What is c007006e returned on failure ?
-		// printf("LinkGLDXtextures error = %x\n", (unsigned int)dwError);
-		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures - wglDXRegisterObjectNV :error\n");
+		// TODO : what is c007006e returned on failure ?
+		// Cannot reproduce. Possibly related to m_hInteropDevice.
+		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures - wglDXRegisterObjectNV :error (0x%x)\n", (unsigned int)dwError);
 		switch (dwError) {
 			case ERROR_INVALID_HANDLE :
 				strcat_s(tmp, 128, "    No GL context is made current to the calling thread.");
