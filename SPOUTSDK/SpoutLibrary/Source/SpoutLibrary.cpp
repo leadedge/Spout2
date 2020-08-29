@@ -48,6 +48,8 @@
 //		12.07.20 - Simplify and use 2.007 sender / receiver classes
 //				 - Remove GetShareMode / SetShareMode
 //		18.07.20 - Re-build 32/64 bit - VS2017 / MT
+//		25.08.20 - Add receiveTexture and receiveImage for 2.006 compatibility
+//		29.08.20 - Re-build 32/64 bit - VS2017 / MT
 //
 /*
 		Copyright (c) 2016-2020, Lynn Jarvis. All rights reserved.
@@ -194,6 +196,9 @@ class SPOUTImpl : public SPOUTLIBRARY
 		// Receiver
 		bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
 		bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
+		// Note : the first character must be changed to lower case for existing 2.006 applications
+		bool receiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
+		bool receiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 
 		bool IsInitialized();
 		bool BindSharedTexture();
@@ -577,6 +582,20 @@ bool SPOUTImpl::CheckReceiver(char* Sendername, unsigned int &width, unsigned in
 {
 	return spoutSDK->spoutreceiver.CheckReceiver(Sendername, width, height, bConnected);
 }
+
+// Note : to continue using 2.006 ReceiveTexture and ReceiveImage
+// in existing applications. the first character must be changed to lower case
+bool SPOUTImpl::receiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
+{
+	return spoutSDK->spoutreceiver.ReceiveTexture(Sendername, width, height, TextureID, TextureTarget, bInvert, HostFBO);
+}
+
+bool SPOUTImpl::receiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFBO)
+{
+	return spoutSDK->spoutreceiver.ReceiveImage(Sendername, width, height, pixels, glFormat, bInvert, HostFBO);
+}
+
+
 
 bool SPOUTImpl::IsInitialized()
 {
