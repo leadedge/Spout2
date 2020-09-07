@@ -52,9 +52,12 @@
 
 using namespace spoututils;
 
-#define SPOUT_WAIT_TIMEOUT 100 // 100 msec wait for events
-// MaxSenders define replaced by a global class variable (Max for list of Sender names)
-#define SpoutMaxSenderNameLen 256
+// 100 msec wait for events
+#define SPOUT_WAIT_TIMEOUT 100
+
+// MaxSenders define replaced by a global class variable
+// Maximum for list of Sender names
+#define SpoutMaxSenderNameLen 64
 
 // The texture information structure that is saved to shared memory
 // and used for communication between senders and receivers
@@ -69,13 +72,13 @@ using namespace spoututils;
 // in SpoutGLDXinterop.cpp and SpoutSenderNames
 //
 struct SharedTextureInfo {
-	unsigned __int32 shareHandle;
-	unsigned __int32 width;
-	unsigned __int32 height;
-	DWORD format; // Texture pixel format
+	unsigned __int32 shareHandle; // texture handle
+	unsigned __int32 width; // texture width
+	unsigned __int32 height; // texture height
+	DWORD format; // texture pixel format
 	DWORD usage; // not used
 	wchar_t description[128]; // Wyhon compatible description (not used)
-	unsigned __int32 partnerId; // Wyphon id of partner that shared it with us (not unused)
+	unsigned __int32 partnerId; // Wyphon id of partner that shared it with us (not used)
 };
 
 
@@ -86,50 +89,83 @@ class SPOUT_DLLEXP spoutSenderNames {
 		spoutSenderNames();
 		~spoutSenderNames();
 
+		//
 		// public functions
+		//
 
-		// ------------------------------------------------------------
-		// You must first register a sender name being using
+		//
+		// Sender name registration
+		//
+
+		// Register a sender name in the list of senders
 		bool RegisterSenderName(const char* sendername);
+		// Remove a name fromn the list
 		bool ReleaseSenderName(const char* sendername);
+		// Find a name in the list
 		bool FindSenderName(const char* sendername);
 
-		// ------------------------------------------------------------
+		//
 		// Functions to retrieve info about the sender set map and the senders in it
+		//
+
+		// Retrieve the sender name list as a set of names
 		bool GetSenderNames(std::set<std::string> *sendernames);
+		// Number of senders in the list
 		int  GetSenderCount();
+		// Information about a sender from an index into the list
 		bool GetSenderNameInfo(int index, char* sendername, int sendernameMaxSize, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle);
 
-		// ------------------------------------------------------------
-		// New for 2.005
+		//
+		// Maximum number of senders allowed in the list
+		// Applies for versions 2.005 and after
+		//
+
+		// Get the maximum number from the registry
 		int GetMaxSenders();
-		void SetMaxSenders(int maxSenders); // Set the maximum number of senders in a new sender map
+		// Set the maximum number of senders in a new sender map
+		void SetMaxSenders(int maxSenders);
 
-		// ------------------------------------------------------------
+		//
 		// Functions to read and write info to a sender memory map
-		bool GetSenderInfo (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
-		bool SetSenderInfo (const char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat);
+		//
 
-		// Generic sender map info retrieval
+		// Get sender information
+		bool GetSenderInfo (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
+		// Set sender information
+		bool SetSenderInfo (const char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat);
+		// Generic sender map info read (returned in a shared texture information structure)
 		bool getSharedInfo (const char* sendername, SharedTextureInfo* info);
+		// Generic sender map info write
 		bool setSharedInfo (const char* sendername, SharedTextureInfo* info);
 
-		// ------------------------------------------------------------
+		//
 		// Functions to maintain the active sender
+		//
+
+		// Set the active sender - the first retrieved by a receiver
 		bool SetActiveSender     (const char* sendername);
+		// Get the current active sender
 		bool GetActiveSender     (char sendername[SpoutMaxSenderNameLen]);
+		// Get active sender information
 		bool GetActiveSenderInfo (SharedTextureInfo* info);
+		// Return details of the current active sender
 		bool FindActiveSender    (char activename[SpoutMaxSenderNameLen], unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 
-		// ------------------------------------------------------------
-		// Functions to Create, Find or Update a sender without initializing DirectX or the GL/DX interop functions
-		bool CreateSender (const char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
-		bool UpdateSender (const char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
-		bool CheckSender  (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
-		bool FindSender   (char* sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
-		// ------------------------------------------------------------
+		//
+		// Functions to Create, Find or Update a sender
+		// without initializing DirectX or the GL/DX interop functions
+		//
 
-		// Debug function
+		// Create a sender and register the name in the sender list
+		bool CreateSender (const char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
+		// Update ana existing sender
+		bool UpdateSender (const char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
+		// Check details of a sender
+		bool CheckSender  (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
+		// Find a sender and return details
+		bool FindSender   (char* sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
+		
+		// Debuging function
 		bool SenderDebug (const char* sendername, int size);
 
 protected:

@@ -54,6 +54,8 @@
 			   RegisterSenderName - check for exceed maximum number of senders
 			   SetMaxSenders - set max to the registry for other applications to read
 	25.02.20 - Correct FindSenderName. Always returned true for one sender.
+	21.07.20 - Change default max senders from 256 to 64
+	28.08.20 - Correct in SpoutSettings
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
@@ -89,8 +91,9 @@ spoutSenderNames::spoutSenderNames() {
 
 	// 15.09.18 - moved from interop class
 	// 06.06.19 - increase default maximum number of senders from 10 to 256
+	// 28.08.20 - decreased from 256 to 64
 	// Read the registry key if it exists
-	DWORD dwSenders = 256; // default maximum number of senders. 06-06-19 increased from 10
+	DWORD dwSenders = 64; // default maximum number of senders.
 	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MaxSenders", &dwSenders);
 	// If the registry read fails, the default will be used
 	m_MaxSenders = (int)dwSenders;
