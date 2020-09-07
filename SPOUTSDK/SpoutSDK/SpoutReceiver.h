@@ -40,111 +40,177 @@ class SPOUT_DLLEXP SpoutReceiver {
     ~SpoutReceiver();
 
 	//
-	// 2.007
+	// 2.007 receiver
 	//
 
-	// Specify a sender for connection
+	// Specify sender for connection.
+	//   The application will not connect to any other  unless the user selects one.
+	//   If that sender closes, the application will wait for the nominated sender to open. 
+	//   If no name is specified, the receiver will connect to the active sender.
 	void SetReceiverName(const char * SenderName);
-	// Release receiver
+	// Release receiver.
+	//   Close connection and release resources  
+	//   ready to connect to another sender.
 	void ReleaseReceiver();
-	// Receive sender shared texture
+	// Receive shared texture.
+	//   Connect to a sender and retrieve shared texture details ready for access
+	//	 (see BindSharedTexture and UnBindSharedTexture).
 	bool ReceiveTexture();
-	// Receive OpenGL texture
+	// Receive OpenGL texture.
+	// 	 Connect to a sender and inform the application to update the
+	//   receiving texture if it has changed dimensions.
+	//   For no change, copy the sender shared texture to the application texture
 	bool ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert = false, GLuint HostFbo = 0);
-	// Receive image pixels
+	// Receive image pixels.
+	//   Connect to a sender and inform the application to update the
+	//   receiving buffer if it has changed dimensions.
+	//   For no change, copy the sender shared texture to the pixel buffer.
 	bool ReceiveImage(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
-	// Sender has changed
+	// Query whether the sender has changed.
+	//   It is not necessary to monitor sender size changes.  
+	//   However, sender update must be checked at every cycle before receiving data.  
+	//   If this is not done, the receiving functions fail.
 	bool IsUpdated();
-	// Connected to a sender
+	// Query sender connection.
+	//   If the sender closes, receiving functions return false,  
+	//   but connection can be tested at any time.
 	bool IsConnected();
-	// Received frame is new
+	// Query received frame status.
+	//   The receiving texture or pixel buffer is only refreshed
+	//   if the sender has produced a new frame.  
+	//   This can be queried if it is necessary to process
+	//   texture data only for new frames. 
 	bool IsFrameNew();
-	// Sender name
+	// Get sender name
 	const char * GetSenderName();
-	// Sender width
+	// Get sender width
 	unsigned int GetSenderWidth();
-	// Sender height
+	// Get sender height
 	unsigned int GetSenderHeight();
-	// Sender texture format
+	// Get sender texture format
 	DWORD GetSenderFormat();
-	// Sender frame rate
+	// Get sender frame rate
 	double GetSenderFps();
-	// Sender frame number
+	// Get sender frame number
 	long GetSenderFrame();
-	// Sender selection dialog
+	// Open sender selection dialog (replaces SelectSenderPanel)
 	void SelectSender();
+
+	//
+	// 2.007 common
+	//
+
 	// Frame count status
 	bool IsFrameCountEnabled();
 	// Disable frame counting for this application
 	void DisableFrameCount();
 	// Get sender shared texture ID
 	GLuint GetSharedTextureID();
-
-	// OpenGL utility
+	// Copy texture with optional invert. Textures must be the same size.
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0);
-
-	//
-	// 2.006 compatibility
-	//
-
-	bool OpenSpout();
-	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
-	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
-	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
+	// Correct for image stride
 	void RemovePadding(const unsigned char *source, unsigned char *dest, unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
-	bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 
-	bool BindSharedTexture();
-	bool UnBindSharedTexture();
+	//
+	// 2.006 receiver compatibility
+	//
+
+	// Create receiver connection
+	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
+	// Receive OpenGL texture
+	bool ReceiveTexture(char* Sendername, unsigned int &width, unsigned int &height, GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFBO = 0);
+	// Receive image pixels
+	bool ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height, unsigned char* pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
+	// Check receiver connection
+	bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 #ifdef legacyOpenGL
+	// Render shared texture.
+	//   (see SpoutCommon.h : #define legacyOpenGL)
 	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
 #endif	
-
+	// Get the number of senders
 	int  GetSenderCount();
+	// Get sender item name
 	bool GetSender(int index, char* Sendername, int MaxSize = 256);
+	// Get sender information
 	bool GetSenderInfo(const char* Sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
+	// Get current active sender
 	bool GetActiveSender(char* Sendername);
+	// Set active sender
 	bool SetActiveSender(const char* Sendername);
+	// Open sender selection dialog
 	bool SelectSenderPanel(const char* message = NULL);
 
+	//
+	// 2.006 compatibility common
+	//
+
+	// Initialize OpenGL and DirectX and set share mode
+	bool OpenSpout();
+	// Bind the OpenGL shared texture for access
+	bool BindSharedTexture();
+	// Un-bind the OpenGL shared texture
+	bool UnBindSharedTexture();
+	// Get DirectX 9 mode.
+	//   Default is DirectX 11 (return false)
 	bool GetDX9();
-	bool SetDX9(bool bDX9 = true); // set to use DirectX 9 (default is DirectX 11)
+	// Set to use DirectX 9
+	bool SetDX9(bool bDX9 = true);
+	// Set the DirectX 9 format for texture sharing
 	void SetDX9format(D3DFORMAT textureformat);
+	// Set the DirectX 11 format for texture sharing
 	void SetDX11format(DXGI_FORMAT textureformat);
+	// Get memoryshare mode status
 	bool GetMemoryShareMode();
+	// Set memoryshare mode on or off
 	bool SetMemoryShareMode(bool bMem = true);
+	// Get sharing mode : 0-texture, 1-CPU (disabled for 2.007) 2-memory
 	int  GetShareMode();
+	// Set share mode : 0-texture, 1&2-memory
 	bool SetShareMode(int mode);
+	// Get OpenGL pixel buffering setting
 	bool GetBufferMode();
-	void SetBufferMode(bool bActive); // Set the pbo availability on or off
-
-	int  GetNumAdapters(); // Get the number of graphics adapters in the system
-	bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name
-	int  GetAdapter(); // Get the current adapter index
-	bool SetAdapter(int index = 0); // Set required graphics adapter for output
-
-	int  GetMaxSenders(); // Get maximum senders allowed
-	void SetMaxSenders(int maxSenders); // Set maximum senders allowed
-	bool GetHostPath(const char *sendername, char *hostpath, int maxchars); // The path of the host that produced the sender
+	// Enable/disable OpenGL pixel buffering (default off).
+	void SetBufferMode(bool bActive);
+	// Get the number of graphics adapters in the system
+	int  GetNumAdapters();
+	// Get an adapter name
+	bool GetAdapterName(int index, char *adaptername, int maxchars);
+	// Get the current adapter index
+	int  GetAdapter();
+	// Set required graphics adapter for output
+	bool SetAdapter(int index = 0);
+	// Get maximum senders allowed
+	int  GetMaxSenders();
+	// Set maximum senders allowed
+	void SetMaxSenders(int maxSenders);
+	// The path of the host that produced the sender
+	bool GetHostPath(const char *sendername, char *hostpath, int maxchars);
+	// Get vertical sync status
 	int  GetVerticalSync();
+	// Set lock to monitor vertical sync
 	bool SetVerticalSync(bool bSync = true);
 
-	Spout spout; // for access to all functions
+	// for access to all functions
+	Spout spout;
 
 protected :
 
+	// Sender connection name.
+	//   The receiver connects to the active sender unless the user  
+	//   has specified a sender using SetReceiverName
 	char m_SenderNameSetup[256];
-	char m_SenderName[256];
-	GLuint m_TextureID;
-	GLuint m_TextureTarget;
-	bool m_bUpdate;
-	bool m_bUseActive;
-	bool m_bConnected;
-	unsigned int m_Width;
-	unsigned int m_Height;
+	char m_SenderName[256]; // Connected sender name
+	GLuint m_TextureID; // Sender texture ID
+	GLuint m_TextureTarget; // Sender texture Target
+	bool m_bUpdate; // Sender changed flag
+	bool m_bUseActive; // Use active sender
+	bool m_bConnected; // Connection flag
+	unsigned int m_Width; // Sender width
+	unsigned int m_Height; // Sender height
 
 };
 

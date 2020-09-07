@@ -85,8 +85,8 @@
 
 SpoutReceiver::SpoutReceiver()
 {
-	// CreateReceiver will use the active sender unless the user 
-	// has specified a sender to connect to using SetReceiverName
+	// The receiver connects to the active sender unless the user 
+	// has specified a sender using SetReceiverName
 	m_SenderNameSetup[0] = 0;
 	m_SenderName[0] = 0;
 	m_bUseActive = true;
