@@ -67,9 +67,15 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		spoutMemoryShare memoryshare; // Memory sharing
 		spoutFrameCount frame; // Sender frame counter and texture access mutex
 
+		//
 		// Initialization functions
-		bool LoadGLextensions(); // Load required opengl extensions
+		//
+
+		 // Load required opengl extensions
+		bool LoadGLextensions();
+		// Create textures and register with the GL/DX interop
 		bool CreateInterop(HWND hWnd, const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive = true);
+		// Release interop resources
 		void CleanupInterop();
 
 		// Direct read/write of sender shared mempry block
@@ -129,8 +135,14 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool GLDXcompatible();
 		bool GLDXready();
 
-		bool SetMemoryShareMode(bool bMem = true);
-		bool GetMemoryShareMode();
+		bool GetMemoryShareMode(); // Get memory mode from registry
+		bool SetMemoryShareMode(bool bMem = true); // Set memory mode to registry
+
+		bool GetMemoryShare(); // Get class memory mode flag
+		void SetMemoryShare(bool bMem = true); // Set class memory mode flag
+		bool GetMemoryShare(const char *sendername); // Get sender share mode
+		
+		// For 2.006 compatibility. May be removed in future
 		int  GetShareMode(); // 0 - memory, 1 - cpu, 2 - texture
 		bool SetShareMode(int mode);
 
@@ -146,13 +158,21 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		void SetBufferMode(bool bActive); // Set the pbo availability on or off
 		bool GetBufferMode();
 
-		int GetNumAdapters(); // Get the number of graphics adapters in the system
+		int  GetNumAdapters(); // Get the number of graphics adapters in the system
 		bool GetAdapterName(int index, char* adaptername, int maxchars); // Get an adapter name
 		bool SetAdapter(int index); // Set required graphics adapter for output
-		int GetAdapter(); // Get the SpoutDirectX global adapter index
+		int  GetAdapter(); // Get the SpoutDirectX class adapter index
 		
-		bool GetHostPath(const char* sendername, char* hostpath, int maxchars); // The path of the host that produced the sender
-		int GetSpoutVersion(); // Get Spout version (2.005 and greater)
+		// Adapter index in shared memory (0 default)
+		int  GetAdapterIndex(const char *sendername);
+		bool SetAdapterIndex(const char* sendername);
+
+		// Path of the host that produced the sender in shared memory
+		bool GetHostPath(const char* sendername, char* hostpath, int maxchars);
+		bool SetHostPath(const char* sendername);
+
+		// Spout version (2.005 and greater)
+		int GetSpoutVersion();
 
 		// DX9
 		D3DFORMAT DX9format; // the DX9 texture format to be used
@@ -186,8 +206,6 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 							int maxsize, bool &bUseDX9);
 	
 		// OpenGL utilities
-		bool CreateOpenGL();
-		bool CloseOpenGL();
 		bool CopyTexture(GLuint SourceID, GLuint SourceTarget, 
 			GLuint DestID, GLuint DestTarget,
 			unsigned int width, unsigned int height,
@@ -197,6 +215,8 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 								unsigned int &texWidth, unsigned int &texHeight);
 		void InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
 
+		bool CreateOpenGL();
+		bool CloseOpenGL();
 		void SaveOpenGLstate(unsigned int width, unsigned int height, bool bFitWindow = true);
 		void RestoreOpenGLstate();
 		bool GLerror();
@@ -208,6 +228,8 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		HANDLE m_dxShareHandle;            // the shared DX texture handle
 		ID3D11Device* m_pd3dDevice;        // DX11 device
 		ID3D11Texture2D* m_pSharedTexture; // The shared DX11 texture
+		HANDLE m_hInteropDevice; // handle to the DX/GL interop device
+		HANDLE m_hInteropObject; // handle to the DX/GL interop object (the shared texture)
 
 protected:
 
@@ -247,10 +269,7 @@ protected:
 		ID3D11DeviceContext* m_pImmediateContext; // DX11
 		IDirect3D9Ex* m_pD3D; // DX9
 
-		// Interop
-		HANDLE m_hInteropDevice; // handle to the DX/GL interop device
-		HANDLE m_hInteropObject; // handle to the DX/GL interop object (the shared texture)
-
+		// Sender shared memory read and write
 		bool getSharedTextureInfo(const char* sharedMemoryName);
 		bool setSharedTextureInfo(const char* sharedMemoryName);
 
