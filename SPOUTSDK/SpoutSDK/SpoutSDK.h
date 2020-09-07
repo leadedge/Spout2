@@ -125,7 +125,7 @@ class SPOUT_DLLEXP Spout {
 	bool SetShareMode(int mode);
 	int  GetMaxSenders(); // Get maximum senders allowed
 	void SetMaxSenders(int maxSenders); // Set maximum senders allowed
-	
+
 	// Access to globals
 	bool GetSpoutSenderName(char * sendername, int maxchars); // get the global sender name
 
