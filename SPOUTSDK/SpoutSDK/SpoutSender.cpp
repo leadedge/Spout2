@@ -58,6 +58,7 @@
 //				    - Remove SenderDebug function - retain in SpoutSenderNames
 //		06.07.20	- Add SetSenderName and private CheckSender
 //		14.07.20	- CheckSender add zero dimension check
+//		04.08.20	- Document header file functions 
 //
 // ====================================================================================
 /*
@@ -98,13 +99,19 @@ SpoutSender::SpoutSender()
 
 }
 
+SpoutSender::~SpoutSender()
+{
+	ReleaseSender();
+}
 
 
 // ================= 2.007 functions ======================
 
+//---------------------------------------------------------
+// Set name for sender creation
 void SpoutSender::SetSenderName(const char* sendername)
 {
-	if (!sendername) {
+	if (!sendername || !sendername[0]) {
 		// Get executable name as default
 		GetModuleFileNameA(NULL, m_SenderName, 256);
 		PathStripPathA(m_SenderName);
@@ -113,12 +120,6 @@ void SpoutSender::SetSenderName(const char* sendername)
 	else {
 		strcpy_s(m_SenderName, 256, sendername);
 	}
-}
-
-//---------------------------------------------------------
-SpoutSender::~SpoutSender()
-{
-	ReleaseSender();
 }
 
 //---------------------------------------------------------
@@ -161,6 +162,12 @@ bool SpoutSender::SendImage(const unsigned char* pixels, unsigned int width, uns
 }
 
 //---------------------------------------------------------
+bool SpoutSender::IsInitialized()
+{
+	return spout.IsSpoutInitialized();
+}
+
+//---------------------------------------------------------
 const char * SpoutSender::GetName()
 {
 	char name[256];
@@ -199,21 +206,15 @@ void SpoutSender::HoldFps(int fps)
 }
 
 //---------------------------------------------------------
-bool SpoutSender::IsInitialized()
+bool SpoutSender::IsFrameCountEnabled()
 {
-	return spout.IsSpoutInitialized();
+	return spout.interop.frame.IsFrameCountEnabled();
 }
 
 //---------------------------------------------------------
 void SpoutSender::DisableFrameCount()
 {
 	spout.interop.frame.DisableFrameCount();
-}
-
-//---------------------------------------------------------
-bool SpoutSender::IsFrameCountEnabled()
-{
-	return spout.interop.frame.IsFrameCountEnabled();
 }
 
 // ================= end 2.007 functions ===================
@@ -228,7 +229,10 @@ bool SpoutSender::OpenSpout()
 //---------------------------------------------------------
 bool SpoutSender::CreateSender(const char* name, unsigned int width, unsigned int height, DWORD dwFormat)
 {
-	if (spout.CreateSender(name, width, height, dwFormat)) {
+	if (width == 0 || height == 0) {
+		SetSenderName(name);
+	}
+	else if (spout.CreateSender(name, width, height, dwFormat)) {
 		strcpy_s(m_SenderName, 256, name);
 		m_Width = width;
 		m_Height = height;
