@@ -52,30 +52,62 @@ class SPOUT_DLLEXP spoutDirectX {
 		spoutDirectX();
 		~spoutDirectX();
 
+		//
 		// DX9
-		IDirect3D9Ex* CreateDX9object(); // Create a DirectX9 object
-		IDirect3DDevice9Ex* CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd);	// Create a DirectX9 device
+		//
+
+		 // Create a DirectX9 object
+		IDirect3D9Ex* CreateDX9object();
+		// Create a DirectX9 device
+		IDirect3DDevice9Ex* CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd);
+		// Create a DirectX9 shared texture
 		bool CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle);
+		// Write to a DirectX9 system memory surface
 		bool WriteDX9memory (IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface, LPDIRECT3DTEXTURE9 dxTexture);
+		// Copy from a GPU DX9 surface to the DX9 shared texture
 		bool WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface, LPDIRECT3DTEXTURE9 dxTexture);
 
+		//
 		// DX11
-		ID3D11Device* CreateDX11device(); // Create a DX11 device
+		//
+
+		// Create a DirectX11 device
+		ID3D11Device* CreateDX11device();
+		// Create a DirectX11 shared texture
 		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppSharedTexture, HANDLE &dxShareHandle);
+		// Return the pointer of a DirectX11 shared texture
 		bool OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle);
 
-		// Output adapter selection
-		int GetNumAdapters(); // Get the number of graphics adapters in the system
-		bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name
-		bool SetAdapter(int index); // Set required graphics adapter for output
-		int GetAdapter(); // Get the current adapter index
-		bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
-		bool FindNVIDIA(int &nAdapter); // Find the index of the NVIDIA adapter in a multi-adapter system
+		//
+		// Output graphics adapter
+		//
 
+		// Get the number of graphics adapters in the system
+		int GetNumAdapters();
+		// Get an adapter name
+		bool GetAdapterName(int index, char *adaptername, int maxchars);
+		// Set required graphics adapter for output
+		bool SetAdapter(int index); 
+		// Get the current adapter index
+		int GetAdapter();
+		// Get the current adapter description
+		bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
+		// Find the index of the NVIDIA adapter in a multi-adapter system
+		bool FindNVIDIA(int &nAdapter);
+
+		//
+		// DirectX11 utiities
+		//
+
+		// Release a texture resource
 		unsigned long ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture);
+		// Release a device
 		unsigned long ReleaseDX11Device(ID3D11Device* pd3dDevice);
+		// Return the immediate context of a device
 		ID3D11DeviceContext* GetImmediateContext();
+		// Flush immediate context command queue and wait for copleteion
 		void FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext);
+		// Wait for completion after flush
 		void Wait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext);
 
 	protected:
