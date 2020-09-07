@@ -26,6 +26,7 @@
 //					  Result switch for WaitForSingleObject
 //		05.05.20	- Mutex access timing tests documented within functions
 //		18.06.20	- Update comments
+//		06.09.20	- Add more notice logs to EnableFrameCount
 //
 // ====================================================================================
 //
@@ -134,12 +135,16 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	// Subsequently SetNewFrame and GetNewFrame return without action
 
 	// Return silently if not enabled in SpoutSettings
-	if (!m_bFrameCount)
+	if (!m_bFrameCount) {
+		SpoutLogNotice("SpoutFrameCount::EnableFrameCount : setting not enabled");
 		return;
+	}
 
 	// Return silently if application disabled
-	if (m_bDisabled)
+	if (m_bDisabled) {
+		SpoutLogNotice("SpoutFrameCount::EnableFrameCount : application disabled");
 		return;
+	}
 
 	// A sender name is required
 	if (SenderName[0] == 0) {

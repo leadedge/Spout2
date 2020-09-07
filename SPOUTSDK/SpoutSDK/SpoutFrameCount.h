@@ -30,6 +30,7 @@
 #define __spoutFrameCount__
 
 #include <string>
+#include <vector>
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
 #include <d3d11.h> // for keyed mutex texture access
@@ -51,29 +52,56 @@ class SPOUT_DLLEXP spoutFrameCount {
 	spoutFrameCount();
     ~spoutFrameCount();
 
-	void EnableFrameCount(const char* SenderName);// Application enable
-	void DisableFrameCount();// Application disable
-	bool IsFrameCountEnabled();// Application check status
-	bool IsFrameNew(); // Is the received frame new
-	double GetSenderFps(); // Received frame rate
-	long GetSenderFrame(); // Received frame count
-	void HoldFps(int fps); // Sender frame rate control
+	//
+	// Application frame counting management
+	//
+
+	// Enable frame counting for this sender
+	void EnableFrameCount(const char* SenderName);
+	// Disable frame counting
+	void DisableFrameCount();
+	// Check status of frame counting
+	bool IsFrameCountEnabled();
+	// Is the received frame new
+	bool IsFrameNew();
+	// Received frame rate
+	double GetSenderFps();
+	// Received frame count
+	long GetSenderFrame();
+	// Sender frame rate control
+	void HoldFps(int fps);
 
 	//
 	// Used by other classes
 	//
-	void SetNewFrame(); // Sender increment the semaphore count
-	bool GetNewFrame(); // Receiver read the semaphore count
-	void CleanupFrameCount(); // For cleanup functions
 
+	// Sender increment the semaphore count
+	void SetNewFrame();
+	// Receiver read the semaphore count
+	bool GetNewFrame();
+	// For class cleanup functions
+	void CleanupFrameCount();
+
+	//
 	// Mutex locks including DirectX 11 keyed mutex
+	//
+
+	// Test for texture access using a named sender or keyed texture mutex 
 	bool CheckTextureAccess(ID3D11Texture2D* D3D11texture = nullptr);
+	// Release mutex and allow textureaccess
 	void AllowTextureAccess(ID3D11Texture2D* D3D11texture = nullptr);
 
+	//
 	// Named mutex for shared texture access
+	//
+
+	// Create named mutex for a sender
 	bool CreateAccessMutex(const char * SenderName);
+	// Release the mutex
 	void CloseAccessMutex();
+	// Test access using a named mutex
 	bool CheckAccess();
+	// Allow access after gaining ownership
 	void AllowAccess();
 
 protected :
@@ -81,7 +109,7 @@ protected :
 	// Texture access named mutex
 	HANDLE m_hAccessMutex;
 
-	// DX11 keyed mutex checks
+	// DX11 texture keyed mutex checks
 	bool CheckKeyedAccess(ID3D11Texture2D* D3D11texture);
 	void AllowKeyedAccess(ID3D11Texture2D* D3D11texture);
 	bool IsKeyedMutex(ID3D11Texture2D* D3D11texture);
@@ -109,6 +137,7 @@ protected :
 
 #ifdef USE_CHRONO
 	// Avoid C4251 warnings in SpoutLibrary by using pointers
+	// USE_CHRONO is defined in SpoutUtils.h
 	std::chrono::steady_clock::time_point * m_FrameStartPtr;
 	std::chrono::steady_clock::time_point * m_FrameEndPtr;
 #endif
