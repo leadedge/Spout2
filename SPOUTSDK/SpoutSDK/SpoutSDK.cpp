@@ -160,7 +160,7 @@
 //		05.09.20	- OpenReceiver - Switch to memoryshare if receiver and sender use different GPU
 //					  See SpoutGLDXinterop to set adapter index to "usage" field in sender shared memory
 //		06.09.20	- Do not change share mode flags in SpoutCleanup
-
+//		07.09.20	- Correct receiver switch from memory to texture if texture compatible
 //
 // ================================================================
 /*
@@ -1030,7 +1030,7 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 			// Now memory share is used for read and write
 			// Pixel buffers can be received from the memory share sender
 		}
-		else if (bMemory && sharehandle > 0) {
+		else if (sharehandle > 0) {
 			// 2) If texture share compatible and the share handle is valid, disable memory share mode
 			SpoutLogNotice("Spout::OpenReceiver : valid sender share handle - switching to texture mode");
 			bMemory = false;
