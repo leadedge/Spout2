@@ -700,6 +700,8 @@ void Render()
 				bSpoutInitialized = true;
 			}
 			// If the sender is already created, check for change of rendering size
+			// In this example, the back buffer does not change size even if the window
+			// is re-sized. But this is what would be done in a different application
 			else if (g_Width != desc.Width || g_Height != desc.Height) {
 				// Update the global width & height
 				g_Width = desc.Width;
@@ -743,6 +745,7 @@ void Render()
 	// This is not necessary if the application already has
 	// fps control but in this example rendering is done
 	// during idle time and render rate can be extremely high.
+	// If frame count is enabled, receivers will detect the sender fps
 	frame .HoldFps(60);
 
 }

@@ -226,7 +226,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	   // WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
 	   // CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
    	   // SPOUT - enable resize and maximize to demonstrate sender resizing
-	   WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME,
+	   WS_OVERLAPPEDWINDOW,
 	   CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
@@ -385,7 +385,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 		sprintf_s(about, 256, "                WinSpoutDX");
 		strcat_s(about, 1024, "\n\n\n");
-		strcat_s(about, 1024, "   Windows Spout sender example\n");
+		strcat_s(about, 1024, "Windows Spout image sender example\n");
 		strcat_s(about, 1024, "using DirectX and the SpoutDX class.");
 		SetDlgItemTextA(hDlg, IDC_ABOUT_TEXT, (LPCSTR)about);
 

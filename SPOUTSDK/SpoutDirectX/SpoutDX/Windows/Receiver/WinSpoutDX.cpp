@@ -402,8 +402,8 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 		sprintf_s(about, 256, "                WinSpoutDX");
 		strcat_s(about, 1024, "\n\n\n");
-		strcat_s(about, 1024, "Windows Spout receiver example\n");
-		strcat_s(about, 1024, "using the SpoutDX class receive\n");
+		strcat_s(about, 1024, "Windows Spout receiver example.\n");
+		strcat_s(about, 1024, "Using the SpoutDX class, receive\n");
 		strcat_s(about, 1024, "a buffer and display it in WM_PAINT.");
 		SetDlgItemTextA(hDlg, IDC_ABOUT_TEXT, (LPCSTR)about);
 
