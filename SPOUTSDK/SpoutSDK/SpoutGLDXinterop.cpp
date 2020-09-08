@@ -290,7 +290,8 @@
 					  Save adapter index in unused "Usage" field of sender shared memory
 					  Re-arrange code.
 		06.09.20	- Add null texture debug print to UnloadTexturePixels
-
+		08.09.20	- Re-set shared texture handle in CleanupDX9 and CleanupDX11
+				      Warning on CreateInterop failure for caller to switch to memoryshare
 */
 
 #include "SpoutGLDXinterop.h"
@@ -1316,7 +1317,8 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 
 	if(!bRet) {
 		CleanupInterop(); // release everything for this class
-		SpoutLogFatal("spoutGLDXinterop::CreateInterop | Cannot create DirectX/OpenGL interop");
+		// Not fatal because the caller can switch to memoryshare and start again
+		SpoutLogWarning("spoutGLDXinterop::CreateInterop - Cannot create DirectX/OpenGL interop");
 		return false;
 	}
 
@@ -1824,6 +1826,9 @@ void spoutGLDXinterop::CleanupDX9()
 		m_dxTexture = NULL;
 	}
 
+	// Re-set shared texture handle
+	m_dxShareHandle = NULL;
+
 	// 25.08.15 - release device before the object !
 	// 22.01.17 - will crash if refcount is 1 for MilkDrop.
 	// 12.11.18 - must always be freed, not only on exit. Fix for MilkDop.
@@ -1859,6 +1864,9 @@ void spoutGLDXinterop::CleanupDX11()
 
 			// Important to set pointer to NULL or it will crash if released again
 			m_pSharedTexture = nullptr;
+
+			// Re-set shared texture handle
+			m_dxShareHandle = NULL;
 
 			// 12.11.18 - To avoid memory leak with dynamic objects
 			//            must always be freed, not only on exit.
