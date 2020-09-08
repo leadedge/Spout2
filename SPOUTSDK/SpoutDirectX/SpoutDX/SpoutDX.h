@@ -44,8 +44,6 @@
 #include <TlHelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
 
-using namespace spoututils;
-
 class SPOUT_DLLEXP spoutDX {
 
 	public:
@@ -150,13 +148,12 @@ class SPOUT_DLLEXP spoutDX {
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
 
+	spoutSenderNames spoutsender;
 	spoutFrameCount frame;
 	spoutDirectX spoutdx;
 	spoutCopy spoutcopy;
 
 protected :
-
-	spoutSenderNames spoutsender;
 
 	ID3D11Device* m_pd3dDevice;
 	ID3D11DeviceContext* m_pImmediateContext;
@@ -175,13 +172,13 @@ protected :
 	bool m_bSpoutInitialized;
 	bool m_bSpoutPanelOpened;
 	bool m_bSpoutPanelActive;
-	bool m_bMapped;
 	bool m_bClassDevice;
 	SHELLEXECUTEINFOA m_ShExecInfo;
 
 	bool ReceiveSenderData();
 	void CreateReceiver(const char * sendername, unsigned int width, unsigned int height);
-	bool ReadRGBpixels(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
+	bool ReadRGBApixels(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
+	bool ReadRGBpixels (ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
 	bool CheckStagingTexture(unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
 	bool CreateDX11StagingTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
 	void SelectSenderPanel();
