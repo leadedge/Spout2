@@ -56,6 +56,8 @@
 //					    add log warnings for null device and texture
 //					    add DirectX messages to Output window for debug build
 //		06.09.20	- Add output test to SetAdapter
+//		08.09.20	- Release all pointers in adapter functions
+//					  Remove failures if no adapter output pending testing
 //
 // ====================================================================================
 /*
@@ -606,11 +608,13 @@ bool spoutDirectX::SetAdapter(int index)
 		return false;
 	}
 
+	/*
 	// Test for a valid pointer
 	if (!GetAdapterPointer(index)) {
 		SpoutLogError("spoutDirectX::SetAdapter(%d) - Incompatible adapter pointer", index);
 		return false;
 	}
+	*/
 
 	// Set the global adapter pointer for DX11
 	pAdapter = GetAdapterPointer(index);
@@ -619,12 +623,17 @@ bool spoutDirectX::SetAdapter(int index)
 		return false;
 	}
 
-	// Get output
+	/*
+	// Removed pending testing
+	// Test for an output
 	IDXGIOutput* p_output = nullptr;
 	if (pAdapter->EnumOutputs(0, &p_output) == DXGI_ERROR_NOT_FOUND) {
 		SpoutLogError("spoutDirectX::SetAdapter(%d) :  No output", index);
+		pAdapter->Release();
 		return false;
 	}
+	p_output->Release();
+	*/
 
 	// Set the global adapter index (used for DX9 and to retrieve the index)
 	m_AdapterIndex = index;
@@ -642,6 +651,7 @@ bool spoutDirectX::SetAdapter(int index)
 		IDirect3D9Ex* pD3D = CreateDX9object();
 		if(pD3D == NULL) {
 			SpoutLogError("spoutDirectX::SetAdapter(%d) - could not create DX9 object", index);
+			pAdapter->Release();
 			// Reset to default adapter
 			m_AdapterIndex = 0; // DX9
 			m_pAdapterDX11 = nullptr; // DX11
@@ -651,6 +661,7 @@ bool spoutDirectX::SetAdapter(int index)
 		if(pDevice == NULL) {
 			SpoutLogError("spoutDirectX::SetAdapter(%d) - could not create DX9 device", index);
 			pD3D->Release();
+			pAdapter->Release();
 			m_AdapterIndex = 0;
 			m_pAdapterDX11 = nullptr;
 			return false;
@@ -664,6 +675,7 @@ bool spoutDirectX::SetAdapter(int index)
 		ID3D11Device* pd3dDevice = CreateDX11device();
 		if(pd3dDevice == NULL) {
 			SpoutLogError("spoutDirectX::SetAdapter(%d) - could not create DX11 device", index);
+			pAdapter->Release();
 			m_AdapterIndex = 0;
 			m_pAdapterDX11 = nullptr;
 			return false;
@@ -710,18 +722,20 @@ bool spoutDirectX::FindNVIDIA(int &nAdapter)
 		}
 
 		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
-			p_output->GetDesc( &desc_out );
-			// printf( "  Output : %d\n", j );
-			// printf( "    Name %S\n", desc_out.DeviceName );
-			// printf( "    Attached to desktop : (%d) %s\n", desc_out.AttachedToDesktop, desc_out.AttachedToDesktop ? "yes" : "no" );
-			// printf( "    Rotation : %d\n", desc_out.Rotation );
-			// printf( "    Left     : %d\n", desc_out.DesktopCoordinates.left );
-			// printf( "    Top      : %d\n", desc_out.DesktopCoordinates.top );
-			// printf( "    Right    : %d\n", desc_out.DesktopCoordinates.right );
-			// printf( "    Bottom   : %d\n", desc_out.DesktopCoordinates.bottom );
-			if( p_output )
+			if (p_output) {
+				p_output->GetDesc(&desc_out);
+				// printf( "  Output : %d\n", j );
+				// printf( "    Name %S\n", desc_out.DeviceName );
+				// printf( "    Attached to desktop : (%d) %s\n", desc_out.AttachedToDesktop, desc_out.AttachedToDesktop ? "yes" : "no" );
+				// printf( "    Rotation : %d\n", desc_out.Rotation );
+				// printf( "    Left     : %d\n", desc_out.DesktopCoordinates.left );
+				// printf( "    Top      : %d\n", desc_out.DesktopCoordinates.top );
+				// printf( "    Right    : %d\n", desc_out.DesktopCoordinates.right );
+				// printf( "    Bottom   : %d\n", desc_out.DesktopCoordinates.bottom );
 				p_output->Release();
+			}
 		}
+		adapter1_ptr->Release();
 		
 		if(wcsstr(desc.Description, L"NVIDIA")) {
 			// printf("spoutDirectX::FindNVIDIA - Found NVIDIA adapter %d (%S)\n", i, desc.Description);
@@ -781,20 +795,22 @@ int spoutDirectX::GetNumAdapters()
 			SpoutLogWarning("spoutDirectX::GetNumAdapters Adapter(%d) :  No outputs", i);
 		}
 
+		DXGI_OUTPUT_DESC desc_out;
 		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
-			DXGI_OUTPUT_DESC desc_out;
-			p_output->GetDesc( &desc_out );
-			// printf("  Output : %d\n", j );
-			// printf("    Name %S\n", desc_out.DeviceName );
-			// printf("    Attached to desktop : (%d) %s\n", desc_out.AttachedToDesktop, desc_out.AttachedToDesktop ? "yes" : "no" );
-			// printf("    Rotation : %d\n", desc_out.Rotation );
-			// printf("    Left     : %d\n", desc_out.DesktopCoordinates.left );
-			// printf("    Top      : %d\n", desc_out.DesktopCoordinates.top );
-			// printf("    Right    : %d\n", desc_out.DesktopCoordinates.right );
-			// printf("    Bottom   : %d\n", desc_out.DesktopCoordinates.bottom );
-			if( p_output )
+			if (p_output) {
+				p_output->GetDesc(&desc_out);
+				// printf("  Output : %d\n", j );
+				// printf("    Name %S\n", desc_out.DeviceName );
+				// printf("    Attached to desktop : (%d) %s\n", desc_out.AttachedToDesktop, desc_out.AttachedToDesktop ? "yes" : "no" );
+				// printf("    Rotation : %d\n", desc_out.Rotation );
+				// printf("    Left     : %d\n", desc_out.DesktopCoordinates.left );
+				// printf("    Top      : %d\n", desc_out.DesktopCoordinates.top );
+				// printf("    Right    : %d\n", desc_out.DesktopCoordinates.right );
+				// printf("    Bottom   : %d\n", desc_out.DesktopCoordinates.bottom );
 				p_output->Release();
+			}
 		}
+		adapter1_ptr->Release();
 	}
 
 	_dxgi_factory1->Release();
@@ -816,15 +832,16 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 	
 	for (UINT32 i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ ) {
 		if((int)i == index) {
-			DXGI_ADAPTER_DESC	desc;
+			DXGI_ADAPTER_DESC desc;
 			adapter1_ptr->GetDesc( &desc );
-			adapter1_ptr->Release();
 			size_t charsConverted = 0;
 			size_t maxBytes = maxchars;
 			wcstombs_s(&charsConverted, adaptername, maxBytes, desc.Description, maxBytes - 1);
+			adapter1_ptr->Release();
 			_dxgi_factory1->Release();
 			return true;
 		}
+		adapter1_ptr->Release();
 	}
 
 	_dxgi_factory1->Release();
@@ -832,7 +849,7 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 	return false;
 }
 
-
+// TODO - release pointer
 IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 {
 	// Enum Adapters first : multiple video cards
@@ -845,14 +862,19 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 	IDXGIAdapter* adapter1_ptr = nullptr;
 	for ( UINT32 i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
 		if ( index == (int)i ) {
-			// Now we have the requested adapter, but does it support the required extensions
-			// 17-03-18 test for an output on the adapter
+			
+			/*
+			// Removed pending testing
+			// Now we have the requested adapter (17-03-18) test for an output on the adapter
 			IDXGIOutput* p_output = nullptr;
 			if (adapter1_ptr->EnumOutputs(0, &p_output) == DXGI_ERROR_NOT_FOUND) {
 				SpoutLogError("spoutDirectX::GetAdapterPointer(%d) :  No outputs", i);
+				adapter1_ptr->Release();
 				_dxgi_factory1->Release();
 				return nullptr;
 			}
+			*/
+
 			_dxgi_factory1->Release();
 			return adapter1_ptr;
 		}
@@ -878,21 +900,22 @@ bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 		return false;
 	}
 
+	DXGI_ADAPTER_DESC desc;
 	for ( i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
 
-		DXGI_ADAPTER_DESC	desc;
 		adapter1_ptr->GetDesc( &desc );
 		// Return the current adapter - max of 2 assumed
 		wcstombs_s(&charsConverted, adapter, maxBytes, desc.Description, maxBytes-1);
 
-		IDXGIOutput*	p_output = nullptr;
+		IDXGIOutput* p_output = nullptr;
 		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
-			DXGI_OUTPUT_DESC	desc_out;
-			p_output->GetDesc( &desc_out );
-			if(desc_out.AttachedToDesktop)
-				wcstombs_s(&charsConverted, display, maxBytes, desc.Description, maxBytes-1);
-			if( p_output )
+			DXGI_OUTPUT_DESC desc_out;
+			if (p_output) {
+				p_output->GetDesc(&desc_out);
+				if (desc_out.AttachedToDesktop)
+					wcstombs_s(&charsConverted, display, maxBytes, desc.Description, maxBytes - 1);
 				p_output->Release();
+			}
 		}
 	}
 
