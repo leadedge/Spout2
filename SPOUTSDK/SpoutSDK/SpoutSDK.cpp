@@ -163,6 +163,7 @@
 //		07.09.20	- Correct receiver switch from memory to texture if texture compatible
 //		08.09.20	- OpenReceiver - remove warning log for receiver and sender using a different GPU
 //					  InitSender - switch to memoryshare on CreateInterop failure
+//		09.09.20	- SetAdapter - reset and perform compatibility test
 //
 // ================================================================
 /*
@@ -1574,8 +1575,25 @@ void Spout::SetDX11format(DXGI_FORMAT textureformat)
 // Set graphics adapter for Spout output
 bool Spout::SetAdapter(int index)
 {
-	bool bRet = interop.SetAdapter(index);
-	return bRet;
+	// LJ DEBUG
+	// printf("\nSpout::Setadapter\n");
+	if (interop.SetAdapter(index)) {
+		// Close interop
+		interop.CleanupInterop();
+		// Close DirectX
+		interop.CleanupDirectX();
+		// Check registry user selection
+		// and reset texture share if not
+		// if(!GetMemoryShareMode())
+			// interop.SetMemoryShare(false);
+		// Repeat compatibility test for this adapter
+		interop.GLDXcompatible();
+		// Check texture share compatibility
+		bMemory = interop.GetMemoryShare();
+		// printf("    bMemory = %d\n\n", bMemory);
+		return true;
+	}
+	return false;
 }
 
 // Get current adapter index
