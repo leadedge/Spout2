@@ -58,6 +58,8 @@
 //		06.09.20	- Add output test to SetAdapter
 //		08.09.20	- Release all pointers in adapter functions
 //					  Remove failures if no adapter output pending testing
+//					  Add immediate context test before flush in ReleaseDX11Texture
+//					  In case the function is used by a different device.
 //
 // ====================================================================================
 /*
@@ -325,7 +327,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	UINT createDeviceFlags = 0;
 	IDXGIAdapter* pAdapterDX11 = m_pAdapterDX11;
 
-	// SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (%d)", m_pAdapterDX11);
+	SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (%d)", m_pAdapterDX11);
 
 #if defined(_DEBUG)
 	// If the project is in a debug build, enable debugging via SDK Layers with this flag.
@@ -414,7 +416,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 		return NULL;
 	}
 
-	// All OK
+	// All OK - return the device pointer to the caller
 
 	return pd3dDevice;
 
@@ -437,6 +439,9 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 		SpoutLogWarning("spoutDirectX::CreateSharedDX11Texture NULL ppSharedTexture");
 		return false;
 	}
+
+	SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
+
 
 	//
 	// Create a new shared DX11 texture
@@ -927,6 +932,7 @@ bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 
 unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture)
 {
+
 	if (pd3dDevice == nullptr || !pTexture) {
 		if (pd3dDevice == nullptr)
 			SpoutLogWarning("spoutDirectX::ReleaseDX11Texture - no device");
@@ -940,7 +946,8 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 	unsigned long refcount = pTexture->Release();
 
 	// Flush to put the release at the top of the queue
-	m_pImmediateContext->Flush();
+	if(m_pImmediateContext)
+		m_pImmediateContext->Flush();
 
 	// The device will be live, so warn if refcount > 1
 	if (refcount > 1)
