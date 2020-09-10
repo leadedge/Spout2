@@ -292,6 +292,8 @@
 		06.09.20	- Add null texture debug print to UnloadTexturePixels
 		08.09.20	- Re-set shared texture handle in CleanupDX9 and CleanupDX11
 				      Warning on CreateInterop failure for caller to switch to memoryshare
+		09.09.20	- Error logic and log warnings changed for WriteTexture and ReadTexture
+
 */
 
 #include "SpoutGLDXinterop.h"
@@ -426,6 +428,20 @@ spoutGLDXinterop::~spoutGLDXinterop()
 //
 bool spoutGLDXinterop::GLDXcompatible()
 {
+
+	// LJ DEBUG
+	// printf("\nspoutGLDXinterop::GLDXcompatible\n\n");
+	
+	// Set defaults from registry
+	if (GetMemoryShareMode()) {
+		m_bUseGLDX = false;
+		m_bUseMemory = true;
+	}
+	else {
+		m_bUseGLDX = true;
+		m_bUseMemory = false;
+	}
+
 	// OpenGL device context is needed
 	HDC hdc = wglGetCurrentDC();
 	if (!hdc) {
@@ -441,9 +457,9 @@ bool spoutGLDXinterop::GLDXcompatible()
 
 	SpoutLogNotice("spoutGLDXinterop::GLDXcompatible - testing for texture share compatibility");
 	if(m_bUseGLDX) 
-		SpoutLogNotice("    Texture sharing option selected");
+		SpoutLogNotice("    Texture sharing option user selected");
 	else
-		SpoutLogNotice("    Memory sharing option selected");
+		SpoutLogNotice("    Memory sharing option user selected");
 
 	// Get a window handle for DirectX initialization
 	// If not available it can be NULL
@@ -1983,22 +1999,22 @@ bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
 {
-	bool bRet = false;
-
 	// Zero texture is supported for all sharing modes
 	// A texture must be attached to the Host FBO attachment point 0 for read
 	if (m_bUseMemory) { // Memoryshare
-		bRet = WriteMemory(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+		if (!WriteMemory(TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
+			SpoutLogError("spoutGLDXinterop::WriteTexture - WriteMemory failed");
+			return false;
+		}
 	}
 	else if (m_bUseGLDX) { // GL/DX interop
-		bRet = WriteGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
-	}
-	else {
-		SpoutLogError("spoutGLDXinterop::WriteTexture failed");
-		bRet = false;
+		if(!WriteGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
+			SpoutLogError("spoutGLDXinterop::WriteTexture - WriteGLDXtexture failed");
+			return false;
+		}
 	}
 
-	return bRet;
+	return true;
 
 } // end WriteTexture
 
@@ -2009,15 +2025,19 @@ bool spoutGLDXinterop::ReadTexture (const char* sendername,
 									bool bInvert, GLuint HostFBO)
 {
 	if(m_bUseMemory) { // Memoryshare
-		return(ReadMemory(sendername, TextureID, TextureTarget, width, height, bInvert, HostFBO));
+		if (!ReadMemory(sendername, TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
+			SpoutLogError("spoutGLDXinterop::ReadTexture - ReadMemory failed");
+			return false;
+		}
 	}
 	else if(m_bUseGLDX) { // GL/DX interop
-		return(ReadGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+		if (!ReadGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
+			SpoutLogError("spoutGLDXinterop::ReadTexture - ReadGLDXtexture failed");
+			return false;
+		}
 	}
-	else {
-		SpoutLogError("spoutGLDXinterop::ReadTexture failed");
-		return false;
-	}
+	return true;
+
 } // end ReadTexture
 
 
