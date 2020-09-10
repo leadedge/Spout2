@@ -61,6 +61,7 @@
 		01.09.20 - Add seconds to log file header
 		03.09.20 - Add DisableSpoutLogFile() DisableLogs() and EnableLogs() 
 				   for more control over logging
+		09.09.20 - move _doLog outside anonymous namespace
 
 */
 #include "SpoutUtils.h"
@@ -571,74 +572,73 @@ namespace spoututils {
 	double EndTiming() {
 		end = std::chrono::steady_clock::now();
 		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		// printf("elapsed [%.3f] msec\n", elapsed / 1000.0);
-		printf("elapsed [%.3f] u/sec\n", elapsed);
+		printf("elapsed [%.3f] msec\n", elapsed / 1000.0);
+		// printf("elapsed [%.3f] u/sec\n", elapsed);
 		return elapsed;
 	}
 #endif
 
+	// Perform the log
+	void _doLog(SpoutLogLevel level, const char* format, va_list args)
+	{
+		char currentLog[128];
+		std::string logString;
+
+		// Return if logging is paused
+		if (!bDoLogs)
+			return;
+
+		if (level != SPOUT_LOG_SILENT
+			&& CurrentLogLevel != SPOUT_LOG_SILENT
+			&& level >= CurrentLogLevel
+			&& format != nullptr) {
+
+			// Construct the current log
+			vsprintf_s(currentLog, 128, format, args);
+			logString = currentLog;
+
+			// Console logging
+			if (bEnableLog && bConsole) {
+				// For console output, allow multiple warnings
+				FILE* out = stdout;
+				if (level != SPOUT_LOG_NONE && level != SPOUT_LOG_VERBOSE) {
+					fprintf(out, "[%s] ", _levelName(level).c_str());
+				}
+				vfprintf(out, format, args);
+				fprintf(out, "\n");
+			}
+
+			// Save the last log for warning or fatal
+			if (level >= SPOUT_LOG_WARNING) {
+				// Prevent multiple logs by comparing with the last
+				if (logString == LastSpoutLog)
+					return;
+				LastSpoutLog = logString; // update the last log
+			}
+
+			// File logging
+			if (bEnableLogFile && !logPath.empty()) {
+				// Log file output - append the current log
+				logFile.open(logPath, logFile.app);
+				if (logFile.is_open()) {
+					char name[128];
+					name[0] = 0;
+					if (level != SPOUT_LOG_NONE && level != SPOUT_LOG_VERBOSE) {
+						sprintf_s(name, 128, "[%s] ", _levelName(level).c_str());
+					}
+					logFile << name << currentLog << std::endl;
+					logFile.close();
+				}
+			}
+		}
+	}
 
 	//
 	// Private functions
 	//
 	namespace
 	{
-
-		// Perform the log
-		void _doLog(SpoutLogLevel level, const char* format, va_list args)
-		{
-			char currentLog[128];
-			std::string logString;
-
-			// Return if logging is paused
-			if (!bDoLogs)
-				return;
-
-			if (level != SPOUT_LOG_SILENT
-				&& CurrentLogLevel != SPOUT_LOG_SILENT
-				&& level >= CurrentLogLevel
-				&& format != nullptr) {
-
-				// Construct the current log
-				vsprintf_s(currentLog, 128, format, args);
-				logString = currentLog;
-
-				// Console logging
-				if (bEnableLog && bConsole) {
-					// For console output, allow multiple warnings
-					FILE* out = stdout;
-					if (level != SPOUT_LOG_NONE && level != SPOUT_LOG_VERBOSE) {
-						fprintf(out, "[%s] ", _levelName(level).c_str());
-					}
-					vfprintf(out, format, args);
-					fprintf(out, "\n");
-				}
-
-				// Save the last log for warning or fatal
-				if (level >= SPOUT_LOG_WARNING) {
-					// Prevent multiple logs by comparing with the last
-					if (logString == LastSpoutLog)
-						return;
-					LastSpoutLog = logString; // update the last log
-				}
-
-				// File logging
-				if (bEnableLogFile && !logPath.empty()) {
-					// Log file output - append the current log
-					logFile.open(logPath, logFile.app);
-					if (logFile.is_open()) {
-						char name[128];
-						name[0] = 0;
-						if (level != SPOUT_LOG_NONE && level != SPOUT_LOG_VERBOSE) {
-							sprintf_s(name, 128, "[%s] ", _levelName(level).c_str());
-						}
-						logFile << name << currentLog << std::endl;
-						logFile.close();
-					}
-				}
-			}
-		}
-
+			
 		// Get the default log file path
 		std::string _getLogPath()
 		{
@@ -775,7 +775,7 @@ namespace spoututils {
 			char path[MAX_PATH];
 			sprintf_s(path, MAX_PATH, "%s -get%s", exePath, command);
 			if (ExecuteProcess(path)) {
-				DWORD dwMode = -1;
+				DWORD dwMode = 0xffff;
 				if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", command, &dwMode)) {
 					*mode = (int)dwMode;
 					return true;
@@ -824,7 +824,6 @@ namespace spoututils {
 		bool ExecuteProcess(char *path)
 		{
 			HANDLE hProcess = NULL; // Handle from CreateProcess
-			DWORD dwThreadID = 0; // Thread ID from CreateProcess
 			DWORD dwExitCode = 0; // Exit code when process terminates
 			STARTUPINFOA si = { sizeof(STARTUPINFO) };
 			bool bRet = false;

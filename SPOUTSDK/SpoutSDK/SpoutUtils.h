@@ -200,16 +200,17 @@ namespace spoututils {
 	// Find subkey
 	bool FindSubKey(HKEY hKey, const char *subkey);
 
+	// Logging function.
+	// Used internally to perform logging.  
+	// The function code can be changed to produce logs as required
+	void _doLog(SpoutLogLevel level, const char* format, va_list args);
+
 	//
 	// Private functions
 	//
 	namespace
 	{
-		// Logging function.
-		// Used internally to perform logging.  
-		// The function code can be changed to produce logs as required
-		void _doLog(SpoutLogLevel level, const char* format, va_list args);
-
+	
 		// Local functions
 		std::string _getLogPath();
 		std::string _levelName(SpoutLogLevel level);
