@@ -464,6 +464,7 @@ void spoutCopy::rgba_bgra_sse3(const void* rgba_source,  void *bgra_dest, unsign
 
 
 
+/*
 // Experimental - Not working
 
 //
@@ -508,15 +509,6 @@ void spoutCopy::rgba_rgb_sse2(const void *rgba_source, void *rgb_dest, unsigned 
 		// else source += (unsigned long)(y * width);
 		// dest += (unsigned long)(y * width); // dest is not inverted
 
-		/*
-		// Assert pixels will NOT be aliased here : TODO
-		// __m128i* __restrict__ pix = (__m128i*)pixels;
-		auto srcPix = reinterpret_cast<const __m128i *>(source);
-		auto dstPix = reinterpret_cast<__m128i *>(dest);
-		// Tile the LHS to match 64B cache line size
-		const auto srcEnd = reinterpret_cast<const __m128i *>(source + width);
-		*/
-
 		auto srcPix = source;
 		auto dstPix = dest;
 		const auto srcEnd = source + width*height;
@@ -525,7 +517,6 @@ void spoutCopy::rgba_rgb_sse2(const void *rgba_source, void *rgb_dest, unsigned 
 		// for (; srcPix < srcEnd; srcPix += 4, dstPix += 4) {
 		for (; srcPix < srcEnd; srcPix += 32, dstPix += 24) {
 
-			/*
 			//
 			// RGBA to RGB - Step1
 			//
@@ -598,8 +589,6 @@ void spoutCopy::rgba_rgb_sse2(const void *rgba_source, void *rgb_dest, unsigned 
 			// The source and destination addresses are incremented by thirty two and
 			// twenty four respectively.
 			// Steps Step1, Step2, and Step3 are repeated for the remainder of pixels.
-			*/
-
 
 			// [A1 B1 G1 R1 , A0 B0 G0 R0]
 			__m256 pixel01 = _mm256_load_ps((float *)(srcPix)); // 16 values
@@ -668,6 +657,7 @@ void spoutCopy::rgba_rgb_sse2(const void *rgba_source, void *rgb_dest, unsigned 
 	// }
 
 }
+*/
 
 
 //

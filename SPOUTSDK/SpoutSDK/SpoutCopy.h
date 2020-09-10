@@ -112,9 +112,8 @@ class SPOUT_DLLEXP spoutCopy {
 			unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 			unsigned int destWidth, unsigned int destHeight, bool bInvert = false) const;
 
-
-		// Not working
-		void rgba_rgb_sse2(const void *rgba_source, void *rgb_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		// Experimental - not working
+		// void rgba_rgb_sse2(const void *rgba_source, void *rgb_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 
 
 	protected :
