@@ -51,7 +51,9 @@
 // This definition enables legacy OpenGL rendering code
 // used for shared texture Draw functions
 // Disable for OpenGL 4 compliance
-#define legacyOpenGL
+#ifndef SPOUT_OPTION_DISABLE_LEGACY_OPENGL
+  #define legacyOpenGL
+#endif // SPOUT_OPTION_DISABLE_LEGACY_OPENGL
 
 // Common utility functions namespace
 #include "SpoutUtils.h"

@@ -39,6 +39,22 @@ target_compile_definitions(Spout
     SPOUT_BUILD_DLL
 )
 
+OPTION(SPOUT_OPTION_DISABLE_LEGACY_OPENGL "Disable legacy OpenGL code used for shared texture draw for OpenGL 4 compliance" OFF)
+if(SPOUT_OPTION_DISABLE_LEGACY_OPENGL)
+  target_compile_definitions(Spout
+    PRIVATE
+      SPOUT_OPTION_DISABLE_LEGACY_OPENGL
+)
+endif()
+
+OPTION(SPOUT_OPTION_DISABLE_D3D11_DEVICE_DEBUG "Disable D3D11 Device when Windows 10 SDK is missing" OFF)
+if(SPOUT_OPTION_DISABLE_D3D11_DEVICE_DEBUG)
+  target_compile_definitions(Spout
+    PRIVATE
+      SPOUT_OPTION_DISABLE_D3D11_DEVICE_DEBUG
+)
+endif()
+
 target_link_libraries(Spout
   PRIVATE
     opengl32

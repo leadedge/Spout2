@@ -329,7 +329,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 
 	SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (%d)", m_pAdapterDX11);
 
-#if defined(_DEBUG)
+#if defined(_DEBUG) && !defined(SPOUT_OPTION_DISABLE_D3D11_DEVICE_DEBUG)
 	// If the project is in a debug build, enable debugging via SDK Layers with this flag.
 	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
