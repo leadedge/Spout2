@@ -119,10 +119,16 @@ class SPOUT_DLLEXP Spout {
 	bool SetDX9(bool bDX9 = true); // User request to use DirectX 9 (default is DirectX 11)
 	void SetDX9format(D3DFORMAT textureformat);
 	void SetDX11format(DXGI_FORMAT textureformat);
-	bool SetMemoryShareMode(bool bMem = true);
-	bool GetMemoryShareMode();
-	int  GetShareMode();
-	bool SetShareMode(int mode);
+
+	// Sharing modes
+	bool GetMemoryShareMode(); // User selected memory share mode
+	bool SetMemoryShareMode(bool bMem = true);// Set memoryshare mode on or off
+	int  GetShareMode(); // User selected share mode : 0 -texture, 1 - memory, 2 - auto
+	bool SetShareMode(int mode); // Set sharing mode : 0-texture, 1-memory, 2-auto
+	bool GetMemoryShare(); // Get memory share compatibility mode (requires Auto share mode)
+	void SetMemoryShare(bool bMem = true); // Set memory share compatibility mode
+	bool GetMemoryShare(const char *sendername); // Get share mode of a sender (memory or texture)
+
 	int  GetMaxSenders(); // Get maximum senders allowed
 	void SetMaxSenders(int maxSenders); // Set maximum senders allowed
 

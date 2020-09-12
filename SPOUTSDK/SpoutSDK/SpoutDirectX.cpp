@@ -329,7 +329,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 
 	SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (%d)", m_pAdapterDX11);
 
-#if defined(_DEBUG) && !defined(SPOUT_OPTION_DISABLE_D3D11_DEVICE_DEBUG)
+#if defined(_DEBUG)
 	// If the project is in a debug build, enable debugging via SDK Layers with this flag.
 	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
@@ -613,15 +613,7 @@ bool spoutDirectX::SetAdapter(int index)
 		return false;
 	}
 
-	/*
-	// Test for a valid pointer
-	if (!GetAdapterPointer(index)) {
-		SpoutLogError("spoutDirectX::SetAdapter(%d) - Incompatible adapter pointer", index);
-		return false;
-	}
-	*/
-
-	// Set the global adapter pointer for DX11
+	// Get the global adapter pointer for DX11
 	pAdapter = GetAdapterPointer(index);
 	if(pAdapter == nullptr) {
 		SpoutLogError("spoutDirectX::SetAdapter - Could not get pointer for adapter %d", index);

@@ -371,25 +371,32 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	// ===============================================================
 
 	m_bUseDX9    = false; // Use DX9 (true) or DX11 (default false)
-	m_bUseGLDX   = true;  // Use GPU texture processing (default)
+	m_bUseGLDX   = true;  // GPU texture processing (default)
 	m_bUseMemory = false; // Memoryshare
+	m_bUseAuto   = false; // Auto dynamic switch between texture/memory
 	
-	DWORD dwDX9 = 0;
-	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "DX9", &dwDX9);
-	m_bUseDX9 = (dwDX9 == 1);
+	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "DX9", &dwMode);
+	m_bUseDX9 = (dwMode == 1);
 
-	// Memoryshare - 2.005 and greater
-	// User selection of Memoryshare depends on 2.004 SpoutDirectX, 2.005 SpoutDXmode, or 2.006 SpoutSettings.
-	// 2.004 apps will not have the registry set by the installer and memoryshare methods are incompatible.
-	// If the hardware is not interop compatible they will fail to work.
-	DWORD dwMemory = 0;
-	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", &dwMemory)) {
-		m_bUseMemory = (dwMemory == 1);
+	// Auto switch between memory and texture share - 2.007 and greater
+	// Default is set false above
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Auto", &dwMode)) {
+		m_bUseAuto = (dwMode == 1);
 	}
 
-	// Disable texture processing for memoryshare
-	if (m_bUseMemory)
+	// Memoryshare - 2.005 and greater
+	// User selection of Memoryshare depends on >2.004 SpoutDirectX, >2.005 SpoutDXmode, >2.006 SpoutSettings.
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", &dwMode)) {
+		m_bUseMemory = (dwMode == 1);
+	}
+
+	// Disable texture and auto-switch for memoryshare
+	if (m_bUseMemory) {
 		m_bUseGLDX = false;
+		m_bUseAuto = false;
+	}
+
+	// printf("spoutGLDXinterop::spoutGLDXinterop() - m_bUseMemory = %d\n", m_bUseMemory);
 
 	// Find the Spout version from the registry if Spout is installed (2005, 2006, etc.)
 	DWORD dwVersion = 0;
@@ -411,8 +418,7 @@ spoutGLDXinterop::~spoutGLDXinterop()
 // GLDXcompatible
 //
 // Hardware compatibility test
-// Over-rides user selection via SpoutSettings
-// Change silently to avoid interruptions.
+// Switches to memory share for user Auto share mode selection
 // Other classes can use GetMemoryShare to return m_bUseMemory
 //
 //  o LoadGLextensions
@@ -428,35 +434,208 @@ spoutGLDXinterop::~spoutGLDXinterop()
 //
 bool spoutGLDXinterop::GLDXcompatible()
 {
-
-	// LJ DEBUG
-	// printf("\nspoutGLDXinterop::GLDXcompatible\n\n");
-	
-	// Set defaults from registry
-	if (GetMemoryShareMode()) {
-		m_bUseGLDX = false;
-		m_bUseMemory = true;
-	}
-	else {
-		m_bUseGLDX = true;
-		m_bUseMemory = false;
-	}
+	// printf("\n\nspoutGLDXinterop::GLDXcompatible\n");
 
 	// OpenGL device context is needed
 	HDC hdc = wglGetCurrentDC();
 	if (!hdc) {
+		// printf("   Error 1\n");
 		SpoutLogFatal("spoutGLDXinterop::GLDXcompatible | Cannot get GL device context");
 		return false;
 	}
 
 	// If OpenGL extensions fail to load quit now
 	if (!LoadGLextensions()) {
+		// printf("   Error 2\n");
 		SpoutLogFatal("spoutGLDXinterop::GLDXcompatible | OpenGL extensions failed to load");
 		return false;
 	}
 
+	// Use local variables for compatibility test
+	// Change class variables only for Auto share mode
+	bool bUseGLDX = true;
+	bool bUseMemory = false;
+
+	// Get the user selected share mode from the registry
+	// 0 - Texture : 1 - Memory : 2 - Auto
+	//
+	// Texture share mode selected
+	//     If memory share mode is required, the compatibility test fails
+	//
+	// Memory share mode selected
+	//     Compatibility test not required
+	//
+	// Auto share mode selected
+	//     Memory share mode is set depending on texture share compatibility
+	//     The resulting memory mode flag remains until a further compatibility test
+	//
+
+	int mode = GetShareMode();
+
+	// No test is required if the user has selected Memoryshare mode
+	if (mode == 1) {
+		SpoutLogNotice("    Memory share selected. No compatibility test required");
+		// printf("   Memory share selected. No compatibility test required\n");
+		return true;
+	}
+
 	SpoutLogNotice("spoutGLDXinterop::GLDXcompatible - testing for texture share compatibility");
-	if(m_bUseGLDX) 
+
+	// Set local flags to test for change
+	switch (mode) {
+		case 0:
+			SpoutLogNotice("    Texture sharing selected");
+			bUseGLDX   = true;  // User has selected texture share mode
+			bUseMemory = false; 
+			break;
+		case 2:
+			SpoutLogNotice("    Auto sharing selected");
+			bUseGLDX   = true;  // Assume texture share compatible before tests
+			bUseMemory = false;
+			break;
+	}
+
+
+	// Get a window handle for DirectX initialization
+	// If not available it can be NULL
+	// This is always done for all modes so save the global window handle for this class
+	m_hWnd = WindowFromDC(hdc);
+
+	// Check for correct DirectX initialization
+	if (!OpenDirectX(m_hWnd, m_bUseDX9)) {
+		// Failed to open DirectX - must use memoryshare
+		// printf("   Warning 3\n");
+		bUseMemory = true;
+		bUseGLDX = false;
+		if (mode != 2) {
+			SpoutLogError("spoutGLDXinterop::GLDXcompatible - OpenDirectX failed");
+			return false;
+		}
+		SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - GL/DX interop functions failed");
+	}
+	else {
+		// DirectX is OK but check for availabilty of the GL/DX extensions.
+		if (!IsGLDXavailable()) {
+			// The extensions required for texture access are not available.
+			// The user can specify memoryshare mode or switch to it if Auto
+			// printf("   Warning 1\n");
+			bUseMemory = true;
+			bUseGLDX = false;
+			if (mode != 2) {
+				SpoutLogError("spoutGLDXinterop::GLDXcompatible - GL/DX extensions not available");
+				return false;
+			}
+			SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - GL/DX extensions not available");
+		}
+		else {
+			SpoutLogNotice("    GL/DX interop extensions available");
+			if (!GLDXready()) {
+				// It is possible that extensions for the GL/DX interop load OK
+				// but that the GL/DX interop functions fail.
+				// This has been noted on dual graphics machines with the NVIDIA Optimus driver.
+				// printf("   Warning 2\n");
+				bUseMemory = true;
+				bUseGLDX = false;
+				if (mode != 2) {
+					SpoutLogError("spoutGLDXinterop::GLDXcompatible - GL/DX interop functions failed");
+					return false;
+				}
+				SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - GL/DX interop functions failed");
+			}
+			else {
+				SpoutLogNotice("    GL/DX interop functions working");
+			}
+		}
+		// All passes - don't change from user settings
+	}
+
+	// Now both bUseGLDX and bUseMemory are set to use either texture or memoryshare mode
+	// If Auto share mode is selected, switch to the required mode
+	// Change only the class memory share flag (bUseMemory)
+	// Leave m_bUseGLDX as user selected for repeated tests
+
+	if (mode == 2) {
+		// The user selected texture sharing but the graphics is not compatible
+		// Set the class m_bUseMemory flag to use memory share instead
+		if (m_bUseGLDX && !bUseGLDX) {
+			SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - not texture share compatible\n    switching to memoryshare mode");
+			m_bUseMemory = true;
+		}
+		else {
+			// Texture mode compatible and user set
+			// Reset the memory share flag if changed by previous compatibility tests
+			m_bUseMemory = false;
+			SpoutLogNotice("spoutGLDXinterop::GLDXcompatible - texture share compatible");
+		}
+	}
+
+	// printf("    m_bUseGLDX = %d, m_bUseMemory = %d\n", m_bUseGLDX, m_bUseMemory);
+
+
+	return true;
+
+} // end GLDXcompatible
+
+
+/*
+bool spoutGLDXinterop::GLDXcompatible()
+{
+	// TODO : check Memoryshare / DirectX interaction
+
+	printf("\n\nspoutGLDXinterop::GLDXcompatible\n");
+
+	// OpenGL device context is needed
+	HDC hdc = wglGetCurrentDC();
+	if (!hdc) {
+		printf("   Error 1\n");
+		SpoutLogFatal("spoutGLDXinterop::GLDXcompatible | Cannot get GL device context");
+		return false;
+	}
+
+	// If OpenGL extensions fail to load quit now
+	if (!LoadGLextensions()) {
+		printf("   Error 2\n");
+		SpoutLogFatal("spoutGLDXinterop::GLDXcompatible | OpenGL extensions failed to load");
+		return false;
+	}
+	
+	// Get share mode defaults from registry
+	// 0 - Texture : 1 - Memory - 2 Auto
+
+	//
+	// 0 : Texture share mode selected - Auto mode is false
+	//     Memory share mode is set to the registry if the compatibility test fails
+	//
+	// 1 : Memory share mode selected - the compatibility test is not performed
+	//
+	// 2 : Auto share mode selected - the share mode is set dynamically
+	//     depending on texture share compatibility
+	//     The resulting share mode remains until a further compatibility test
+	//
+
+	int mode = GetShareMode();
+	switch (mode) {
+		case 0 :
+			m_bUseGLDX   = true;  // User has specifically selected texture share mode
+			m_bUseMemory = false;
+			m_bUseAuto   = false;
+			break;
+		case 1 :
+			m_bUseMemory = true;  // User has specifically selected memory share mode
+			m_bUseGLDX   = false;
+			m_bUseAuto = false;
+			break;
+		case 2 :
+			m_bUseGLDX   = true;  // Assume texture share compatible for auto switch
+			m_bUseMemory = false;
+			m_bUseAuto   = true;  // Dynamic change of share mode depending on compatibility
+			break;
+	}
+
+	SpoutLogNotice("spoutGLDXinterop::GLDXcompatible - testing for texture share compatibility");
+	if(m_bUseAuto)
+		SpoutLogNotice("    Auto sharing option user selected");
+	else if(m_bUseGLDX) 
 		SpoutLogNotice("    Texture sharing option user selected");
 	else
 		SpoutLogNotice("    Memory sharing option user selected");
@@ -466,15 +645,15 @@ bool spoutGLDXinterop::GLDXcompatible()
 	// This is always done for all modes so save the global window handle for this class
 	m_hWnd = WindowFromDC(hdc);
 
-	// Defaults are already set by installation or by the user with SpoutSettings
-	// The following tests over-ride user selection
 
-	// Check for correct DirectX initialization
-	// unless the user has selected Memoryshare mode
+	// No test is required if the user has specifically selected Memoryshare mode
 	if (m_bUseMemory) {
 		m_bUseGLDX = false;
+		printf("   No compatibility test required\n");
+		return true; // No compatibility test required
 	}
 	else {
+		// Check for correct DirectX initialization
 		if (OpenDirectX(m_hWnd, m_bUseDX9)) {
 			// DirectX is OK but check for availabilty of the GL/DX extensions.
 			if (!IsGLDXavailable()) {
@@ -483,6 +662,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 				// has not made a selection, default to Memoryshare
 				m_bUseGLDX = false;
 				m_bUseMemory = true;
+				printf("   Warning 1\n");
 				SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - GL/DX extensions not available");
 			}
 			else {
@@ -494,6 +674,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 					// If the compatibility test fails, fall back to memoryshare
 					m_bUseGLDX = false;
 					m_bUseMemory = true;
+					printf("   Warning 2\n");
 					SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - GL/DX interop functions failed");
 				}
 				else {
@@ -506,38 +687,49 @@ bool spoutGLDXinterop::GLDXcompatible()
 			// Failed to open DirectX - must use memoryshare
 			m_bUseGLDX = false;
 			m_bUseMemory = true;
+			printf("   Warning 3\n");
 			SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - OpenDirectX failed");
 		}
-
-		//
-		// All applications will use memoryshare mode
-		//    o If not texture share compatible
-		//    o If memoryshare mode is set by the user
-		//
-		// Users can perform diagnostics using SpoutSettings
-		//
-
-		// Now using either GL/DX texture or memoryshare mode
-		// OpenSpout will log the mode being used
-		// For texture share mode, CreateInterop should not report any errors
-		
 	}
 
-	/*
+	// Now using either GL/DX texture or memoryshare mode
+	// OpenSpout will have logged the share mode currently being used
+
+
+
+	// If auto switch is not selected
+	//    Change the system to memory share mode in line with 2.006
+	//    Other applications will then start up in memoryshare mode
+
+	// TODO
+	if (m_bUseGLDX && m_bUseMemory && !m_bUseAuto) {
+		printf("   Error 3\n");
+		SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - not texture share compatible");
+		m_bUseMemory = false;
+		return false;
+
+		// m_bUseGLDX = false;
+		// Over-ride SpoutSettings memory share mode
+		// WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", (DWORD)m_bUseMemory);
+		// SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - not texture share compatible changing to memoryshare mode");
+	}
+
+	// If auto switch is selected
+	//    For texture share mode, CreateInterop should not report any errors
+	//    For memory share mode, CreateInterop will not be used
+	//    To check the resulting mode, users can perform diagnostics using SpoutSettings
+
 	// Simulate failure for debugging. Remove for release
-	{
-		m_bUseGLDX = false;
-		m_bUseMemory = true;
-		// SpoutLogFatal("spoutGLDXinterop::GLDXcompatible - simulated failure");
-		// return false; // False return is fatal
-		// Simulate compatibiliy failure and switch to memoryshare
-		SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - simulated compatibility failure");
-	}
-	*/
+	// m_bUseGLDX = false;
+	// m_bUseMemory = true;
+
+	printf("    m_bUseMemory = %d\n", m_bUseMemory);
+
 
 	return true;
 
 } // end GLDXcompatible
+*/
 
 
 // Return render window handle retrieved in GLDXcompatible
@@ -3166,43 +3358,59 @@ bool spoutGLDXinterop::GetMemoryShare(const char *sendername)
 
 
 //
-// Return sharing mode set by user or by an application
-// Reads the registry - avoid repeated use every frame.
-// 0 - texture, 1 - CPU (disabled for 2.007) 2 - memory
+// Return sharing mode set to the registry
+// 0 - texture (Memoryshare = 0)
+// 1 - memory  (Memoryshare = 1)
+// 2 - auto    (Autoshare   = 2)
+//
+// Re-uses 2.006 CPU mode setting
+// 0 - texture, 1 - CPU (Auto for 2.007) 2 - memory
 // Left for compatibility with 2.006 applications.
-// May be removed for future versions and replaced by GetMemoryShareMode().
+// If CPU mode is detected, Auto mode is returned.
+// CPU registry setting may be removed for future versions
 //
 int spoutGLDXinterop::GetShareMode()
 {
-	DWORD dwCPU = 0;
-
 	if(GetMemoryShareMode()) {
+		// 1 : Memoryshare
+		return 1;
+	}
+
+	DWORD dwMode = 0;
+	// Auto : dynamic texture/memory mode switching according to texture share capability
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Autoshare", &dwMode)) {
+		// 2 : Auto dynamic switch
+		// otherwise texture share (memoryshare is already done)
+		if (dwMode == 1)
+			return 2;
+		else
+			return 0;
+
+	}
+
+	// In case of 2.006 "Autoshare" will not be in the regisrty
+	// and SpoutDXmode mode has been used for CPU mode
+	// Return Auto share instead of CPU mode
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "CPU", &dwMode)) {
+		if (dwMode == 1)
 			return 2;
 	}
 
-	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "CPU", &dwCPU)) {
-		// In case 2.006 SpoutDXmode mode has been used
-		if (dwCPU == 1)
-			return 1;
-	}
-
+	// 0 : Texture share default
 	return 0;
 
 }
 
 
 //---------------------------------------------------------
-// 0 - texture, 1 & 2 - memory
-// Left for compatibility with 2.006 applications.
-// May be removed for future versions and replaced by SetMemoryShareMode().
+// 0 - texture : 1 - memory : 2 - auto
 bool spoutGLDXinterop::SetShareMode(int mode)
 {
 	switch (mode) {
 
-		case 1 : // CPU mode (disabled for 2.007)
-		case 2 : // Shared memory
+		case 1 : // Memory share specifically selected - Auto share is set off
 			if (WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", 1)) {
-				if(WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "CPU", 0)) {
+				if (WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Autoshare", 0)) {
 					m_bUseGLDX = false;
 					m_bUseMemory = true;
 					return true;
@@ -3210,11 +3418,23 @@ bool spoutGLDXinterop::SetShareMode(int mode)
 			}
 			break;
 
-		default : // GL/DX texture
+		case 2: // Auto share mode is compatibility dependent and the memoryshare setting is set off
+			if (WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Autoshare", 1)) {
+				if (WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", 0)) {
+					m_bUseGLDX = true; // Assume texture share compatible but switch dynamically
+					m_bUseMemory = true;
+					return true;
+				}
+			}
+			break;
+
+		default : // GL/DX texture - set memoryshare and autoshare false
 			if(WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", 0)) {
-				m_bUseGLDX = true;
-				m_bUseMemory = false;
-				return true;
+				if (WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Autoshare", 0)) {
+					m_bUseGLDX = true;
+					m_bUseMemory = false;
+					return true;
+				}
 			}
 			break;
 	}
@@ -3252,10 +3472,8 @@ bool spoutGLDXinterop::SetAdapter(int index)
 	if(spoutdx.SetAdapter(index)) {
 		return true;
 	}
-
 	SpoutLogError("spoutGLDXinterop::SetAdapter(%d) failed", index);
-	spoutdx.SetAdapter(-1); // make sure globals are reset to default
-
+	spoutdx.SetAdapter(-1); // make sure DirectX device creation uses the default adapter
 	return false;
 }
 

@@ -597,18 +597,22 @@ bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned
 }
 #endif
 
-//---------------------------------------------------------
-bool Spout::SetMemoryShareMode(bool bMem)
-{
-	return (interop.SetMemoryShareMode(bMem));
-}
+//
+// Sharing mode functions
+//
 
 //---------------------------------------------------------
 bool Spout::GetMemoryShareMode()
 {
-	// Gets interop class global memoryshare flag and sets a flag in this class
-	bMemory = interop.GetMemoryShareMode(); // set global flag - TODO : rename globals
+	// Gets registry memoryshare mode and sets a flag in this class
+	bMemory = interop.GetMemoryShareMode();
 	return bMemory;
+}
+
+//---------------------------------------------------------
+bool Spout::SetMemoryShareMode(bool bMem)
+{
+	return interop.SetMemoryShareMode(bMem);
 }
 
 //---------------------------------------------------------
@@ -620,8 +624,27 @@ int Spout::GetShareMode()
 //---------------------------------------------------------
 bool Spout::SetShareMode(int mode)
 {
-	return (interop.SetShareMode(mode));
+	return interop.SetShareMode(mode);
 }
+
+//---------------------------------------------------------
+bool Spout::GetMemoryShare()
+{
+	return interop.GetMemoryShare();
+}
+
+//---------------------------------------------------------
+void Spout::SetMemoryShare(bool bMem)
+{
+	interop.SetMemoryShare(bMem);
+}
+
+//---------------------------------------------------------
+bool Spout::GetMemoryShare(const char *sendername)
+{
+	return interop.GetMemoryShare(sendername);
+}
+
 
 //
 // Maximum sender functions - for development testing only
@@ -1575,25 +1598,20 @@ void Spout::SetDX11format(DXGI_FORMAT textureformat)
 // Set graphics adapter for Spout output
 bool Spout::SetAdapter(int index)
 {
-	// LJ DEBUG
-	// printf("\nSpout::Setadapter\n");
+	bool bRet = false;
 	if (interop.SetAdapter(index)) {
 		// Close interop
 		interop.CleanupInterop();
 		// Close DirectX
 		interop.CleanupDirectX();
-		// Check registry user selection
-		// and reset texture share if not
-		// if(!GetMemoryShareMode())
-			// interop.SetMemoryShare(false);
 		// Repeat compatibility test for this adapter
-		interop.GLDXcompatible();
-		// Check texture share compatibility
+		bRet = interop.GLDXcompatible();
+		// Check for memory/texture share after compatibility text
 		bMemory = interop.GetMemoryShare();
-		// printf("    bMemory = %d\n\n", bMemory);
-		return true;
 	}
-	return false;
+	// printf("Spout::SetAdapter(%d) bMemory = %d, returning %d\n", index, bMemory, bRet);
+
+	return bRet;
 }
 
 // Get current adapter index

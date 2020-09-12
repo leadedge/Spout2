@@ -318,11 +318,9 @@ GLuint SpoutSender::GetSharedTextureID()
 	return spout.interop.GetSharedTextureID();
 }
 
-//---------------------------------------------------------
-bool SpoutSender::SetMemoryShareMode(bool bMem)
-{
-	return spout.SetMemoryShareMode(bMem);
-}
+//
+// Sharing mode functions
+//
 
 //---------------------------------------------------------
 bool SpoutSender::GetMemoryShareMode()
@@ -331,16 +329,42 @@ bool SpoutSender::GetMemoryShareMode()
 }
 
 //---------------------------------------------------------
+bool SpoutSender::SetMemoryShareMode(bool bMem)
+{
+	return spout.SetMemoryShareMode(bMem);
+}
+
+//---------------------------------------------------------
 int SpoutSender::GetShareMode()
 {
-	return (spout.GetShareMode());
+	return spout.GetShareMode();
 }
 
 //---------------------------------------------------------
 bool SpoutSender::SetShareMode(int mode)
 {
-	return (spout.SetShareMode(mode));
+	return spout.SetShareMode(mode);
 }
+
+//---------------------------------------------------------
+bool SpoutSender::GetMemoryShare()
+{
+	return spout.GetMemoryShare();
+}
+
+//---------------------------------------------------------
+void SpoutSender::SetMemoryShare(bool bMem)
+{
+	spout.SetMemoryShare(bMem);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::GetMemoryShare(const char *sendername)
+{
+	return spout.GetMemoryShare(sendername);
+}
+
+
 
 //---------------------------------------------------------
 void SpoutSender::SetBufferMode(bool bActive)

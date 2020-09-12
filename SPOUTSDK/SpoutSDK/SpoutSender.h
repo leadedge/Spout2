@@ -134,14 +134,16 @@ class SPOUT_DLLEXP SpoutSender {
 	void SetDX9format(D3DFORMAT textureformat);
 	// Set the DirectX 11 format for texture sharing
 	void SetDX11format(DXGI_FORMAT textureformat);
-	// Get memoryshare mode status
-	bool GetMemoryShareMode();
-	// Set memoryshare mode on or off
-	bool SetMemoryShareMode(bool bMem = true);
-	// Get sharing mode : 0-texture, 1-CPU (disabled for 2.007) 2-memory
-	int  GetShareMode();
-	// Set share mode : 0-texture, 1&2-memory
-	bool SetShareMode(int mode);
+
+	// Sharing modes
+	bool GetMemoryShareMode(); // User selected memory share mode
+	bool SetMemoryShareMode(bool bMem = true);// Set memoryshare mode on or off
+	int  GetShareMode(); // User selected share mode : 0 -texture, 1 - memory, 2 - auto
+	bool SetShareMode(int mode); // Set sharing mode : 0-texture, 1-memory, 2-auto
+	bool GetMemoryShare(); // Get memory share compatibility mode (requires Auto share mode)
+	void SetMemoryShare(bool bMem = true); // Set memory share compatibility mode
+	bool GetMemoryShare(const char *sendername); // Get share mode of a sender (memory or texture)
+
 	// Get OpenGL pixel buffering setting
 	bool GetBufferMode();
 	// Enable/disable OpenGL pixel buffering (default off).

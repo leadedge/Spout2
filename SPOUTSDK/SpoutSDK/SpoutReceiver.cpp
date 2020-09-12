@@ -487,6 +487,10 @@ bool SpoutReceiver::SetActiveSender(const char* Sendername)
 	return spout.SetActiveSender(Sendername);
 }
 
+//
+// Sharing mode functions
+//
+
 //---------------------------------------------------------
 bool SpoutReceiver::GetMemoryShareMode()
 {
@@ -508,8 +512,27 @@ int SpoutReceiver::GetShareMode()
 //---------------------------------------------------------
 bool SpoutReceiver::SetShareMode(int mode)
 {
-	return (spout.SetShareMode(mode));
+	return spout.SetShareMode(mode);
 }
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetMemoryShare()
+{
+	return spout.GetMemoryShare();
+}
+
+//---------------------------------------------------------
+void SpoutReceiver::SetMemoryShare(bool bMem)
+{
+	spout.SetMemoryShare(bMem);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetMemoryShare(const char *sendername)
+{
+	return spout.GetMemoryShare(sendername);
+}
+
 
 //---------------------------------------------------------
 bool SpoutReceiver::GetBufferMode()

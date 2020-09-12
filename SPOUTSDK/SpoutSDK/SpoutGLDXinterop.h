@@ -130,21 +130,25 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool m_bUseDX9; // Use DX11 (default) or DX9
 		bool m_bUseGLDX; // Use GPU texture processing
 		bool m_bUseMemory; // Use memoryshare
+		bool m_bUseAuto; // Use dynamic switch between texture/memory share modes
+
 		bool UseDX9(bool bDX9); // Includes DX11 compatibility check
 		bool isDX9(); // Test for DX11 in case it failed to initialize
 		bool GLDXcompatible();
 		bool GLDXready();
 
-		bool GetMemoryShareMode(); // Get memory mode from registry
-		bool SetMemoryShareMode(bool bMem = true); // Set memory mode to registry
+		//
+		// Sharing modes
+		//
 
-		bool GetMemoryShare(); // Get class memory mode flag
-		void SetMemoryShare(bool bMem = true); // Set class memory mode flag
-		bool GetMemoryShare(const char *sendername); // Get sender share mode
+		bool GetMemoryShareMode(); // User selected memory share mode
+		bool SetMemoryShareMode(bool bMem = true); // Set memoryshare mode on or off
+		int  GetShareMode(); // User selected share mode : 0 -texture, 1 - memory, 2 - auto
+		bool SetShareMode(int mode); // Set sharing mode : 0-texture, 1-memory, 2-auto
+		bool GetMemoryShare(); // Get memory share compatibility mode (requires Auto share mode)
+		void SetMemoryShare(bool bMem = true); // Set memory share compatibility mode
+		bool GetMemoryShare(const char *sendername); // Get share mode of a sender (memory or texture)
 		
-		// For 2.006 compatibility. May be removed in future
-		int  GetShareMode(); // 0 - memory, 1 - cpu, 2 - texture
-		bool SetShareMode(int mode);
 
 		HWND GetRenderWindow(); // Render window handle retrieved in GLDXcompatible
 
