@@ -60,6 +60,11 @@
 //					  Remove failures if no adapter output pending testing
 //					  Add immediate context test before flush in ReleaseDX11Texture
 //					  In case the function is used by a different device.
+//		12.09.2020	- Re-introduced Optimus Enablement to enforce NVidia Optimus
+//					  Incuding AMD Enduro technology
+//					  Credit to https://github.com/Qlex42
+//
+extern "C"
 //
 // ====================================================================================
 /*
@@ -89,6 +94,14 @@
 */
 
 #include "SpoutDirectX.h"
+
+// To enforce NVidia Optimus / AMD Enduro technology
+extern "C"
+{
+	__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+	typedef unsigned long DWORD;
+	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
 
 spoutDirectX::spoutDirectX() {
 
