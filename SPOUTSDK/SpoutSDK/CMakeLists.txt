@@ -1,32 +1,78 @@
-#\-------------------------------------- . -----------------------------------/#
-# Filename : CMakeList.txt               | Main Spout CMakeList                #
-# Author   : Alexandre Buge              |                                     #
-# Started  : 08/09/2020 12:00            |                                     #
-#/-------------------------------------- . -----------------------------------\#
-
-cmake_minimum_required(VERSION 3.15)
-project(Spout 
-	LANGUAGES CXX 
-	VERSION 2.0
-	HOMEPAGE_URL https://spout.zeal.co
+add_library(Spout STATIC 
+  Spout.h
+  SpoutCommon.h
+  SpoutCopy.h
+  SpoutDirectX.h
+  SpoutFrameCount.h
+  SpoutGLDXinterop.h
+  SpoutGLextensions.h
+  SpoutMemoryShare.h
+  SpoutReceiver.h
+  SpoutSDK.h
+  SpoutSender.h
+  SpoutSenderNames.h
+  SpoutSharedMemory.h
+  SpoutUtils.h
+  SpoutCopy.cpp
+  SpoutDirectX.cpp
+  SpoutFrameCount.cpp
+  SpoutGLDXinterop.cpp
+  SpoutGLextensions.cpp
+  SpoutMemoryShare.cpp
+  SpoutReceiver.cpp
+  SpoutSDK.cpp
+  SpoutSender.cpp
+  SpoutSenderNames.cpp
+  SpoutSharedMemory.cpp
+  SpoutUtils.cpp
 )
 
-# ensure lib and dll will be in the working directories of executables
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin/${CMAKE_GENERATOR})
-set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin/${CMAKE_GENERATOR})
-set (SMODE_PDB_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/pdb/${CMAKE_GENERATOR})
-
-if(NOT WIN32)
-  message(STATUS "Spout is not supported outside of MS Windows")
-  return()
+if(NOT MSVC)
+  target_compile_options(Spout 
+    PRIVATE
+      -msse4
+  )
 endif()
 
-OPTION(SPOUT_BUILD_EXAMPLES "Build Spout examples" ON)
+target_compile_definitions(Spout
+  PRIVATE
+    SPOUT_BUILD_DLL
+)
 
-add_subdirectory(SpoutSDK)
-add_subdirectory(SpoutDirectX/SpoutDX)
-
-OPTION(SPOUT_BUILD_LIBRARY "Build Spout cross compiler library" ON)
-if(SPOUT_BUILD_LIBRARY)
-  add_subdirectory(SpoutLibrary/Source)
+OPTION(SPOUT_OPTION_DISABLE_LEGACY_OPENGL "Disable legacy OpenGL code used for shared texture draw for OpenGL 4 compliance" OFF)
+if(SPOUT_OPTION_DISABLE_LEGACY_OPENGL)
+  target_compile_definitions(Spout
+    PRIVATE
+      SPOUT_OPTION_DISABLE_LEGACY_OPENGL
+)
 endif()
+
+OPTION(SPOUT_OPTION_DISABLE_D3D11_DEVICE_DEBUG "Disable D3D11 Device when Windows 10 SDK is missing" OFF)
+if(SPOUT_OPTION_DISABLE_D3D11_DEVICE_DEBUG)
+  target_compile_definitions(Spout
+    PRIVATE
+      SPOUT_OPTION_DISABLE_D3D11_DEVICE_DEBUG
+)
+endif()
+
+target_link_libraries(Spout
+  PRIVATE
+    opengl32
+    kernel32
+    user32
+    gdi32
+    winspool
+    comdlg32
+    advapi32
+    shell32
+    ole32
+    oleaut32
+    uuid
+    odbc32
+    odbccp32
+    d3d9
+    d3d11
+    DXGI
+    shlwapi
+    Version
+)
