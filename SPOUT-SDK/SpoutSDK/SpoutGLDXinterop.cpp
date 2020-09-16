@@ -567,9 +567,9 @@ bool spoutGLDXinterop::GLDXcompatible()
 	}
 
 	// Simulate failure for debugging. Remove for release
-	SpoutLogNotice("spoutGLDXinterop::GLDXcompatible - simulated compatibility failure");
-	m_bUseGLDX = false;
-	m_bUseMemory = true;
+	// SpoutLogNotice("spoutGLDXinterop::GLDXcompatible - simulated compatibility failure");
+	// m_bUseGLDX = false;
+	// m_bUseMemory = true;
 
 
 	// printf("    m_bUseGLDX = %d, m_bUseMemory = %d\n", m_bUseGLDX, m_bUseMemory);
