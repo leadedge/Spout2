@@ -164,6 +164,8 @@
 //		08.09.20	- OpenReceiver - remove warning log for receiver and sender using a different GPU
 //					  InitSender - switch to memoryshare on CreateInterop failure
 //		09.09.20	- SetAdapter - reset and perform compatibility test
+//		15.09.20	- Remove SpoutMessageBox from OpenSpout()
+//					  Failure must be handled by the application
 //
 // ================================================================
 /*
@@ -1029,12 +1031,18 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	// printf("\nOpenReceiver %dx%d - handle 0x%p, format %d\n", width, height, sharehandle, dwFormat);
 	// printf("    bDXinitOK = %d, bMemory = %d\n", bDxInitOK, bMemory);
 
+	/*
+	// Relax this condition?
+	// TODO : 
+	//		test cross adapter texture sharing
+	//		test effect of using memory sharing
 	// The receiver and sender must be running on the same GPU.
 	if (interop.GetAdapter() != interop.GetAdapterIndex(Sendername)) {
 		// GetAdapter() returns the adapter index that is set for the receiver.
 		// GetAdapterIndex returns the adapter index that was set for the sender.
 		return false;
 	}
+	*/
 
 	//
 	// Dynamic switch between memory and texture share
@@ -1543,7 +1551,6 @@ bool Spout::OpenSpout()
 	//
 	if (!interop.GLDXcompatible()) {
 		SpoutLogFatal("Spout::OpenSpout - not texture share compatible");
-		SpoutMessageBox("Spout::OpenSpout - not texture share compatible", 4000);
 		return false;
 	}
 
