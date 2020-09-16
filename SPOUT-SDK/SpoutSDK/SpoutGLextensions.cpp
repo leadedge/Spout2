@@ -18,6 +18,8 @@
 //			27.10.18	- Test for opengl context in loadglextensions
 //			21.11.18	- Add copy extensions for future use
 //			23.11.18	- Fix test for wglDXCloseDeviceNV in loadInteropExtensions
+//			14.09.20	- Add legacyOpenGL define test in "isExtensionSupported" to avoid glGetString
+//						  Thanks to Alexandre Buge (https://github.com/Qlex42) for the notice and fix
 //
 
 	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
@@ -509,7 +511,12 @@ bool isExtensionSupported(const char *extension)
 	if(strchr(extension, ' '))
 		return false;
 
-	const char * extensionsstr = (const char *)glGetString(GL_EXTENSIONS);
+	const char * extensionsstr = nullptr;
+
+// glGetString can cause problems for core OpenGL context
+#ifdef legacyOpenGL
+	extensionsstr = (const char *)glGetString(GL_EXTENSIONS);
+#endif
 	if (extensionsstr) {
 		std::string extensions = extensionsstr;
 		std::size_t found = extensions.find(extension);
@@ -521,9 +528,6 @@ bool isExtensionSupported(const char *extension)
 		return false;
 	}
 	else {
-
-		SpoutLogNotice("isExtensionSupported : glGetString(GL_EXTENSIONS) not supported - using glGetStringi");
-
 		//
 		// glGetstring not supported
 		// for a core GL context
@@ -531,7 +535,6 @@ bool isExtensionSupported(const char *extension)
 		// Code adapted from : https://bitbucket.org/Coin3D/coin/issues/54/support-for-opengl-3x-specifically
 		// Also : http://www.opengl.org/resources/features/OGLextensions/
 		//
-
 		typedef GLubyte* (APIENTRY * COIN_PFNGLGETSTRINGIPROC)(GLenum enm, GLuint idx);
 		COIN_PFNGLGETSTRINGIPROC glGetStringi = 0;
 		glGetStringi = (COIN_PFNGLGETSTRINGIPROC)wglGetProcAddress("glGetStringi");
