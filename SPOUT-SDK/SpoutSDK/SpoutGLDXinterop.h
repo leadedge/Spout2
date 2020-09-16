@@ -168,8 +168,8 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		int  GetAdapter(); // Get the SpoutDirectX class adapter index
 		
 		// Adapter index in shared memory (0 default)
-		int  GetAdapterIndex(const char *sendername);
-		bool SetAdapterIndex(const char* sendername);
+		int  GetSenderAdapter(const char *sendername);
+		bool SetSenderAdapter(const char* sendername);
 
 		// Path of the host that produced the sender in shared memory
 		bool GetHostPath(const char* sendername, char* hostpath, int maxchars);

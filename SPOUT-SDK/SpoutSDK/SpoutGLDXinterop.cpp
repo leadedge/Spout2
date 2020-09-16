@@ -295,6 +295,7 @@
 		09.09.20	- Error logic and log warnings changed for WriteTexture and ReadTexture
 		14.09.20	- Further changes to GLDXcompatible for 2.006 compatibility
 		15.09.20	- Corrected SetShareMode for Auto mode (memory mode was set true instead of false)
+		16.09.20	- Change Get/Set AdapterIndex to Get/Set SenderAdapter
 
 */
 
@@ -497,6 +498,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 		// Failed to open DirectX - cannot use shared textures
 		bUseGLDX = false;
 		SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - DirectX could not be initialized");
+		// printf("spoutGLDXinterop::GLDXcompatible - DirectX could not be initialized\n");
 	}
 	else {
 		// DirectX is OK but check for availabilty of the GL/DX extensions.
@@ -505,6 +507,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 			// The user can specify memoryshare mode or switch to it if Auto
 			bUseGLDX   = false;
 			SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - GL/DX interop extensions not available");
+			// printf("spoutGLDXinterop::GLDXcompatible - GL/DX interop extensions not available\n");
 		}
 		else {
 			SpoutLogNotice("    GL/DX interop extensions available");
@@ -514,9 +517,11 @@ bool spoutGLDXinterop::GLDXcompatible()
 				// This has been noted on dual graphics machines with the NVIDIA Optimus driver.
 				bUseGLDX   = false;
 				SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - GL/DX interop functions failed");
+				// printf("spoutGLDXinterop::GLDXcompatible - GL/DX interop functions failed\n");
 			}
 			else {
 				SpoutLogNotice("    GL/DX interop functions working");
+				// printf("    GL/DX interop functions working\n");
 			}
 		}
 		// All passes - don't change from user settings
@@ -531,6 +536,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 		// Leave m_bUseGLDX alone for repeat tests.
 		if (m_bUseGLDX && !bUseGLDX) {
 			SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - not texture share compatible\n    switching application to memoryshare mode");
+			// printf("spoutGLDXinterop::GLDXcompatible - not texture share compatible\n    switching application to memoryshare mode\n");
 			m_bUseMemory = true;
 		}
 		else {
@@ -538,6 +544,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 			// Reset the class memory share flag in case it was changed by previous tests.
 			m_bUseMemory = false;
 			SpoutLogNotice("spoutGLDXinterop::GLDXcompatible - texture share compatible");
+			// printf("spoutGLDXinterop::GLDXcompatible - texture share compatible\n");
 		}
 	}
 	// If the user selected texture sharing, check for compatibility
@@ -555,7 +562,9 @@ bool spoutGLDXinterop::GLDXcompatible()
 			}
 			else {
 				// Fail the test for 2.007 Texture share mode
+				m_bUseMemory = true; // Set the memory share flag for application query
 				SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - not texture share compatible");
+				// printf("spoutGLDXinterop::GLDXcompatible - not texture share compatible\n");
 				return false;
 			}
 		}
@@ -563,6 +572,7 @@ bool spoutGLDXinterop::GLDXcompatible()
 			// The graphics is GL/DX interop compatible (m_bUseGLDX is unchanged)
 			m_bUseMemory = false; // Reset the memory share flag
 			SpoutLogNotice("spoutGLDXinterop::GLDXcompatible - texture share compatible");
+			// printf("spoutGLDXinterop::GLDXcompatible - texture share compatible\n");
 		}
 	}
 
@@ -1415,7 +1425,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 	// Write host path and Adapter index to the sender shared memory
 	if (!bReceive) {
 		SetHostPath(sendername);
-		SetAdapterIndex(sendername);
+		SetSenderAdapter(sendername);
 	}
 
 	// Initialize a texture transfer sync mutex either sender or receiver can do this.
@@ -3336,8 +3346,8 @@ int spoutGLDXinterop::GetAdapter()
 	return spoutdx.GetAdapter();
 }
 
-// Get adapter index in shared memory (0 default)
-int spoutGLDXinterop::GetAdapterIndex(const char *sendername)
+// Get sender adapter index in shared memory (0 default)
+int spoutGLDXinterop::GetSenderAdapter(const char *sendername)
 {
 	SharedTextureInfo info;
 	int n = 0;
@@ -3346,13 +3356,13 @@ int spoutGLDXinterop::GetAdapterIndex(const char *sendername)
 	}
 	else {
 		// Return default 0 if the info cannot be accessed
-		SpoutLogWarning("spoutGLDXinterop::GetAdapterIndex(%s) - could not get sender info", sendername);
+		SpoutLogWarning("spoutGLDXinterop::GetSenderAdapter(%s) - could not get sender info", sendername);
 	}
 	return n;
 }
 
 // Set adapter index in shared memory (0 default)
-bool spoutGLDXinterop::SetAdapterIndex(const char *sendername)
+bool spoutGLDXinterop::SetSenderAdapter(const char *sendername)
 {
 	SharedTextureInfo info;
 	if (!senders.getSharedInfo(sendername, &info)) {
