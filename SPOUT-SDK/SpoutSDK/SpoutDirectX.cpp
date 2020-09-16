@@ -63,8 +63,10 @@
 //		12.09.2020	- Re-introduced Optimus Enablement to enforce NVidia Optimus
 //					  Incuding AMD Enduro technology
 //					  Credit to https://github.com/Qlex42
-//
-extern "C"
+//		13.09.20	- Remove Optimus enablement again due to use of extern "C"
+//		15.09.20	- Changed all result !=S_OK and !=D3D_OK to FAILED macro for consistency
+//					  Correct type cast in CreateDX9device and GetAdapterName
+//		16.09.20	- ReleaseDX11Texture - removed log notice for no reference count
 //
 // ====================================================================================
 /*
@@ -95,14 +97,6 @@ extern "C"
 
 #include "SpoutDirectX.h"
 
-// To enforce NVidia Optimus / AMD Enduro technology
-extern "C"
-{
-	__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
-	typedef unsigned long DWORD;
-	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-}
-
 spoutDirectX::spoutDirectX() {
 
 	// DX11
@@ -130,7 +124,7 @@ IDirect3D9Ex* spoutDirectX::CreateDX9object()
 	IDirect3D9Ex* pD3D;
 
 	HRESULT res = Direct3DCreate9Ex(D3D_SDK_VERSION, &pD3D);
-	if ( res != D3D_OK ) return NULL;
+	if (FAILED(res)) return NULL;
 
 	return pD3D;
 }
@@ -141,7 +135,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	IDirect3DDevice9Ex* pDevice;
     D3DPRESENT_PARAMETERS d3dpp;
 	D3DCAPS9 d3dCaps;
-	int AdapterIndex = m_AdapterIndex;
+	unsigned int AdapterIndex = static_cast<unsigned int>(m_AdapterIndex);
 
 	// SpoutLogNotice("spoutDirectX::CreateDX9device - adapter = %d, hWnd = 0x%x", AdapterIndex, hWnd);
 
@@ -164,7 +158,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 
 	// Test for hardware vertex processing capability and set up as needed
 	// D3DCREATE_MULTITHREADED required by interop spec
-	if(pD3D->GetDeviceCaps( AdapterIndex, D3DDEVTYPE_HAL, &d3dCaps) != S_OK ) {
+	if (FAILED(pD3D->GetDeviceCaps(AdapterIndex, D3DDEVTYPE_HAL, &d3dCaps))) {
 		SpoutLogFatal("spoutDirectX::CreateDX9device - GetDeviceCaps error");
 		return NULL;
 	}
@@ -188,7 +182,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 								NULL,			// pFullscreenDisplayMode must be NULL for windowed mode
 								&pDevice);
 	
-	if ( res != D3D_OK ) {
+	if (FAILED(res)) {
 		SpoutLogFatal("spoutDirectX::CreateDX9device - CreateDeviceEx returned error %d (%x)", res, res);
 		return NULL;
 	}
@@ -222,9 +216,10 @@ bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned 
 
 	// USAGE may also be D3DUSAGE_DYNAMIC and pay attention to format and resolution!!!
 	// USAGE, format and size for sender and receiver must all match
-	if ( res != D3D_OK ) {
+	if (FAILED(res)) {
 		char tmp[256];
-		sprintf_s(tmp, 256, "spoutDirectX::CreateSharedDX9Texture error (0X%x) - ", res);
+		// TODO : check for compiler warning with "l" prefix
+		sprintf_s(tmp, 256, "spoutDirectX::CreateSharedDX9Texture error (0X%lx) - ", res);
 		switch (res) {
 			case D3DERR_INVALIDCALL:
 				strcat_s(tmp, 256, "D3DERR_INVALIDCALL");
@@ -511,10 +506,11 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 	HRESULT res = pd3dDevice->CreateTexture2D(&desc, NULL, &pTexture);
 	
-	if (res != S_OK) {
+	if (FAILED(res)) {
 		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
 		char tmp[256];
-		sprintf_s(tmp, 256, "spoutDirectX::CreateSharedDX11Texture ERROR - [0x%x] : ", res);
+		// TODO : check for compiler warning with "l" prefix
+		sprintf_s(tmp, 256, "spoutDirectX::CreateSharedDX11Texture ERROR - [0x%lx] : ", res);
 		switch (res) {
 			case D3DERR_INVALIDCALL:
 				strcat_s(tmp, 256, "D3DERR_INVALIDCALL");
@@ -539,7 +535,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	// of the resource can be obtained by querying the resource for the IDXGIResource 
 	// interface and then calling GetSharedHandle.
 	IDXGIResource* pOtherResource(NULL);
-	if(pTexture->QueryInterface( __uuidof(IDXGIResource), (void**)&pOtherResource) != S_OK) {
+	if(FAILED(pTexture->QueryInterface( __uuidof(IDXGIResource), (void**)&pOtherResource))) {
 		SpoutLogFatal("spoutDirectX::CreateSharedDX11Texture - QueryInterface error");
 		return false;
 	}
@@ -572,7 +568,7 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	// Note that the resource created for use on this device must be eventually freed or there is a leak.
 	//
 	HRESULT hr = pDevice->OpenSharedResource(dxShareHandle, __uuidof(ID3D11Resource), (void**)(ppSharedTexture));
-	if(hr != S_OK) {
+	if(FAILED(hr)) {
 		SpoutLogError("spoutDirectX::OpenDX11shareHandle failed");
 		return false;
 	}
@@ -759,7 +755,7 @@ bool spoutDirectX::FindNVIDIA(int &nAdapter)
 
 	if(bFound) {
 		// printf// ("spoutDirectX::FindNVIDIA - Found NVIDIA adapter %d (%S)\n", i, desc.Description);
-		nAdapter = i;
+		nAdapter = static_cast<int>(i);
 		//	0x10DE	NVIDIA
 		//	0x163C	intel
 		//	0x8086  Intel
@@ -845,7 +841,7 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 			DXGI_ADAPTER_DESC desc;
 			adapter1_ptr->GetDesc( &desc );
 			size_t charsConverted = 0;
-			size_t maxBytes = maxchars;
+			size_t maxBytes = static_cast<size_t>(maxchars);
 			wcstombs_s(&charsConverted, adaptername, maxBytes, desc.Description, maxBytes - 1);
 			adapter1_ptr->Release();
 			_dxgi_factory1->Release();
@@ -902,7 +898,7 @@ bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 	IDXGIAdapter* adapter1_ptr = nullptr;
 	UINT32 i;
 	size_t charsConverted = 0;
-	size_t maxBytes = maxchars;
+	size_t maxBytes = static_cast<size_t>(maxchars);
 
 	// Enum Adapters first : multiple video cards
 	if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&_dxgi_factory1))) {
@@ -957,8 +953,6 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 	// The device will be live, so warn if refcount > 1
 	if (refcount > 1)
 		SpoutLogWarning("   refcount = %d", refcount);
-	else
-		SpoutLogNotice("    no outstanding reference count");
 
 	// Note that if the texture is registered and linked to OpenGL using the 
 	// GL/DX interop, the interop must be unregistered or the texture is not
@@ -987,7 +981,7 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 
 		// Print live objects to the debug Output window
 		OutputDebugStringA("\nspoutDirectX::ReleaseDX11Texture\n");
-		HRESULT hr = DebugDevice->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+		DebugDevice->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
 		OutputDebugStringA("\n");
 
 		DebugDevice->Release();
