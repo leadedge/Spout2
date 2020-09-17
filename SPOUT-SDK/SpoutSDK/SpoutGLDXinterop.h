@@ -140,15 +140,16 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		//
 		// Sharing modes
 		//
+		int  GetShareMode(); // Get user selected share mode : 0 -texture, 1 - memory, 2 - auto
+		bool SetShareMode(int mode); // Set user sharing mode
 
-		bool GetMemoryShareMode(); // User selected memory share mode
-		bool SetMemoryShareMode(bool bMem = true); // Set memoryshare mode on or off
-		int  GetShareMode(); // User selected share mode : 0 -texture, 1 - memory, 2 - auto
-		bool SetShareMode(int mode); // Set sharing mode : 0-texture, 1-memory, 2-auto
-		bool GetMemoryShare(); // Get memory share compatibility mode (requires Auto share mode)
-		void SetMemoryShare(bool bMem = true); // Set memory share compatibility mode
-		bool GetMemoryShare(const char *sendername); // Get share mode of a sender (memory or texture)
+		bool GetMemoryShareMode(); // Get user selected memory share mode
+		bool SetMemoryShareMode(bool bMem = true); // Set user memoryshare mode
 		
+		
+		bool GetMemoryShare(); // Get memory share compatibility
+		void SetMemoryShare(bool bMem = true); // Set memory share compatibility
+		bool GetSenderMemoryShare(const char* sendername); // Get sender memory share compatibility
 
 		HWND GetRenderWindow(); // Render window handle retrieved in GLDXcompatible
 
@@ -164,11 +165,12 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 
 		int  GetNumAdapters(); // Get the number of graphics adapters in the system
 		bool GetAdapterName(int index, char* adaptername, int maxchars); // Get an adapter name
+		
 		bool SetAdapter(int index); // Set required graphics adapter for output
 		int  GetAdapter(); // Get the SpoutDirectX class adapter index
 		
-		// Adapter index in shared memory (0 default)
-		int  GetSenderAdapter(const char *sendername);
+		// Sender adapter index in shared memory (0 default)
+		int  GetSenderAdapter(const char* sendername);
 		bool SetSenderAdapter(const char* sendername);
 
 		// Path of the host that produced the sender in shared memory
@@ -302,7 +304,7 @@ protected:
 
 		// Utility
 		void trim(char* s);
-		bool OpenDeviceKey(const char* key, int maxsize, char *description, char *version);
+		bool OpenDeviceKey(const char* key, int maxsize, char* description, char* version);
 
 };
 
