@@ -39,3 +39,8 @@ add_custom_command(TARGET Tutorial07 POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
           ${CMAKE_CURRENT_SOURCE_DIR}/Tutorial07.fx
           "${CMAKE_CURRENT_BINARY_DIR}")
+
+add_custom_command(TARGET Tutorial07 POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          ${CMAKE_CURRENT_SOURCE_DIR}/seafloor.dds
+          "${CMAKE_CURRENT_BINARY_DIR}")
