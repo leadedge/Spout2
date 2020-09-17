@@ -1076,8 +1076,7 @@ bool spoutGLDXinterop::CreateOpenGL()
 			// 2000 (0x7D0) The pixel format is invalid.
 			// Caused by repeated call of  the SetPixelFormat function
 			char temp[128];
-			// TODO : check for warning with "I32" prefix for DWORD
-			sprintf_s(temp, "spoutGLDXinterop::CreateOpenGL - SetPixelFormat Error %I32d (%I32x)", dwError, dwError);
+			sprintf_s(temp, "spoutGLDXinterop::CreateOpenGL - SetPixelFormat Error %I32u (%I32x)", dwError, dwError);
 			SpoutLogError("%s", temp);
 			return false;
 		}
