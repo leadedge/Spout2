@@ -166,6 +166,9 @@
 //		09.09.20	- SetAdapter - reset and perform compatibility test
 //		15.09.20	- Remove SpoutMessageBox from OpenSpout()
 //					  Failure must be handled by the application
+//		17.09.20	- Change GetMemoryShare(const char* sendername) to
+//					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
+//					  Add GetSenderAdapter
 //
 // ================================================================
 /*
@@ -642,9 +645,9 @@ void Spout::SetMemoryShare(bool bMem)
 }
 
 //---------------------------------------------------------
-bool Spout::GetMemoryShare(const char *sendername)
+bool Spout::GetSenderMemoryShare(const char *sendername)
 {
-	return interop.GetMemoryShare(sendername);
+	return interop.GetSenderMemoryShare(sendername);
 }
 
 
@@ -1602,6 +1605,24 @@ void Spout::SetDX11format(DXGI_FORMAT textureformat)
 	interop.SetDX11format(textureformat);
 }
 
+// Get the number of graphics adapters in the system
+int Spout::GetNumAdapters()
+{
+	return interop.GetNumAdapters();
+}
+
+// Get an adapter name
+bool Spout::GetAdapterName(int index, char *adaptername, int maxchars)
+{
+	return interop.GetAdapterName(index, adaptername, maxchars);
+}
+
+// Get current adapter index
+int Spout::GetAdapter()
+{
+	return interop.GetAdapter();
+}
+
 // Set graphics adapter for Spout output
 bool Spout::SetAdapter(int index)
 {
@@ -1618,30 +1639,15 @@ bool Spout::SetAdapter(int index)
 	}
 	else {
 		SpoutLogNotice("Spout::SetAdapter(%d) failed", index);
-		// printf("Spout::SetAdapter(%d) failed\n", index);
 	}
-	
-	// printf("Spout::SetAdapter(%d) bMemory = %d, returning %d\n", index, bMemory, bRet);
 
 	return bRet;
 }
 
-// Get current adapter index
-int Spout::GetAdapter()
+// Get a sender adapter index
+int Spout::GetSenderAdapter(const char* sendername)
 {
-	return interop.GetAdapter();
-}
-
-// Get the number of graphics adapters in the system
-int Spout::GetNumAdapters()
-{
-	return interop.GetNumAdapters();
-}
-
-// Get an adapter name
-bool Spout::GetAdapterName(int index, char *adaptername, int maxchars)
-{
-	return interop.GetAdapterName(index, adaptername, maxchars);
+	return interop.GetSenderAdapter(sendername);
 }
 
 // Get the path of the host that produced the sender

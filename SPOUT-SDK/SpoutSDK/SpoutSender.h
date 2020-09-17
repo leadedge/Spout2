@@ -140,9 +140,9 @@ class SPOUT_DLLEXP SpoutSender {
 	bool SetMemoryShareMode(bool bMem = true);// Set memoryshare mode on or off
 	int  GetShareMode(); // User selected share mode : 0 -texture, 1 - memory, 2 - auto
 	bool SetShareMode(int mode); // Set sharing mode : 0-texture, 1-memory, 2-auto
-	bool GetMemoryShare(); // Get memory share compatibility mode (requires Auto share mode)
+	bool GetMemoryShare(); // Get memory share compatibility mode
 	void SetMemoryShare(bool bMem = true); // Set memory share compatibility mode
-	bool GetMemoryShare(const char *sendername); // Get share mode of a sender (memory or texture)
+	bool GetSenderMemoryShare(const char* sendername); // Get share mode of a sender (memory or texture)
 
 	// Get OpenGL pixel buffering setting
 	bool GetBufferMode();

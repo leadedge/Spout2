@@ -59,6 +59,9 @@
 //		06.07.20	- Add SetSenderName and private CheckSender
 //		14.07.20	- CheckSender add zero dimension check
 //		04.08.20	- Document header file functions 
+//		17.09.20	- Change GetMemoryShare(const char* sendername) to
+//					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
+//					  Add GetSenderAdapter
 //
 // ====================================================================================
 /*
@@ -359,12 +362,10 @@ void SpoutSender::SetMemoryShare(bool bMem)
 }
 
 //---------------------------------------------------------
-bool SpoutSender::GetMemoryShare(const char *sendername)
+bool SpoutSender::GetSenderMemoryShare(const char *sendername)
 {
-	return spout.GetMemoryShare(sendername);
+	return spout.GetSenderMemoryShare(sendername);
 }
-
-
 
 //---------------------------------------------------------
 void SpoutSender::SetBufferMode(bool bActive)

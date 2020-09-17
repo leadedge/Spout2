@@ -55,6 +55,9 @@
 //		26.04.20	- Reset the update flag in IsUpdated
 //		30.04.20	- Add ReceiveTexture()
 //		17.06.20	- Add GetSenderFormat()
+//		17.09.20	- Change GetMemoryShare(const char* sendername) to
+//					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
+//					  Add GetSenderAdapter
 //
 // ====================================================================================
 /*
@@ -528,11 +531,10 @@ void SpoutReceiver::SetMemoryShare(bool bMem)
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::GetMemoryShare(const char *sendername)
+bool SpoutReceiver::GetSenderMemoryShare(const char* sendername)
 {
-	return spout.GetMemoryShare(sendername);
+	return spout.GetSenderMemoryShare(sendername);
 }
-
 
 //---------------------------------------------------------
 bool SpoutReceiver::GetBufferMode()
@@ -569,6 +571,19 @@ void SpoutReceiver::SetDX11format(DXGI_FORMAT textureformat)
 {
 	spout.SetDX11format(textureformat);
 }
+
+//---------------------------------------------------------
+int SpoutReceiver::GetNumAdapters()
+{
+	return spout.GetNumAdapters();
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetAdapterName(int index, char* adaptername, int maxchars)
+{
+	return spout.GetAdapterName(index, adaptername, maxchars);
+}
+
 //---------------------------------------------------------
 int SpoutReceiver::GetAdapter()
 {
@@ -582,16 +597,9 @@ bool SpoutReceiver::SetAdapter(int index)
 }
 
 //---------------------------------------------------------
-int SpoutReceiver::GetNumAdapters()
+int SpoutReceiver::GetSenderAdapter(const char* sendername)
 {
-	return spout.GetNumAdapters();
-}
-
-//---------------------------------------------------------
-// Get an adapter name
-bool SpoutReceiver::GetAdapterName(int index, char* adaptername, int maxchars)
-{
-	return spout.GetAdapterName(index, adaptername, maxchars);
+	return spout.GetSenderAdapter(sendername);
 }
 
 //---------------------------------------------------------
