@@ -300,6 +300,9 @@
 					  Change GetMemoryShare(const char* sendername) to 
 					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
 					  char* argument consistency
+		18.09.20	- use %lu and %lx for all unsigned sprintf
+					  Change from Usage field to partnerID for sender adapter index for 2.006 compatibility
+					  Protect against null sendername in GetSenderAdapter and GetHostPath
 
 */
 
@@ -1074,9 +1077,9 @@ bool spoutGLDXinterop::CreateOpenGL()
 		if (!SetPixelFormat(m_hdc, iFormat, &pfd)) {
 			DWORD dwError = GetLastError();
 			// 2000 (0x7D0) The pixel format is invalid.
-			// Caused by repeated call of  the SetPixelFormat function
+			// Caused by repeated call of the SetPixelFormat function
 			char temp[128];
-			sprintf_s(temp, "spoutGLDXinterop::CreateOpenGL - SetPixelFormat Error %I32u (%I32x)", dwError, dwError);
+			sprintf_s(temp, "spoutGLDXinterop::CreateOpenGL - SetPixelFormat Error %lu (%lx)", dwError, dwError);
 			SpoutLogError("%s", temp);
 			return false;
 		}
@@ -1405,13 +1408,15 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 	m_TextureInfo.shareHandle = (unsigned __int32)m_dxShareHandle;
 #endif
 	// Additional fields
-	// DWORD usage; // originall reserved for texture usage (now is the sender adapter index)
-	m_TextureInfo.usage = (DWORD)GetAdapter();
+	// DWORD usage; // Texture usage (unused)
+	m_TextureInfo.usage = 0;
 	// wchar_t description[128]; // Wyhon compatible description
 	// 26.08.15 - set the executable path to the sender's shared info 
 	// (not documented and could be removed)
-	// unsigned __int32 partnerId; // Wyphon id of partner that shared it with us (unused)
-	m_TextureInfo.partnerId = 0;
+	// unsigned __int32 partnerId;
+	// Originall reserved for Wyphon id of partner that shared it with us
+	// Now used for the sender adapter index.
+	m_TextureInfo.partnerId = (unsigned __int32)GetAdapter();;
 
 	// Write host path and Adapter index to the sender shared memory
 	if (!bReceive) {
@@ -1716,7 +1721,7 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 
 	if (!hInteropObject) {
 		dwError = GetLastError();
-		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures - wglDXRegisterObjectNV :error (0x%x)\n", (unsigned int)dwError);
+		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures - wglDXRegisterObjectNV :error (0x%lx)\n", dwError);
 		switch (dwError) {
 			case ERROR_INVALID_HANDLE :
 				strcat_s(tmp, 128, "    No GL context is made current to the calling thread.");
@@ -3349,10 +3354,13 @@ int spoutGLDXinterop::GetAdapter()
 // Get sender adapter index in shared memory (0 default)
 int spoutGLDXinterop::GetSenderAdapter(const char* sendername)
 {
+	if (!sendername || !sendername[0])
+		return 0;
+
 	SharedTextureInfo info;
 	int n = 0;
 	if (senders.getSharedInfo(sendername, &info)) {
-		n = (int)info.usage; // Sender adapter index
+		n = (int)info.partnerId; // Sender adapter index
 	}
 	else {
 		// Return default 0 if the info cannot be accessed
@@ -3369,7 +3377,7 @@ bool spoutGLDXinterop::SetSenderAdapter(const char* sendername)
 		SpoutLogWarning("spoutGLDXinterop::SetAdapterIndex(%s) - could not get sender info", sendername);
 		return false;
 	}
-	info.usage = (DWORD)GetAdapter(); // Sender adapter index
+	info.partnerId = (unsigned __int32)GetAdapter(); // Sender adapter index
 	if (!senders.setSharedInfo(sendername, &info)) {
 		SpoutLogWarning("spoutGLDXinterop::SetAdapterIndex(%s) - could not set sender info", sendername);
 	}
@@ -3382,6 +3390,9 @@ bool spoutGLDXinterop::SetSenderAdapter(const char* sendername)
 // The description string could be used for other things in future
 bool spoutGLDXinterop::GetHostPath(const char* sendername, char* hostpath, int maxchars)
 {
+	if (!sendername || !sendername[0])
+		return false;
+
 	SharedTextureInfo info;
 	int n = 0;
 	if (!senders.getSharedInfo(sendername, &info)) {
@@ -3394,6 +3405,7 @@ bool spoutGLDXinterop::GetHostPath(const char* sendername, char* hostpath, int m
 	strcpy_s(hostpath, n, (char*)info.description);
 
 	return true;
+
 }
 
 // Set host executable path in shared memory
@@ -3462,7 +3474,7 @@ bool spoutGLDXinterop::GLerror() {
 void spoutGLDXinterop::PrintFBOstatus(GLenum status)
 {
 	char tmp[256];
-	sprintf_s(tmp, 256,"FBO status error %d (0x%x) - ", status, status);
+	sprintf_s(tmp, 256,"FBO status error %ld (0x%lx) - ", status, status);
 	if (status == GL_FRAMEBUFFER_UNSUPPORTED_EXT)
 		strcat_s(tmp, 256, "GL_FRAMEBUFFER_UNSUPPORTED_EXT");
 	else if (status == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT)
