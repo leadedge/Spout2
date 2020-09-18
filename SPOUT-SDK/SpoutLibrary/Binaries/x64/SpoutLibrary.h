@@ -303,9 +303,11 @@ struct SPOUTLIBRARY
 	// Adapter functions
 	virtual int  GetNumAdapters() = 0; // Get the number of graphics adapters in the system
 	virtual bool GetAdapterName(int index, char *adaptername, int maxchars) = 0; // Get an adapter name
-	virtual bool SetAdapter(int index = 0) = 0; // Set required graphics adapter for output
 	virtual int  GetAdapter() = 0; // Get the SpoutDirectX global adapter index
-
+	virtual bool SetAdapter(int index = 0) = 0; // Set required graphics adapter for output
+	virtual int  GetSenderAdapter(const char* sendername) = 0; // Get sender adapter index in shared memory (0 default)
+	virtual bool SetSenderAdapter(const char* sendername) = 0; // Set sender adapter index in shared memory
+	
 	// OpenGL
 	virtual bool CreateOpenGL() = 0;
 	virtual bool CloseOpenGL() = 0;
