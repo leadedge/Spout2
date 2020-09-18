@@ -57,6 +57,7 @@
 //					  Revise ReceiveImage due to problems if the staging texture remains mapped
 //					  SendImage do not release immediate context
 //					  Made all class objects public
+//		18.09.20	- Add GetSenderAdapter and SetSenderAdapter
 //
 // ====================================================================================
 /*
@@ -794,6 +795,39 @@ bool spoutDX::SetAdapter(int index)
 	SpoutLogError("spoutDX::SetAdapter(%d) failed", index);
 	spoutdx.SetAdapter(-1); // make sure globals are reset to default
 	return false;
+}
+
+// Get sender adapter index in shared memory (0 default)
+int spoutDX::GetSenderAdapter(const char* sendername)
+{
+	if (!sendername || !sendername[0])
+		return 0;
+
+	SharedTextureInfo info;
+	int n = 0;
+	if (spoutsender.getSharedInfo(sendername, &info)) {
+		n = (int)info.partnerId; // Sender adapter index
+	}
+	else {
+		// Return default 0 if the info cannot be accessed
+		SpoutLogWarning("spoutDX::GetSenderAdapter(%s) - could not get sender info", sendername);
+	}
+	return n;
+}
+
+// Set adapter index in shared memory (0 default)
+bool spoutDX::SetSenderAdapter(const char* sendername)
+{
+	SharedTextureInfo info;
+	if (!spoutsender.getSharedInfo(sendername, &info)) {
+		SpoutLogWarning("spoutDX::SetAdapterIndex(%s) - could not get sender info", sendername);
+		return false;
+	}
+	info.partnerId = (unsigned __int32)GetAdapter(); // Sender adapter index
+	if (!spoutsender.setSharedInfo(sendername, &info)) {
+		SpoutLogWarning("spoutDX::SetAdapterIndex(%s) - could not set sender info", sendername);
+	}
+	return true;
 }
 
 //

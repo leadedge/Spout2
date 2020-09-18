@@ -138,6 +138,8 @@ class SPOUT_DLLEXP spoutDX {
 	bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name
 	int  GetAdapter(); // Get the current adapter index
 	bool SetAdapter(int index = 0); // Set required graphics adapter for output
+	int  GetSenderAdapter(const char* sendername); // Get sender adapter index in shared memory (0 default)
+	bool SetSenderAdapter(const char* sendername); // Set sender adapter index in shared memory
 
 	// Sharing modes not supported
 	bool GetDX9();
