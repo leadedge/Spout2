@@ -145,7 +145,9 @@ class SPOUT_DLLEXP Spout {
 	bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name
 	int  GetAdapter(); // Get the SpoutDirectX global adapter index
 	bool SetAdapter(int index = 0); // Set required graphics adapter for output
-	int  GetSenderAdapter(const char* sendername); // Get a sender adapter index
+	int  GetSenderAdapter(const char* sendername); // Get sender adapter index in shared memory (0 default)
+	int  SetSenderAdapter(const char* sendername); // Set sender adapter index in shared memory
+
 
 	// General utilities
 	bool GetHostPath(const char *sendername, char *hostpath, int maxchars); // The path of the host that produced the sender

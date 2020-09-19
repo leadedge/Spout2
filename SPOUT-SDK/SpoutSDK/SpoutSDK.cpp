@@ -169,6 +169,7 @@
 //		17.09.20	- Change GetMemoryShare(const char* sendername) to
 //					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
 //					  Add GetSenderAdapter
+//		18.09.20	- Add SetSenderAdapter
 //
 // ================================================================
 /*
@@ -1626,6 +1627,8 @@ int Spout::GetAdapter()
 // Set graphics adapter for Spout output
 bool Spout::SetAdapter(int index)
 {
+	SpoutLogNotice("\nSpout::SetAdapter(%d)\n", index);
+
 	bool bRet = false;
 	if (interop.SetAdapter(index)) {
 		// Close interop
@@ -1638,7 +1641,7 @@ bool Spout::SetAdapter(int index)
 		bMemory = interop.GetMemoryShare();
 	}
 	else {
-		SpoutLogNotice("Spout::SetAdapter(%d) failed", index);
+		SpoutLogError("Spout::SetAdapter(%d) failed", index);
 	}
 
 	return bRet;
@@ -1646,6 +1649,12 @@ bool Spout::SetAdapter(int index)
 
 // Get a sender adapter index
 int Spout::GetSenderAdapter(const char* sendername)
+{
+	return interop.GetSenderAdapter(sendername);
+}
+
+// Set a sender adapter index
+int Spout::SetSenderAdapter(const char* sendername)
 {
 	return interop.GetSenderAdapter(sendername);
 }
