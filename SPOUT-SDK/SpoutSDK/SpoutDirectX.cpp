@@ -67,6 +67,10 @@
 //		15.09.20	- Changed all result !=S_OK and !=D3D_OK to FAILED macro for consistency
 //					  Correct type cast in CreateDX9device and GetAdapterName
 //		16.09.20	- ReleaseDX11Texture - removed log notice for no reference count
+//		19.09.20	- Add success notice for SetAdapter
+//					  Add DebugLog function
+//					  Set passed pointer to null in ReleaseDX11Texture
+//					  Clean up comments and logs throughtout
 //
 // ====================================================================================
 /*
@@ -137,7 +141,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	D3DCAPS9 d3dCaps;
 	unsigned int AdapterIndex = static_cast<unsigned int>(m_AdapterIndex);
 
-	// SpoutLogNotice("spoutDirectX::CreateDX9device - adapter = %d, hWnd = 0x%x", AdapterIndex, hWnd);
+	SpoutLogNotice("spoutDirectX::CreateDX9device - adapter = %d, hWnd = 0x%x", AdapterIndex, hWnd);
 
     ZeroMemory(&d3dpp, sizeof(d3dpp));
     d3dpp.Windowed		= true;						// windowed and not full screen
@@ -183,9 +187,11 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 								&pDevice);
 	
 	if (FAILED(res)) {
-		SpoutLogFatal("spoutDirectX::CreateDX9device - CreateDeviceEx returned error %d (%x)", res, res);
+		SpoutLogFatal("spoutDirectX::CreateDX9device - CreateDeviceEx returned error %lu (0x%lX)", res, res);
 		return NULL;
 	}
+
+	SpoutLogNotice("    device (0x%lX)", (intptr_t)pDevice);
 
 	return pDevice;
 
@@ -304,7 +310,7 @@ bool spoutDirectX::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFAC
 		}
 	}
 
-	SpoutLogError("spoutDirectX::WriteDX9surface(0x%x, 0x%x) failed", surface, dxTexture);
+	SpoutLogError("spoutDirectX::WriteDX9surface(0x%IX, 0x%IX) failed", (intptr_t)surface, (intptr_t)dxTexture);
 
 	return false;
 }
@@ -335,7 +341,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	UINT createDeviceFlags = 0;
 	IDXGIAdapter* pAdapterDX11 = m_pAdapterDX11;
 
-	SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (%d)", m_pAdapterDX11);
+	SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (0x%IX)", (intptr_t)m_pAdapterDX11);
 
 #if defined(_DEBUG)
 	// If the project is in a debug build, enable debugging via SDK Layers with this flag.
@@ -425,6 +431,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	}
 
 	// All OK - return the device pointer to the caller
+	SpoutLogNotice("    device (0x%IX)", (intptr_t)pd3dDevice);
 
 	return pd3dDevice;
 
@@ -546,7 +553,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 	*ppSharedTexture = pTexture;
 
-	SpoutLogNotice("    pTexture = 0x%Ix : dxShareHandle = 0x%x", pTexture, dxShareHandle);
+	SpoutLogNotice("    pTexture = 0x%IX : dxShareHandle = 0x%X", (intptr_t)pTexture, dxShareHandle);
 
 	return true;
 
@@ -604,6 +611,8 @@ bool spoutDirectX::SetAdapter(int index)
 	char adaptername[128];
 	IDXGIAdapter* pAdapter = nullptr;
 
+	SpoutLogNotice("spoutDirectX::SetAdapter(%d)", index);
+
 	// Reset to default
 	if (index == -1) {
 		index = 0;
@@ -611,21 +620,22 @@ bool spoutDirectX::SetAdapter(int index)
 	else {
 		// Is the requested adapter available
 		if (index > GetNumAdapters() - 1) {
-			SpoutLogError("spoutDirectX::SetAdapter(%d) - Index greater than number of adapters", index);
+			SpoutLogError("    Index greater than number of adapters", index);
 			return false;
 		}
 	}
 
 	// Must be able to get the name
 	if(!GetAdapterName(index, adaptername, 128)) {
-		SpoutLogError("spoutDirectX::SetAdapter(%d) - Incompatible adapter name", index);
+		SpoutLogError("    Incompatible adapter name", index);
 		return false;
 	}
 
-	// Get the global adapter pointer for DX11
+	// Get the global adapter pointer for DX11 CreateDevice to use
+	if (m_pAdapterDX11) m_pAdapterDX11->Release();
 	pAdapter = GetAdapterPointer(index);
 	if(pAdapter == nullptr) {
-		SpoutLogError("spoutDirectX::SetAdapter - Could not get pointer for adapter %d", index);
+		SpoutLogError("    Could not get pointer for adapter %d", index);
 		return false;
 	}
 
@@ -650,13 +660,14 @@ bool spoutDirectX::SetAdapter(int index)
 	// In case of remaining incompatibility with the selected adapter, test everything here
 
 	// For >= 2.005 check the directX sharing mode
+	SpoutLogError("    creating test device");
 	DWORD dwDX9 = 0;
 	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "DX9", &dwDX9);
 	if(dwDX9 == 1) {
 		// Try to create a DX9 object and device
 		IDirect3D9Ex* pD3D = CreateDX9object();
 		if(pD3D == NULL) {
-			SpoutLogError("spoutDirectX::SetAdapter(%d) - could not create DX9 object", index);
+			SpoutLogError("    could not create DX9 object", index);
 			pAdapter->Release();
 			// Reset to default adapter
 			m_AdapterIndex = 0; // DX9
@@ -664,8 +675,8 @@ bool spoutDirectX::SetAdapter(int index)
 			return false;
 		}
 		IDirect3DDevice9Ex* pDevice = CreateDX9device(pD3D, NULL);
-		if(pDevice == NULL) {
-			SpoutLogError("spoutDirectX::SetAdapter(%d) - could not create DX9 device", index);
+		if(!pDevice) {
+			SpoutLogError("    could not create DX9 device", index);
 			pD3D->Release();
 			pAdapter->Release();
 			m_AdapterIndex = 0;
@@ -679,8 +690,8 @@ bool spoutDirectX::SetAdapter(int index)
 	else {
 		// Try to create a DirectX 11 device
 		ID3D11Device* pd3dDevice = CreateDX11device();
-		if(pd3dDevice == NULL) {
-			SpoutLogError("spoutDirectX::SetAdapter(%d) - could not create DX11 device", index);
+		if(!pd3dDevice) {
+			SpoutLogError("    could not create DX11 device", index);
 			pAdapter->Release();
 			m_AdapterIndex = 0;
 			m_pAdapterDX11 = nullptr;
@@ -692,7 +703,7 @@ bool spoutDirectX::SetAdapter(int index)
 	}
 
 	// Selected adapter OK
-	SpoutLogNotice("spoutDirectX::SetAdapter(%d)", index);
+	SpoutLogNotice("    successfully set adapter", index);
 
 	return true;
 
@@ -855,7 +866,6 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 	return false;
 }
 
-// TODO - release pointer
 IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 {
 	// Enum Adapters first : multiple video cards
@@ -942,52 +952,24 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 		return 0;
 	}
 
-	SpoutLogNotice("spoutDirectX::ReleaseDX11Texture");
+	SpoutLogNotice("spoutDirectX::ReleaseDX11Texture(0x%IX)", pTexture);
 
 	unsigned long refcount = pTexture->Release();
+	pTexture = nullptr;
 
 	// Flush to put the release at the top of the queue
 	if(m_pImmediateContext)
 		m_pImmediateContext->Flush();
 
 	// The device will be live, so warn if refcount > 1
-	if (refcount > 1)
-		SpoutLogWarning("   refcount = %d", refcount);
+	if (refcount > 1) {
+		SpoutLogWarning("   refcount = %lu", refcount);
+		DebugLog(pd3dDevice, "spoutDirectX::ReleaseDX11Texture - refcount = %d\n", refcount);
+	}
 
 	// Note that if the texture is registered and linked to OpenGL using the 
 	// GL/DX interop, the interop must be unregistered or the texture is not
 	// released even though the reference count reported here does not increase.
-
-	// Output for debug build
-#ifdef _DEBUG
-	ID3D11Debug* DebugDevice = NULL;
-	if (pd3dDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&DebugDevice) == S_OK) {
-		ID3D11InfoQueue *d3dInfoQueue = nullptr;
-		if (SUCCEEDED(DebugDevice->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue))) {
-			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
-			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
-			D3D11_MESSAGE_ID hide[] =
-			{
-				D3D11_MESSAGE_ID_SETPRIVATEDATA_CHANGINGPARAMS,
-				// Add more message IDs here as needed
-			};
-
-			D3D11_INFO_QUEUE_FILTER filter;
-			memset(&filter, 0, sizeof(filter));
-			filter.DenyList.NumIDs = _countof(hide);
-			filter.DenyList.pIDList = hide;
-			d3dInfoQueue->AddStorageFilterEntries(&filter);
-		}
-
-		// Print live objects to the debug Output window
-		OutputDebugStringA("\nspoutDirectX::ReleaseDX11Texture\n");
-		DebugDevice->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
-		OutputDebugStringA("\n");
-
-		DebugDevice->Release();
-	}
-#endif
-
 
 	return refcount;
 }
@@ -997,6 +979,8 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 {
 	if (!pd3dDevice)
 		return 0;
+
+	SpoutLogNotice("spoutDirectX::ReleaseDX11Device (0x%X)", (intptr_t)pd3dDevice);
 
 	// Release the global context or there is an outstanding ref count
 	// when the device is released
@@ -1015,17 +999,21 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 		m_pImmediateContext->Release();
 		m_pImmediateContext = NULL;
 	}
+
+	// TODO : Release adapter pointer if there is one
+	// if (m_pAdapterDX11)
+		// m_pAdapterDX11->Release();
+
 	unsigned long refcount = pd3dDevice->Release();
-
-	// Device release warning
-	if (refcount > 0)
-		SpoutLogWarning("spoutDirectX::ReleaseDX11Device - refcount = %d", refcount);
-
 	pd3dDevice = NULL;
+
+	if (refcount > 0)
+		SpoutLogWarning("    refcount = %lu", refcount);
+
+	DebugLog(pd3dDevice, "spoutDirectX::ReleaseDX11Device - refcount = %d\n", refcount);
 
 	return refcount;
 }
-
 
 // 
 // For a DX11 sender :
@@ -1069,4 +1057,51 @@ void spoutDirectX::Wait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediat
 		while (S_OK != pImmediateContext->GetData(pQuery, NULL, 0, 0));
 		pQuery->Release();
 	}
+}
+
+
+void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
+{
+	char dlog[128];
+	va_list args;
+
+	// Construct the log
+	va_start(args, format);
+	vsprintf_s(dlog, 128, format, args);
+	va_end(args);
+
+	OutputDebugStringA("\n");
+	OutputDebugStringA(dlog);
+
+	// Output for debug build
+#ifdef _DEBUG
+	
+	if (!pd3dDevice)
+		return;
+
+	ID3D11Debug* DebugDevice = NULL;
+	if (pd3dDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&DebugDevice) == S_OK) {
+		ID3D11InfoQueue *d3dInfoQueue = nullptr;
+		if (SUCCEEDED(DebugDevice->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue))) {
+			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+			d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+			D3D11_MESSAGE_ID hide[] =
+			{
+				D3D11_MESSAGE_ID_SETPRIVATEDATA_CHANGINGPARAMS,
+				// Add more message IDs here as needed
+			};
+
+			D3D11_INFO_QUEUE_FILTER filter;
+			memset(&filter, 0, sizeof(filter));
+			filter.DenyList.NumIDs = _countof(hide);
+			filter.DenyList.pIDList = hide;
+			d3dInfoQueue->AddStorageFilterEntries(&filter);
+		}
+
+		// Print live objects to the debug Output window
+		DebugDevice->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+
+		DebugDevice->Release();
+	}
+#endif
 }

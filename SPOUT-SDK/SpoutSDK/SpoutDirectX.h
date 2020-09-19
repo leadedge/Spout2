@@ -86,10 +86,10 @@ class SPOUT_DLLEXP spoutDirectX {
 		int GetNumAdapters();
 		// Get an adapter name
 		bool GetAdapterName(int index, char *adaptername, int maxchars);
-		// Set required graphics adapter for output
-		bool SetAdapter(int index); 
 		// Get the current adapter index
 		int GetAdapter();
+		// Set required graphics adapter for output
+		bool SetAdapter(int index); 
 		// Get the current adapter description
 		bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
 		// Find the index of the NVIDIA adapter in a multi-adapter system
@@ -112,6 +112,7 @@ class SPOUT_DLLEXP spoutDirectX {
 
 	protected:
 
+		void DebugLog(ID3D11Device* pd3dDevice, const char* format, ...);
 		IDXGIAdapter* GetAdapterPointer(int index); // Get adapter pointer for DirectX 11
 		int						m_AdapterIndex; // Used for DX9
 		IDXGIAdapter*			m_pAdapterDX11;
