@@ -72,6 +72,10 @@ class SPOUT_DLLEXP spoutDX {
 	bool SendTexture(ID3D11Texture2D* pTexture);
 	// Send an image
 	bool SendImage(unsigned char * pData, unsigned int width, unsigned int height);
+	// Sender status
+	bool IsInitialized();
+	// Sender name
+	const char * GetName();
 	// Get width
 	unsigned int GetWidth();
 	// Get height
@@ -164,6 +168,7 @@ protected :
 	D3D11_MAPPED_SUBRESOURCE m_MappedSubResource;
 	HANDLE m_dxShareHandle;
 	DWORD m_dwFormat;
+	SharedTextureInfo m_SenderInfo;
 	char m_SenderNameSetup[256];
 	char m_SenderName[256];
 	unsigned int m_Width;
@@ -178,7 +183,7 @@ protected :
 	SHELLEXECUTEINFOA m_ShExecInfo;
 
 	bool ReceiveSenderData();
-	void CreateReceiver(const char * sendername, unsigned int width, unsigned int height);
+	void CreateReceiver(const char * sendername, unsigned int width, unsigned int height, DWORD dwFormat);
 	bool ReadRGBApixels(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
 	bool ReadRGBpixels (ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
 	bool CheckStagingTexture(unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
