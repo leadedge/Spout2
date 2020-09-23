@@ -62,6 +62,8 @@
 		03.09.20 - Add DisableSpoutLogFile() DisableLogs() and EnableLogs() 
 				   for more control over logging
 		09.09.20 - move _doLog outside anonymous namespace
+		23.09.20 - _doLog : always prevent multiple logs by comparing with the last
+				   instead of reserving for > warnings
 
 */
 #include "SpoutUtils.h"
@@ -597,6 +599,11 @@ namespace spoututils {
 			vsprintf_s(currentLog, 128, format, args);
 			logString = currentLog;
 
+			// Prevent multiple logs by comparing with the last
+			if (logString == LastSpoutLog)
+				return;
+			LastSpoutLog = logString; // update the last log
+
 			// Console logging
 			if (bEnableLog && bConsole) {
 				// For console output, allow multiple warnings
@@ -606,14 +613,6 @@ namespace spoututils {
 				}
 				vfprintf(out, format, args);
 				fprintf(out, "\n");
-			}
-
-			// Save the last log for warning or fatal
-			if (level >= SPOUT_LOG_WARNING) {
-				// Prevent multiple logs by comparing with the last
-				if (logString == LastSpoutLog)
-					return;
-				LastSpoutLog = logString; // update the last log
 			}
 
 			// File logging
