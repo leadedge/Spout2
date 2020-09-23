@@ -64,6 +64,8 @@
 //					  SendTexture - set the current adapter index after creating sender
 //					  Prevent sharing if the sender texture was created on a different adapter
 //					  Some protections in GetSenderAdapter
+//		23.09.20	- GetSenderAdapter : return -1 on failure. Remove logs due to repeats.
+//					  ReceiveSenderData() : catch exception for OpenDX11shareHandle failure
 //
 // ====================================================================================
 /*
@@ -801,10 +803,11 @@ bool spoutDX::SetAdapter(int index)
 }
 
 // Get sender adapter index in shared memory (0 default)
+// Return -1 if a valid index is not found
 int spoutDX::GetSenderAdapter(const char* sendername)
 {
 	if (!sendername || !sendername[0])
-		return 0;
+		return -1;
 
 	int senderadapter = 0;
 	SharedTextureInfo info;
@@ -814,21 +817,19 @@ int spoutDX::GetSenderAdapter(const char* sendername)
 		// The sender adapter index retrieved could be anything for < 2.007.
 		// Make sure it's in the range of adapters and has a name.
 		if (senderadapter < 0) {
-			// SpoutLogWarning("spoutDX::GetSenderAdapter(%s) - could not get index", sendername);
-			return 0;
+			return -1;
 		}
-		if (senderadapter > GetNumAdapters()) {
-			// SpoutLogWarning("spoutDX::GetSenderAdapter(%s) - index out of range", sendername);
-			return 0;
+		if (senderadapter > GetNumAdapters()-1) {
+			return -1;
 		}
 		if (!GetAdapterName(senderadapter, name, 64)) {
-			// SpoutLogWarning("spoutDX::GetSenderAdapter(%s) - no adapter name", sendername);
-			return 0;
+			return -1;
 		}
+		// Drop through
 	}
 	else {
-		// Return default 0 if the info cannot be accessed
-		// SpoutLogWarning("spoutDX::GetSenderAdapter(%s) - could not get sender info", sendername);
+		// The info cannot be accessed
+		return -1;
 	}
 
 	return senderadapter;
@@ -935,15 +936,28 @@ bool spoutDX::ReceiveSenderData()
 			ReleaseReceiver();
 
 			// Can't share textures between adapters
-			if (GetSenderAdapter(sendername) != GetAdapter()) {
+			int senderindex = GetSenderAdapter(sendername);
+
+			// If the sender does not have an adapter index in partnerID, the return value is -1
+			// If a valid value is returned, compare with the current adapter
+			if (senderindex >= 0 && senderindex != GetAdapter()) {
+				SpoutLogError("Sender adapter (%d) different to current (%d)", senderindex, GetAdapter());
 				return false;
 			}
 
-			// Get the sender's shared texture pointer from the new share handle
-			m_dxShareHandle = dxShareHandle;
-			if (!spoutdx.OpenDX11shareHandle(m_pd3dDevice, &m_pSharedTexture, m_dxShareHandle)) {
-				// Failed to get the sender's texture pointer
-				SpoutLogWarning("Failed to open the sender's share handle : %s (0xllX)", sendername, (size_t)m_dxShareHandle);
+			// If a sender adapter index was not found, it can still be different
+			try {
+				// Get the sender's shared texture pointer from the new share handle
+				m_dxShareHandle = dxShareHandle;
+				if (!spoutdx.OpenDX11shareHandle(m_pd3dDevice, &m_pSharedTexture, m_dxShareHandle)) {
+					// Failed to get the sender's texture pointer
+					// Error log is made by OpenDX11shareHandle
+					return false;
+				}
+			}
+			catch (...) {
+				// Catch any exception
+				SpoutLogError("Exception opening sender's share handle (%s)", sendername);
 				return false;
 			}
 
