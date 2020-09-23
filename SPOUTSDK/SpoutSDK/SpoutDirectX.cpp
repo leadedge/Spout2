@@ -73,6 +73,7 @@
 //					  Clean up comments and logs throughtout
 //		21.09.20	- Format specifiers for hex print
 //					  SetAdapter - corrected logs
+//		23.09.20	- Change warning logs to error in OpenDX11shareHandle
 //
 // ====================================================================================
 /*
@@ -345,10 +346,21 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 
 	SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (0x%llX)", (intptr_t)m_pAdapterDX11);
 
-#if defined(_DEBUG)
+	//
 	// If the project is in a debug build, enable debugging via SDK Layers with this flag.
+	// https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_create_device_flag
+	// To use this flag, you must have D3D11_1SDKLayers.dll installed or device creation fails.
+	// To resolve this you can install the Windows 10 SDK.
+	// 
+	// Due to this dependency problem, you have to manually remove the comments below to enable it.
+	// See also : void spoutDirectX::DebugLog
+	//
+
+/*
+#if defined(_DEBUG)
 	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
+*/
 
 	// GL/DX interop Spec
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
@@ -1067,6 +1079,7 @@ void spoutDirectX::Wait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediat
 
 void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 {
+	
 	char dlog[128];
 	va_list args;
 
@@ -1078,7 +1091,11 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 	OutputDebugStringA("\n");
 	OutputDebugStringA(dlog);
 
+	//
 	// Output for debug build
+	// See comments in : ID3D11Device* spoutDirectX::CreateDX11device()
+	//
+/*
 #ifdef _DEBUG
 	
 	if (!pd3dDevice)
@@ -1109,6 +1126,10 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 		DebugDevice->Release();
 	}
 #else
+*/
+
 	UNREFERENCED_PARAMETER(pd3dDevice);
-#endif
+
+// #endif
+
 }
