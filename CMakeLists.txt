@@ -23,10 +23,10 @@ endif()
 
 OPTION(SPOUT_BUILD_EXAMPLES "Build Spout examples" ON)
 
-add_subdirectory(SpoutSDK/SpoutSDK)
-add_subdirectory(SpoutSDK/SpoutDirectX/SpoutDX)
+add_subdirectory(SPOUTSDK/SpoutSDK)
+add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX)
 
 OPTION(SPOUT_BUILD_LIBRARY "Build Spout cross compiler library" ON)
 if(SPOUT_BUILD_LIBRARY)
-  add_subdirectory(SpoutSDK/SpoutLibrary/Source)
+  add_subdirectory(SPOUTSDK/SpoutLibrary/Source)
 endif()
