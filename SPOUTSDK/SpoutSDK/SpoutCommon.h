@@ -49,8 +49,8 @@
 #endif // _MSC_VERR
 
 // This definition enables legacy OpenGL rendering code
-// used for shared texture Draw functions
-// Disable for OpenGL 4 compliance
+// used for shared texture Draw functions in SpoutGLDXinterop.cpp
+// Disabled by default for OpenGL 4 compliance
 // #define legacyOpenGL
 
 // Common utility functions namespace

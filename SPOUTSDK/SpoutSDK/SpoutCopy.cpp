@@ -46,6 +46,7 @@
 	09.07.20 - Add rgba2rgb with source stride
 	07.09.20 - experimental SSE RGBA to RGB not working
 	19.09.20 - Removed experimental SSE RGBA to RGB function
+	23.09.20 - CheckSSE - initialize CPUInfo
 
 */
 #include "SpoutCopy.h"
@@ -273,7 +274,7 @@ void spoutCopy::CheckSSE()
 {
 	// An array of four integers that contains the information returned
 	// in EAX (0), EBX (1), ECX (2), and EDX (3) about supported features of the CPU.
-	int CPUInfo[4] = { -1 };
+	int CPUInfo[4] = { -1, -1, -1, -1 };
 
 	//-- Get number of valid info ids
 	__cpuid(CPUInfo, 0);
@@ -879,7 +880,7 @@ void spoutCopy::rgba2bgrResample(const void* source, void* dest,
 				pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
 			else
 				pixel = i * destWidth * 3 + j * 3;
-			nearestMatch = (int)(py*sourcePitch + px * 4);
+			nearestMatch = (unsigned int)(py*sourcePitch + px * 4);
 			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 0];
 			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
 			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 2];
