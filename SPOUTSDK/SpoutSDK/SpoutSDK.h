@@ -146,7 +146,7 @@ class SPOUT_DLLEXP Spout {
 	int  GetAdapter(); // Get the SpoutDirectX global adapter index
 	bool SetAdapter(int index = 0); // Set required graphics adapter for output
 	int  GetSenderAdapter(const char* sendername); // Get sender adapter index in shared memory (0 default)
-	int  SetSenderAdapter(const char* sendername); // Set sender adapter index in shared memory
+	bool SetSenderAdapter(const char* sendername); // Set sender adapter index in shared memory
 
 
 	// General utilities
@@ -214,7 +214,6 @@ class SPOUT_DLLEXP Spout {
 	unsigned int m_Height;
 
 	// Globals
-	char UserSenderName[256]; // used for the sender selection dialog
 	char g_SharedMemoryName[256]; //name for sender shared memory info
 	unsigned int g_Width; // width and height to check for changes
 	unsigned int g_Height;

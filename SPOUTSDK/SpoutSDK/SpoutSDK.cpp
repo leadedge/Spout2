@@ -170,6 +170,10 @@
 //					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
 //					  Add GetSenderAdapter
 //		18.09.20	- Add SetSenderAdapter
+//		22.09.20	- OpenReceiver sender/receiver GPU check
+//		23.09.20	- Corrected SetSenderAdapter
+//					  Logic corrections
+//		24.09.20	- Correction of SetSenderAdapter as bool not void
 //
 // ================================================================
 /*
@@ -297,13 +301,13 @@ bool Spout::UpdateSender(const char *sendername, unsigned int width, unsigned in
 		// For a name change, close the sender and set up again
 		if (strcmp(sendername, g_SharedMemoryName) != 0) {
 			SpoutLogNotice("Spout::UpdateSender - sender change");
-			SpoutLogNotice("    From [%s] (%dx%d)", g_SharedMemoryName, g_Width, g_Height);
-			SpoutLogNotice("    To   [%s] (%dx%d)", sendername, width, height);
+			SpoutLogNotice("    From [%s] (%ux%u)", g_SharedMemoryName, g_Width, g_Height);
+			SpoutLogNotice("    To   [%s] (%ux%u)", sendername, width, height);
 			ReleaseSender();
 			CreateSender(sendername, width, height, dwFormat);
 		}
 		else if (width != g_Width || height != g_Height) {
-			SpoutLogNotice("Spout::UpdateSender [%s] size change from (%dx%d) to (%dx%d)", sendername, g_Width, g_Height, width, height);
+			SpoutLogNotice("Spout::UpdateSender [%s] size change from (%ux%u) to (%ux%u)", sendername, g_Width, g_Height, width, height);
 			if (!bMemory) {
 				// For texture share mode, re-create the sender's directX shared texture
 				// with the new dimensions and update the sender info
@@ -402,16 +406,13 @@ bool Spout::SendImage(const unsigned char* pixels,
 {
 	GLenum glformat = glFormat;
 
+	// Dimensions should be the same as the sender
 	if (!pixels || !bInitialized || width == 0 || height == 0 || width != g_Width || height != g_Height)
 		return false;
 
 	// Only RGBA, BGRA, RGB, BGR supported
 	// GL_BGRA_EXT - 0x80E1
 	if (!(glformat == GL_RGBA || glFormat == 0x80E1 || glformat == GL_RGB || glFormat == 0x80E0))
-		return false;
-
-	// Dimensions should be the same as the sender
-	if (width != g_Width || height != g_Height)
 		return false;
 
 	// Check for BGRA support
@@ -670,8 +671,8 @@ void Spout::SetMaxSenders(int maxSenders)
 // Get the global sender name for this instance
 bool Spout::GetSpoutSenderName(char * sendername, int maxchars)
 {
-	if(g_SharedMemoryName && g_SharedMemoryName[0] > 0) {
-		strcpy_s(sendername, maxchars, g_SharedMemoryName);
+	if(sendername && g_SharedMemoryName[0] > 0) {
+		strcpy_s(sendername, (rsize_t)maxchars, g_SharedMemoryName);
 		return true;
 	}
 	else {
@@ -911,7 +912,7 @@ bool Spout::GetSender(int index, char* sendername, int sendernameMaxSize)
 			namestring = *iter; // the name string
 			strcpy_s(name, 256, namestring.c_str()); // the 256 byte name char array
 			if(i == index) {
-				strcpy_s(sendername, sendernameMaxSize, name); // the passed name char array
+				strcpy_s(sendername, (rsize_t)sendernameMaxSize, name); // the passed name char array
 				break;
 			}
 			i++;
@@ -1035,15 +1036,14 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	// printf("\nOpenReceiver %dx%d - handle 0x%p, format %d\n", width, height, sharehandle, dwFormat);
 	// printf("    bDXinitOK = %d, bMemory = %d\n", bDxInitOK, bMemory);
 
+	// LJ DEBUG
 	/*
-	// Relax this condition?
-	// TODO : 
-	//		test cross adapter texture sharing
-	//		test effect of using memory sharing
+	// Can't share textures between adapters.
 	// The receiver and sender must be running on the same GPU.
-	if (interop.GetAdapter() != interop.GetAdapterIndex(Sendername)) {
+	if (GetSenderAdapter(Sendername) != GetAdapter()) {
+		// GetSenderAdapter returns the adapter index that was set for the sender.
 		// GetAdapter() returns the adapter index that is set for the receiver.
-		// GetAdapterIndex returns the adapter index that was set for the sender.
+		// printf("\nOpenReceiver - sender adapter %d, current = %d\n", GetSenderAdapter(Sendername), GetAdapter());
 		return false;
 	}
 	*/
@@ -1070,7 +1070,7 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		}
 		else if (sharehandle > 0) {
 			// 2) If texture share compatible and the share handle is valid, disable memory share mode
-			SpoutLogNotice("Spout::OpenReceiver : valid sender share handle - switching to texture mode");
+			SpoutLogNotice("Spout::OpenReceiver : valid sender share handle");
 			bMemory = false;
 			interop.SetMemoryShare(false);
 			// Now texture share is used for read and write
@@ -1161,12 +1161,15 @@ bool Spout::InitSender(HWND hwnd, const char* theSendername,
 
 	// Only try DirectX if the memory mode flag has not been passed in
 	if (!bMemoryMode) {
+
+		printf("\ntexture share sender\n");
+
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
 		if (!interop.CreateInterop(hwnd, sendername, theWidth, theHeight, theFormat, false)) {  // False for a sender
-			// Switch to memoryshare on CreateInterop failure
-			SpoutLogWarning("Spout::InitSender - CreateInterop failed : switching to memoryshare");
-			bMemory = true; // Set memory mode
+			SpoutLogWarning("Spout::InitSender - CreateInterop failed");
+			bMemory = true;
 			interop.SetMemoryShare(true);
+			// ??? check
 		}
 		else {
 			SpoutLogNotice("Spout::InitSender - CreateInterop success");
@@ -1175,6 +1178,8 @@ bool Spout::InitSender(HWND hwnd, const char* theSendername,
 	
 	// Memoryshare mode set by user or failure
 	if(bMemoryMode || bMemory) {
+
+		printf("\nmemory share sender\n");
 
 		//
 		// Texture creation patch removed for > Spout 2.006
@@ -1232,13 +1237,17 @@ bool Spout::InitReceiver(HWND hwnd, char* sendername, unsigned int width, unsign
 	// OpenSpout() has performed a compatibility test and set up the sharing mode to be used.
 	// Only try dx if the memory mode flag is not set and sharehandle is not NULL
 	if(!bMemory && hSharehandle) {
+
+		printf("\ntexture share receiver\n");
+
 		// Initialize the receiver interop. 
 		// This will create globals for texture sharing local to the interop class
 		if (!interop.CreateInterop(hwnd, sendername, width, height, dwFormat, true)) { // true meaning receiver
-			// Switch to memoryshare on failure
-			SpoutLogWarning("Spout::InitReceiver - CreateInterop failed : switching to memoryshare");
-			bMemory = true;
-			interop.SetMemoryShare(true);
+			SpoutLogWarning("Spout::InitReceiver - CreateInterop failed");
+			// ??? check 
+			// bMemory = true;
+			// interop.SetMemoryShare(true);
+			// ??? check interop.SetMemoryShare(true);
 		}
 	}
 
@@ -1537,9 +1546,9 @@ bool Spout::OpenSpout()
 
 	printf("\n"); // This is the start, so make a new line in the log
 #ifdef _M_X64
-	SpoutLogNotice("Spout::OpenSpout - 64bit 2.007 - this 0x%x", this);
+	SpoutLogNotice("Spout::OpenSpout - 64bit 2.007 - this 0x%llX", (size_t)this);
 #else
-	SpoutLogNotice("Spout::OpenSpout - 32bit 2.007 - this 0x%x", this);
+	SpoutLogNotice("Spout::OpenSpout - 32bit 2.007 - this 0x%X", (size_t)this);
 #endif
 
 	//
@@ -1627,9 +1636,7 @@ int Spout::GetAdapter()
 // Set graphics adapter for Spout output
 bool Spout::SetAdapter(int index)
 {
-	SpoutLogNotice("\nSpout::SetAdapter(%d)\n", index);
-
-	bool bRet = false;
+	bool bRet = false; // COmpatibility test result
 	if (interop.SetAdapter(index)) {
 		// Close interop
 		interop.CleanupInterop();
@@ -1640,10 +1647,6 @@ bool Spout::SetAdapter(int index)
 		// Check for memory/texture share after compatibility text
 		bMemory = interop.GetMemoryShare();
 	}
-	else {
-		SpoutLogError("Spout::SetAdapter(%d) failed", index);
-	}
-
 	return bRet;
 }
 
@@ -1654,9 +1657,9 @@ int Spout::GetSenderAdapter(const char* sendername)
 }
 
 // Set a sender adapter index
-int Spout::SetSenderAdapter(const char* sendername)
+bool Spout::SetSenderAdapter(const char* sendername)
 {
-	return interop.GetSenderAdapter(sendername);
+	return interop.SetSenderAdapter(sendername);
 }
 
 // Get the path of the host that produced the sender
