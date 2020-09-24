@@ -1,4 +1,5 @@
 ﻿//
+//
 //		SpoutDX
 //
 //		Send a DirectX11 shared texture
@@ -66,6 +67,7 @@
 //					  Some protections in GetSenderAdapter
 //		23.09.20	- GetSenderAdapter : return -1 on failure. Remove logs due to repeats.
 //					  ReceiveSenderData() : catch exception for OpenDX11shareHandle failure
+//					  Initialize m_SenderInfo and m_ShExecInfo in constructor
 //
 // ====================================================================================
 /*
@@ -114,6 +116,9 @@ spoutDX::spoutDX()
 	m_bSpoutPanelOpened = false;
 	m_bSpoutPanelActive = false;
 	m_bClassDevice = false;
+	ZeroMemory(&m_SenderInfo, sizeof(SharedTextureInfo));
+	ZeroMemory(&m_ShExecInfo, sizeof(m_ShExecInfo));
+
 }
 
 spoutDX::~spoutDX()
@@ -1105,8 +1110,7 @@ bool spoutDX::CheckStagingTexture(unsigned int width, unsigned int height, DWORD
 			return true;
 		}
 	}
-
-	if (!m_pStagingTexture) {
+	else {
 		if (CreateDX11StagingTexture(width, height, (DXGI_FORMAT)dwFormat, &m_pStagingTexture)) {
 			return true;
 		}
@@ -1146,7 +1150,7 @@ bool spoutDX::CreateDX11StagingTexture(unsigned int width, unsigned int height,	
 	if (res != S_OK) {
 		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
 		char tmp[256];
-		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11StagingTexture ERROR : [0x%x] : ", res);
+		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11StagingTexture ERROR : [0x%lx] : ", res);
 		switch (res) {
 		case D3DERR_INVALIDCALL:
 			strcat_s(tmp, 256, "D3DERR_INVALIDCALL");
