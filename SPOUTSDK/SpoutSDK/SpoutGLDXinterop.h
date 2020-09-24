@@ -130,7 +130,6 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool m_bUseDX9; // Use DX11 (default) or DX9
 		bool m_bUseGLDX; // Use GPU texture processing
 		bool m_bUseMemory; // Use memoryshare
-		bool m_bUseAuto; // Use dynamic switch between texture/memory share modes
 
 		bool UseDX9(bool bDX9); // Includes DX11 compatibility check
 		bool isDX9(); // Test for DX11 in case it failed to initialize
