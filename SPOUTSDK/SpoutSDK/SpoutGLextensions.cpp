@@ -20,6 +20,8 @@
 //			23.11.18	- Fix test for wglDXCloseDeviceNV in loadInteropExtensions
 //			14.09.20	- Add legacyOpenGL define test in "isExtensionSupported" to avoid glGetString
 //						  Thanks to Alexandre Buge (https://github.com/Qlex42) for the notice and fix
+//			23.09.20	- Correct isExtensionSupported
+//						  Include SpoutCommon.h for legacyOpenGL
 //
 
 	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
@@ -511,12 +513,9 @@ bool isExtensionSupported(const char *extension)
 	if(strchr(extension, ' '))
 		return false;
 
-	const char * extensionsstr = nullptr;
-
 // glGetString can cause problems for core OpenGL context
 #ifdef legacyOpenGL
-	extensionsstr = (const char *)glGetString(GL_EXTENSIONS);
-#endif
+	const char * extensionsstr = (const char *)glGetString(GL_EXTENSIONS);
 	if (extensionsstr) {
 		std::string extensions = extensionsstr;
 		std::size_t found = extensions.find(extension);
@@ -527,43 +526,43 @@ bool isExtensionSupported(const char *extension)
 		SpoutLogNotice("isExtensionSupported : extension [%s] not found", extension);
 		return false;
 	}
-	else {
-		//
-		// glGetstring not supported
-		// for a core GL context
-		//
-		// Code adapted from : https://bitbucket.org/Coin3D/coin/issues/54/support-for-opengl-3x-specifically
-		// Also : http://www.opengl.org/resources/features/OGLextensions/
-		//
-		typedef GLubyte* (APIENTRY * COIN_PFNGLGETSTRINGIPROC)(GLenum enm, GLuint idx);
-		COIN_PFNGLGETSTRINGIPROC glGetStringi = 0;
-		glGetStringi = (COIN_PFNGLGETSTRINGIPROC)wglGetProcAddress("glGetStringi");
-		if(glGetStringi != NULL) {
-			glGetIntegerv(GL_NUM_EXTENSIONS, &n);
-			if(n > 0) {
-				const char * exc = nullptr;
-				for (i = 0; i < n; i++) {
-					exc = (const char *)glGetStringi(GL_EXTENSIONS, i);
-					if(exc) {
-						if(strcmp(exc, extension) == 0)
-							break;
-					}
+#else
+	//
+	// glGetstring not supported
+	// for a core GL context
+	//
+	// Code adapted from : https://bitbucket.org/Coin3D/coin/issues/54/support-for-opengl-3x-specifically
+	// Also : http://www.opengl.org/resources/features/OGLextensions/
+	//
+	typedef GLubyte* (APIENTRY * COIN_PFNGLGETSTRINGIPROC)(GLenum enm, GLuint idx);
+	COIN_PFNGLGETSTRINGIPROC glGetStringi = 0;
+	glGetStringi = (COIN_PFNGLGETSTRINGIPROC)wglGetProcAddress("glGetStringi");
+	if(glGetStringi != NULL) {
+		glGetIntegerv(GL_NUM_EXTENSIONS, &n);
+		if(n > 0) {
+			const char * exc = nullptr;
+			for (i = 0; i < n; i++) {
+				exc = (const char *)glGetStringi(GL_EXTENSIONS, (GLuint)i);
+				if(exc) {
+					if(strcmp(exc, extension) == 0)
+						break;
 				}
-				if(exc && i < n) {
-					SpoutLogNotice("isExtensionSupported : extension [%s] found", extension);
-					return true;
-				}
-				SpoutLogNotice("isExtensionSupported : extension [%s] not found", extension);
-				return false;
 			}
-			else {
-				SpoutLogWarning("isExtensionSupported : glGetIntegerv(GL_NUM_EXTENSIONS) did not return a value");
+			if(exc && i < n) {
+				SpoutLogNotice("isExtensionSupported : extension [%s] found", extension);
+				return true;
 			}
+			SpoutLogNotice("isExtensionSupported : extension [%s] not found", extension);
+			return false;
 		}
 		else {
-			SpoutLogWarning("isExtensionSupported : glGetStringi not found");
+			SpoutLogWarning("isExtensionSupported : glGetIntegerv(GL_NUM_EXTENSIONS) did not return a value");
 		}
-	} 
+	}
+	else {
+		SpoutLogWarning("isExtensionSupported : glGetStringi not found");
+	}
+#endif
 
 	SpoutLogNotice("isExtensionSupported : unable to find extension [%s]", extension);
 
