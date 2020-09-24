@@ -146,7 +146,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	D3DCAPS9 d3dCaps;
 	unsigned int AdapterIndex = static_cast<unsigned int>(m_AdapterIndex);
 
-	SpoutLogNotice("spoutDirectX::CreateDX9device - adapter = %u, hWnd = 0x%8.8llX", AdapterIndex, (ULONG)hWnd);
+	SpoutLogNotice("spoutDirectX::CreateDX9device - adapter = %u, hWnd = 0x%8.8llX", AdapterIndex, (ULONGLONG)hWnd);
 
     ZeroMemory(&d3dpp, sizeof(d3dpp));
     d3dpp.Windowed		= true;						// windowed and not full screen
