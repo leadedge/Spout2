@@ -137,6 +137,11 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool getSharedInfo (const char* sendername, SharedTextureInfo* info);
 		// Generic sender map info write
 		bool setSharedInfo (const char* sendername, SharedTextureInfo* info);
+		// Get partnerID field
+		int  GetPartnerID(const char* sendername);
+		// Set partnerID field
+		bool SetPartnerID(const char* sendername, int index);
+
 
 		//
 		// Functions to maintain the active sender
