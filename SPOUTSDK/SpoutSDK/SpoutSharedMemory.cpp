@@ -80,7 +80,7 @@ SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 									NULL,
 									PAGE_READWRITE,
 									0,
-									size,
+									(DWORD)size,
 									(LPCSTR)name);
 
 	if (m_hMap == NULL)	{
@@ -99,7 +99,7 @@ SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 	}
 	else {
 		if (err != 0) {
-			SpoutLogError("SpoutSharedMemory::Create - Error = %ld (0x%x)", err, err);
+			SpoutLogError("SpoutSharedMemory::Create - Error = %lu (0x%8lX)", err, err);
 		}
 	}
 
@@ -244,7 +244,7 @@ void SpoutSharedMemory::Unlock()
 void SpoutSharedMemory::Debug()
 {
 	if (m_pName) {
-		SpoutLogNotice("SpoutSharedMemory::Debug : (%s) m_hMap = [%x], m_pBuffer = [%x]", m_pName, m_hMap, m_pBuffer);
+		SpoutLogNotice("SpoutSharedMemory::Debug : (%s) m_hMap = [0x%8.8llX], m_pBuffer = [0x%8.8llX]", m_pName, (ULONGLONG)m_hMap, m_pBuffer);
 	}
 	else {
 		SpoutLogNotice("SpoutSharedMemory::Debug : Shared Memory Map is not open\n");
