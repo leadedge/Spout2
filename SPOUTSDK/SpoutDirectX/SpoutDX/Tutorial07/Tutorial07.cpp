@@ -110,8 +110,9 @@ void Render();
 // SPOUT
 spoutDX receiver;
 ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
-// The texture is created after connecting to a sender
+// (The texture is created after connecting to a sender)
 ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view of the texture
+// Functions for selecting graphics adapter
 void ResetDevice();
 void SelectAdapter();
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
@@ -135,8 +136,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// Optionally enable Spout logging
 	// OpenSpoutConsole(); // Console only for debugging
-	EnableSpoutLog(); // Log to console
-	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
+	// EnableSpoutLog(); // Log to console
+	EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
 	// Optionally set the name of the sender to receive from
@@ -205,9 +206,7 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
     wcex.hIcon = LoadIcon( hInstance, ( LPCTSTR )IDI_TUTORIAL1 );
     wcex.hCursor = LoadCursor( nullptr, IDC_ARROW );
     wcex.hbrBackground = ( HBRUSH )( COLOR_WINDOW + 1 );
-	// SPOUT - add a menu
-	// wcex.lpszMenuName = nullptr;
-	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_TUTORIAL1);
+	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_TUTORIAL1); // add a menu
     wcex.lpszClassName = L"TutorialWindowClass";
     wcex.hIconSm = LoadIcon( wcex.hInstance, ( LPCTSTR )IDI_TUTORIAL1 );
     if( !RegisterClassEx( &wcex ) )
@@ -216,19 +215,14 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
     // Create window
     g_hInst = hInstance;
     RECT rc = { 0, 0, 640, 360 };
-    // AdjustWindowRect( &rc, WS_OVERLAPPEDWINDOW, FALSE );
 	AdjustWindowRect(&rc, WS_CAPTION | WS_SYSMENU, TRUE); // Resize for the menu
     g_hWnd = CreateWindow( L"TutorialWindowClass", 
 						   L"Direct3D 11 Tutorial 7 - Spout receiver",
-                           /*
 						   WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-                           CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance,
-                           nullptr );
-						   */
-							// SPOUT - enable resize and maximize
-							WS_OVERLAPPEDWINDOW,
-							CW_USEDEFAULT, CW_USEDEFAULT,
-							rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance, nullptr);
+                           CW_USEDEFAULT, CW_USEDEFAULT, 
+						   rc.right - rc.left, rc.bottom - rc.top,
+						   nullptr, nullptr, hInstance, nullptr );
+
     if( !g_hWnd )
         return E_FAIL;
 
@@ -303,7 +297,8 @@ HRESULT InitDevice()
     UINT width = rc.right - rc.left;
     UINT height = rc.bottom - rc.top;
 
-	// SPOUT graphics adapter testing
+	// SPOUT 
+	// For graphics adapter selection - see SelectAdapter()
 	// Create a device with the selected adapter
 	g_pd3dDevice = receiver.spoutdx.CreateDX11device();
 	g_pImmediateContext = receiver.spoutdx.GetImmediateContext();
@@ -727,7 +722,7 @@ void ResetDevice()
 	receiver.ReleaseReceiver();
 	receiver.CleanupDX11();
 	CleanupDevice();
-	// Create device and objects
+	// Create device and objects again
 	InitDevice();
 	// SpoutDX will now use the new device
 	receiver.OpenDirectX11(g_pd3dDevice);
@@ -793,6 +788,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 //--------------------------------------------------------------------------------------
 void Render()
 {
+
     // Update our time
     static float t = 0.0f;
     if( g_driverType == D3D_DRIVER_TYPE_REFERENCE )
@@ -927,6 +923,15 @@ void Render()
     // Present our back buffer to our front buffer
     //
     g_pSwapChain->Present( 0, 0 );
+
+	//
+	// SPOUT - fps control
+	//
+	// Hold a target frame rate - e.g. 60 or 30fps
+	// This is not necessary if the application already has
+	// fps control but in this example rendering is done
+	// during idle time and render rate can be extremely high.
+	receiver.HoldFps(60);
 
 }
 

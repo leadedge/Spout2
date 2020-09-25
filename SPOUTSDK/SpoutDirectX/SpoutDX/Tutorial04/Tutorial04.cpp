@@ -116,8 +116,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT
 	// Optionally enable logging to catch Spout warnings and errors
 	// OpenSpoutConsole(); // Console only for debugging
-	EnableSpoutLog(); // Log to console
-	// EnableSpoutLogFile("Tutorial04.log); // Log to file
+	// EnableSpoutLog(); // Log to console
+	EnableSpoutLogFile("Tutorial04.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
@@ -181,9 +181,7 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
     wcex.hIcon = LoadIcon( hInstance, ( LPCTSTR )IDI_TUTORIAL1 );
     wcex.hCursor = LoadCursor( nullptr, IDC_ARROW );
     wcex.hbrBackground = ( HBRUSH )( COLOR_WINDOW + 1 );
-    // SPOUT - add a menu
-	// wcex.lpszMenuName = nullptr;
-	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_TUTORIAL1);
+	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_TUTORIAL1); // add a menu
     wcex.lpszClassName = L"TutorialWindowClass";
     wcex.hIconSm = LoadIcon( wcex.hInstance, ( LPCTSTR )IDI_TUTORIAL1 );
     if( !RegisterClassEx( &wcex ) )
@@ -197,13 +195,6 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
 	AdjustWindowRect(&rc, WS_CAPTION | WS_SYSMENU, TRUE); // Resize for the menu
     g_hWnd = CreateWindow(	L"TutorialWindowClass",
 							L"Direct3D 11 Tutorial 4: - Spout sender",
-							/*
-							WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-							CW_USEDEFAULT, CW_USEDEFAULT, 
-							rc.right - rc.left,
-							rc.bottom - rc.top,
-							nullptr, nullptr, hInstance, nullptr );
-							*/
 							// SPOUT - enable resize and maximize to demonstrate sender resizing
 							WS_OVERLAPPEDWINDOW,
 							CW_USEDEFAULT, CW_USEDEFAULT,
