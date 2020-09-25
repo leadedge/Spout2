@@ -58,6 +58,7 @@
 //		17.09.20	- Change GetMemoryShare(const char* sendername) to
 //					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
 //					  Add GetSenderAdapter
+//		25.09.20	- Remove GetSenderAdapter - not reliable 
 //
 // ====================================================================================
 /*
@@ -200,6 +201,7 @@ bool SpoutReceiver::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool 
 		unsigned int height = m_Height;
 		// Receive a shared texture but don't read it into the user texture yet
 		if (ReceiveTexture(name, width, height)) {
+
 			// Test for sender name or size change
 			if (width != m_Width || height != m_Height || strcmp(name, m_SenderName) != 0) {
 				// Update name
@@ -594,12 +596,6 @@ int SpoutReceiver::GetAdapter()
 bool SpoutReceiver::SetAdapter(int index)
 {
 	return spout.SetAdapter(index);
-}
-
-//---------------------------------------------------------
-int SpoutReceiver::GetSenderAdapter(const char* sendername)
-{
-	return spout.GetSenderAdapter(sendername);
 }
 
 //---------------------------------------------------------

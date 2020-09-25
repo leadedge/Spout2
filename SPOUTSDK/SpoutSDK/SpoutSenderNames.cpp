@@ -57,6 +57,8 @@
 	21.07.20 - Change default max senders from 256 to 64
 	28.08.20 - Correct in SpoutSettings
 	24.09.20 - Add GetPartnerID and SetPartnerID
+			 - Some testing of print format for HANDLE 32/64 bit
+	25.09.20 - Remove GetPartnerID and SetPartnerID - not reliable
 
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -609,7 +611,7 @@ bool spoutSenderNames::FindActiveSender(char sendername[SpoutMaxSenderNameLen], 
 bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
 	SpoutLogNotice("spoutSenderNames::CreateSender");
-	SpoutLogNotice("    [%s] %dx%d, sharehandle = 0x%8.8llX, format = %lu", sendername, width, height, (ULONGLONG)hSharehandle, dwFormat);
+	SpoutLogNotice("    [%s] %dx%d, sharehandle = 0x%8.8X, format = %lu", sendername, width, height, (ULONGLONG)hSharehandle, dwFormat);
 
 	// Register the sender name
 	// The function is ignored if the sender already exists
@@ -963,44 +965,6 @@ bool spoutSenderNames::setSharedInfo(const char* sharedMemoryName, SharedTexture
 
 } // end getSharedInfo
 
-
-// Get patrnerID field shared memory (0 default)
-int spoutSenderNames::GetPartnerID(const char* sendername)
-{
-	if (!sendername || !sendername[0])
-		return 0;
-
-	int partner = 0;
-	SharedTextureInfo info;
-	if (getSharedInfo(sendername, &info)) {
-		partner = (int)info.partnerId; // Used for sender adapter index
-		// The index retrieved could be anything for < 2.007.
-		// The application should make sure it's useful.
-	}
-	else {
-		// Return default 0 if the info cannot be accessed
-		SpoutLogWarning("spoutSenderNames::GetPartnerID(%s) - could not get sender info", sendername);
-	}
-
-	return partner;
-}
-
-bool spoutSenderNames::SetPartnerID(const char* sendername, int index)
-{
-	if (!sendername || !sendername[0])
-		return false;
-
-	SharedTextureInfo info;
-	if (!getSharedInfo(sendername, &info)) {
-		SpoutLogWarning("spoutSenderNames::SetPartnerID(%s) - could not get sender info", sendername);
-		return false;
-	}
-	info.partnerId = (unsigned __int32)index;
-	if (!setSharedInfo(sendername, &info)) {
-		SpoutLogWarning("spoutSenderNames::SetPartnerID(%s) - could not set sender info", sendername);
-	}
-	return true;
-}
 
 //---------------------------------------------------------
 bool spoutSenderNames::SenderDebug(const char *Sendername, int size)

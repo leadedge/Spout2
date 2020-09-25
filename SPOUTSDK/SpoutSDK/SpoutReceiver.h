@@ -185,8 +185,6 @@ class SPOUT_DLLEXP SpoutReceiver {
 	int  GetAdapter();
 	// Set required graphics adapter for output
 	bool SetAdapter(int index = 0);
-	// Get a sender adapter index
-	int  GetSenderAdapter(const char* sendername);
 	// Get maximum senders allowed
 	int  GetMaxSenders();
 	// Set maximum senders allowed

@@ -174,6 +174,7 @@
 //		23.09.20	- Corrected SetSenderAdapter
 //					  Logic corrections
 //		24.09.20	- Correction of SetSenderAdapter as bool not void
+//		25.09.20	- Remove GetSenderAdapter/SetSenderAdapter - not reliable
 //
 // ================================================================
 /*
@@ -1036,18 +1037,6 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	// printf("\nOpenReceiver %dx%d - handle 0x%p, format %d\n", width, height, sharehandle, dwFormat);
 	// printf("    bDXinitOK = %d, bMemory = %d\n", bDxInitOK, bMemory);
 
-	// LJ DEBUG
-	/*
-	// Can't share textures between adapters.
-	// The receiver and sender must be running on the same GPU.
-	if (GetSenderAdapter(Sendername) != GetAdapter()) {
-		// GetSenderAdapter returns the adapter index that was set for the sender.
-		// GetAdapter() returns the adapter index that is set for the receiver.
-		// printf("\nOpenReceiver - sender adapter %d, current = %d\n", GetSenderAdapter(Sendername), GetAdapter());
-		return false;
-	}
-	*/
-
 	//
 	// Dynamic switch between memory and texture share
 	//
@@ -1162,14 +1151,12 @@ bool Spout::InitSender(HWND hwnd, const char* theSendername,
 	// Only try DirectX if the memory mode flag has not been passed in
 	if (!bMemoryMode) {
 
-		printf("\ntexture share sender\n");
-
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
 		if (!interop.CreateInterop(hwnd, sendername, theWidth, theHeight, theFormat, false)) {  // False for a sender
 			SpoutLogWarning("Spout::InitSender - CreateInterop failed");
 			bMemory = true;
 			interop.SetMemoryShare(true);
-			// ??? check
+			// TODO : check
 		}
 		else {
 			SpoutLogNotice("Spout::InitSender - CreateInterop success");
@@ -1178,8 +1165,6 @@ bool Spout::InitSender(HWND hwnd, const char* theSendername,
 	
 	// Memoryshare mode set by user or failure
 	if(bMemoryMode || bMemory) {
-
-		printf("\nmemory share sender\n");
 
 		//
 		// Texture creation patch removed for > Spout 2.006
@@ -1196,9 +1181,8 @@ bool Spout::InitSender(HWND hwnd, const char* theSendername,
 			return false;
 		}
 
-		// Write host path and Adapter index to the sender shared memory
+		// Write host path to the sender shared memory
 		interop.SetHostPath(sendername);
-		interop.SetSenderAdapter(sendername);
 
 		if (!interop.memoryshare.CreateSenderMemory(sendername, theWidth, theHeight)) {
 			SpoutLogFatal("Spout::InitSender - Could not create sender shared memory");
@@ -1648,18 +1632,6 @@ bool Spout::SetAdapter(int index)
 		bMemory = interop.GetMemoryShare();
 	}
 	return bRet;
-}
-
-// Get a sender adapter index
-int Spout::GetSenderAdapter(const char* sendername)
-{
-	return interop.GetSenderAdapter(sendername);
-}
-
-// Set a sender adapter index
-bool Spout::SetSenderAdapter(const char* sendername)
-{
-	return interop.SetSenderAdapter(sendername);
 }
 
 // Get the path of the host that produced the sender

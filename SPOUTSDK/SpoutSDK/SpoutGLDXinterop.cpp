@@ -311,6 +311,7 @@
 					  Numerous cast and log comment changes
 		24.09.20	- Change all pointer "= NULL to "= nullptr"
 					  Use SpoutSenderNames GetPartnerID and SetPartnerID to get/set adapter index
+		25.09.20	- Remove GetSenderAdapter/SetSenderAdapter - not reliable
 
 */
 
@@ -1405,10 +1406,9 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 	// Now used for the sender adapter index.
 	m_TextureInfo.partnerId = (unsigned __int32)GetAdapter();;
 
-	// Write host path and Adapter index to the sender shared memory
+	// Write host path to the sender shared memory
 	if (!bReceive) {
 		SetHostPath(sendername);
-		SetSenderAdapter(sendername);
 	}
 
 	// Initialize a texture transfer sync mutex either sender or receiver can do this.
@@ -3317,18 +3317,6 @@ bool spoutGLDXinterop::SetAdapter(int index)
 int spoutGLDXinterop::GetAdapter() 
 {
 	return spoutdx.GetAdapter();
-}
-
-// Get sender adapter index in shared memory (0 default)
-int spoutGLDXinterop::GetSenderAdapter(const char* sendername)
-{
-	return senders.GetPartnerID(sendername);
-}
-
-// Set adapter index in shared memory (0 default)
-bool spoutGLDXinterop::SetSenderAdapter(const char* sendername)
-{
-	return senders.SetPartnerID(sendername, GetAdapter());
 }
 
 // Get the path of the host that produced the sender

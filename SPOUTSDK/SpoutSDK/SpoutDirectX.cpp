@@ -76,6 +76,11 @@
 //		23.09.20	- Change warning logs to error in OpenDX11shareHandle
 //		24.09.20	- Change all pointer "= NULL to "= nullptr"
 //					  Change hex printf to 0x%8.8llX
+//					- Introduce try/catch to OpenDX11shareHandle
+//					  for the possibility of different graphics adapters
+//					- Corrected compare of different enum types in CreateSharedDX11Texture
+//		25.09.20	- Made GetAdapterPointer public
+//					  Add SetAdapterPointer
 //
 // ====================================================================================
 /*
@@ -282,7 +287,7 @@ bool spoutDirectX::WriteDX9memory(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE
 		}
 	}
 
-	SpoutLogError("spoutDirectX::WriteDX9surface(%d, %d, %d) failed", pDevice, dxTexture, source_surface);
+	SpoutLogError("spoutDirectX::WriteDX9surface((0x%8.8llX), (0x%8.8llX), (0x%8.8llX) failed", (ULONGLONG)pDevice, (ULONGLONG)dxTexture, (ULONGLONG)source_surface);
 
 	return false;
 } // end WriteDX9surface
@@ -491,7 +496,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	// Use the format passed in
 	// If that is zero or DX9 format, use the default format
 	DXGI_FORMAT texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
-	if (format != 0 && format != D3DFMT_A8R8G8B8)
+	if (format != 0 && format != (DXGI_FORMAT)D3DFMT_A8R8G8B8)
 		texformat = format;
 
 	// Textures being shared from D3D9 to D3D11 have the following restrictions (LJ - D3D11 to D3D9 ?).
@@ -569,7 +574,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 	*ppSharedTexture = pTexture;
 
-	SpoutLogNotice("    pTexture = 0x%8.8llX : dxShareHandle = 0x%8.8llX", (ULONGLONG)pTexture, (ULONGLONG)dxShareHandle);
+	SpoutLogNotice("    pTexture = 0x%8.8llX : dxShareHandle = 0x%8.8X", (ULONGLONG)pTexture, (ULONGLONG)dxShareHandle);
 
 	return true;
 
@@ -591,11 +596,21 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	//
 	// Note that the resource created for use on this device must be eventually freed or there is a leak.
 	//
-	HRESULT hr = pDevice->OpenSharedResource(dxShareHandle, __uuidof(ID3D11Resource), (void**)(ppSharedTexture));
-	if(FAILED(hr)) {
-		SpoutLogError("spoutDirectX::OpenDX11shareHandle failed");
+	// This can crash if the share handle has been created using a different graphics adapter
+	try {
+		HRESULT hr = pDevice->OpenSharedResource(dxShareHandle, __uuidof(ID3D11Resource), (void**)(ppSharedTexture));
+		if (FAILED(hr)) {
+			SpoutLogError("spoutDirectX::OpenDX11shareHandle failed");
+			return false;
+		}
+	}
+	catch (...) {
+		// Catch any exception
+		SpoutLogError("spoutDirectX::OpenDX11shareHandle - exception opening share handle");
 		return false;
 	}
+
+
 	/*
 	// Can get sender format here
 	ID3D11Texture2D * texturePointer = *ppSharedTexture;
@@ -886,6 +901,10 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 
 IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 {
+	// Return the current pointer for default
+	if (index < 0)
+		return m_pAdapterDX11;
+
 	// Enum Adapters first : multiple video cards
 	IDXGIFactory1*	_dxgi_factory1;
 	if ( FAILED( CreateDXGIFactory1( __uuidof(IDXGIFactory1), (void**)&_dxgi_factory1 ) ) )	{
@@ -919,7 +938,6 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 	return nullptr;
 }
 
-
 bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 {
 	IDXGIFactory1* _dxgi_factory1;
@@ -936,11 +954,9 @@ bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 
 	DXGI_ADAPTER_DESC desc;
 	for ( i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
-
 		adapter1_ptr->GetDesc( &desc );
 		// Return the current adapter - max of 2 assumed
 		wcstombs_s(&charsConverted, adapter, maxBytes, desc.Description, maxBytes-1);
-
 		IDXGIOutput* p_output = nullptr;
 		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
 			DXGI_OUTPUT_DESC desc_out;
@@ -952,12 +968,14 @@ bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 			}
 		}
 	}
-
 	_dxgi_factory1->Release();
-
 	return true;
 }
 
+void spoutDirectX::SetAdapterPointer(IDXGIAdapter* pAdapter)
+{
+	m_pAdapterDX11 = pAdapter;
+}
 
 unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture)
 {
