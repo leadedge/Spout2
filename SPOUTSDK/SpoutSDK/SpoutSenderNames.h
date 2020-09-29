@@ -55,9 +55,8 @@ using namespace spoututils;
 // 100 msec wait for events
 #define SPOUT_WAIT_TIMEOUT 100
 
-// MaxSenders define replaced by a global class variable
-// Maximum for list of Sender names
-#define SpoutMaxSenderNameLen 64
+// MaxSenders define replaced by a global class variable (Maximum for list of Sender names)
+#define SpoutMaxSenderNameLen 256
 
 // The texture information structure that is saved to shared memory
 // and used for communication between senders and receivers
@@ -137,6 +136,8 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool getSharedInfo (const char* sendername, SharedTextureInfo* info);
 		// Generic sender map info write
 		bool setSharedInfo (const char* sendername, SharedTextureInfo* info);
+		// Test for shared info memory map existence
+		bool hasSharedInfo(const char* sendername);
 
 		//
 		// Functions to maintain the active sender

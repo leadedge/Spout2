@@ -59,6 +59,7 @@
 	24.09.20 - Add GetPartnerID and SetPartnerID
 			 - Some testing of print format for HANDLE 32/64 bit
 	25.09.20 - Remove GetPartnerID and SetPartnerID - not reliable
+	29.09.20 - Add hasSharedInfo - to test for shared info memory map existence
 
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -537,6 +538,7 @@ bool spoutSenderNames::SetActiveSender(const char *Sendername)
 
 } // end SetActiveSender
 
+
 // Retrieve the current active Sender name
 bool spoutSenderNames::GetActiveSender(char Sendername[SpoutMaxSenderNameLen])
 {
@@ -550,7 +552,7 @@ bool spoutSenderNames::GetActiveSender(char Sendername[SpoutMaxSenderNameLen])
 			return true;
 		}
 		else {
-			// Erase the active sender map ?
+			// Erase the active sender name ?
 		}
 	}
 	
@@ -611,7 +613,7 @@ bool spoutSenderNames::FindActiveSender(char sendername[SpoutMaxSenderNameLen], 
 bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
 	SpoutLogNotice("spoutSenderNames::CreateSender");
-	SpoutLogNotice("    [%s] %dx%d, sharehandle = 0x%8.8X, format = %lu", sendername, width, height, (ULONGLONG)hSharehandle, dwFormat);
+	SpoutLogNotice("    [%s] %dx%d, sharehandle = 0x%8.8llX, format = %lu", sendername, width, height, (ULONGLONG)hSharehandle, dwFormat);
 
 	// Register the sender name
 	// The function is ignored if the sender already exists
@@ -964,6 +966,23 @@ bool spoutSenderNames::setSharedInfo(const char* sharedMemoryName, SharedTexture
 	return true;
 
 } // end getSharedInfo
+
+
+// Test for shared info memory map existence
+bool spoutSenderNames::hasSharedInfo(const char* sharedMemoryName)
+{
+	SpoutSharedMemory mem;
+	if (mem.Open(sharedMemoryName)) {
+		char *pBuf = mem.Lock();
+		if (pBuf) {
+			mem.Unlock();
+			return true;
+		}
+	}
+	return false;
+
+} // end hasSharedInfo
+
 
 
 //---------------------------------------------------------
