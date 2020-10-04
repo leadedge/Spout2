@@ -95,9 +95,7 @@ class SPOUT_DLLEXP spoutDX {
 	// Receive a texture from a sender
 	bool ReceiveTexture(ID3D11Texture2D** ppTexture = nullptr);
 	// Receive an image
-	bool ReceiveImage(unsigned char * pixels, bool bInvert = false);
-	// Receive an rgb image
-	bool ReceiveRGBimage(unsigned char * pixels, unsigned int width, unsigned int height, bool bInvert = false);
+	bool ReceiveImage(unsigned char * pixels, unsigned int width, unsigned int height, bool bRGB = false, bool bInvert = false);
 	// Open sender selection dialog
 	void SelectSender();
 	// Sender has changed
@@ -186,10 +184,8 @@ protected :
 	void CreateReceiver(const char * sendername, unsigned int width, unsigned int height, DWORD dwFormat);
 	
 	// Read pixels via staging texture
-	bool ReadRGBApixels(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
-	bool ReadRGBpixels(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
-	bool ReadRGBAimage(unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
-	bool ReadRGBimage(unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
+	bool ReadPixels(unsigned char* pixels, unsigned int width, unsigned int height, bool bRGB, bool bInvert);
+	bool ReadPixelData(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bRGB, bool bInvert);
 	bool CheckStagingTextures(unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
 	bool CreateDX11StagingTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
 
