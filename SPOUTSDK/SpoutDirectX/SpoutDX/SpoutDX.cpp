@@ -76,6 +76,9 @@
 //					- Replace ReceiveRGBimage with ReceiveImage and rgb flag
 //					- Replace ReadRGBAimage, ReadRGBimage, ReadRGBApixels, ReadRGBpixels
 //					  with ReadPixelData and rgb flag
+//		06.10.20	- Allow for DX9 shared textures by creating receiving texture with compatible format
+//					- Mirror and swap red/blue options for SpoutCam via class flags m_bMirror, and m_bSwapRB
+//					  Modifications to SpoutCopy rgba2rgb and rgba2rgbResample
 //
 // ====================================================================================
 /*
@@ -127,6 +130,8 @@ spoutDX::spoutDX()
 	m_bSpoutPanelOpened = false;
 	m_bSpoutPanelActive = false;
 	m_bClassDevice = false;
+	m_bMirror = false;
+	m_bSwapRB = false;
 	ZeroMemory(&m_SenderInfo, sizeof(SharedTextureInfo));
 	ZeroMemory(&m_ShExecInfo, sizeof(m_ShExecInfo));
 
@@ -543,7 +548,8 @@ bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 
 // Receive from a sender via DX11 staging textures to an rgba or rgb buffer of variable size
 // A new shared texture pointer (m_pSharedTexture) is retrieved if the sender changed
-bool spoutDX::ReceiveImage(unsigned char * pixels, unsigned int width, unsigned int height, bool bRGB, bool bInvert)
+bool spoutDX::ReceiveImage(unsigned char * pixels,
+	unsigned int width, unsigned int height, bool bRGB, bool bInvert)
 {
 	// Make sure DirectX is initialized
 	if (!OpenDirectX11())
@@ -783,7 +789,7 @@ bool spoutDX::SetAdapter(int index)
 
 
 //
-// Sharing modes not supported
+// Sharing modes
 //
 
 bool spoutDX::GetDX9()
@@ -858,12 +864,20 @@ bool spoutDX::ReceiveSenderData()
 			return false;
 		}
 
+		// Compatible DX9 formats
+		// 21 =	D3DFMT_A8R8G8B8
+		// 22 = D3DFMT_X8R8G8B8
+		if (dwFormat == 21 || dwFormat == 21) {
+			// Create a DX11 receiving texture with compatible format
+			dwFormat = (DWORD)DXGI_FORMAT_B8G8R8A8_UNORM;
+		}
+
 		// The shared texture handle will be different
 		//   o for a new sender
 		//   o for texture size or format change
 		if (dxShareHandle != m_dxShareHandle) {
 
-			// Release everything and start again below
+			// Release everything now and start again below
 			ReleaseReceiver();
 
 			// Get a new shared texture pointer
@@ -951,7 +965,13 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingTexture, unsigned char* pix
 		// Copy the staging texture pixels to the user buffer
 		if (!bRGB) {
 			// RGBA buffer
-			spoutcopy.rgba2rgba(mappedSubResource.pData, pixels, width, height, mappedSubResource.RowPitch, bInvert);
+			// TODO : test rgba-rgba resample
+			if (width != m_Width || height != m_Height) {
+				spoutcopy.rgba2rgbaResample(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
+			}
+			else {
+				spoutcopy.rgba2rgba(mappedSubResource.pData, pixels, width, height, mappedSubResource.RowPitch, bInvert);
+			}
 		}
 		else if (m_dwFormat == 28) {
 			// RGB buffer
@@ -964,12 +984,13 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingTexture, unsigned char* pix
 			}
 		}
 		else {
+			// Used for SpoutCam to receive RGB images
 			if (width != m_Width || height != m_Height) {
-				spoutcopy.rgba2rgbResample(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
+				spoutcopy.rgba2rgbResample(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert, m_bMirror, m_bSwapRB);
 			}
 			else {
 				// Approx 5 msec at 1920x1080
-				spoutcopy.rgba2rgb(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert);
+				spoutcopy.rgba2rgb(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert, m_bMirror, m_bSwapRB);
 			}
 		}
 
@@ -986,8 +1007,9 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingTexture, unsigned char* pix
 // Create new class staging textures if changed size or do not exist yet
 bool spoutDX::CheckStagingTextures(unsigned int width, unsigned int height, DWORD dwFormat)
 {
-	if (!m_pd3dDevice)
+	if (!m_pd3dDevice) {
 		return false;
+	}
 
 	D3D11_TEXTURE2D_DESC desc = { 0 };
 
