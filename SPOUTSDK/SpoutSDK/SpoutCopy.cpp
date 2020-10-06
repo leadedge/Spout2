@@ -47,6 +47,7 @@
 	07.09.20 - experimental SSE RGBA to RGB not working
 	19.09.20 - Removed experimental SSE RGBA to RGB function
 	23.09.20 - CheckSSE - initialize CPUInfo
+	06.10.20 - Modifications to rgba2rgb and rgba2rgbResample for SpoutCam mirror and swap red/blue
 
 */
 #include "SpoutCopy.h"
@@ -76,28 +77,22 @@ void spoutCopy::CopyPixels(const unsigned char *source,
 		Size = width*height * 3;
 
 	if (bInvert) {
-		// printf("flip\n");
 		FlipBuffer(source, dest, width, height, glFormat);
 	}
 	else {
-		// if (width < 320 || height < 240) { // Too small for assembler
 		if (width < 320) { // Too small for assembler
-			// printf("memcpy\n");
 			memcpy(reinterpret_cast<void *>(dest),
 				reinterpret_cast<const void *>(source), Size);
 		}
 		else if ((Size % 16) == 0 && m_bSSE2) { // 16 byte aligned SSE assembler
-			// printf("memcpy_sse2\n");
 			memcpy_sse2(reinterpret_cast<void *>(dest),
 				reinterpret_cast<const void *>(source), Size);
 		}
 		else if ((Size % 4) == 0) { // 4 byte aligned assembler
-			// printf("_movsd\n");
 			__movsd(reinterpret_cast<unsigned long *>(dest),
 				reinterpret_cast<const unsigned long *>(source), Size / 4);
 		}
 		else { // Default is standard memcpy
-			// printf("memcpy (2)\n");
 			memcpy(reinterpret_cast<void *>(dest),
 				reinterpret_cast<const void *>(source), Size);
 		}
@@ -594,7 +589,7 @@ void spoutCopy::bgr2bgra(const void *bgr_source, void *bgra_dest, unsigned int w
 
 void spoutCopy::rgba2rgb(const void *rgba_source, void *rgb_dest,
 	unsigned int width, unsigned int height,
-	unsigned int rgba_pitch, bool bInvert) const
+	unsigned int rgba_pitch, bool bInvert, bool bMirror, bool bSwapRB) const
 {
 	// RGB dest does not have padding
 	const unsigned long rgbsize = width * height * 3;
@@ -612,14 +607,30 @@ void spoutCopy::rgba2rgb(const void *rgba_source, void *rgb_dest,
 		rgb -= rgbpitch; // beginning of the last rgb line
 	}
 
+	// Swap red and blue option
+	int ir = 0; int ig = 1; int ib = 2;
+	if(bSwapRB)	{
+		ir = 2; ib = 0;
+	}
+
+	unsigned int z = 0;
 	for (unsigned int y = 0; y < height; y++) {
 		for (unsigned int x = 0; x < width; x++) {
-			*(rgb + 0) = *(rgba + 0); // red
-			*(rgb + 1) = *(rgba + 1); // grn
-			*(rgb + 2) = *(rgba + 2); // blu
-			rgb += 3;
+			if (bMirror) {
+				z = (width - x - 1)*3;
+				*(rgb + z + ir) = *(rgba + 0); // red
+				*(rgb + z + ig) = *(rgba + 1); // grn
+				*(rgb + z + ib) = *(rgba + 2); // blu
+			}
+			else {
+				z = x * 3;
+				*(rgb + z + ir) = *(rgba + 0); // red
+				*(rgb + z + ig) = *(rgba + 1); // grn
+				*(rgb + z + ib) = *(rgba + 2); // blu
+			}
 			rgba += 4;
 		}
+		rgb += width * 3;
 		rgba += rgba_padding;
 		
 		if (bInvert)
@@ -757,7 +768,7 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 {
 	for (unsigned int y = 0; y < height; y++) {
 		// Start of buffer
-		auto source = static_cast<const unsigned __int32 *>(rgba_source);; // unsigned int = 4 bytes
+		auto source = static_cast<const unsigned __int32 *>(rgba_source); // unsigned int = 4 bytes
 		auto dest = static_cast<unsigned __int32 *>(rgba_dest);
 		// Increment to current line
 		// pitch is line length in bytes. Divide by 4 to get the width in rgba pixels.
@@ -781,7 +792,7 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 	// For all rows
 	for (unsigned int y = 0; y < height; y++) {
 		// Start of buffers
-		auto source = static_cast<const unsigned __int32 *>(rgba_source);; // unsigned int = 4 bytes
+		auto source = static_cast<const unsigned __int32 *>(rgba_source); // unsigned int = 4 bytes
 		auto dest = static_cast<unsigned __int32 *>(rgba_dest);
 		// Increment to current line
 		// Pitch is line length in bytes. Divide by 4 to get the width in rgba pixels.
@@ -834,13 +845,20 @@ void spoutCopy::rgba2rgbaResample(const void* source, void* dest,
 
 void spoutCopy::rgba2rgbResample(const void* source, void* dest,
 	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
-	unsigned int destWidth, unsigned int destHeight, bool bInvert) const
+	unsigned int destWidth, unsigned int destHeight, bool bInvert, bool bMirror, bool bSwapRB) const
 {
 	unsigned char *srcBuffer = (unsigned char *)source; // bgra source
 	unsigned char *dstBuffer = (unsigned char *)dest; // bgr dest
 
 	float x_ratio = (float)sourceWidth / (float)destWidth;
 	float y_ratio = (float)sourceHeight / (float)destHeight;
+
+	// Swap red and blue option
+	int ir = 0; int ig = 1; int ib = 2;
+	if (bSwapRB) {
+		ir = 2; ib = 0;
+	}
+
 	float px, py;
 	unsigned int i, j;
 	unsigned int pixel, nearestMatch;
@@ -848,14 +866,25 @@ void spoutCopy::rgba2rgbResample(const void* source, void* dest,
 		for (j = 0; j < destWidth; j++) {
 			px = floor((float)j*x_ratio);
 			py = floor((float)i*y_ratio);
-			if (bInvert)
-				pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
-			else
-				pixel = i * destWidth * 3 + j * 3;
+
+			if (bMirror) {
+				if (bInvert)
+					pixel = (destHeight - i - 1)*destWidth * 3 + (destWidth - j - 1) * 3; // flip vertically
+				else
+					pixel = i * destWidth * 3 + (destWidth - j - 1) * 3;
+			}
+			else {
+				if (bInvert)
+					pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
+				else
+					pixel = i * destWidth * 3 + j * 3;
+			}
+
 			nearestMatch = (unsigned int)(py*sourcePitch + px * 4);
-			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 0];
-			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
-			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 2];
+
+			dstBuffer[pixel + ir] = srcBuffer[nearestMatch + 0];
+			dstBuffer[pixel + ig] = srcBuffer[nearestMatch + 1];
+			dstBuffer[pixel + ib] = srcBuffer[nearestMatch + 2];
 		}
 	}
 }

@@ -99,11 +99,12 @@ class SPOUT_DLLEXP spoutCopy {
 
 		// Copy RGBA to RGB allowing for source line pitch
 		void rgba2rgb (const void* rgba_source, void *rgb_dest,	unsigned int width, unsigned int height,
-			unsigned int sourcePitch, bool bInvert = false) const;
+			unsigned int sourcePitch, bool bInvert = false, bool bMirror = false, bool bSwapRB = false) const;
 		// Copy RGBA to RGB allowing for source and destination pitch
-		void rgba2rgbResample(const void* source,void* dest,
+		void rgba2rgbResample(const void* source, void* dest,
 			unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
-			unsigned int destWidth, unsigned int destHeight, bool bInvert = false) const;
+			unsigned int destWidth, unsigned int destHeight,
+			bool bInvert = false, bool bMirror = false, bool bSwapRB = false) const;
 		// Copy RGBA to BGR allowing for source line pitch
 		void rgba2bgr(const void* rgba_source, void *rgb_dest, unsigned int width, unsigned int height,
 			unsigned int sourcePitch, bool bInvert = false) const;
