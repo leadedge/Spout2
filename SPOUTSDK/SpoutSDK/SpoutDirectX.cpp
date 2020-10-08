@@ -81,6 +81,7 @@
 //					- Corrected compare of different enum types in CreateSharedDX11Texture
 //		25.09.20	- Made GetAdapterPointer public
 //					  Add SetAdapterPointer
+//		08.10.20	- Re-introduced CreateDX11StagingTexture
 //
 // ====================================================================================
 /*
@@ -219,6 +220,8 @@ bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned 
 		return false;
 	}
 
+	SpoutLogNotice("spoutDirectX::CreateSharedDX9Texture %dx%d - format %d - handle 0x%X", width, height, (int)format, (ULONGLONG)dxShareHandle);
+
 	if(dxTexture) dxTexture->Release();
 
 	HRESULT res = pDevice->CreateTexture(width,
@@ -234,8 +237,7 @@ bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned 
 	// USAGE, format and size for sender and receiver must all match
 	if (FAILED(res)) {
 		char tmp[256];
-		// TODO : check for compiler warning with "l" prefix
-		sprintf_s(tmp, 256, "spoutDirectX::CreateSharedDX9Texture error (0X%lX) - ", res);
+		sprintf_s(tmp, 256, "spoutDirectX::CreateSharedDX9Texture error (0x%lX) - ", (LONG)res);
 		switch (res) {
 			case D3DERR_INVALIDCALL:
 				strcat_s(tmp, 256, "D3DERR_INVALIDCALL");
@@ -391,10 +393,10 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	//  Target Independent Rasterization requires hardware support
 	//  so we can not make DX11 GPUs fully DX11.1 complaint.
 	D3D_FEATURE_LEVEL featureLevels[] =	{
-		// D3D_FEATURE_LEVEL_11_1, // 11.0 = 0xb000 : 11.1 = 0xb001
-		D3D_FEATURE_LEVEL_11_0,
-		D3D_FEATURE_LEVEL_10_1,
-		D3D_FEATURE_LEVEL_10_0,
+		// D3D_FEATURE_LEVEL_11_1, // 0xb001
+		D3D_FEATURE_LEVEL_11_0, // 0xb000
+		D3D_FEATURE_LEVEL_10_1, // 0xa100
+		D3D_FEATURE_LEVEL_10_0, // 0xa000
 	};
 
 	UINT numFeatureLevels = ARRAYSIZE( featureLevels );
@@ -475,9 +477,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 		SpoutLogWarning("spoutDirectX::CreateSharedDX11Texture NULL ppSharedTexture");
 		return false;
 	}
-
 	SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
-
 
 	//
 	// Create a new shared DX11 texture
@@ -574,11 +574,72 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 	*ppSharedTexture = pTexture;
 
-	SpoutLogNotice("    pTexture = 0x%8.8llX : dxShareHandle = 0x%8.8X", (ULONGLONG)pTexture, (ULONGLONG)dxShareHandle);
+	SpoutLogNotice("    pTexture = 0x%8.8llX : dxShareHandle = 0x%X", (ULONGLONG)pTexture, (ULONGLONG)dxShareHandle);
 
 	return true;
 
 }
+
+
+// Create a DirectX 11 staging texture for read and write
+bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
+	unsigned int width,	unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppStagingTexture)
+{
+	if (pd3dDevice == NULL) return false;
+
+	SpoutLogNotice("spoutDirectX::CreateDX11StagingTexture");
+
+	// Release the texture if it already exists
+	if (*ppStagingTexture) {
+		ReleaseDX11Texture(pd3dDevice, *ppStagingTexture);
+	}
+
+	ID3D11Texture2D* pTexture = nullptr; // The new texture pointer
+
+	D3D11_TEXTURE2D_DESC desc;
+	ZeroMemory(&desc, sizeof(desc));
+	desc.Width = width;
+	desc.Height = height;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = format;
+	desc.SampleDesc.Count = 1;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
+	desc.Usage = D3D11_USAGE_STAGING;
+	desc.BindFlags = 0;
+
+	HRESULT res = pd3dDevice->CreateTexture2D(&desc, NULL, &pTexture);
+
+	if (res != S_OK) {
+		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
+		char tmp[256];
+		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11StagingTexture ERROR : [0x%x] : ", res);
+		switch (res) {
+		case D3DERR_INVALIDCALL:
+			strcat_s(tmp, 256, "D3DERR_INVALIDCALL");
+			break;
+		case E_INVALIDARG:
+			strcat_s(tmp, 256, "E_INVALIDARG");
+			break;
+		case E_OUTOFMEMORY:
+			strcat_s(tmp, 256, "E_OUTOFMEMORY");
+			break;
+		default:
+			strcat_s(tmp, 256, "Unlisted error");
+			break;
+		}
+		SpoutLogFatal("%s", tmp);
+		return false;
+	}
+
+	*ppStagingTexture = pTexture;
+
+	SpoutLogNotice("    pTexture = 0x%8.8llX", (ULONGLONG)pTexture);
+
+	return true;
+
+}
+
 
 bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle)
 {
@@ -588,7 +649,7 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 		return false;
 	}
 	
-	// printf("OpenDX11shareHandle - pDevice [0x%8.8llX] 0x%8.8llX, 0x%8.8llX\n", (ULONGLONG)pDevice, (ULONGLONG)dxShareHandle, (ULONGLONG)ppSharedTexture);
+	// printf("OpenDX11shareHandle - pDevice [0x%llX] 0x%X, 0x%llX\n", (ULONGLONG)pDevice, (UINT)dxShareHandle, (ULONGLONG)ppSharedTexture);
 
 	// To share a resource between a Direct3D 9 device and a Direct3D 11 device 
 	// the texture must have been created using the pSharedHandle argument of CreateTexture.
@@ -626,6 +687,7 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	printf("td.BindFlags = %d\n", td.BindFlags);
 	printf("td.MiscFlags = %d\n", td.MiscFlags); // D3D11_RESOURCE_MISC_SHARED
 	*/
+	
 
 	return true;
 

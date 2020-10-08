@@ -75,6 +75,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		ID3D11Device* CreateDX11device();
 		// Create a DirectX11 shared texture
 		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppSharedTexture, HANDLE &dxShareHandle);
+		// Create a DirectX11 staging texture
+		bool CreateDX11StagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
 		// Return the pointer of a DirectX11 shared texture
 		bool OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle);
 
