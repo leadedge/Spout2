@@ -89,7 +89,7 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		// Pixel read/write
 		bool WriteTexturePixels(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 		bool ReadTexturePixels (const char* sendername, unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO=0);
-		
+
 		// Direct shared texture access
 		bool BindSharedTexture();
 		bool UnBindSharedTexture();
@@ -112,6 +112,15 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 			unsigned int width, unsigned int height,
 			bool bInvert = false, GLuint HostFBO = 0);
 
+		// DX11 staging texture functions for CPU access
+		bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
+		bool ReadDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
+		bool ReadTextureData(GLuint SourceID, GLuint SourceTarget, unsigned int width, unsigned int height, unsigned char* dest, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
+		bool CheckStagingTextures(unsigned int width, unsigned int height);
+		ID3D11Texture2D* m_pStaging[2];
+		int m_Index;
+		int m_NextIndex;
+
 		// PBO functions for external access
 		bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
 								 unsigned int width, unsigned int height,
@@ -120,8 +129,8 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 
 		bool LoadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
 							   unsigned int width, unsigned int height,
-							   const unsigned char* data, GLenum glFormat = GL_RGBA, 
-							   bool bInvert = false);
+							   const unsigned char* source, GLenum glFormat = GL_RGBA,
+							   bool bInvert = false, unsigned int sourcePitch = 0);
 
 		// DX9
 		bool GetDX9();
@@ -136,16 +145,13 @@ class SPOUT_DLLEXP spoutGLDXinterop {
 		bool GLDXcompatible();
 		bool GLDXready();
 
-		//
-		// Sharing modes
-		//
+		// Sharing modes - user set to the registry
 		int  GetShareMode(); // Get user selected share mode : 0 -texture, 1 - memory, 2 - auto
 		bool SetShareMode(int mode); // Set user sharing mode
-
 		bool GetMemoryShareMode(); // Get user selected memory share mode
 		bool SetMemoryShareMode(bool bMem = true); // Set user memoryshare mode
 		
-		
+		// Compatibility modes
 		bool GetMemoryShare(); // Get memory share compatibility
 		void SetMemoryShare(bool bMem = true); // Set memory share compatibility
 		bool GetSenderMemoryShare(const char* sendername); // Get sender memory share compatibility

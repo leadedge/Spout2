@@ -1059,13 +1059,14 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		}
 		else if (sharehandle > 0) {
 			// 2) If texture share compatible and the share handle is valid, disable memory share mode
-			SpoutLogNotice("Spout::OpenReceiver : valid sender share handle");
+			SpoutLogNotice("Spout::OpenReceiver : valid sender share handle 0x%8.8X", (ULONGLONG)sharehandle);
 			bMemory = false;
 			interop.SetMemoryShare(false);
 			// Now texture share is used for read and write
 			// Textures can be received from the texture share sender
 		}
 	}
+
 
 	// Initialize a receiver in either memoryshare or texture mode
 	// (this checks the bMemory flag which can be reset above)
@@ -1218,23 +1219,22 @@ bool Spout::InitReceiver(HWND hwnd, char* sendername, unsigned int width, unsign
 
 	bInitialized = false;
 
+	// printf("Spout::InitReceiver - bMemory = %d hSharehandle = %d\n", bMemory, hSharehandle);
+
 	// OpenSpout() has performed a compatibility test and set up the sharing mode to be used.
 	// Only try dx if the memory mode flag is not set and sharehandle is not NULL
 	if(!bMemory && hSharehandle) {
-
-		printf("\ntexture share receiver\n");
-
 		// Initialize the receiver interop. 
-		// This will create globals for texture sharing local to the interop class
+		// For success, this will create globals for texture sharing local to the interop class
 		if (!interop.CreateInterop(hwnd, sendername, width, height, dwFormat, true)) { // true meaning receiver
 			SpoutLogWarning("Spout::InitReceiver - CreateInterop failed");
-			// ??? check 
-			// bMemory = true;
-			// interop.SetMemoryShare(true);
-			// ??? check interop.SetMemoryShare(true);
+			// Set memoryshare to avoid repeats
+			bMemory = true;
+			interop.SetMemoryShare(true);
 		}
 	}
 
+	// If bMemory is true - user set or not GLDX compatible
 	// For memoryshare, open and close sender memory map in sendimage 
 	// using the global sender name (g_SharedMemoryName)
 
@@ -1540,7 +1540,7 @@ bool Spout::OpenSpout()
 	//
 	//     o Load extensions and check for availability and function
 	//     o For texture share mode, open DirectX and check for availability
-	//     o Set interop class flags for either Texture or memoryshare
+	//     o Set interop class flags for either texture, memoryshare or DX11
 	//
 	// If the compatibility test fails, nothing can continue
 	//     o either no OpenGL context
@@ -1558,16 +1558,13 @@ bool Spout::OpenSpout()
 	// rather than the user registry setting (GetMemoryShareMode)
 	if (interop.GetMemoryShare()) {
 		SpoutLogNotice("Spout::OpenSpout - using memory share mode");
-		// DirectX initializaton failed
-		// Not texture share compatible
-		// or user had selected memoryshare mode
-		bDxInitOK = false; // DirectX initialization failed
-		bMemory = true; // Default to memoryshare
+		// Not texture share compatible, or user had selected memoryshare mode
+		bMemory = true; // Select memoryshare
 	}
 	else {
 		SpoutLogNotice("Spout::OpenSpout - using texture share mode");
 		bDxInitOK = true; // DirectX initialization was OK
-		bMemory = false; // Memoryshare not needed
+		bMemory = false; // Memoryshare not used
 	}
 
 	return true;
