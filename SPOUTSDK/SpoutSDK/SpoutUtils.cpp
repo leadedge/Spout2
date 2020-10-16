@@ -64,6 +64,7 @@
 		09.09.20 - move _doLog outside anonymous namespace
 		23.09.20 - _doLog : always prevent multiple logs by comparing with the last
 				   instead of reserving for > warnings
+		16.10.20 - Add bool WriteBinaryToRegistry
 
 */
 #include "SpoutUtils.h"
@@ -513,6 +514,47 @@ namespace spoututils {
 
 	}
 
+	bool WriteBinaryToRegistry(HKEY hKey, const char *subkey, const char *valuename, const unsigned char *hexdata, DWORD nChars)
+	{
+		HKEY  hRegKey = NULL;
+		LONG  regres = 0;
+		char  mySubKey[512];
+
+		if (!subkey[0]) {
+			SpoutLogWarning("WriteBinaryToRegistry - no subkey specified");
+			return false;
+		}
+
+		// The required key
+		strcpy_s(mySubKey, 512, subkey);
+
+		// Does the key already exist ?
+		regres = RegOpenKeyExA(hKey, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
+		if (regres != ERROR_SUCCESS) {
+			// Create a new key
+			regres = RegCreateKeyExA(hKey, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
+		}
+
+		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
+
+			// Write the binary string
+			// printf("\nhexdata size = %d\n", (int)sizeof(hexdata));
+
+			
+			regres = RegSetValueExA(hRegKey, valuename, 0, REG_BINARY, (BYTE *)hexdata, nChars);
+			RegCloseKey(hRegKey);
+		}
+
+		if (regres != ERROR_SUCCESS) {
+			SpoutLogWarning("WriteBinaryToRegistry - could not write to registry");
+			return false;
+		}
+
+		return true;
+
+	}
+
+
 	bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename)
 	{
 		HKEY  hRegKey = NULL;
@@ -574,7 +616,7 @@ namespace spoututils {
 	double EndTiming() {
 		end = std::chrono::steady_clock::now();
 		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		printf("elapsed [%.3f] msec\n", elapsed / 1000.0);
+		// printf("elapsed [%.3f] msec\n", elapsed / 1000.0);
 		// printf("elapsed [%.3f] u/sec\n", elapsed);
 		return elapsed;
 	}
