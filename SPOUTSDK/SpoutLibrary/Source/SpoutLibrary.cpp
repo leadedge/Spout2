@@ -50,6 +50,10 @@
 //		18.07.20 - Re-build 32/64 bit - VS2017 / MT
 //		25.08.20 - Add receiveTexture and receiveImage for 2.006 compatibility
 //		29.08.20 - Re-build 32/64 bit - VS2017 / MT
+//		18.09.20 - Add GetSenderAdapter and SetSenderAdapter
+//				   Change order of GetAdapter/SetAdapter
+//				   Re-build 32/64 bit - VS2017 / MT
+//
 //
 /*
 		Copyright (c) 2016-2020, Lynn Jarvis. All rights reserved.
@@ -230,6 +234,8 @@ class SPOUTImpl : public SPOUTLIBRARY
 		bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name
 		bool SetAdapter(int index = 0); // Set required graphics adapter for output
 		int  GetAdapter(); // Get the SpoutDirectX global adapter index
+		int  GetSenderAdapter(const char* sendername); // Get sender adapter index in shared memory (0 default)
+		bool SetSenderAdapter(const char* sendername); // Set sender adapter index in shared memory
 
 		// OpenGL
 		bool CreateOpenGL();
@@ -710,14 +716,24 @@ bool SPOUTImpl::GetAdapterName(int index, char *adaptername, int maxchars)
 	return spoutSDK->spout.GetAdapterName(index, adaptername, maxchars);
 }
 
+int  SPOUTImpl::GetAdapter()
+{
+	return spoutSDK->spout.GetAdapter();
+}
+
 bool SPOUTImpl::SetAdapter(int index)
 {
 	return spoutSDK->spout.SetAdapter(index);
 }
 
-int  SPOUTImpl::GetAdapter()
+int  SPOUTImpl::GetSenderAdapter(const char* sendername)
 {
-	return spoutSDK->spout.GetAdapter();
+	return spoutSDK->spout.GetSenderAdapter(sendername);
+}
+
+bool SPOUTImpl::SetSenderAdapter(const char* sendername)
+{
+	return spoutSDK->spout.SetSenderAdapter(sendername);
 }
 
 // OpenGL utilities

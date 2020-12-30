@@ -79,9 +79,9 @@ bool spoutMemoryShare::CreateSenderMemory(const char *sendername, unsigned int w
 	// Allocate enough width*height*4 for an RGBA image
 	SpoutCreateResult result = SPOUT_CREATE_FAILED;
 	if(glFormat == GL_RGB)
-		result = senderMem->Create(namestring.c_str(), width*height*3);
+		result = senderMem->Create(namestring.c_str(), (int)(width*height*3));
 	else
-		result = senderMem->Create(namestring.c_str(), width*height*4);
+		result = senderMem->Create(namestring.c_str(), (int)(width*height*4));
 	if(result == SPOUT_CREATE_FAILED) {
 		SpoutLogWarning("spoutMemoryShare::CreateSenderMemory - shared memory create failed");
 		delete senderMem;
@@ -118,9 +118,9 @@ bool spoutMemoryShare::UpdateSenderMemorySize(const char *sendername, unsigned i
 
 	SpoutCreateResult result = SPOUT_CREATE_FAILED;
 	if (glFormat == GL_RGB)
-		result = senderMem->Create(namestring.c_str(), width*height*3);
+		result = senderMem->Create(namestring.c_str(), (int)(width*height*3));
 	else
-		result = senderMem->Create(namestring.c_str(), width*height*4);
+		result = senderMem->Create(namestring.c_str(), (int)(width*height*4));
 	if(result == SPOUT_CREATE_FAILED) {
 		SpoutLogWarning("spoutMemoryShare::UpdateSenderMemorySize - shared memory create failed");
 		delete senderMem;

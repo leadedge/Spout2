@@ -42,6 +42,7 @@
 
 using namespace spoututils;
 
+// Result of memory segment creation
 enum SpoutCreateResult
 {
 	SPOUT_CREATE_FAILED = 0,
@@ -51,34 +52,38 @@ enum SpoutCreateResult
 };
 
 class SPOUT_DLLEXP SpoutSharedMemory {
+
 public:
+
 	SpoutSharedMemory();
 	~SpoutSharedMemory();
-
 
 	// Create a new memory segment, or attach to an existing one
 	SpoutCreateResult Create(const char* name, int size);
 
-	// Opens an existing map
+	// Open an existing memory map
 	bool Open(const char* name);
+
+	// Close a map
 	void Close();
 
-	// Returns the buffer
+	// Lock an open map and return the buffer
 	char* Lock();
+
+	// Unlock a map
 	void Unlock();
 
+	// Print map information for debugging
 	void Debug();
 
 private:
 
-	char*  m_pBuffer;
-	HANDLE m_hMap;
-	HANDLE m_hMutex;
-
-	int m_lockCount;
-
-	const char*	m_pName;
-	int m_size;
+	char*  m_pBuffer; // Buffer pointer
+	HANDLE m_hMap; // Map handle
+	HANDLE m_hMutex; // Mutex for map access
+	int m_lockCount; // Map access lock count
+	const char*	m_pName; // Map name
+	int m_size; // Map size
 
 };
 

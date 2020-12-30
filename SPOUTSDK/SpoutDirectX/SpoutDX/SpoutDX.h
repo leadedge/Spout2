@@ -33,18 +33,17 @@
 #define __spoutDX__
 
 // Change the path as required
-#include "..\..\SpoutSDK\SpoutCommon.h" // for dll build and utilities
-#include "..\..\SpoutSDK\SpoutSenderNames.h" // for sender creation and update
-#include "..\..\SpoutSDK\SpoutDirectX.h" // for creating DX11 textures
-#include "..\..\SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "..\..\SpoutSDK\SpoutCopy.h" // for pixel copy
-#include "..\..\SpoutSDK\SpoutUtils.h" // Registry utiities
+#include "SpoutCommon.h" // for dll build and utilities
+#include "SpoutSenderNames.h" // for sender creation and update
+#include "SpoutDirectX.h" // for creating DX11 textures
+#include "SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "SpoutCopy.h" // for pixel copy
+#include "SpoutUtils.h" // Registry utiities
 
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
 
-using namespace spoututils;
 
 class SPOUT_DLLEXP spoutDX {
 
@@ -56,7 +55,6 @@ class SPOUT_DLLEXP spoutDX {
 	//
 	// DIRECTX
 	//
-	// ID3D11Device* OpenDirectX11();
 	bool OpenDirectX11(ID3D11Device* pDevice = nullptr);
 	ID3D11Device* GetDevice();
 	void CleanupDX11();
@@ -74,6 +72,10 @@ class SPOUT_DLLEXP spoutDX {
 	bool SendTexture(ID3D11Texture2D* pTexture);
 	// Send an image
 	bool SendImage(unsigned char * pData, unsigned int width, unsigned int height);
+	// Sender status
+	bool IsInitialized();
+	// Sender name
+	const char * GetName();
 	// Get width
 	unsigned int GetWidth();
 	// Get height
@@ -93,9 +95,7 @@ class SPOUT_DLLEXP spoutDX {
 	// Receive a texture from a sender
 	bool ReceiveTexture(ID3D11Texture2D** ppTexture = nullptr);
 	// Receive an image
-	bool ReceiveImage(unsigned char * pixels, bool bInvert = false);
-	// Receive an rgb image
-	bool ReceiveRGBimage(unsigned char * pixels, unsigned int width, unsigned int height, bool bInvert = false);
+	bool ReceiveImage(unsigned char * pixels, unsigned int width, unsigned int height, bool bRGB = false, bool bInvert = false);
 	// Open sender selection dialog
 	void SelectSender();
 	// Sender has changed
@@ -150,21 +150,27 @@ class SPOUT_DLLEXP spoutDX {
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
 
+	spoutSenderNames spoutsender;
 	spoutFrameCount frame;
 	spoutDirectX spoutdx;
 	spoutCopy spoutcopy;
 
-protected :
+	// Options used for SpoutCam
+	bool m_bMirror; // Mirror image
+	bool m_bSwapRB; // RGB <> BGR
 
-	spoutSenderNames spoutsender;
+protected :
 
 	ID3D11Device* m_pd3dDevice;
 	ID3D11DeviceContext* m_pImmediateContext;
 	ID3D11Texture2D* m_pSharedTexture;
-	ID3D11Texture2D* m_pStagingTexture;
-	D3D11_MAPPED_SUBRESOURCE m_MappedSubResource;
+	ID3D11Texture2D* m_pStaging[2];
+	int m_Index;
+	int m_NextIndex;
+
 	HANDLE m_dxShareHandle;
 	DWORD m_dwFormat;
+	SharedTextureInfo m_SenderInfo;
 	char m_SenderNameSetup[256];
 	char m_SenderName[256];
 	unsigned int m_Width;
@@ -175,15 +181,18 @@ protected :
 	bool m_bSpoutInitialized;
 	bool m_bSpoutPanelOpened;
 	bool m_bSpoutPanelActive;
-	bool m_bMapped;
 	bool m_bClassDevice;
 	SHELLEXECUTEINFOA m_ShExecInfo;
 
 	bool ReceiveSenderData();
-	void CreateReceiver(const char * sendername, unsigned int width, unsigned int height);
-	bool ReadRGBpixels(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bInvert);
-	bool CheckStagingTexture(unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
+	void CreateReceiver(const char * sendername, unsigned int width, unsigned int height, DWORD dwFormat);
+	
+	// Read pixels via staging texture
+	bool ReadPixels(unsigned char* pixels, unsigned int width, unsigned int height, bool bRGB, bool bInvert);
+	bool ReadPixelData(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bRGB, bool bInvert);
+	bool CheckStagingTextures(unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
 	bool CreateDX11StagingTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
+
 	void SelectSenderPanel();
 	bool CheckSpoutPanel(char *sendername, int maxchars = 256);
 

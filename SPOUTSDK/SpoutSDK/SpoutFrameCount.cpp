@@ -26,6 +26,10 @@
 //					  Result switch for WaitForSingleObject
 //		05.05.20	- Mutex access timing tests documented within functions
 //		18.06.20	- Update comments
+//		06.09.20	- Add more notice logs to EnableFrameCount
+//		23.09.20	- Initialize m_lastFrame, m_FrameStart, m_bIsNewFrame
+//		24.09.20	- Remove m_FrameStartPtr and m_FrameEndPtr null checks in destructor
+//		30.12.20	- PtrToUint LOWORD for all pointer/handle printf
 //
 // ====================================================================================
 //
@@ -67,6 +71,8 @@ spoutFrameCount::spoutFrameCount()
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
 	m_lastFrame = 0.0;
+	m_FrameStart = 0.0;
+	m_bIsNewFrame = false;
 
 	// Default sender fps is system refresh rate
 	m_Fps = GetRefreshRate();
@@ -80,8 +86,6 @@ spoutFrameCount::spoutFrameCount()
 #if _MSC_VER >= 1900
 	m_FrameStartPtr = new std::chrono::steady_clock::time_point;
 	m_FrameEndPtr = new std::chrono::steady_clock::time_point;
-#else
-	m_FrameStart = 0.0;
 #endif
 
 	// Initialize counter
@@ -96,8 +100,8 @@ spoutFrameCount::~spoutFrameCount()
 {
 
 #if _MSC_VER >= 1900
-	if (m_FrameStartPtr) delete m_FrameStartPtr;
-	if (m_FrameEndPtr) delete m_FrameEndPtr;
+	delete m_FrameStartPtr;
+	delete m_FrameEndPtr;
 #endif
 
 	// Close the frame count semaphore.
@@ -134,12 +138,16 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	// Subsequently SetNewFrame and GetNewFrame return without action
 
 	// Return silently if not enabled in SpoutSettings
-	if (!m_bFrameCount)
+	if (!m_bFrameCount) {
+		SpoutLogNotice("SpoutFrameCount::EnableFrameCount : setting not enabled");
 		return;
+	}
 
 	// Return silently if application disabled
-	if (m_bDisabled)
+	if (m_bDisabled) {
+		SpoutLogNotice("SpoutFrameCount::EnableFrameCount : application disabled");
 		return;
+	}
 
 	// A sender name is required
 	if (SenderName[0] == 0) {
@@ -196,7 +204,7 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 
 	m_hCountSemaphore = hSemaphore;
 
-	SpoutLogNotice("    Semaphore handle [%d]", m_hCountSemaphore);
+	SpoutLogNotice("    Semaphore handle [0x%.7X]", LOWORD(m_hCountSemaphore));
 
 }
 
@@ -434,7 +442,7 @@ void spoutFrameCount::HoldFps(int fps)
 
 #if _MSC_VER >= 1900
 	// Initialize frame time at target rate
-	if (m_millisForFrame == 0.0) {
+	if (m_millisForFrame < 0.01) {
 		m_millisForFrame = 1000.0 / framerate; // msec per frame
 		*m_FrameStartPtr = std::chrono::steady_clock::now();
 		SpoutLogNotice("spoutFrameCount::HoldFps(%d)", fps);
@@ -530,7 +538,7 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s] already exists", szMutexName);
 		}
 		else {
-			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s] created - 0x%x", szMutexName, hMutex);
+			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s] created - 0x%.7X", szMutexName, LOWORD(hMutex));
 		}
 	}
 
@@ -761,7 +769,7 @@ void spoutFrameCount::StartCounter()
 	LARGE_INTEGER li;
 	if (QueryPerformanceFrequency(&li)) {
 		// Find the PC frequency if not done yet
-		if(PCFreq == 0.0)
+		if(PCFreq < 0.0001)
 			PCFreq = static_cast<double>(li.QuadPart) / 1000.0;
 		// Get the counter start
 		QueryPerformanceCounter(&li);

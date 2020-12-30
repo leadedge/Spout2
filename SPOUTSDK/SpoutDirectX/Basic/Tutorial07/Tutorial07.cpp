@@ -1,4 +1,5 @@
 //--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
 // File: Tutorial07.cpp
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -107,7 +108,9 @@ spoutSenderNames spoutsender;
 spoutDirectX spoutdx;
 spoutFrameCount frame;
 
-ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
+ID3D11Texture2D* g_pReceivedTexture = nullptr; // Receiving texture for this example
+ID3D11Texture2D* g_pSenderTexture = nullptr; // Pointer to the sender's shared texture
+HANDLE g_dxShareHandle = NULL; // Share handle of the sender's shared texture
 ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view of the texture
 char g_SenderName[256]; // Sender name
 char g_SenderNameSetup[256]; // Sender name to connect to
@@ -155,6 +158,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// Initialize Spout variables
 	g_pReceivedTexture = nullptr;
+	g_pSenderTexture = nullptr;
+	g_dxShareHandle = NULL;
 	g_pSpoutTextureRV = nullptr;
 	g_SenderName[0] = 0;
 	g_SenderNameSetup[0] = 0;
@@ -205,11 +210,23 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	frame.CleanupFrameCount();
 
 	// Release application resources
+
+	// Shader resource view of the sender's texture
 	if (g_pSpoutTextureRV)
 		g_pSpoutTextureRV->Release();
 
+	// Receiving texture
 	if (g_pReceivedTexture)
 		g_pReceivedTexture->Release();
+
+	// Pointer to the sender's texture created with OpenSharedResource
+	if (g_pSenderTexture)
+		g_pSenderTexture->Release();
+
+	g_pSpoutTextureRV = nullptr;
+	g_pReceivedTexture = nullptr;
+	g_pSenderTexture = nullptr;
+	g_dxShareHandle = NULL;
 	
 	CleanupDevice();
 
@@ -813,12 +830,13 @@ void Render()
 		}
 	}
 
+	//
 	// Find if the sender exists.
+	//
 	// For an empty name string, the active sender is returned if that exists.
 	// Return the sender name, width, height, sharehandle and format.
 	DWORD dwFormat = 0;
-	HANDLE dxShareHandle = NULL;
-	if (spoutsender.FindSender(g_SenderName, width, height, dxShareHandle, dwFormat)) {
+	if (spoutsender.FindSender(g_SenderName, width, height, g_dxShareHandle, dwFormat)) {
 
 		// Set up if not initialized yet
 		if (!bSpoutInitialized) {
@@ -837,45 +855,61 @@ void Render()
 			g_Height = height;
 
 			// Create or re-create the receiving texture.
+			// spoutdx.CreateSharedDX11Texture will release it, but do it here anyway
+			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
+			g_pReceivedTexture = nullptr;
 			HANDLE textureHandle = NULL; // dummy handle for the Spout function
 			spoutdx.CreateSharedDX11Texture(g_pd3dDevice,
 				g_Width, g_Height, (DXGI_FORMAT)dwFormat, // Format is the same as the sender
 				&g_pReceivedTexture, textureHandle);
-		
+
+			// Release any resource previously created with OpenSharedResource
+			if (g_pSenderTexture) g_pSenderTexture->Release();
+			g_pSenderTexture = nullptr;
+
+			// Retrieve the new sender's pointer using the share handle retrieved by FindSender above
+			spoutdx.OpenDX11shareHandle(g_pd3dDevice, &g_pSenderTexture, g_dxShareHandle);
+
 		}
 
-		// Retrieve the sender's shared texture pointer using the share handle
-		ID3D11Texture2D* pSharedTexture = nullptr;
-		if (spoutdx.OpenDX11shareHandle(g_pd3dDevice, &pSharedTexture, dxShareHandle)) {
+		// If we have a pointer to the sender texture it can be used directly.
+		// For this example, copy from it to a receiving texture
+		if (g_pSenderTexture && g_pReceivedTexture) {
 
 			// Access the sender shared texture
 			// (See comments in the CheckTextureAccess function)
-			if (frame.CheckTextureAccess(pSharedTexture)) {
+			if (frame.CheckTextureAccess(g_pSenderTexture)) {
 
 				// Optionally check whether the sender has produced a new frame.
 				// This is not required, but will avoid un-necessary processing for every frame.
 
-				// This must be done within a sender mutex lock so that
-				// the sender will not write to the texture and increment the 
-				// count while a receiver is reading it.
+				// This must be done within a sender mutex lock so that the sender will not write
+				// to the texture and increment the count while a receiver is reading it.
 				if (frame.GetNewFrame()) {
 					// Here is where the sender's shared texture can be safely accessed.
-					// In this example we will copy it to the local texture
-					g_pImmediateContext->CopyResource(g_pReceivedTexture, pSharedTexture);
-					// Set an update flag (see below)
+					// In this example we will copy it to a local texture.
+					g_pImmediateContext->CopyResource(g_pReceivedTexture, g_pSenderTexture);
+					// Set an update flag for use below because the 
+					// new frame query has to be done in a mutex lock
 					bNewFrame = true;
 				} // New frame from the sender
-				// Allow texture access if it was not a new frame
-				frame.AllowTextureAccess(pSharedTexture);
+				else {
+					bNewFrame = false;
+				}
+
+				// Allow texture access even if it was not a new frame
+				frame.AllowTextureAccess(g_pSenderTexture);
+
 			} // Accessed sender's shared texture
+
 		} // Retrieved sender shared texture pointer
 
 		// The received texture has been updated.
 		// Any action required by the receiver can be done here.
 
-		// In this example, a shader resource view of the texture
+		// In this example, a shader resource view of the received texture
 		// is created after receiving a new frame. 
-		if (bNewFrame) {
+		if (bNewFrame && g_pReceivedTexture) {
 
 			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 			g_pSpoutTextureRV = nullptr;
@@ -901,9 +935,9 @@ void Render()
 
 		// A sender was not found or the connected sender closed
 
-		// The receiving texture does not have to be released if not received
-		// because it is updated when connected to a sender
-		// It should be released when the program closes
+		// The receiving texture and the pointer to the sender's shared texture
+		// could be released now but they are updated when connected to another sender.
+		// They should be released when the program closes
 
 		if (bSpoutInitialized) {
 			
@@ -990,16 +1024,6 @@ void Render()
     // Present our back buffer to our front buffer
     //
     g_pSwapChain->Present( 0, 0 );
-
-	//
-	// SPOUT - fps control
-	//
-	// Optionally hold a target frame rate - e.g. 60 or 30fps.
-	// This is not necessary if the application already has
-	// fps control but in this example rendering is done
-	// during idle time and render rate can be extremely high.
-	frame.HoldFps(60);
-
 
 }
 

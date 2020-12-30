@@ -54,6 +54,13 @@
 			   RegisterSenderName - check for exceed maximum number of senders
 			   SetMaxSenders - set max to the registry for other applications to read
 	25.02.20 - Correct FindSenderName. Always returned true for one sender.
+	21.07.20 - Change default max senders from 256 to 64
+	28.08.20 - Correct in SpoutSettings
+	24.09.20 - Add GetPartnerID and SetPartnerID
+			 - Some testing of print format for HANDLE 32/64 bit
+	25.09.20 - Remove GetPartnerID and SetPartnerID - not reliable
+	29.09.20 - Add hasSharedInfo - to test for shared info memory map existence
+
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
@@ -89,8 +96,9 @@ spoutSenderNames::spoutSenderNames() {
 
 	// 15.09.18 - moved from interop class
 	// 06.06.19 - increase default maximum number of senders from 10 to 256
+	// 28.08.20 - decreased from 256 to 64
 	// Read the registry key if it exists
-	DWORD dwSenders = 256; // default maximum number of senders. 06-06-19 increased from 10
+	DWORD dwSenders = 64; // default maximum number of senders.
 	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MaxSenders", &dwSenders);
 	// If the registry read fails, the default will be used
 	m_MaxSenders = (int)dwSenders;
@@ -380,7 +388,7 @@ bool spoutSenderNames::GetSenderNameInfo(int index, char* sendername, int sender
 			namestring = *iter; // the name string
 			strcpy_s(name, SpoutMaxSenderNameLen, namestring.c_str()); // the 256 byte name char array
 			if(i == index) {
-				strcpy_s(sendername, sendernameMaxSize, name); // the passed name char array
+				strcpy_s(sendername, (rsize_t)sendernameMaxSize, name); // the passed name char array
 				break;
 			}
 			i++;
@@ -530,6 +538,7 @@ bool spoutSenderNames::SetActiveSender(const char *Sendername)
 
 } // end SetActiveSender
 
+
 // Retrieve the current active Sender name
 bool spoutSenderNames::GetActiveSender(char Sendername[SpoutMaxSenderNameLen])
 {
@@ -543,7 +552,7 @@ bool spoutSenderNames::GetActiveSender(char Sendername[SpoutMaxSenderNameLen])
 			return true;
 		}
 		else {
-			// Erase the active sender map ?
+			// Erase the active sender name ?
 		}
 	}
 	
@@ -604,7 +613,7 @@ bool spoutSenderNames::FindActiveSender(char sendername[SpoutMaxSenderNameLen], 
 bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
 	SpoutLogNotice("spoutSenderNames::CreateSender");
-	SpoutLogNotice("    [%s] %dx%d, sharehandle = 0x%x, format = %d", sendername, width, height, hSharehandle, dwFormat);
+	SpoutLogNotice("    [%s] %dx%d, sharehandle = 0x%.7X, format = %u", sendername, width, height, LOWORD(hSharehandle), (UINT)dwFormat);
 
 	// Register the sender name
 	// The function is ignored if the sender already exists
@@ -883,7 +892,7 @@ bool spoutSenderNames::setActiveSenderName(const char* SenderName)
 	}
 
 	// Fill it with the Sender name string
-	memcpy( (void *)pBuf, (void *)SenderName, len + 1 ); // write the Sender name string to the shared memory
+	memcpy( (void *)pBuf, (void *)SenderName, (size_t)(len+1) ); // write the Sender name string to the shared memory
 	
 	m_activeSender.Unlock();
 
@@ -957,6 +966,24 @@ bool spoutSenderNames::setSharedInfo(const char* sharedMemoryName, SharedTexture
 	return true;
 
 } // end getSharedInfo
+
+
+// Test for shared info memory map existence
+bool spoutSenderNames::hasSharedInfo(const char* sharedMemoryName)
+{
+	SpoutSharedMemory mem;
+	if (mem.Open(sharedMemoryName)) {
+		char *pBuf = mem.Lock();
+		if (pBuf) {
+			mem.Unlock();
+			return true;
+		}
+	}
+	return false;
+
+} // end hasSharedInfo
+
+
 
 //---------------------------------------------------------
 bool spoutSenderNames::SenderDebug(const char *Sendername, int size)

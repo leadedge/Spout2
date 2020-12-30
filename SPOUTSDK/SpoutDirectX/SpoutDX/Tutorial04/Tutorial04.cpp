@@ -14,6 +14,8 @@
 // Compare with a stand-alone version using methods directly from the Spout SDK classes
 // Compare also with Windows examples using SendImage.
 //
+// Window resizing has been added to demonstrate handling of sender size changes
+//
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
 // This application displays a 3D cube using Direct3D 11
@@ -81,18 +83,26 @@ XMMATRIX                g_World;
 XMMATRIX                g_View;
 XMMATRIX                g_Projection;
 
-// SPOUT
-spoutDX sender;
-
 //--------------------------------------------------------------------------------------
 // Forward declarations
 //--------------------------------------------------------------------------------------
 HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow );
 HRESULT InitDevice();
 void CleanupDevice();
-LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
+LRESULT CALLBACK WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
 
+// SPOUT
+spoutDX sender;
+void ResetDevice();
+void SelectAdapter();
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+static std::string adaptername[10];
+static int adaptercount = 0;
+static int currentadapter = 0;
+static int selectedadapter = 0;
+static int senderadapter = 0;
 
 //--------------------------------------------------------------------------------------
 // Entry point to the program. Initializes everything and goes into a message processing 
@@ -107,7 +117,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// Optionally enable logging to catch Spout warnings and errors
 	// OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
-	// EnableSpoutLogFile("Tutorial04.log); // Log to file
+	EnableSpoutLogFile("Tutorial04.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
@@ -121,7 +131,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// SPOUT
 	// Initialize DirectX.
-	// The device pointer must be passed in if a DirectX 11.0 device is available.
+	// If a DirectX 11.0 device is available, the device pointer must be passed in.
 	// Otherwise a device is created within the SpoutDX class
 	// and the pointer can be retrieved with GetDevice();
 	if (!sender.OpenDirectX11(g_pd3dDevice))
@@ -171,7 +181,7 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
     wcex.hIcon = LoadIcon( hInstance, ( LPCTSTR )IDI_TUTORIAL1 );
     wcex.hCursor = LoadCursor( nullptr, IDC_ARROW );
     wcex.hbrBackground = ( HBRUSH )( COLOR_WINDOW + 1 );
-    wcex.lpszMenuName = nullptr;
+	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_TUTORIAL1); // add a menu
     wcex.lpszClassName = L"TutorialWindowClass";
     wcex.hIconSm = LoadIcon( wcex.hInstance, ( LPCTSTR )IDI_TUTORIAL1 );
     if( !RegisterClassEx( &wcex ) )
@@ -181,14 +191,14 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
     g_hInst = hInstance;
 
 	RECT rc = { 0, 0, 640, 360 };
-    AdjustWindowRect( &rc, WS_OVERLAPPEDWINDOW, FALSE );
+    // AdjustWindowRect( &rc, WS_OVERLAPPEDWINDOW, FALSE );
+	AdjustWindowRect(&rc, WS_CAPTION | WS_SYSMENU, TRUE); // Resize for the menu
     g_hWnd = CreateWindow(	L"TutorialWindowClass",
 							L"Direct3D 11 Tutorial 4: - Spout sender",
-							WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-							CW_USEDEFAULT, CW_USEDEFAULT, 
-							rc.right - rc.left,
-							rc.bottom - rc.top,
-							nullptr, nullptr, hInstance, nullptr );
+							// SPOUT - enable resize and maximize to demonstrate sender resizing
+							WS_OVERLAPPEDWINDOW,
+							CW_USEDEFAULT, CW_USEDEFAULT,
+							rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance, nullptr);
 
     if( !g_hWnd )
         return E_FAIL;
@@ -261,14 +271,21 @@ HRESULT InitDevice()
     UINT width = rc.right - rc.left;
     UINT height = rc.bottom - rc.top;
 
-    UINT createDeviceFlags = 0;
-#ifdef _DEBUG
-    createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
+	// SPOUT graphics adapter testing
+	// Create a device with the selected adapter
+	g_pd3dDevice = sender.spoutdx.CreateDX11device();
+	g_pImmediateContext = sender.spoutdx.GetImmediateContext();
+
+	/*
 
 	// SPOUT note
 	// GL/DX interop Spec
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
+
+	UINT createDeviceFlags = 0;
+#ifdef _DEBUG
+	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
     D3D_DRIVER_TYPE driverTypes[] =
     {
         D3D_DRIVER_TYPE_HARDWARE,
@@ -289,14 +306,31 @@ HRESULT InitDevice()
     for( UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++ )
     {
         g_driverType = driverTypes[driverTypeIndex];
-        hr = D3D11CreateDevice( nullptr, g_driverType, nullptr, createDeviceFlags, featureLevels, numFeatureLevels,
-                                D3D11_SDK_VERSION, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext );
+        hr = D3D11CreateDevice( nullptr, 
+								g_driverType, 
+								nullptr, 
+								createDeviceFlags,
+								featureLevels,
+								numFeatureLevels,
+                                D3D11_SDK_VERSION,
+								&g_pd3dDevice,
+								&g_featureLevel,
+								&g_pImmediateContext );
 
         if ( hr == E_INVALIDARG )
         {
             // DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1 so we need to retry without it
-            hr = D3D11CreateDevice( nullptr, g_driverType, nullptr, createDeviceFlags, &featureLevels[1], numFeatureLevels - 1,
-                                    D3D11_SDK_VERSION, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext );
+            hr = D3D11CreateDevice(nullptr,
+									g_driverType,
+									nullptr,
+									createDeviceFlags,
+									&featureLevels[1],
+									numFeatureLevels - 1,
+                                    D3D11_SDK_VERSION,
+									&g_pd3dDevice,
+									&g_featureLevel,
+									&g_pImmediateContext );
+
         }
 
         if( SUCCEEDED( hr ) )
@@ -304,6 +338,8 @@ HRESULT InitDevice()
     }
     if( FAILED( hr ) )
         return hr;
+	*/
+	
 
     // Obtain DXGI factory from device (since we used nullptr for pAdapter above)
     IDXGIFactory1* dxgiFactory = nullptr;
@@ -577,6 +613,20 @@ void CleanupDevice()
 
 }
 
+// SPOUT
+// Re-initialize for size changes
+void ResetDevice()
+{
+	// Release everything
+	sender.ReleaseSender();
+	sender.CleanupDX11();
+	CleanupDevice();
+	// Create device and objects
+	InitDevice();
+	// SpoutDX will now use the new device
+	sender.OpenDirectX11(g_pd3dDevice);
+}
+
 
 //--------------------------------------------------------------------------------------
 // Called every time the application receives a message
@@ -588,6 +638,25 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 
     switch( message )
     {
+
+	case WM_COMMAND :
+		// Parse the menu selections:
+		switch (LOWORD(wParam))
+		{
+			case IDM_ADAPTER:
+				SelectAdapter();
+				break;
+			case IDM_ABOUT:
+				DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), g_hWnd, About);
+				break;
+			case IDM_EXIT:
+				DestroyWindow(hWnd);
+				break;
+			default:
+				break;
+		}
+		break;
+
     case WM_PAINT:
         hdc = BeginPaint( hWnd, &ps );
         EndPaint( hWnd, &ps );
@@ -596,9 +665,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
     case WM_DESTROY:
         PostQuitMessage( 0 );
         break;
-
-        // Note that this tutorial does not handle resizing (WM_SIZE) requests,
-        // so we created the window without the resize border.
 
     default:
         return DefWindowProc( hWnd, message, wParam, lParam );
@@ -613,6 +679,23 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 //--------------------------------------------------------------------------------------
 void Render()
 {
+	//
+	// SPOUT
+	//
+	if (sender.IsInitialized()) {
+		// Has the window changed size?
+		if (!IsIconic(g_hWnd)) {
+			RECT rc;
+			GetClientRect(g_hWnd, &rc);
+			if (sender.GetWidth() != (unsigned int)(rc.right - rc.left)
+				|| sender.GetHeight() != (unsigned int)(rc.bottom - rc.top)) {
+				// Reset everything
+				ResetDevice();
+				return;
+			}
+		}
+	}
+
     // Update our time
     static float t = 0.0f;
     if( g_driverType == D3D_DRIVER_TYPE_REFERENCE )
@@ -661,6 +744,7 @@ void Render()
 	//
 	// SPOUT
 	//
+
 	// Get the swap chain's backbuffer to a texture for sending
 	ID3D11Texture2D* pBackBuffer = nullptr;
 	HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
@@ -684,3 +768,167 @@ void Render()
 	sender.HoldFps(60);
 
 }
+
+
+// Message handler for about box.
+// SPOUT : adapted for this example.
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam);
+	char tmp[MAX_PATH];
+	char about[1024];
+	LPDRAWITEMSTRUCT lpdis;
+	HWND hwnd = NULL;
+	HCURSOR cursorHand = NULL;
+
+	switch (message)
+	{
+	case WM_INITDIALOG:
+
+		sprintf_s(about, 256, "                Tutorial04");
+		strcat_s(about, 1024, "\n\n\n");
+		strcat_s(about, 1024, "Spout DirectX texture sender example\n");
+		strcat_s(about, 1024, "using DirectX 11 and the SpoutDX class.\n");
+		strcat_s(about, 1024, "Adapted from DirectX SDK examples by Chuck Walbourn.");
+		SetDlgItemTextA(hDlg, IDC_ABOUT_TEXT, (LPCSTR)about);
+
+		// Spout website hyperlink hand cursor
+		cursorHand = LoadCursor(NULL, IDC_HAND);
+		hwnd = GetDlgItem(hDlg, IDC_SPOUT_URL);
+		SetClassLongPtrA(hwnd, GCLP_HCURSOR, (LONG_PTR)cursorHand);
+		return (INT_PTR)TRUE;
+
+	case WM_DRAWITEM:
+		// The blue hyperlink
+		lpdis = (LPDRAWITEMSTRUCT)lParam;
+		if (lpdis->itemID == -1) break;
+		SetTextColor(lpdis->hDC, RGB(6, 69, 173));
+		switch (lpdis->CtlID) {
+		case IDC_SPOUT_URL:
+			DrawTextA(lpdis->hDC, "http://spout.zeal.co", -1, &lpdis->rcItem, DT_LEFT);
+			break;
+		default:
+			break;
+		}
+		break;
+
+	case WM_COMMAND:
+
+		if (LOWORD(wParam) == IDC_SPOUT_URL) {
+			// Open the website url
+			sprintf_s(tmp, MAX_PATH, "http://spout.zeal.co");
+			ShellExecuteA(hDlg, "open", tmp, NULL, NULL, SW_SHOWNORMAL);
+			EndDialog(hDlg, 0);
+			return (INT_PTR)TRUE;
+		}
+
+		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+		{
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
+	}
+	return (INT_PTR)FALSE;
+}
+
+
+void SelectAdapter()
+{
+	currentadapter = sender.GetAdapter(); // Get the current adapter index
+	selectedadapter = currentadapter; // The index to be selected in the dialog
+	// Create an adapter name list for the dialog
+	adaptercount = sender.GetNumAdapters();
+	adaptername->clear();
+	char name[64];
+	for (int i = 0; i < adaptercount; i++) {
+		sender.GetAdapterName(i, name, 64);
+		adaptername[i] = name;
+	}
+
+	// Show the dialog box 
+	int retvalue = (int)DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ADAPTERBOX), g_hWnd, (DLGPROC)AdapterProc);
+
+	if (retvalue != 0) {
+		// OK - adapter index (selectedadapter) has been selected
+		// Set the selected adapter if different
+		if (selectedadapter != currentadapter) {
+
+			SpoutLogNotice("Tutorial04 : selectedadapter = %d, currentadapter = %d", selectedadapter, currentadapter);
+
+			// A new sender using the selected adapter will be created
+			// on the first SendTexture call (Requires 2.007)
+			sender.ReleaseSender();
+			if (!sender.SetAdapter(selectedadapter)) {
+				// SetAdapter returns to the primary adapter for failure
+				// Refer to error logs for diagnostics
+				MessageBoxA(NULL, "Could not select graphics adapter", "Tutorial04", MB_OK | MB_TOPMOST | MB_ICONEXCLAMATION);
+				// Set the adapter back to what it was (the compatibility test is repeated)
+				sender.SetAdapter(currentadapter);
+			}
+			else {
+				// Change the application current adapter index to the one selected
+				// This will take effect when the sender is re-created
+				currentadapter = selectedadapter;
+			}
+			// Reset everything to create a new device with the selected adapter
+			ResetDevice();
+		}
+	}
+}
+
+// Message handler for selecting adapter
+INT_PTR  CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam); // suppress warning
+
+	HWND hwndList = NULL;
+	int i = 0;
+	char name[128];
+
+	switch (message) {
+
+	case WM_INITDIALOG:
+		// Adapter combo selection
+		hwndList = GetDlgItem(hDlg, IDC_ADAPTERS);
+		if (adaptercount < 10) {
+			for (i = 0; i < adaptercount; i++) {
+				sprintf_s(name, 128, "%d : %s", i, adaptername[i].c_str());
+				SendMessageA(hwndList, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)name);
+			}
+			// Display an initial item in the selection field
+			SendMessageA(hwndList, CB_SETCURSEL, (WPARAM)currentadapter, (LPARAM)0);
+		}
+		return TRUE;
+
+	case WM_COMMAND:
+
+		// Combo box selection
+		if (HIWORD(wParam) == CBN_SELCHANGE) {
+			selectedadapter = (int)SendMessageA((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+		}
+		// Drop through
+
+		switch (LOWORD(wParam)) {
+
+		case IDOK:
+			// Return the selected adapter index
+			EndDialog(hDlg, 1);
+			break;
+
+		case IDCANCEL:
+			// User pressed cancel.
+			// Reset the selected index and take down dialog box.
+			selectedadapter = currentadapter;
+			EndDialog(hDlg, 0);
+			return (INT_PTR)TRUE;
+
+		default:
+			return (INT_PTR)FALSE;
+		}
+	}
+
+	return (INT_PTR)FALSE;
+}
+
+// That's all..

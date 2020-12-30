@@ -279,7 +279,44 @@
 		27.08.20	- Made m_hInteropDevice and m_hInteropObject public for external access
 		29.08.20	- Add registry read of Laptop Nvidia mode in GLDXCompatible
 					  Requires SpoutSettings Version 1.018 or later
-
+		03.09.20	- Remove registry read of Laptop Nvidia mode in GLDXCompatible
+					  Remove memoryshare registry write from GLDXCompatible
+					  (requires SpoutSettings Version 1.019 or later for user diagnostics)
+		04.09.20	- Unregister existing interop link for sender update in "CreateInterop".
+					  or DirectX textures are not released - see spoutDirectX::ReleaseDXtexture.
+					  Add GetMemoryShare and SetMemoryShare functions to change class flags.
+					  Add simulated failure to GLDXcompatible for testing dynamic switching of share mode.
+		05.09.20	- Add GetAdapterIndex, SetAdapterIndex, SetHostPath
+					  Save adapter index in unused "Usage" field of sender shared memory
+					  Re-arrange code.
+		06.09.20	- Add null texture debug print to UnloadTexturePixels
+		08.09.20	- Re-set shared texture handle in CleanupDX9 and CleanupDX11
+				      Warning on CreateInterop failure for caller to switch to memoryshare
+		09.09.20	- Error logic and log warnings changed for WriteTexture and ReadTexture
+		14.09.20	- Further changes to GLDXcompatible for 2.006 compatibility
+		15.09.20	- Corrected SetShareMode for Auto mode (memory mode was set true instead of false)
+		16.09.20	- Change Get/Set AdapterIndex to Get/Set SenderAdapter
+		17.09.20	- Further changes to GLDXcompatible for application share mode
+					  Change GetMemoryShare(const char* sendername) to 
+					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
+					  char* argument consistency
+		18.09.20	- use %lu and %lx for all unsigned sprintf
+					  Change from Usage field to partnerID for sender adapter index for 2.006 compatibility
+					  Protect against null sendername in GetSenderAdapter and GetHostPath
+		19.09.20	- Remove Auto share mode
+		21.09.20	- Some protections in GetSenderAdapter
+		23.09.20	- OpenDirectX11() correct logic for m_pd3dDevice check
+				      Correct class variables initialize and logic checks
+					  Correct potential null from ststr in OpenDeviceKey
+					  Numerous cast and log comment changes
+		24.09.20	- Change all pointer "= NULL to "= nullptr"
+					  Use SpoutSenderNames GetPartnerID and SetPartnerID to get/set adapter index
+		25.09.20	- Remove GetSenderAdapter/SetSenderAdapter - not reliable
+		08.10-20	- Re-introduce DX11 staging texture functions for CPU backup if no GL/DX interop
+					  Auto switch if GL/DX interop compatibility fails
+					  WriteDX11texture and ReadDX11texture 
+					  buffered read/write using PBO and dual staging textures
+		30.12.20	- PtrToUint LOWORD for all pointer/handle printf
 */
 
 #include "SpoutGLDXinterop.h"
@@ -288,9 +325,9 @@
 spoutGLDXinterop::spoutGLDXinterop() {
 
 	m_hWnd           = NULL;
-	m_hInteropObject = NULL;
-	m_hSharedMemory  = NULL;
-	m_hInteropDevice = NULL;
+	m_hInteropObject = nullptr;
+	m_hSharedMemory  = nullptr;
+	m_hInteropDevice = nullptr;
 
 	m_glTexture = 0; // The shared OpenGL texture linked to DirectX
 	m_fbo       = 0; // Fbo used thoughput
@@ -312,14 +349,21 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	m_hwndButton = NULL;
 	m_hRc = NULL;
 	
-	m_pD3D       = NULL;
-	m_pDevice    = NULL;
-	m_dxTexture  = NULL;
+	m_pD3D       = nullptr;
+	m_pDevice    = nullptr;
+	m_dxTexture  = nullptr;
+	m_dxShareHandle = nullptr;
 	DX9format    = D3DFMT_A8R8G8B8; // default format for DX9 (21)
 	
 	// DX11
-	m_pd3dDevice        = NULL; // DX11 device
-	m_pSharedTexture    = NULL; // DX11 shared texture
+	m_pd3dDevice        = nullptr; // DX11 device
+	m_pImmediateContext = nullptr; // DX11 context
+	m_pSharedTexture    = nullptr; // DX11 shared texture
+	m_pStaging[0]       = nullptr; // DX11 staging textures
+	m_pStaging[1]       = nullptr;
+	m_Index = 0;
+	m_NextIndex = 0;
+
 	DX11format = DXGI_FORMAT_B8G8R8A8_UNORM; // Default compatible with DX9
 
 	// OpenGL extensions
@@ -350,37 +394,33 @@ spoutGLDXinterop::spoutGLDXinterop() {
 	m_bInitialized = false;
 
 	// ===============================================================
-	//            Get mode flags from the registry
+	//            Get sharing mode flags from the registry
 	//         User can set the modes using SpoutDXmode
-	//   Mode flags are modified by GLDXcompatible depending on the
+	//   Sharing mode is modified by GLDXcompatible depending on the
 	//   availability of Directx and OpenGL GL/DX interop extensions
 	// ===============================================================
 
 	m_bUseDX9    = false; // Use DX9 (true) or DX11 (default false)
-	m_bUseGLDX   = true;  // Use GPU texture processing (default)
-	m_bUseMemory = false; // Memoryshare
+	m_bUseGLDX   = true;  // GPU texture processing (default)
+	m_bUseMemory = false; // Memoryshare - user selected or DirectX failure
 	
-	DWORD dwDX9 = 0;
-	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "DX9", &dwDX9);
-	m_bUseDX9 = (dwDX9 == 1);
+	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "DX9", &dwMode);
+	m_bUseDX9 = (dwMode == 1);
 
 	// Memoryshare - 2.005 and greater
-	// User selection of Memoryshare depends on 2.004 SpoutDirectX, 2.005 SpoutDXmode, or 2.006 SpoutSettings.
-	// 2.004 apps will not have the registry set by the installer and memoryshare methods are incompatible.
-	// If the hardware is not interop compatible they will fail to work.
-	DWORD dwMemory = 0;
-	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", &dwMemory)) {
-		m_bUseMemory = (dwMemory == 1);
+	// User selection of Memoryshare depends on >2.004 SpoutDirectX, >2.005 SpoutDXmode, >2.006 SpoutSettings.
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", &dwMode)) {
+		m_bUseMemory = (dwMode == 1);
 	}
 
-	// Disable texture processing for memoryshare
+	// Disable texture for memoryshare
 	if (m_bUseMemory)
 		m_bUseGLDX = false;
 
 	// Find the Spout version from the registry if Spout is installed (2005, 2006, etc.)
 	DWORD dwVersion = 0;
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Version", &dwVersion))
-		m_SpoutVersion = dwVersion; // 0 for earlier than 2.005
+		m_SpoutVersion = (int)dwVersion; // 0 for earlier than 2.005
 	else
 		m_SpoutVersion = -1; // Spout not installed
 
@@ -397,21 +437,37 @@ spoutGLDXinterop::~spoutGLDXinterop()
 // GLDXcompatible
 //
 // Hardware compatibility test
-// Over-rides user selection via SpoutSettings
+//
+// Memory share mode
+//     Compatibility test not required
+//
+// Texture share mode
+//		Not texture compatible
+//			Set memory share mode for this application 
+//		Compatible
+//			Switches application to memory share
+//			Other classes can use GetMemoryShare to return m_bUseMemory
+//			Re-set texture share mode for this application 
+//
+// - - - - - Tests performed for texture share mode - - - - -
 //
 //  o LoadGLextensions
 //      Checks for availability of OpenGL extensions
 //      Availability can then be retrieved from this class
 //
 //  o OpenDirectX
-//      Attempts to create a DirectX device to allow use of DirectX textures
+//      Attempt to create a DirectX device to allow use of DirectX textures
 //
 //  o GLDXready
 //      Checks OpenGL GL/DX extension functions
 //		and creates an interop device for success
 //
+//	m_bUseGLDX		- true for GL/DX interop availability
+//	m_bUseMemory	- user selected memory share mode or DirectX initialization failure
+//
 bool spoutGLDXinterop::GLDXcompatible()
 {
+	// printf("\n\nspoutGLDXinterop::GLDXcompatible\n");
 
 	// OpenGL device context is needed
 	HDC hdc = wglGetCurrentDC();
@@ -420,111 +476,73 @@ bool spoutGLDXinterop::GLDXcompatible()
 		return false;
 	}
 
+	// Get a window handle for DirectX initialization
+	m_hWnd = WindowFromDC(hdc);
+
 	// If OpenGL extensions fail to load quit now
 	if (!LoadGLextensions()) {
 		SpoutLogFatal("spoutGLDXinterop::GLDXcompatible | OpenGL extensions failed to load");
 		return false;
 	}
 
-	SpoutLogNotice("spoutGLDXinterop::GLDXcompatible - testing for texture share compatibility");
-	if(m_bUseGLDX) 
-		SpoutLogNotice("    Texture sharing option selected");
-	else
-		SpoutLogNotice("    Memory sharing option selected");
+	// Assume not GLDX interop compatible until all tests pass
+	m_bUseMemory = false;
+	m_bUseGLDX = false;
 
-	// Get a window handle for DirectX initialization
-	// If not available it can be NULL
-	// This is always done for all modes so save the global window handle for this class
-	m_hWnd = WindowFromDC(hdc);
-
-	// Defaults are already set by installation or by the user with SpoutSettings
-	// The following tests over-ride user selection
+	// No further testing is required if the user has selected Memoryshare mode
+	if (GetMemoryShareMode()) {
+		SpoutLogNotice("spoutGLDXinterop::GLDXcompatible | No compatibility test required for Memory share");
+		m_bUseMemory = true;
+		return true;
+	}
 
 	// Check for correct DirectX initialization
-	// unless the user has selected Memoryshare mode
-	if (m_bUseMemory) {
-		m_bUseGLDX = false;
+	if (!OpenDirectX(m_hWnd, m_bUseDX9)) {
+		// Failed to open DirectX - cannot use shared textures
+		SpoutLogWarning("spoutGLDXinterop::GLDXcompatible | DirectX could not be initialized");
+		m_bUseMemory = true;
+		return true;
+	}
+
+	SpoutLogNotice("spoutGLDXinterop::GLDXcompatible | testing for GL/DX interop compatibility");
+
+	//
+	// Initial tests
+	//
+	//		o Check for correct DirectX initialization
+	//		o Check for availabilty of the GL/DX extensions
+	//		o Check that the GL/DX interop functions do not fail
+	//
+
+	// DirectX is OK but check for availabilty of the GL/DX extensions.
+	if (!IsGLDXavailable()) {
+		// The extensions required for texture access are not available.
+		// The user can specify memoryshare mode or switch to it if Auto
+		SpoutLogWarning("spoutGLDXinterop::GLDXcompatible | GL/DX interop extensions not available");
 	}
 	else {
-		if (OpenDirectX(m_hWnd, m_bUseDX9)) {
-			// DirectX is OK but check for availabilty of the GL/DX extensions.
-			if (!IsGLDXavailable()) {
-				// The extensions required for texture access are not available.
-				// The user can specify memoryshare mode but even if the user
-				// has not made a selection, default to Memoryshare
-
-				// Pop out a 3 second warning if switching to memoryshare
-				if (m_bUseGLDX)
-					SpoutMessageBox("Warning - GL/DX extensions not available\nusing memory share mode", 3000);
-
-				m_bUseGLDX = false;
-				m_bUseMemory = true;
-				SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - GL/DX extensions not available");
-			}
-			else {
-				SpoutLogNotice("    GL/DX interop extensions available");
-				if (!GLDXready()) {
-					// It is possible that extensions load OK but that the GL/DX interop functions fail.
-					// This has been noted on dual graphics machines with the NVIDIA Optimus driver.
-					// If the compatibility test fails, fall back to memoryshare
-					
-					// Pop out a 3 second warning if switching to memoryshare
-					if (m_bUseGLDX)
-						SpoutMessageBox("Warning - GL/DX interop functions failed\nusing memory share mode", 3000);
-
-					m_bUseGLDX = false;
-					m_bUseMemory = true;
-					SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - GL/DX interop functions failed");
-				}
-				else {
-					SpoutLogNotice("    GL/DX interop functions working");
-				}
-			}
-			// All passes - don't change user settings
+		SpoutLogNotice("    GL/DX interop extensions available");
+		if (!GLDXready()) {
+			// It is possible that extensions for the GL/DX interop load OK
+			// but that the GL/DX interop functions fail.
+			// This has been noted on dual graphics machines with the NVIDIA Optimus driver.
+			SpoutLogWarning("spoutGLDXinterop::GLDXcompatible | GL/DX interop functions failed");
 		}
 		else {
-			// Failed to open DirectX - must use memoryshare
-			
-			// Pop out a 3 second warning if switching to memoryshare
-			if (m_bUseGLDX)
-				SpoutMessageBox("Warning - OpenDirectX failed\nusing memory share mode", 3000);
-			
-			m_bUseGLDX = false;
-			m_bUseMemory = true;
-
-			SpoutLogWarning("spoutGLDXinterop::GLDXcompatible - OpenDirectX failed");
+			SpoutLogNotice("    GL/DX interop functions working");
+			m_bUseGLDX = true;
 		}
-
-		//
-		// All applications will use memoryshare mode
-		//    o If not texture share compatible
-		//    o If memoryshare mode is set by the user
-
-		//
-		// For all systems
-		// SpoutSettings records the current NVIDIA mode in the registry
-		//    0 - nvidia : 1 - integrated : 2 - auto-select : -1 not nvidia
-	
-		// For laptops with dual graphics
-		//    o If set to use Auto or Integrated, use memoryshare mode but do not change registry
-		//    o If set to use Nvidia or not Nvidia, it's still incompatible so change registry setting
-		//
-		// Users can perform diagnostics using SpoutSettings
-		//
-
-		DWORD dwMode = 2; // default for no registry, assume auto select
-		ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "NvidiaMode", &dwMode);
-
-		if (dwMode < 1) {
-			// Over-ride SpoutSettings memory share mode
-			WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", (DWORD)m_bUseMemory);
-		}
-
-		// Using either GL/DX texture or memoryshare mode
-		// OpenSpout will log the mode being used
-		// For texture share mode, CreateInterop should not report any errors
-		
 	}
+
+	// Now m_bUseGLDX is set to use the GL/DX interop or not.
+	// If not GLDX compatible, LinkGLDXtexture will not be called
+	// (see CreateDX11interop and CreateDX9interop)
+	// ReadDX11Texture and WriteDX11Texture using staging textures will be used instead
+
+	// Simulate failure for debugging.
+	// SpoutLogNotice("spoutGLDXinterop::GLDXcompatible - simulated compatibility failure");
+	// m_bUseGLDX = false;
+
 	return true;
 
 } // end GLDXcompatible
@@ -540,7 +558,7 @@ HWND spoutGLDXinterop::GetRenderWindow()
 // For external access so that the global class variables are used
 bool spoutGLDXinterop::OpenDirectX(HWND hWnd, bool bDX9)
 {
-	SpoutLogNotice("spoutGLDXinterop::OpenDirectX - hWnd = 0x%x, DX9 = %d", hWnd, bDX9);
+	SpoutLogNotice("spoutGLDXinterop::OpenDirectX - hWnd = 0x%X, DX9 = %d", hWnd, bDX9);
 
 	// If user requested DX9 then use it.
 	if (bDX9) {
@@ -574,20 +592,18 @@ bool spoutGLDXinterop::OpenDirectX9(HWND hWnd)
 	HWND fgWnd = NULL;
 	char fgwndName[MAX_PATH];
 
-	SpoutLogNotice("spoutGLDXinterop::OpenDirectX9 - hWnd = 0x%x", hWnd);
+	SpoutLogNotice("spoutGLDXinterop::OpenDirectX9 - hWnd = 0x%X", hWnd);
 
 	// Already initialized ?
-	if(m_pD3D != NULL) {
+	if(m_pD3D) {
 		SpoutLogNotice("    Device already initialized");
 		return true;
 	}
 
 	// Create a IDirect3D9Ex object if not already created
-	if(!m_pD3D) {
-		m_pD3D = spoutdx.CreateDX9object(); 
-	}
+	m_pD3D = spoutdx.CreateDX9object(); 
 
-	if(m_pD3D == NULL) {
+	if(!m_pD3D) {
 		SpoutLogWarning("    Could not create DX9 object");
 		return false;
 	}
@@ -597,7 +613,7 @@ bool spoutGLDXinterop::OpenDirectX9(HWND hWnd)
 		m_pDevice = spoutdx.CreateDX9device(m_pD3D, hWnd); 
 	}
 
-	if(m_pDevice == NULL) {
+	if(!m_pDevice) {
 		SpoutLogWarning("    Could not create DX9 device");
 		return false;
 	}
@@ -605,10 +621,11 @@ bool spoutGLDXinterop::OpenDirectX9(HWND hWnd)
 	// Problem for FFGL plugins - might be a problem for other FFGL hosts or applications.
 	// DirectX 9 device initialization creates black areas and the host window has to be redrawn.
 	// But this causes a crash for a sender in Magic when the render window size is changed.
-	// Not a problem for DirectX 11.
-	// Not needed in Isadora.
-	// Needed for Resolume.
+	//   o Not a problem for DirectX 11.
+	//   o Not needed in Isadora.
+	//   o Needed for Resolume.
 	// For now, limit this to Resolume only.
+	// TODO : re-test this old issue
 
 	fgWnd = GetForegroundWindow();
 	if(fgWnd) {
@@ -644,22 +661,19 @@ bool spoutGLDXinterop::OpenDirectX11()
 	SpoutLogNotice("spoutGLDXinterop::OpenDirectX11()");
 
 	// Quit if already initialized
-	if (m_pd3dDevice != NULL) {
+	if (m_pd3dDevice) {
 		SpoutLogNotice("    Device already initialized");
 		return true;
 	}
 
 	// Create a DirectX 11 device
-	if(!m_pd3dDevice) 
-		m_pd3dDevice = spoutdx.CreateDX11device();
+	m_pd3dDevice = spoutdx.CreateDX11device();
 
 	if(!m_pd3dDevice)
 		return false;
 
 	// Retrieve the context pointer
 	m_pImmediateContext = spoutdx.GetImmediateContext();
-
-	SpoutLogNotice("    Device 0x%Ix : Context 0x%Ix", m_pd3dDevice, m_pImmediateContext);
 
 	return true;
 }
@@ -669,7 +683,7 @@ bool spoutGLDXinterop::OpenDirectX11()
 bool spoutGLDXinterop::DX11available()
 {
 	// Return silently if DX11 is already initialized
-	if(m_pd3dDevice != NULL) 
+	if(m_pd3dDevice) 
 		return true;
 
 	SpoutLogNotice("spoutGLDXinterop::DX11available() - testing for DirectX 11 availability");
@@ -677,14 +691,14 @@ bool spoutGLDXinterop::DX11available()
 	// Try to create a DirectX 11 device
 	ID3D11Device* pd3dDevice;
 	pd3dDevice = spoutdx.CreateDX11device();
-	if (pd3dDevice == NULL) {
+	if (!pd3dDevice) {
 		SpoutLogNotice("    DirectX 11 is not available");
 		return false;
 	}
 
 	// Release the device because this is just a test
 	spoutdx.ReleaseDX11Device(pd3dDevice);
-	pd3dDevice = NULL;
+	pd3dDevice = nullptr;
 
 	SpoutLogNotice("    DirectX 11 is available");
 
@@ -712,13 +726,16 @@ bool spoutGLDXinterop::DX11available()
 //	0x8086  Intel
 //	0x8087  Intel
 //
+// See also the DirectX version :
+// bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
+//
 bool spoutGLDXinterop::GetAdapterInfo(char* renderadapter, 
 									  char* renderdescription, char* renderversion,
 									  char* displaydescription, char* displayversion,
 									  int maxsize, bool &bDX9)
 {
 
-	IDXGIDevice * pDXGIDevice = NULL;
+	IDXGIDevice * pDXGIDevice = nullptr;
 
 	renderadapter[0] = 0; // DirectX adapter
 	renderdescription[0] = 0;
@@ -727,7 +744,7 @@ bool spoutGLDXinterop::GetAdapterInfo(char* renderadapter,
 	displayversion[0] = 0;
 
 	if(bDX9) {
-		if(m_pDevice == NULL) {
+		if(!m_pDevice) {
 			SpoutLogError("spoutGLDXinterop::GetAdapterInfo - no DX9 device");
 			return false; 
 		}
@@ -752,11 +769,11 @@ bool spoutGLDXinterop::GetAdapterInfo(char* renderadapter,
 		// printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
 		// printf("SubSysId = [%d] [%x]\n", adapterinfo.SubSysId, adapterinfo.SubSysId);
 		// printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
-		strcpy_s(renderadapter, maxsize, adapterinfo.Description);
+		strcpy_s(renderadapter, (rsize_t)maxsize, adapterinfo.Description);
 
 	}
 	else {
-		if(m_pd3dDevice == NULL) { 
+		if(!m_pd3dDevice) { 
 			SpoutLogError("spoutGLDXinterop::GetAdapterInfo - no DX11 device");
 			return false; 
 		}
@@ -784,12 +801,12 @@ bool spoutGLDXinterop::GetAdapterInfo(char* renderadapter,
 		// printf("SubSysId = [%d] [%x]\n", adapterinfo.SubSysId, adapterinfo.SubSysId);
 		// printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
 		// printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
-		strcpy_s(renderadapter, maxsize, output);
+		strcpy_s(renderadapter, (rsize_t)maxsize, output);
 	}
 
-	// DEBUG - default render adapter is the DirectX one ???
+	// TODO - check default render adapter is the DirectX one ???
 	if(renderadapter) {
-		strcpy_s(renderdescription, maxsize, renderadapter);
+		strcpy_s(renderdescription, (rsize_t)maxsize, renderadapter);
 	}
 
 	// Use Windows functions to look for Intel graphics to see if it is
@@ -812,7 +829,7 @@ bool spoutGLDXinterop::GetAdapterInfo(char* renderadapter,
 
 	int nDevices = 0;
 	for(int i=0; i<10; i++) { // should be much less than 10 adapters
-		if(EnumDisplayDevices(NULL, i, &DisplayDevice, 0)) {
+		if(EnumDisplayDevices(NULL, (DWORD)i, &DisplayDevice, 0)) {
 			// This will list all the devices
 			nDevices++;
 			// Get the registry key
@@ -822,8 +839,8 @@ bool spoutGLDXinterop::GetAdapterInfo(char* renderadapter,
 			// Is it a render adapter ?
 			if(renderadapter && strcmp(driverdescription, renderadapter) == 0) {
 				// printf("Windows render adapter matches : [%s] Vers [%s]\n", driverdescription, driverversion);
-				strcpy_s(renderdescription, maxsize, driverdescription);
-				strcpy_s(renderversion, maxsize, driverversion);
+				strcpy_s(renderdescription, (rsize_t)maxsize, driverdescription);
+				strcpy_s(renderversion, (rsize_t)maxsize, driverversion);
 			}
 			// Is it a display adapter
 			if(DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
@@ -845,6 +862,378 @@ bool spoutGLDXinterop::GetAdapterInfo(char* renderadapter,
 	return true;
 }
 
+
+// =========================================================
+//                    OpenGL utilities
+// =========================================================
+
+
+//
+// COPY AN OPENGL TEXTURE TO ANOTHER OPENGL TEXTURE
+//
+// Textures must be the same size
+//
+bool spoutGLDXinterop::CopyTexture(GLuint SourceID,
+	GLuint SourceTarget,
+	GLuint DestID,
+	GLuint DestTarget,
+	unsigned int width,
+	unsigned int height,
+	bool bInvert,
+	GLuint HostFBO)
+{
+	GLenum status;
+
+	// Create an fbo if not already
+	if (m_fbo == 0)
+		glGenFramebuffersEXT(1, &m_fbo);
+
+	// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+
+	// Attach the Source texture to the color buffer in our frame buffer
+	glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
+	glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
+
+	// Attach destination texture (the texture we write into) to second attachment point
+	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
+
+	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+
+		if (m_bBLITavailable) {
+			if (bInvert) {
+				// Blit method with checks - 0.75 - 0.85 msec
+				// copy one texture buffer to the other while flipping upside down 
+				// (OpenGL and DirectX have different texture origins)
+				glBlitFramebufferEXT(0, 0, // srcX0, srcY0, 
+					width, height,         // srcX1, srcY1
+					0, height,             // dstX0, dstY0,
+					width, 0,              // dstX1, dstY1,
+					GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			}
+			else {
+				// Do not flip during blit
+				glBlitFramebufferEXT(0, 0, // srcX0, srcY0, 
+					width, height,         // srcX1, srcY1
+					0, 0,                  // dstX0, dstY0,
+					width, height,         // dstX1, dstY1,
+					GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			}
+		}
+		else {
+			// No fbo blit extension
+			// Copy from the fbo (source texture attached) to the dest texture
+			glBindTexture(DestTarget, DestID);
+			glCopyTexSubImage2D(DestTarget, 0, 0, 0, 0, 0, width, height);
+			glBindTexture(DestTarget, 0);
+		}
+	}
+	else {
+		PrintFBOstatus(status);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+		return false;
+	}
+
+	// restore the previous fbo - default is 0
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+
+	return true;
+
+} // end CopyTexture
+
+
+// If an OpenGL texture has not been created or it is a different size, create a new one
+void spoutGLDXinterop::CheckOpenGLTexture(GLuint &texID, GLenum GLformat,
+	unsigned int newWidth, unsigned int newHeight,
+	unsigned int &texWidth, unsigned int &texHeight)
+{
+	if (texID == 0 || newWidth != texWidth || newHeight != texHeight) {
+		InitTexture(texID, GLformat, newWidth, newHeight);
+		texWidth = newWidth;
+		texHeight = newHeight;
+	}
+}
+
+
+// Initialize local OpenGL texture
+void spoutGLDXinterop::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height)
+{
+	if (texID != 0) glDeleteTextures(1, &texID);
+	glGenTextures(1, &texID);
+
+	glBindTexture(GL_TEXTURE_2D, texID);
+	// glTexImage2D(GL_TEXTURE_2D, 0, GLformat, width, height, 0, GLformat, GL_UNSIGNED_BYTE, NULL); 
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GLformat, GL_UNSIGNED_BYTE, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+}
+
+
+//
+// Create an OpenGL window and context for situations where there is none.
+// Not used if applications already have an OpenGL context.
+// Always call CloseOpenGL afterwards.
+//
+bool spoutGLDXinterop::CreateOpenGL()
+{
+	// For CreateOpenGL and CloseOpenGL
+	m_hdc = NULL;
+	m_hwndButton = NULL;
+	m_hRc = NULL;
+
+	SpoutLogNotice("spoutGLDXinterop::CreateOpenGL()");
+
+	HGLRC glContext = wglGetCurrentContext();
+
+	if (!glContext) {
+
+		// We only need an OpenGL context with no render window because we don't draw to it
+		// so create an invisible dummy button window. This is then independent from the host
+		// program window (GetForegroundWindow). If SetPixelFormat has been called on the
+		// host window it cannot be called again. This caused a problem in Mapio.
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
+		//
+		// CS_OWNDC allocates a unique device context for each window in the class. 
+		//
+		if (!m_hwndButton || !IsWindow(m_hwndButton)) {
+			m_hwndButton = CreateWindowA("BUTTON",
+				"SpoutOpenGL",
+				WS_OVERLAPPEDWINDOW | CS_OWNDC,
+				0, 0, 32, 32,
+				NULL, NULL, NULL, NULL);
+		}
+
+		if (!m_hwndButton) {
+			SpoutLogError("spoutGLDXinterop::CreateOpenGL - no hwnd");
+			return false;
+		}
+
+		m_hdc = GetDC(m_hwndButton);
+		if (!m_hdc) {
+			SpoutLogError("spoutGLDXinterop::CreateOpenGL - no hdc");
+			return false;
+		}
+
+
+		PIXELFORMATDESCRIPTOR pfd;
+		ZeroMemory(&pfd, sizeof(pfd));
+		pfd.nSize = sizeof(pfd);
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 32;
+		pfd.cDepthBits = 16;
+		pfd.iLayerType = PFD_MAIN_PLANE;
+		int iFormat = ChoosePixelFormat(m_hdc, &pfd);
+		if (!iFormat) {
+			SpoutLogError("spoutGLDXinterop::CreateOpenGL - pixel format error");
+			return false;
+		}
+
+		if (!SetPixelFormat(m_hdc, iFormat, &pfd)) {
+			DWORD dwError = GetLastError();
+			// 2000 (0x7D0) The pixel format is invalid.
+			// Caused by repeated call of the SetPixelFormat function
+			char temp[128];
+			sprintf_s(temp, "spoutGLDXinterop::CreateOpenGL - SetPixelFormat Error %u (0x%4.4X)", LOWORD(dwError), LOWORD(dwError));
+			SpoutLogError("%s", temp);
+			return false;
+		}
+
+		m_hRc = wglCreateContext(m_hdc);
+		if (!m_hRc) {
+			SpoutLogError("spoutGLDXinterop::CreateOpenGL - could not create OpenGL context");
+			return false;
+		}
+
+		wglMakeCurrent(m_hdc, m_hRc);
+		if (!wglGetCurrentContext()) {
+			SpoutLogError("spoutGLDXinterop::CreateOpenGL - no OpenGL context");
+			return false;
+		}
+		SpoutLogNotice("    OpenGL window created OK");
+	}
+	else {
+		SpoutLogNotice("    OpenGL context exists");
+	}
+
+	return true;
+}
+
+
+bool spoutGLDXinterop::CloseOpenGL()
+{
+
+	SpoutLogNotice("spoutGLDXinterop::CloseOpenGL()");
+
+	// Properly kill the OpenGL window
+	if (m_hRc) {
+
+		if (!wglMakeCurrent(NULL, NULL)) { // Are We Able To Release The DC And RC Contexts?
+			SpoutLogError("spoutGLDXinterop::CloseOpenGL - release of DC and RC failed");
+			return false;
+		}
+
+		if (!wglDeleteContext(m_hRc)) { // Are We Able To Delete The RC?
+			SpoutLogError("spoutGLDXinterop::CloseOpenGL - release rendering context failed");
+			return false;
+		}
+		m_hRc = NULL;
+	}
+
+	if (m_hdc && !ReleaseDC(m_hwndButton, m_hdc)) { // Are We Able To Release The DC
+		SpoutLogError("spoutGLDXinterop::CloseOpenGL - release device context Failed");
+		m_hdc = NULL;
+		return false;
+	}
+
+	if (m_hwndButton && !DestroyWindow(m_hwndButton)) { // Are We Able To Destroy The Window?
+		SpoutLogError("spoutGLDXinterop::CloseOpenGL - could not release hWnd");
+		m_hwndButton = NULL;
+		return false;
+	}
+
+	SpoutLogNotice("    closed the OpenGL window OK");
+
+	return true;
+}
+
+void spoutGLDXinterop::SaveOpenGLstate(unsigned int width, unsigned int height, bool bFitWindow)
+{
+	float dim[4];
+	float vpScaleX, vpScaleY, vpWidth, vpHeight;
+	int vpx, vpy;
+
+	// save texture state, client state, etc.
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+
+	glMatrixMode(GL_TEXTURE);
+	glPushMatrix();
+	glLoadIdentity();
+
+	glPushAttrib(GL_TRANSFORM_BIT);
+
+	// find the current viewport dimensions in order to scale to the aspect ratio required
+	glGetFloatv(GL_VIEWPORT, dim);
+
+	// Fit to window
+	if (bFitWindow) {
+		// Scale both width and height to the current viewport size
+		vpScaleX = dim[2] / (float)width;
+		vpScaleY = dim[3] / (float)height;
+		vpWidth = (float)width  * vpScaleX;
+		vpHeight = (float)height * vpScaleY;
+		vpx = vpy = 0;
+	}
+	else {
+		// Preserve aspect ratio of the sender
+		// and fit to the width or the height
+		vpWidth = dim[2];
+		vpHeight = ((float)height / (float)width)*vpWidth;
+		if (vpHeight > dim[3]) {
+			vpHeight = dim[3];
+			vpWidth = ((float)width / (float)height)*vpHeight;
+		}
+		vpx = (int)(dim[2] - vpWidth) / 2;;
+		vpy = (int)(dim[3] - vpHeight) / 2;
+	}
+
+	glViewport((int)vpx, (int)vpy, (int)vpWidth, (int)vpHeight);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity(); // reset the current matrix back to its default state
+	glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0f, 1.0f);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+}
+
+
+void spoutGLDXinterop::RestoreOpenGLstate()
+{
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+
+	glPopAttrib();
+
+	glMatrixMode(GL_TEXTURE);
+	glPopMatrix();
+
+	glPopClientAttrib();
+	glPopAttrib();
+
+}
+
+
+//
+//	Load the Nvidia gl/dx extensions
+//
+bool spoutGLDXinterop::LoadGLextensions()
+{
+	// Return silently if already loaded
+	if (m_caps > 0)
+		return true;
+
+	m_caps = loadGLextensions(); // in spoutGLextensions
+
+	if (m_caps == 0) {
+		SpoutLogError("spoutGLDXinterop::LoadGLextensions failed");
+		return false;
+	}
+
+	m_bGLDXavailable = false;
+	m_bFBOavailable  = false;
+	m_bBLITavailable = false;
+	m_bSWAPavailable = false;
+	m_bBGRAavailable = false;
+	m_bCOPYavailable = false;
+
+	// GLEXT_SUPPORT_PBO - set by SetBufferMode()
+	if (m_caps & GLEXT_SUPPORT_NVINTEROP) m_bGLDXavailable = true; // Interop needed for texture sharing
+	if (m_caps & GLEXT_SUPPORT_FBO)       m_bFBOavailable = true;
+	if (m_caps & GLEXT_SUPPORT_FBO_BLIT)  m_bBLITavailable = true;
+	if (m_caps & GLEXT_SUPPORT_SWAP)      m_bSWAPavailable = true;
+	if (m_caps & GLEXT_SUPPORT_BGRA)      m_bBGRAavailable = true;
+	if (m_caps & GLEXT_SUPPORT_COPY)      m_bCOPYavailable = true;
+
+	// FBO not available is terminal
+	if (!m_bFBOavailable) {
+		SpoutLogError("spoutGLDXinterop::LoadGLextensions - no FBO extensions available");
+		return false;
+	}
+	if (!m_bGLDXavailable) {
+		SpoutLogWarning("spoutGLDXinterop::LoadGLextensions - interop extensions not available");
+	}
+	if (!m_bBLITavailable) {
+		SpoutLogWarning("spoutGLDXinterop::LoadGLextensions - fbo blit extension not available");
+	}
+	if (!m_bSWAPavailable) {
+		SpoutLogWarning("spoutGLDXinterop::LoadGLextensions - sync control extensions not available");
+	}
+	if (!m_bBGRAavailable) {
+		SpoutLogWarning("spoutGLDXinterop::LoadGLextensions - bgra extension not available");
+	}
+	if (!m_bCOPYavailable) {
+		SpoutLogWarning("spoutGLDXinterop::LoadGLextensions - copy extensions not available");
+	}
+
+	m_bExtensionsLoaded = true;
+
+	return true;
+}
+
 // Main function to create a sender or receiver and
 // set up the GL/DX interop functions for texture sharing
 bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive)
@@ -858,18 +1247,22 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 		return false;
 	}
 
+	// printf("CreateInterop(%d, %d)\n", width, height);
+
 	//
 	// Texture format tests
 	//
 	// DX9 compatible formats
 	// DXGI_FORMAT_B8G8R8A8_UNORM; // compatible DX11 format - works with DX9 (87)
 	// DXGI_FORMAT_B8G8R8X8_UNORM; // compatible DX11 format - works with DX9 (88)
+	// Note : DXGI_FORMAT_R8G8B8A8_UNORM (28 = RGBA) is not compatible with DX9
 	//
 	// Other formats that work with DX11 but not with DX9
 	// DXGI_FORMAT_R16G16B16A16_FLOAT
 	// DXGI_FORMAT_R16G16B16A16_SNORM
 	// DXGI_FORMAT_R10G10B10A2_UNORM
 	//
+
 	// To change any of these you can use :
 	//
 	// void spoutGLDXinterop::SetDX11format(DXGI_FORMAT textureformat)
@@ -906,7 +1299,6 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 		else {
 			// TODO : compatible format tests
 			// printf("CreateInterop - Sender format %d - receiving format %d\n", dwFormat, (DWORD)DX11format);
-			// format = dwFormat; // Sender format
 			format = (DWORD)DX11format; // DXGI_FORMAT_B8G8R8A8_UNORM (87) default compatible with DX9
 		}
 	}
@@ -926,8 +1318,6 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 	// It can only be from a DX9 sender (format 0, 22, 21)
 	// or from a compatible DX11 sender (format 87)
 	if(bReceive && m_bUseDX9) {
-		// printf("DX9 format %d\n", m_TextureInfo.format);
-
 		if(!(m_TextureInfo.format == 0 
 			|| m_TextureInfo.format == 22
 			|| m_TextureInfo.format == 21
@@ -957,7 +1347,10 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 	// Create a local opengl texture that will be linked to a shared DirectX texture
 	// This is never initialized using OpenGL, but has size and can be accessed when
 	// it is linked to the shared DirectX texture with the GL/DX Interop.
-	if(m_glTexture) {
+	if (m_glTexture) {
+		// For sender update, unregister any existing interop or textures cannot be released
+		if (m_hInteropDevice && m_hInteropObject)
+			wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
 		glDeleteTextures(1, &m_glTexture);
 		m_glTexture = 0;
 	}
@@ -971,7 +1364,8 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 
 	if(!bRet) {
 		CleanupInterop(); // release everything for this class
-		SpoutLogFatal("spoutGLDXinterop::CreateInterop | Cannot create DirectX/OpenGL interop");
+		// Not fatal because the caller can switch to memoryshare and start again
+		SpoutLogWarning("spoutGLDXinterop::CreateInterop - Cannot create DirectX/OpenGL interop");
 		return false;
 	}
 
@@ -999,26 +1393,20 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 #else
 	m_TextureInfo.shareHandle = (unsigned __int32)m_dxShareHandle;
 #endif
-	// Additional unused fields available
-	// DWORD usage; // texture usage
+	// Additional fields
+	// DWORD usage; // Texture usage (unused)
 	m_TextureInfo.usage = 0;
 	// wchar_t description[128]; // Wyhon compatible description
 	// 26.08.15 - set the executable path to the sender's shared info 
 	// (not documented and could be removed)
-	// unsigned __int32 partnerId; // Wyphon id of partner that shared it with us
-	m_TextureInfo.partnerId = 0;
+	// unsigned __int32 partnerId;
+	// Originall reserved for Wyphon id of partner that shared it with us
+	// Now used for the sender adapter index.
+	m_TextureInfo.partnerId = (unsigned __int32)GetAdapter();;
 
-	if(!bReceive) {
-		SharedTextureInfo info;
-		// Access the info directly from the memory map to include the description string
-		if(senders.getSharedInfo(sendername, &info)) {
-			char exepath[256];
-			GetModuleFileNameA(NULL, exepath, sizeof(exepath));
-			// Description is defined as wide chars, but the path is stored as byte chars
-			strcpy_s((char*)info.description, 256, exepath);
-			info.partnerId = 0; // initialize
-			senders.setSharedInfo(sendername, &info);
-		}
+	// Write host path to the sender shared memory
+	if (!bReceive) {
+		SetHostPath(sendername);
 	}
 
 	// Initialize a texture transfer sync mutex either sender or receiver can do this.
@@ -1032,7 +1420,7 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 	// m_TextureInfo.height			- height of the shared DirectX texture
 	// m_TextureInfo.shareHandle	- handle of the shared DirectX texture
 	// m_TextureInfo.format			- format of the shared DirectX texture
-	// m_TextureInfo.usage			- unused
+	// m_TextureInfo.usage			- adapter index of a sender
 	// m_TextureInfo.partnerId		- unused
 	// m_TextureInfo.description    - path of the executable that created the sender
 
@@ -1049,454 +1437,35 @@ bool spoutGLDXinterop::CreateInterop(HWND hWnd, const char* sendername, unsigned
 
 }
 
-//
-// =================== DX9 ===============================
-//
-//      CreateDX9interop()
-//	
-// bReceive : when receiving a texture from a DX application this must be set to true (default)
-//            when sending a texture from GL to the DX application, set to false
-//
-bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive) 
-{
-
-	// printf("CreateDX9interop(%dx%d, [Format = %d], %d (m_pDevice = %x)\n", width, height, dwFormat, bReceive, m_pDevice);
-
-	// The shared texture handle of the Sender texture "m_dxShareHandle" 
-	// is already set by getSharedTextureInfo, but should be NULL for a sender
-	if (!bReceive) {
-		// Create a new shared DirectX resource m_dxTexture 
-		// with new local handle m_dxShareHandle for a sender
-		m_dxShareHandle = NULL; // A sender creates a new texture
-	}
-
-	// Safety in case an application has crashed
-	if (m_dxTexture != NULL) {
-		m_dxTexture->Release();
-	}
-	m_dxTexture = NULL;
-
-	// Create a shared DirectX9 texture - m_dxTexture
-	// by giving it a sharehandle variable - m_dxShareHandle
-	// For a SENDER : the sharehandle is NULL and a new texture is created
-	// For a RECEIVER : the sharehandle is valid and becomes a handle to the existing shared texture
-	// USAGE is D3DUSAGE_RENDERTARGET
-	if (!spoutdx.CreateSharedDX9Texture(m_pDevice,
-		width,
-		height,
-		(D3DFORMAT)dwFormat,  // default is D3DFMT_A8R8G8B8
-		m_dxTexture,
-		m_dxShareHandle)) {
-		// printf("    CreateSharedDX9Texture failed\n");
-		return false;
-	}
-
-	// For the GL/DX interop, link the shared DirectX texture to the OpenGL texture
-	// This registers for interop and associates the opengl texture with the dx texture
-	// by calling wglDXRegisterObjectNV which returns a handle to the interop object
-	// (the shared texture) (m_hInteropObject)
-	// When a sender size changes, the new texture has to be re-registered
-	if (m_hInteropDevice != NULL && m_hInteropObject != NULL) {
-		wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
-		m_hInteropObject = NULL;
-	}
-	m_hInteropObject = LinkGLDXtextures(m_pDevice, m_dxTexture, m_dxShareHandle, m_glTexture);
-	if (!m_hInteropObject) {
-		// printf("    DX9 LinkGLDXtextures failed\n");
-		return false;
-	}
-
-	return true;
-}
-
-//
-// =================== DX11 ==============================
-//
-bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive ) 
-{
-
-	// Create or use a shared DirectX texture that will be linked
-	// to the OpenGL texture and get it's share handle for sharing textures
-	if (bReceive) {
-		// Retrieve the shared texture pointer via the sharehandle
-		if(!spoutdx.OpenDX11shareHandle(m_pd3dDevice, &m_pSharedTexture, m_dxShareHandle)) {
-			SpoutLogError("spoutGLDXinterop::CreateDX11interop error - device = 0X%x, sharehandle = 0X%x", m_pd3dDevice, m_dxShareHandle);
-			return false;
-		}
-	} else {
-		// otherwise create a new shared DirectX resource m_pSharedTexture 
-		// with local handle m_dxShareHandle for a sender
-		m_dxShareHandle = NULL; // A sender creates a new texture with a new share handle
-		if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice,
-			width, height,
-			(DXGI_FORMAT)dwFormat, // default is DXGI_FORMAT_B8G8R8A8_UNORM
-			&m_pSharedTexture, m_dxShareHandle)) {
-			SpoutLogError("spoutGLDXinterop::CreateDX11interop - CreateSharedDX11Texture failed");
-			return false;
-		}
-	}
-	// For the GL/DX interop, link the shared DirectX texture to the OpenGL texture
-	// This registers for interop and associates the opengl texture with the dx texture
-	// by calling wglDXRegisterObjectNV which returns a handle to the interop object
-	// (the shared texture) (m_hInteropObject)
-	// When a sender size changes, the new texture has to be re-registered
-	if(m_hInteropDevice != NULL &&  m_hInteropObject != NULL) {
-		SpoutLogNotice("spoutGLDXinterop::CreateDX11interop - LinkGLDXtextures - unregistering interop");
-		wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
-		m_hInteropObject = NULL;
-	}
-	m_hInteropObject = LinkGLDXtextures(m_pd3dDevice, m_pSharedTexture, m_dxShareHandle, m_glTexture); 
-	if(!m_hInteropObject) {
-		SpoutLogError("spoutGLDXinterop::CreateDX11interop - LinkGLDXtextures failed");
-		return false;
-	}
-
-	SpoutLogNotice("spoutGLDXinterop::CreateDX11interop - LinkGLDXtextures : m_hInteropObject = %x", m_hInteropObject);
-
-
-	return true;
-
-}
-
-//
-//	Link a shared DirectX texture to an OpenGL texture
-//	and create a GLDX interop object handle
-//
-//	IN	pSharedTexture  Pointer to shared the DirectX texture
-//	IN	dxShareHandle   Handle of the DirectX texture to be shared
-//	IN	glTextureID     ID of the OpenGL texture that is to be linked to the shared DirectX texture
-//	Returns             Handle to the GL/DirectX interop object (the shared texture)
-//
-HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
-											void* pSharedTexture,
-											HANDLE dxShareHandle,
-											GLuint glTexture) 
-{
-
-	HANDLE hInteropObject = NULL;
-	BOOL bResult = 0;
-	DWORD dwError = 0;
-	char tmp[128];
-
-	// printf("spoutGLDXinterop::LinkGLDXtextures - m_hInteropDevice = 0x%x\n", m_hInteropDevice);
-
-	// Prepare the DirectX device for interoperability with OpenGL
-	// The return value is a handle to a GL/DirectX interop device.
-	if(!m_hInteropDevice) {
-		try {
-			m_hInteropDevice = wglDXOpenDeviceNV(pDXdevice);
-		}
-		catch (...) {
-			SpoutLogError("spoutGLDXinterop::LinkGLDXtextures - wglDXOpenDeviceNV failed");
-			return NULL;
-		}
-	}
-
-	if (m_hInteropDevice == NULL) {
-		dwError = GetLastError();
-		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures - wglDXOpenDeviceNV error\n");
-		switch (dwError) {
-			case ERROR_OPEN_FAILED:
-				strcat_s(tmp, 128, "    Could not open the Direct3D device.");
-				break;
-			case ERROR_NOT_SUPPORTED:
-				strcat_s(tmp, 128, "    The <dxDevice> is not supported.");
-				break;
-		}
-		SpoutLogError("%s", tmp);
-		return NULL;
-	}
-
-	// printf("    Created m_hInteropDevice = 0x%x\n", m_hInteropDevice);
-
-	// prepare shared resource
-	// wglDXSetResourceShareHandle does not need to be called for DirectX
-	// version 10 and 11 resources. Calling this function for DirectX 10
-	// and 11 resources is not an error but has no effect.
-	// Error when dxShareHandle is NULL
-	try {
-		bResult = wglDXSetResourceShareHandleNV(pSharedTexture, dxShareHandle);
-	}
-	catch (...) {
-		SpoutLogError("spoutGLDXinterop::LinkGLDXtextures - wglDXSetResourceShareHandleNV failed");
-		return NULL;
-	}
-
-	if(!bResult) {
-		SpoutLogError("spoutGLDXinterop::LinkGLDXtextures - wglDXSetResourceShareHandleNV error");
-		return NULL;
-	}
-
-	// Prepare the DirectX texture for use by OpenGL
-	// register for interop and associate the opengl texture with the dx texture
-	// Returns a handle that can be used for sharing functions
-	try {
-		hInteropObject = wglDXRegisterObjectNV(m_hInteropDevice,
-										pSharedTexture,	// DX texture
-										glTexture,		// OpenGL texture
-										GL_TEXTURE_2D,	// Must be TEXTURE_2D - multisampling not supported
-										WGL_ACCESS_READ_WRITE_NV); // We will write and the receiver will read
-	}
-	catch (...) {
-		SpoutLogError("spoutGLDXinterop::LinkGLDXtextures - wglDXRegisterObjectNV failed");
-		return NULL;
-	}
-
-	if (!hInteropObject) {
-		dwError = GetLastError();
-		// TODO : what is c007006e returned on failure ?
-		// Cannot reproduce. Possibly related to m_hInteropDevice.
-		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures - wglDXRegisterObjectNV :error (0x%x)\n", (unsigned int)dwError);
-		switch (dwError) {
-			case ERROR_INVALID_HANDLE :
-				strcat_s(tmp, 128, "    No GL context is made current to the calling thread.");
-				break;
-			case ERROR_INVALID_DATA :
-				strcat_s(tmp, 128, "    Incorrect <name> <type> or <access>	parameters.");
-				break;
-			case ERROR_OPEN_FAILED :
-				strcat_s(tmp, 128, "    Opening the Direct3D resource failed.");
-				break;
-			default :
-				strcat_s(tmp, 128, "    Unknown error.");
-				break;
-		}
-		SpoutLogError("%s", tmp);
-
-		if (m_hInteropDevice != NULL) {
-			wglDXCloseDeviceNV(m_hInteropDevice);
-			m_hInteropDevice = NULL;
-		}
-
-	}
-
-	return hInteropObject;
-
-}
-
-//
-// Test whether the NVIDIA OpenGL/DirectX interop extensions function correctly. 
-// Creates dummy textures and uses the interop functions.
-// Creates an interop device on success.
-// Must be called after OpenDirectX.
-// Failure means fall back to Memoryshare mode
-// Success means the GLDX interop functions can be used.
-// Other errors should not happen if OpenDirectX succeeded
-bool spoutGLDXinterop::GLDXready()
-{
-	HANDLE	dxShareHandle = NULL; // Shared texture handle for a sender texture
-	LPDIRECT3DTEXTURE9  dxTexture = NULL; // the shared DX9 texture
-	ID3D11Texture2D* pSharedTexture = NULL; // the shared DX11 texture
-	HANDLE hInteropObject = NULL; // handle to the DX/GL interop object
-	GLuint glTexture = 0; // the OpenGL texture linked to the shared DX texture
-
-	// Create an opengl texture for the test
-	glGenTextures(1, &glTexture);
-	if (glTexture == 0) {
-		SpoutLogError("spoutGLDXinterop::GLDXready - glGenTextures failed");
-		return false;
-	}
-
-	SpoutLogNotice("spoutGLDXinterop::GLDXready - testing GL/DX interop functions");
-	//
-	// Create a directX texture and link using the NVIDIA GLDX interop functions
-	//
-	if (GetDX9()) {
-		if (m_pDevice == NULL) {
-			glDeleteTextures(1, &glTexture);
-			SpoutLogError("spoutGLDXinterop::GLDXready (DX9) - No D3D9ex device");
-			return false;
-		}
-
-		SpoutLogNotice("    Creating test DX9 texture");
-
-		// Create a shared DirectX9 texture for the test
-		if (!spoutdx.CreateSharedDX9Texture(m_pDevice,
-											256, 256,
-											D3DFMT_A8R8G8B8, // default
-											dxTexture, dxShareHandle)) {
-			glDeleteTextures(1, &glTexture);
-			SpoutLogError("spoutGLDXinterop::GLDXready (DX9) - CreateSharedDX9Texture failed");
-			return false;
-		}
-
-		SpoutLogNotice("    Linking test DX9 texture");
-
-		// Link the shared DirectX9 texture to the OpenGL texture
-		// If sucessful, LinkGLDXtextures initializes a class handle
-		// to a GL/DirectX interop device - m_hInteropDevice
-		hInteropObject = LinkGLDXtextures(m_pDevice, dxTexture, dxShareHandle, glTexture);
-		if (hInteropObject == NULL) {
-			SpoutLogError("spoutGLDXinterop::GLDXready (DX9) - LinkGLDXtextures failed");
-			dxTexture->Release();
-			glDeleteTextures(1, &glTexture);
-			return false;
-		}
-		SpoutLogNotice("    Test DX9 texture created and linked OK");
-
-		if (m_hInteropDevice && hInteropObject) 
-			wglDXUnregisterObjectNV(m_hInteropDevice, hInteropObject);
-		if (dxTexture) 
-			dxTexture->Release();
-		if (glTexture) 
-			glDeleteTextures(1, &glTexture);
-
-	} // endif DX9
-	else {
-
-		if (m_pd3dDevice == NULL) {
-			glDeleteTextures(1, &glTexture);
-			SpoutLogError("spoutGLDXinterop::GLDXready (DX11) - No D3D11 device");
-			return false;
-		}
-
-		SpoutLogNotice("    Creating test DX11 texture");
-
-		// Create a new shared DirectX resource
-		if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice,
-											256, 256,
-											DXGI_FORMAT_B8G8R8A8_UNORM, // default
-											&pSharedTexture, dxShareHandle)) {
-			glDeleteTextures(1, &glTexture);
-			SpoutLogError("spoutGLDXinterop::GLDXready (DX11) - CreateSharedDX11Texture failed");
-			return false;
-		}
-
-		SpoutLogNotice("    Linking test DX11 texture");
-
-		// Link the shared DirectX texture to the OpenGL texture
-		// If sucessful, LinkGLDXtextures initializes a class handle
-		// to a GL/DirectX interop device - m_hInteropDevice
-		hInteropObject = LinkGLDXtextures(m_pd3dDevice, pSharedTexture, dxShareHandle, glTexture);
-		if (!hInteropObject) {
-			spoutdx.ReleaseDX11Texture(m_pd3dDevice, pSharedTexture);
-			SpoutLogError("spoutGLDXinterop::GLDXready (DX11) - LinkGLDXtextures failed");
-			return false;
-		}
-
-		SpoutLogNotice("    Test DX11 texture created and linked OK");
-
-		// All passes, so unregister and release textures
-		// m_hInteropDevice remains and does not need to be created again
-		if(m_hInteropDevice && hInteropObject) 
-			wglDXUnregisterObjectNV(m_hInteropDevice, hInteropObject);
-
-		spoutdx.ReleaseDX11Texture(m_pd3dDevice, pSharedTexture);
-
-		if(glTexture) 
-			glDeleteTextures(1, &glTexture);
-
-	}
-
-	return true;
-
-}
-
-void spoutGLDXinterop::CleanupDirectX()
-{
-	if (m_bUseDX9)
-		CleanupDX9();
-	else
-		CleanupDX11();
-
-}
-
-void spoutGLDXinterop::CleanupDX9()
-{
-	// 04.10.19 - do not block if m_pD3D exists
-	SpoutLogNotice("spoutGLDXinterop::CleanupDX9()");
-
-	// 01.09.14 - texture release was missing for a receiver - caused a VRAM leak
-	// If an existing texture exists, CreateTexture can fail with and "unknown error"
-	// 25.08.15 - moved before release of device
-	if (m_dxTexture != NULL) {
-		m_dxTexture->Release();
-		m_dxTexture = NULL;
-	}
-
-	// 25.08.15 - release device before the object !
-	// 22.01.17 - will crash if refcount is 1 for MilkDrop.
-	// 12.11.18 - must always be freed, not only on exit. Fix for MilkDop.
-	//            Device recreated for a new sender.
-	// 08.10.19 - do not release device if DX9 object does not exist
-	if (m_pD3D != NULL) {
-		if (m_pDevice != NULL)
-			m_pDevice->Release();
-		m_pD3D->Release();
-	}
-
-	m_pDevice = NULL;
-	m_pD3D = NULL;
-
-}
-
-void spoutGLDXinterop::CleanupDX11()
-{
-	if (m_pd3dDevice != NULL) {
-
-		SpoutLogNotice("spoutGLDXinterop::CleanupDX11()");
-
-		unsigned long refcount = 0;
-
-		if (m_pd3dDevice) {
-
-			if (m_pSharedTexture)
-				refcount = spoutdx.ReleaseDX11Texture(m_pd3dDevice, m_pSharedTexture);
-
-			// Important to set pointer to NULL or it will crash if released again
-			m_pSharedTexture = nullptr;
-
-			// 12.11.18 - To avoid memory leak with dynamic objects
-			//            must always be freed, not only on exit.
-			//            Device recreated for a new sender.
-			refcount += spoutdx.ReleaseDX11Device(m_pd3dDevice);
-
-			if (refcount > 0)
-				SpoutLogWarning("CleanupDX11:CleanupDX11() - refcount = %d", refcount);
-		}
-
-		// NULL the pointers
-		m_pImmediateContext = NULL;
-		m_pd3dDevice = NULL;
-
-	}
-}
-
-
 // this is the function that cleans up Direct3D and the gldx interop
 // 26.11.18 - removed exit flag fix.
 void spoutGLDXinterop::CleanupInterop()
 {
-
 	// 04.10.19 - Release OpenGL objects etc. even if DX9 has been released
-
 	// Skip if already done
-	if (m_hInteropDevice == NULL && m_hInteropObject == NULL
-		&& m_fbo == 0 && m_pbo[0] == 0 
+	if (!m_hInteropDevice && !m_hInteropObject
+		&& m_fbo == 0 && m_pbo[0] == 0
 		&& m_glTexture == 0 && m_TexID == 0
-		&& m_pSharedTexture == NULL && m_dxTexture == NULL
+		&& !m_pSharedTexture && !m_dxTexture
 		&& m_bInitialized == false) {
-		// SpoutLogNotice("spoutGLDXinterop::CleanupInterop - already closed");
 		return;
 	}
 
 	// These things need an opengl context so check
 	if (wglGetCurrentContext()) {
-
 		SpoutLogNotice("spoutGLDXinterop::CleanupInterop");
-
-		if (m_hInteropDevice != NULL && m_hInteropObject != NULL) {
+		if (m_hInteropDevice && m_hInteropObject) {
 			if (!wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject)) {
 				SpoutLogWarning("spoutGLDXinterop::CleanupInterop - could not un-register interop");
 			}
-			m_hInteropObject = NULL;
+			m_hInteropObject = nullptr;
 		}
 
-		if (m_hInteropDevice != NULL) {
+		if (m_hInteropDevice) {
 			if (!wglDXCloseDeviceNV(m_hInteropDevice)) {
 				SpoutLogWarning("spoutGLDXinterop::CleanupInterop - could not close interop");
 			}
-			m_hInteropDevice = NULL;
+			m_hInteropDevice = nullptr;
 		}
 
 		if (m_fbo > 0) {
@@ -1542,39 +1511,444 @@ void spoutGLDXinterop::CleanupInterop()
 }
 
 //
-//	Load the Nvidia gl/dx extensions
+// =================== DX9 ===============================
 //
-bool spoutGLDXinterop::LoadGLextensions() 
+//      CreateDX9interop()
+//	
+// bReceive : when receiving a texture from a DX application this must be set to true (default)
+//            when sending a texture from GL to the DX application, set to false
+//
+bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive) 
 {
-	// Return silently if already loaded
-	if (m_caps > 0)
-		return true;
 
-	m_caps = loadGLextensions(); // in spoutGLextensions
+	// printf("CreateDX9interop(%dx%d), [Format = %d], bReceive=%d (m_pDevice = 0x%.7X)\n", width, height, dwFormat, bReceive, PtrToUint(m_pDevice));
 
-	if(m_caps == 0) {
-		SpoutLogError("spoutGLDXinterop::LoadGLextensions failed");
+	// The shared texture handle of the Sender texture "m_dxShareHandle" 
+	// is already set by getSharedTextureInfo, but should be NULL for a sender
+	if (!bReceive) {
+		// Create a new shared DirectX resource m_dxTexture 
+		// with new local handle m_dxShareHandle for a sender
+		m_dxShareHandle = nullptr; // A sender creates a new texture
+	}
+
+	// Safety in case an application has crashed
+	if (m_dxTexture) {
+		m_dxTexture->Release();
+	}
+	m_dxTexture = nullptr;
+
+	// Create a shared DirectX9 texture - m_dxTexture
+	// by giving it a sharehandle variable - m_dxShareHandle
+	// For a SENDER   : the sharehandle is NULL and a new texture is created
+	// For a RECEIVER : the sharehandle is valid and becomes a handle to the existing shared texture
+	// USAGE is D3DUSAGE_RENDERTARGET
+	if (!spoutdx.CreateSharedDX9Texture(m_pDevice,
+		width,
+		height,
+		(D3DFORMAT)dwFormat,  // default is D3DFMT_A8R8G8B8 (21)
+		m_dxTexture,
+		m_dxShareHandle)) {
+		// printf("    CreateSharedDX9Texture failed\n");
 		return false;
 	}
 
-	// GLEXT_SUPPORT_PBO - set by SetBufferMode()
-	if(m_caps & GLEXT_SUPPORT_NVINTEROP) m_bGLDXavailable = true; // Interop needed for texture sharing
-	if(m_caps & GLEXT_SUPPORT_FBO)       m_bFBOavailable  = true;
-	if(m_caps & GLEXT_SUPPORT_FBO_BLIT)  m_bBLITavailable = true;
-	if(m_caps & GLEXT_SUPPORT_SWAP)      m_bSWAPavailable = true;
-	if(m_caps & GLEXT_SUPPORT_BGRA)      m_bBGRAavailable = true;
-	if(m_caps & GLEXT_SUPPORT_COPY)      m_bCOPYavailable = true;
-
-	 // FBO not available is terminal
-	if (!m_bFBOavailable) {
-		SpoutLogError("spoutGLDXinterop::LoadGLextensions - no FBO extensions available");
-		return false;
+	// If GL/DX interop compatible
+	if(m_bUseGLDX) {
+		// For the GL/DX interop, link the shared DirectX texture to the OpenGL texture
+		// This registers for interop and associates the opengl texture with the dx texture
+		// by calling wglDXRegisterObjectNV which returns a handle to the interop object
+		// (the shared texture) (m_hInteropObject)
+		// When a sender size changes, the new texture has to be re-registered
+		if (m_hInteropDevice && m_hInteropObject) {
+			wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
+			m_hInteropObject = nullptr;
+		}
+		m_hInteropObject = LinkGLDXtextures(m_pDevice, m_dxTexture, m_dxShareHandle, m_glTexture);
+		if (!m_hInteropObject) {
+			return false;
+		}
 	}
-	
-	m_bExtensionsLoaded = true;
 
 	return true;
 }
+
+//
+// =================== DX11 ==============================
+//
+bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive ) 
+{
+	// Create or use a shared DirectX texture that will be linked
+	// to the OpenGL texture and get it's share handle for sharing textures
+	if (bReceive) {
+		// Retrieve the shared texture pointer via the sharehandle
+		if(!spoutdx.OpenDX11shareHandle(m_pd3dDevice, &m_pSharedTexture, m_dxShareHandle)) {
+			SpoutLogError("spoutGLDXinterop::CreateDX11interop error - device = 0x%.7X, sharehandle = 0x%7X", PtrToUint(m_pd3dDevice), LOWORD(m_dxShareHandle));
+			return false;
+		}
+	} else {
+		// otherwise create a new shared DirectX resource m_pSharedTexture 
+		// with local handle m_dxShareHandle for a sender
+		m_dxShareHandle = nullptr; // A sender creates a new texture with a new share handle
+		if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice,
+			width, height,
+			(DXGI_FORMAT)dwFormat, // default is DXGI_FORMAT_B8G8R8A8_UNORM
+			&m_pSharedTexture, m_dxShareHandle)) {
+			SpoutLogError("spoutGLDXinterop::CreateDX11interop - CreateSharedDX11Texture failed");
+			return false;
+		}
+	}
+
+	// If GL/DX interop compatible
+	if (m_bUseGLDX) {
+		// For the GL/DX interop, link the shared DirectX texture to the OpenGL texture
+		// This registers for interop and associates the opengl texture with the dx texture
+		// by calling wglDXRegisterObjectNV which returns a handle to the interop object
+		// (the shared texture) (m_hInteropObject)
+		// When a sender size changes, the new texture has to be re-registered
+		if (m_hInteropDevice &&  m_hInteropObject) {
+			SpoutLogNotice("spoutGLDXinterop::CreateDX11interop - LinkGLDXtextures - unregistering interop");
+			wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
+			m_hInteropObject = nullptr;
+		}
+		m_hInteropObject = LinkGLDXtextures(m_pd3dDevice, m_pSharedTexture, m_dxShareHandle, m_glTexture);
+		if (!m_hInteropObject) {
+			SpoutLogError("spoutGLDXinterop::CreateDX11interop - LinkGLDXtextures failed");
+			return false;
+		}
+		SpoutLogNotice("spoutGLDXinterop::CreateDX11interop - LinkGLDXtextures : m_hInteropObject = 0x%.7X", LOWORD(m_hInteropObject));
+	}
+
+	return true;
+
+}
+
+//
+//	Link a shared DirectX texture to an OpenGL texture
+//	and create a GLDX interop object handle
+//
+//	IN	pSharedTexture  Pointer to shared the DirectX texture
+//	IN	dxShareHandle   Handle of the DirectX texture to be shared
+//	IN	glTextureID     ID of the OpenGL texture that is to be linked to the shared DirectX texture
+//	Returns             Handle to the GL/DirectX interop object (the shared texture)
+//
+HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
+											void* pSharedTexture,
+											HANDLE dxShareHandle,
+											GLuint glTexture) 
+{
+
+	HANDLE hInteropObject = nullptr;
+	BOOL bResult = 0;
+	DWORD dwError = 0;
+	char tmp[128];
+
+	// printf("spoutGLDXinterop::LinkGLDXtextures - m_hInteropDevice = 0x%.7X\n", LOWORD(m_hInteropDevice));
+
+	// Prepare the DirectX device for interoperability with OpenGL
+	// The return value is a handle to a GL/DirectX interop device.
+	if(!m_hInteropDevice) {
+		try {
+			m_hInteropDevice = wglDXOpenDeviceNV(pDXdevice);
+		}
+		catch (...) {
+			SpoutLogError("spoutGLDXinterop::LinkGLDXtextures - wglDXOpenDeviceNV exception");
+			return NULL;
+		}
+	}
+
+	if (!m_hInteropDevice) {
+		// wglDXOpenDeviceNV failed to open the Direct3D device
+		dwError = GetLastError();
+		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures : wglDXOpenDeviceNV(0x%.7X) - error %lu (0x%4.4X)\n", 
+			PtrToUint(pDXdevice), LOWORD(dwError), LOWORD(dwError));
+		// Other errors reported
+		// 1008, 0x3F0 - ERROR_NO_TOKEN
+		switch (dwError) {
+			case ERROR_OPEN_FAILED:
+				strcat_s(tmp, 128, "    Could not open the Direct3D device.");
+				break;
+			case ERROR_NOT_SUPPORTED:
+				strcat_s(tmp, 128, "    The dxDevice is not supported.");
+				break;
+			default:
+				strcat_s(tmp, 128, "    Unknown error.");
+				break;
+		}
+		SpoutLogError("%s", tmp);
+		return NULL;
+	}
+
+	// printf("    Created m_hInteropDevice = 0x%.7X\n", LOWORD(m_hInteropDevice));
+
+	// prepare shared resource
+	// wglDXSetResourceShareHandle does not need to be called for DirectX
+	// version 10 and 11 resources. Calling this function for DirectX 10
+	// and 11 resources is not an error but has no effect.
+	// Error when dxShareHandle is NULL
+	try {
+		bResult = wglDXSetResourceShareHandleNV(pSharedTexture, dxShareHandle);
+	}
+	catch (...) {
+		SpoutLogError("spoutGLDXinterop::LinkGLDXtextures - wglDXSetResourceShareHandleNV exception");
+		return NULL;
+	}
+
+	if(!bResult) {
+		SpoutLogError("spoutGLDXinterop::LinkGLDXtextures - wglDXSetResourceShareHandleNV error");
+		return NULL;
+	}
+
+	// Prepare the DirectX texture for use by OpenGL
+	// register for interop and associate the opengl texture with the dx texture
+	// Returns a handle that can be used for sharing functions
+	try {
+		hInteropObject = wglDXRegisterObjectNV(m_hInteropDevice,
+										pSharedTexture,	// DX texture
+										glTexture,		// OpenGL texture
+										GL_TEXTURE_2D,	// Must be TEXTURE_2D - multisampling not supported
+										WGL_ACCESS_READ_WRITE_NV); // We will write and the receiver will read
+	}
+	catch (...) {
+		SpoutLogError("spoutGLDXinterop::LinkGLDXtextures - wglDXRegisterObjectNV exception");
+		return NULL;
+	}
+
+	if (!hInteropObject) {
+		// Noted C007006E returned on failure.
+		// Error codes are 32-bit values, but expected results are in the low word.
+		// 006E is ERROR_OPEN_FAILED (110L)
+		dwError = GetLastError();
+		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures - wglDXRegisterObjectNV :error %u, (0x%4.4X)\n", 
+			LOWORD(dwError), LOWORD(dwError));
+		switch (dwError) {
+			case ERROR_INVALID_HANDLE :
+				strcat_s(tmp, 128, "    No GL context is current.");
+				break;
+			case ERROR_INVALID_DATA :
+				strcat_s(tmp, 128, "    Incorrect GL name, type or access parameters.");
+				break;
+			case ERROR_OPEN_FAILED :
+				strcat_s(tmp, 128, "    Failed to open the Direct3D resource.");
+				break;
+			default :
+				strcat_s(tmp, 128, "    Unknown error.");
+				break;
+		}
+		SpoutLogError("%s", tmp);
+
+		if (m_hInteropDevice) {
+			wglDXCloseDeviceNV(m_hInteropDevice);
+			m_hInteropDevice = nullptr;
+		}
+
+	}
+
+	return hInteropObject;
+
+}
+
+//
+// Test whether the NVIDIA OpenGL/DirectX interop extensions function correctly. 
+// Creates dummy textures and uses the interop functions.
+// Creates an interop device on success.
+// Must be called after OpenDirectX.
+// Success means the GLDX interop functions can be used.
+// Other errors should not happen if OpenDirectX succeeded
+bool spoutGLDXinterop::GLDXready()
+{
+	HANDLE	dxShareHandle = nullptr; // Shared texture handle for a sender texture
+	LPDIRECT3DTEXTURE9  dxTexture = nullptr; // the shared DX9 texture
+	ID3D11Texture2D* pSharedTexture = nullptr; // the shared DX11 texture
+	HANDLE hInteropObject = nullptr; // handle to the DX/GL interop object
+	GLuint glTexture = 0; // the OpenGL texture linked to the shared DX texture
+
+	// Create an opengl texture for the test
+	glGenTextures(1, &glTexture);
+	if (glTexture == 0) {
+		SpoutLogError("spoutGLDXinterop::GLDXready - glGenTextures failed");
+		return false;
+	}
+
+	SpoutLogNotice("spoutGLDXinterop::GLDXready - testing GL/DX interop functions");
+	//
+	// Create a directX texture and link using the NVIDIA GLDX interop functions
+	//
+	if (GetDX9()) {
+		if (!m_pDevice) {
+			glDeleteTextures(1, &glTexture);
+			SpoutLogError("spoutGLDXinterop::GLDXready (DX9) - No D3D9ex device");
+			return false;
+		}
+
+		SpoutLogNotice("    Creating test DX9 texture");
+
+		// Create a shared DirectX9 texture for the test
+		if (!spoutdx.CreateSharedDX9Texture(m_pDevice,
+											256, 256,
+											D3DFMT_A8R8G8B8, // default
+											dxTexture, dxShareHandle)) {
+			glDeleteTextures(1, &glTexture);
+			SpoutLogError("spoutGLDXinterop::GLDXready (DX9) - CreateSharedDX9Texture failed");
+			return false;
+		}
+
+		SpoutLogNotice("    Linking test DX9 texture");
+
+		// Link the shared DirectX9 texture to the OpenGL texture
+		// If sucessful, LinkGLDXtextures initializes a class handle
+		// to a GL/DirectX interop device - m_hInteropDevice
+		hInteropObject = LinkGLDXtextures(m_pDevice, dxTexture, dxShareHandle, glTexture);
+		if (!hInteropObject) {
+			SpoutLogError("spoutGLDXinterop::GLDXready (DX9) - LinkGLDXtextures failed");
+			if (dxTexture)
+				dxTexture->Release();
+			glDeleteTextures(1, &glTexture);
+			return false;
+		}
+		SpoutLogNotice("    Test DX9 texture created and linked OK");
+
+		if (m_hInteropDevice) 
+			wglDXUnregisterObjectNV(m_hInteropDevice, hInteropObject);
+		if (dxTexture) 
+			dxTexture->Release();
+		if (glTexture) 
+			glDeleteTextures(1, &glTexture);
+
+	} // endif DX9
+	else {
+
+		if (!m_pd3dDevice) {
+			glDeleteTextures(1, &glTexture);
+			SpoutLogError("spoutGLDXinterop::GLDXready (DX11) - No D3D11 device");
+			return false;
+		}
+
+		SpoutLogNotice("    Creating test DX11 texture");
+
+		// Create a new shared DirectX resource
+		if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice,
+											256, 256,
+											DXGI_FORMAT_B8G8R8A8_UNORM, // default
+											&pSharedTexture, dxShareHandle)) {
+			glDeleteTextures(1, &glTexture);
+			SpoutLogError("spoutGLDXinterop::GLDXready (DX11) - CreateSharedDX11Texture failed");
+			return false;
+		}
+
+		SpoutLogNotice("    Linking test : OpenGL texture (0x%lX) DX11 texture (0x%lX)", glTexture, pSharedTexture);
+
+		// Link the shared DirectX texture to the OpenGL texture
+		// If sucessful, LinkGLDXtextures initializes a class handle
+		// to a GL/DirectX interop device - m_hInteropDevice
+		hInteropObject = LinkGLDXtextures(m_pd3dDevice, pSharedTexture, dxShareHandle, glTexture);
+		if (!hInteropObject) {
+			spoutdx.ReleaseDX11Texture(m_pd3dDevice, pSharedTexture);
+			SpoutLogError("spoutGLDXinterop::GLDXready (DX11) - LinkGLDXtextures failed");
+			return false;
+		}
+
+		SpoutLogNotice("    Test DX11 texture created and linked OK");
+
+		// All passes, so unregister and release textures
+		// m_hInteropDevice remains and does not need to be created again
+		if(m_hInteropDevice) 
+			wglDXUnregisterObjectNV(m_hInteropDevice, hInteropObject);
+
+		spoutdx.ReleaseDX11Texture(m_pd3dDevice, pSharedTexture);
+
+		glDeleteTextures(1, &glTexture);
+
+	}
+
+	return true;
+
+}
+
+void spoutGLDXinterop::CleanupDirectX()
+{
+	if (m_bUseDX9)
+		CleanupDX9();
+	else
+		CleanupDX11();
+
+}
+
+void spoutGLDXinterop::CleanupDX9()
+{
+	// 04.10.19 - do not block if m_pD3D exists
+	SpoutLogNotice("spoutGLDXinterop::CleanupDX9()");
+
+	// 01.09.14 - texture release was missing for a receiver - caused a VRAM leak
+	// If an existing texture exists, CreateTexture can fail with and "unknown error"
+	// 25.08.15 - moved before release of device
+	if (m_dxTexture) {
+		m_dxTexture->Release();
+		m_dxTexture = nullptr;
+	}
+
+	// Re-set shared texture handle
+	m_dxShareHandle = nullptr;
+
+	// 25.08.15 - release device before the object !
+	// 22.01.17 - will crash if refcount is 1 for MilkDrop.
+	// 12.11.18 - must always be freed, not only on exit. Fix for MilkDop.
+	//            Device recreated for a new sender.
+	// 08.10.19 - do not release device if DX9 object does not exist
+	if (m_pD3D) {
+		if (m_pDevice)
+			m_pDevice->Release();
+		m_pD3D->Release();
+	}
+
+	m_pDevice = nullptr;
+	m_pD3D = nullptr;
+
+}
+
+void spoutGLDXinterop::CleanupDX11()
+{
+	if (m_pd3dDevice) {
+
+		SpoutLogNotice("spoutGLDXinterop::CleanupDX11()");
+
+		// Reference count warnings are in the SpoutDirectX class
+
+		if (m_pSharedTexture) {
+			SpoutLogNotice("    Releasing shared texture");
+			// Release interop link before releasing the texture
+			if (m_hInteropDevice && m_hInteropObject)
+				wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
+			spoutdx.ReleaseDX11Texture(m_pd3dDevice, m_pSharedTexture);
+		}
+
+		// Important to set pointer to NULL or it will crash if released again
+		m_pSharedTexture = nullptr;
+
+		// Re-set shared texture handle
+		m_dxShareHandle = nullptr;
+
+		// Release staging texture if they have been used
+		if (m_pStaging[0]) spoutdx.ReleaseDX11Texture(m_pd3dDevice, m_pStaging[0]);
+		if (m_pStaging[1]) spoutdx.ReleaseDX11Texture(m_pd3dDevice, m_pStaging[1]);
+		m_pStaging[0] = nullptr;
+		m_pStaging[1] = nullptr;
+		m_Index = 0;
+		m_NextIndex = 0;
+
+		// 12.11.18 - To avoid memory leak with dynamic objects
+		//            must always be freed, not only on exit.
+		//            Device recreated for a new sender.
+		// Releases immediate context and device in the SpoutDirectX class
+		// m_pImmediateContext and m_pd3dDevice are copies of these
+		spoutdx.ReleaseDX11Device(m_pd3dDevice);
+	}
+
+	// NULL the class pointer copies
+	m_pImmediateContext = nullptr;
+	m_pd3dDevice = nullptr;
+
+}
+
 
 bool spoutGLDXinterop::IsBGRAavailable()
 {
@@ -1635,50 +2009,6 @@ bool spoutGLDXinterop::GetBufferMode()
 }
 
 
-// 03.09.14 - MB mods for names map class
-bool spoutGLDXinterop::getSharedTextureInfo(const char* sharedMemoryName) {
-
-	unsigned int w, h;
-	HANDLE handle;
-	DWORD format;
-	char name[256];
-	strcpy_s(name, 256, sharedMemoryName);
-
-	if (!senders.FindSender(name, w, h, handle, format)) {
-		SpoutLogWarning("spoutGLDXinterop::getSharedTextureInfo - can't find sender [%s]", sharedMemoryName);
-		return false;
-	}
-
-	m_dxShareHandle = (HANDLE)handle;
-	m_TextureInfo.width = w;
-	m_TextureInfo.height = h;
-#ifdef _M_X64
-	m_TextureInfo.shareHandle = (unsigned __int32)(HandleToLong(handle));
-#else
-	m_TextureInfo.shareHandle = (unsigned __int32)handle;
-#endif
-	// m_TextureInfo.shareHandle = (__int32)handle;
-	m_TextureInfo.format = format;
-
-	return true;
-
-}
-
-
-// Set texture info to shared memory for the sender init
-// width and height must have been set first
-// 03.09.14 - MB mods for names map class
-bool spoutGLDXinterop::setSharedTextureInfo(const char* sharedMemoryName) {
-
-	return senders.UpdateSender(sharedMemoryName, 
-							m_TextureInfo.width,
-							m_TextureInfo.height,
-							m_dxShareHandle,
-							m_TextureInfo.format);
-
-
-}
-
 // Return current sharing handle, width and height of a Sender
 // Note - use the map directly - we must not use getSharedTextureInfo
 // which resets the local info structure from shared memory !!!
@@ -1695,13 +2025,11 @@ bool spoutGLDXinterop::getSharedInfo(const char* sharedMemoryName, SharedTexture
 // Used to change the texture dimensions before init
 bool spoutGLDXinterop::setSharedInfo(const char* sharedMemoryName, SharedTextureInfo* info)
 {
-	m_TextureInfo.width			= info->width;
-	m_TextureInfo.height		= info->height;
-#ifdef _M_X64
-	m_dxShareHandle = (HANDLE)(LongToHandle((long)info->shareHandle));
-#else
-	m_dxShareHandle = (HANDLE)info->shareHandle;
-#endif	
+
+	m_TextureInfo.width	 = info->width;
+	m_TextureInfo.height = info->height;
+	m_dxShareHandle      = LongToHandle(static_cast<long>(info->shareHandle));
+
 	// the local info structure handle "m_TextureInfo.shareHandle" gets converted 
 	// into (unsigned __int32) from "m_dxShareHandle" by setSharedTextureInfo
 	if(setSharedTextureInfo(sharedMemoryName)) {
@@ -1713,27 +2041,33 @@ bool spoutGLDXinterop::setSharedInfo(const char* sharedMemoryName, SharedTexture
 	}
 }
 
-
 bool spoutGLDXinterop::WriteTexture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
 {
-	bool bRet = false;
 
 	// Zero texture is supported for all sharing modes
 	// A texture must be attached to the Host FBO attachment point 0 for read
 	if (m_bUseMemory) { // Memoryshare
-		bRet = WriteMemory(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+		if (!WriteMemory(TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
+			SpoutLogError("spoutGLDXinterop::WriteTexture - WriteMemory failed");
+			return false;
+		}
 	}
 	else if (m_bUseGLDX) { // GL/DX interop
-		bRet = WriteGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+		if(!WriteGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
+			SpoutLogError("spoutGLDXinterop::WriteTexture - WriteGLDXtexture failed");
+			return false;
+		}
 	}
-	else {
-		SpoutLogError("spoutGLDXinterop::WriteTexture failed");
-		bRet = false;
+	else { // DirectX 11 CPU backup mode
+		if (!WriteDX11texture(TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
+			SpoutLogError("spoutGLDXinterop::WriteTexture - WriteDX11texture failed");
+			return false;
+		}
 	}
 
-	return bRet;
+	return true;
 
 } // end WriteTexture
 
@@ -1744,15 +2078,26 @@ bool spoutGLDXinterop::ReadTexture (const char* sendername,
 									bool bInvert, GLuint HostFBO)
 {
 	if(m_bUseMemory) { // Memoryshare
-		return(ReadMemory(sendername, TextureID, TextureTarget, width, height, bInvert, HostFBO));
+		if (!ReadMemory(sendername, TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
+			SpoutLogError("spoutGLDXinterop::ReadTexture - ReadMemory failed");
+			return false;
+		}
 	}
 	else if(m_bUseGLDX) { // GL/DX interop
-		return(ReadGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO));
+		if (!ReadGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
+			SpoutLogError("spoutGLDXinterop::ReadTexture - ReadGLDXtexture failed");
+			return false;
+		}
 	}
-	else {
-		SpoutLogError("spoutGLDXinterop::ReadTexture failed");
-		return false;
+	else { // DirectX 11 CPU backup mode
+		if (!ReadDX11texture(TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
+			SpoutLogError("spoutGLDXinterop::ReadTexture - ReadDX11texture failed");
+			return false;
+		}
 	}
+
+	return true;
+
 } // end ReadTexture
 
 
@@ -1805,7 +2150,7 @@ bool spoutGLDXinterop::ReadTexturePixels (const char* sendername,
 bool spoutGLDXinterop::BindSharedTexture()
 {
 	// Only for GL/DX interop mode
-	if (m_hInteropDevice == NULL || m_hInteropObject == NULL)
+	if (!m_hInteropDevice || !m_hInteropObject)
 		return false;
 
 	bool bRet = false;
@@ -1843,7 +2188,7 @@ bool spoutGLDXinterop::BindSharedTexture()
 bool spoutGLDXinterop::UnBindSharedTexture()
 {
 	// Only for GL/DX interop mode
-	if (m_hInteropDevice == NULL || m_hInteropObject == NULL)
+	if (!m_hInteropDevice || !m_hInteropObject)
 		return false;
 	
 	// Unbind our shared OpenGL texture
@@ -1862,6 +2207,61 @@ GLuint spoutGLDXinterop::GetSharedTextureID()
 {
 	return m_glTexture;
 }
+
+
+//
+// Protected functions
+//
+
+//
+//	UTILITY
+//
+
+//
+// Private functions
+//
+
+// 03.09.14 - MB mods for names map class
+bool spoutGLDXinterop::getSharedTextureInfo(const char* sharedMemoryName) {
+
+	unsigned int w, h;
+	HANDLE handle;
+	DWORD format;
+	char name[256];
+	strcpy_s(name, 256, sharedMemoryName);
+
+	if (!senders.FindSender(name, w, h, handle, format)) {
+		SpoutLogWarning("spoutGLDXinterop::getSharedTextureInfo - can't find sender [%s]", sharedMemoryName);
+		return false;
+	}
+
+	m_dxShareHandle = (HANDLE)handle;
+	m_TextureInfo.width = w;
+	m_TextureInfo.height = h;
+#ifdef _M_X64
+	m_TextureInfo.shareHandle = (unsigned __int32)(HandleToLong(handle));
+#else
+	m_TextureInfo.shareHandle = (unsigned __int32)handle;
+#endif
+	// m_TextureInfo.shareHandle = (__int32)handle;
+	m_TextureInfo.format = format;
+
+	return true;
+
+}
+
+// Set texture info to shared memory for the sender init
+// width and height must have been set first
+// 03.09.14 - MB mods for names map class
+bool spoutGLDXinterop::setSharedTextureInfo(const char* sharedMemoryName) {
+
+	return senders.UpdateSender(sharedMemoryName,
+		m_TextureInfo.width,
+		m_TextureInfo.height,
+		m_dxShareHandle,
+		m_TextureInfo.format);
+}
+
 
 // ----------------------------------------------------------
 //		Access to texture using DX/GL interop functions
@@ -1885,7 +2285,7 @@ bool spoutGLDXinterop::WriteGLDXtexture (
 	GLuint HostFBO)
 {
 	// Only for GL/DX interop mode
-	if (m_hInteropDevice == NULL || m_hInteropObject == NULL)
+	if (!m_hInteropDevice || !m_hInteropObject)
 		return false;
 
 	// Specify greater here because the width/height passed can be smaller
@@ -1983,7 +2383,7 @@ bool spoutGLDXinterop::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, u
 	// Total time approximately 450-500 microseconds
 
 	// No interop, no copy
-	if (m_hInteropDevice == NULL || m_hInteropObject == NULL) {
+	if (!m_hInteropDevice || !m_hInteropObject) {
 		return false;
 	}
 
@@ -2126,7 +2526,7 @@ bool spoutGLDXinterop::ReadGLDXpixels(unsigned char* pixels,
 										 bool bInvert, 
 										 GLuint HostFBO)
 {
-	if (m_hInteropDevice == NULL || m_hInteropObject == NULL)
+	if (!m_hInteropDevice || !m_hInteropObject)
 		return false;
 
 	if(width != m_TextureInfo.width || height != m_TextureInfo.height)
@@ -2163,7 +2563,6 @@ bool spoutGLDXinterop::ReadGLDXpixels(unsigned char* pixels,
 					if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 						// read the pixels from the framebuffer in the user provided format
 						glReadPixels(0, 0, width, height, glformat, GL_UNSIGNED_BYTE, pixels);
-						bRet = true;
 					}
 					else {
 						PrintFBOstatus(status);
@@ -2210,14 +2609,14 @@ bool spoutGLDXinterop::SetDX9device(IDirect3DDevice9Ex* pDevice)
 		// it will not be released again if m_pD3D is NULL
 		if (m_pDevice) 
 			m_pDevice->Release();
-		m_pD3D = NULL;
-		m_pDevice = NULL;
+		m_pD3D = nullptr;
+		m_pDevice = nullptr;
 	}
 
 	SpoutLogNotice("spoutGLDXinterop::SetDX9device (%x)", pDevice);
 
 	// Already initialized ?
-	if (pDevice != NULL && m_pDevice == pDevice) {
+	if (pDevice && m_pDevice == pDevice) {
 		SpoutLogWarning("SetDX9device - Device (%x) already initialized", pDevice);
 	}
 
@@ -2361,9 +2760,6 @@ bool spoutGLDXinterop::WriteTexture(ID3D11Texture2D** texture)
 		m_pImmediateContext->CopyResource(m_pSharedTexture, *texture);
 		// Flush after update of the shared texture on this device
 		m_pImmediateContext->Flush();
-		// Optionally wait until the flush and copy complete
-		// TODO : testing required 
-		// spoutdx.hWait(m_pd3dDevice, m_pImmediateContext);
 		// Increment the sender frame counter
 		frame.SetNewFrame();
 		// Release mutex and allow access to the texture
@@ -2395,7 +2791,7 @@ bool spoutGLDXinterop::WriteTextureReadback(ID3D11Texture2D** texture,
 		return false;
 	}
 
-	if (m_hInteropDevice == NULL || m_hInteropObject == NULL) {
+	if (!m_hInteropDevice || !m_hInteropObject) {
 		SpoutLogWarning("spoutGLDXinterop::WriteTextureReadback(ID3D11Texture2D** texture) no interop device");
 		return false;
 	}
@@ -2452,14 +2848,13 @@ bool spoutGLDXinterop::WriteTextureReadback(ID3D11Texture2D** texture,
 // No FBO used so none has to be passed
 //
 bool spoutGLDXinterop::LoadTexturePixels(GLuint TextureID, GLuint TextureTarget, 
-										 unsigned int width, unsigned int height, 
-										 const unsigned char* data, 
-										 GLenum glFormat, bool bInvert)
+				unsigned int width, unsigned int height, const unsigned char* data, 
+				GLenum glFormat, bool bInvert, unsigned int sourcePitch)
 {
-	void *pboMemory = NULL;
+	void *pboMemory = nullptr;
 	int channels = 4; // RGBA or RGB
 
-	if(TextureID == 0 || data == NULL)
+	if(TextureID == 0 || !data)
 		return false;
 
 	if(glFormat == GL_RGB || glFormat == GL_BGR_EXT) 
@@ -2500,7 +2895,13 @@ bool spoutGLDXinterop::LoadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 	if(pboMemory) {
 		// Update data directly to the mapped buffer
-		spoutcopy.CopyPixels((const unsigned char*)data, (unsigned char*)pboMemory, width, height, glFormat, bInvert);
+		if (sourcePitch > 0 && (glFormat == GL_RGBA || glFormat == GL_BGRA_EXT)) {
+			// Allow for source pitch (staging textures)
+			spoutcopy.rgba2rgba((const void*)data, (void*)pboMemory, width, height, sourcePitch, bInvert);
+		}
+		else {
+			spoutcopy.CopyPixels((const unsigned char*)data, (unsigned char*)pboMemory, width, height, glFormat, bInvert);
+		}
 		glUnmapBufferEXT(GL_PIXEL_UNPACK_BUFFER); // release the mapped buffer
 	}
 	// Skip the copy rather than return false.
@@ -2522,10 +2923,10 @@ bool spoutGLDXinterop::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarge
 										   unsigned char* data, GLenum glFormat, 
 										   bool bInvert, GLuint HostFBO)
 {
-	void *pboMemory = NULL;
+	void *pboMemory = nullptr;
 	int channels = 4; // RGBA or RGB
 
-	if (data == NULL) {
+	if (!data) {
 		return false;
 	}
 
@@ -2534,7 +2935,7 @@ bool spoutGLDXinterop::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarge
 	}
 
 	if (m_fbo == 0) {
-		SpoutLogNotice("spoutGLDXinterop::UnloadTexturePixels - creating fbo");
+		SpoutLogNotice("spoutGLDXinterop::UnloadTexturePixels - creating FBO");
 		glGenFramebuffersEXT(1, &m_fbo);
 	}
 
@@ -2558,6 +2959,8 @@ bool spoutGLDXinterop::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarge
 	}
 	else if (HostFBO == 0) {
 		// If no texture ID, a Host FBO must be provided
+		// testing only - error log will repeat
+		// printf("spoutGLDXinterop::UnloadTexturePixels - no texture");
 		return false;
 	}
 
@@ -2595,6 +2998,235 @@ bool spoutGLDXinterop::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarge
 	return true;
 
 }
+
+
+
+// ========================================================================
+//
+// DirectX 11 texture copy via CPU where the GL/DX interop is not available
+//
+
+// Copy from and OpenGL texture to the shared DX11 texture by way of staging textures
+bool spoutGLDXinterop::WriteDX11texture(GLuint TextureID, GLuint TextureTarget,
+	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
+{
+	D3D11_MAPPED_SUBRESOURCE mappedSubResource;
+	bool bRet = false;
+
+	// Only for DX11 mode
+	if (GetDX9() || !m_pImmediateContext || width != m_TextureInfo.width || height != m_TextureInfo.height)
+		return false;
+
+	// If staging textures have not been created or a different size, create new ones
+	if (!CheckStagingTextures(width, height))
+		return false;
+
+	// No staging textures - no copy
+	if (!m_pStaging[0] || !m_pStaging[1])
+		return false;
+
+	// Write from the sender GL texture to the sender DX11 texture via two staging textures
+	// Approx 2 msec at 1920x1080 with PBO buffering
+	m_Index = (m_Index + 1) % 2;
+	m_NextIndex = (m_Index + 1) % 2;
+
+	// Map and write to one staging texture while the previous is occupied
+	if (SUCCEEDED(m_pImmediateContext->Map(m_pStaging[m_NextIndex], 0, D3D11_MAP_WRITE, 0, &mappedSubResource))) {
+		
+		// Copy OpenGL texture pixels to the staging texture
+		if (m_bPBOavailable)
+			bRet = UnloadTexturePixels(TextureID, TextureTarget, width, height, (unsigned char*)mappedSubResource.pData, GL_BGRA_EXT, bInvert, HostFBO);
+		else
+			bRet = ReadTextureData(TextureID, TextureTarget, width, height, (unsigned char*)mappedSubResource.pData, GL_BGRA_EXT, bInvert, HostFBO);
+		m_pImmediateContext->Unmap(m_pStaging[m_NextIndex], 0);
+
+		// Write to the sender shared texture from the previous staging texture
+		m_pImmediateContext->CopyResource(m_pSharedTexture, m_pStaging[m_Index]);
+
+		return true;
+
+	}
+
+	return false;
+
+} // end WriteDX11texture
+
+
+// Copy from the shared DX11 texture to an OpenGL texture by way of staging textures
+bool spoutGLDXinterop::ReadDX11texture(GLuint TextureID, GLuint TextureTarget,
+	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
+{
+	D3D11_MAPPED_SUBRESOURCE mappedSubResource;
+
+	// Only for DX11 mode
+	if (GetDX9() || !m_pImmediateContext || width != m_TextureInfo.width || height != m_TextureInfo.height)
+		return false;
+
+	// If staging textures have not been created or a different size, create new ones
+	if (!CheckStagingTextures(width, height))
+		return false;
+
+	// No staging textures - no copy
+	if (!m_pStaging[0] || !m_pStaging[1])
+		return false;
+
+	// Read from the sender GPU texture to CPU pixels via two staging textures
+	m_Index = (m_Index + 1) % 2;
+	m_NextIndex = (m_Index + 1) % 2;
+
+	// Copy from the sender shared texture to the first staging texture
+	ReadTexture(&m_pStaging[m_Index]);
+
+	// Make sure the GPU is ready to access the staging texture 
+	m_pImmediateContext->Flush();
+	// Map the next previous staging texture to access the pixels
+	if (SUCCEEDED(m_pImmediateContext->Map(m_pStaging[m_NextIndex], 0, D3D11_MAP_READ, 0, &mappedSubResource))) {
+		// Get a pointer to the staging texture data via PBO
+		if (IsPBOavailable()) {
+			LoadTexturePixels(TextureID, TextureTarget, width, height,
+					(const unsigned char*)mappedSubResource.pData,
+					GL_BGRA_EXT, bInvert, mappedSubResource.RowPitch);
+		}
+		else {
+			if (bInvert) {
+				// Create or resize a local OpenGL texture
+				CheckOpenGLTexture(m_TexID, GL_RGBA, width, height, m_TexWidth, m_TexHeight);
+				// Copy the DX11 pixels to it
+				glBindTexture(GL_TEXTURE_2D, m_TexID);
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, mappedSubResource.RowPitch / 4); // Stride
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, (const GLvoid *)mappedSubResource.pData);
+				glBindTexture(GL_TEXTURE_2D, 0);
+				// Copy the local texture to the user texture and invert as necessary
+				CopyTexture(m_TexID, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert, HostFBO);
+			}
+			else {
+				// Copy the DX11 pixels to the user texture
+				glBindTexture(TextureTarget, TextureID);
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, mappedSubResource.RowPitch / 4);
+				glTexSubImage2D(TextureTarget, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, (const GLvoid *)mappedSubResource.pData);
+				glBindTexture(TextureTarget, 0);
+			}
+		}
+
+		m_pImmediateContext->Unmap(m_pStaging[0], 0);
+		return true;
+	}
+
+	return false;
+
+} // end ReadDX11texture
+
+
+// Copy OpenGL texture data to a pixel buffer via fbo
+bool spoutGLDXinterop::ReadTextureData(GLuint SourceID, GLuint SourceTarget, 
+	unsigned int width, unsigned int height, unsigned char* dest,
+	GLenum GLformat, bool bInvert, GLuint HostFBO)
+{
+	GLenum status;
+
+	// Create or resize a local OpenGL texture
+	CheckOpenGLTexture(m_TexID, GL_RGBA, width, height, m_TexWidth, m_TexHeight);
+
+	// Create a local fbo if not already
+	if (m_fbo == 0)	glGenFramebuffersEXT(1, &m_fbo);
+
+	// If texture ID is zero, assume the source texture is attached
+	// to the host fbo which is bound for read and write
+	if (SourceID == 0 && HostFBO > 0) {
+		// Bind our local fbo for draw only
+		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, m_fbo);
+		// Source texture is already attached to point 0 for read
+	}
+	else {
+		// bind the local fbo for read and write
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+		// Read from attachment point 0
+		glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
+		// Attach the Source texture to point 0 for read
+		glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
+	}
+
+	// Draw to attachment point 1
+	glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
+
+	// Attach the texture we write into (the local texture) to attachment point 1
+	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, m_TexID, 0);
+
+	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+
+		if (bInvert && m_bBLITavailable) {
+			// copy the source texture (0) to the local texture (1) while flipping upside down 
+			glBlitFramebufferEXT(0, 0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			// Bind local fbo for read
+			glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, m_fbo);
+			// Read from attachment point 1
+			glReadBuffer(GL_COLOR_ATTACHMENT1_EXT);
+			// Read pixels from it
+			glReadPixels(0, 0, width, height, GLformat, GL_UNSIGNED_BYTE, (GLvoid *)dest);
+		}
+		else {
+			// No invert or no fbo blit extension
+			// Read from the source texture attachment point 0
+			// This will either be the Host fbo if texture ID is zero
+			// or the local fbo if a texture ID was passed in
+			glReadPixels(0, 0, width, height, GLformat, GL_UNSIGNED_BYTE, (GLvoid *)dest);
+		}
+	}
+	else {
+		PrintFBOstatus(status);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+		return false;
+	}
+
+	// restore the previous fbo - default is 0
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+
+	return true;
+
+} // end ReadTextureData
+
+
+// Create class staging textures if changed size or do not exist yet
+bool spoutGLDXinterop::CheckStagingTextures(unsigned int width, unsigned int height)
+{
+	if (!m_pd3dDevice) {
+		return false;
+	}
+
+	D3D11_TEXTURE2D_DESC desc = { 0 };
+
+	if (m_pStaging[0] && m_pStaging[1]) {
+
+		// Get the size to test for change
+		m_pStaging[0]->GetDesc(&desc);
+		if (desc.Width != width || desc.Height != height) {
+			// Staging textures must not be mapped before release
+			spoutdx.ReleaseDX11Texture(m_pd3dDevice, m_pStaging[0]);
+			spoutdx.ReleaseDX11Texture(m_pd3dDevice, m_pStaging[1]);
+			m_pStaging[0] = nullptr;
+			m_pStaging[1] = nullptr;
+			m_Index = 0;
+			m_NextIndex = 0;
+			// Drop through to create new textures
+		}
+		else {
+			return true;
+		}
+	}
+
+	if (spoutdx.CreateDX11StagingTexture(m_pd3dDevice, width, height, DX11format, &m_pStaging[0])
+		&& spoutdx.CreateDX11StagingTexture(m_pd3dDevice, width, height, DX11format, &m_pStaging[1])) {
+		return true;
+	}
+
+	return false;
+
+} // end CheckStagingTextures
+
+//
+// ==================== end staging texture functions ==================
+
 
 
 //
@@ -2635,14 +3267,14 @@ HRESULT spoutGLDXinterop::LockInteropObject(HANDLE hDevice, HANDLE *hObject)
 	DWORD dwError;
 	HRESULT hr;
 
-	if(hDevice == NULL || hObject == NULL || *hObject == NULL) {
+	if(!hDevice || !hObject || !*hObject) {
 		return E_HANDLE;
 	}
 
 	// 180 microseconds
 
 	// lock dx object
-	if(wglDXLockObjectsNV(hDevice, 1, hObject) == TRUE) {
+	if(wglDXLockObjectsNV(hDevice, 1, hObject)) {
 		return S_OK;
 	}
 	else {
@@ -2682,13 +3314,13 @@ HRESULT spoutGLDXinterop::UnlockInteropObject(HANDLE hDevice, HANDLE *hObject)
 	DWORD dwError;
 	HRESULT hr;
 
-	if(hDevice == NULL || hObject == NULL || *hObject == NULL) {
+	if(!hDevice || !hObject || !*hObject) {
 		return E_HANDLE;
 	}
 
 	// 180 microseconds
 
-	if (wglDXUnlockObjectsNV(hDevice, 1, hObject) == TRUE) {
+	if (wglDXUnlockObjectsNV(hDevice, 1, hObject)) {
 		return S_OK;
 	}
 	else {
@@ -2777,17 +3409,18 @@ bool spoutGLDXinterop::GetDX9()
 	return m_bUseDX9;
 }
 
+// Return registry MemoryShare mode
 bool spoutGLDXinterop::GetMemoryShareMode()
 {
 	bool bRet = false;
 	DWORD dwMem = 0;
 	if(ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", &dwMem)) {
 		bRet = (dwMem == 1);
-	}	
+	}
 	return bRet;
 }
 
-// Set memoryshare mode for all applications
+// Set memoryshare mode to the registry for all applications
 bool spoutGLDXinterop::SetMemoryShareMode(bool bMem)
 {
 	m_bUseMemory = bMem;
@@ -2796,44 +3429,80 @@ bool spoutGLDXinterop::SetMemoryShareMode(bool bMem)
 	return false;
 }
 
+// Return current class MemoryShare mode flag
+// May be changed from registry setting by compatibility test
+bool spoutGLDXinterop::GetMemoryShare()
+{
+	return m_bUseMemory;
+}
+
+// Set class MemoryShare mode flag
+// Can be used by other classes for dynamic switch between modes
+void spoutGLDXinterop::SetMemoryShare(bool bMode)
+{
+	m_bUseMemory = bMode;
+}
+
+// Get share mode for a registered sender
+// Sharehandle in the memory info will be 0 for memoryshare
+bool spoutGLDXinterop::GetSenderMemoryShare(const char* sendername)
+{
+	SharedTextureInfo info;
+	if (senders.getSharedInfo(sendername, &info)) {
+		if (info.shareHandle == 0)
+			return true;
+	}
+	SpoutLogError("spoutGLDXinterop::GetMemoryShare - could get sender shared info");
+	return false;
+}
+
+
+
 //
-// Return sharing mode set by user or by an application
-// Reads the registry - avoid repeated use every frame.
-// 0 - texture, 1 - CPU (disabled for 2.007) 2 - memory
+// Return sharing mode set to the registry
+//
+// Re-uses 2.006 CPU mode setting
+// 0 - texture (Memoryshare = 0)
+// 1 - CPU     (Memoryshare = 1)
+// 2 - memory  (Memoryshare = 1)
+//
 // Left for compatibility with 2.006 applications.
-// May be removed for future versions and replaced by GetMemoryShareMode().
+// If CPU mode is detected, Memory share is returned.
+// CPU registry setting may be removed for future versions
 //
 int spoutGLDXinterop::GetShareMode()
 {
-	DWORD dwCPU = 0;
-
+	// Memoryshare is common for 2.007 and 2.006
 	if(GetMemoryShareMode()) {
-			return 2;
+		// 1 : Memoryshare
+		return 1;
 	}
 
-	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "CPU", &dwCPU)) {
-		// In case 2.006 SpoutDXmode mode has been used
-		if (dwCPU == 1)
+	DWORD dwMode = 0;
+	// Return Memory share instead of 2.006 CPU mode
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "CPU", &dwMode)) {
+		if (dwMode == 1)
 			return 1;
 	}
 
+	// If 2.006 CPU mode is not set
+	// the user will have selected Texture share (memoryshare is already checked above)
+
+	// 0 : Texture share default
 	return 0;
 
 }
 
 
 //---------------------------------------------------------
-// 0 - texture, 1 & 2 - memory
-// Left for compatibility with 2.006 applications.
-// May be removed for future versions and replaced by SetMemoryShareMode().
+// 0 - texture : 1 - memory : 2 - auto
 bool spoutGLDXinterop::SetShareMode(int mode)
 {
 	switch (mode) {
 
-		case 1 : // CPU mode (disabled for 2.007)
-		case 2 : // Shared memory
+		case 1 : // Memory share specifically selected - Auto share is set off
 			if (WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", 1)) {
-				if(WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "CPU", 0)) {
+				if (WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Autoshare", 0)) {
 					m_bUseGLDX = false;
 					m_bUseMemory = true;
 					return true;
@@ -2841,11 +3510,23 @@ bool spoutGLDXinterop::SetShareMode(int mode)
 			}
 			break;
 
-		default : // GL/DX texture
+		case 2: // Auto share mode is compatibility dependent and the memoryshare setting is set off
+			if (WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Autoshare", 1)) {
+				if (WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", 0)) {
+					m_bUseGLDX = true; // Assume texture share compatible but switch dynamically
+					m_bUseMemory = false;
+					return true;
+				}
+			}
+			break;
+
+		default : // GL/DX texture - set memoryshare and autoshare false
 			if(WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", 0)) {
-				m_bUseGLDX = true;
-				m_bUseMemory = false;
-				return true;
+				if (WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Autoshare", 0)) {
+					m_bUseGLDX = true;
+					m_bUseMemory = false;
+					return true;
+				}
 			}
 			break;
 	}
@@ -2864,49 +3545,6 @@ void spoutGLDXinterop::SetDX9format(D3DFORMAT textureformat)
 	DX9format = textureformat;
 }
 
-// Set graphics adapter for Spout output
-bool spoutGLDXinterop::SetAdapter(int index) 
-{
-	if(spoutdx.SetAdapter(index)) {
-		return true;
-	}
-
-	SpoutLogError("spoutGLDXinterop::SetAdapter(%d) failed", index);
-	spoutdx.SetAdapter(-1); // make sure globals are reset to default
-
-	return false;
-}
-
-// Get current adapter index
-int spoutGLDXinterop::GetAdapter() 
-{
-	return spoutdx.GetAdapter();
-}
-
-
-// Get the path of the host that produced the sender
-// from the description string in the sender info memory map
-// Description is defined as wide chars, but the path is stored as byte chars
-// Not a permanent thing - just for testing.
-// The description string could be used for other things in future
-bool spoutGLDXinterop::GetHostPath(const char* sendername, char* hostpath, int maxchars)
-{
-	SharedTextureInfo info;
-	int n;
-
-	if (!senders.getSharedInfo(sendername, &info)) {
-		// Just quit if the key does not exist
-		SpoutLogWarning("spoutGLDXinterop::GetHostPath - could not get sender info [%s]", sendername);
-		return false;
-	}
-
-	n = maxchars;
-	if(n > 256) n = 256; // maximum field width in shared memory
-
-	strcpy_s(hostpath, n, (char*)info.description);
-
-	return true;
-}
 
 // Get the number of graphics adapters in the system
 int spoutGLDXinterop::GetNumAdapters()
@@ -2920,6 +3558,64 @@ bool spoutGLDXinterop::GetAdapterName(int index, char* adaptername, int maxchars
 	return spoutdx.GetAdapterName(index, adaptername, maxchars);
 }
 
+// Set graphics adapter for Spout output
+bool spoutGLDXinterop::SetAdapter(int index) 
+{
+	if (spoutdx.SetAdapter(index)) {
+		return true;
+	}
+	SpoutLogError("spoutGLDXinterop::SetAdapter(%d) failed", index);
+	spoutdx.SetAdapter(-1); // make sure DirectX device creation uses the default adapter
+	return false;
+}
+
+// Get current adapter index
+int spoutGLDXinterop::GetAdapter() 
+{
+	return spoutdx.GetAdapter();
+}
+
+// Get the path of the host that produced the sender
+// from the description string in the sender info memory map
+// Description is defined as wide chars, but the path is stored as byte chars
+// The description string could be used for other things in future
+bool spoutGLDXinterop::GetHostPath(const char* sendername, char* hostpath, int maxchars)
+{
+	if (!sendername || !sendername[0])
+		return false;
+
+	SharedTextureInfo info;
+	int n = 0;
+	if (!senders.getSharedInfo(sendername, &info)) {
+		// Return false if the info cannot be accessed
+		SpoutLogWarning("spoutGLDXinterop::GetHostPath - could not get sender info [%s]", sendername);
+		return false;
+	}
+	n = maxchars;
+	if(n > 256) n = 256; // maximum field width in shared memory
+	strcpy_s(hostpath, (rsize_t)n, (char*)info.description);
+
+	return true;
+
+}
+
+// Set host executable path in shared memory
+bool spoutGLDXinterop::SetHostPath(const char* sendername)
+{
+	SharedTextureInfo info;
+	if (!senders.getSharedInfo(sendername, &info)) {
+		SpoutLogWarning("spoutGLDXinterop::SetHostPath(%s) - could not get sender info", sendername);
+		return false;
+	}
+	char exepath[256];
+	GetModuleFileNameA(NULL, exepath, sizeof(exepath));
+	// Description is defined as wide chars, but the path is stored as byte chars
+	strcpy_s((char*)info.description, 256, exepath);
+	if (!senders.setSharedInfo(sendername, &info)) {
+		SpoutLogWarning("spoutGLDXinterop::SetHostPath(%s) - could not set sender info", sendername);
+	}
+	return true;
+}
 
 // Needs OpenGL context
 int spoutGLDXinterop::GetVerticalSync()
@@ -2930,7 +3626,6 @@ int spoutGLDXinterop::GetVerticalSync()
 	}
 	return 0;
 }
-
 
 bool spoutGLDXinterop::SetVerticalSync(bool bSync)
 {
@@ -2959,7 +3654,7 @@ bool spoutGLDXinterop::GLerror() {
 	GLenum err = GL_NO_ERROR;
 	bool bError = false;
 	while ((err = glGetError()) != GL_NO_ERROR) {
-		SpoutLogError("    GLerror - OpenGL error = %d (0x%x)", err, err);
+		SpoutLogError("    GLerror - OpenGL error = %u (0x%X)", err, err);
 		bError = true;
 		// gluErrorString needs glu32.lib
 		// printf("GL error = %d (0x%x) %s\n", err, err, gluErrorString(err));
@@ -2970,7 +3665,7 @@ bool spoutGLDXinterop::GLerror() {
 void spoutGLDXinterop::PrintFBOstatus(GLenum status)
 {
 	char tmp[256];
-	sprintf_s(tmp, 256,"FBO status error %d (0x%x) - ", status, status);
+	sprintf_s(tmp, 256,"FBO status error %u (0x%X) - ", status, status);
 	if (status == GL_FRAMEBUFFER_UNSUPPORTED_EXT)
 		strcat_s(tmp, 256, "GL_FRAMEBUFFER_UNSUPPORTED_EXT");
 	else if (status == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT)
@@ -3036,14 +3731,9 @@ bool spoutGLDXinterop::WriteMemory(GLuint TexID,
 // COPY A TEXTURE DATA TO A PIXEL BUFFER VIA FBO
 //
 bool spoutGLDXinterop::ReadTexturePixels(
-	GLuint SourceID,
-	GLuint SourceTarget,
-	unsigned int width,
-	unsigned int height,
-	unsigned char* dest,
-	GLenum GLformat,
-	bool bInvert,
-	GLuint HostFBO)
+	GLuint SourceID, GLuint SourceTarget,
+	unsigned int width,	unsigned int height,unsigned char* dest,
+	GLenum GLformat, bool bInvert, GLuint HostFBO)
 {
 	GLenum status;
 
@@ -3119,12 +3809,9 @@ bool spoutGLDXinterop::ReadTexturePixels(
 // so that the receiver does not retain a handle to the shared memory
 //
 bool spoutGLDXinterop::ReadMemory(const char* sendername,
-								  GLuint TexID,
-								  GLuint TextureTarget,
-								  unsigned int width,
-								  unsigned int height,
-								  bool bInvert,
-								  GLuint HostFBO)
+								  GLuint TexID, GLuint TextureTarget,
+								  unsigned int width, unsigned int height,
+								  bool bInvert, GLuint HostFBO)
 {
 	if (!memoryshare.OpenSenderMemory(sendername))
 		return false;
@@ -3466,7 +4153,7 @@ bool spoutGLDXinterop::DrawToSharedMemory(GLuint TexID, GLuint TextureTarget,
 //
 bool spoutGLDXinterop::DrawGLDXtexture(float max_x, float max_y, float aspect, bool bInvert)
 {
-	if (m_hInteropDevice == NULL || m_hInteropObject == NULL)
+	if (!m_hInteropDevice || !m_hInteropObject)
 		return false;
 
 	bool bRet = false;
@@ -3519,7 +4206,7 @@ bool spoutGLDXinterop::DrawToGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 	GLenum status;
 	bool bRet = false;
 
-	if (m_hInteropDevice == NULL || m_hInteropObject == NULL)
+	if (!m_hInteropDevice || !m_hInteropObject)
 		return false;
 
 	if (width != (unsigned  int)m_TextureInfo.width || height != (unsigned  int)m_TextureInfo.height)
@@ -3593,324 +4280,6 @@ bool spoutGLDXinterop::DrawToGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 #endif
 
 
-// =========================================================
-//                    OpenGL utilities
-// =========================================================
-
-
-//
-// COPY AN OPENGL TEXTURE TO ANOTHER OPENGL TEXTURE
-//
-// Textures must be the same size
-//
-bool spoutGLDXinterop::CopyTexture(GLuint SourceID,
-	GLuint SourceTarget,
-	GLuint DestID,
-	GLuint DestTarget,
-	unsigned int width,
-	unsigned int height,
-	bool bInvert,
-	GLuint HostFBO)
-{
-	GLenum status;
-
-	// Create an fbo if not already
-	if (m_fbo == 0)
-		glGenFramebuffersEXT(1, &m_fbo);
-
-	// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-
-	// Attach the Source texture to the color buffer in our frame buffer
-	glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
-	glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
-
-	// Attach destination texture (the texture we write into) to second attachment point
-	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
-
-	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-
-		if (m_bBLITavailable) {
-			if (bInvert) {
-				// Blit method with checks - 0.75 - 0.85 msec
-				// copy one texture buffer to the other while flipping upside down 
-				// (OpenGL and DirectX have different texture origins)
-				glBlitFramebufferEXT(0, 0, // srcX0, srcY0, 
-					width, height,         // srcX1, srcY1
-					0, height,             // dstX0, dstY0,
-					width, 0,              // dstX1, dstY1,
-					GL_COLOR_BUFFER_BIT, GL_NEAREST);
-			}
-			else {
-				// Do not flip during blit
-				glBlitFramebufferEXT(0, 0, // srcX0, srcY0, 
-					width, height,         // srcX1, srcY1
-					0, 0,                  // dstX0, dstY0,
-					width, height,         // dstX1, dstY1,
-					GL_COLOR_BUFFER_BIT, GL_NEAREST);
-			}
-		}
-		else {
-			// No fbo blit extension
-			// Copy from the fbo (source texture attached) to the dest texture
-			glBindTexture(DestTarget, DestID);
-			glCopyTexSubImage2D(DestTarget, 0, 0, 0, 0, 0, width, height);
-			glBindTexture(DestTarget, 0);
-		}
-	}
-	else {
-		PrintFBOstatus(status);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-		return false;
-	}
-
-	// restore the previous fbo - default is 0
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-
-	return true;
-
-} // end CopyTexture
-
-
-// If an OpenGL texture has not been created or it is a different size, create a new one
-void spoutGLDXinterop::CheckOpenGLTexture(GLuint &texID, GLenum GLformat,
-										  unsigned int newWidth, unsigned int newHeight,
-										  unsigned int &texWidth, unsigned int &texHeight)
-{
-	if(texID == 0 || newWidth != texWidth || newHeight != texHeight) {
-		InitTexture(texID, GLformat, newWidth, newHeight);
-		texWidth = newWidth;
-		texHeight = newHeight;
-	}
-}
-
-
-// Initialize local OpenGL texture
-void spoutGLDXinterop::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height)
-{
-	if(texID != 0) glDeleteTextures(1, &texID);	
-	glGenTextures(1, &texID);
-
-	glBindTexture(GL_TEXTURE_2D, texID);
-	// glTexImage2D(GL_TEXTURE_2D, 0, GLformat, width, height, 0, GLformat, GL_UNSIGNED_BYTE, NULL); 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GLformat, GL_UNSIGNED_BYTE, NULL);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-}
-
-
-void spoutGLDXinterop::SaveOpenGLstate(unsigned int width, unsigned int height, bool bFitWindow)
-{
-	float dim[4];
-	float vpScaleX, vpScaleY, vpWidth, vpHeight;
-	int vpx, vpy;
-
-	// save texture state, client state, etc.
-	glPushAttrib(GL_ALL_ATTRIB_BITS);
-	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
-
-	glMatrixMode(GL_TEXTURE);
-	glPushMatrix();
-	glLoadIdentity();
-
-	glPushAttrib(GL_TRANSFORM_BIT);
-
-	// find the current viewport dimensions in order to scale to the aspect ratio required
-	glGetFloatv(GL_VIEWPORT, dim);
-
-	// Fit to window
-	if(bFitWindow) {
-		// Scale both width and height to the current viewport size
-		vpScaleX = dim[2]/(float)width;
-		vpScaleY = dim[3]/(float)height;
-		vpWidth  = (float)width  * vpScaleX;
-		vpHeight = (float)height * vpScaleY;
-		vpx = vpy = 0;
-	}
-	else {
-		// Preserve aspect ratio of the sender
-		// and fit to the width or the height
-		vpWidth = dim[2];
-		vpHeight = ((float)height/(float)width)*vpWidth;
-		if(vpHeight > dim[3]) {
-			vpHeight = dim[3];
-			vpWidth = ((float)width/(float)height)*vpHeight;
-		}
-		vpx = (int)(dim[2]-vpWidth)/2;;
-		vpy = (int)(dim[3]-vpHeight)/2;
-	}
-
-	glViewport((int)vpx, (int)vpy, (int)vpWidth, (int)vpHeight);
-
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity(); // reset the current matrix back to its default state
-	glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0f, 1.0f);
-
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	glLoadIdentity();
-}
-
-
-void spoutGLDXinterop::RestoreOpenGLstate()
-{
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
-
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-		
-	glPopAttrib();
-		
-	glMatrixMode(GL_TEXTURE);
-	glPopMatrix();
-
-	glPopClientAttrib();			
-	glPopAttrib();
-
-}
-
-
-//
-// Create an OpenGL window and context for situations where there is none.
-// Not used if applications already have an OpenGL context.
-// Always call CloseOpenGL afterwards.
-//
-bool spoutGLDXinterop::CreateOpenGL()
-{
-	// For CreateOpenGL and CloseOpenGL
-	m_hdc = NULL;
-	m_hwndButton = NULL;
-	m_hRc = NULL;
-
-	SpoutLogNotice("spoutGLDXinterop::CreateOpenGL()");
-
-	HGLRC glContext = wglGetCurrentContext();
-
-	if(glContext == NULL) {
-
-		// We only need an OpenGL context with no render window because we don't draw to it
-		// so create an invisible dummy button window. This is then independent from the host
-		// program window (GetForegroundWindow). If SetPixelFormat has been called on the
-		// host window it cannot be called again. This caused a problem in Mapio.
-		// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
-		//
-		// CS_OWNDC allocates a unique device context for each window in the class. 
-		//
-		if(!m_hwndButton || !IsWindow(m_hwndButton)) {
-			m_hwndButton = CreateWindowA("BUTTON",
-				            "SpoutOpenGL",
-							WS_OVERLAPPEDWINDOW | CS_OWNDC,
-							0, 0, 32, 32,
-							NULL, NULL, NULL, NULL);
-		}
-
-		if(!m_hwndButton) { 
-			SpoutLogError("spoutGLDXinterop::CreateOpenGL - no hwnd");
-			return false; 
-		}
-
-		m_hdc = GetDC(m_hwndButton);
-		if(!m_hdc) { 
-			SpoutLogError("spoutGLDXinterop::CreateOpenGL - no hdc");
-			return false; 
-		}
-		
-
-		PIXELFORMATDESCRIPTOR pfd;
-		ZeroMemory( &pfd, sizeof( pfd ) );
-		pfd.nSize = sizeof( pfd );
-		pfd.nVersion = 1;
-		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-		pfd.iPixelType = PFD_TYPE_RGBA;
-		pfd.cColorBits = 32;
-		pfd.cDepthBits = 16;
-		pfd.iLayerType = PFD_MAIN_PLANE;
-		int iFormat = ChoosePixelFormat(m_hdc, &pfd);
-		if(!iFormat) {
-			SpoutLogError("spoutGLDXinterop::CreateOpenGL - pixel format error");
-			return false; 
-		}
-
-		if(!SetPixelFormat(m_hdc, iFormat, &pfd)) {
-			DWORD dwError = GetLastError();
-			// 2000 (0x7D0) The pixel format is invalid.
-			// Caused by repeated call of  the SetPixelFormat function
-			char temp[128];
-			sprintf_s(temp, "spoutGLDXinterop::CreateOpenGL - SetPixelFormat Error %d (%x)", dwError, dwError);
-			SpoutLogError("%s", temp);
-			return false; 
-		}
-
-		m_hRc = wglCreateContext(m_hdc);
-		if(!m_hRc) { 
-			SpoutLogError("spoutGLDXinterop::CreateOpenGL - could not create OpenGL context");
-			return false; 
-		}
-
-		wglMakeCurrent(m_hdc, m_hRc);
-		if(wglGetCurrentContext() == NULL) {
-			SpoutLogError("spoutGLDXinterop::CreateOpenGL - no OpenGL context");
-			return false; 
-		}
-		SpoutLogNotice("    OpenGL window created OK");
-	}
-	else {
-		SpoutLogNotice("    OpenGL context exists");
-	}
-
-	return true;
-}
-
-
-bool spoutGLDXinterop::CloseOpenGL()
-{
-
-	SpoutLogNotice("spoutGLDXinterop::CloseOpenGL()");
-
-	// Properly kill the OpenGL window
-	if (m_hRc) {
-
-		if (!wglMakeCurrent(NULL,NULL))	{ // Are We Able To Release The DC And RC Contexts?
-			SpoutLogError("spoutGLDXinterop::CloseOpenGL - release of DC and RC failed");
-			return false; 
-		}
-
-		if (!wglDeleteContext(m_hRc)) { // Are We Able To Delete The RC?
-			SpoutLogError("spoutGLDXinterop::CloseOpenGL - release rendering context failed");
-			return false; 
-		}
-		m_hRc=NULL;
-	}
-
-	if (m_hdc && !ReleaseDC(m_hwndButton, m_hdc)) { // Are We Able To Release The DC
-		SpoutLogError("spoutGLDXinterop::CloseOpenGL - release device context Failed");
-		m_hdc=NULL;
-		return false; 
-	}
-
-	if (m_hwndButton && !DestroyWindow(m_hwndButton)) { // Are We Able To Destroy The Window?
-		SpoutLogError("spoutGLDXinterop::CloseOpenGL - could not release hWnd");
-		m_hwndButton=NULL;
-		return false; 
-	}
-
-	SpoutLogNotice("    closed the OpenGL window OK");
-
-	return true;
-}
-
-//
-//	UTILITY
-//
-
 void spoutGLDXinterop::trim(char* s) {
 	char* p = s;
 	int l = (int)strlen(p);
@@ -3918,21 +4287,28 @@ void spoutGLDXinterop::trim(char* s) {
 	while (isspace(p[l - 1])) p[--l] = 0;
 	while (*p && isspace(*p)) ++p, --l;
 
-	memmove(s, p, l + 1);
+	memmove(s, p, (size_t)(l+1));
 }
 
 // Given a DeviceKey string from a DisplayDevice
 // read all the information about the adapter.
 // Only used by this class.
-bool spoutGLDXinterop::OpenDeviceKey(const char* key, int maxsize, char *description, char *version)
+bool spoutGLDXinterop::OpenDeviceKey(const char* key, int maxsize, char* description, char* version)
 {
+	if (!key)
+		return false;
+
 	// Extract the subkey from the DeviceKey string
-	HKEY hRegKey = NULL;
+	HKEY hRegKey = nullptr;
 	DWORD dwSize = 0;
 	DWORD dwKey = 0;
+
 	char output[256];
 	strcpy_s(output, 256, key);
-	std::string SubKey = strstr(output, "System");
+	char *found = strstr(output, "System");
+	if (!found)
+		return false;
+	std::string SubKey = found;
 
 	// Convert all slash to double slash using a C++ string function
 	// to get subkey string required to extract registry information
@@ -3948,13 +4324,13 @@ bool spoutGLDXinterop::OpenDeviceKey(const char* key, int maxsize, char *descrip
 		dwSize = MAX_PATH;
 		// Adapter name
 		if (RegQueryValueExA(hRegKey, "DriverDesc", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
-			strcpy_s(description, maxsize, output);
+			strcpy_s(description, (rsize_t)maxsize, output);
 		}
 		if (RegQueryValueExA(hRegKey, "DriverVersion", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
 			// Find the last 6 characters of the version string then
 			// convert to a float and multiply to get decimal in the right place
 			sprintf_s(output, 256, "%5.2f", atof(output + strlen(output) - 6)*100.0);
-			strcpy_s(version, maxsize, output);
+			strcpy_s(version, (rsize_t)maxsize, output);
 		} // endif DriverVersion
 		RegCloseKey(hRegKey);
 	} // endif RegOpenKey

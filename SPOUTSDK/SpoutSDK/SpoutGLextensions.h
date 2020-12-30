@@ -76,6 +76,7 @@
 
 #include <windows.h>
 #include <stdio.h> // for debug print
+#include "SpoutCommon.h" // for legacyOpenGL define
 #include "SpoutUtils.h"
 
 using namespace spoututils;

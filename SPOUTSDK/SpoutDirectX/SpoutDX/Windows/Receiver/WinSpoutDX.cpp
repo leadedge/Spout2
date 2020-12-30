@@ -8,7 +8,7 @@
 
    This is an example using the SpoutDX support class and ReceiveImage
 
-   bool ReceiveImage(ID3D11Device* pd3dDevice, unsigned char * pData, unsigned int width, unsigned int height, bool bInvert = false);
+   bool ReceiveImage(ID3D11Device* pd3dDevice, unsigned char * pixels, bool bRGB = false, bool bInvert = false);
 
    Receives to a pixel buffer and displays the output using Windows bitmap functions.
 
@@ -135,8 +135,9 @@ void Render()
 {
 	// Get pixels from the sender shared texture.
 	// ReceiveImage handles sender detection, creation and update.
-	// The data is flipped here ready for WM_PAINT but it could also be drawn upside down
-	if (receiver.ReceiveImage(pixelBuffer, true)) {
+	// For this example, the rgba pixel buffer is flipped ready for WM_PAINT
+	// but it could also be drawn upside down
+	if (receiver.ReceiveImage(pixelBuffer, g_SenderWidth, g_SenderHeight, false, true)) { // RGB = false, invert = true
 		
 		// IsUpdated() returns true if the sender has changed
 		if (receiver.IsUpdated()) {
@@ -278,6 +279,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+
     case WM_PAINT:
         {
 			PAINTSTRUCT ps;
@@ -300,7 +302,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					DeleteObject(backbrush);
 				}
 				else {
-					
 					BITMAPINFO bmi;
 					ZeroMemory(&bmi, sizeof(BITMAPINFO));
 					bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -310,7 +311,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					bmi.bmiHeader.biPlanes = 1;
 					bmi.bmiHeader.biBitCount = 32;
 					bmi.bmiHeader.biCompression = BI_RGB;
-
 					// If the format is BGRA it's a natural match
 					if (g_SenderFormat == 87) {
 						// Very fast (< 1msec at 1280x720)
@@ -324,7 +324,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 							&bmi, DIB_RGB_COLORS, SRCCOPY);
 					}
 					else {
-
 						//
 						// Received data is RGBA but windows draw is BGRA and conversion is required
 						//
@@ -402,8 +401,8 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 		sprintf_s(about, 256, "                WinSpoutDX");
 		strcat_s(about, 1024, "\n\n\n");
-		strcat_s(about, 1024, "Windows Spout receiver example\n");
-		strcat_s(about, 1024, "using the SpoutDX class receive\n");
+		strcat_s(about, 1024, "Windows Spout receiver example.\n");
+		strcat_s(about, 1024, "Using the SpoutDX class, receive\n");
 		strcat_s(about, 1024, "a buffer and display it in WM_PAINT.");
 		SetDlgItemTextA(hDlg, IDC_ABOUT_TEXT, (LPCSTR)about);
 

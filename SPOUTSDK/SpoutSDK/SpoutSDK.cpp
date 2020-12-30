@@ -156,6 +156,25 @@
 //		25.05.20	- Correct filename case for all #includes throughout
 //		14.07.20	- Removed unused bChangeRequested flag
 //		18.07.20	- Rebuild binaries Win32 and x64 /MT VS2017
+//		04.09.20	- Dynamic switch between memory and texture share modes
+//		05.09.20	- OpenReceiver - Switch to memoryshare if receiver and sender use different GPU
+//					  See SpoutGLDXinterop to set adapter index to "usage" field in sender shared memory
+//		06.09.20	- Do not change share mode flags in SpoutCleanup
+//		07.09.20	- Correct receiver switch from memory to texture if texture compatible
+//		08.09.20	- OpenReceiver - remove warning log for receiver and sender using a different GPU
+//					  InitSender - switch to memoryshare on CreateInterop failure
+//		09.09.20	- SetAdapter - reset and perform compatibility test
+//		15.09.20	- Remove SpoutMessageBox from OpenSpout()
+//					  Failure must be handled by the application
+//		17.09.20	- Change GetMemoryShare(const char* sendername) to
+//					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
+//					  Add GetSenderAdapter
+//		18.09.20	- Add SetSenderAdapter
+//		22.09.20	- OpenReceiver sender/receiver GPU check
+//		23.09.20	- Corrected SetSenderAdapter
+//					  Logic corrections
+//		24.09.20	- Correction of SetSenderAdapter as bool not void
+//		25.09.20	- Remove GetSenderAdapter/SetSenderAdapter - not reliable
 //
 // ================================================================
 /*
@@ -283,13 +302,13 @@ bool Spout::UpdateSender(const char *sendername, unsigned int width, unsigned in
 		// For a name change, close the sender and set up again
 		if (strcmp(sendername, g_SharedMemoryName) != 0) {
 			SpoutLogNotice("Spout::UpdateSender - sender change");
-			SpoutLogNotice("    From [%s] (%dx%d)", g_SharedMemoryName, g_Width, g_Height);
-			SpoutLogNotice("    To   [%s] (%dx%d)", sendername, width, height);
+			SpoutLogNotice("    From [%s] (%ux%u)", g_SharedMemoryName, g_Width, g_Height);
+			SpoutLogNotice("    To   [%s] (%ux%u)", sendername, width, height);
 			ReleaseSender();
 			CreateSender(sendername, width, height, dwFormat);
 		}
 		else if (width != g_Width || height != g_Height) {
-			SpoutLogNotice("Spout::UpdateSender [%s] size change from (%dx%d) to (%dx%d)", sendername, g_Width, g_Height, width, height);
+			SpoutLogNotice("Spout::UpdateSender [%s] size change from (%ux%u) to (%ux%u)", sendername, g_Width, g_Height, width, height);
 			if (!bMemory) {
 				// For texture share mode, re-create the sender's directX shared texture
 				// with the new dimensions and update the sender info
@@ -388,16 +407,13 @@ bool Spout::SendImage(const unsigned char* pixels,
 {
 	GLenum glformat = glFormat;
 
+	// Dimensions should be the same as the sender
 	if (!pixels || !bInitialized || width == 0 || height == 0 || width != g_Width || height != g_Height)
 		return false;
 
 	// Only RGBA, BGRA, RGB, BGR supported
 	// GL_BGRA_EXT - 0x80E1
 	if (!(glformat == GL_RGBA || glFormat == 0x80E1 || glformat == GL_RGB || glFormat == 0x80E0))
-		return false;
-
-	// Dimensions should be the same as the sender
-	if (width != g_Width || height != g_Height)
 		return false;
 
 	// Check for BGRA support
@@ -463,6 +479,9 @@ void Spout::ReleaseReceiver()
 		// can be done without a check here
 		SpoutCleanUp();
 		bInitialized = false;
+		// Reset memory mode flag if texture share compatible
+		if(bDxInitOK)
+			bMemory = false;
 		Sleep(100); // Debugging aid, but leave for safety
 	}
 }
@@ -586,18 +605,22 @@ bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned
 }
 #endif
 
-//---------------------------------------------------------
-bool Spout::SetMemoryShareMode(bool bMem)
-{
-	return (interop.SetMemoryShareMode(bMem));
-}
+//
+// Sharing mode functions
+//
 
 //---------------------------------------------------------
 bool Spout::GetMemoryShareMode()
 {
-	// Gets interop class global memoryshare flag and sets a flag in this class
-	bMemory = interop.GetMemoryShareMode(); // set global flag - TODO : rename globals
+	// Gets registry memoryshare mode and sets a flag in this class
+	bMemory = interop.GetMemoryShareMode();
 	return bMemory;
+}
+
+//---------------------------------------------------------
+bool Spout::SetMemoryShareMode(bool bMem)
+{
+	return interop.SetMemoryShareMode(bMem);
 }
 
 //---------------------------------------------------------
@@ -609,8 +632,27 @@ int Spout::GetShareMode()
 //---------------------------------------------------------
 bool Spout::SetShareMode(int mode)
 {
-	return (interop.SetShareMode(mode));
+	return interop.SetShareMode(mode);
 }
+
+//---------------------------------------------------------
+bool Spout::GetMemoryShare()
+{
+	return interop.GetMemoryShare();
+}
+
+//---------------------------------------------------------
+void Spout::SetMemoryShare(bool bMem)
+{
+	interop.SetMemoryShare(bMem);
+}
+
+//---------------------------------------------------------
+bool Spout::GetSenderMemoryShare(const char *sendername)
+{
+	return interop.GetSenderMemoryShare(sendername);
+}
+
 
 //
 // Maximum sender functions - for development testing only
@@ -630,8 +672,8 @@ void Spout::SetMaxSenders(int maxSenders)
 // Get the global sender name for this instance
 bool Spout::GetSpoutSenderName(char * sendername, int maxchars)
 {
-	if(g_SharedMemoryName && g_SharedMemoryName[0] > 0) {
-		strcpy_s(sendername, maxchars, g_SharedMemoryName);
+	if(sendername && g_SharedMemoryName[0] > 0) {
+		strcpy_s(sendername, (rsize_t)maxchars, g_SharedMemoryName);
 		return true;
 	}
 	else {
@@ -785,6 +827,7 @@ bool Spout::SelectSenderPanel(const char *message)
 
 } // end SelectSenderPanel
 
+
 // 22.02.15 - Used to find the SpoutPanel version
 // http://stackoverflow.com/questions/940707/how-do-i-programatically-get-the-version-of-a-dll-or-exe-file
 //
@@ -870,7 +913,7 @@ bool Spout::GetSender(int index, char* sendername, int sendernameMaxSize)
 			namestring = *iter; // the name string
 			strcpy_s(name, 256, namestring.c_str()); // the 256 byte name char array
 			if(i == index) {
-				strcpy_s(sendername, sendernameMaxSize, name); // the passed name char array
+				strcpy_s(sendername, (rsize_t)sendernameMaxSize, name); // the passed name char array
 				break;
 			}
 			i++;
@@ -939,9 +982,10 @@ bool Spout::CloseOpenGL()
 // The name begins with a null character, or the bUseActive flag has been set
 // Find if the sender exists or, if a null name given, return the active sender if that exists
 // Return width, height, sharehandle and format.
+//
 // Initialize a receiver in either memoryshare or texture mode
 // InitReceiver tests for a valid sharehandle if not memory mode
-// InitReceiver resets the global name, width, height, sharehandle and format.
+// and resets the global name, width, height, sharehandle and format.
 //
 bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& theHeight)
 {
@@ -972,21 +1016,60 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 	// Find if the sender exists or, if a null name given, return the active sender if that exists
 	// Return width, height, sharehandle and format.
 	if (!interop.senders.FindSender(Sendername, width, height, sharehandle, dwFormat)) {
-		// Given name not found ? - has SpoutPanel been opened ?
-		if(!CheckSpoutPanel())
+
+		// The sender name passed in was not found - has SpoutPanel been opened?
+		if (!CheckSpoutPanel()) {
 			return false;
-		// Globals are reset if it has been, so update local variables for InitReceiver
+		}
+
+		// If a sender has been selected, globals are reset.
+		// Update local variables for InitReceiver below.
 		strcpy_s(Sendername, 256, g_SharedMemoryName);
 		width = g_Width;
 		height = g_Height;
 		sharehandle = g_ShareHandle;
 		dwFormat = g_Format;
+
+		// Drop through to initialize
+
+	}
+	
+	// printf("\nOpenReceiver %dx%d - handle 0x%p, format %d\n", width, height, sharehandle, dwFormat);
+	// printf("    bDXinitOK = %d, bMemory = %d\n", bDxInitOK, bMemory);
+
+	//
+	// Dynamic switch between memory and texture share
+	//
+	// bDXinitOK is a texture share flag set by OpenSpout and 
+	// a hardware compatibility test. It should not be changed.
+	// But memoryshare mode can adapt to the sender.
+	// If the receiver is texture share compatible, the sender might not be.
+	// This can happen with multiple GPUS in the same system.
+	// Now that we have found a sender, check whether it is texture share compatible and
+	// switch to memoryshare mode if not. This does not change the user registry setting.
+
+	if (bDxInitOK) {
+		if (!bMemory && sharehandle == 0) {
+			// 1) For texture sharing, the sender's texture share handle must be valid.
+			SpoutLogWarning("Spout::OpenReceiver : NULL sender share handle - switching to memory mode");
+			bMemory = true;
+			interop.SetMemoryShare(true);
+			// Now memory share is used for read and write
+			// Pixel buffers can be received from the memory share sender
+		}
+		else if (sharehandle > 0) {
+			// 2) If texture share compatible and the share handle is valid, disable memory share mode
+			SpoutLogNotice("Spout::OpenReceiver : valid sender share handle 0x%.7X", LOWORD(sharehandle));
+			bMemory = false;
+			interop.SetMemoryShare(false);
+			// Now texture share is used for read and write
+			// Textures can be received from the texture share sender
+		}
 	}
 
-	// printf("OpenReceiver %dx%d - format %d\n", width, height, dwFormat);
 
 	// Initialize a receiver in either memoryshare or texture mode
-	// InitReceiver tests for a valid sharehandle if not memory mode
+	// (this checks the bMemory flag which can be reset above)
 	if (InitReceiver(g_hWnd, Sendername, width, height, sharehandle, dwFormat)) {
 		// InitReceiver resets the global name, width, height, sharehandle and format.
 		// Pass the name, width and height back.
@@ -1050,8 +1133,7 @@ bool Spout::InitSender(HWND hwnd, const char* theSendername,
 		return false;
 	}
 
-	// Does the sender already exist?
-	// If it does, create an incremented name
+	// If a sender with this name is already registered, create an incremented name
 	int i = 1;
 	strcpy_s(sendername, 256, theSendername);
 	if (interop.senders.FindSenderName(sendername)) {
@@ -1064,29 +1146,44 @@ bool Spout::InitSender(HWND hwnd, const char* theSendername,
 	// Set the global sender name
 	strcpy_s(g_SharedMemoryName, 256, sendername);
 
-	// OpenSpout has already loaded OpenGL extensions and set up the sharing mode to be used
+	// OpenSpout has already performed a compatibiliy test
+	// and set up the sharing mode to be used
 
-	// Only try DirectX if the memory mode flag has not been passed
+	// Only try DirectX if the memory mode flag has not been passed in
 	if (!bMemoryMode) {
+
 		// Initialize the GL/DX interop and create a new shared texture (false = sender)
 		if (!interop.CreateInterop(hwnd, sendername, theWidth, theHeight, theFormat, false)) {  // False for a sender
-			SpoutLogFatal("Spout::InitSender - CreateInterop failed");
-			return false;
+			SpoutLogWarning("Spout::InitSender - CreateInterop failed");
+			bMemory = true;
+			interop.SetMemoryShare(true);
+			// TODO : check
+		}
+		else {
+			SpoutLogNotice("Spout::InitSender - CreateInterop success");
 		}
 	} // endif texture sharing
-	// DirectX is not initialized f
-	else { // Memoryshare mode
+	
+	// Memoryshare mode set by user or failure
+	if(bMemoryMode || bMemory) {
 
 		//
 		// Texture creation patch removed for > Spout 2.006
 		//
 
 		// Memoryshare needs to create a sender separately
-		// For a 2.004 receiver the result will just be black
+		// (for a 2.004 receiver the result will just be black)
+		// TODO : check interop.m_dxShareHandle for simulation
+		// Interop class sender handle will be null for user memoryshare selection or failure
+
 		if (!interop.senders.CreateSender(sendername, theWidth, theHeight, interop.m_dxShareHandle)) {
+		// if (!interop.senders.CreateSender(sendername, theWidth, theHeight, NULL)) {
 			SpoutLogFatal("Spout::InitSender - Could not create sender");
 			return false;
 		}
+
+		// Write host path to the sender shared memory
+		interop.SetHostPath(sendername);
 
 		if (!interop.memoryshare.CreateSenderMemory(sendername, theWidth, theHeight)) {
 			SpoutLogFatal("Spout::InitSender - Could not create sender shared memory");
@@ -1095,12 +1192,15 @@ bool Spout::InitSender(HWND hwnd, const char* theSendername,
 
 	} // endif memoryshare mode
 
-	// All passes - enable frame counting
+	//Enable frame counting
 	interop.frame.EnableFrameCount(sendername);
 
-	// Get the sender width, height and share handle into local copy
+	// Get the sender width, height and share handle into local copy for this class
 	interop.senders.GetSenderInfo(g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
 
+	// printf("Spout::InitSender [%s] %dx%d, handle = 0x%x, format = %d\n", g_SharedMemoryName, g_Width, g_Height, g_ShareHandle, g_Format);
+
+	// All passes
 	bInitialized = true;
 
 	return true;
@@ -1117,18 +1217,26 @@ bool Spout::InitReceiver(HWND hwnd, char* sendername, unsigned int width, unsign
 	// ============== Set up for a RECEIVER ============
 	//
 
-	bInitialized     = false;
+	bInitialized = false;
 
-	// OpenSpout has already loaded OpenGL extensions and set up the sharing mode to be used
-	// only try dx if the memory mode flag is not set and sharehandle is not NULL
+	// printf("Spout::InitReceiver - bMemory = %d hSharehandle = %d\n", bMemory, hSharehandle);
+
+	// OpenSpout() has performed a compatibility test and set up the sharing mode to be used.
+	// Only try dx if the memory mode flag is not set and sharehandle is not NULL
 	if(!bMemory && hSharehandle) {
 		// Initialize the receiver interop. 
-		// This will create globals for texture sharing local to the interop class
-		if(!interop.CreateInterop(hwnd, sendername, width, height, dwFormat, true)) // true meaning receiver
-			return false;
+		// For success, this will create globals for texture sharing local to the interop class
+		if (!interop.CreateInterop(hwnd, sendername, width, height, dwFormat, true)) { // true meaning receiver
+			SpoutLogWarning("Spout::InitReceiver - CreateInterop failed");
+			// Set memoryshare to avoid repeats
+			bMemory = true;
+			interop.SetMemoryShare(true);
+		}
 	}
+
+	// If bMemory is true - user set or not GLDX compatible
 	// For memoryshare, open and close sender memory map in sendimage 
-	// using the global sender name
+	// using the global sender name (g_SharedMemoryName)
 
 	// Set globals here
 	g_Width       = width;
@@ -1137,9 +1245,10 @@ bool Spout::InitReceiver(HWND hwnd, char* sendername, unsigned int width, unsign
 	g_Format      = dwFormat;
 	strcpy_s(g_SharedMemoryName, 256, sendername);
 
-	// All passes - enable frame counting
+	// Enable frame counting
 	interop.frame.EnableFrameCount(sendername);
 
+	// All passes
 	bInitialized = true;
 
 	return true;
@@ -1174,6 +1283,8 @@ bool Spout::CheckReceiver(char* name, unsigned int &width, unsigned int &height,
 	unsigned int senderheight = 0;
 	DWORD dwFormat = 0;
 	HANDLE hShareHandle = NULL;
+
+	// printf("CheckReceiver\n");
 
 	// Has it initialized yet ?
 	if (!bInitialized) {
@@ -1264,29 +1375,30 @@ bool Spout::CheckReceiver(char* name, unsigned int &width, unsigned int &height,
 		return false;
 	} // CheckSender did not find the sender - probably closed
 
-	// The sender exists and there are no changes
 	bConnected = true;
 
 	return true;
 
 }
 
+
 //
 // SpoutCleanup
 //
 void Spout::SpoutCleanUp()
 {
-
+	SpoutLogNotice("Spout::SpoutCleanUp()");
+		
 	// OK for memoryshare because all handles will be NULL 
 	interop.CleanupInterop();
-	bDxInitOK = false;
 
 	// 04.11.15 - Close memoryshare if created for data transfer
 	// Has no effect if not created
 	interop.memoryshare.CloseSenderMemory();
 	if(bMemory) 
 		interop.memoryshare.ReleaseSenderMemory(); // destroys sendermem object
-	// bMemory - Registry or user setting - do not change it
+
+	// bMemory and bDxInitOK are registry or compatibility settings - do not change them
 
 	g_ShareHandle = NULL;
 	g_Width	= 0;
@@ -1340,7 +1452,6 @@ bool Spout::CheckSpoutPanel()
 		else if (!hMutex) {
 			
 			// SpoutPanel has been activated and has now closed
-
 			bSpoutPanelOpened = false; // Don't do this part again
 			bSpoutPanelActive = false;
 			
@@ -1372,9 +1483,12 @@ bool Spout::CheckSpoutPanel()
 					if (newname[0] != 0) {
 						// Retrieve the sender information
 						if (interop.senders.CheckSender(newname, width, height, hShareHandle, dwFormat)) {
-							// Texture or CPU mode - the Sender sharehandle must not be NULL
+							// 04.09.20 : removed for dynamic switch between modes
+							/*
+							// Texture mode - the Sender sharehandle must not be NULL
 							if (!bMemory && !hShareHandle)
 								return false;
+							*/
 							// Update all globals if the sender exists.
 							strcpy_s(g_SharedMemoryName, 256, newname);
 							g_Width = width;
@@ -1416,41 +1530,41 @@ bool Spout::OpenSpout()
 
 	printf("\n"); // This is the start, so make a new line in the log
 #ifdef _M_X64
-	SpoutLogNotice("Spout::OpenSpout - 64bit 2.007 - this 0x%x", this);
+	SpoutLogNotice("Spout::OpenSpout - 64bit 2.007 - this 0x%llX", (size_t)this);
 #else
-	SpoutLogNotice("Spout::OpenSpout - 32bit 2.007 - this 0x%x", this);
+	SpoutLogNotice("Spout::OpenSpout - 32bit 2.007 - this 0x%X", (size_t)this);
 #endif
-
 
 	//
 	// Compatibility test
 	//
 	//     o Load extensions and check for availability and function
 	//     o For texture share mode, open DirectX and check for availability
-	//     o Set flags for either Texture or memoryshare
+	//     o Set interop class flags for either texture, memoryshare or DX11
 	//
-	// If the compatibility test fails, either LoadGLextensions failed
-	// or OpenDirectX failed for texture sharing and nothing can continue
+	// If the compatibility test fails, nothing can continue
+	//     o either no OpenGL context
+	//     o or OpenGL extensions failed to load
 	//
 	if (!interop.GLDXcompatible()) {
-		SpoutLogWarning("Spout::OpenSpout - not texture share compatible");
+		SpoutLogFatal("Spout::OpenSpout - not texture share compatible");
 		return false;
 	}
 
 	// Get the render window handle retrieved in GLDXcompatible
 	g_hWnd = interop.GetRenderWindow();
 
-	// Check what GLDXcompatible set to the registry
-	if (interop.GetMemoryShareMode()) {
+	// Check what GLDXcompatible set memoryshare to (GetMemoryShare)
+	// rather than the user registry setting (GetMemoryShareMode)
+	if (interop.GetMemoryShare()) {
 		SpoutLogNotice("Spout::OpenSpout - using memory share mode");
-		// DirectX initializaton failed or user had selected memoryshare mode
-		bDxInitOK = false; // DirectX initialization failed
-		bMemory = true; // Default to memoryshare
+		// Not texture share compatible, or user had selected memoryshare mode
+		bMemory = true; // Select memoryshare
 	}
 	else {
 		SpoutLogNotice("Spout::OpenSpout - using texture share mode");
 		bDxInitOK = true; // DirectX initialization was OK
-		bMemory = false; // Memoryshare not needed
+		bMemory = false; // Memoryshare not used
 	}
 
 	return true;
@@ -1470,7 +1584,7 @@ bool Spout::SetDX9(bool bDX9)
 	return(interop.UseDX9(bDX9));
 }
 
-// Set the DirectX 9 format fo texture sharing
+// Set the DirectX 9 format for texture sharing
 void Spout::SetDX9format(D3DFORMAT textureformat)
 {
 	interop.SetDX9format(textureformat);
@@ -1480,20 +1594,6 @@ void Spout::SetDX9format(D3DFORMAT textureformat)
 void Spout::SetDX11format(DXGI_FORMAT textureformat)
 {
 	interop.SetDX11format(textureformat);
-}
-
-// Set graphics adapter for Spout output
-bool Spout::SetAdapter(int index)
-{
-	bool bRet = interop.SetAdapter(index);
-	return bRet;
-
-}
-
-// Get current adapter index
-int Spout::GetAdapter()
-{
-	return interop.GetAdapter();
 }
 
 // Get the number of graphics adapters in the system
@@ -1506,6 +1606,29 @@ int Spout::GetNumAdapters()
 bool Spout::GetAdapterName(int index, char *adaptername, int maxchars)
 {
 	return interop.GetAdapterName(index, adaptername, maxchars);
+}
+
+// Get current adapter index
+int Spout::GetAdapter()
+{
+	return interop.GetAdapter();
+}
+
+// Set graphics adapter for Spout output
+bool Spout::SetAdapter(int index)
+{
+	bool bRet = false; // COmpatibility test result
+	if (interop.SetAdapter(index)) {
+		// Close interop
+		interop.CleanupInterop();
+		// Close DirectX
+		interop.CleanupDirectX();
+		// Repeat compatibility test for this adapter
+		bRet = interop.GLDXcompatible();
+		// Check for memory/texture share after compatibility text
+		bMemory = interop.GetMemoryShare();
+	}
+	return bRet;
 }
 
 // Get the path of the host that produced the sender
@@ -1526,3 +1649,5 @@ int Spout::ReportMemory()
 	return nCurAvailMemoryInKB;
 
 }
+
+

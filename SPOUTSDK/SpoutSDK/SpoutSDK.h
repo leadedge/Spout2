@@ -119,15 +119,22 @@ class SPOUT_DLLEXP Spout {
 	bool SetDX9(bool bDX9 = true); // User request to use DirectX 9 (default is DirectX 11)
 	void SetDX9format(D3DFORMAT textureformat);
 	void SetDX11format(DXGI_FORMAT textureformat);
-	bool SetMemoryShareMode(bool bMem = true);
-	bool GetMemoryShareMode();
-	int  GetShareMode();
-	bool SetShareMode(int mode);
+
+	// Sharing modes
+	bool GetMemoryShareMode(); // User selected memory share mode
+	bool SetMemoryShareMode(bool bMem = true);// Set memoryshare mode on or off
+	int  GetShareMode(); // User selected share mode : 0 -texture, 1 - memory, 2 - auto
+	bool SetShareMode(int mode); // Set sharing mode : 0-texture, 1-memory, 2-auto
+	bool GetMemoryShare(); // Get memory share compatibility mode
+	void SetMemoryShare(bool bMem = true); // Set memory share compatibility mode
+	
+	bool GetSenderMemoryShare(const char* sendername); // Get share mode of a sender (memory or texture)
+
 	int  GetMaxSenders(); // Get maximum senders allowed
 	void SetMaxSenders(int maxSenders); // Set maximum senders allowed
-	
+
 	// Access to globals
-	bool GetSpoutSenderName(char * sendername, int maxchars); // get the global sender name
+	bool GetSpoutSenderName(char* sendername, int maxchars); // get the global sender name
 
 	// PBO mode switch
 	void SetBufferMode(bool bActive); // Set the pbo availability on or off
@@ -136,8 +143,8 @@ class SPOUT_DLLEXP Spout {
 	// Adapter functions
 	int  GetNumAdapters(); // Get the number of graphics adapters in the system
 	bool GetAdapterName(int index, char *adaptername, int maxchars); // Get an adapter name
-	bool SetAdapter(int index = 0); // Set required graphics adapter for output
 	int  GetAdapter(); // Get the SpoutDirectX global adapter index
+	bool SetAdapter(int index = 0); // Set required graphics adapter for output
 
 	// General utilities
 	bool GetHostPath(const char *sendername, char *hostpath, int maxchars); // The path of the host that produced the sender
@@ -204,7 +211,6 @@ class SPOUT_DLLEXP Spout {
 	unsigned int m_Height;
 
 	// Globals
-	char UserSenderName[256]; // used for the sender selection dialog
 	char g_SharedMemoryName[256]; //name for sender shared memory info
 	unsigned int g_Width; // width and height to check for changes
 	unsigned int g_Height;

@@ -58,6 +58,13 @@
 		18.02.20 - Remove messagebox for Fatal errors
 		19.05.20 - Add missing LPCSTR cast in SpoutMessageBox ShellExecute
 		12.06.20 - Add timing functions for testing
+		01.09.20 - Add seconds to log file header
+		03.09.20 - Add DisableSpoutLogFile() DisableLogs() and EnableLogs() 
+				   for more control over logging
+		09.09.20 - move _doLog outside anonymous namespace
+		23.09.20 - _doLog : always prevent multiple logs by comparing with the last
+				   instead of reserving for > warnings
+		16.10.20 - Add bool WriteBinaryToRegistry
 
 */
 #include "SpoutUtils.h"
@@ -66,6 +73,8 @@ namespace spoututils {
 
 	// Local variables
 	bool bEnableLog = false;
+	bool bEnableLogFile = false;
+	bool bDoLogs = true;
 	SpoutLogLevel CurrentLogLevel = SPOUT_LOG_NOTICE;
 	FILE* pCout = NULL; // for log to console
 	std::ofstream logFile; // for log to file
@@ -77,11 +86,6 @@ namespace spoututils {
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
 #endif
-
-	// Local functions
-	std::string _getLogPath();
-	std::string _levelName(SpoutLogLevel level);
-	void _logtofile(bool append = false);
 
 	//
 	// Console management
@@ -129,7 +133,7 @@ namespace spoututils {
 	// Logs
 	//
 
-	// Enable spout logging
+	// Enable log to console
 	void EnableSpoutLog()
 	{
 		bEnableLog = true;
@@ -140,11 +144,10 @@ namespace spoututils {
 
 	}
 
-	// Log to a user file with optional append
+	// Enable log to a user file with optional append
 	void EnableSpoutLogFile(const char* filename, bool append)
 	{
-		bEnableLog = true;
-
+		bEnableLogFile = true;
 		if (!logPath.empty()) {
 			if (logFile.is_open())
 				logFile.close();
@@ -185,7 +188,16 @@ namespace spoututils {
 		_logtofile(append);
 	}
 
-	// Disable spout logging
+	// Disable logging to file
+	void DisableSpoutLogFile() {
+		if (!logPath.empty()) {
+			if (logFile.is_open())
+				logFile.close();
+			logPath = "";
+		}
+	}
+
+	// Disable logging to console and file
 	void DisableSpoutLog()
 	{
 		CloseSpoutConsole();
@@ -195,6 +207,17 @@ namespace spoututils {
 			logPath = "";
 		}
 		bEnableLog = false;
+		bEnableLogFile = false;
+	}
+
+	// Disable logs
+	void DisableLogs() {
+		bDoLogs = false;
+	}
+
+	// Enable logs
+	void EnableLogs() {
+		bDoLogs = true;
 	}
 	
 	// Return the Spout log file as a string
@@ -242,7 +265,6 @@ namespace spoututils {
 		ShExecInfo.lpFile = (LPCSTR)directory;
 		ShExecInfo.nShow = SW_SHOW;
 		ShellExecuteExA(&ShExecInfo);
-
 	}
 	
 	// Set the current log level
@@ -314,38 +336,30 @@ namespace spoututils {
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
 	{
 		int iRet = 0;
-		std::string spoutmessage;
 		SHELLEXECUTEINFOA ShExecInfo;
-		char UserMessage[512];
 		char path[MAX_PATH];
 
-		spoutmessage = message;
+		std::string spoutmessage = message;
 
-		// If a timeout has been specified, add the timeout option
-		if (dwMilliseconds > 0) {
-			spoutmessage += " /TIMEOUT-";
-			spoutmessage += std::to_string((unsigned long long)dwMilliseconds);
-		}
-		if (!spoutmessage.empty()) {
-			strcpy_s(UserMessage, 512, spoutmessage.c_str());
-		}
-		else {
-			UserMessage[0] = 0; // make sure SpoutPanel does not see an un-initialized string
-		}
-
-		// Find if there has been a Spout installation >= 2.002 with an install path for SpoutPanel.exe
+		// Find if there has been a Spout installation with an install path for SpoutPanel.exe
 		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
 			// Does the file exist ?
 			if (_access(path, 0) != -1) {
 				// Open SpoutPanel text message
+				// If a timeout has been specified, add the timeout option and value
 				// SpoutPanel handles the timeout delay
+				if (dwMilliseconds > 0) {
+					spoutmessage += " /TIMEOUT ";
+					spoutmessage += std::to_string((unsigned long long)dwMilliseconds);
+				}
+
 				ZeroMemory(&ShExecInfo, sizeof(ShExecInfo));
 				ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
 				ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
 				ShExecInfo.hwnd = NULL;
 				ShExecInfo.lpVerb = NULL;
 				ShExecInfo.lpFile = (LPCSTR)path;
-				ShExecInfo.lpParameters = (LPCSTR)UserMessage;
+				ShExecInfo.lpParameters = (LPCSTR)spoutmessage.c_str();
 				ShExecInfo.lpDirectory = NULL;
 				ShExecInfo.nShow = SW_SHOW;
 				ShExecInfo.hInstApp = NULL;
@@ -354,10 +368,13 @@ namespace spoututils {
 				// are prevented in it's WinMain procedure by the mutex.
 			}
 			else {
+				// Registry path OK but no SpoutPanel.exe
+				// Use a standard untimed topmost messagebox
 				iRet = MessageBoxA(hwnd, spoutmessage.c_str(), caption, (uType | MB_TOPMOST));
 			}
 		}
 		else {
+			// No SpoutPanel path registered
 			// Use a standard untimed topmost messagebox
 			iRet = MessageBoxA(hwnd, spoutmessage.c_str(), caption, (uType | MB_TOPMOST));
 		}
@@ -497,6 +514,47 @@ namespace spoututils {
 
 	}
 
+	bool WriteBinaryToRegistry(HKEY hKey, const char *subkey, const char *valuename, const unsigned char *hexdata, DWORD nChars)
+	{
+		HKEY  hRegKey = NULL;
+		LONG  regres = 0;
+		char  mySubKey[512];
+
+		if (!subkey[0]) {
+			SpoutLogWarning("WriteBinaryToRegistry - no subkey specified");
+			return false;
+		}
+
+		// The required key
+		strcpy_s(mySubKey, 512, subkey);
+
+		// Does the key already exist ?
+		regres = RegOpenKeyExA(hKey, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
+		if (regres != ERROR_SUCCESS) {
+			// Create a new key
+			regres = RegCreateKeyExA(hKey, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
+		}
+
+		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
+
+			// Write the binary string
+			// printf("\nhexdata size = %d\n", (int)sizeof(hexdata));
+
+			
+			regres = RegSetValueExA(hRegKey, valuename, 0, REG_BINARY, (BYTE *)hexdata, nChars);
+			RegCloseKey(hRegKey);
+		}
+
+		if (regres != ERROR_SUCCESS) {
+			SpoutLogWarning("WriteBinaryToRegistry - could not write to registry");
+			return false;
+		}
+
+		return true;
+
+	}
+
+
 	bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename)
 	{
 		HKEY  hRegKey = NULL;
@@ -549,9 +607,20 @@ namespace spoututils {
 
 	}
 
-	//
-	// Local functions
-	//
+	// Timing utility functions
+#ifdef USE_CHRONO
+	void StartTiming() {
+		start = std::chrono::steady_clock::now();
+	}
+
+	double EndTiming() {
+		end = std::chrono::steady_clock::now();
+		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
+		// printf("elapsed [%.3f] msec\n", elapsed / 1000.0);
+		// printf("elapsed [%.3f] u/sec\n", elapsed);
+		return elapsed;
+	}
+#endif
 
 	// Perform the log
 	void _doLog(SpoutLogLevel level, const char* format, va_list args)
@@ -559,8 +628,11 @@ namespace spoututils {
 		char currentLog[128];
 		std::string logString;
 
-		if (bEnableLog
-			&& level != SPOUT_LOG_SILENT
+		// Return if logging is paused
+		if (!bDoLogs)
+			return;
+
+		if (level != SPOUT_LOG_SILENT
 			&& CurrentLogLevel != SPOUT_LOG_SILENT
 			&& level >= CurrentLogLevel
 			&& format != nullptr) {
@@ -569,7 +641,13 @@ namespace spoututils {
 			vsprintf_s(currentLog, 128, format, args);
 			logString = currentLog;
 
-			if (bConsole) {
+			// Prevent multiple logs by comparing with the last
+			if (logString == LastSpoutLog)
+				return;
+			LastSpoutLog = logString; // update the last log
+
+			// Console logging
+			if (bEnableLog && bConsole) {
 				// For console output, allow multiple warnings
 				FILE* out = stdout;
 				if (level != SPOUT_LOG_NONE && level != SPOUT_LOG_VERBOSE) {
@@ -579,15 +657,8 @@ namespace spoututils {
 				fprintf(out, "\n");
 			}
 
-			// Save the last log for warning or fatal
-			if (level >= SPOUT_LOG_WARNING) {
-				// Prevent multiple logs by comparing with the last
-				if (logString == LastSpoutLog)
-					return;
-				LastSpoutLog = logString; // update the last log
-			}
-
-			if (!logPath.empty()) {
+			// File logging
+			if (bEnableLogFile && !logPath.empty()) {
 				// Log file output - append the current log
 				logFile.open(logPath, logFile.app);
 				if (logFile.is_open()) {
@@ -602,130 +673,235 @@ namespace spoututils {
 			}
 		}
 	}
-	
-	// Get the default log file path
-	std::string _getLogPath()
-	{
-		wchar_t wpath[MAX_PATH];
-		LPWSTR appdatapath = NULL;
-		char logpath[MAX_PATH];
-		logpath[0] = 0;
 
-		// Try the User "AppData > Roaming > Spout" folder first
-		HRESULT hr = SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_DEFAULT_PATH, NULL, &appdatapath);
-		if (SUCCEEDED(hr) && appdatapath) {
-			wcscpy_s(wpath, MAX_PATH, appdatapath);
-			wcscat_s(wpath, MAX_PATH, L"\\Spout");
-			wcstombs_s(NULL, logpath, wpath, MAX_PATH);
-			if (_access(logpath, 0) == -1) {
-				if (!CreateDirectoryA(logpath, NULL)) {
-					hr = S_FALSE;
+	//
+	// Private functions
+	//
+	namespace
+	{
+			
+		// Get the default log file path
+		std::string _getLogPath()
+		{
+			wchar_t wpath[MAX_PATH];
+			LPWSTR appdatapath = NULL;
+			char logpath[MAX_PATH];
+			logpath[0] = 0;
+
+			// Try the User "AppData > Roaming > Spout" folder first
+			HRESULT hr = SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_DEFAULT_PATH, NULL, &appdatapath);
+			if (SUCCEEDED(hr) && appdatapath) {
+				wcscpy_s(wpath, MAX_PATH, appdatapath);
+				wcscat_s(wpath, MAX_PATH, L"\\Spout");
+				wcstombs_s(NULL, logpath, wpath, MAX_PATH);
+				if (_access(logpath, 0) == -1) {
+					if (!CreateDirectoryA(logpath, NULL)) {
+						hr = S_FALSE;
+					}
 				}
 			}
+
+			if (hr == S_FALSE) {
+				// CreateDirectory failed
+				// Find the path of the executable
+				GetModuleFileNameA(NULL, (LPSTR)logpath, sizeof(logpath));
+				PathRemoveFileSpecA((LPSTR)logpath);
+			}
+
+			return logpath;
+
 		}
 
-		if (hr == S_FALSE) {
-			// CreateDirectory failed
-			// Find the path of the executable
-			GetModuleFileNameA(NULL, (LPSTR)logpath, sizeof(logpath));
-			PathRemoveFileSpecA((LPSTR)logpath);
+		// Get the name for the current log level
+		std::string _levelName(SpoutLogLevel level) {
+			switch (level) {
+			case SPOUT_LOG_SILENT:
+				return "silent";
+			case SPOUT_LOG_VERBOSE:
+				return "verbose";
+			case SPOUT_LOG_NOTICE:
+				return "notice";
+			case SPOUT_LOG_WARNING:
+				return "warning";
+			case SPOUT_LOG_ERROR:
+				return "error";
+			case SPOUT_LOG_FATAL:
+				return "fatal";
+			default:
+				return "";
+			}
 		}
 
-		return logpath;
+		// Log to file with optional append 
+		void _logtofile(bool append)
+		{
+			bool bNewFile = true;
 
-	}
+			// Set default log file if not specified
+			// C:\Users\username\AppData\Roaming\Spout\SpoutLog.txt
+			if (logPath.empty()) {
+				logPath = _getLogPath();
+				logPath += "\\SpoutLog.txt";
+			}
 
-	// Get the name for the current log level
-	std::string _levelName(SpoutLogLevel level) {
-		switch (level) {
-		case SPOUT_LOG_SILENT:
-			return "silent";
-		case SPOUT_LOG_VERBOSE:
-			return "verbose";
-		case SPOUT_LOG_NOTICE:
-			return "notice";
-		case SPOUT_LOG_WARNING:
-			return "warning";
-		case SPOUT_LOG_ERROR:
-			return "error";
-		case SPOUT_LOG_FATAL:
-			return "fatal";
-		default:
-			return "";
-		}
-	}
-	
-	// Log to file with optional append 
-	void _logtofile(bool append)
-	{
-		bool bNewFile = true;
+			// Check for existence before file open
+			if (_access(logPath.c_str(), 0) != -1) {
+				bNewFile = false; // File exists already
+			}
 
-		// Set default log file if not specified
-		// C:\Users\username\AppData\Roaming\Spout\SpoutLog.txt
-		if (logPath.empty()) {
-			logPath = _getLogPath();
-			logPath += "\\SpoutLog.txt";
-		}
-
-		// Check for existence before file open
-		if (_access(logPath.c_str(), 0) != -1) {
-			bNewFile = false; // File exists already
-		}
-
-		// File is created if it does not exist
-		if (append) {
-			logFile.open(logPath, logFile.app);
-		}
-		else {
-			logFile.open(logPath);
-		}
-
-		if (logFile.is_open()) {
-			// Date and time to identify the log
-			char tmp[128];
-			time_t datime;
-			struct tm tmbuff;
-			time(&datime);
-			localtime_s(&tmbuff, &datime);
-			int year = tmbuff.tm_year + 1900;
-			int month = tmbuff.tm_mon + 1;
-			int day = tmbuff.tm_mday;
-			int hour = tmbuff.tm_hour;
-			int min = tmbuff.tm_min;
-			sprintf_s(tmp, 128, "%4d-%2.2d-%2.2d %2.2d:%2.2d", year, month, day, hour, min);
-
-			if (append && !bNewFile) {
-				logFile << "   " << tmp << std::endl;
+			// File is created if it does not exist
+			if (append) {
+				logFile.open(logPath, logFile.app);
 			}
 			else {
-				logFile << "========================" << std::endl;
-				logFile << "    Spout log file" << std::endl;
-				logFile << "========================" << std::endl;
-				logFile << "   " << tmp << std::endl;
+				logFile.open(logPath);
 			}
-			logFile.close();
+
+			if (logFile.is_open()) {
+				// Date and time to identify the log
+				char tmp[128];
+				time_t datime;
+				struct tm tmbuff;
+				time(&datime);
+				localtime_s(&tmbuff, &datime);
+				int year = tmbuff.tm_year + 1900;
+				int month = tmbuff.tm_mon + 1;
+				int day = tmbuff.tm_mday;
+				int hour = tmbuff.tm_hour;
+				int min = tmbuff.tm_min;
+				int sec = tmbuff.tm_sec;
+				sprintf_s(tmp, 128, "%4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d", year, month, day, hour, min, sec);
+
+				if (append && !bNewFile) {
+					logFile << "   " << tmp << std::endl;
+				}
+				else {
+					logFile << "========================" << std::endl;
+					logFile << "    Spout log file" << std::endl;
+					logFile << "========================" << std::endl;
+					logFile << " " << tmp << std::endl;
+				}
+				logFile.close();
+			}
+			else {
+				// disable file writes and use a console instead
+				logPath = "";
+			}
 		}
-		else {
-			// disable file writes and use a console instead
-			logPath = "";
+
+		//
+		// Used internally for NVIDIA profile functions
+		//
+
+		// Get the current mode from the NVIDIA base profile
+		// will just fail for unsupported hardware
+		// Starts SpoutSettings.exe with a command line
+		// which writes the mode value to the registry
+		// Reads back the registry value for the required mode
+		bool GetNVIDIAmode(const char *command, int * mode)
+		{
+			char exePath[MAX_PATH];
+			if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "SpoutSettings", exePath)) {
+				SpoutLogError("Spout::GetNVIDIAmode - SpoutSettings path not found");
+				return false;
+			}
+
+			if (!PathFileExistsA(exePath)) {
+				SpoutLogError("Spout::GetNVIDIAmode - SpoutSettings.exe not found");
+				return false;
+			}
+
+			// SpoutSettings -getCommand
+			// Returns mode in registry
+			char path[MAX_PATH];
+			sprintf_s(path, MAX_PATH, "%s -get%s", exePath, command);
+			if (ExecuteProcess(path)) {
+				DWORD dwMode = 0xffff;
+				if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", command, &dwMode)) {
+					*mode = (int)dwMode;
+					return true;
+				}
+				else {
+					SpoutLogError("Spout::GetNVIDIAmode -  could not read setting from registry");
+				}
+			}
+			else {
+				SpoutLogError("Spout::GetNVIDIAmode -  could not start SpoutSettings");
+			}
+			return false;
 		}
-	}
+
+		// Set the current mode to the NVIDIA base profile
+		// Starts SpoutSettings.exe with a command line
+		// which writes the mode value to the registry
+		bool SetNVIDIAmode(const char *command, int mode)
+		{
+			// Find SpoutSettings path
+			char exePath[MAX_PATH];
+			if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "SpoutSettings", exePath)) {
+				printf("Spout::SetNVIDIAmode - SpoutSettings path not found\n");
+				SpoutLogError("Spout::SetNVIDIAmode - SpoutSettings path not found");
+				return false;
+			}
+
+			if (!PathFileExistsA(exePath)) {
+				printf("Spout::SetNVIDIAmode - SpoutSettings.exe not found\n[%s]\n", exePath);
+				SpoutLogError("Spout::SetNVIDIAmode - SpoutSettings.exe not found");
+				return false;
+			}
+
+			// SpoutSettings -setCommand mode
+			// Sets the required mode and writes it to the registry
+			char path[MAX_PATH];
+			sprintf_s(path, MAX_PATH, "%s -set%s %d", exePath, command, mode);
+			if (ExecuteProcess(path))
+				return true;
+
+			return false;
+		}
 
 
-	// Timing utility functions
-#ifdef USE_CHRONO
-	void StartTiming() {
-		start = std::chrono::steady_clock::now();
-	}
+		// Open process and wait for completion
+		bool ExecuteProcess(char *path)
+		{
+			HANDLE hProcess = NULL; // Handle from CreateProcess
+			DWORD dwExitCode = 0; // Exit code when process terminates
+			STARTUPINFOA si = { sizeof(STARTUPINFO) };
+			bool bRet = false;
 
-	double EndTiming() {
-		end = std::chrono::steady_clock::now();
-		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		printf("elapsed [%.3f] msec\n", elapsed / 1000.0);
-		// printf("elapsed [%.3f] u/sec\n", elapsed);
-		return elapsed;
-	}
-#endif
+			ZeroMemory((void *)&si, sizeof(STARTUPINFO));
+			si.cb = sizeof(STARTUPINFO);
+			si.dwFlags = STARTF_USESHOWWINDOW;
+			si.wShowWindow = SW_HIDE;
+			PROCESS_INFORMATION pi;
+			SetCursor(LoadCursor(NULL, IDC_WAIT));
+			if (CreateProcessA(NULL, (LPSTR)path, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+				hProcess = pi.hProcess;
+				// Wait for CreateProcess to finish
+				double elapsed = 0.0;
+				if (hProcess) {
+					StartTiming(); // for 1 second timeout
+					do {
+						if (!GetExitCodeProcess(hProcess, &dwExitCode)) {
+							bRet = false;
+							break;
+						}
+						elapsed = EndTiming() / 1000.0; // msec
+					} while (dwExitCode == STILL_ACTIVE && elapsed < 1000.0);
+					hProcess = NULL;
+					bRet = true;
+				}
+			}
+			else {
+				SpoutLogError("Spout::ExecuteProcess - CreateProcess failed\n    %s", path);
+				bRet = false;
+			}
+			SetCursor(LoadCursor(NULL, IDC_ARROW));
+
+			return bRet;
+		}
+	} // end private namespace
+
 
 
 } // end namespace spoututils

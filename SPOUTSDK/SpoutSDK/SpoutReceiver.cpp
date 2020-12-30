@@ -55,6 +55,10 @@
 //		26.04.20	- Reset the update flag in IsUpdated
 //		30.04.20	- Add ReceiveTexture()
 //		17.06.20	- Add GetSenderFormat()
+//		17.09.20	- Change GetMemoryShare(const char* sendername) to
+//					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
+//					  Add GetSenderAdapter
+//		25.09.20	- Remove GetSenderAdapter - not reliable 
 //
 // ====================================================================================
 /*
@@ -85,8 +89,8 @@
 
 SpoutReceiver::SpoutReceiver()
 {
-	// CreateReceiver will use the active sender unless the user 
-	// has specified a sender to connect to using SetReceiverName
+	// The receiver connects to the active sender unless the user 
+	// has specified a sender using SetReceiverName
 	m_SenderNameSetup[0] = 0;
 	m_SenderName[0] = 0;
 	m_bUseActive = true;
@@ -197,6 +201,7 @@ bool SpoutReceiver::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool 
 		unsigned int height = m_Height;
 		// Receive a shared texture but don't read it into the user texture yet
 		if (ReceiveTexture(name, width, height)) {
+
 			// Test for sender name or size change
 			if (width != m_Width || height != m_Height || strcmp(name, m_SenderName) != 0) {
 				// Update name
@@ -487,6 +492,10 @@ bool SpoutReceiver::SetActiveSender(const char* Sendername)
 	return spout.SetActiveSender(Sendername);
 }
 
+//
+// Sharing mode functions
+//
+
 //---------------------------------------------------------
 bool SpoutReceiver::GetMemoryShareMode()
 {
@@ -508,7 +517,25 @@ int SpoutReceiver::GetShareMode()
 //---------------------------------------------------------
 bool SpoutReceiver::SetShareMode(int mode)
 {
-	return (spout.SetShareMode(mode));
+	return spout.SetShareMode(mode);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetMemoryShare()
+{
+	return spout.GetMemoryShare();
+}
+
+//---------------------------------------------------------
+void SpoutReceiver::SetMemoryShare(bool bMem)
+{
+	spout.SetMemoryShare(bMem);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetSenderMemoryShare(const char* sendername)
+{
+	return spout.GetSenderMemoryShare(sendername);
 }
 
 //---------------------------------------------------------
@@ -546,6 +573,19 @@ void SpoutReceiver::SetDX11format(DXGI_FORMAT textureformat)
 {
 	spout.SetDX11format(textureformat);
 }
+
+//---------------------------------------------------------
+int SpoutReceiver::GetNumAdapters()
+{
+	return spout.GetNumAdapters();
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetAdapterName(int index, char* adaptername, int maxchars)
+{
+	return spout.GetAdapterName(index, adaptername, maxchars);
+}
+
 //---------------------------------------------------------
 int SpoutReceiver::GetAdapter()
 {
@@ -556,19 +596,6 @@ int SpoutReceiver::GetAdapter()
 bool SpoutReceiver::SetAdapter(int index)
 {
 	return spout.SetAdapter(index);
-}
-
-//---------------------------------------------------------
-int SpoutReceiver::GetNumAdapters()
-{
-	return spout.GetNumAdapters();
-}
-
-//---------------------------------------------------------
-// Get an adapter name
-bool SpoutReceiver::GetAdapterName(int index, char* adaptername, int maxchars)
-{
-	return spout.GetAdapterName(index, adaptername, maxchars);
 }
 
 //---------------------------------------------------------
