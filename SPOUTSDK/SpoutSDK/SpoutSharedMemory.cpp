@@ -244,7 +244,7 @@ void SpoutSharedMemory::Unlock()
 void SpoutSharedMemory::Debug()
 {
 	if (m_pName) {
-		SpoutLogNotice("SpoutSharedMemory::Debug : (%s) m_hMap = [0x%8.8llX], m_pBuffer = [0x%8.8llX]", m_pName, (ULONGLONG)m_hMap, m_pBuffer);
+		SpoutLogNotice("SpoutSharedMemory::Debug : (%s) m_hMap = [0x%.&X], m_pBuffer = [0x%.7X]", m_pName, PtrToUint(m_hMap), PtrToUint(m_pBuffer));
 	}
 	else {
 		SpoutLogNotice("SpoutSharedMemory::Debug : Shared Memory Map is not open\n");

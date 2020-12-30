@@ -75,13 +75,14 @@
 //					  SetAdapter - corrected logs
 //		23.09.20	- Change warning logs to error in OpenDX11shareHandle
 //		24.09.20	- Change all pointer "= NULL to "= nullptr"
-//					  Change hex printf to 0x%8.8llX
+//					  Change hex printf to 0x%.7X
 //					- Introduce try/catch to OpenDX11shareHandle
 //					  for the possibility of different graphics adapters
 //					- Corrected compare of different enum types in CreateSharedDX11Texture
 //		25.09.20	- Made GetAdapterPointer public
 //					  Add SetAdapterPointer
 //		08.10.20	- Re-introduced CreateDX11StagingTexture
+//		30.12.20	- PtrToUint LOWORD for all pointer/handle printf
 //
 // ====================================================================================
 /*
@@ -152,7 +153,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 	D3DCAPS9 d3dCaps;
 	unsigned int AdapterIndex = static_cast<unsigned int>(m_AdapterIndex);
 
-	SpoutLogNotice("spoutDirectX::CreateDX9device - adapter = %u, hWnd = 0x%8.8llX", AdapterIndex, (ULONGLONG)hWnd);
+	SpoutLogNotice("spoutDirectX::CreateDX9device - adapter = %u, hWnd = 0x%.7X", AdapterIndex, LOWORD(hWnd));
 
     ZeroMemory(&d3dpp, sizeof(d3dpp));
     d3dpp.Windowed		= true;						// windowed and not full screen
@@ -202,7 +203,7 @@ IDirect3DDevice9Ex* spoutDirectX::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd)
 		return NULL;
 	}
 
-	SpoutLogNotice("    device (0x%8.8llX)", (ULONGLONG)pDevice);
+	SpoutLogNotice("    device (0x%.7X)", PtrToUint(pDevice));
 
 	return pDevice;
 
@@ -220,7 +221,7 @@ bool spoutDirectX::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned 
 		return false;
 	}
 
-	SpoutLogNotice("spoutDirectX::CreateSharedDX9Texture %dx%d - format %d - handle 0x%X", width, height, (int)format, (ULONGLONG)dxShareHandle);
+	SpoutLogNotice("spoutDirectX::CreateSharedDX9Texture %dx%d - format %d - handle 0x%X", width, height, (int)format, LOWORD(dxShareHandle);
 
 	if(dxTexture) dxTexture->Release();
 
@@ -289,7 +290,7 @@ bool spoutDirectX::WriteDX9memory(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE
 		}
 	}
 
-	SpoutLogError("spoutDirectX::WriteDX9surface((0x%8.8llX), (0x%8.8llX), (0x%8.8llX) failed", (ULONGLONG)pDevice, (ULONGLONG)dxTexture, (ULONGLONG)source_surface);
+	SpoutLogError("spoutDirectX::WriteDX9surface((0x%.7X), (0x%.7X), (0x%.7X) failed", PtrToUint(pDevice), PtrToUint(dxTexture), PtrToUint(source_surface));
 
 	return false;
 } // end WriteDX9surface
@@ -322,7 +323,7 @@ bool spoutDirectX::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFAC
 		}
 	}
 
-	SpoutLogError("spoutDirectX::WriteDX9surface(0x%8.8llX, 0x%8.8llX) failed", (ULONGLONG)surface, (ULONGLONG)dxTexture);
+	SpoutLogError("spoutDirectX::WriteDX9surface(0x%.7X, 0x%.7X) failed", PtrToUint(surface), PtrToUint(dxTexture));
 
 	return false;
 }
@@ -353,7 +354,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	UINT createDeviceFlags = 0;
 	IDXGIAdapter* pAdapterDX11 = m_pAdapterDX11;
 
-	SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (0x%8.8llX)", (ULONGLONG)m_pAdapterDX11);
+	SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (0x%.7X)", PtrToUint(m_pAdapterDX11));
 
 	//
 	// If the project is in a debug build, enable debugging via SDK Layers with this flag.
@@ -454,7 +455,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	}
 
 	// All OK - return the device pointer to the caller
-	SpoutLogNotice("    device (0x%8.8llX)", (ULONGLONG)pd3dDevice);
+	SpoutLogNotice("    device (0x%.7X)", PtrToUint(pd3dDevice));
 
 	return pd3dDevice;
 
@@ -491,7 +492,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	ID3D11Texture2D* pTexture = nullptr; // The new texture pointer
 
 	// SpoutLogVerbose("spoutDirectX::CreateSharedDX11Texture");
-	// SpoutLogVerbose("    pDevice = 0x%8.8llX, width = %d, height = %d, format = %d", (ULONGLONG)pd3dDevice, width, height, format);
+	// SpoutLogVerbose("    pDevice = 0x%.7X, width = %d, height = %d, format = %d", PtrToUint(pd3dDevice), width, height, format);
 
 	// Use the format passed in
 	// If that is zero or DX9 format, use the default format
@@ -574,7 +575,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 	*ppSharedTexture = pTexture;
 
-	SpoutLogNotice("    pTexture = 0x%8.8llX : dxShareHandle = 0x%X", (ULONGLONG)pTexture, (ULONGLONG)dxShareHandle);
+	SpoutLogNotice("    pTexture = 0x%.7X : dxShareHandle = 0x%X", PtrToUint(pTexture), LOWORD(dxShareHandle));
 
 	return true;
 
@@ -634,7 +635,7 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 
 	*ppStagingTexture = pTexture;
 
-	SpoutLogNotice("    pTexture = 0x%8.8llX", (ULONGLONG)pTexture);
+	SpoutLogNotice("    pTexture = 0x%.7X", PtrToUint(pTexture));
 
 	return true;
 
@@ -649,7 +650,7 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 		return false;
 	}
 	
-	// printf("OpenDX11shareHandle - pDevice [0x%llX] 0x%X, 0x%llX\n", (ULONGLONG)pDevice, (UINT)dxShareHandle, (ULONGLONG)ppSharedTexture);
+	// printf("OpenDX11shareHandle - pDevice [0x%llX] 0x%X, 0x%llX\n", PtrToUint(pDevice), LOWORD(dxShareHandle), PtrToUint(ppSharedTexture));
 
 	// To share a resource between a Direct3D 9 device and a Direct3D 11 device 
 	// the texture must have been created using the pSharedHandle argument of CreateTexture.
@@ -1050,7 +1051,7 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 		return 0;
 	}
 
-	SpoutLogNotice("spoutDirectX::ReleaseDX11Texture (0x%8.8llX)", (ULONGLONG)pd3dDevice);
+	SpoutLogNotice("spoutDirectX::ReleaseDX11Texture (0x%.7X)", PtrToUint(pd3dDevice));
 
 	unsigned long refcount = pTexture->Release();
 	pTexture = nullptr;
@@ -1078,7 +1079,7 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 	if (!pd3dDevice)
 		return 0;
 
-	SpoutLogNotice("spoutDirectX::ReleaseDX11Device (0x%8.8llX)", (ULONGLONG)pd3dDevice);
+	SpoutLogNotice("spoutDirectX::ReleaseDX11Device (0x%.7X)", PtrToUint(pd3dDevice));
 
 
 	// Release the global context or there is an outstanding ref count

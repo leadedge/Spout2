@@ -316,7 +316,7 @@
 					  Auto switch if GL/DX interop compatibility fails
 					  WriteDX11texture and ReadDX11texture 
 					  buffered read/write using PBO and dual staging textures
-
+		30.12.20	- PtrToUint LOWORD for all pointer/handle printf
 */
 
 #include "SpoutGLDXinterop.h"
@@ -1041,7 +1041,7 @@ bool spoutGLDXinterop::CreateOpenGL()
 			// 2000 (0x7D0) The pixel format is invalid.
 			// Caused by repeated call of the SetPixelFormat function
 			char temp[128];
-			sprintf_s(temp, "spoutGLDXinterop::CreateOpenGL - SetPixelFormat Error %lu (0x%4.4lX)", dwError, dwError);
+			sprintf_s(temp, "spoutGLDXinterop::CreateOpenGL - SetPixelFormat Error %u (0x%4.4X)", LOWORD(dwError), LOWORD(dwError));
 			SpoutLogError("%s", temp);
 			return false;
 		}
@@ -1521,7 +1521,7 @@ void spoutGLDXinterop::CleanupInterop()
 bool spoutGLDXinterop::CreateDX9interop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive) 
 {
 
-	// printf("CreateDX9interop(%dx%d), [Format = %d], bReceive=%d (m_pDevice = 0x%8.8llX)\n", width, height, dwFormat, bReceive, m_pDevice);
+	// printf("CreateDX9interop(%dx%d), [Format = %d], bReceive=%d (m_pDevice = 0x%.7X)\n", width, height, dwFormat, bReceive, PtrToUint(m_pDevice));
 
 	// The shared texture handle of the Sender texture "m_dxShareHandle" 
 	// is already set by getSharedTextureInfo, but should be NULL for a sender
@@ -1582,7 +1582,7 @@ bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height
 	if (bReceive) {
 		// Retrieve the shared texture pointer via the sharehandle
 		if(!spoutdx.OpenDX11shareHandle(m_pd3dDevice, &m_pSharedTexture, m_dxShareHandle)) {
-			SpoutLogError("spoutGLDXinterop::CreateDX11interop error - device = 0x%8.8llX, sharehandle = 0x%8.8llX", (ULONGLONG)m_pd3dDevice, (ULONGLONG)m_dxShareHandle);
+			SpoutLogError("spoutGLDXinterop::CreateDX11interop error - device = 0x%.7X, sharehandle = 0x%7X", PtrToUint(m_pd3dDevice), LOWORD(m_dxShareHandle));
 			return false;
 		}
 	} else {
@@ -1615,7 +1615,7 @@ bool spoutGLDXinterop::CreateDX11interop(unsigned int width, unsigned int height
 			SpoutLogError("spoutGLDXinterop::CreateDX11interop - LinkGLDXtextures failed");
 			return false;
 		}
-		SpoutLogNotice("spoutGLDXinterop::CreateDX11interop - LinkGLDXtextures : m_hInteropObject = 0x%8.8llX", (ULONGLONG)m_hInteropObject);
+		SpoutLogNotice("spoutGLDXinterop::CreateDX11interop - LinkGLDXtextures : m_hInteropObject = 0x%.7X", LOWORD(m_hInteropObject));
 	}
 
 	return true;
@@ -1642,7 +1642,7 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 	DWORD dwError = 0;
 	char tmp[128];
 
-	// printf("spoutGLDXinterop::LinkGLDXtextures - m_hInteropDevice = 0x%8.8llX\n", (ULONGLONG)m_hInteropDevice);
+	// printf("spoutGLDXinterop::LinkGLDXtextures - m_hInteropDevice = 0x%.7X\n", LOWORD(m_hInteropDevice));
 
 	// Prepare the DirectX device for interoperability with OpenGL
 	// The return value is a handle to a GL/DirectX interop device.
@@ -1659,8 +1659,8 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 	if (!m_hInteropDevice) {
 		// wglDXOpenDeviceNV failed to open the Direct3D device
 		dwError = GetLastError();
-		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures : wglDXOpenDeviceNV(0x%8.8llX) - error %lu (0x%4.4lX)\n", 
-			(ULONGLONG)pDXdevice, dwError, dwError);
+		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures : wglDXOpenDeviceNV(0x%.7X) - error %lu (0x%4.4X)\n", 
+			PtrToUint(pDXdevice), LOWORD(dwError), LOWORD(dwError));
 		// Other errors reported
 		// 1008, 0x3F0 - ERROR_NO_TOKEN
 		switch (dwError) {
@@ -1678,7 +1678,7 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 		return NULL;
 	}
 
-	// printf("    Created m_hInteropDevice = 0x%8.8llX\n", (ULONGLONG)m_hInteropDevice);
+	// printf("    Created m_hInteropDevice = 0x%.7X\n", LOWORD(m_hInteropDevice));
 
 	// prepare shared resource
 	// wglDXSetResourceShareHandle does not need to be called for DirectX
@@ -1718,8 +1718,8 @@ HANDLE spoutGLDXinterop::LinkGLDXtextures (	void* pDXdevice,
 		// Error codes are 32-bit values, but expected results are in the low word.
 		// 006E is ERROR_OPEN_FAILED (110L)
 		dwError = GetLastError();
-		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures - wglDXRegisterObjectNV :error %lu, (0x%4.4lX)\n", 
-			dwError, dwError);
+		sprintf_s(tmp, 128, "spoutGLDXinterop::LinkGLDXtextures - wglDXRegisterObjectNV :error %u, (0x%4.4X)\n", 
+			LOWORD(dwError), LOWORD(dwError));
 		switch (dwError) {
 			case ERROR_INVALID_HANDLE :
 				strcat_s(tmp, 128, "    No GL context is current.");

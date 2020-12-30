@@ -613,7 +613,7 @@ bool spoutSenderNames::FindActiveSender(char sendername[SpoutMaxSenderNameLen], 
 bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
 	SpoutLogNotice("spoutSenderNames::CreateSender");
-	SpoutLogNotice("    [%s] %dx%d, sharehandle = 0x%8.8llX, format = %lu", sendername, width, height, (ULONGLONG)hSharehandle, dwFormat);
+	SpoutLogNotice("    [%s] %dx%d, sharehandle = 0x%.7X, format = %u", sendername, width, height, LOWORD(hSharehandle), (UINT)dwFormat);
 
 	// Register the sender name
 	// The function is ignored if the sender already exists

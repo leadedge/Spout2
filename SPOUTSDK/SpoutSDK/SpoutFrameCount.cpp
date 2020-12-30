@@ -29,6 +29,7 @@
 //		06.09.20	- Add more notice logs to EnableFrameCount
 //		23.09.20	- Initialize m_lastFrame, m_FrameStart, m_bIsNewFrame
 //		24.09.20	- Remove m_FrameStartPtr and m_FrameEndPtr null checks in destructor
+//		30.12.20	- PtrToUint LOWORD for all pointer/handle printf
 //
 // ====================================================================================
 //
@@ -203,7 +204,7 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 
 	m_hCountSemaphore = hSemaphore;
 
-	SpoutLogNotice("    Semaphore handle [0x%8.8X]", (ULONGLONG)m_hCountSemaphore);
+	SpoutLogNotice("    Semaphore handle [0x%.7X]", LOWORD(m_hCountSemaphore));
 
 }
 
@@ -537,7 +538,7 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s] already exists", szMutexName);
 		}
 		else {
-			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s] created - 0x%8.8X", szMutexName, (ULONGLONG)hMutex);
+			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s] created - 0x%.7X", szMutexName, LOWORD(hMutex));
 		}
 	}
 

@@ -1059,7 +1059,7 @@ bool Spout::OpenReceiver (char* theName, unsigned int& theWidth, unsigned int& t
 		}
 		else if (sharehandle > 0) {
 			// 2) If texture share compatible and the share handle is valid, disable memory share mode
-			SpoutLogNotice("Spout::OpenReceiver : valid sender share handle 0x%8.8X", (ULONGLONG)sharehandle);
+			SpoutLogNotice("Spout::OpenReceiver : valid sender share handle 0x%.7X", LOWORD(sharehandle));
 			bMemory = false;
 			interop.SetMemoryShare(false);
 			// Now texture share is used for read and write
