@@ -267,7 +267,8 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y /v "$(OutDir)$(TargetName)$(TargetExt)" "..\..\Binaries\"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
@@ -410,6 +411,7 @@
     <ClCompile Include="Tutorial04.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutCommon.h" />
     <ClInclude Include="..\..\..\SpoutGL\SpoutCopy.h" />
     <ClInclude Include="..\..\..\SpoutGL\SpoutDirectX.h" />
     <ClInclude Include="..\..\..\SpoutGL\SpoutFrameCount.h" />

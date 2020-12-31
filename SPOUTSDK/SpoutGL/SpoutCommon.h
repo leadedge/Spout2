@@ -59,6 +59,4 @@
 // Common utility functions namespace
 #include "SpoutUtils.h"
 
-using namespace spoututils;
-
 #endif

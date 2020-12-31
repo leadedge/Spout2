@@ -68,6 +68,9 @@
     <ClInclude Include="..\..\..\SpoutGL\SpoutUtils.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutCommon.h">
+      <Filter>SpoutSDK</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Tutorial04.fx">

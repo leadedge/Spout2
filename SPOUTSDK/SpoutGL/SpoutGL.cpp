@@ -114,20 +114,23 @@ spoutGL::spoutGL()
 	memoryshare.m_Width = 0;
 	memoryshare.m_Height = 0;
 
+	// Check the user selected Auto share mode
+	DWORD dwValue = 0;
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Auto", &dwValue))
+		m_bAuto = (dwValue == 1);
+
 	// Check the user selected buffering mode
-	DWORD dwMode = 0;
-	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Buffering", &dwMode))
-		m_bPBOavailable = (dwMode == 1);
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Buffering", &dwValue))
+		m_bPBOavailable = (dwValue == 1);
 
 	// Number of PBO buffers user selected
 	m_nBuffers = 2;
-	if(ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Buffers", &dwMode))
-		m_nBuffers = (int)dwMode;
+	if(ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Buffers", &dwValue))
+		m_nBuffers = (int)dwValue;
 
 	// Find version number from the registry if Spout is installed (2005, 2006, etc.)
-	DWORD dwVersion = 0;
-	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Version", &dwVersion))
-		m_SpoutVersion = (int)dwVersion; // 0 for earlier than 2.005
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Version", &dwValue))
+		m_SpoutVersion = (int)dwValue; // 0 for earlier than 2.005
 	else
 		m_SpoutVersion = -1; // Spout not installed
 	   
@@ -586,7 +589,14 @@ bool spoutGL::GLDXready()
 	// Now GLDXready() has set m_bUseGLDX is set to use the GL/DX interop or not.
 	
 	// Use of texture sharing or CPU backup is assessed from
-	// user settings (GetAutoShare) and compatibility (GetGLDXready)
+	// user settings (retrieved with GetAutoShare)
+	// and actual GL/DX compatibility (retrieved with GetGLDXready)
+
+	// Texture sharing is used if GL/DX compatible (m_bUseGLDX = true)
+	// CPU backup is used if :
+	//   1) Graphics is incompatible (m_bUseGLDX = false)
+	//   2) The user has selected "Auto" share in SpoutSettings (m_bAuto = false)
+	// Otherwise no sharing is performed.
 
 	// If not GLDX compatible, LinkGLDXtexture will not be called (see CreateDX11interop)
 	// ReadDX11Texture and WriteDX11Texture using staging textures will be used instead
