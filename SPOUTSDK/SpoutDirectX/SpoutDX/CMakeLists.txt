@@ -20,7 +20,7 @@ target_link_libraries(SpoutDX
 
 target_compile_definitions(SpoutDX
   PRIVATE
-    SPOUT_BUILD_DLL
+    SPOUT_BUILD_DIRECTX
     SPOUTLIBRARY_EXPORTS
 )
 

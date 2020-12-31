@@ -3,7 +3,7 @@ SPOUTSETTINGS
 SpoutSettings is a utility program to change the operation mode for Spout applications.
 
 When first run, if a Spout installation is detected you should select the option to remove it.
-If then you do not do not receive a message that the un-installation has been successful,
+If then you do not receive a message that the un-installation has been successful,
 close the program and use Windows Control Panel to un-install Spout.
 
 Options
@@ -20,7 +20,7 @@ o Maximum Senders
 
 Sets the maximum number of senders that can operate at the same time. The minimum number is 10 and default is 64. 
 Memory allocated is 256 * number of senders in bytes. If setting to more than the default, keep to the minimum you require.
-Applies for Spout applications built with the 2.005 SDK or later. Earlier appliocations are be limited to 10 senders.
+Applies for Spout applications built with the 2.005 SDK or later. Earlier applications are be limited to 10 senders.
 Spout applications must be re-started after change
 
 o NVIDIA global processor

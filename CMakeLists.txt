@@ -26,13 +26,15 @@ if(NOT WIN32)
 endif()
 
 OPTION(SPOUT_BUILD_MT "For Visual Studio - build /MT to link runtime libraries" ON)
-# https://gitlab.kitware.com/cmake/cmake/-/issues/18390
-if(MSVC)
-	add_compile_options(
-		$<$<CONFIG:>:/MT> #---------|
-		$<$<CONFIG:Debug>:/MTd> #---|-- Statically link the runtime libraries
-		$<$<CONFIG:Release>:/MT> #--|
-	)
+if(SPOUT_BUILD_MT)
+	# https://gitlab.kitware.com/cmake/cmake/-/issues/18390
+	if(MSVC)
+		add_compile_options(
+			$<$<CONFIG:>:/MT> #---------|
+			$<$<CONFIG:Debug>:/MTd> #---|-- Statically link the runtime libraries
+			$<$<CONFIG:Release>:/MT> #--|
+		)
+	endif()
 endif()
 
 add_subdirectory(SPOUTSDK/SpoutGL)

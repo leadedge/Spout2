@@ -2,6 +2,7 @@ Examples of how to use the Spout SDK for sharing DirectX textures without using 
 
 For all examples, the following source files of the Spout SDK are required :
 
+SpoutCommon.h\
 SpoutCopy.cpp\
 SpoutCopy.h\
 SpoutDirectX.cpp\
