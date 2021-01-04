@@ -63,7 +63,6 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 spoutDX sender;                         // Sending object
 HWND g_hWnd = NULL;                     // Window handle
 unsigned char *g_pixelBuffer = nullptr; // RGBA pixel buffer
-unsigned char *g_bgraBuffer = nullptr;  // Conversion buffer
 unsigned char g_SenderName[256];        // Sender name
 unsigned int  g_SenderWidth = 1280;     // Sender width (video width)
 unsigned int  g_SenderHeight = 720;     // Sender height (video height)
@@ -151,8 +150,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		return FALSE;
 	}
 
-	// Set the sender texture format to rgba
-	sender.SetSenderFormat(DXGI_FORMAT_R8G8B8A8_UNORM);
+	// Default sender format is BGRA.
+	// The same format must also be specifed for FFmpeg video data (see OpenVideo).
+	// If FFmpeg RGBA video format is required, the sender format can be changed to match.
+	// sender.SetSenderFormat(DXGI_FORMAT_R8G8B8A8_UNORM);
 
 	// Give the sender a name
 	// If no name is specified, the executable name is used
@@ -181,7 +182,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		_pclose(g_pipein);
 	}
 	if (g_pixelBuffer) delete g_pixelBuffer;
-	if (g_bgraBuffer) delete g_bgraBuffer;
 	sender.ReleaseSender();
 
     return (int) msg.wParam;
@@ -259,13 +259,14 @@ bool OpenVideo(std::string filePath)
 	g_input += "\"";
 	g_input += filePath;
 	g_input += "\"";
-	g_input += " -f image2pipe -vcodec rawvideo -pix_fmt rgba -";
+	// Specify BGRA pixel format to match the default Spout sender texture format.
+	// If RGBA format is required, the sender format has to be specified as RGBA.
+	// (see SetSenderFormat above).
+	g_input += " -f image2pipe -vcodec rawvideo -pix_fmt bgra -";
 	g_pipein = _popen(g_input.c_str(), "rb");
 	if (g_pipein) {
 		if (g_pixelBuffer) delete g_pixelBuffer;
 		g_pixelBuffer = new unsigned char[g_SenderWidth*g_SenderHeight * 4];
-		if (g_bgraBuffer) delete g_bgraBuffer;
-		g_bgraBuffer = new unsigned char[g_SenderWidth*g_SenderHeight * 4];
 		return true;
 	}
 	else {
@@ -399,7 +400,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    HWND hWnd = CreateWindowW(szWindowClass, szTitle,
 	   // WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
 	   // CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
-	   // SPOUT - enable resize and maximize to demonstrate sender resizing
+	   // SPOUT - enable resize and maximize. Video output is not affected.
 	   WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME,
 	   CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance, nullptr);
 
@@ -489,57 +490,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				else {
 					//
-					// Video data is RGBA but windows draw is BGRA and conversion is required
+					// Spout sender and video data format is
+					// BGRA which is suitable for Window bitmap draw
 					//
-					// For widths divisible by 16, a high speed copy function
-					// can be used to convert from rgba to bgra.
-					// Timing has shown that this is much faster (1-2 msec)
-					// than using BITMAPV4HEADER (18-24 msec) at 1280x720.
-					//
-					if ((g_SenderWidth % 16) == 0) {
-						BITMAPINFO bmi;
-						ZeroMemory(&bmi, sizeof(BITMAPINFO));
-						bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-						bmi.bmiHeader.biSizeImage = (LONG)(g_SenderWidth * g_SenderHeight * 4); // Pixel buffer size
-						bmi.bmiHeader.biWidth = (LONG)g_SenderWidth;   // Width of buffer
-						bmi.bmiHeader.biHeight = -(LONG)g_SenderHeight;  // Height of buffer and bottom up
-						bmi.bmiHeader.biPlanes = 1;
-						bmi.bmiHeader.biBitCount = 32;
-						bmi.bmiHeader.biCompression = BI_RGB;
-						// SSE conversion from rgba to bgra
-						sender.spoutcopy.rgba2bgra(g_pixelBuffer, g_bgraBuffer, g_SenderWidth, g_SenderHeight);
-						SetStretchBltMode(hdc, COLORONCOLOR);
-						StretchDIBits(hdc,
-							0, 0, (dr.right - dr.left), (dr.bottom - dr.top),
-							0, 0, g_SenderWidth, g_SenderHeight, g_bgraBuffer,
-							&bmi, DIB_RGB_COLORS, SRCCOPY);
-					}
-					else {
-						// The extended BITMAPV4HEADER bitmap info header
-						// is required instead of BITMAPINFO but can be slow.
-						BITMAPV4HEADER info = { sizeof(BITMAPV4HEADER) };
-						info.bV4Width = (LONG)g_SenderWidth;
-						info.bV4Height = -(LONG)g_SenderHeight;
-						info.bV4Planes = 1;
-						info.bV4BitCount = 32;
-						info.bV4V4Compression = BI_BITFIELDS;
-						info.bV4RedMask = 0x000000FF;
-						info.bV4GreenMask = 0x0000FF00;
-						info.bV4BlueMask = 0x00FF0000;
-						info.bV4AlphaMask = 0xFF000000;
-
-						SetStretchBltMode(hdc, COLORONCOLOR);
-						StretchDIBits(hdc,
-							0, 0,
-							(dr.right - dr.left),
-							(dr.bottom - dr.top), // destination rectangle 
-							0, 0,
-							g_SenderWidth, g_SenderHeight, // source rectangle 
-							g_pixelBuffer,
-							reinterpret_cast<BITMAPINFO*>(&info),
-							DIB_RGB_COLORS,
-							SRCCOPY);
-					}
+					BITMAPINFO bmi;
+					ZeroMemory(&bmi, sizeof(BITMAPINFO));
+					bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+					bmi.bmiHeader.biSizeImage = (LONG)(g_SenderWidth * g_SenderHeight * 4); // Pixel buffer size
+					bmi.bmiHeader.biWidth = (LONG)g_SenderWidth;   // Width of buffer
+					bmi.bmiHeader.biHeight = -(LONG)g_SenderHeight;  // Height of buffer and bottom up
+					bmi.bmiHeader.biPlanes = 1;
+					bmi.bmiHeader.biBitCount = 32;
+					bmi.bmiHeader.biCompression = BI_RGB;
+					SetStretchBltMode(hdc, COLORONCOLOR);
+					StretchDIBits(hdc,
+						0, 0, (dr.right - dr.left), (dr.bottom - dr.top),
+						0, 0, g_SenderWidth, g_SenderHeight, g_pixelBuffer,
+						&bmi, DIB_RGB_COLORS, SRCCOPY);
 				}
 				EndPaint(hWnd, &ps);
 			}
