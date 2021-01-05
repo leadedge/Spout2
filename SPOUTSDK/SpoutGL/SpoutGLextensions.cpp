@@ -430,7 +430,7 @@ unsigned int loadGLextensions() {
 	InitializeGlew(); // probably needs failure check
 #endif
 
-	// Check for FBO extensions first - no use continuing without them
+	// Check for FBO extensions - no use continuing without them
 	if (loadFBOextensions()) {
 		caps |= GLEXT_SUPPORT_FBO;
 	}

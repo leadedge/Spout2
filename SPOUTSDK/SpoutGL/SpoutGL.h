@@ -164,7 +164,7 @@ class SPOUT_DLLEXP spoutGL {
 	bool OpenDirectX();
 	// Set sender DX11 shared texture format
 	void SetDX11format(DXGI_FORMAT textureformat);
-	// Close DirectX
+	// Close DirectX and free resources
 	void CloseDirectX();
 	// Create an OpenGL window and context for situations where there is none.
 	//   Not used if applications already have an OpenGL context.

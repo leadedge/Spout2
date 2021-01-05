@@ -1,7 +1,7 @@
 ﻿//
 //		SpoutGL
 //
-//		Base class for OpenGL texture sharing using the NVIDIA GL/DX intoerop extensions
+//		Base class for OpenGL texture sharing using the NVIDIA GL/DX interop extensions
 //
 //		See also - spoutDirectX, spoutSenderNames
 //
@@ -46,6 +46,10 @@
 
 #include "SpoutGL.h"
 
+// Class: spoutGL
+// Base class for OpenGL texture sharing using the NVIDIA GL/DX interop extensions.
+// This class should not be used directly because it is the base for the Spout, SpoutSender and SpoutReceiver classes.
+// Refer to the SpoutSDK class for documentation and details.
 spoutGL::spoutGL()
 {
 	m_SenderName[0] = 0;
@@ -177,10 +181,12 @@ spoutGL::~spoutGL()
 }
 
 //
-// OpenGL shared texture access
+// Group: OpenGL shared texture
 //
 
 //---------------------------------------------------------
+// Function: BindSharedTexture
+// Bind OpenGL shared texture
 bool spoutGL::BindSharedTexture()
 {
 	// Only for GL/DX interop mode
@@ -211,6 +217,8 @@ bool spoutGL::BindSharedTexture()
 } // end BindSharedTexture
 
 //---------------------------------------------------------
+// Function: UnBindSharedTexture
+// Un-bind OpenGL shared texture
 bool spoutGL::UnBindSharedTexture()
 {
 	// Only for GL/DX interop mode
@@ -229,38 +237,52 @@ bool spoutGL::UnBindSharedTexture()
 } // end UnBindSharedTexture
 
 //---------------------------------------------------------
+// Function: GetSharedTextureID
+// OpenGL shared texture ID
 GLuint spoutGL::GetSharedTextureID()
 {
 	return m_glTexture;
 }
 
 //
-// Graphics compatibility
+// Group: Graphics compatibility
 //
 
 //---------------------------------------------------------
+// Function: GetAutoShare
+// Get auto GPU/CPU share depending on compatibility
 bool spoutGL::GetAutoShare()
 {
 	return m_bAuto;
 }
 
 //---------------------------------------------------------
+// Function: SetAutoShare
+// Set auto GPU/CPU share depending on compatibility
 void spoutGL::SetAutoShare(bool bAuto)
 {
 	m_bAuto = bAuto;
 }
 
 //---------------------------------------------------------
+// Function: IsGLDXready
+// OpenGL texture share compatibility
 bool spoutGL::IsGLDXready()
 {
 	return m_bUseGLDX;
 }
 
 //
-// For direct access if necessary
+// Group: For direct access if necessary
 //
 
 //---------------------------------------------------------
+// Function: OpenSpout
+// Initialize OpenGL and DX11
+//     - Load extensions and check for availability and function
+//     - Open DirectX and check for availability
+//     - Compatibility test for use or GL/DX interop
+//     - Optionally re-test compatibility even if already initialized
 bool spoutGL::OpenSpout(bool bRetest)
 {
 	// Return if already initialized and not re-testing compatibility
@@ -323,6 +345,8 @@ bool spoutGL::OpenSpout(bool bRetest)
 }
 
 //---------------------------------------------------------
+// Function: OpenDirectX
+// Initialize DirectX
 bool spoutGL::OpenDirectX()
 {
 	SpoutLogNotice("spoutGL::OpenDirectX");
@@ -330,12 +354,16 @@ bool spoutGL::OpenDirectX()
 }
 
 //---------------------------------------------------------
+// Function: SetDX11format
+// Set sender DX11 shared texture format
 void spoutGL::SetDX11format(DXGI_FORMAT textureformat)
 {
 	m_DX11format = textureformat;
 }
 
 //---------------------------------------------------------
+// Function: CloseDirectX
+// Close DirectX and free resources
 void spoutGL::CloseDirectX()
 {
 	SpoutLogNotice("spoutGL::CloseDirectX()");
@@ -351,6 +379,10 @@ void spoutGL::CloseDirectX()
 }
 
 //---------------------------------------------------------
+// Function: CreateOpenGL
+// Create an OpenGL window and context for situations where there is none.
+//   Not used if applications already have an OpenGL context.
+//   Always call CloseOpenGL afterwards.
 bool spoutGL::CreateOpenGL()
 {
 	m_hdc = nullptr;
@@ -441,6 +473,8 @@ bool spoutGL::CreateOpenGL()
 }
 
 //---------------------------------------------------------
+// Function: CloseOpenGL
+// Close OpenGL window
 bool spoutGL::CloseOpenGL()
 {
 
@@ -477,6 +511,7 @@ bool spoutGL::CloseOpenGL()
 }
 
 //---------------------------------------------------------
+// Class initialization status
 bool spoutGL::IsSpoutInitialized()
 {
 	return m_bInitialized;
@@ -1610,6 +1645,7 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 
 		if (bInvert && m_bBLITavailable) {
+
 			// copy the source texture (0) to the local texture (1) while flipping upside down 
 			glBlitFramebufferEXT(0,	0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 			// Bind local fbo for read
@@ -1624,6 +1660,7 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 
 		}
 		else {
+
 			// No invert or no fbo blit extension
 			// Read from the source texture attachment point 0
 			// This will be the local fbo if a texture ID was passed in
@@ -2408,17 +2445,24 @@ bool spoutGL::GLerror() {
 }
 
 //
-// User settings recorded in the registry and retrieved in constructor
-// Set for the application (except max senders which must be global)
+// Group: User registry settings recorded by "SpoutSettings"
+//
+// User settings are retrieved in constructor and can be 
+// set for the application (except max senders which must be global)
 //
 
 //---------------------------------------------------------
+// Function: GetBufferMode
+// Get user buffering mode
+//
 bool spoutGL::GetBufferMode()
 {
 	return m_bPBOavailable;
 }
 
 //---------------------------------------------------------
+// Function: SetBufferMode
+// Set application buffering mode
 void spoutGL::SetBufferMode(bool bActive)
 {
 	if (m_bExtensionsLoaded) {
@@ -2437,24 +2481,32 @@ void spoutGL::SetBufferMode(bool bActive)
 }
 
 //---------------------------------------------------------
+// Function: GetBuffers
+// Get user number of pixel buffers
 int spoutGL::GetBuffers()
 {
 	return m_nBuffers;
 }
 
 //---------------------------------------------------------
+// Function: SetBuffers
+// Set application number of pixel buffers
 void spoutGL::SetBuffers(int nBuffers)
 {
 	m_nBuffers = nBuffers;
 }
 
 //---------------------------------------------------------
+// Function: GetMaxSenders
+// Get user Maximum senders allowed
 int spoutGL::GetMaxSenders()
 {
 	return sendernames.GetMaxSenders();
 }
 
 //---------------------------------------------------------
+// Function: SetMaxSenders
+// Set user Maximum senders allowed
 void spoutGL::SetMaxSenders(int maxSenders)
 {
 	// Setting must be global for all applications
@@ -2462,10 +2514,12 @@ void spoutGL::SetMaxSenders(int maxSenders)
 }
 
 //
-// For 2.006 compatibility
+// Group: Retained for 2.006 compatibility
 //
 
 //---------------------------------------------------------
+// Function: GetDX9
+// Get user DX9 mode
 bool spoutGL::GetDX9()
 {
 	DWORD dwDX9 = 0;
@@ -2474,12 +2528,16 @@ bool spoutGL::GetDX9()
 }
 
 //---------------------------------------------------------
+// Function: SetDX9
+// Set user DX9 mode
 bool spoutGL::SetDX9(bool bDX9)
 {
 	return WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "DX9", (DWORD)bDX9);
 }
 
 //---------------------------------------------------------
+// Function: GetMemoryShareMode
+// Get user memory share mode
 bool spoutGL::GetMemoryShareMode()
 {
 	DWORD dwMem = 0;
@@ -2488,12 +2546,16 @@ bool spoutGL::GetMemoryShareMode()
 }
 
 //---------------------------------------------------------
+// Function: SetMemoryShareMode
+// Set user memory share mode
 bool spoutGL::SetMemoryShareMode(bool bMem)
 {
 	return WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", (DWORD)bMem);
 }
 
 //---------------------------------------------------------
+// Function: GetCPUmode
+// Get user CPU mode
 bool spoutGL::GetCPUmode()
 {
 	DWORD dwCpu = 0;
@@ -2502,18 +2564,16 @@ bool spoutGL::GetCPUmode()
 }
 
 //---------------------------------------------------------
+// Function: SetCPUmode
+// Set user CPU mode
 bool spoutGL::SetCPUmode(bool bCPU)
 {
 	return WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "CPU", (DWORD)bCPU);
 }
 
-//
-// Return user set sharing mode
-//
-// 0 - texture : default
-// 1 - memory  : not used
-// 2 - CPU     : compatibility mode
-//
+// Function: GetShareMode
+// Get user share mode
+//  0 - texture, 1 - memory, 2 - CPU
 int spoutGL::GetShareMode()
 {
 	DWORD dwMem = 0;
@@ -2534,8 +2594,9 @@ int spoutGL::GetShareMode()
 }
 
 //---------------------------------------------------------
-// Set user sharing mode
-// 0 - texture : 1 - memory : 2 - CPU
+// Function: SetShareMode
+// Set user share mode
+//  0 - texture, 1 - memory, 2 - CPU
 void spoutGL::SetShareMode(int mode)
 {
 	switch (mode) {
@@ -2556,13 +2617,14 @@ void spoutGL::SetShareMode(int mode)
 }
 
 //
-// Information
+// Group: Information
 //
 
 //---------------------------------------------------------
-// Get the path of the host that produced the sender
-// from the description string in the sender info memory map
-// Could be used for other things in future
+// Function: GetHostPath
+// The path of the host that produced the sender
+//
+// Retrieved from the description string in the sender info memory map
 bool spoutGL::GetHostPath(const char* sendername, char* hostpath, int maxchars)
 {
 	SharedTextureInfo info;
@@ -2583,6 +2645,8 @@ bool spoutGL::GetHostPath(const char* sendername, char* hostpath, int maxchars)
 }
 
 //---------------------------------------------------------
+// Function: GetVerticalSync
+// Vertical sync status
 int spoutGL::GetVerticalSync()
 {
 	// Needs OpenGL context
@@ -2596,6 +2660,8 @@ int spoutGL::GetVerticalSync()
 }
 
 //---------------------------------------------------------
+// Function: SetVerticalSync
+// Lock to monitor vertical sync
 bool spoutGL::SetVerticalSync(bool bSync)
 {
 	// wglSwapIntervalEXT specifies the minimum number
@@ -2616,6 +2682,8 @@ bool spoutGL::SetVerticalSync(bool bSync)
 }
 
 //---------------------------------------------------------
+// Function: GetSpoutVersion
+// Get Spout version
 int spoutGL::GetSpoutVersion()
 {
 	// Version number is retrieved from the registry at class initialization
@@ -2626,10 +2694,13 @@ int spoutGL::GetSpoutVersion()
 }
 
 //
-// Utility
+// Group: Utilities
 //
 
 //---------------------------------------------------------
+// Function: CopyTexture
+// Copy OpenGL texture with optional invert
+//   Textures must be the same size
 bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	GLuint DestID, GLuint DestTarget, unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
@@ -2696,6 +2767,8 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 } // end CopyTexture
 
 //---------------------------------------------------------
+// Function: RemovePadding
+// Remove line padding from a source image and crerate a destination image without padding
 void spoutGL::RemovePadding(const unsigned char *source, unsigned char *dest,
 	unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat)
 {
@@ -2704,10 +2777,14 @@ void spoutGL::RemovePadding(const unsigned char *source, unsigned char *dest,
 
 
 //
-// DX11 versions - https://github.com/DashW/Spout2
+// Group : DX11 texture copy versions
+//
+// - https://github.com/DashW/Spout2
 //
 
 //---------------------------------------------------------
+// Function: ReadTexture
+// Copy the sender DirectX shared texture
 bool spoutGL::ReadTexture(ID3D11Texture2D** texture)
 {
 	// Only for DX11 mode
@@ -2733,6 +2810,8 @@ bool spoutGL::ReadTexture(ID3D11Texture2D** texture)
 } // end ReadTexture
 
 //---------------------------------------------------------
+// Function: WriteTexture
+// Copy to the sender DirectX shared texture
 bool spoutGL::WriteTexture(ID3D11Texture2D** texture)
 {
 	// Only for DX11 mode
@@ -2771,6 +2850,8 @@ bool spoutGL::WriteTexture(ID3D11Texture2D** texture)
 }
 
 //---------------------------------------------------------
+// Function: WriteTextureReadBack
+// Copy to the sender DirectX shared texture and read back to an OpenGL texture
 bool spoutGL::WriteTextureReadback(ID3D11Texture2D** texture,
 	GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height,

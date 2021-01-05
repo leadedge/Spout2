@@ -486,16 +486,13 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 
 	// Texture usage
 	info.usage = 0;
-	// Partner ID
-	// LJ DEBUG
+	// Partner ID : Sender CPU mode
 	// info.partnerId = 0;
-	// Description : Unused
+	// Description : Host path
 	// memset((void *)info.description, 256, 0); // wchar 128
 
 	// Set data to the memory map
 	__movsd((unsigned long *)pBuf, (unsigned long const *)&info, sizeof(SharedTextureInfo) / 4); // 280 bytes
-	// LJ DEBUG
-	// memcpy((void *)pBuf, (const void *)&info, sizeof(SharedTextureInfo)); // 280 bytes
 
 	senderInfoMap->Unlock();
 	

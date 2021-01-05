@@ -208,6 +208,52 @@
 */
 #include "SpoutSDK.h"
 
+// Class: Spout
+//
+// <https://spout.zeal.co/>
+//
+// Main class for Spout OpenGL texture sharing
+//
+// Contains both Sender and Receiver functions.
+//
+// This class and other source files are included in a project
+//
+// Files required are (.h and .cpp) :
+//
+// - SpoutCommon
+// - SpoutCopy
+// - SpoutDirectX
+// - SpoutFramecount
+// - SpoutGL
+// - SpoutGLextensions
+// - SpoutSDK
+// - SpoutSenderNames
+// - SpoutSharedMemory
+// - SpoutUtils
+//
+// You can also use the Spout SDK as a dll. To build the dll, refer to the 
+// Visual Studio project in the VS2017 folder and the CMake build documentation.
+// Also refer to the SpoutLibrary folder for a C-compatible dll which can be 
+// used with compilers other than Visual Studio.
+//
+// It's important to remember that Sender and Receiver functions cannot
+// be used within the same object. If the source code is used in a project,
+// the SpoutSender and SpoutReceiver classes are convenience wrappers which
+// insulate the sending and receiving functions.
+//
+// More detailed information can be found in the header files SpoutSDK.h and SpoutGL.h.
+// Functions for individual classes are documented within the respective source files.
+// You can access these from the following class objects.
+//
+// - spoutDirectX spoutdx; (DirectX 11 texture sharing)
+// - spoutCopy spoutcopy; (Pixel buffer copying)
+// - spoutSenderNames sendernames; (Spout sender management)
+// - spoutFrameCount frame; (Frame counting management)
+//
+// Details for practical use can be found in the source code for the Openframeworks examples.
+// The methods are simple and you should be able to quickly extend to your own application
+// or to other frameworks.
+//
 Spout::Spout()
 {
 	// Get graphics adapter number, index and name
@@ -222,10 +268,30 @@ Spout::~Spout()
 }
 
 //
-//==================== SENDER =============================
+// Group: Sender
+//
+// SendFbo, SendTexture and SendImage create or update a sender as required.
+//
+// - If a sender has not been created yet :
+//
+//    - Make sure Spout has been initialized and OpenGL context is available
+//    - Perform a compatibility check for GL/DX interop
+//    - If compatible, create interop for GL/DX transfer
+//    - If not compatible, create a shared texture for the sender
+//    - Create a sender using the DX11 shared texture handle
+//
+// - If the sender exists, test for size change :
+//
+//    - If compatible, update the shared textures and GL/DX interop
+//    - If not compatible, re-create the class shared texture to the new size
+//    - Update the sender and class variables	
 //
 
 //---------------------------------------------------------
+// Function: SetSenderName
+// Set name for sender creation
+//
+//   If no name is specified, the executable name is used. 
 void Spout::SetSenderName(const char* sendername)
 {
 	if (!sendername) {
@@ -240,6 +306,8 @@ void Spout::SetSenderName(const char* sendername)
 }
 
 //---------------------------------------------------------
+// Function: SetSenderFormat
+// Set the sender DX11 shared texture format
 void Spout::SetSenderFormat(DWORD dwFormat)
 {
 	m_dwFormat = dwFormat;
@@ -247,6 +315,10 @@ void Spout::SetSenderFormat(DWORD dwFormat)
 }
 
 //---------------------------------------------------------
+// Function: ReleaseSender
+// Close receiver and release resources.
+//
+// A new sender is created or updated by all sending functions
 void Spout::ReleaseSender()
 {
 	if (m_bInitialized) {
@@ -260,6 +332,13 @@ void Spout::ReleaseSender()
 }
 
 //---------------------------------------------------------
+// Function: SendFbo
+// Send texture attached to fbo.
+//
+//   The fbo must be currently bound.  
+//   The sending texture can be larger than the size that the sender is set up for.  
+//   For example, if the application is using only a portion of the allocated texture space,  
+//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture).
 bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
 {
 	// For texture sharing, the fbo must be equal to or larger than the shared texture
@@ -293,6 +372,9 @@ bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool 
 }
 
 //---------------------------------------------------------
+// Function: SendTexture
+// Send OpenGL texture
+//
 bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
@@ -320,6 +402,8 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 }
 
 //---------------------------------------------------------
+// Function: SendImage
+// Send pixel image
 bool Spout::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
 
@@ -361,54 +445,80 @@ bool Spout::SendImage(const unsigned char* pixels, unsigned int width, unsigned 
 }
 
 //---------------------------------------------------------
+// Function: IsInitialized
+// Initialization status
 bool Spout::IsInitialized()
 {
 	return m_bInitialized;
 }
 
 //---------------------------------------------------------
+// Function: GetName
+// Sender name
 const char * Spout::GetName()
 {
 	return m_SenderName;
 }
 
 //---------------------------------------------------------
+// Function: GetWidth
+// Sender width
 unsigned int Spout::GetWidth()
 {
 	return m_Width;
 }
 
 //---------------------------------------------------------
+// Function: GetHeight
+// Sender height
 unsigned int Spout::GetHeight()
 {
 	return m_Height;
 }
 
 //---------------------------------------------------------
+// Function: GetFps
+// Sender frame rate
 double Spout::GetFps()
 {
 	return frame.GetSenderFps();
 }
 
 //---------------------------------------------------------
+// Function: GetFrame
+// Sender frame number
 long Spout::GetFrame()
 {
 	return frame.GetSenderFrame();
 }
 
 //---------------------------------------------------------
+// Function: GetHandle
+// Sender share handle
 HANDLE Spout::GetHandle()
 {
 	return m_dxShareHandle;
 }
 
-
 //
-// ===================== RECEIVER =========================
+// Group: Receiver
+//
+// ReceiveTexture and ReceiveImage
+//
+//	- Connect to a sender
+//	- Set class variables for sender name, width and height
+//  - If the sender has changed size, set a flag for the application to update receiving 
+//    texture or image which is re-allocated if IsUpdated() returns true.
+//  - Copy the sender shared texture to the user texture or image.
 //
 
 //---------------------------------------------------------
-// Specify the sender for a receiver to connect to
+// Function: SetReceiverName
+// Specify sender for connection
+//
+//   The application will not connect to any other unless the user selects one
+//   If that sender closes, the application will wait for the nominated sender to open 
+//   If no name is specified, the receiver will connect to the active sender
 void Spout::SetReceiverName(const char * SenderName)
 {
 	if (SenderName && SenderName[0]) {
@@ -417,10 +527,9 @@ void Spout::SetReceiverName(const char * SenderName)
 	}
 }
 
-
 //---------------------------------------------------------
-// Release receiver and resources
-// ready to connect to another sender
+// Function: ReleaseReceiver
+// Close receiver and release resources ready to connect to another sender
 void Spout::ReleaseReceiver()
 {
 	if (!m_bInitialized)
@@ -468,27 +577,25 @@ void Spout::ReleaseReceiver()
 }
 
 //---------------------------------------------------------
-//	Receive sender shared texture
+// Function: ReceiveTexture
+//     Connect to a sender and retrieve shared texture details
 //
 //  The texture can then be accessed using :
-//		BindSharedTexture();
-//		UnBindSharedTexture();
-//		GetSharedTextureID();
 //
+//		- BindSharedTexture();
+//		- UnBindSharedTexture();
+//		- GetSharedTextureID();
 bool Spout::ReceiveTexture()
 {
 	return ReceiveTexture(0, 0);
 }
 
 //---------------------------------------------------------
-// Receive OpenGL texture
+// Function: ReceiveTexture
+//  Copy the sender shared texture
 //
-//	o Connect to a sender
-//	o Set class variables for sender name, width and height
-//  o If the sender has changed size, set a flag for the application to update receiving texture
-//    The texture must be RGBA of dimension (width * height)
-//    and can be re-allocated is IsUpdated() returns true
-//  o Copy the sender shared texture to the user texture
+//    The receiving texture can only be RGBA of dimension (width * height)
+//    and must be re-allocated if IsUpdated() returns true
 //
 bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
@@ -551,6 +658,11 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 }
 
 //---------------------------------------------------------
+// Function: ReceiveImage
+// Copy the sender texture to image pixels.
+//
+//    The receiving image can be RGBA, RGB or BGR of dimension (width * height)
+//    and must be re-allocated if IsUpdated() returns true
 bool Spout::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height,
 	unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
@@ -564,7 +676,12 @@ bool Spout::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &he
 }
 
 //---------------------------------------------------------
-// Check for sender change
+// Function: IsUpdated
+// Query whether the sender has changed.
+//
+//   Must be checked at every cycle before receiving data. 
+//
+//   If this is not done, the receiving functions fail.
 bool Spout::IsUpdated()
 {
 	bool bRet = m_bUpdated;
@@ -573,36 +690,54 @@ bool Spout::IsUpdated()
 }
 
 //---------------------------------------------------------
+// Function: IsConnected
+// Query sender connection.
+//
+//   If the sender closes, receiving functions return false,  
+//   but connection can be tested at any time.
 bool Spout::IsConnected()
 {
 	return m_bConnected;
 }
 
 //---------------------------------------------------------
+// Function: IsFrameNew
+// Query received frame status
+//
+//   The receiving texture or pixel buffer is refreshed if the sender has produced a new frame  
+//   This can be queried to process texture data only for new frames
 bool Spout::IsFrameNew()
 {
 	return m_bNewFrame;
 }
 
 //---------------------------------------------------------
+// Function: GetSenderFormat
+// Get sender DirectX texture format
 DWORD Spout::GetSenderFormat()
 {
 	return m_dwFormat;
 }
 
 //---------------------------------------------------------
+// Function: GetSenderName
+// Get sender name
 const char * Spout::GetSenderName()
 {
 	return m_SenderName;
 }
 
 //---------------------------------------------------------
+// Function: GetSenderWidth
+// Get sender width
 unsigned int Spout::GetSenderWidth()
 {
 	return m_Width;
 }
 
 //---------------------------------------------------------
+// Function: GetSenderHeight
+// Get sender height
 unsigned int Spout::GetSenderHeight()
 {
 	return m_Height;
@@ -610,68 +745,87 @@ unsigned int Spout::GetSenderHeight()
 }
 
 //---------------------------------------------------------
+// Function: GetSenderFps
+// Get sender frame rate
 double Spout::GetSenderFps()
 {
 	return frame.GetSenderFps();
 }
 
 //---------------------------------------------------------
+// Function: GetSenderFrame
+// Get sender frame number
 long Spout::GetSenderFrame()
 {
 	return frame.GetSenderFrame();
 }
 
 //---------------------------------------------------------
+// Function: GetSenderHandle
+// Received sender share handle
 HANDLE Spout::GetSenderHandle()
 {
 	return m_dxShareHandle;
 }
 
 //---------------------------------------------------------
+// Function: GetSenderCPUmode
+// Received sender sharing mode
 bool Spout::GetSenderCPUmode()
 {
 	return m_bSenderCPUmode;
 }
 
 //---------------------------------------------------------
+// Function: SelectSender
+// Open sender selection dialog
 void Spout::SelectSender()
 {
 	SelectSenderPanel();
 }
 
 //
-// Frame count
+// Group: Frame counting
 //
 
 //---------------------------------------------------------
+// Function: SetFrameCount
+// Enable or disable frame counting globally
 void Spout::SetFrameCount(bool bEnable)
 {
 	frame.SetFrameCount(bEnable);
 }
 
-//---------------------------------------------------------
+// Function: DisableFrameCount
+// Disable frame counting specifically for this application
 void Spout::DisableFrameCount()
 {
 	frame.DisableFrameCount();
 }
 
 //---------------------------------------------------------
+// Function: IsFrameCountEnabled
+// Return frame count status
 bool Spout::IsFrameCountEnabled()
 {
 	return frame.IsFrameCountEnabled();
 }
 
 //---------------------------------------------------------
+// Function: HoldFps
+// Frame rate control
 void Spout::HoldFps(int fps)
 {
 	frame.HoldFps(fps);
 }
 
 //
-// Sender names
+// Group: Sender names
 //
 
 //---------------------------------------------------------
+// Function: GetSenderCount
+// Number of senders
 int Spout::GetSenderCount()
 {
 	std::set<std::string> SenderNameSet;
@@ -682,7 +836,8 @@ int Spout::GetSenderCount()
 }
 
 //---------------------------------------------------------
-// Get a sender name given an index into the sender names set
+// Function: GetSender
+// Sender item name in the sender names set
 bool Spout::GetSender(int index, char* sendername, int sendernameMaxSize)
 {
 	std::set<std::string> SenderNameSet;
@@ -711,33 +866,46 @@ bool Spout::GetSender(int index, char* sendername, int sendernameMaxSize)
 }
 
 //---------------------------------------------------------
+// Function: GetSenderInfo
+// Sender information
 bool Spout::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
 {
 	return sendernames.GetSenderInfo(sendername, width, height, dxShareHandle, dwFormat);
 }
 
 //---------------------------------------------------------
+// Function: GetActiveSender
+// Current active sender
 bool Spout::GetActiveSender(char* Sendername)
 {
 	return sendernames.GetActiveSender(Sendername);
 }
 
 //---------------------------------------------------------
+// Function: SetActiveSender
+// Set sender as active
 bool Spout::SetActiveSender(const char* Sendername)
 {
 	return sendernames.SetActiveSender(Sendername);
 }
 
-
 //
-// Adapter functions
+// Group: Graphics adapter
+//
+// Note that both the Sender and Receiver must use the same graphics adapter.
 //
 
+//---------------------------------------------------------
+// Function: GetNumAdapters
+// The number of graphics adapters in the system
 int Spout::GetNumAdapters()
 {
 	return spoutdx.GetNumAdapters();
 }
 
+//---------------------------------------------------------
+// Function: GetAdapterName
+// Get adapter item name
 bool Spout::GetAdapterName(int index, char *adaptername, int maxchars)
 {
 	char name[256];
@@ -748,11 +916,17 @@ bool Spout::GetAdapterName(int index, char *adaptername, int maxchars)
 	return false;
 }
 
+//---------------------------------------------------------
+// Function: GetAdapter
+// Get adapter index
 int Spout::GetAdapter()
 {
 	return spoutdx.GetAdapter();
 }
 
+//---------------------------------------------------------
+// Function: SetAdapter
+// Set graphics adapter for output
 bool Spout::SetAdapter(int index)
 {
 	// Return if already set
@@ -779,33 +953,48 @@ bool Spout::SetAdapter(int index)
 	return true;
 }
 
+//---------------------------------------------------------
+// Function: GetAdapterInfo
+// Get the current adapter description
 bool Spout::GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars)
 {
 	return spoutdx.GetAdapterInfo(renderdescription, displaydescription, maxchars);
 }
 
 //---------------------------------------------------------
+// Function: Adapter
+// Current adapter
 int Spout::Adapter()
 {
 	return m_AdapterIndex;
 }
 
 //---------------------------------------------------------
+// Function: AdapterName
+// Current adapter name
 char * Spout::AdapterName()
 {
 	return m_AdapterName;
 }
 
 //
-// 2.006 compatibility
+// Group: 2.006 compatibility
+//
+// These functions are not necessary for Version 2.007.
+// But are retained for compatibility with existing 2.006 code.
 //
 
 //---------------------------------------------------------
+// Function: FindNVIDIA
+// Find the index of the NVIDIA adapter in a multi-adapter system
 bool Spout::FindNVIDIA(int &nAdapter)
 {
 	return spoutdx.FindNVIDIA(nAdapter);
 }
 
+//---------------------------------------------------------
+// Function: GetAdapterInfo
+// Get detailed information for the current graphics adapter
 //
 // Must be called after DirectX initialization, not before
 //
@@ -932,6 +1121,8 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 }
 
 //---------------------------------------------------------
+// Function: CreateSender
+// Create a sender
 bool Spout::CreateSender(const char* name, unsigned int width, unsigned int height, DWORD dwFormat)
 {
 	// Pass on to CheckSender
@@ -943,6 +1134,8 @@ bool Spout::CreateSender(const char* name, unsigned int width, unsigned int heig
 }
 
 //---------------------------------------------------------
+// Function: UpdateSender
+// Update a sender
 bool Spout::UpdateSender(const char* name, unsigned int width, unsigned int height)
 {
 	// No update unless already created
@@ -959,8 +1152,13 @@ bool Spout::UpdateSender(const char* name, unsigned int width, unsigned int heig
 
 // Legacy OpenGL DrawTo function
 #ifdef legacyOpenGL
-
 //---------------------------------------------------------
+// Function: DrawToSharedTexture
+// Render OpenGL texture to the sender shared OpenGL texture
+//
+// Legacy OpenGL function
+//
+// Enabled for build with "legacyOpenGL" defined in SpoutCommon.h
 bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height,
 	float max_x, float max_y, float aspect,
@@ -1037,12 +1235,9 @@ bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget,
 } // end DrawToSharedTexture
 #endif
 
-
-//
-// 2.006 compatibility
-//
-
 //---------------------------------------------------------
+// Function: CreateReceiver
+// Create receiver connection
 bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height, bool bUseActive)
 {
 	// Make sure OpenGL and DirectX are initialized
@@ -1083,6 +1278,8 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 }
 
 //---------------------------------------------------------
+// Function: CheckReceiver
+// Check receiver connection
 bool Spout::CheckReceiver(char* name, unsigned int &width, unsigned int &height, bool &bConnected)
 {
 	if (ReceiveSenderData()) {
@@ -1096,6 +1293,8 @@ bool Spout::CheckReceiver(char* name, unsigned int &width, unsigned int &height,
 }
 
 //---------------------------------------------------------
+// Function: ReceiveTexture
+// Receive OpenGL texture
 bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height,
 	GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
 {
@@ -1117,6 +1316,8 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 }
 
 //---------------------------------------------------------
+// Function: ReceiveImage
+// Receive image pixels
 bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
 	// Return if flagged for update
@@ -1208,6 +1409,12 @@ bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, G
 } // end ReceiveImage
 
 //---------------------------------------------------------
+// Function: SelectSenderPanel
+// Open dialog for the user to select a sender
+//
+//  Optional message argument
+//
+// Replaced by SelectSender for 2.007
 bool Spout::SelectSenderPanel(const char *message)
 {
 	HANDLE hMutex1 = NULL;
@@ -1340,7 +1547,13 @@ bool Spout::SelectSenderPanel(const char *message)
 
 // Legacy OpenGL Draw function
 #ifdef legacyOpenGL
-
+//---------------------------------------------------------
+// Function: DrawSharedTexture
+// Render the sender shared OpenGL texture
+//
+// Legacy OpenGL function
+//
+// Enabled for build with "legacyOpenGL" defined in SpoutCommon.h
 //---------------------------------------------------------
 bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
 {
@@ -1414,7 +1627,6 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 	if (!m_SenderName[0])
 		SetSenderName();
 	   
-	// LJ DEBUG
 	// printf("CheckSender 0 (%d) %dx%d\n", sendernames.GetSenderCount(), width, height);
 
 	// If not initialized, create a new sender
@@ -1526,9 +1738,6 @@ void Spout::InitReceiver(const char * SenderName, unsigned int width, unsigned i
 	m_Width = width;
 	m_Height = height;
 	m_dwFormat = dwFormat;
-
-	// LJ DEBUG ??? necessary
-	// CleanupInterop();
 
 	// Get graphics adapter number, index and name
 	m_AdapterNumber = GetNumAdapters();
