@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("bin",["Function"],[["BindSharedTexture",,[["spoutGL",,,,0,"File:SpoutGL.cpp:spoutGL.BindSharedTexture","CClass:spoutGL:BindSharedTexture"]]]]);

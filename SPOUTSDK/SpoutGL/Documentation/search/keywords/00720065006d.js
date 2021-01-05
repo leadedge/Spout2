@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("rem",["Function"],[["RemovePadding",,[["spoutGL",,,,0,"File:SpoutGL.cpp:spoutGL.RemovePadding","CClass:spoutGL:RemovePadding"]]]]);

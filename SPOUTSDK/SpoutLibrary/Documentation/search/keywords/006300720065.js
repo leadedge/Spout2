@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("cre",["Function"],[["CreateOpenGL",,[[,,,,0,"File:SpoutLibrary.cpp:CreateOpenGL"]]],["CreateReceiver",,[[,,,,0,"File:SpoutLibrary.cpp:CreateReceiver"]]],["CreateSender",,[[,,,,0,"File:SpoutLibrary.cpp:CreateSender"]]]]);

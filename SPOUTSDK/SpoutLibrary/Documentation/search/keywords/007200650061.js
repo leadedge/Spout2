@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("rea",["Function"],[["ReadDwordFromRegistry",,[[,,,,0,"File:SpoutLibrary.cpp:ReadDwordFromRegistry"]]],["ReadPathFromRegistry",,[[,,,,0,"File:SpoutLibrary.cpp:ReadPathFromRegistry"]]]]);

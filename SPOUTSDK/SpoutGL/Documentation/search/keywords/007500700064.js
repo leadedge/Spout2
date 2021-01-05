@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("upd",["Function"],[["UpdateSender",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.UpdateSender","CClass:Spout:UpdateSender"]]]]);

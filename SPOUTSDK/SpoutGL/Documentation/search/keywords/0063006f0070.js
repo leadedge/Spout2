@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("cop",["Function"],[["CopyTexture",,[["spoutGL",,,,0,"File:SpoutGL.cpp:spoutGL.CopyTexture","CClass:spoutGL:CopyTexture"]]]]);

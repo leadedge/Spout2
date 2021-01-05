@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("isu",["Function"],[["IsUpdated",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.IsUpdated","CClass:Spout:IsUpdated"]]]]);

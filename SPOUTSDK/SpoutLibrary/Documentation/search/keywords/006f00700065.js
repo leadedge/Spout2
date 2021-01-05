@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("ope",["Function"],[["OpenSpoutConsole",,[[,,,,0,"File:SpoutLibrary.cpp:OpenSpoutConsole"]]]]);

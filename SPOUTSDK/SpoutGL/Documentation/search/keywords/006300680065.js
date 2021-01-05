@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("che",["Function"],[["CheckReceiver",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.CheckReceiver","CClass:Spout:CheckReceiver"]]]]);

@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("ada",["Function"],[["Adapter",,[[,,,,0,"File:SpoutLibrary.cpp:Adapter"]]],["AdapterName",,[[,,,,0,"File:SpoutLibrary.cpp:AdapterName"]]]]);

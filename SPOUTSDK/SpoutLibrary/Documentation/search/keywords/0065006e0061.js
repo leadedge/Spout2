@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("ena",["Function"],[["EnableSpoutLog",,[[,,,,0,"File:SpoutLibrary.cpp:EnableSpoutLog"]]],["EnableSpoutLogFile",,[[,,,,0,"File:SpoutLibrary.cpp:EnableSpoutLogFile"]]]]);

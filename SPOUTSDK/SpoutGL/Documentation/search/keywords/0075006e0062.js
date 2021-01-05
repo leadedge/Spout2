@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("unb",["Function"],[["UnBindSharedTexture",,[["spoutGL",,,,0,"File:SpoutGL.cpp:spoutGL.UnBindSharedTexture","CClass:spoutGL:UnBindSharedTexture"]]]]);

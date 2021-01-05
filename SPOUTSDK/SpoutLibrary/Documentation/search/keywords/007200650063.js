@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("rec",["Function"],[["ReceiveImage",,[[,,,,0,"File:SpoutLibrary.cpp:ReceiveImage"]]],["ReceiveTexture",,[[,,,,0,"File:SpoutLibrary.cpp:ReceiveTexture"]]]]);

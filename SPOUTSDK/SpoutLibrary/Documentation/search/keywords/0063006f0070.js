@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("cop",["Function"],[["CopyTexture",,[[,,,,0,"File:SpoutLibrary.cpp:CopyTexture"]]]]);

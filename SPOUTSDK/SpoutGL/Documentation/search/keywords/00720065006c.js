@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("rel",["Function"],[["ReleaseReceiver",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.ReleaseReceiver","CClass:Spout:ReleaseReceiver"]]],["ReleaseSender",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.ReleaseSender","CClass:Spout:ReleaseSender"]]]]);

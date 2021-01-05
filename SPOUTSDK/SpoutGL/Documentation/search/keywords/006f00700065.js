@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("ope",["Function"],[["OpenDirectX",,[["spoutGL",,,,0,"File:SpoutGL.cpp:spoutGL.OpenDirectX","CClass:spoutGL:OpenDirectX"]]],["OpenSpout",,[["spoutGL",,,,0,"File:SpoutGL.cpp:spoutGL.OpenSpout","CClass:spoutGL:OpenSpout"]]]]);

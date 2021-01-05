@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("sel",["Function"],[["SelectSender",,[[,,,,0,"File:SpoutLibrary.cpp:SelectSender"]]]]);

@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("isf",["Function"],[["IsFrameCountEnabled",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.IsFrameCountEnabled","CClass:Spout:IsFrameCountEnabled"]]],["IsFrameNew",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.IsFrameNew","CClass:Spout:IsFrameNew"]]]]);

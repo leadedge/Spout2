@@ -1,1 +1,0 @@
-﻿NDFramePage.OnPageTitleLoaded("File:Docs/3)_Sender-list.txt","3) Sender-list.txt");NDSummary.OnSummaryLoaded("File:Docs/3)_Sender-list.txt",[["Text File","TextFile"]],[["Sections","Section"]],[[82,0,0,"List of senders","List_of_senders"]]);

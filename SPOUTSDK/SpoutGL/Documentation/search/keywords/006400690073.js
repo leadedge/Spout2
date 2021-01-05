@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("dis",["Function"],[["DisableFrameCount",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.DisableFrameCount","CClass:Spout:DisableFrameCount"]]]]);
