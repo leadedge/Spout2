@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("lis",["Section"],[["List",,[[,"List of senders",,,0,"File:Docs/3)_Sender-list.txt:List_of_senders"]]]]);

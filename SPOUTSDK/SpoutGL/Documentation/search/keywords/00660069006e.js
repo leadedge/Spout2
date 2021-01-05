@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("fin",["Function"],[["FindNVIDIA",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.FindNVIDIA","CClass:Spout:FindNVIDIA"]]]]);

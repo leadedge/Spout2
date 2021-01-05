@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("isg",["Function"],[["IsGLDXready",,[["spoutGL",,,,0,"File:SpoutGL.cpp:spoutGL.IsGLDXready","CClass:spoutGL:IsGLDXready"]]]]);

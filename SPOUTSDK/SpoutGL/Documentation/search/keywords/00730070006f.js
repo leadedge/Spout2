@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("spo",["Class"],[["Spout",,[[,,,,0,"File:SpoutSDK.cpp:Spout","CClass:Spout"]]],["spoutGL",,[[,,,,0,"File:SpoutGL.cpp:spoutGL","CClass:spoutGL"]]]]);

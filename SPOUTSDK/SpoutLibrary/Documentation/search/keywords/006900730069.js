@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("isi",["Function"],[["IsInitialized",,[[,,,,0,"File:SpoutLibrary.cpp:IsInitialized"]]]]);

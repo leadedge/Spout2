@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("sho",["Function"],[["ShowSpoutLogs",,[[,,,,0,"File:SpoutLibrary.cpp:ShowSpoutLogs"]]]]);

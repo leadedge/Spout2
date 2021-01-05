@@ -1,0 +1,215 @@
+Title: Porting from 2.006
+
+Updating existing 2.006 projects
+
+Group: New files
+
+Remove all 2.006 source files from your project and replace them :
+
+--- Code
+Spout.h
+SpoutCommon.h
+SpoutSDK.h
+SpoutSDK.cpp
+SpoutSender.h
+SpoutSender.cpp
+SpoutReceiver.h
+SpoutReceiver.cpp
+SpoutSharedMemory.h
+SpoutSharedMemory.cpp
+SpoutGL.h
+SpoutGL.cpp
+SpoutCopy.cpp
+SpoutCopy.h
+SpoutGLextensions.cpp
+SpoutGLextensions.h
+SpoutDirectX.h
+SpoutDirectX.cpp
+SpoutFrameCount.h
+SpoutFrameCount.cpp
+SpoutUtils.h
+SpoutUtils.cpp
+---
+
+If you have been using a dll, replace the header file(s) and linked library file, rebuild and use the new dll file.
+
+As usual, the entire SDK can be included :
+
+--- Code
+		#include "Spout.h"
+---
+
+Or, to isolate sending and receiving functions for the programmer :
+
+--- Code
+		#include "SpoutSender.h" 
+		or 
+		#include "SpoutReceiver.h"
+---
+
+Group: Updating projects
+
+The methods used in 2.006 still apply and existing code does not need to be changed. 2.007 includes methods for creating and using senders which are easier to use and simplify the code.
+
+Group: Sender
+
+The  “CreateSender” function can still be used as for 2.006, but is no longer necessary. Instead, simply specify a sender name.
+
+--- Code
+bool SetSenderName(const char *sendername);
+---
+
+If no name is specified, the application executable name will be used. Thereafter, all sending functions create and update a sender based on the size passed and the name that has been set.
+
+--- Code
+  bool SendTexture(GLuint TextureID, GLuint TextureTarget,
+			     unsigned int width, unsigned int height,
+			     bool bInvert = true, GLuint HostFBO = 0);
+---
+
+SendTexture creates a shared texture for all receivers to access. The invert flag is optional and by default true. This flips the texture in the Y axis which is necessary because DirectX and OpenGL textures are opposite in Y. If it is set to false no flip occurs and the result may appear upside down.
+
+The host fbo argument is optional, default 0. If an fbo is currently bound and it's ID passed, then that binding is restored within the SendTexture function.
+
+--- Code
+  bool SendImage(const unsigned char* pixels,
+			   unsigned int width, unsigned int height,
+			   GLenum glFormat = GL_RGBA,
+			   bool bInvert = false, GLuint HostFBO = 0);
+---
+
+SendImage creates a shared texture using image pixels as the source instead of an OpenGL texture. The format of the image to be sent is RGBA by default but can be a different OpenGL format, for example GL_RGB or GL_BGRA_EXT. The invert flag is optional and false by default.
+
+--- Code
+  bool SendFbo(GLuint FboID,
+               unsigned int width, unsigned int height,
+			bool bInvert = true);
+---
+
+"SendFbo" is a new function that uses a texture attached to the currently bound fbo. This is useful if the sending texture is larger than the size of the the sender, which can be the case if the application is using only a portion of the allocated texture space, such as for Freeframe plugins. This was previously achieved by rendering to the shared texture using the legacy OpenGL function "DrawToSharedTexture".
+
+At any time you can query the sender status, name, size, frame number and frame rate.
+
+--- Code
+bool IsInitialized();
+const char * GetName();
+unsigned int GetWidth();
+unsigned int GetHeight();
+double GetFps();
+long GetFrame();
+HANDLE GetHandle();
+---
+
+Group: Receiver
+
+“CreateReceiver” is no longer required because the functions connect to a sender and inform the application to update the receiving texture or buffer if it has changed dimensions.
+
+1) Set receiver name
+
+Although a create function is no longer necessary, you can still specify a sender name for the receiver to connect to. The application will not connect to any other unless the user selects one. If that sender closes, the application will wait for the nominated sender to open. 
+
+--- Code
+	void SetReceiverName(const char * SenderName);
+---
+
+2) Receive texture or pixel data
+
+Note that “ReceiveTexture” and “ReceiveImage” have changed arguments.
+
+--- Code
+	// Receive texture
+	bool ReceiveTexture();
+---
+
+Once a sender has been detected, this function will receive shared textures from senders if the ID and Target are passed. The shared texture is internal to Spout and can be accessed using :
+
+--- Code
+BindSharedTexture();
+UnBindSharedTexture();
+GetSharedTextureID();
+---
+
+--- Code
+	// Receive texture
+	bool ReceiveTexture(GLuint TextureID, GLuint TextureTarget,
+			       bool bInvert = false, GLuint HostFbo = 0);
+---
+				   
+If the ID and Target are not passed, or the received shared texture can be used directly for graphics operations.
+
+Any changes to sender size are managed within Spout, however if you are receiving to a local texture, the changed width or height are passed back and must be tested to adjust the receiving texture or for for maintaining window dimensions.
+
+--- Code
+	bool ReceiveImage(unsigned char * pixels, GLenum glFormat = GL_RGBA,
+				bool bInvert = false, GLuint HostFBO = 0);
+---
+
+Receives a sender shared texture into image pixels. The same sender size changes are passed back as for ReceiveTexture.
+
+Formats supported are :
+
+--- Code 
+GL_RGBA, GL_RGB, GL_BGRA_EXT, GL_BGR_EXT
+---
+
+GL_BGRA_EXT, GL_BGR_EXT are dependent on those extensions being supported at runtime. If they are not the rgba and rgb equivalents are used. Note that images with padding on each line are not supported. Also the width should be a multiple of 4.
+
+3) Query sender change
+
+It is not necessary to keep local variables to monitor sender size changes. But the application must check for update at every cycle before receiving any data or receiving functions will fail.
+
+--- Code
+	if(receiver.IsUpdated()) {
+		.. update the receiving texture or buffer
+	}
+---
+
+4) Query sender connection
+
+If the sender closes, the functions return false. But you can also test this at any time.
+
+--- Code
+	If(receiver.IsConnected()) {
+		.. perform processing as required
+	}
+---
+
+5) Query frame status
+
+The receiving texture or pixel buffer is only refreshed if the sender has produced a new frame. if there is any performance gain by processing the data only for new frames, This can be queried.
+
+--- Code
+	receiver.ReceiveTexture( ... );
+	if(receiver.IsFrameNew()) {
+		. . . perform processing
+	}
+	. . . render the received texture
+---
+
+5) Query sender details
+
+At any time you can retrieve the connected sender name, size, format, frame rate and number.
+
+--- Code
+	// Sender name
+	const char * GetSenderName();
+	// Sender width
+	unsigned int GetSenderWidth();
+	// Sender height
+	unsigned int GetSenderHeight();
+	// Sender texture format
+	DWORD GetSenderFormat();
+	// Sender frame rate
+	double GetSenderFps();
+	// Sender frame number
+	long GetSenderFrame();
+---
+
+6) Sender selection
+
+--- Code
+	void SelectSender();
+---
+
+To improve legibility, this overload function replaces the 2.006 version “SelectSenderPanel”.
+

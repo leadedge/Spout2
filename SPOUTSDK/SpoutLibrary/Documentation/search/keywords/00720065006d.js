@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("rem",["Function"],[["RemovePathFromRegistry",,[[,,,,0,"File:SpoutLibrary.cpp:RemovePathFromRegistry"]]],["RemoveSubKey",,[[,,,,0,"File:SpoutLibrary.cpp:RemoveSubKey"]]]]);

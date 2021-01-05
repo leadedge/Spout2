@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("isc",["Function"],[["IsConnected",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.IsConnected","CClass:Spout:IsConnected"]]]]);

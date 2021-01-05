@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("wri",["Function"],[["WriteTexture",,[["spoutGL",,,,0,"File:SpoutGL.cpp:spoutGL.WriteTexture","CClass:spoutGL:WriteTexture"]]],["WriteTextureReadBack",,[["spoutGL",,,,0,"File:SpoutGL.cpp:spoutGL.WriteTextureReadBack","CClass:spoutGL:WriteTextureReadBack"]]]]);

@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("dra",["Function"],[["DrawSharedTexture",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.DrawSharedTexture","CClass:Spout:DrawSharedTexture"]]],["DrawToSharedTexture",,[["Spout",,,,0,"File:SpoutSDK.cpp:Spout.DrawToSharedTexture","CClass:Spout:DrawToSharedTexture"]]]]);

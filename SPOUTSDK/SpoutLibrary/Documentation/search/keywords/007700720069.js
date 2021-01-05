@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("wri",["Function"],[["WriteDwordToRegistry",,[[,,,,0,"File:SpoutLibrary.cpp:WriteDwordToRegistry"]]],["WritePathToRegistry",,[[,,,,0,"File:SpoutLibrary.cpp:WritePathToRegistry"]]]]);

@@ -1,0 +1,232 @@
+Title: New in 2.007
+
+What's new in Spout 2.007
+
+
+Group: Introduction
+
+2.007 revisions are aimed at making the sending and receiving functions easier to use, particularly for the receiver.
+
+Sending functions manage sender creation and update. Receiving functions manage sender connection and size change.
+
+All 2.006 functions remain available, including those for sender names, graphics adapter and sharing mode. 
+
+The new functions described following are are additional. This allows existing 2.006 projects to be upgraded by simply changing source files or building with a new dll.
+
+Group: Changes for 2.007
+
+Compatibility for OpenGL texture sharing using NVIDIA GL/DX interop extensions, is always tested when a sender or receiver is first initialized.
+
+Where hardware is not texture share compatible, sending and receiving functions switch to backup methods with system memory for sharing textures instead of GPU methods.
+
+*CPU mode backup*
+
+CPU mode using DirectX textures (introduced in 2.006 ), is used as a backup. Performance has been improved by using multiple DirectX 11 staging textures as well as multiple OpenGL pixel buffers.
+
+The advantage of CPU mode is that an application using graphics that is incompatible with texture sharing can still communicate with another on the same machine using compatible graphics hardware. This situation can occur with dual graphics laptop systems (NVIDIA “Optimus” or AMD “Dynamic Switchable Graphics”).
+
+*Auto mode switching*
+
+The switch from GPU to CPU methods is automatic, but there could be situations where an unforeseen slowdown may be undesirable and it would be preferable for sharing to fail so that grpahics compatibility is clear.
+
+This can be controlled by the user with “SpoutSettings” by selecting “Auto” OFF. The setting then applies globally for 2.007 applications. 
+
+*Memoryshare removed*
+
+Memoryshare mode using shared memory directly has been removed and, although new senders cannot initiate this mode, existing 2.006 Memoryshare senders will still communicate with 2.007 receivers.
+
+*New class files*
+
+spoutGL replaces spoutGLDXinterop and is now a base class to SpoutSDK. SpoutSender and SpoutReceiver remain as convenience wrappers to isolate sender and receiver functions.
+
+*Legacy OpenGL*
+
+Functions with legacy OpenGL code can be disabled so that the SDK is compliant with more recent versions of OpenGL by removing a define in “SpoutCommon.h”.
+
+--- Code
+#define legacyOpenGL
+---
+
+The following functions are then disabled :
+
+--- Code
+	DrawSharedTexture
+	DrawToSharedTexture
+---
+
+*std namespace removed*
+
+--- Code
+using namespace std;
+---
+
+Programmers have the option for including this or not. If you receive warnings about missing std functions with existing projects, you will need to include this statement in your header files or use the "std::" prefix for those functions.
+
+*Changed functions*
+
+--- Code
+bool GetSenderName(int index, char* Sendername, int MaxSize = 256);
+---
+
+Changed to :
+
+--- Code
+bool GetSender(int index, char* Sendername, int MaxSize = 256);
+---
+
+GetSenderName now returns the connected sender name.
+
+--- Code
+const char * GetSenderName();
+---
+
+The GetImageSize function has been removed.
+
+
+Group: Spout Utilities
+
+“SpoutUtils” is a namespace containing utility functions that can be used throughout the SDK.
+
+It contains the The logging and registry functions described below.
+
+
+Group: Logging
+
+Logging is introduced throughout the SDK to provide advisory, warning and error notices.
+
+Logs can be displayed in a console window or written to a file. The console window is useful during application development and logging to a file provides a means of tracing errors. You can also include your own logs.
+
+Functions are based on Openframeworks logs and are used in a similar manner. Commented code examples are included in the Spout SDK openframeworks "ofSpoutExample" graphics sender application.
+
+Often it is useful to open a console window during application development to output text messages. The console will only show what you print to it.
+
+--- Code
+	void OpenSpoutConsole();
+---
+
+Close the console with an optional warning.
+
+--- Code
+	void CloseSpoutConsole(bool bWarning = false);
+---
+
+Or you can enable console logging to see logs generated within the Spout SDK functions. 
+	
+--- Code
+	void EnableSpoutLog();
+---
+
+Instead of a console, or additionally, you can specify output to a text file with the extension of your choice. The log file is re-created every time the application starts unless you specify to append to the existing one.
+
+--- Code
+	void EnableSpoutLog(const std::string filename, bool append = false);
+---
+
+The file is saved in the %AppData% folder unless you specify a full path:
+
+--- Code
+"C:>Users>username>AppData>Roaming>Spout"
+---
+
+After the application has run you can find and examine the log file. This folder can also be shown in Windows Explorer directly from the application.
+
+--- Code
+	void ShowSpoutLogs();
+---
+
+Or the entire log can be returned as a string.
+
+--- Code
+	std::string GetSpoutLog();
+---
+
+You can set the level above which the logs are shown
+
+--- Code
+	SPOUT_LOG_SILENT  - Disable all messages
+	SPOUT_LOG_VERBOSE - Show all messages
+	SPOUT_LOG_NOTICE  - Notices
+	SPOUT_LOG_WARNING - Warnings
+	SPOUT_LOG_ERROR   - Errors
+	SPOUT_LOG_FATAL   - Fatal errors
+---
+
+For example, to show only warnings and errors :
+
+--- Code
+    SetSpoutLogLevel(SPOUT_LOG_WARNING);
+---
+
+or leave set to default Notice to see more information.
+
+You can also create your own logs. For example :
+
+--- Code
+	SpoutLog("SpoutLog test");
+---
+
+Or specify the logging level. For example :
+
+--- Code
+	SpoutLogNotice("Important notice");
+or :
+	SpoutLogFatal("This should not happen");
+or :
+	SetSpoutLogLevel(SPOUT_LOG_VERBOSE); // (default is SPOUT_LOG_NOTICE)
+	SpoutLogVerbose("Message");
+---
+
+Logs can include strings, integers, float numbers etc. based on the "printf" notation. For example :
+
+--- Code
+	SpoutLogNotice("myClass::myFunction - sender %s, %dx%d", sendername, width, height);
+---
+
+Finally you can disable logging at any time within your application.
+
+--- Code
+	DisableSpoutLog();
+---
+
+Group: SpoutMessageBox
+
+SputMessageBox can be used where a Windows MessageBox would interfere with the application GUI. SpoutMessageBox activates a
+
+An executable dialog program is opened to avoid the problem. A timeout can also be specified so that the user does not need to dismiss the message.
+
+Simple version :
+
+--- Code
+int SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0);
+---
+
+Replace an existing MessageBox call :
+
+--- Code
+int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption,
+			     UINT uType, DWORD dwMilliseconds = 0);
+---
+
+SpoutMessageBox uses "SpoutPanel.exe", usually used to display a sender list, so Spoutsettings must have been run at least once. If not found, a standard, untimed, topmost messagebox is used.
+
+Group: Registry utilities
+
+Utility functions to read and write from the registry are now in the SpoutUtils namespace.
+
+An "HKEY" argument has been added to make them more general purpose and order of arguments has been revised.
+
+--- Code
+bool ReadDwordFromRegistry(HKEY hKey, const char *subkey,
+		const char *valuename, DWORD *pValue);
+bool WriteDwordToRegistry(HKEY hKey, const char *subkey,
+		const char *valuename, DWORD dwValue);
+bool ReadPathFromRegistry(HKEY hKey, const char *subkey,
+		const char *valuename, char *filepath);
+bool WritePathToRegistry(HKEY hKey, const char *subkey,
+		const char *valuename, const char *filepath);
+bool RemovePathFromRegistry(HKEY hKey, const char *subkey,
+		const char *valuename);
+bool RemoveSubKey(HKEY hKey, const char *subkey);
+bool FindSubKey(HKEY hKey, const char *subkey);
+---
+
