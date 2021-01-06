@@ -72,8 +72,6 @@ struct SPOUTLIBRARY
 	// Sender
 	//
 
-	// Set name for sender creation
-	//   If no name is specified, the executable name is used.  
 	virtual void SetSenderName(const char* sendername = nullptr) = 0;
 	// Set the sender DX11 shared texture format
 	virtual void SetSenderFormat(DWORD dwFormat) = 0;
@@ -236,19 +234,6 @@ struct SPOUTLIBRARY
 
 	// -----------------------------------------
 
-	//
-	// 2.006  compatibility
-	//
-
-	// Create a sender
-	virtual bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0) = 0;
-	// Update a sender
-	virtual bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height) = 0;
-	// Create receiver connection
-	virtual bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false) = 0;
-	// Check receiver connection
-	virtual bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected) = 0;
-
 	// Initialization status
 	virtual bool IsInitialized() = 0;
 	// Bind OpenGL shared texture
@@ -295,6 +280,14 @@ struct SPOUTLIBRARY
 	// 2.006 compatibility
 	//
 
+	// Create a sender
+	virtual bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0) = 0;
+	// Update a sender
+	virtual bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height) = 0;
+	// Create receiver connection
+	virtual bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false) = 0;
+	// Check receiver connection
+	virtual bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected) = 0;
 	// Get user DX9 mode
 	virtual bool GetDX9() = 0;
 	// Set user DX9 mode
