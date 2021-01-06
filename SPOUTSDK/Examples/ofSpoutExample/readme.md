@@ -12,7 +12,7 @@ These are not set up as an addon, so they must be copied to a "SpoutGL" folder w
 	  addons <- Openframeworks addons
 	  examples <- Openframeworks examples
 	  apps
-	      SpoutGL <- create this folder (under "apps") and copy the files in the Spout SDK "SpoutGL" folder into it
+	      SpoutGL <- create this folder under "apps" and copy the source files in the "SpoutGL" folder into it
 	          .
 		  . Spout SDK source files
 	          .
