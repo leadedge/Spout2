@@ -10,11 +10,11 @@ Options
 
 o Buffer - use OpenGL pixel buffering to copy data GPU < > CPU.
 o Number of buffers - number of buffers allocated from 2 to 4.
+o Auto share - detect graphics compatibility and use either CPU or GPU for texture sharing.
 
-OpenGL pixel buffers are used to speed up data transfer between system memory and GPU for pixel images and CPU backup mode.
-Buffering is faster but might result in latency. Test for your application. 
-More buffers can improve performance but sufficient memory must be available. 
-Reduce the number or disable buffering for any problems.
+- Buffer : OpenGL pixel buffers are used to speed up data transfer between system memory and GPU for pixel images and CPU backup mode. Buffering is faster but might result in latency. Test for your application. 
+- Number of buffers : More buffers can improve performance but sufficient memory must be available. Reduce the number or disable buffering for any problems.
+- Auto share : leave check on normally. But if you suspect that CPU backup is occuring, check it off to find out. In that case, sharing will simply fail and the application will not send or receive. Then you should investigate graphics compatibility.
 
 o Maximum Senders
 
@@ -29,6 +29,14 @@ For laptop computers with dual graphics and NVIDIA Optimus power saving technolo
 The mode of operation can be changed to enable the high performance NVIDIA graphics globally for all applications.
 This over-rides the NVIDIA control panel settings and can be useful where there is difficulty in adjusting them.
 This will not have any effect if the computer does not have Optimus graphics or is not NVIDIA.
+
+o Help
+
+Use the help button for each item for more information.
+
+o Diagnostics
+
+Shows details of the graphics system and compatibility for OpenGL/DirectX texture sharing.
 
 o Registry
 
