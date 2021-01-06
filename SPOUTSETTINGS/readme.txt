@@ -9,12 +9,13 @@ close the program and use Windows Control Panel to un-install Spout.
 Options
 
 o Buffer - use OpenGL pixel buffering to copy data GPU < > CPU.
-o Number of buffers - number of buffers allocated from 2 to 4.
-o Auto share - detect graphics compatibility and use either CPU or GPU for texture sharing.
+OpenGL pixel buffers are used to speed up data transfer between system memory and GPU for pixel images and CPU backup mode. Buffering is faster but might result in latency. Test for your application. 
 
-- Buffer : OpenGL pixel buffers are used to speed up data transfer between system memory and GPU for pixel images and CPU backup mode. Buffering is faster but might result in latency. Test for your application. 
-- Number of buffers : More buffers can improve performance but sufficient memory must be available. Reduce the number or disable buffering for any problems.
-- Auto share : leave check on normally. But if you suspect that CPU backup is occuring, check it off to find out. In that case, sharing will simply fail and the application will not send or receive. Then you should investigate graphics compatibility.
+o Number of buffers - number of buffers allocated from 2 to 4.
+More buffers can improve performance but sufficient memory must be available. Reduce the number or disable buffering for any problems.
+
+o Auto share - detect graphics compatibility and use either CPU or GPU for texture sharing.
+Leave this option checked on normally. But if you suspect that CPU backup is occurring, check it off to find out. In that case, sharing will simply fail and the application will not send or receive. Then you should investigate graphics compatibility to achieve optimum performance.
 
 o Maximum Senders
 
