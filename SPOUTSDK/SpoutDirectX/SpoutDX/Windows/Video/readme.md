@@ -10,6 +10,9 @@ FFmpeg.exe, FFprobe.exe and an example movie are required.
 * Choose the Windows static build and download the archive.
 * Unzip the archive and copy bin\FFmpeg.exe and bin\FFprobe.exe to : &nbsp;DATA\FFMPEG
 * Copy the entire DATA folder to the folder containing the executable file.\
-This may be, for example, "..\SpoutDriectX\SpoutDX\Windows\Video\x64\Release".
+This may be, for example, "..\SpoutDirectX\SpoutDX\Windows\Video\x64\Release".
 
-After the program has started, you can use File < Open to load different movie files.
+Note that the "x64\Release" folder already contains FFMPEG and MOVIE folders as well as an example movie and prebuilt executable. Do not delete the folder. These files will not be over-writtten by a Visual Studio build.
+
+After the FFmpeg files are in place, the pre-built executable can be used for preliminary testing. When the program is running, you can use File < Open to load different movie files.
+
