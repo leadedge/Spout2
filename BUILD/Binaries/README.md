@@ -1,4 +1,4 @@
-This folder contains files from a Cmake build\
+This folder will contain files from a Cmake build\
 For :\
   SpoutSDK - the Spout SDK as a dynamic dll\
   SpoutLibrary - C-compatible library dynamic dll\
