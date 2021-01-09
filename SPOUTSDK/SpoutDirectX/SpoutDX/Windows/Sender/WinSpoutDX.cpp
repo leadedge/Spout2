@@ -17,7 +17,7 @@
 	Compare with a more extensive example sending video frames.
     Compare also with the DirectX 11 Tutorial04 sender example using SendTexture.
 
-                 Copyright(C) 2020 Lynn Jarvis.
+                 Copyright(C) 2021 Lynn Jarvis.
 
     This program is free software : you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -162,6 +162,23 @@ void Render()
 	InvalidateRect(g_hWnd, NULL, FALSE);
 	UpdateWindow(g_hWnd); // Update immediately
 
+	//
+	// Screen capture works alright but alpha is 0 (transparent) for the whole image.
+	// Some applications using alpha might display the received image as black.
+	//
+	// Remember that this is an example of using SpoutDX and not Windows methods and
+	// capture screen is the way we get the pixels. But if you actually need to use 
+	// Windows methods, you might have to convert alpha of all the pixels to 255 (opaque).
+	//
+	// We can fix it with following part which looks nasty, but tests show about
+	// 0.16 msec which might not be relevant for the 17msec frame time at 60fps.
+	//
+	unsigned char *pixels = g_pixelBuffer;
+	for (int i = 0; i < (int)(g_SenderHeight*g_SenderWidth); i++) {
+		*(pixels + 3) = 255; // alpha is the last of the 4 bytes - set from 0 to 255
+		pixels += 4; // move the pointer along to the next rgba pixel
+	}
+
 	// Send the pixels
 	sender.SendImage(g_pixelBuffer, g_SenderWidth, g_SenderHeight);
 
@@ -172,7 +189,7 @@ void Render()
 	// This is not necessary if the application already has
 	// fps control. But in this example rendering is done
 	// during idle time and render rate can be extremely high.
-	sender.HoldFps(60);
+	sender.HoldFps(30);
 
 }
 
@@ -300,6 +317,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			//
 			// Draw the image bitmap
 			//
+
+			// LJ DEBUG
+			// http://www.winprog.org/tutorial/transparency.html
 
 			// Get the client area
 			RECT rcClient;
