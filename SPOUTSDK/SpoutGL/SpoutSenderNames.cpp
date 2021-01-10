@@ -63,7 +63,6 @@
 	23.10.20 - Add CleanSenders
 	28.12.20 - Protect against null name in SetActiveSender
 
-
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2021, Lynn Jarvis. All rights reserved.
 

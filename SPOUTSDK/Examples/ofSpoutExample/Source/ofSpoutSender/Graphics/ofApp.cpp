@@ -144,7 +144,9 @@ void ofApp::setup(){
 	// Give the sender a name
 	// If no name is specified, the executable name is used.
 	sender.SetSenderName(sendername);
-	
+	// Update caption in case of multiples of the same sender
+	ofSetWindowTitle(sender.GetName());
+
 
 } // end setup
 

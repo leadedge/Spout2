@@ -179,6 +179,7 @@
 //					  Remove DX9 support
 //					  CPU backup enhanced using dual DirectX staging textures
 //					  Auto switch to CPU backup if GL/DX incompatible
+//		10.01.21	- Add auto increment of sender name to SetSenderName if the sender already exists
 //
 // ====================================================================================
 /*
@@ -303,6 +304,20 @@ void Spout::SetSenderName(const char* sendername)
 	else {
 		strcpy_s(m_SenderName, 256, sendername);
 	}
+
+	// If a sender with this name is already registered, create an incremented name
+	int i = 1;
+	char name[256];
+	strcpy_s(name, 256, m_SenderName);
+	if (sendernames.FindSenderName(name)) {
+		do {
+			sprintf_s(name, 256, "%s_%d", m_SenderName, i);
+			i++;
+		} while (sendernames.FindSenderName(name));
+	}
+	// Re-set the global sender name
+	strcpy_s(m_SenderName, 256, name);
+
 }
 
 //---------------------------------------------------------
@@ -1624,8 +1639,29 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 
 	// The sender needs a name
 	// Default is the executable name
-	if (!m_SenderName[0])
+	if (!m_SenderName[0]) {
 		SetSenderName();
+		/*
+		// If a sender with this name is already registered, create an incremented name
+		int i = 1;
+		char sendername[256];
+		strcpy_s(sendername, 256, m_SenderName);
+		if (sendernames.FindSenderName(sendername)) {
+			do {
+				
+				printf("    CheckSender [%s] exists\n\n", sendername);
+
+				sprintf_s(sendername, 256, "%s_%d", m_SenderName, i);
+				i++;
+			} while (sendernames.FindSenderName(sendername));
+		}
+		// Re-set the global sender name
+		strcpy_s(m_SenderName, 256, sendername);
+
+		printf("    CheckSender global name [%s]\n\n", m_SenderName);
+		*/
+
+	}
 	   
 	// printf("CheckSender 0 (%d) %dx%d\n", sendernames.GetSenderCount(), width, height);
 
