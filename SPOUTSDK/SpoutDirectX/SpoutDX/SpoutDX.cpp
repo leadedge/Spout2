@@ -83,6 +83,7 @@
 //		08.12.20	- Add GetDX11Context
 //		09.12.20	- Rename CleanupDX11 to CloseDirectX11
 //					  Add auto adapter switch into ReceiveSenderData if a class device was created.
+//		10.01.21	- Add auto increment of sender name to SetSenderName if the sender already exists
 //
 // ====================================================================================
 /*
@@ -245,6 +246,20 @@ bool spoutDX::SetSenderName(const char* sendername)
 	else {
 		strcpy_s(m_SenderName, 256, sendername);
 	}
+
+	// If a sender with this name is already registered, create an incremented name
+	int i = 1;
+	char name[256];
+	strcpy_s(name, 256, m_SenderName);
+	if (sendernames.FindSenderName(name)) {
+		do {
+			sprintf_s(name, 256, "%s_%d", m_SenderName, i);
+			i++;
+		} while (sendernames.FindSenderName(name));
+	}
+	// Re-set the global sender name
+	strcpy_s(m_SenderName, 256, name);
+
 	return true;
 }
 

@@ -44,8 +44,6 @@
 #include <TlHelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
 
-using namespace spoututils;
-
 class SPOUT_DLLEXP spoutDX {
 
 	public:

@@ -153,11 +153,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// Default sender format is BGRA.
 	// The same format must also be specifed for FFmpeg video data (see OpenVideo).
 	// If FFmpeg RGBA video format is required, the sender format can be changed to match.
-	// sender.SetSenderFormat(DXGI_FORMAT_R8G8B8A8_UNORM);
+	sender.SetSenderFormat(DXGI_FORMAT_B8G8R8A8_UNORM);
 
 	// Give the sender a name
 	// If no name is specified, the executable name is used
 	sender.SetSenderName("Simple video sender");
+	// Adjust the caption in case of multiple senders of the same name
+	SetWindowTextA(g_hWnd, sender.GetName());
 
 	// ===============================================
 

@@ -100,10 +100,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	g_SenderHeight = g_BitmapHeight;
 	g_pixelBuffer = new unsigned char[g_SenderWidth * g_SenderHeight * 4];
 
-	// Give the sender a name
-	// If no name is specified, the executable name is used
-	sender.SetSenderName("Windows sender");
-
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_WINSPOUTDX, szWindowClass, MAX_LOADSTRING);
@@ -125,6 +121,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// Optionally give the sender a name
 	// If none is specified, the executable name is used
 	sender.SetSenderName("Simple Windows sender");
+	// Adjust the caption in case of multiple senders of the same name
+	SetWindowTextA(g_hWnd, sender.GetName());
 	
     // Main message loop:
 	MSG msg = { 0 };
@@ -163,16 +161,13 @@ void Render()
 	UpdateWindow(g_hWnd); // Update immediately
 
 	//
-	// Screen capture works alright but alpha is 0 (transparent) for the whole image.
-	// Some applications using alpha might display the received image as black.
+	// Windows screen capture to rgba produces alpha 0 for the whole image.
+	// Some applications might display the received image as black
+	// so alpha of all the pixels should be converted to 255. 
+	// Tests show that the following consumes
+	// 0.6 msec at 1280x720 and 1.5 msec at 1920x1080
 	//
-	// Remember that this is an example of using SpoutDX and not Windows methods and
-	// capture screen is the way we get the pixels. But if you actually need to use 
-	// Windows methods, you might have to convert alpha of all the pixels to 255 (opaque).
-	//
-	// We can fix it with following part which looks nasty, but tests show about
-	// 0.16 msec which might not be relevant for the 17msec frame time at 60fps.
-	//
+
 	unsigned char *pixels = g_pixelBuffer;
 	for (int i = 0; i < (int)(g_SenderHeight*g_SenderWidth); i++) {
 		*(pixels + 3) = 255; // alpha is the last of the 4 bytes - set from 0 to 255
