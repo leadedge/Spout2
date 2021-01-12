@@ -62,6 +62,7 @@
 	29.09.20 - Add hasSharedInfo - to test for shared info memory map existence
 	23.10.20 - Add CleanSenders
 	28.12.20 - Protect against null name in SetActiveSender
+	12.01.21 - Add CleanSenders to CreateSender
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2021, Lynn Jarvis. All rights reserved.
@@ -619,6 +620,9 @@ bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, 
 	SpoutLogNotice("spoutSenderNames::CreateSender");
 	SpoutLogNotice("    [%s] %dx%d, share handle = 0x%.7X, format = %u", sendername, width, height, LOWORD(hSharehandle), dwFormat);
 
+	// Release any orphaned senders first
+	CleanSenders();
+
 	// Register the sender name
 	// The function is ignored if the sender already exists
 	RegisterSenderName(sendername);
@@ -783,9 +787,11 @@ void spoutSenderNames::CleanSenders()
 		for (iter = Senders.begin(); iter != Senders.end(); iter++) {
 			namestring = *iter; // the Sender name string
 			strcpy_s(name, namestring.c_str());
+
 			// we have the name already, so look for it's info
 			if (!getSharedInfo(name, &info)) {
 				// Sender does not exist any more so release from the name list
+				// printf("[%s] does not exist any more\n", name);
 				ReleaseSenderName(name);
 			}
 		}

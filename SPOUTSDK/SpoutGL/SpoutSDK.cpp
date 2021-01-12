@@ -179,7 +179,8 @@
 //					  Remove DX9 support
 //					  CPU backup enhanced using dual DirectX staging textures
 //					  Auto switch to CPU backup if GL/DX incompatible
-//		10.01.21	- Add auto increment of sender name to SetSenderName if the sender already exists
+//		10.01.21	- SetSenderName - auto increment of sender name if the sender already exists
+//		12.01.21	- Release orphaned senders in SelectSenderPanel
 //
 // ====================================================================================
 /*
@@ -261,6 +262,7 @@ Spout::Spout()
 	m_AdapterNumber = GetNumAdapters();
 	m_AdapterIndex = spoutdx.GetAdapter();
 	GetAdapterName(m_AdapterIndex, m_AdapterName, 256);
+
 }
 
 Spout::~Spout()
@@ -1474,6 +1476,12 @@ bool Spout::SelectSenderPanel(const char *message)
 	hMutex1 = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 	if (!hMutex1) {
 		// No mutex, so not running, so can open it
+		
+		// First release any orphaned senders if the name exists
+		// in the sender list but the shared memory info does not
+		// So that the sender list is clean
+		sendernames.CleanSenders();
+
 		// Use ShellExecuteEx so we can test its return value later
 		ZeroMemory(&m_ShExecInfo, sizeof(m_ShExecInfo));
 		m_ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
