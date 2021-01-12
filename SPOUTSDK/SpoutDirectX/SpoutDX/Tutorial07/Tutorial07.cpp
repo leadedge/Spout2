@@ -2,7 +2,7 @@
 // File: Tutorial07.cpp
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Adapted for SPOUT output (https://spout.zeal.co/)
+// Adapted for SPOUT output (http://spout.zeal.co/)
 // from : https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
 // Search on "SPOUT" for additions.
 //
@@ -109,11 +109,19 @@ void Render();
 
 // SPOUT
 spoutDX receiver;
-// Texture received from a sender (created after connecting to a sender)
-ID3D11Texture2D* g_pReceivedTexture = nullptr; 
+ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
+// (The texture is created after connecting to a sender)
 ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view of the texture
-int g_CurrentAdapter = -1; // -1 means none set
+// Functions for selecting graphics adapter
+void ResetDevice();
+void SelectAdapter();
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+static std::string adaptername[10];
+static int adaptercount = 0;
+static int currentadapter = 0;
+static int selectedadapter = 0;
+static int senderadapter = 0;
 
 //--------------------------------------------------------------------------------------
 // Entry point to the program. Initializes everything and goes into a message processing 
@@ -124,22 +132,20 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     UNREFERENCED_PARAMETER( hPrevInstance );
     UNREFERENCED_PARAMETER( lpCmdLine );
 
+	//
 	// SPOUT
-
-	//
-	// Options
 	//
 
-	// Enable Spout logging
+	// Optionally enable Spout logging
 	// OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
-	// Set the name of the sender to receive from.
+	// Optionally set the name of the sender to receive from
 	// The receiver will only connect to that sender.
 	// The user can over-ride this by selecting another.
-	// receiver.SetReceiverName("Spout Demo Sender");
+	// receiver.SetReceiverName("Spout DX11 Sender");
 
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
@@ -150,13 +156,24 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         return 0;
     }
 
-	// Initialize DirectX for Spout.
-	// If a DirectX 11 device is available, the pointer must be passed in.
-	// See also the SpoutDX Windows examples where a device is created.
-	// If a device has already been created within the SpoutDX class
-	// and g_pd3dDevice retreived from it, this function has no effect.
+	//
+	// SPOUT
+	//
+
+	// Initialize DirectX.
+	// The device pointer must be passed in if a DirectX 11.0 device is available.
+	// Otherwise a device is created in the SpoutDX class and the The function 
+	// does nothing if a class device was already created.
+	// See above for graphics adapter selection.
 	if (!receiver.OpenDirectX11(g_pd3dDevice))
 		return FALSE;
+
+	// Graphics adapter selection is developmental.
+	// If a class device was not created, remove the menu option.
+	if (!receiver.IsClassDevice()) {
+		HMENU hPopup = GetSubMenu(GetMenu(g_hWnd), 0);
+		RemoveMenu(hPopup, IDM_ADAPTER, MF_BYCOMMAND);
+	}
 
 	// Main message loop
     MSG msg = {0};
@@ -288,99 +305,87 @@ HRESULT CompileShaderFromFile( const WCHAR* szFileName, LPCSTR szEntryPoint, LPC
 HRESULT InitDevice()
 {
     HRESULT hr = S_OK;
-	RECT rc;
-	GetClientRect(g_hWnd, &rc);
-	UINT width = rc.right - rc.left;
-	UINT height = rc.bottom - rc.top;
 
-    //
+    RECT rc;
+    GetClientRect( g_hWnd, &rc );
+    UINT width = rc.right - rc.left;
+    UINT height = rc.bottom - rc.top;
+
+	//
 	// SPOUT
 	//
-	
-	// Note that if the graphics adapter used to create the device
-	// is different to the adapter used by the received sender,
-	// textures cannot be copied between the two adapters.
-	//
-	// However, the user can select an option in SpoutSettings for
-	// the receiver to switch to the sender graphics adapter if different.
-	// The application device then has to be changed using that adapter.
-	//
-	// Instead of managing that within the example application itself,
-	// we can create a device using the SpoutDX class and use that.
-	// SpoutDX can then handle device re-creation when the adapter is changed.
-	//
-	// Note that a DirectX application does not have to take account of
-	// graphics compatibility with the NVIDIA GL/DX interop extension for OpenGL.
-	// A sender always produces a DirectX shared texture which is refreshed
-	// either by OpenGL or via CPU depending on compatibility.
-	// The DirectX receiver handles texture copy with CopyResource using the GPU.
-	//
 
-	if (receiver.GetAdapt()) {
-		// The user has selected auto switching to the sender adpater
-		// Create a device within the SpoutDX class
-		if (receiver.OpenDirectX11()) {
-			// Retrieve the device and immediate context pointers
-			g_pd3dDevice = receiver.GetDX11Device();
-			g_pImmediateContext = receiver.GetDX11Context();
-			// Get the current graphics adapter index to test for change
-			g_CurrentAdapter = receiver.GetAdapter();
-		}
-		else {
-			return S_FALSE;
-		}
+	// Optionally create a device within the SpoutDX class.
+	// IsClassDevice() will return whether this has been done.
+	//
+	// Use the current graphics adapter index (currentadapter)
+	// This can then be selected by the user - see SelectAdapter()
+	//
+	// Both sender and receiver must be using the same graphics adapter
+	// Graphics adapter selection is intended for for development work
+	// If this is used, don't forget to comment out the application device creation below
+
+	/*
+	// ===============================================================
+	if (receiver.OpenDirectX11()) {
+		g_pd3dDevice = receiver.GetDX11Device();
+		g_pImmediateContext = receiver.GetDX11Context();
 	}
 	else {
+		return 0;
+	}
+	// ===============================================================
+	*/
 
-		// Create an application device
 
-		UINT createDeviceFlags = 0;
+	// ===============================================================
+	UINT createDeviceFlags = 0;
 #ifdef _DEBUG
-		createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
-		// SPOUT note
-		// GL/DX interop Spec
-		// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
+	// SPOUT note
+	// GL/DX interop Spec
+	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
 
-		D3D_DRIVER_TYPE driverTypes[] =
+	D3D_DRIVER_TYPE driverTypes[] =
+	{
+		D3D_DRIVER_TYPE_HARDWARE,
+		D3D_DRIVER_TYPE_WARP,
+		D3D_DRIVER_TYPE_REFERENCE,
+	};
+	UINT numDriverTypes = ARRAYSIZE(driverTypes);
+
+	D3D_FEATURE_LEVEL featureLevels[] =
+	{
+		D3D_FEATURE_LEVEL_11_1,
+		D3D_FEATURE_LEVEL_11_0,
+		D3D_FEATURE_LEVEL_10_1,
+		D3D_FEATURE_LEVEL_10_0,
+	};
+	UINT numFeatureLevels = ARRAYSIZE(featureLevels);
+
+	for (UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++)
+	{
+		g_driverType = driverTypes[driverTypeIndex];
+		hr = D3D11CreateDevice(nullptr, g_driverType, nullptr, createDeviceFlags, featureLevels, numFeatureLevels,
+			D3D11_SDK_VERSION, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext);
+
+		if (hr == E_INVALIDARG)
 		{
-			D3D_DRIVER_TYPE_HARDWARE,
-			D3D_DRIVER_TYPE_WARP,
-			D3D_DRIVER_TYPE_REFERENCE,
-		};
-		UINT numDriverTypes = ARRAYSIZE(driverTypes);
-
-		D3D_FEATURE_LEVEL featureLevels[] =
-		{
-			D3D_FEATURE_LEVEL_11_1,
-			D3D_FEATURE_LEVEL_11_0,
-			D3D_FEATURE_LEVEL_10_1,
-			D3D_FEATURE_LEVEL_10_0,
-		};
-		UINT numFeatureLevels = ARRAYSIZE(featureLevels);
-
-		for (UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++)
-		{
-			g_driverType = driverTypes[driverTypeIndex];
-
-			hr = D3D11CreateDevice(nullptr, g_driverType, nullptr, createDeviceFlags, featureLevels, numFeatureLevels,
+			// DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1 so we need to retry without it
+			hr = D3D11CreateDevice(nullptr, g_driverType, nullptr, createDeviceFlags, &featureLevels[1], numFeatureLevels - 1,
 				D3D11_SDK_VERSION, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext);
-
-			if (hr == E_INVALIDARG)
-			{
-				// DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1 so we need to retry without it
-				hr = D3D11CreateDevice(nullptr, g_driverType, nullptr, createDeviceFlags, &featureLevels[1], numFeatureLevels - 1,
-					D3D11_SDK_VERSION, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext);
-			}
-
-			if (SUCCEEDED(hr))
-				break;
 		}
-		if (FAILED(hr))
-			return hr;
 
+		if (SUCCEEDED(hr))
+			break;
 	}
+	if (FAILED(hr))
+		return hr;
+	// ===============================================================
+
+
 
     // Obtain DXGI factory from device (since we used nullptr for pAdapter above)
     IDXGIFactory1* dxgiFactory = nullptr;
@@ -752,11 +757,9 @@ void ResetDevice()
 	// Release everything
 	receiver.ReleaseReceiver();
 	receiver.CloseDirectX11();
-
-	// Re-create device and objects
 	CleanupDevice();
+	// Create device and objects again
 	InitDevice();
-
 	// SpoutDX will now use the new device
 	receiver.OpenDirectX11(g_pd3dDevice);
 }
@@ -777,6 +780,9 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 		// Parse the menu selections:
 		switch (LOWORD(wParam))
 		{
+			case IDM_ADAPTER:
+				SelectAdapter();
+				break;
 			case IDM_ABOUT:
 				DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), g_hWnd, About);
 				break;
@@ -793,7 +799,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
         EndPaint( hWnd, &ps );
         break;
 
-	// SPOUT - RH click to select a sender
+	// SPOUT - RH click to open SpoutPanel
 	case WM_RBUTTONDOWN:
 		receiver.SelectSender();
 		break;
@@ -850,8 +856,8 @@ void Render()
 		//		long GetSenderFrame();
 		//		double GetSenderFps();
 		//
-		// Create or re-create the receiving texture
-		// for a new sender or if the sender size changed
+		// Create or re-create the receiving texture for a new sender
+		// or if the sender size changed
 		if (receiver.IsUpdated()) {
 
 			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
@@ -863,21 +869,10 @@ void Render()
 						&g_pReceivedTexture);
 
 			// Any other action required by the receiver can be done here
-			// In this example, clear the shader resource view so that the default is used
+			// In this example, clear the shader resource view
 			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 			g_pSpoutTextureRV = nullptr;
 
-			// If the device was created within the SpoutDX class (See InitDevice)
-			// check whether the received sender graphics adapter is different
-			if (g_CurrentAdapter >= 0 && g_CurrentAdapter != receiver.GetAdapter()) {
-				if (receiver.SetAdapter(receiver.GetAdapter())) {
-					// Save the selected adapter
-					g_CurrentAdapter = receiver.GetAdapter();
-					// Reset everything to create a new device with the selected adapter
-					ResetDevice();
-					return;
-				}
-			}
 		}
 
 		// A texture has been received
@@ -976,6 +971,8 @@ void Render()
 
 }
 
+
+
 // Message handler for about box.
 // SPOUT : adapted for this example.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -1011,7 +1008,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		SetTextColor(lpdis->hDC, RGB(6, 69, 173));
 		switch (lpdis->CtlID) {
 		case IDC_SPOUT_URL:
-			DrawTextA(lpdis->hDC, "https://spout.zeal.co", -1, &lpdis->rcItem, DT_LEFT);
+			DrawTextA(lpdis->hDC, "http://spout.zeal.co", -1, &lpdis->rcItem, DT_LEFT);
 			break;
 		default:
 			break;
@@ -1022,7 +1019,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 		if (LOWORD(wParam) == IDC_SPOUT_URL) {
 			// Open the website url
-			sprintf_s(tmp, MAX_PATH, "https://spout.zeal.co");
+			sprintf_s(tmp, MAX_PATH, "http://spout.zeal.co");
 			ShellExecuteA(hDlg, "open", tmp, NULL, NULL, SW_SHOWNORMAL);
 			EndDialog(hDlg, 0);
 			return (INT_PTR)TRUE;
@@ -1038,5 +1035,103 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	return (INT_PTR)FALSE;
 }
 
+
+void SelectAdapter()
+{
+	currentadapter = receiver.GetAdapter(); // Get the current adapter index
+	selectedadapter = currentadapter; // The index to be selected in the dialog
+	// Create an adapter name list for the dialog
+	adaptercount = receiver.GetNumAdapters();
+	adaptername->clear();
+	char name[64];
+	for (int i = 0; i < adaptercount; i++) {
+		receiver.GetAdapterName(i, name, 64);
+		adaptername[i] = name;
+	}
+
+	// Show the dialog box 
+	int retvalue = (int)DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ADAPTERBOX), g_hWnd, (DLGPROC)AdapterProc);
+
+	if (retvalue != 0) {
+		// OK - adapter index (selectedadapter) has been selected
+		// Set the selected adapter if different
+		if (selectedadapter != currentadapter) {
+
+			SpoutLogNotice("Tutorial07 : selectedadapter = %d, currentadapter = %d", selectedadapter, currentadapter);
+
+			// A new sender using the selected adapter will be detected
+			// on the first ReceiveTexture call (Requires 2.007)
+			receiver.ReleaseReceiver();
+			if (!receiver.SetAdapter(selectedadapter)) {
+				// SetAdapter returns to the primary adapter for failure
+				// Refer to error logs for diagnostics
+				MessageBoxA(NULL, "Could not select graphics adapter", "Tutorial07", MB_OK | MB_TOPMOST | MB_ICONEXCLAMATION);
+				// Set the adapter back to what it was (the compatibility test is repeated)
+				receiver.SetAdapter(currentadapter);
+			}
+			else {
+				// Change the application current adapter index to the one selected
+				// This will take effect when the sender is re-created
+				currentadapter = selectedadapter;
+			}
+			// Reset everything to create a new device with the selected adapter
+			ResetDevice();
+		}
+	}
+}
+
+// Message handler for selecting adapter
+INT_PTR  CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam); // suppress warning
+
+	HWND hwndList = NULL;
+	int i = 0;
+	char name[128];
+
+	switch (message) {
+
+	case WM_INITDIALOG:
+		// Adapter combo selection
+		hwndList = GetDlgItem(hDlg, IDC_ADAPTERS);
+		if (adaptercount < 10) {
+			for (i = 0; i < adaptercount; i++) {
+				sprintf_s(name, 128, "%d : %s", i, adaptername[i].c_str());
+				SendMessageA(hwndList, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)name);
+			}
+			// Display an initial item in the selection field
+			SendMessageA(hwndList, CB_SETCURSEL, (WPARAM)currentadapter, (LPARAM)0);
+		}
+		return TRUE;
+
+	case WM_COMMAND:
+
+		// Combo box selection
+		if (HIWORD(wParam) == CBN_SELCHANGE) {
+			selectedadapter = (int)SendMessageA((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+		}
+		// Drop through
+
+		switch (LOWORD(wParam)) {
+
+		case IDOK:
+			// Return the selected adapter index
+			EndDialog(hDlg, 1);
+			break;
+
+		case IDCANCEL:
+			// User pressed cancel.
+			// Reset the selected index and take down dialog box.
+			selectedadapter = currentadapter;
+			EndDialog(hDlg, 0);
+			return (INT_PTR)TRUE;
+
+		default:
+			return (INT_PTR)FALSE;
+		}
+	}
+
+	return (INT_PTR)FALSE;
+}
 
 // That's all..

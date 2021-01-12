@@ -84,6 +84,8 @@
 //		09.12.20	- Rename CleanupDX11 to CloseDirectX11
 //					  Add auto adapter switch into ReceiveSenderData if a class device was created.
 //		10.01.21	- Add auto increment of sender name to SetSenderName if the sender already exists
+//		11.01.21	- Add IsClassDevice()
+//		12.01.21	- Release orphaned senders in SelectSenderPanel
 //
 // ====================================================================================
 /*
@@ -229,6 +231,12 @@ void spoutDX::CloseDirectX11()
 	m_pd3dDevice = nullptr;
 	m_pImmediateContext = nullptr;
 
+}
+
+// Was a device was created using the SpoutDirectX class
+bool spoutDX::IsClassDevice()
+{
+	return m_bClassDevice;
 }
 
 //---------------------------------------------------------
@@ -899,6 +907,26 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 		// and specifying the same texture format
 		m_bSpoutInitialized = sendernames.CreateSender(m_SenderName, m_Width, m_Height, m_dxShareHandle, m_dwFormat);
 		
+		// LJ DEBUG
+		// This could be a separate function SetHostPath
+		SharedTextureInfo info;
+		if (!sendernames.getSharedInfo(m_SenderName, &info)) {
+			SpoutLogWarning("spoutGL::SetHostPath(%s) - could not get sender info", m_SenderName);
+			// printf("spoutGL::SetHostPath(%s) - could not get sender info\n", m_SenderName);
+			return false;
+		}
+		char exepath[256];
+		GetModuleFileNameA(NULL, exepath, sizeof(exepath));
+		// Description is defined as wide chars, but the path is stored as byte chars
+		strcpy_s((char*)info.description, 256, exepath);
+		if (!sendernames.setSharedInfo(m_SenderName, &info)) {
+			SpoutLogWarning("spoutGL::SetHostPath(%s) - could not set sender info", m_SenderName);
+			// printf("spoutGL::SetHostPath(%s) - could not set sender info\n", m_SenderName);
+		}
+
+		// printf("exepath = [%s]\n", exepath);
+
+
 		// Create a sender mutex for access to the shared texture
 		frame.CreateAccessMutex(m_SenderName);
 		
@@ -1320,6 +1348,12 @@ void spoutDX::SelectSenderPanel()
 	hMutex1 = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 	if (!hMutex1) {
 		// No mutex, so not running, so can open it
+
+		// First release any orphaned senders if the name exists
+		// in the sender list but the shared memory info does not
+		// So that the sender list is clean
+		sendernames.CleanSenders();
+
 		// Use ShellExecuteEx so we can test its return value later
 		ZeroMemory(&m_ShExecInfo, sizeof(m_ShExecInfo));
 		m_ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);

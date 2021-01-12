@@ -58,6 +58,7 @@ class SPOUT_DLLEXP spoutDX {
 	ID3D11Device* GetDX11Device();
 	ID3D11DeviceContext* GetDX11Context();
 	void CloseDirectX11();
+	bool IsClassDevice();
 
 	//
 	// SENDER
