@@ -181,6 +181,10 @@
 //					  Auto switch to CPU backup if GL/DX incompatible
 //		10.01.21	- SetSenderName - auto increment of sender name if the sender already exists
 //		12.01.21	- Release orphaned senders in SelectSenderPanel
+//					- CheckSender : write host path to the sender shared memory Description field
+//					  in spoutSenderNames::CreateSender
+//		13.01.21	- Release orphaned senders in SpoutPanel.exe instead of SelectSenderPanel
+//					  Additional checks for un-registered senders
 //
 // ====================================================================================
 /*
@@ -1476,12 +1480,6 @@ bool Spout::SelectSenderPanel(const char *message)
 	hMutex1 = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 	if (!hMutex1) {
 		// No mutex, so not running, so can open it
-		
-		// First release any orphaned senders if the name exists
-		// in the sender list but the shared memory info does not
-		// So that the sender list is clean
-		sendernames.CleanSenders();
-
 		// Use ShellExecuteEx so we can test its return value later
 		ZeroMemory(&m_ShExecInfo, sizeof(m_ShExecInfo));
 		m_ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
@@ -1701,13 +1699,19 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 				m_Height = height;
 
 				// TODO : not optimal
-				// Fill structure before create ?
+
+				// SetSenderCPUmode reads and writes to the sender shared texture memory.
+				// Can this be done when the sender is created and before this is called using a global?
+				// spoutSenderNames::CreateSender(m_SenderName, width, height, m_dxSharehandle, m_dwFormat, m_bCPU);
+				// Need m_bCPU = !m_bUseGLDX
+
 				// Set CPU sharing mode (i.e. not GL/DX compatible)
 				// to the top bit of 32 bit partnerID field in sender shared memory
 				SetSenderCPUmode(m_SenderName, !m_bUseGLDX);
-
+				 
 				// Write host path to the sender shared memory Description field
-				SetHostPath(m_SenderName);
+				// (Now done in spoutSenderNames::CreateSender)
+				// SetHostPath(m_SenderName);
 
 				// Get current adapter index and name
 				m_AdapterIndex = spoutdx.GetAdapter();
