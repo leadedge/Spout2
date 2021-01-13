@@ -18,7 +18,7 @@ Number of buffers allocated from 2 to 4. More buffers can improve performance bu
 
 o Auto share
 
-Detect graphics compatibility and use either CPU or GPU for texture sharing. Leave this option checked on normally. But if you suspect that CPU backup is occurring, check it off to find out. In that case, sharing will simply fail and the application will not send or receive. Then you should investigate graphics compatibility to achieve optimum performance.
+Detect graphics compatibility and use either CPU or GPU for texture sharing. Leave this option checked on normally. But if you suspect that CPU sharing is occurring, check it off to find out. In that case, sharing will simply fail and the application will not send or receive. Then you should investigate graphics compatibility to achieve optimum performance.
 
 o Maximum Senders
 
