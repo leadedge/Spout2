@@ -17,7 +17,7 @@
 
 =========================================================================
 
-                 Copyright(C) 2020 Lynn Jarvis.
+                 Copyright(C) 2021 Lynn Jarvis.
 
 This program is free software : you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
@@ -125,7 +125,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	receiver.ReleaseReceiver();
 
 	// Release DirectX 11 resources
-	receiver.CleanupDX11();
+	receiver.CloseDirectX11();
 
     return (int) msg.wParam;
 }

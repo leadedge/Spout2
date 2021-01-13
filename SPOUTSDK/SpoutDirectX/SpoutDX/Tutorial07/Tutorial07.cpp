@@ -132,12 +132,14 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     UNREFERENCED_PARAMETER( hPrevInstance );
     UNREFERENCED_PARAMETER( lpCmdLine );
 
+	//
 	// SPOUT
+	//
 
 	// Optionally enable Spout logging
 	// OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
-	EnableSpoutLogFile("Tutorial07.log"); // Log to file
+	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
 	// Optionally set the name of the sender to receive from
@@ -154,12 +156,24 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         return 0;
     }
 
+	//
+	// SPOUT
+	//
+
 	// Initialize DirectX.
 	// The device pointer must be passed in if a DirectX 11.0 device is available.
-	// Otherwise a device is created in the SpoutDX class.
-	// The pointer can be retrieved with GetDevice();
+	// Otherwise a device is created in the SpoutDX class and the The function 
+	// does nothing if a class device was already created.
+	// See above for graphics adapter selection.
 	if (!receiver.OpenDirectX11(g_pd3dDevice))
 		return FALSE;
+
+	// Graphics adapter selection is developmental.
+	// If a class device was not created, remove the menu option.
+	if (!receiver.IsClassDevice()) {
+		HMENU hPopup = GetSubMenu(GetMenu(g_hWnd), 0);
+		RemoveMenu(hPopup, IDM_ADAPTER, MF_BYCOMMAND);
+	}
 
 	// Main message loop
     MSG msg = {0};
@@ -178,7 +192,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// SPOUT
 	receiver.ReleaseReceiver();
-	receiver.CleanupDX11();
+	receiver.CloseDirectX11();
 	if (g_pSpoutTextureRV)
 		g_pSpoutTextureRV->Release();
 	if (g_pReceivedTexture)
@@ -297,13 +311,34 @@ HRESULT InitDevice()
     UINT width = rc.right - rc.left;
     UINT height = rc.bottom - rc.top;
 
-	// SPOUT 
-	// For graphics adapter selection - see SelectAdapter()
-	// Create a device with the selected adapter
-	g_pd3dDevice = receiver.spoutdx.CreateDX11device();
-	g_pImmediateContext = receiver.spoutdx.GetImmediateContext();
+	//
+	// SPOUT
+	//
 
-    /*
+	// Optionally create a device within the SpoutDX class.
+	// IsClassDevice() will return whether this has been done.
+	//
+	// Use the current graphics adapter index (currentadapter)
+	// This can then be selected by the user - see SelectAdapter()
+	//
+	// Both sender and receiver must be using the same graphics adapter
+	// Graphics adapter selection is intended for for development work
+	// If this is used, don't forget to comment out the application device creation below
+
+	/*
+	// ===============================================================
+	if (receiver.OpenDirectX11()) {
+		g_pd3dDevice = receiver.GetDX11Device();
+		g_pImmediateContext = receiver.GetDX11Context();
+	}
+	else {
+		return 0;
+	}
+	// ===============================================================
+	*/
+
+
+	// ===============================================================
 	UINT createDeviceFlags = 0;
 #ifdef _DEBUG
 	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
@@ -314,41 +349,42 @@ HRESULT InitDevice()
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
 
 	D3D_DRIVER_TYPE driverTypes[] =
-    {
-        D3D_DRIVER_TYPE_HARDWARE,
-        D3D_DRIVER_TYPE_WARP,
-        D3D_DRIVER_TYPE_REFERENCE,
-    };
-    UINT numDriverTypes = ARRAYSIZE( driverTypes );
+	{
+		D3D_DRIVER_TYPE_HARDWARE,
+		D3D_DRIVER_TYPE_WARP,
+		D3D_DRIVER_TYPE_REFERENCE,
+	};
+	UINT numDriverTypes = ARRAYSIZE(driverTypes);
 
-    D3D_FEATURE_LEVEL featureLevels[] =
-    {
-        D3D_FEATURE_LEVEL_11_1,
-        D3D_FEATURE_LEVEL_11_0,
-        D3D_FEATURE_LEVEL_10_1,
-        D3D_FEATURE_LEVEL_10_0,
-    };
-    UINT numFeatureLevels = ARRAYSIZE( featureLevels );
+	D3D_FEATURE_LEVEL featureLevels[] =
+	{
+		D3D_FEATURE_LEVEL_11_1,
+		D3D_FEATURE_LEVEL_11_0,
+		D3D_FEATURE_LEVEL_10_1,
+		D3D_FEATURE_LEVEL_10_0,
+	};
+	UINT numFeatureLevels = ARRAYSIZE(featureLevels);
 
-    for( UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++ )
-    {
-        g_driverType = driverTypes[driverTypeIndex];
-        hr = D3D11CreateDevice( nullptr, g_driverType, nullptr, createDeviceFlags, featureLevels, numFeatureLevels,
-                                D3D11_SDK_VERSION, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext );
+	for (UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++)
+	{
+		g_driverType = driverTypes[driverTypeIndex];
+		hr = D3D11CreateDevice(nullptr, g_driverType, nullptr, createDeviceFlags, featureLevels, numFeatureLevels,
+			D3D11_SDK_VERSION, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext);
 
-        if ( hr == E_INVALIDARG )
-        {
-            // DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1 so we need to retry without it
-            hr = D3D11CreateDevice( nullptr, g_driverType, nullptr, createDeviceFlags, &featureLevels[1], numFeatureLevels - 1,
-                                    D3D11_SDK_VERSION, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext );
-        }
+		if (hr == E_INVALIDARG)
+		{
+			// DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1 so we need to retry without it
+			hr = D3D11CreateDevice(nullptr, g_driverType, nullptr, createDeviceFlags, &featureLevels[1], numFeatureLevels - 1,
+				D3D11_SDK_VERSION, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext);
+		}
 
-        if( SUCCEEDED( hr ) )
-            break;
-    }
-    if( FAILED( hr ) )
-        return hr;
-	*/
+		if (SUCCEEDED(hr))
+			break;
+	}
+	if (FAILED(hr))
+		return hr;
+	// ===============================================================
+
 
 
     // Obtain DXGI factory from device (since we used nullptr for pAdapter above)
@@ -720,7 +756,7 @@ void ResetDevice()
 {
 	// Release everything
 	receiver.ReleaseReceiver();
-	receiver.CleanupDX11();
+	receiver.CloseDirectX11();
 	CleanupDevice();
 	// Create device and objects again
 	InitDevice();

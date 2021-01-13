@@ -1,10 +1,13 @@
 #\-------------------------------------- . -----------------------------------/#
-# Filename : CMakeList.txt               | Spout DX Receiver CMakeList           #
+# Filename : CMakeList.txt               | SpoutDX Receiver CMakeList          #
 # Author   : Alexandre Buge              |                                     #
 # Started  : 08/09/2020 12:00            |                                     #
 #/-------------------------------------- . -----------------------------------\#
+# Modifications : spout.zeal.co                                                #
+# 06/01/21 - DPI awareness needed for scaled displays                          #
+#/-------------------------------------- . -----------------------------------\#
 
-add_executable(WinSpoutDXReceiver WIN32
+add_executable(WinSpoutDXreceiver WIN32
   framework.h
   targetver.h
   Resource.h
@@ -13,21 +16,24 @@ add_executable(WinSpoutDXReceiver WIN32
   WinSpoutDX.rc
 )
 
-target_link_libraries(WinSpoutDXReceiver
+target_link_libraries(WinSpoutDXreceiver
   PRIVATE 
-    Spout
+    Spout_static
 )
 
-target_compile_definitions(WinSpoutDXReceiver
+# DPI awareness needed for scaled displays
+set_property(TARGET WinSpoutDXreceiver PROPERTY VS_DPI_AWARE "PerMonitor")
+
+target_compile_definitions(WinSpoutDXreceiver
   PRIVATE
     SPOUT_IMPORT_DLL
   _UNICODE
   UNICODE
 )
 
-target_link_libraries(WinSpoutDXReceiver
+target_link_libraries(WinSpoutDXreceiver
   PRIVATE
-    Spout
+    Spout_static
     SpoutDX
     d3d11
     d3dcompiler

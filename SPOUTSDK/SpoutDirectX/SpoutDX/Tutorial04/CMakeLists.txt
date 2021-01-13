@@ -12,9 +12,12 @@ add_executable(Tutorial04 WIN32
   #Tutorial04_VS.hlsl
 )
 
+# DPI awareness needed for scaled displays
+set_property(TARGET Tutorial04 PROPERTY VS_DPI_AWARE "PerMonitor")
+
 target_link_libraries(Tutorial04
   PRIVATE 
-    Spout
+    Spout_static
 )
 
 target_compile_definitions(Tutorial04
@@ -26,7 +29,7 @@ target_compile_definitions(Tutorial04
 
 target_link_libraries(Tutorial04
   PRIVATE
-    Spout
+    Spout_static
     SpoutDX
     d3d11
     d3dcompiler

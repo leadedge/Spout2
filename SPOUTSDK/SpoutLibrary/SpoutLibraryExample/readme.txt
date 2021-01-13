@@ -1,6 +1,6 @@
 SpoutLibrary example
 
-This is an example for Visual Studio 2017 and Openframeworks 10
+This is an example for Visual Studio 2017 and Openframeworks 11.
 
 The project is dependent on the Openframeworks environment and so the "SpoutLibraryExample" folder should be copied as follows.
 
@@ -14,14 +14,13 @@ C:\OPENFRAMEWORKS
 		 ofSpoutLibrary.vcxproj
 		 ofSpoutLibrary.vcxproj.filters
          src <- SpoutLibrary.h and source files
-         bin <- SpoutLibrary.dll, openframeworks dlls and data
+         bin <- SpoutLibrary.dll and data files
 		 libs <- SpoutLibrary.lib
 
 Open the solution file with Visual Studio 2017, set to "Release" and build.
 
-The "src" folder contains files for a sender application.
+Source files
 
-Folders within the "src" folder contain the source for a sender and receiver. 
-Copy the required ones to the "src" folder.
-
-Pre-built binaries are in the "bin" folder and renamed, so will not be affected by the build.
+The "src" folder contains files for a Sender example.
+The "Sources" folder contains files for both Sender and Receiver.
+For the one you want copy "ofApp.h" and "ofApp.cpp" to the "src" folder and "Rebuild".

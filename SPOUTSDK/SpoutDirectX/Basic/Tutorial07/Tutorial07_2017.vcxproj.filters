@@ -15,22 +15,22 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DDSTextureLoader.cpp" />
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutCopy.cpp">
+    <ClCompile Include="..\..\..\SpoutGL\SpoutCopy.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutDirectX.cpp">
+    <ClCompile Include="..\..\..\SpoutGL\SpoutDirectX.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutFrameCount.cpp">
+    <ClCompile Include="..\..\..\SpoutGL\SpoutFrameCount.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutSenderNames.cpp">
+    <ClCompile Include="..\..\..\SpoutGL\SpoutSenderNames.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutSharedMemory.cpp">
+    <ClCompile Include="..\..\..\SpoutGL\SpoutSharedMemory.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutUtils.cpp">
+    <ClCompile Include="..\..\..\SpoutGL\SpoutUtils.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
   </ItemGroup>
@@ -45,25 +45,22 @@
       <Filter>Resource Files</Filter>
     </ResourceCompile>
     <ClInclude Include="DDSTextureLoader.h" />
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutCommon.h">
+    <ClInclude Include="..\..\..\SpoutGL\SpoutCopy.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutCopy.h">
+    <ClInclude Include="..\..\..\SpoutGL\SpoutDirectX.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutDirectX.h">
+    <ClInclude Include="..\..\..\SpoutGL\SpoutFrameCount.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutFrameCount.h">
+    <ClInclude Include="..\..\..\SpoutGL\SpoutSenderNames.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutSenderNames.h">
+    <ClInclude Include="..\..\..\SpoutGL\SpoutSharedMemory.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutSharedMemory.h">
-      <Filter>SpoutSDK</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutUtils.h">
+    <ClInclude Include="..\..\..\SpoutGL\SpoutUtils.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
   </ItemGroup>

@@ -113,11 +113,14 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     UNREFERENCED_PARAMETER( hPrevInstance );
     UNREFERENCED_PARAMETER( lpCmdLine );
 
+	//
 	// SPOUT
+	//
+
 	// Optionally enable logging to catch Spout warnings and errors
 	// OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
-	EnableSpoutLogFile("Tutorial04.log"); // Log to file
+	// EnableSpoutLogFile("Tutorial04.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
@@ -129,14 +132,26 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         return 0;
     }
 
+	//
 	// SPOUT
+	//
+
 	// Initialize DirectX.
-	// If a DirectX 11.0 device is available, the device pointer must be passed in.
-	// Otherwise a device is created within the SpoutDX class
-	// and the pointer can be retrieved with GetDevice();
+	// The device pointer must be passed in if a DirectX 11.0 device is available.
+	// Otherwise a device is created in the SpoutDX class and the The function 
+	// does nothing if a class device was already created.
+	// See above for graphics adapter selection.
 	if (!sender.OpenDirectX11(g_pd3dDevice))
 		return FALSE;
 
+	// Graphics adapter selection is developmental.
+	// If a class device was not created, remove the menu option.
+	if (!sender.IsClassDevice()) {
+		HMENU hPopup = GetSubMenu(GetMenu(g_hWnd), 0);
+		RemoveMenu(hPopup, IDM_ADAPTER, MF_BYCOMMAND);
+	}
+
+	
 	// Give the sender a name
 	// If none is specified, the executable name is used
 	// sender.SetSenderName("Tutorial04sender");
@@ -271,12 +286,33 @@ HRESULT InitDevice()
     UINT width = rc.right - rc.left;
     UINT height = rc.bottom - rc.top;
 
-	// SPOUT graphics adapter testing
-	// Create a device with the selected adapter
-	g_pd3dDevice = sender.spoutdx.CreateDX11device();
-	g_pImmediateContext = sender.spoutdx.GetImmediateContext();
+	//
+	// SPOUT
+	//
+
+	// Optionally create a device within the SpoutDX class.
+	// IsClassDevice() will return whether this has been done.
+	//
+	// Use the current graphics adapter index (currentadapter)
+	// This can then be selected by the user - see SelectAdapter()
+	//
+	// Both sender and receiver must be using the same graphics adapter
+	// Graphics adapter selection is intended for for development work
+	// If this is used, don't forget to comment out the application device creation below
 
 	/*
+	// ===============================================================
+	if (sender.OpenDirectX11()) {
+		g_pd3dDevice = sender.GetDX11Device();
+		g_pImmediateContext = sender.GetDX11Context();
+	}
+	else {
+		return 0;
+	}
+	// ===============================================================
+	*/
+
+	// ===============================================================
 
 	// SPOUT note
 	// GL/DX interop Spec
@@ -338,8 +374,8 @@ HRESULT InitDevice()
     }
     if( FAILED( hr ) )
         return hr;
-	*/
-	
+	// ===============================================================
+
 
     // Obtain DXGI factory from device (since we used nullptr for pAdapter above)
     IDXGIFactory1* dxgiFactory = nullptr;
@@ -619,7 +655,7 @@ void ResetDevice()
 {
 	// Release everything
 	sender.ReleaseSender();
-	sender.CleanupDX11();
+	sender.CloseDirectX11();
 	CleanupDevice();
 	// Create device and objects
 	InitDevice();

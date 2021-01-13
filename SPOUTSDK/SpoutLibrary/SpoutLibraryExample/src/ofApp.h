@@ -3,7 +3,7 @@
 	Spout OpenFrameworks Sender example
 	using 2.007 SpoutLibrary
 
-	Copyright (C) 2020 Lynn Jarvis.
+	Copyright (C) 2021 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -26,16 +26,20 @@
 
 class ofApp : public ofBaseApp{
 	public:
-
 		void setup();
 		void update();
 		void draw();
 		void exit();
-		void mousePressed(int x, int y, int button);
+		void windowResized(int w, int h);
 
-		SPOUTLIBRARY * receiver; // A receiver object pointer
-		ofTexture myTexture; // Receiving texture
-		ofImage myImage; // Receiving image
-		void showInfo();
-
+		SPOUTLIBRARY * sender; // A sender object pointer
+		char sendername[256]; // Sender name
+		unsigned int senderwidth; // Dimensions of sender and fbo can be
+		unsigned int senderheight; // independent of the application window
+		ofImage myBoxImage; // Image for the 3D demo
+		ofFbo myFbo; // For texture sharing
+		ofPixels myPixels; // For pixel sharing
+		float rotX, rotY;
+		bool bResized;
+	
 };

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.28307.1145
+VisualStudioVersion = 15.0.28307.1300
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WinSpoutDX", "WinSpoutDX.vcxproj", "{EFC97802-E2E4-4C08-A186-2ADCAAA7587F}"
 EndProject
@@ -26,6 +26,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {F313296A-6143-48F9-8284-D741649DCD07}
+		SolutionGuid = {BF9E9F64-7E2B-4667-9829-9990485F3651}
 	EndGlobalSection
 EndGlobal

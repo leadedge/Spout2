@@ -401,22 +401,21 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutCopy.cpp" />
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutDirectX.cpp" />
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutFrameCount.cpp" />
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutSenderNames.cpp" />
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutSharedMemory.cpp" />
-    <ClCompile Include="..\..\..\SpoutSDK\SpoutUtils.cpp" />
+    <ClCompile Include="..\..\..\SpoutGL\SpoutCopy.cpp" />
+    <ClCompile Include="..\..\..\SpoutGL\SpoutDirectX.cpp" />
+    <ClCompile Include="..\..\..\SpoutGL\SpoutFrameCount.cpp" />
+    <ClCompile Include="..\..\..\SpoutGL\SpoutSenderNames.cpp" />
+    <ClCompile Include="..\..\..\SpoutGL\SpoutSharedMemory.cpp" />
+    <ClCompile Include="..\..\..\SpoutGL\SpoutUtils.cpp" />
     <ClCompile Include="Tutorial04.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutCommon.h" />
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutCopy.h" />
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutDirectX.h" />
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutFrameCount.h" />
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutSenderNames.h" />
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutSharedMemory.h" />
-    <ClInclude Include="..\..\..\SpoutSDK\SpoutUtils.h" />
+    <ClInclude Include="..\..\..\SpoutGL\SpoutCopy.h" />
+    <ClInclude Include="..\..\..\SpoutGL\SpoutDirectX.h" />
+    <ClInclude Include="..\..\..\SpoutGL\SpoutFrameCount.h" />
+    <ClInclude Include="..\..\..\SpoutGL\SpoutSenderNames.h" />
+    <ClInclude Include="..\..\..\SpoutGL\SpoutSharedMemory.h" />
+    <ClInclude Include="..\..\..\SpoutGL\SpoutUtils.h" />
     <CLInclude Include="resource.h" />
     <ResourceCompile Include="Tutorial04.rc" />
   </ItemGroup>

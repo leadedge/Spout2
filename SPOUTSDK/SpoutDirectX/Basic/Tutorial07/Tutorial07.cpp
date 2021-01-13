@@ -34,10 +34,10 @@
 
 // SPOUT
 // Change paths as required
-#include "..\..\..\SpoutSDK\SpoutSenderNames.h" // for sender creation and update
-#include "..\..\..\SpoutSDK\SpoutDirectX.h" // for creating a shared texture
-#include "..\..\..\SpoutSDK\SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "..\..\..\SpoutSDK\SpoutUtils.h" // for logging utilites
+#include "..\..\..\SpoutGL\SpoutSenderNames.h" // for sender creation and update
+#include "..\..\..\SpoutGL\SpoutDirectX.h" // for creating a shared texture
+#include "..\..\..\SpoutGL\SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "..\..\..\SpoutGL\SpoutUtils.h" // for logging utilites
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp

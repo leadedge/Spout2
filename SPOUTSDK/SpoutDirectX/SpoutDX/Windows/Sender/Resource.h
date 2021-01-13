@@ -5,15 +5,16 @@
 #define IDS_APP_TITLE			103
 
 #define IDR_MAINFRAME			128
-#define IDD_WINSPOUTDX_DIALOG	102
-#define IDD_ABOUTBOX			103
-#define IDM_ABOUT				104
-#define IDM_EXIT				105
-#define IDI_WINSPOUTDX			107
-// Not used #define IDI_SMALL	108
-#define IDC_WINSPOUTDX			109
-#define IDC_ABOUT_TEXT          201
-#define IDC_SPOUT_URL           202
+
+#define IDD_WINSPOUTDX_DIALOG	202
+#define IDD_ABOUTBOX			203
+#define IDM_ABOUT				204
+#define IDM_EXIT				205
+#define IDI_WINSPOUTDX			207
+// Not used #define IDI_SMALL	208
+#define IDC_WINSPOUTDX			209
+#define IDC_ABOUT_TEXT          210
+#define IDC_SPOUT_URL           212
 #define IDC_MYICON				2
 #ifndef IDC_STATIC
 #define IDC_STATIC				-1
