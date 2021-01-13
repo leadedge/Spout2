@@ -63,6 +63,9 @@
 	23.10.20 - Add CleanSenders
 	28.12.20 - Protect against null name in SetActiveSender
 	12.01.21 - Add CleanSenders to CreateSender
+			   Write host path to the sender shared memory Description field in CreateSender
+	13.01.21 - Remove CleanSenders until sender registration investigations are completed
+			   Fix typo in host path write. To be tested.
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2021, Lynn Jarvis. All rights reserved.
@@ -486,10 +489,16 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 
 	// Texture usage
 	info.usage = 0;
+
 	// Partner ID : Sender CPU mode
+	// TODO
 	// info.partnerId = 0;
+
 	// Description : Host path
-	// memset((void *)info.description, 256, 0); // wchar 128
+	char exepath[256];
+	GetModuleFileNameA(NULL, exepath, sizeof(exepath));
+	// Description is defined as wide chars, but the path is stored as byte chars
+	memcpy((void *)info.description, (void *)exepath, 256); // wchar 128
 
 	// Set data to the memory map
 	__movsd((unsigned long *)pBuf, (unsigned long const *)&info, sizeof(SharedTextureInfo) / 4); // 280 bytes
@@ -619,10 +628,7 @@ bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, 
 {
 	SpoutLogNotice("spoutSenderNames::CreateSender");
 	SpoutLogNotice("    [%s] %dx%d, share handle = 0x%.7X, format = %u", sendername, width, height, LOWORD(hSharehandle), dwFormat);
-
-	// Release any orphaned senders first
-	CleanSenders();
-
+	
 	// Register the sender name
 	// The function is ignored if the sender already exists
 	RegisterSenderName(sendername);
