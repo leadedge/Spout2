@@ -143,8 +143,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	if(g_hBitmap) 
 		DeleteObject(g_hBitmap);
 	
-	// Release the receiver
-	sender.ReleaseReceiver();
+	// Release the sender
+	sender.ReleaseSender();
 
 	// Release DirectX 11 resources
 	sender.CloseDirectX11();
