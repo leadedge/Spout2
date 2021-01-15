@@ -31,11 +31,11 @@
     <ClCompile Include="..\..\SpoutGL\SpoutUtils.cpp">
       <Filter>SpoutGL</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\SpoutGL\SpoutSDK.cpp">
-      <Filter>SpoutGL</Filter>
-    </ClCompile>
     <ClCompile Include="..\SpoutLibrary.cpp">
       <Filter>SpoutLibrary</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\SpoutGL\Spout.cpp">
+      <Filter>SpoutGL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -73,9 +73,6 @@
       <Filter>SpoutGL</Filter>
     </ClInclude>
     <ClInclude Include="..\..\SpoutGL\SpoutUtils.h">
-      <Filter>SpoutGL</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\SpoutGL\SpoutSDK.h">
       <Filter>SpoutGL</Filter>
     </ClInclude>
     <ClInclude Include="..\SpoutLibrary.h">

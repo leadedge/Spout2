@@ -192,13 +192,13 @@ copy /y /v $(OutDir)$(TargetName).lib "..\Binaries\x64\"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\SpoutGL\Spout.cpp" />
     <ClCompile Include="..\..\SpoutGL\SpoutCopy.cpp" />
     <ClCompile Include="..\..\SpoutGL\SpoutDirectX.cpp" />
     <ClCompile Include="..\..\SpoutGL\SpoutFrameCount.cpp" />
     <ClCompile Include="..\..\SpoutGL\SpoutGL.cpp" />
     <ClCompile Include="..\..\SpoutGL\SpoutGLextensions.cpp" />
     <ClCompile Include="..\..\SpoutGL\SpoutReceiver.cpp" />
-    <ClCompile Include="..\..\SpoutGL\SpoutSDK.cpp" />
     <ClCompile Include="..\..\SpoutGL\SpoutSender.cpp" />
     <ClCompile Include="..\..\SpoutGL\SpoutSenderNames.cpp" />
     <ClCompile Include="..\..\SpoutGL\SpoutSharedMemory.cpp" />
@@ -214,7 +214,6 @@ copy /y /v $(OutDir)$(TargetName).lib "..\Binaries\x64\"
     <ClInclude Include="..\..\SpoutGL\SpoutGL.h" />
     <ClInclude Include="..\..\SpoutGL\SpoutGLextensions.h" />
     <ClInclude Include="..\..\SpoutGL\SpoutReceiver.h" />
-    <ClInclude Include="..\..\SpoutGL\SpoutSDK.h" />
     <ClInclude Include="..\..\SpoutGL\SpoutSender.h" />
     <ClInclude Include="..\..\SpoutGL\SpoutSenderNames.h" />
     <ClInclude Include="..\..\SpoutGL\SpoutSharedMemory.h" />
