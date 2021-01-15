@@ -7,6 +7,8 @@
 # 28/12/20 - Add additional SpoutSDK library for dynamic build                 #
 # 29/12/20 - Add Win32 or x64 build                                            #
 # 30/12/20 - Add copy of build files to Binary folders                         #
+# 15/01/21 - Rename SpoutSDK files to Spout                                    #
+#            Generate Spout.dll instead of SpoutSDK.dll                        #
 #/-------------------------------------- . -----------------------------------\#
 
 set(SpoutSources
@@ -18,18 +20,17 @@ set(SpoutSources
   SpoutGL.h
   SpoutGLextensions.h
   SpoutReceiver.h
-  SpoutSDK.h
   SpoutSender.h
   SpoutSenderNames.h
   SpoutSharedMemory.h
   SpoutUtils.h
+  Spout.cpp
   SpoutCopy.cpp
   SpoutDirectX.cpp
   SpoutFrameCount.cpp
   SpoutGL.cpp
   SpoutGLextensions.cpp
   SpoutReceiver.cpp
-  SpoutSDK.cpp
   SpoutSender.cpp
   SpoutSenderNames.cpp
   SpoutSharedMemory.cpp
@@ -61,13 +62,13 @@ add_library(Spout_static STATIC ${SpoutSources} )
 target_link_libraries(Spout_static PRIVATE  ${SpoutLink} )
 target_compile_definitions(Spout_static PRIVATE SPOUT_BUILD_DLL)
 
-add_library(SpoutSDK SHARED ${SpoutSources} )
-target_link_libraries(SpoutSDK PRIVATE  ${SpoutLink} )
-target_compile_definitions(SpoutSDK PRIVATE SPOUT_BUILD_DLL)
+add_library(Spout SHARED ${SpoutSources} )
+target_link_libraries(Spout PRIVATE  ${SpoutLink} )
+target_compile_definitions(Spout PRIVATE SPOUT_BUILD_DLL)
 
 if(NOT MSVC)
   target_compile_options(Spout_static PRIVATE -msse4)
-  target_compile_options(SpoutSDK PRIVATE -msse4)
+  target_compile_options(Spout PRIVATE -msse4)
 endif()
 
 # Win32 or x64 build
@@ -78,13 +79,13 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 		COMMAND ${CMAKE_COMMAND} -E 
 		copy $<TARGET_FILE:Spout_static> ${CMAKE_BINARY_DIR}/Binaries/Win32/Spout_static.lib
 	)
-	add_custom_command(TARGET SpoutSDK POST_BUILD
+	add_custom_command(TARGET Spout POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:SpoutSDK> ${CMAKE_BINARY_DIR}/Binaries/Win32/SpoutSDK.dll
+		copy $<TARGET_FILE:Spout> ${CMAKE_BINARY_DIR}/Binaries/Win32/Spout.dll
 	)
-	add_custom_command(TARGET SpoutSDK POST_BUILD
+	add_custom_command(TARGET Spout POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E 
-		copy ${CMAKE_CURRENT_BINARY_DIR}/Release/SpoutSDK.lib ${CMAKE_BINARY_DIR}/Binaries/Win32/SpoutSDK.lib
+		copy ${CMAKE_CURRENT_BINARY_DIR}/Release/Spout.lib ${CMAKE_BINARY_DIR}/Binaries/Win32/Spout.lib
 	)
 
 else()
@@ -94,13 +95,13 @@ else()
 		COMMAND ${CMAKE_COMMAND} -E 
 		copy $<TARGET_FILE:Spout_static> ${CMAKE_BINARY_DIR}/Binaries/x64/Spout_static.lib
 	)
-	add_custom_command(TARGET SpoutSDK POST_BUILD
+	add_custom_command(TARGET Spout POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:SpoutSDK> ${CMAKE_BINARY_DIR}/Binaries/x64/SpoutSDK.dll
+		copy $<TARGET_FILE:Spout> ${CMAKE_BINARY_DIR}/Binaries/x64/Spout.dll
 	)
-	add_custom_command(TARGET SpoutSDK POST_BUILD
+	add_custom_command(TARGET Spout POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E 
-		copy ${CMAKE_CURRENT_BINARY_DIR}/Release/SpoutSDK.lib ${CMAKE_BINARY_DIR}/Binaries/x64/SpoutSDK.lib
+		copy ${CMAKE_CURRENT_BINARY_DIR}/Release/Spout.lib ${CMAKE_BINARY_DIR}/Binaries/x64/Spout.lib
 	)
 
 endif()
