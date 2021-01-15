@@ -79,7 +79,7 @@
 
 #include <stdio.h>
 #include "SpoutLibrary.h"
-#include "..\SpoutGL\SpoutSDK.h"
+#include "..\SpoutGL\Spout.h"
 
 using namespace spoututils;
 
