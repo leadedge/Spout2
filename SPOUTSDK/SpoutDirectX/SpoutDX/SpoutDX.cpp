@@ -86,6 +86,7 @@
 //		10.01.21	- Add auto increment of sender name to SetSenderName if the sender already exists
 //		11.01.21	- Add IsClassDevice()
 //		12.01.21	- Release orphaned senders in SelectSenderPanel
+//		15.01.21	- Add Flush to ReceiveTexture
 //
 // ====================================================================================
 /*
@@ -490,12 +491,17 @@ bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 			if (frame.GetNewFrame()) {
 				// Copy from the sender's shared texture to the receiving texture.
 				m_pImmediateContext->CopyResource(pTexture, m_pSharedTexture);
+				// Testing has shown that Flush is needed here for the texture
+				// to be immediately available for subsequent copy.
+				// May be removed if the texture is not immediately copied.
+				// Test for the individual application.
+				m_pImmediateContext->Flush();
 				m_bNewFrame = true; // The application can query IsNewFrame()
 			}
 		}
 		// Allow access to the shared texture
 		frame.AllowTextureAccess(m_pSharedTexture);
-
+		
 		m_bConnected = true;
 
 	} // sender exists
@@ -884,8 +890,10 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 
 	// The sender needs a name
 	// Default is the executable name
-	if (!m_SenderName[0])
+	if (!m_SenderName[0]) {
+		printf("CheckSender - set sender name\n");
 		SetSenderName();
+	}
 
 	if (!m_bSpoutInitialized) {
 
