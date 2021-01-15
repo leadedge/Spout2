@@ -88,6 +88,28 @@
 
 #include "SpoutReceiver.h"
 
+//
+// Class: SpoutReceiver
+//
+// Convenience wrapper class for developing receiver applications.
+//
+// Insulates the programmer from sender functions.
+//
+// --- Code
+//      #include "SpoutReceiver.h"
+// ---
+//
+// The main Spout class can be used but will expose both Sender and Receiver functions
+// which cannot be used within the same object.
+// A Receiver can still access lower level common functions for example :
+// --- Code
+//      SpoutReceiver receiver;
+//      receiver.spout.GLDXready();
+// ---
+//   
+// Refer to the Spout class for function documentation.
+//
+
 //---------------------------------------------------------
 SpoutReceiver::SpoutReceiver()
 {

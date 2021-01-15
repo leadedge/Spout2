@@ -1,6 +1,8 @@
 ﻿//
 //		SpoutSDK
 //
+// Documentation <https://spoutgl-site.netlify.app>	
+//
 // ====================================================================================
 //		Revisions :
 //
@@ -212,7 +214,7 @@
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
-#include "SpoutSDK.h"
+#include "Spout.h"
 
 // Class: Spout
 //
@@ -226,30 +228,32 @@
 //
 // Files required are (.h and .cpp) :
 //
+// - Spout
 // - SpoutCommon
 // - SpoutCopy
 // - SpoutDirectX
 // - SpoutFramecount
 // - SpoutGL
 // - SpoutGLextensions
-// - SpoutSDK
 // - SpoutSenderNames
 // - SpoutSharedMemory
 // - SpoutUtils
+//
+// Note that Sender and Receiver functions cannot be used within the same object.
+// The SpoutSender and SpoutReceiver classes are convenience wrappers which
+// insulate the sending and receiving functions for the programmer.
+//
+// - SpoutSender
+// - SpoutReceiver
 //
 // You can also use the Spout SDK as a dll. To build the dll, refer to the 
 // Visual Studio project in the VS2017 folder and the CMake build documentation.
 // Also refer to the SpoutLibrary folder for a C-compatible dll which can be 
 // used with compilers other than Visual Studio.
 //
-// It's important to remember that Sender and Receiver functions cannot
-// be used within the same object. If the source code is used in a project,
-// the SpoutSender and SpoutReceiver classes are convenience wrappers which
-// insulate the sending and receiving functions.
-//
 // More detailed information can be found in the header files SpoutSDK.h and SpoutGL.h.
 // Functions for individual classes are documented within the respective source files.
-// You can access these from the following class objects.
+// You can access these from the following objects included in the Spout class.
 //
 // - spoutDirectX spoutdx; (DirectX 11 texture sharing)
 // - spoutCopy spoutcopy; (Pixel buffer copying)
@@ -1160,8 +1164,9 @@ bool Spout::CreateSender(const char* name, unsigned int width, unsigned int heig
 bool Spout::UpdateSender(const char* name, unsigned int width, unsigned int height)
 {
 	// No update unless already created
-	if (!IsInitialized())
+	if (!IsInitialized()) {
 		return false;
+	}
 
 	// For a name change, close the sender and set up again
 	if (strcmp(name, m_SenderName) != 0)
@@ -1647,30 +1652,8 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 	// Default is the executable name
 	if (!m_SenderName[0]) {
 		SetSenderName();
-		/*
-		// If a sender with this name is already registered, create an incremented name
-		int i = 1;
-		char sendername[256];
-		strcpy_s(sendername, 256, m_SenderName);
-		if (sendernames.FindSenderName(sendername)) {
-			do {
-				
-				printf("    CheckSender [%s] exists\n\n", sendername);
-
-				sprintf_s(sendername, 256, "%s_%d", m_SenderName, i);
-				i++;
-			} while (sendernames.FindSenderName(sendername));
-		}
-		// Re-set the global sender name
-		strcpy_s(m_SenderName, 256, sendername);
-
-		printf("    CheckSender global name [%s]\n\n", m_SenderName);
-		*/
-
 	}
 	   
-	// printf("CheckSender 0 (%d) %dx%d\n", sendernames.GetSenderCount(), width, height);
-
 	// If not initialized, create a new sender
 	if (!m_bInitialized) {
 		// Make sure that Spout has been initialized and an OpenGL context is available
@@ -1701,9 +1684,9 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 				// TODO : not optimal
 
 				// SetSenderCPUmode reads and writes to the sender shared texture memory.
-				// Can this be done when the sender is created and before this is called using a global?
+				// TODO : do when the sender is created and before this is called using a global.
 				// spoutSenderNames::CreateSender(m_SenderName, width, height, m_dxSharehandle, m_dwFormat, m_bCPU);
-				// Need m_bCPU = !m_bUseGLDX
+				// Need m_bCPU = !m_bUseGLDX ?
 
 				// Set CPU sharing mode (i.e. not GL/DX compatible)
 				// to the top bit of 32 bit partnerID field in sender shared memory

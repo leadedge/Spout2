@@ -30,7 +30,7 @@
 #ifndef __SpoutReceiver__
 #define __SpoutReceiver__
 
-#include "SpoutSDK.h"
+#include "Spout.h"
 
 class SPOUT_DLLEXP SpoutReceiver {
 

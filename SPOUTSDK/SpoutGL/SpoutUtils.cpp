@@ -69,6 +69,20 @@
 */
 #include "SpoutUtils.h"
 
+
+//
+// Namespace: spoututils
+//
+// Namespace for utility functions.
+//
+// - Console
+// - Logs
+// - MessageBox dialog
+// - Registry utilities
+//
+// Refer to source code for documentation.
+//
+
 namespace spoututils {
 
 	// Local variables

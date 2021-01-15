@@ -1,14 +1,16 @@
+//
+// Header: SpoutCommon.h
+//
+// Enables build of the SDK as a DLL.
+//
+// Includes header for common utilities namespace "SpoutUtils".
+//
+// Optional _#define legacyOpenGL_ to enable legacy draw functions
+//
+
 /*
-
-			SpoutCommon.h
-
-			Enables build of the SDK as a DLL
-			Includes header for utilities - SpoutUtils
-			Optional legacyOpenGL define to enable legacy draw functions
-
 		Thanks and credit to Malcolm Bechard, the author of this file
 		https://github.com/mbechard
-
 
 		Copyright (c) 2014-2021, Lynn Jarvis. All rights reserved.
 
@@ -38,6 +40,7 @@
 
 #ifndef __SpoutCommon__
 #define __SpoutCommon__
+
 
 #if defined(_MSC_VER)
 	#if defined(SPOUT_BUILD_DLL)

@@ -17,6 +17,8 @@
 //					  DX9 support is removed.
 //		09.12.20	- Correct ReadDX11texture for staging texture pitch
 //		27.12.20	- Functions allocated to SpoutSDK class where appropriate
+//		14.01.21	- Add GetDX11Device() and GetDX11Context()
+//					  add bInvert and HostFBO options to WriteTextureReadback
 //
 // ====================================================================================
 /*
@@ -2104,6 +2106,18 @@ bool spoutGL::OpenDirectX11()
 }
 
 //---------------------------------------------------------
+ID3D11Device* spoutGL::GetDX11Device()
+{
+	return spoutdx.GetDX11Device();
+}
+
+//---------------------------------------------------------
+ID3D11DeviceContext* spoutGL::GetDX11Context()
+{
+	return spoutdx.GetDX11Context();
+}
+
+//---------------------------------------------------------
 void spoutGL::CleanupDirectX()
 {
 	// DirectX 9 not supported >= 2.007
@@ -2788,12 +2802,13 @@ void spoutGL::RemovePadding(const unsigned char *source, unsigned char *dest,
 bool spoutGL::ReadTexture(ID3D11Texture2D** texture)
 {
 	// Only for DX11 mode
-	if (!texture || !*texture || !spoutdx.GetDX11Context())
+	if (!texture || !*texture || !spoutdx.GetDX11Context()) {
 		return false;
+	}
 
 	D3D11_TEXTURE2D_DESC desc = { 0 };
 	(*texture)->GetDesc(&desc);
-	if (desc.Width != (unsigned int)m_Width || desc.Height != (unsigned int)m_Height) {
+	if (desc.Width != m_Width || desc.Height != m_Height) {
 		return false;
 	}
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
@@ -2844,68 +2859,6 @@ bool spoutGL::WriteTexture(ID3D11Texture2D** texture)
 		// Release mutex and allow access to the texture
 		frame.AllowTextureAccess(m_pSharedTexture);
 		bRet = true;
-	}
-
-	return bRet;
-}
-
-//---------------------------------------------------------
-// Function: WriteTextureReadBack
-// Copy to the sender DirectX shared texture and read back to an OpenGL texture
-bool spoutGL::WriteTextureReadback(ID3D11Texture2D** texture,
-	GLuint TextureID, GLuint TextureTarget,
-	unsigned int width, unsigned int height,
-	bool bInvert, GLuint HostFBO)
-{
-	// Only for DX11 mode
-	if (!texture || !spoutdx.GetDX11Context()) {
-		SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) failed");
-		if (!texture)
-			SpoutLogWarning("    ID3D11Texture2D** NULL");
-		if (!spoutdx.GetDX11Context())
-			SpoutLogVerbose("    pImmediateContext NULL");
-		return false;
-	}
-
-	if (!m_hInteropDevice || !m_hInteropObject) {
-		SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) no interop device");
-		return false;
-	}
-
-	bool bRet = false;
-	D3D11_TEXTURE2D_DESC desc = { 0 };
-
-	(*texture)->GetDesc(&desc);
-	if (desc.Width != m_Width || desc.Height != m_Height) {
-		SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) sizes do not match");
-		SpoutLogWarning("    texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_Width, m_Height);
-		return false;
-	}
-
-	// Wait for access to the shared texture
-	if (frame.CheckTextureAccess(m_pSharedTexture)) {
-		bRet = true;
-		// Copy the DirectX texture to the shared texture
-		spoutdx.GetDX11Context()->CopyResource(m_pSharedTexture, *texture);
-		// Flush after update of the shared texture on this device
-		spoutdx.GetDX11Context()->Flush();
-		// Copy the linked OpenGL texture back to the user texture
-		if (width != m_Width || height != m_Height) {
-			SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) sizes do not match");
-			SpoutLogWarning("    OpenGL texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_Width, m_Height);
-			bRet = false;
-		}
-		else if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
-			bRet = GetSharedTextureData(TextureID, TextureTarget, width, height, bInvert, HostFBO);
-			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-			if (!bRet)
-				SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) readback failed");
-		}
-
-		// Increment the sender frame counter
-		frame.SetNewFrame();
-		// Release mutex and allow access to the texture
-		frame.AllowTextureAccess(m_pSharedTexture);
 	}
 
 	return bRet;

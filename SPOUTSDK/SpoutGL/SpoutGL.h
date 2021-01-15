@@ -148,11 +148,6 @@ class SPOUT_DLLEXP spoutGL {
 	// DX11 texture write
 	//  o Copy a DX11 texture to the shared DX11 texture
 	bool WriteTexture(ID3D11Texture2D** texture);
-	// DX11 texture write with readback to OpenGL texture
-	//   o Copy a DX11 texture to the DX11 shared texture
-	//   o Copy the linked OpenGL texture back to an OpenGL texture
-	bool WriteTextureReadback(ID3D11Texture2D** texture, GLuint TextureID, GLuint TextureTarget,
-		unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 
 	// Initialize OpenGL and DX11
 	//     o Load extensions and check for availability and function
@@ -181,6 +176,8 @@ class SPOUT_DLLEXP spoutGL {
 
 	// 2.006 compatibility
 	bool OpenDirectX11();
+	ID3D11Device* GetDX11Device();
+	ID3D11DeviceContext* GetDX11Context();
 	void CleanupDirectX();
 	void CleanupDX11();
 	void CleanupInterop();

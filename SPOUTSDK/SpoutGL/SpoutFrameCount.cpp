@@ -61,6 +61,14 @@
 
 #include "SpoutFrameCount.h"
 
+//
+// Class: spoutFrameCount
+//
+// Semaphore frame counter.
+//
+// Refer to source code for documentation.
+//
+
 // -----------------------------------------------
 spoutFrameCount::spoutFrameCount()
 {

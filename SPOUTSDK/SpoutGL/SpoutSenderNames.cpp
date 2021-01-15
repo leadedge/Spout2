@@ -95,6 +95,14 @@
 #include "SpoutSenderNames.h"
 #include <assert.h>
 
+//
+// Class: spoutSenderNames
+//
+// Spout sender management.
+//
+// Refer to source code for documentation.
+//
+
 spoutSenderNames::spoutSenderNames() {
 
 	m_senders = new std::unordered_map<std::string, SpoutSharedMemory*>();

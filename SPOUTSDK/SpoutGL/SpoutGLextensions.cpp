@@ -5,7 +5,7 @@
 //
 //			Used for load of openGL extensions with option
 //			to use Glew or disable dynamic load of specific extensions
-//			See spoutGLext.h
+//			See spoutGLextions.h
 //
 //			01.09.15	- added MessageBox error warning in LoadGLextensions
 //			11.11.15	- removed (unsigned) cast from GetProcAddress in FBO extensions

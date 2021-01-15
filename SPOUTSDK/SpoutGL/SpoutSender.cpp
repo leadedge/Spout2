@@ -91,6 +91,28 @@
 */
 #include "SpoutSender.h"
 
+//
+// Class: SpoutSender
+//
+// Convenience wrapper class for developing sender applications.
+//
+// Insulates the programmer from receiver functions.
+//
+// --- Code
+//      #include "SpoutSender.h"
+// ---
+//
+// The main Spout class can be used but will expose both Sender and Receiver functions
+// which cannot be used within the same object.
+// A Sender can still access lower level common functions for example :
+// --- Code
+//      SpoutSender sender;
+//      sender.spout.GLDXready();
+// ---
+//   
+// Refer to the Spout class for function documentation.
+//
+
 //---------------------------------------------------------
 SpoutSender::SpoutSender()
 {

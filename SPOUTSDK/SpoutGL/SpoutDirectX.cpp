@@ -119,6 +119,14 @@
 
 #include "SpoutDirectX.h"
 
+//
+// Class: spoutDirectX
+//
+// Functions to manage DirectX11 texture sharing.
+//
+// Refer to source code for documentation.
+//
+
 spoutDirectX::spoutDirectX() {
 
 	// DX11

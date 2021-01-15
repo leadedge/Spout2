@@ -49,6 +49,19 @@
 #ifndef __spoutGLextensions__	// standard way as well
 #define __spoutGLextensions__
 
+//
+// Header: spoutGLextensions
+//
+// Used for load of openGL extensions with options to use Glew
+// or disable dynamic load of specific extension types.
+// If Glew is used, none of the extensions are loaded dynamically.
+// Individual extension types can be disabled if they conflict
+// with extensions already managed by particular applications.
+//
+// Refer to source code for documentation.
+//
+
+
 // ====================== COMPILE OPTIONS ================================
 //
 // set this to use GLEW instead of dynamic load of extensions

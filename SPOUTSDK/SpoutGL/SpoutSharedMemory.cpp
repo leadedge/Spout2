@@ -39,6 +39,16 @@
 #include <assert.h>
 #include <string>
 
+
+//
+// Class: SpoutSharedMemory
+//
+// Functions to manage shared memory for senders and sender names.
+//
+// Refer to source code for documentation.
+//
+
+
 SpoutSharedMemory::SpoutSharedMemory()
 {
 	m_pBuffer = NULL;

@@ -27,7 +27,6 @@
     <ClInclude Include="..\SpoutGL.h" />
     <ClInclude Include="..\SpoutGLextensions.h" />
     <ClInclude Include="..\SpoutReceiver.h" />
-    <ClInclude Include="..\SpoutSDK.h" />
     <ClInclude Include="..\SpoutSender.h" />
     <ClInclude Include="..\SpoutSenderNames.h" />
     <ClInclude Include="..\SpoutSharedMemory.h" />
@@ -37,13 +36,13 @@
     <Image Include="..\SpoutDirectX.ico" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Spout.cpp" />
     <ClCompile Include="..\SpoutCopy.cpp" />
     <ClCompile Include="..\SpoutDirectX.cpp" />
     <ClCompile Include="..\SpoutFrameCount.cpp" />
     <ClCompile Include="..\SpoutGL.cpp" />
     <ClCompile Include="..\SpoutGLextensions.cpp" />
     <ClCompile Include="..\SpoutReceiver.cpp" />
-    <ClCompile Include="..\SpoutSDK.cpp" />
     <ClCompile Include="..\SpoutSender.cpp" />
     <ClCompile Include="..\SpoutSenderNames.cpp" />
     <ClCompile Include="..\SpoutSharedMemory.cpp" />
