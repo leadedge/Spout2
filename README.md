@@ -3,11 +3,14 @@
 Spout supports DirectX 11 and OpenGL textures and includes a developer SDK and sample applications. If you are interested in assisting with development, please contact using the email address indicated on the GitHub overview page.
 
 Documentation
-- [Spout SDK](https://spoutgl-site.netlify.app)
-- [SpoutLibrary](https://spoutlibrary-site.netlify.app/)
+- [Spout SDK for OpenGL source files](https://spoutgl-site.netlify.app/)
+- [SpoutLibrary - C compatible library](https://spoutlibrary-site.netlify.app/)
+- [Spout for DirectX - SpoutDX support class](https://spoutdx-site.netlify.app/)
 
-For general questions please visit the [Spout Discourse group](
-https://spout.discourse.group)
+
+Further pdf documents and examples can be found in the relevant folders.\
+
+For general questions please visit the [Spout Discourse group](https://spout.discourse.group)
 
 Your support will help the project to continue and develop.
 
