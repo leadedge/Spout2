@@ -8,7 +8,7 @@ Documentation
 - [Spout for DirectX - SpoutDX support class](https://spoutdx-site.netlify.app/)
 
 
-Further pdf documents and examples can be found in the relevant folders.\
+Further pdf documents and examples can be found in the relevant folders.
 
 For general questions please visit the [Spout Discourse group](https://spout.discourse.group)
 
