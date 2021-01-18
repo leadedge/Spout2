@@ -52,6 +52,8 @@
 //		29.12.20 - Re-arrange files for CMake and modify project files
 //		31.12.20 - Re-build 32/64 bit - VS2017 / MT
 //		06.01.20 - Re-build 32/64 bit - VS2017 / MT
+//		18.01.21 - Add RegisterSenderName, ReleaseSenderName, FindSenderName
+//				   Re-build 32/64 bit - VS2017 / MT
 //
 /*
 		Copyright (c) 2016-2021, Lynn Jarvis. All rights reserved.
@@ -461,6 +463,16 @@ private: // Spout SDK functions
 	//
 	// Group: Sender names
 	//
+
+	// Function: RegisterSenderName
+	// Register a sender name in the list of senders
+	bool RegisterSenderName(const char* sendername);
+	// Function: ReleaseSenderName
+	// Remove a name from the list
+	bool ReleaseSenderName(const char* sendername);
+	// Function: FindSenderName
+	// Find a name in the list
+	bool FindSenderName(const char* sendername);
 	
 	// Function: GetSenderCount
 	// Number of senders
@@ -477,6 +489,8 @@ private: // Spout SDK functions
 	// Function: SetActiveSender
 	// Set sender as active
 	bool SetActiveSender(const char* Sendername);
+
+
 
 	//
 	// Group: User registry settings
@@ -976,6 +990,21 @@ bool SPOUTImpl::UnBindSharedTexture()
 GLuint SPOUTImpl::GetSharedTextureID()
 {
 	return spout->GetSharedTextureID();
+}
+
+bool SPOUTImpl::RegisterSenderName(const char* sendername)
+{
+	return spout->sendernames.RegisterSenderName(sendername);
+}
+
+bool SPOUTImpl::ReleaseSenderName(const char* sendername)
+{
+	return spout->sendernames.ReleaseSenderName(sendername);
+}
+
+bool SPOUTImpl::FindSenderName(const char* sendername)
+{
+	return spout->sendernames.FindSenderName(sendername);
 }
 
 int  SPOUTImpl::GetSenderCount()
