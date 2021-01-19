@@ -53,6 +53,7 @@
 //		31.12.20 - Re-build 32/64 bit - VS2017 / MT
 //		06.01.20 - Re-build 32/64 bit - VS2017 / MT
 //		18.01.21 - Add RegisterSenderName, ReleaseSenderName, FindSenderName
+//		19.01.21 - Remove RegisterSenderName, ReleaseSenderName - too low level
 //				   Re-build 32/64 bit - VS2017 / MT
 //
 /*
@@ -464,22 +465,15 @@ private: // Spout SDK functions
 	// Group: Sender names
 	//
 
-	// Function: RegisterSenderName
-	// Register a sender name in the list of senders
-	bool RegisterSenderName(const char* sendername);
-	// Function: ReleaseSenderName
-	// Remove a name from the list
-	bool ReleaseSenderName(const char* sendername);
-	// Function: FindSenderName
-	// Find a name in the list
-	bool FindSenderName(const char* sendername);
-	
 	// Function: GetSenderCount
 	// Number of senders
 	int  GetSenderCount();
 	// Function: GetSender
-	// Sender item name in the sender names set
+	// Sender item name in the sender names list
 	bool GetSender(int index, char* sendername, int MaxSize = 256);
+	// Function: FindSenderName
+	// Find a sender in the sender names list
+	bool FindSenderName(const char* sendername);
 	// Function: GetSenderInfo
 	// Sender information
 	bool GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
@@ -992,21 +986,6 @@ GLuint SPOUTImpl::GetSharedTextureID()
 	return spout->GetSharedTextureID();
 }
 
-bool SPOUTImpl::RegisterSenderName(const char* sendername)
-{
-	return spout->sendernames.RegisterSenderName(sendername);
-}
-
-bool SPOUTImpl::ReleaseSenderName(const char* sendername)
-{
-	return spout->sendernames.ReleaseSenderName(sendername);
-}
-
-bool SPOUTImpl::FindSenderName(const char* sendername)
-{
-	return spout->sendernames.FindSenderName(sendername);
-}
-
 int  SPOUTImpl::GetSenderCount()
 {
 	return spout->GetSenderCount();
@@ -1015,6 +994,11 @@ int  SPOUTImpl::GetSenderCount()
 bool SPOUTImpl::GetSender(int index, char* sendername, int MaxSize)
 {
 	return spout->GetSender(index, sendername, MaxSize);
+}
+
+bool SPOUTImpl::FindSenderName(const char* sendername)
+{
+	return spout->sendernames.FindSenderName(sendername);
 }
 
 bool SPOUTImpl::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
