@@ -2,7 +2,7 @@
 
 This branch is a complete archive of Spout Version 2.006.
 
-The SDK files and libraries can be used for maintenance or development of existing applications. They remain compatible with those built with the 2.007 SDK.
+The SDK files and libraries can be used for maintenance or development of applications developed with the 2.006 SDK. They remain compatible with those built with the 2.007 SDK.
 
 Spout 2.006 has support for DirectX 9 textures which has been removed in Version 2.007. Memoryshare mode has also been removed, but 2.007 receivers will still receive from 2.006 memoryshare senders. CPU share mode is compatible.
 
