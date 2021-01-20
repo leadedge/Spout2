@@ -115,6 +115,14 @@
 */
 #include "spoutDX.h"
 
+//
+// Class: spoutDX
+//
+// Functions to manage DirectX11 texture sharing.
+//
+// Refer to source code for further details.
+//
+
 spoutDX::spoutDX()
 {
 	// Initialize variables
@@ -162,6 +170,11 @@ spoutDX::~spoutDX()
 // DIRECTX
 //
 
+//
+// Group: DirectX
+//
+
+// Function: OpenDirectX11
 // Initialize and prepare Directx 11
 bool spoutDX::OpenDirectX11(ID3D11Device* pDevice)
 {
@@ -191,16 +204,22 @@ bool spoutDX::OpenDirectX11(ID3D11Device* pDevice)
 
 }
 
+// Function: OpenDirectX11
+// Return the DirectX11 device
 ID3D11Device* spoutDX::GetDX11Device()
 {
 	return m_pd3dDevice;
 }
 
+// Function: GetDX11Context
+// Return the DirectX11 immediate context
 ID3D11DeviceContext* spoutDX::GetDX11Context()
 {
 	return m_pImmediateContext;
 }
 
+// Function: CloseDirectX11
+// Close DirectX11 and free resources
 void spoutDX::CloseDirectX11()
 {
 	SpoutLogNotice("spoutDX::CloseDirectX11()");
@@ -234,6 +253,7 @@ void spoutDX::CloseDirectX11()
 
 }
 
+// Function: CloseDirectX11
 // Was a device was created using the SpoutDirectX class
 bool spoutDX::IsClassDevice()
 {
@@ -244,6 +264,28 @@ bool spoutDX::IsClassDevice()
 // SENDER
 //
 
+//
+// Group: Sender
+//
+// SendTexture and SendImage create or update a sender as required.
+//
+// - If a sender has not been created yet :
+//
+//    - Make sure DirectX has been initialized
+//    - Create a sender using the DX11 shared texture handle
+//
+// - If the sender exists, test for size change :
+//
+//    - Update the class shared texture
+//    - Update the sender and class variables	
+//
+
+
+//---------------------------------------------------------
+// Function: SetSenderName
+// Set name for sender creation
+//
+//   If no name is specified, the executable name is used. 
 bool spoutDX::SetSenderName(const char* sendername)
 {
 	if (!sendername) {
@@ -272,11 +314,19 @@ bool spoutDX::SetSenderName(const char* sendername)
 	return true;
 }
 
+//---------------------------------------------------------
+// Function: SetSenderFormat
+// Set the sender DX11 shared texture format
 void spoutDX::SetSenderFormat(DXGI_FORMAT format)
 {
 	m_dwFormat = format;
 }
 
+//---------------------------------------------------------
+// Function: ReleaseSender
+// Close receiver and release resources.
+//
+// A new sender is created or updated by all sending functions
 void spoutDX::ReleaseSender()
 {
 	if (m_pSharedTexture)
@@ -302,18 +352,25 @@ void spoutDX::ReleaseSender()
 
 }
 
+//---------------------------------------------------------
+// Function: SendTexture
+// Send DirectX11 texture
 //
-// Send a texture
+// - Default format :
 //
-// DX9 compatible
-// DXGI_FORMAT_R8G8B8A8_UNORM; // default DX11 format - compatible with DX9 (28)
-// DXGI_FORMAT_B8G8R8A8_UNORM; // compatible DX11 format - works with DX9 (87)
-// DXGI_FORMAT_B8G8R8X8_UNORM; // compatible DX11 format - works with DX9 (88)
+//     - DXGI_FORMAT_B8G8R8A8_UNORM  (87)
 //
-// Other formats that work with DX11 but not with DX9
-// DXGI_FORMAT_R16G16B16A16_FLOAT
-// DXGI_FORMAT_R16G16B16A16_SNORM
-// DXGI_FORMAT_R10G10B10A2_UNORM
+// - DX9 compatible formats :
+//
+//     - DXGI_FORMAT_R8G8B8A8_UNORM  (28)
+//     - DXGI_FORMAT_B8G8R8A8_UNORM  (87)
+//     - DXGI_FORMAT_B8G8R8X8_UNORM  (88)
+//
+// - Other formats that work with DX11 but not with DX9 :
+//
+//     - DXGI_FORMAT_R16G16B16A16_FLOAT
+//     - DXGI_FORMAT_R16G16B16A16_SNORM
+//     - DXGI_FORMAT_R10G10B10A2_UNORM
 //
 bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
 {
@@ -347,6 +404,9 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
 	return true;
 }
 
+//---------------------------------------------------------
+// Function: SendImage
+// Send pixel image
 bool spoutDX::SendImage(unsigned char * pData, unsigned int width, unsigned int height)
 {
 	// Quit if no data
@@ -372,31 +432,49 @@ bool spoutDX::SendImage(unsigned char * pData, unsigned int width, unsigned int 
 	return true;
 }
 
+//---------------------------------------------------------
+// Function: IsInitialized
+// Initialization status
 bool spoutDX::IsInitialized()
 {
 	return m_bSpoutInitialized;
 }
 
+//---------------------------------------------------------
+// Function: GetName
+// Sender name
 const char * spoutDX::GetName()
 {
 	return m_SenderName;
 }
 
+//---------------------------------------------------------
+// Function: GetWidth
+// Sender width
 unsigned int spoutDX::GetWidth()
 {
 	return m_Width;
 }
 
+//---------------------------------------------------------
+// Function: GetHeight
+// Sender height
 unsigned int spoutDX::GetHeight()
 {
 	return m_Height;
 }
 
+//---------------------------------------------------------
+// Function: GetFps
+// Sender frame rate
 double spoutDX::GetFps()
 {
 	return (frame.GetSenderFps());
 }
 
+//---------------------------------------------------------
+// Function: GetFrame
+// Sender frame number
 long spoutDX::GetFrame()
 {
 	return (frame.GetSenderFrame());
@@ -407,7 +485,25 @@ long spoutDX::GetFrame()
 // RECEIVER
 //
 
-// Set the sender name to connect to
+//
+// Group: Receiver
+//
+// ReceiveTexture and ReceiveImage
+//
+//	- Connect to a sender
+//	- Set class variables for sender name, width and height
+//  - If the sender has changed size, set a flag for the application to update
+//	  the receiving texture or imageif IsUpdated() returns true.
+//  - Copy the sender shared texture to the user texture or image.
+//
+
+//---------------------------------------------------------
+// Function: SetReceiverName
+// Specify sender for connection
+//
+//   The application will not connect to any other unless the user selects one
+//   If that sender closes, the application will wait for the nominated sender to open 
+//   If no name is specified, the receiver will connect to the active sender
 void spoutDX::SetReceiverName(const char * SenderName)
 {
 	if (SenderName && SenderName[0]) {
@@ -416,6 +512,9 @@ void spoutDX::SetReceiverName(const char * SenderName)
 	}
 }
 
+//---------------------------------------------------------
+// Function: ReleaseReceiver
+// Close receiver and release resources ready to connect to another sender
 void spoutDX::ReleaseReceiver()
 {
 	// Restore the sender name if one was specified by SetReceiverName
@@ -450,6 +549,13 @@ void spoutDX::ReleaseReceiver()
 
 }
 
+//---------------------------------------------------------
+// Function: ReceiveTexture
+//  Copy the sender DX11 shared texture
+//
+//    The receiving texture must be the same format
+//    and must be re-allocated if IsUpdated() returns true
+//
 bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 {
 	// Return if flagged for update
@@ -517,6 +623,8 @@ bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 
 }
 
+//---------------------------------------------------------
+// Function: ReceiveImage
 // Receive from a sender via DX11 staging textures to an rgba or rgb buffer of variable size
 // A new shared texture pointer (m_pSharedTexture) is retrieved if the sender changed
 bool spoutDX::ReceiveImage(unsigned char * pixels,
@@ -584,14 +692,21 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 
 }
 
-
-// Pop up SpoutPanel to allow the user to select a sender
+//---------------------------------------------------------
+// Function: SelectSender
+// Open sender selection dialog
 void spoutDX::SelectSender()
 {
 	SelectSenderPanel();
 }
 
-// Check for sender change
+//---------------------------------------------------------
+// Function: IsUpdated
+// Query whether the sender has changed.
+//
+//   Must be checked at every cycle before receiving data. 
+//
+//   If this is not done, the receiving functions fail.
 bool spoutDX::IsUpdated()
 {
 	bool bRet = m_bUpdated;
@@ -599,47 +714,82 @@ bool spoutDX::IsUpdated()
 	return bRet;
 }
 
+
+//---------------------------------------------------------
+// Function: IsConnected
+// Query sender connection.
+//
+//   If the sender closes, receiving functions return false,  
+//   but connection can be tested at any time.
 bool spoutDX::IsConnected()
 {
 	return m_bConnected;
 }
 
+//---------------------------------------------------------
+// Function: IsFrameNew
+// Query received frame status
+//
+//   The receiving texture or pixel buffer is refreshed if the sender has produced a new frame  
+//   This can be queried to process texture data only for new frames
 bool spoutDX::IsFrameNew()
 {
 	return m_bNewFrame;
 }
 
+//---------------------------------------------------------
+// Function: GetSenderHandle
+// Received sender share handle
 HANDLE spoutDX::GetSenderHandle()
 {
 	return m_dxShareHandle;
 }
 
+//---------------------------------------------------------
+// Function: GetSenderFormat
+// Get sender DirectX texture format
 DXGI_FORMAT spoutDX::GetSenderFormat()
 {
 	return (DXGI_FORMAT)m_dwFormat;
 }
 
+
+//---------------------------------------------------------
+// Function: GetSenderName
+// Get sender name
 const char * spoutDX::GetSenderName()
 {
 	return m_SenderName;
 }
 
+//---------------------------------------------------------
+// Function: GetSenderWidth
+// Get sender width
 unsigned int spoutDX::GetSenderWidth()
 {
 	return m_Width;
 }
 
+//---------------------------------------------------------
+// Function: GetSenderHeight
+// Get sender height
 unsigned int spoutDX::GetSenderHeight()
 {
 	return m_Height;
 
 }
 
+//---------------------------------------------------------
+// Function: GetSenderFps
+// Get sender frame rate
 double spoutDX::GetSenderFps()
 {
 	return frame.GetSenderFps();
 }
 
+//---------------------------------------------------------
+// Function: GetSenderFrame
+// Get sender frame number
 long spoutDX::GetSenderFrame()
 {
 	return frame.GetSenderFrame();
@@ -650,16 +800,28 @@ long spoutDX::GetSenderFrame()
 // COMMON
 //
 
+//
+// Group: Frame counting
+//
+
+//---------------------------------------------------------
+// Function: HoldFps
+// Frame rate control
 void spoutDX::HoldFps(int fps)
 {
 	frame.HoldFps(fps);
 }
 
+// Function: DisableFrameCount
+// Disable frame counting specifically for this application
 void spoutDX::DisableFrameCount()
 {
 	frame.DisableFrameCount();
 }
 
+//---------------------------------------------------------
+// Function: IsFrameCountEnabled
+// Return frame count status
 bool spoutDX::IsFrameCountEnabled()
 {
 	return frame.IsFrameCountEnabled();
@@ -668,6 +830,14 @@ bool spoutDX::IsFrameCountEnabled()
 //---------------------------------------------------------
 // SenderNames
 //
+
+//
+// Group: Sender names
+//
+
+//---------------------------------------------------------
+// Function: GetSenderCount
+// Number of senders
 int spoutDX::GetSenderCount()
 {
 	std::set<std::string> SenderNameSet;
@@ -677,7 +847,9 @@ int spoutDX::GetSenderCount()
 	return 0;
 }
 
-// Get a sender name given an index into the sender names set
+//---------------------------------------------------------
+// Function: GetSender
+// Sender item name in the sender names set
 bool spoutDX::GetSender(int index, char* sendername, int sendernameMaxSize)
 {
 	std::set<std::string> SenderNameSet;
@@ -705,26 +877,41 @@ bool spoutDX::GetSender(int index, char* sendername, int sendernameMaxSize)
 	return false;
 }
 
+//---------------------------------------------------------
+// Function: GetSenderInfo
+// Sender information
 bool spoutDX::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
 {
 	return sendernames.GetSenderInfo(sendername, width, height, dxShareHandle, dwFormat);
 }
 
+//---------------------------------------------------------
+// Function: GetActiveSender
+// Current active sender name
 bool spoutDX::GetActiveSender(char* Sendername)
 {
 	return sendernames.GetActiveSender(Sendername);
 }
 
+//---------------------------------------------------------
+// Function: SetActiveSender
+// Set sender as active
 bool spoutDX::SetActiveSender(const char* Sendername)
 {
 	return sendernames.SetActiveSender(Sendername);
 }
 
+//---------------------------------------------------------
+// Function: GetMaxSenders
+// Get user Maximum senders allowed
 int spoutDX::GetMaxSenders()
 {
 	return(sendernames.GetMaxSenders());
 }
 
+//---------------------------------------------------------
+// Function: SetMaxSenders
+// Set user Maximum senders allowed
 void spoutDX::SetMaxSenders(int maxSenders)
 {
 	sendernames.SetMaxSenders(maxSenders);
@@ -734,21 +921,40 @@ void spoutDX::SetMaxSenders(int maxSenders)
 //
 // Adapter functions
 //
+
+//
+// Group: Graphics adapter
+//
+// Note that both the Sender and Receiver must use the same graphics adapter.
+//
+
+//---------------------------------------------------------
+// Function: GetNumAdapters
+// The number of graphics adapters in the system
 int spoutDX::GetNumAdapters()
 {
 	return spoutdx.GetNumAdapters();
 }
 
+//---------------------------------------------------------
+// Function: GetAdapterName
+// Get adapter item name
 bool spoutDX::GetAdapterName(int index, char *adaptername, int maxchars)
 {
 	return spoutdx.GetAdapterName(index, adaptername, maxchars);
 }
 
+//---------------------------------------------------------
+// Function: GetAdapter
+// Get adapter index
 int spoutDX::GetAdapter()
 {
 	return spoutdx.GetAdapter();
 }
 
+//---------------------------------------------------------
+// Function: SetAdapter
+// Set graphics adapter for output
 bool spoutDX::SetAdapter(int index)
 {
 	if (spoutdx.SetAdapter(index)) {
@@ -759,6 +965,9 @@ bool spoutDX::SetAdapter(int index)
 	return false;
 }
 
+//---------------------------------------------------------
+// Function: GetAdapterInfo
+// Get the current adapter description
 int spoutDX::GetSenderAdapter(const char* sendername, char* adaptername, int maxchars)
 {
 	if (!sendername || !sendername[0])
@@ -818,27 +1027,16 @@ int spoutDX::GetSenderAdapter(const char* sendername, char* adaptername, int max
 }
 
 //
-// Adapter selection option
-//
-
-bool spoutDX::GetAdapt()
-{
-	DWORD dwAdapt = 0;
-	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Adapt", &dwAdapt);
-	m_bAdapt = (dwAdapt == 1);
-	return m_bAdapt;
-}
-
-void spoutDX::SetAdapt(bool bAdapt)
-{
-	m_bAdapt = bAdapt;
-}
-
-
-//
 // Sharing modes
 //
 
+//
+// Group: Retained for 2.006 compatibility
+//
+
+//---------------------------------------------------------
+// Function: GetDX9
+// Get user DX9 mode
 bool spoutDX::GetDX9()
 {
 	DWORD dwDX9 = 0;
@@ -846,6 +1044,9 @@ bool spoutDX::GetDX9()
 	return (dwDX9 == 1);
 }
 
+//---------------------------------------------------------
+// Function: GetMemoryShareMode
+// Get user memory share mode
 bool spoutDX::GetMemoryShareMode()
 {
 	bool bRet = false;
@@ -872,7 +1073,6 @@ bool spoutDX::CreateDX11texture(ID3D11Device* pd3dDevice,
 //
 // PRIVATE
 //
-
 
 
 // --------------------------------------------------------

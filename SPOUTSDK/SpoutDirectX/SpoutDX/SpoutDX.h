@@ -157,7 +157,7 @@ class SPOUT_DLLEXP spoutDX {
 	//
 
 	// Get the number of graphics adapters in the system
-	int  GetNumAdapters();
+	int GetNumAdapters();
 	// Get the adapter name for a given index
 	bool GetAdapterName(int index, char *adaptername, int maxchars);
 	// Get the current adapter index
@@ -168,17 +168,10 @@ class SPOUT_DLLEXP spoutDX {
 	int  GetSenderAdapter(const char* sendername, char* adaptername, int maxchars);
 
 	//
-	// Adapter selection
-	//
-
-	// Get user preference to change reciever to the sender adapter
-	bool GetAdapt();
-	// Set application to change receiver to the sender adapter
-	void SetAdapt(bool bAdapt = true);
-
-	//
 	// Sharing modes (2.006 compatibility)
 	//
+
+	
 
 	// Get user selected DX9 mode (2.006)
 	bool GetDX9();
