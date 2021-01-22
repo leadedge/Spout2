@@ -30,10 +30,9 @@ Source files
 
 The "src" folder contains files for a Sender example.\
 The "Sources" folder contains files for both Sender and Receiver.\
-For the one you want copy "ofApp.h" and "ofApp.cpp" to the "src" folder and "Rebuild".\
-Methods for 2.006 remain compatible.\
-They are lower level and may be preferred for your application if you want more control over the process.\
-The 2.006 folder contains Sender and Receiver examples.
+For the one you want copy "ofApp.h" and "ofApp.cpp" to the "src" folder and "Rebuild".
+
+Methods for 2.006 remain compatible. They are lower level and may be preferred for your application if you want more control over the process. The 2.006 folder contains Sender and Receiver examples.
 
 SpoutPanel
 
