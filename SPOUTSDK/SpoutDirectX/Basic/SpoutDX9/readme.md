@@ -1,8 +1,6 @@
 Examples of how to use the Spout 2.007 SDK for sharing D3D9ex textures.
 
-Although support for DirectX9 has been removed from Version 2.007, shared textures created with D3D9ex and with format D3DFMT_A8R8G8B8 or D3DFMT_X8R8G8B8 will still be be received.
-
-The SpoutDirectX9 class contains functiuns required for sending and receiving from DirectX9 applications and show the procedures for Spout Vesrion 2.007.
+Although the Spout SDK Version 2.007 does not contain support for DirectX9, shared textures created with D3D9ex and with format D3DFMT_A8R8G8B8 or D3DFMT_X8R8G8B8 are compatible and will still be be received.
 
 Two examples from the from the [Microsoft DirectX SDK (June 2010)](https://www.microsoft.com/en-au/download/details.aspx?id=6812) have been modified for Spout functions.\
 - Tut06_Meshes - sender
