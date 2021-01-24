@@ -248,9 +248,11 @@ struct SPOUTLIBRARY
 	//
 
 	// Number of senders
-	virtual int  GetSenderCount() = 0;
+	virtual int GetSenderCount() = 0;
 	// Sender item name
 	virtual bool GetSender(int index, char* sendername, int MaxSize = 256) = 0;
+	// Find a sender in the list
+	virtual bool FindSenderName(const char* sendername) = 0;
 	// Sender information
 	virtual bool GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat) = 0;
 	// Current active sender
@@ -314,7 +316,7 @@ struct SPOUTLIBRARY
 	// The path of the host that produced the sender
 	virtual bool GetHostPath(const char *sendername, char *hostpath, int maxchars) = 0;
 	// Vertical sync status
-	virtual int  GetVerticalSync() = 0;
+	virtual int GetVerticalSync() = 0;
 	// Lock to monitor vertical sync
 	virtual bool SetVerticalSync(bool bSync = true) = 0;
 	// Get Spout version
@@ -336,7 +338,7 @@ struct SPOUTLIBRARY
 	//
 
 	// The number of graphics adapters in the system
-	virtual int  GetNumAdapters() = 0;
+	virtual int GetNumAdapters() = 0;
 	// Adapter item name
 	virtual bool GetAdapterName(int index, char *adaptername, int maxchars) = 0;
 	// Get adapter index 

@@ -54,7 +54,7 @@
 //		06.01.20 - Re-build 32/64 bit - VS2017 / MT
 //		18.01.21 - Add RegisterSenderName, ReleaseSenderName, FindSenderName
 //		19.01.21 - Remove RegisterSenderName, ReleaseSenderName - too low level
-//				   Re-build 32/64 bit - VS2017 / MT
+//		24.01.21 - Re-build 32/64 bit - VS2017 / MT
 //
 /*
 		Copyright (c) 2016-2021, Lynn Jarvis. All rights reserved.
