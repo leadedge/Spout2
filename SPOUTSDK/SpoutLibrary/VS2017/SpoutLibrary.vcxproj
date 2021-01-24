@@ -1,0 +1,226 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A621CCC8-67A6-4B0F-BDEE-56291B7283C0}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>SpoutLibrary</RootNamespace>
+    <ProjectName>SpoutLibrary</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>Spout</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>Spout</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>SpoutLibrary</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>SpoutLibrary</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>SPOUT_BUILD_DLL;WIN32;_DEBUG;_WINDOWS;_USRDLL;SPOUTSDK_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\ofSpoutLibraryExample\src\"
+copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\ofSpoutLibraryExample\bin\SpoutLibrary_d.dll"
+copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.lib" "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\ofSpoutLibraryExample\libs\SpoutLibrary_d.lib"
+
+copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\testApps\BeatDrop-1001\vis_milk2\Debug\"
+copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\Win32\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS100VS\apps\testApps\BeatDrop\vis_milk2\Debug\"
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>SPOUT_BUILD_DLL;WIN32;_DEBUG;_WINDOWS;_USRDLL;SPOUTSDK_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Debug\SpoutLibrary.lib" "D:\Qt\myApps\SpoutQT\libs\x64\Debug\SpoutLibrary_d.lib"
+copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Debug\SpoutLibrary.dll" "D:\Qt\myApps\SpoutQT\libs\x64\Debug\SpoutLibrary_d.dll"
+copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\VS2017\x64\Debug\SpoutLibrary.dll" "D:\Qt\myApps\SpoutQT\SpoutLibrary_d.dll"
+copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "C:\Qt\myApps\SpoutQT\libs\include"
+copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "C:\Qt\myApps\SpoutQT\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>SPOUT_BUILD_DLL;WIN32;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories />
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy /y /v $(OutDir)$(TargetName).dll "..\Binaries\Win32\"
+copy /y /v $(OutDir)$(TargetName).lib "..\Binaries\Win32\"
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>SPOUT_BUILD_DLL;NDEBUG;_WINDOWS;_USRDLL;SPOUTSDK_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories />
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy /y /v $(OutDir)$(TargetName).dll "..\Binaries\x64\"
+copy /y /v $(OutDir)$(TargetName).lib "..\Binaries\x64\"
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\SpoutGL\Spout.cpp" />
+    <ClCompile Include="..\..\SpoutGL\SpoutCopy.cpp" />
+    <ClCompile Include="..\..\SpoutGL\SpoutDirectX.cpp" />
+    <ClCompile Include="..\..\SpoutGL\SpoutFrameCount.cpp" />
+    <ClCompile Include="..\..\SpoutGL\SpoutGL.cpp" />
+    <ClCompile Include="..\..\SpoutGL\SpoutGLextensions.cpp" />
+    <ClCompile Include="..\..\SpoutGL\SpoutReceiver.cpp" />
+    <ClCompile Include="..\..\SpoutGL\SpoutSender.cpp" />
+    <ClCompile Include="..\..\SpoutGL\SpoutSenderNames.cpp" />
+    <ClCompile Include="..\..\SpoutGL\SpoutSharedMemory.cpp" />
+    <ClCompile Include="..\..\SpoutGL\SpoutUtils.cpp" />
+    <ClCompile Include="..\SpoutLibrary.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\SpoutGL\Spout.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutCommon.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutCopy.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutDirectX.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutFrameCount.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutGL.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutGLextensions.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutReceiver.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutSender.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutSenderNames.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutSharedMemory.h" />
+    <ClInclude Include="..\..\SpoutGL\SpoutUtils.h" />
+    <ClInclude Include="..\SpoutLibrary.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
