@@ -10,7 +10,7 @@ Options
 
 o Buffer
 
-Use OpenGL pixel buffering to copy data GPU < > CPU. OpenGL pixel buffers are used to speed up data transfer between system memory and GPU for pixel images and CPU backup mode. Buffering is faster but might result in latency. Test for your application. 
+Use OpenGL pixel buffers to speed up data transfer between system memory. This is used for pixel images and CPU backup mode. Buffering is faster but might result in latency. Test for your application. 
 
 o Number of buffers
 
