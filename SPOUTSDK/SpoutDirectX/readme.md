@@ -57,8 +57,7 @@ The example project files are created for Visual Studio 2017. To build them, ret
               Windows <- Windows examples
 			      Sender   <- Image sender
 			      Receiver <- Image receiver
-			      Video    <- FFmpeg video sender
-			  
+
 Open each solution file, change to release and build. For all examples, search for "SPOUT" to see the changes made to the original code. Try them first from the Binaries folder that has pre-built executables. Refer to SpoutDX.pdf for further information.
 
 - Using CMake\
