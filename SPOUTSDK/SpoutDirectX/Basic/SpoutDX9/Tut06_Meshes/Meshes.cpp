@@ -90,7 +90,7 @@ HRESULT InitD3D( HWND hWnd )
 	}
 	// Use the class object and device
 	g_pD3D = spoutdx9.GetDX9object();
-	g_pd3dDevice = spoutdx9.CreateDX9device(g_pD3D, hWnd);
+	g_pd3dDevice = spoutdx9.GetDX9device();
 	
 	/*
 	// Create the D3D object.
