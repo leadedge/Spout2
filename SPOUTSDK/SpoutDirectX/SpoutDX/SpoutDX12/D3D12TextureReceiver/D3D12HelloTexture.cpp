@@ -500,7 +500,6 @@ void D3D12HelloTexture::OnRender()
 				g_pReceivedResource12->Release();
 			g_pReceivedResource12 = nullptr;
 
-			/*
 			// Create a D3D12 texture resource to use for the SRV
 			DXGI_FORMAT texformat = receiver.GetSenderFormat();
 			receiver.CreateDX12texture(m_device.Get(),
@@ -509,39 +508,12 @@ void D3D12HelloTexture::OnRender()
 				D3D12_RESOURCE_STATE_COPY_DEST, // The texture will be copied to 
 				&texformat, // The sender texture format
 				&g_pReceivedResource12);
-			*/
-
-			// Create the texture.
-			{
-				// Describe and create a Texture2D.
-				D3D12_RESOURCE_DESC textureDesc = {};
-				textureDesc.MipLevels = 1;
-				textureDesc.Format = receiver.GetSenderFormat(); // DXGI_FORMAT_R8G8B8A8_UNORM;
-				textureDesc.Width = receiver.GetSenderWidth();
-				textureDesc.Height = receiver.GetSenderHeight();
-				textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-				textureDesc.DepthOrArraySize = 1;
-				textureDesc.SampleDesc.Count = 1;
-				textureDesc.SampleDesc.Quality = 0;
-				textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-
-				ThrowIfFailed(m_device->CreateCommittedResource(
-					&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-					D3D12_HEAP_FLAG_NONE,
-					&textureDesc,
-					D3D12_RESOURCE_STATE_COPY_DEST,
-					nullptr,
-					IID_PPV_ARGS(&g_pReceivedResource12)));
-			}
-
-			// Create a wrapped 11on12 resource from the D3D12 texture resource
-			// receiver.WrapDX12Resource(g_pReceivedResource12, &g_pReceivedResource11);
 
 			// Any other action required by the receiver can be done here
 			// In this example, we re-create the shader resource view
 			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Format = receiver.GetSenderFormat(); // SRV and texture format must match
+			srvDesc.Format = texformat; // SRV and texture format must match
 			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 			srvDesc.Texture2D.MipLevels = 1;
 			m_device->CreateShaderResourceView(g_pReceivedResource12, &srvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
