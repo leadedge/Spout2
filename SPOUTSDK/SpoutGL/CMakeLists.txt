@@ -71,6 +71,11 @@ if(NOT MSVC)
   target_compile_options(Spout PRIVATE -msse4)
 endif()
 
+get_property(GeneratorisMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(GeneratorisMultiConfig)
+	set(ConfigOutputDirectory $<CONFIG>/)
+endif()
+
 # Win32 or x64 build
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 
@@ -82,10 +87,10 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 	add_custom_command(TARGET Spout POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E 
 		copy $<TARGET_FILE:Spout> ${CMAKE_BINARY_DIR}/Binaries/Win32/Spout.dll
-	)
+  )
 	add_custom_command(TARGET Spout POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E 
-		copy ${CMAKE_CURRENT_BINARY_DIR}/Release/Spout.lib ${CMAKE_BINARY_DIR}/Binaries/Win32/Spout.lib
+		copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}Spout.lib ${CMAKE_BINARY_DIR}/Binaries/Win32/Spout.lib
 	)
 
 else()
@@ -101,7 +106,7 @@ else()
 	)
 	add_custom_command(TARGET Spout POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E 
-		copy ${CMAKE_CURRENT_BINARY_DIR}/Release/Spout.lib ${CMAKE_BINARY_DIR}/Binaries/x64/Spout.lib
+		copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}Spout.lib ${CMAKE_BINARY_DIR}/Binaries/x64/Spout.lib
 	)
 
 endif()
