@@ -32,6 +32,7 @@
 //		14.12.10	- independent std::chrono timing for sender frame count and HoldFps
 //					  Testing and code optimization
 //		18.12.20	- Add SetFrameCount for registry setting
+//		04.02.21	- Reset timers in EnableFrameCount
 //
 // ====================================================================================
 //
@@ -194,6 +195,20 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
 	m_SenderFps = GetRefreshRate();
+
+	// Reset timers
+	m_millisForFrame = 0.0;
+#ifdef USE_CHRONO
+	// Start std::chrono microsec counting
+	m_FrameStartPtr = new std::chrono::steady_clock::time_point;
+	m_FrameEndPtr = new std::chrono::steady_clock::time_point;
+	m_FramePtr = new std::chrono::steady_clock::time_point;
+#else
+	// Initialize PC msec frequency counter
+	PCFreq = 0.0;
+	CounterStart = 0;
+	StartCounter();
+#endif
 
 	// Return if already enabled for this sender
 	if (m_hCountSemaphore && strcmp(SenderName, m_SenderName) == 0) {
