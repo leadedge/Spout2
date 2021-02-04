@@ -74,6 +74,10 @@ class SPOUT_DLLEXP spoutGL {
 	bool GetAutoShare();
 	// Set auto GPU/CPU share depending on compatibility
 	void SetAutoShare(bool bAuto = true);
+	// Get forced CPU share
+	bool GetCPUshare();
+	// Set forced CPU share
+	void SetCPUshare(bool bCPU = true);
 	// OpenGL texture share compatibility
 	bool IsGLDXready();
 
@@ -172,7 +176,10 @@ class SPOUT_DLLEXP spoutGL {
 
 	// Perform tests for GL/DX interop availability and compatibility
 	bool GLDXready();
-
+	// Set host path to sender information
+	bool SetHostPath(const char *sendername);
+	// Set GL/DX compatibility to sender information
+	bool SetSenderCPUmode(const char *sendername, bool bCPU);
 
 	// 2.006 compatibility
 	bool OpenDirectX11();
@@ -334,11 +341,6 @@ protected :
 	bool ReadMemory(const char* sendername, GLuint TexID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
 	bool ReadMemoryPixels(const char* sendername, unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
 
-	// Set host path to sender information
-	bool SetHostPath(const char *sendername); 
-	// Set GL/DX compatibility to sender information
-	bool SetSenderCPUmode(const char *sendername, bool bCPU);
-
 	// Utility
 	bool OpenDeviceKey(const char* key, int maxsize, char* description, char* version);
 	void trim(char* s);
@@ -390,6 +392,7 @@ protected :
 
 	// Sharing modes
 	bool m_bAuto; // Auto share mode
+	bool m_bCPU;  // Force CPU mode (registry edit)
 	bool m_bUseGLDX; // GL/DX interop compatibility
 	bool m_bSenderCPUmode; // Sender GL/DX compatibility
 

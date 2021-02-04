@@ -19,6 +19,8 @@
 //		27.12.20	- Functions allocated to SpoutSDK class where appropriate
 //		14.01.21	- Add GetDX11Device() and GetDX11Context()
 //					  add bInvert and HostFBO options to WriteTextureReadback
+//		04.02.21	- SetHostPath and SetSenderCPUmode public
+//					  Add GetCPUshare and SetCPUshare for forced CPU share testing
 //
 // ====================================================================================
 /*
@@ -51,7 +53,7 @@
 // Class: spoutGL
 // Base class for OpenGL texture sharing using the NVIDIA GL/DX interop extensions.
 // This class should not be used directly because it is the base for the Spout, SpoutSender and SpoutReceiver classes.
-// Refer to the SpoutSDK class for documentation and details.
+// Refer to the Spout class for documentation and details.
 spoutGL::spoutGL()
 {
 	m_SenderName[0] = 0;
@@ -61,6 +63,7 @@ spoutGL::spoutGL()
 	m_dwFormat = (DWORD)DXGI_FORMAT_B8G8R8A8_UNORM; // default sender format
 
 	m_bAuto = true;
+	m_bCPU = false;
 	m_bUseGLDX = true;
 	m_bSenderCPUmode = false;
 	
@@ -124,6 +127,10 @@ spoutGL::spoutGL()
 	DWORD dwValue = 0;
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Auto", &dwValue))
 		m_bAuto = (dwValue == 1);
+
+	// Check for user registry edit to force CPU mode
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "CPU", &dwValue))
+		m_bCPU = (dwValue == 1);
 
 	// Check the user selected buffering mode
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Buffering", &dwValue))
@@ -267,6 +274,27 @@ void spoutGL::SetAutoShare(bool bAuto)
 }
 
 //---------------------------------------------------------
+// Function: GetAutoShare
+// Get auto GPU/CPU share depending on compatibility
+bool spoutGL::GetCPUshare()
+{
+	return m_bCPU;
+}
+
+//---------------------------------------------------------
+// Function: SetCPUshare
+// Set forced CPU share
+void spoutGL::SetCPUshare(bool bCPU)
+{
+	SpoutLogNotice("spoutGL::SetCPUshare(%d) - re-testing GL/DX compatibility", bCPU);
+
+	m_bCPU = bCPU;
+	// Re-test compatibility
+	OpenSpout(true);
+
+}
+
+//---------------------------------------------------------
 // Function: IsGLDXready
 // OpenGL texture share compatibility
 bool spoutGL::IsGLDXready()
@@ -328,14 +356,25 @@ bool spoutGL::OpenSpout(bool bRetest)
 	if (bRetest)
 		CleanupInterop();
 
-	if(!GLDXready()) {
-		// Not GL/DX compatible.
-		SpoutLogWarning("spoutGL::OpenSpout - system is not compatible with GL/DX interop");
-		// Use CPU backup if Auto share enabled
-		if (m_bAuto)
+	// If not compatible or force CPU mode
+	if(!GLDXready() || m_bCPU) {
+
+		if(GLDXready() && m_bCPU)
+			// Not GL/DX compatible.
+			SpoutLogWarning("spoutGL::OpenSpout - GL/DX interop compatible - CPU testing mode");
+		else
+			// Not GL/DX compatible.
+			SpoutLogWarning("spoutGL::OpenSpout - system is not compatible with GL/DX interop");
+		
+		// Use CPU backup if Auto share enabled or CPU mode set in the registry
+		if (m_bAuto || m_bCPU)
 			SpoutLogWarning("   Using CPU share mode");
 		else
 			SpoutLogWarning("   Cannot share textures");
+
+		// Set compatibility flag for forced CPU mode
+		m_bUseGLDX = false;
+
 	}
 	else {
 		// GL/DX compatible. Use GL/DX interop.
@@ -629,16 +668,67 @@ bool spoutGL::GLDXready()
 	// user settings (retrieved with GetAutoShare)
 	// and actual GL/DX compatibility (retrieved with GetGLDXready)
 
+	// The result is tested in OpenSpout
 	// Texture sharing is used if GL/DX compatible (m_bUseGLDX = true)
 	// CPU backup is used if :
 	//   1) Graphics is incompatible (m_bUseGLDX = false)
 	//   2) The user has selected "Auto" share in SpoutSettings (m_bAuto = false)
+	//   3) The user has forced CPU mode by registry edit of the CPU entry 	
 	// Otherwise no sharing is performed.
 
 	// If not GLDX compatible, LinkGLDXtexture will not be called (see CreateDX11interop)
 	// ReadDX11Texture and WriteDX11Texture using staging textures will be used instead
 
 	return m_bUseGLDX;
+
+}
+
+
+//---------------------------------------------------------
+bool spoutGL::SetHostPath(const char *sendername)
+{
+	SharedTextureInfo info;
+	if (!sendernames.getSharedInfo(sendername, &info)) {
+		SpoutLogWarning("spoutGL::SetHostPath(%s) - could not get sender info", sendername);
+		return false;
+	}
+	char exepath[256];
+	GetModuleFileNameA(NULL, exepath, sizeof(exepath));
+	// Description is defined as wide chars, but the path is stored as byte chars
+	strcpy_s((char*)info.description, 256, exepath);
+	if (!sendernames.setSharedInfo(sendername, &info)) {
+		SpoutLogWarning("spoutGL::SetHostPath(%s) - could not set sender info", sendername);
+	}
+	return true;
+
+}
+
+
+//---------------------------------------------------------
+// CPU mode is "not GL/DX compatible"
+// 2.006 senders will typically not have this bit set
+// so GL/DX compatibility is assumed
+bool spoutGL::SetSenderCPUmode(const char *sendername, bool bCPU)
+{
+	SharedTextureInfo info;
+
+	if (sendernames.getSharedInfo(sendername, &info)) {
+		// CPU mode - set top bit of 32 bit partner ID field
+		// 1000 0000 0000 0000 0000 0000 0000 0000
+		if (bCPU) {
+			info.partnerId = info.partnerId | 0x80000000; // Set bit
+			m_bSenderCPUmode = true;
+		}
+		else {
+			info.partnerId = info.partnerId & ~0x80000000; // Clear bit default
+			m_bSenderCPUmode = false;
+		}
+
+		// Save the info for this sender in the sender shared memory map
+		sendernames.setSharedInfo(sendername, &info);
+		return true;
+	}
+	return false;
 
 }
 
@@ -2051,54 +2141,6 @@ bool spoutGL::ReadMemoryPixels(const char* sendername, unsigned char* pixels,
 }
 
 //---------------------------------------------------------
-bool spoutGL::SetHostPath(const char *sendername)
-{
-	SharedTextureInfo info;
-	if (!sendernames.getSharedInfo(sendername, &info)) {
-		SpoutLogWarning("spoutGL::SetHostPath(%s) - could not get sender info", sendername);
-		return false;
-	}
-	char exepath[256];
-	GetModuleFileNameA(NULL, exepath, sizeof(exepath));
-	// Description is defined as wide chars, but the path is stored as byte chars
-	strcpy_s((char*)info.description, 256, exepath);
-	if (!sendernames.setSharedInfo(sendername, &info)) {
-		SpoutLogWarning("spoutGL::SetHostPath(%s) - could not set sender info", sendername);
-	}
-	return true;
-
-}
-
-
-//---------------------------------------------------------
-// CPU mode is "not GL/DX compatible"
-// 2.006 senders will typically not have this bit set
-// so GL/DX compatibility is assumed
-bool spoutGL::SetSenderCPUmode(const char *sendername, bool bCPU)
-{
-	SharedTextureInfo info;
-
-	if (sendernames.getSharedInfo(sendername, &info)) {
-		// CPU mode - set top bit of 32 bit partner ID field
-		// 1000 0000 0000 0000 0000 0000 0000 0000
-		if (bCPU) {
-			info.partnerId = info.partnerId | 0x80000000; // Set bit
-			m_bSenderCPUmode = true;
-		}
-		else {
-			info.partnerId = info.partnerId & ~0x80000000; // Clear bit default
-			m_bSenderCPUmode = false;
-		}
-
-		// Save the info for this sender in the sender shared memory map
-		sendernames.setSharedInfo(sendername, &info);
-		return true;
-	}
-	return false;
-
-}
-
-//---------------------------------------------------------
 bool spoutGL::OpenDirectX11()
 {
 	SpoutLogNotice("spoutGL::OpenDirectX11");
@@ -2450,7 +2492,8 @@ bool spoutGL::GLerror() {
 	GLenum err = GL_NO_ERROR;
 	bool bError = false;
 	while ((err = glGetError()) != GL_NO_ERROR) {
-		SpoutLogError("    GLerror - OpenGL error = %u (0x%.7X)", err, err);
+		// SpoutLogError("    GLerror - OpenGL error = %u (0x%.7X)", err, err);
+		printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
 		bError = true;
 		// gluErrorString needs glu32.lib
 		// printf("GL error = %d (0x%.7X) %s\n", err, err, gluErrorString(err));
