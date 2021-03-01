@@ -1,4 +1,3 @@
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Adapted for SPOUT output (https://spout.zeal.co/)
 // 
@@ -40,9 +39,14 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
 
 void D3D12HelloTriangle::OnInit()
 {
+	// SPOUT
 	// OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
-	
+	// printf("D3D12HelloTriangle\n");
+
+	// Give the sender a name
+	sender.SetSenderName("D3D12 Hello Triangle Sender");
+
 	LoadPipeline();
     LoadAssets();
 }
@@ -85,7 +89,7 @@ void D3D12HelloTriangle::LoadPipeline()
     {
         ComPtr<IDXGIAdapter1> hardwareAdapter;
         GetHardwareAdapter(factory.Get(), &hardwareAdapter);
-
+	
         ThrowIfFailed(D3D12CreateDevice(
             hardwareAdapter.Get(),
             D3D_FEATURE_LEVEL_11_0,
@@ -100,16 +104,28 @@ void D3D12HelloTriangle::LoadPipeline()
 
     ThrowIfFailed(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue)));
 
+	// SPOUT
+	// Initialize D3D12 in the SpoutDX12 class using the application device and command queue
+	// This creates a class D3D11on12 device, D3D11 device and context
+	sender.OpenDirectX12(m_device.Get(), reinterpret_cast<IUnknown**>(m_commandQueue.GetAddressOf()));
+
     // Describe and create the swap chain.
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
     swapChainDesc.BufferCount = FrameCount;
-    swapChainDesc.Width = m_width;
+    swapChainDesc.Width  = m_width;
     swapChainDesc.Height = m_height;
-    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    swapChainDesc.SampleDesc.Count = 1;
 
+	// SPOUT
+	// For compatibility with DirectX9 shared textures
+	// the format should be BGRA instead of RGBA
+	// swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swapChainDesc.SampleDesc.Count = 1; // The default sampler mode, with no anti-aliasing, has a count of 1 and a quality level of 0
+	swapChainDesc.SampleDesc.Quality = 0;
+	
     ComPtr<IDXGISwapChain1> swapChain;
     ThrowIfFailed(factory->CreateSwapChainForHwnd(
         m_commandQueue.Get(),        // Swap chain needs the queue so that it can force a flush on it.
@@ -122,17 +138,9 @@ void D3D12HelloTriangle::LoadPipeline()
 
     // This sample does not support fullscreen transitions.
     ThrowIfFailed(factory->MakeWindowAssociation(Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER));
-
     ThrowIfFailed(swapChain.As(&m_swapChain));
+
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
-
-	// SPOUT
-	// Initialize D3D12 using the application device and command queue
-	// This creates a class D3D11on12 device, D3D11 device and context
-	sender.OpenDirectX12(m_device.Get(), reinterpret_cast<IUnknown**>(m_commandQueue.GetAddressOf()));
-
-	// Give the sender a name
-	sender.SetSenderName("D3D12 Hello Texture Sender");
 
     // Create descriptor heaps.
     {
@@ -141,6 +149,7 @@ void D3D12HelloTriangle::LoadPipeline()
         rtvHeapDesc.NumDescriptors = FrameCount;
         rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
         rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		
         ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
 
         m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -158,10 +167,11 @@ void D3D12HelloTriangle::LoadPipeline()
             rtvHandle.Offset(1, m_rtvDescriptorSize);
 
 			// SPOUT
-			// Create a wrapped 11on12 resource of this back buffer using the class 11on12 device
-			sender.WrapDX12Resource(m_renderTargets[n].Get(), &m_wrappedBackBuffers[n]);
-
+			// Create a wrapped 11on12 resource of this back buffer
+			// using the class D3D11on12 device created by "OpenDirectX12"
+			sender.WrapDX12Resource(m_renderTargets[n].Get(), &m_wrappedBackBuffers[n], D3D12_RESOURCE_STATE_RENDER_TARGET);
         }
+
     }
 
     ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
@@ -199,8 +209,8 @@ void D3D12HelloTriangle::LoadAssets()
         // Define the vertex input layout.
         D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
         {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
         };
 
         // Describe and create the graphics pipeline state object (PSO).
@@ -216,8 +226,12 @@ void D3D12HelloTriangle::LoadAssets()
         psoDesc.SampleMask = UINT_MAX;
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-        psoDesc.SampleDesc.Count = 1;
+		// SPOUT
+		// For compatibility with DirectX9 shared textures
+		// the format should be BGRA instead of RGBA
+		// psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_B8G8R8A8_UNORM;
+		psoDesc.SampleDesc.Count = 1;
         ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
     }
 
@@ -309,16 +323,26 @@ void D3D12HelloTriangle::OnRender()
     ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
     m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
-    // Present the frame.
+	//
+	// SPOUT
+	//
+	// Send the wrapped D3D11on12 backbuffer texture resource.
+	//
+	// SendDX11Resource handles D3D11on12 wrap Acquire and Release,
+	// texture sync, sender creation and resize updates.
+	sender.SendDX11Resource(m_wrappedBackBuffers[m_frameIndex].Get());
+
+	// Present the frame.
     ThrowIfFailed(m_swapChain->Present(1, 0));
 
     WaitForPreviousFrame();
+	
+	//
+	// SPOUT - fps control
+	//
+	// "sender.HoldFps(60);" can be used to hold a target frame rate - e.g. 60 or 30fps.
+	// Here it's not required because "Present(1, 0)" synchronizes to vertical blank.
 
-	// SPOUT
-	// Send the wrapped backbuffer resource.
-	// SendWrappedResource handles D3D11on12 wrap Acquire and Release,
-	// texture sync, sender creation and resize updates.
-	sender.SendDX11Resource(m_wrappedBackBuffers[m_frameIndex].Get());
 
 }
 
@@ -359,7 +383,17 @@ void D3D12HelloTriangle::PopulateCommandList()
     m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
     // Record commands.
-    const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+
+    // const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+	float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+	// float m_referenceWhiteNits = 80.0f;
+	/*
+	clearColor[0] = powf(clearColor[0], 2.2f);
+	clearColor[1] = powf(clearColor[1], 2.2f);
+	clearColor[2] = powf(clearColor[2], 2.2f);
+	clearColor[3] = powf(clearColor[3], 2.2f);
+	*/
+
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);

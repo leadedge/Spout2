@@ -1,6 +1,6 @@
 Examples of how to use the Spout 2.007 SDK and SpoutDX support class for sharing D3D12 texture resources.
 
-The Spout SDK Version 2.007 shares between applications using DirectX11 textures, but it is possible to share with DirectX12 applications using the D3D11On12 mapping layer (https://github.com/microsoft/D3D11On12) which creates a D3D11 device wrapped around the D3D12 device. The wrapped D3D11 resource can then be used to copy to or from a sender shared texture.
+The Spout SDK Version 2.007 shares between applications using DirectX11 textures, but it's possible to share with DirectX12 applications using the D3D11On12 mapping layer (https://github.com/microsoft/D3D11On12) which creates a D3D11 device wrapped around the D3D12 device. The wrapped D3D11 resource can then be used to copy to or from a sender shared texture.
 
 Two examples from the from the [Microsoft DirectX Graphics Examples](https://github.com/microsoft/DirectX-Graphics-Samples/tree/master/Samples/Desktop) have been modified for Spout functions.
 - HelloTriangle - sender
@@ -36,7 +36,7 @@ The example project files are for Visual Studio 2017. To build them, retain the 
 	      SpoutDX <- using the SpoutDX support class
 	          SpoutDX12 <- the DirectX12 class and examples
 	              D3D12HelloTriangle <- D3D12 to DirectX11 texture sender
-	              D3D12HelloTexture <- DirectX11 to D3D12 texture receiver
+	              D3D12HelloTexture  <- DirectX11 to D3D12 texture receiver
 		  
 Open each solution file, change to release and build. For all examples, search for "SPOUT" to see the changes made to the original code. The *SpoutDX12\Binaries* folder contains pre-built executables. Refer to the source code for further information.
 
