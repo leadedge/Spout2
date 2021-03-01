@@ -27,9 +27,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectName>Meshes</ProjectName>
-    <ProjectGuid>{D3D09006-96D0-4629-88B8-122C0256058C}</ProjectGuid>
-    <RootNamespace>Meshes</RootNamespace>
+    <ProjectName>Vertices Receiver</ProjectName>
+    <ProjectGuid>{D3D09002-96D0-4629-88B8-122C0256058C}</ProjectGuid>
+    <RootNamespace>Vertices</RootNamespace>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -184,7 +184,6 @@
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;_DEBUG;DEBUG;PROFILE;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <DisableSpecificWarnings>4005</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
@@ -212,7 +211,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
+      <WarningLevel>Level1</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <OpenMPSupport>false</OpenMPSupport>
@@ -264,7 +263,6 @@
       <AdditionalIncludeDirectories>..\..\..\DXUT\Core;..\..\..\DXUT\Optional;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4005</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
@@ -347,7 +345,6 @@
       </AdditionalIncludeDirectories>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;NDEBUG;PROFILE;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4005</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
@@ -379,26 +376,24 @@
     <None Include="..\..\..\DXUT\Optional\directx.ico" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\SpoutGL\SpoutCopy.cpp" />
     <ClCompile Include="..\..\..\..\SpoutGL\SpoutFrameCount.cpp" />
     <ClCompile Include="..\..\..\..\SpoutGL\SpoutSenderNames.cpp" />
     <ClCompile Include="..\..\..\..\SpoutGL\SpoutSharedMemory.cpp" />
     <ClCompile Include="..\..\..\..\SpoutGL\SpoutUtils.cpp" />
     <ClCompile Include="..\SpoutDX9.cpp" />
-    <ClCompile Include="Meshes.cpp" />
+    <ClCompile Include="Vertices.cpp" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutCommon.h" />
-    <ClInclude Include="..\..\..\..\SpoutGL\SpoutCopy.h" />
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutFrameCount.h" />
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutSenderNames.h" />
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutSharedMemory.h" />
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutUtils.h" />
     <ClInclude Include="..\SpoutDX9.h" />
     <CLInclude Include="resource.h" />
-    <ResourceCompile Include="Meshes.rc" />
+    <ResourceCompile Include="Vertices.rc" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

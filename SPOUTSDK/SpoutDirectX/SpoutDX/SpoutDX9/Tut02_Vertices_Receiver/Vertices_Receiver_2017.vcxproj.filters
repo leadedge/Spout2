@@ -5,17 +5,11 @@
       <UniqueIdentifier>{8e114980-c1a3-4ada-ad7c-83caadf5daeb}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
-    <Filter Include="DXUT">
-      <UniqueIdentifier>{a43c5c25-0e86-4a20-b64a-883785ff74fd}</UniqueIdentifier>
+    <Filter Include="SpoutDX9">
+      <UniqueIdentifier>{b6fa2810-b123-4417-9461-7ecf2574c15a}</UniqueIdentifier>
     </Filter>
     <Filter Include="SpoutSDK">
-      <UniqueIdentifier>{df9ff9be-1d24-43b6-be3f-8c521c04c7ec}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="SpoutDX9">
-      <UniqueIdentifier>{d9fd25d2-8c3e-4564-a05e-ff5dd2a42f97}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="SpoutDX">
-      <UniqueIdentifier>{0e449db0-55ce-459d-875f-d55de4aaf989}</UniqueIdentifier>
+      <UniqueIdentifier>{67c9c117-0260-4291-b256-dfeed612a506}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -24,7 +18,10 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Meshes.cpp" />
+    <ClCompile Include="Vertices.cpp" />
+    <ClCompile Include="..\SpoutDX9.cpp">
+      <Filter>SpoutDX9</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\SpoutGL\SpoutFrameCount.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
@@ -37,14 +34,11 @@
     <ClCompile Include="..\..\..\..\SpoutGL\SpoutUtils.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\SpoutGL\SpoutCopy.cpp">
-      <Filter>SpoutSDK</Filter>
-    </ClCompile>
-    <ClCompile Include="..\SpoutDX9.cpp">
-      <Filter>SpoutDX9</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\SpoutDX9.h">
+      <Filter>SpoutDX9</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutCommon.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
@@ -60,18 +54,12 @@
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutUtils.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\SpoutGL\SpoutCopy.h">
-      <Filter>SpoutSDK</Filter>
-    </ClInclude>
-    <ClInclude Include="..\SpoutDX9.h">
-      <Filter>SpoutDX9</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CLInclude Include="resource.h">
       <Filter>Resource Files</Filter>
     </CLInclude>
-    <ResourceCompile Include="Meshes.rc">
+    <ResourceCompile Include="Vertices.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
