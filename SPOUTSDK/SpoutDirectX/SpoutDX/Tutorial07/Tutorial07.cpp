@@ -108,10 +108,10 @@ LRESULT CALLBACK WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
 
 // SPOUT
-spoutDX receiver;
+spoutDX receiver; // Spout DirectX11 receiver
 ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
-// (The texture is created after connecting to a sender)
 ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view of the texture
+
 // Functions for selecting graphics adapter
 void ResetDevice();
 void SelectAdapter();
@@ -133,19 +133,18 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     UNREFERENCED_PARAMETER( lpCmdLine );
 
 	//
-	// SPOUT
+	// SPOUT Options
 	//
 
-	// Optionally enable Spout logging
 	// OpenSpoutConsole(); // Console only for debugging
-	// EnableSpoutLog(); // Log to console
+	// EnableSpoutLog(); // Enable Spout logging to console
 	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
-	// Optionally set the name of the sender to receive from
+	// Set the name of the sender to receive from.
 	// The receiver will only connect to that sender.
 	// The user can over-ride this by selecting another.
-	// receiver.SetReceiverName("Spout DX11 Sender");
+	// receiver.SetReceiverName("Spout Demo Sender");
 
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
@@ -160,16 +159,21 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT
 	//
 
-	// Initialize DirectX.
-	// The device pointer must be passed in if a DirectX 11.0 device is available.
-	// Otherwise a device is created in the SpoutDX class and the The function 
-	// does nothing if a class device was already created.
-	// See above for graphics adapter selection.
-	if (!receiver.OpenDirectX11(g_pd3dDevice))
-		return FALSE;
+	//
+	// Option
+	//
+	// Both sender and receiver must use the same graphics adapter.
+	// SetAdapterAuto() enables auto switch to the same adapter as the sender.
+	// The device being used must have been be created within the SpoutDX class.
+	//
+	// If you build the project with this enabled, manual selection for graphics
+	// adapter will result in change back to the sender graphics adapter.
+	// The menu option could be removed here but it's useful for the demonstration.
+	//
+	if (receiver.IsClassDevice())
+		receiver.SetAdapterAuto();
 
-	// Graphics adapter selection is developmental.
-	// If a class device was not created, remove the menu option.
+	// Selection of graphics adapter requires a class device
 	if (!receiver.IsClassDevice()) {
 		HMENU hPopup = GetSubMenu(GetMenu(g_hWnd), 0);
 		RemoveMenu(hPopup, IDM_ADAPTER, MF_BYCOMMAND);
@@ -243,6 +247,7 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
 	//
 	// SPOUT
 	//
+
 	// Centre the window on the desktop work area
 	GetWindowRect(g_hWnd, &rc);
 	RECT WorkArea;
@@ -308,24 +313,16 @@ HRESULT InitDevice()
 
     RECT rc;
     GetClientRect( g_hWnd, &rc );
-    UINT width = rc.right - rc.left;
+    UINT width  = rc.right - rc.left;
     UINT height = rc.bottom - rc.top;
 
 	//
 	// SPOUT
 	//
-
-	// Optionally create a device within the SpoutDX class.
+	// Option
+	//
+	// Create a device within the SpoutDX class.
 	// IsClassDevice() will return whether this has been done.
-	//
-	// Use the current graphics adapter index (currentadapter)
-	// This can then be selected by the user - see SelectAdapter()
-	//
-	// Both sender and receiver must be using the same graphics adapter
-	// Graphics adapter selection is intended for for development work
-	// If this is used, don't forget to comment out the application device creation below
-
-	/*
 	// ===============================================================
 	if (receiver.OpenDirectX11()) {
 		g_pd3dDevice = receiver.GetDX11Device();
@@ -335,9 +332,8 @@ HRESULT InitDevice()
 		return 0;
 	}
 	// ===============================================================
-	*/
 
-
+	/*
 	// ===============================================================
 	UINT createDeviceFlags = 0;
 #ifdef _DEBUG
@@ -383,8 +379,16 @@ HRESULT InitDevice()
 	}
 	if (FAILED(hr))
 		return hr;
-	// ===============================================================
 
+	// SPOUT
+	// If an application DirectX 11.0 device was created above,
+	// the device pointer must be passed in to the SpoutDX class.
+	// The function does nothing if a class device was already created.
+	//
+	if (!receiver.OpenDirectX11(g_pd3dDevice))
+		return FALSE;
+	// ===============================================================
+	*/
 
 
     // Obtain DXGI factory from device (since we used nullptr for pAdapter above)
@@ -754,14 +758,14 @@ void CleanupDevice()
 // Re-initialize for size changes
 void ResetDevice()
 {
-	// Release everything
+	// Close the receiver
 	receiver.ReleaseReceiver();
+	// Close the spoutdx class device
 	receiver.CloseDirectX11();
+	// Release everything
 	CleanupDevice();
-	// Create device and objects again
+	// Start again
 	InitDevice();
-	// SpoutDX will now use the new device
-	receiver.OpenDirectX11(g_pd3dDevice);
 }
 
 //--------------------------------------------------------------------------------------
@@ -846,6 +850,7 @@ void Render()
 	//
 	// Receive a sender texture
 	if (receiver.ReceiveTexture(&g_pReceivedTexture)) {
+
 		//
 		// Sender details can be retrieved with :
 		//		const char * GetSenderName();
@@ -856,9 +861,22 @@ void Render()
 		//		long GetSenderFrame();
 		//		double GetSenderFps();
 		//
-		// Create or re-create the receiving texture for a new sender
-		// or if the sender size changed
+
+		// Create or re-create the receiving texture 
+		// for a new sender or if the sender size changed
 		if (receiver.IsUpdated()) {
+
+			if (receiver.GetAdapterAuto()) {
+				// The D3D11 device within the SpoutDX class could have changed
+				// if it has switched to use a different sender graphics adapter.
+				// Re-intialize to refresh the global device pointer.
+				if (g_pd3dDevice != receiver.GetDX11Device()) {
+					ResetDevice();
+					// No more this round because the receiver has been released
+					// and there is no width or height to create a texture.
+					return;
+				}
+			}
 
 			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
 			g_pReceivedTexture = nullptr;
@@ -872,7 +890,6 @@ void Render()
 			// In this example, clear the shader resource view
 			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 			g_pSpoutTextureRV = nullptr;
-
 		}
 
 		// A texture has been received
@@ -892,8 +909,7 @@ void Render()
 		}
 
 	}
-	else {
-		// A sender was not found or the connected sender closed
+	else { 	// A sender was not found or the connected sender closed
 		// Release the receiving texture
 		if (g_pReceivedTexture)	g_pReceivedTexture->Release();
 		g_pReceivedTexture = nullptr;
@@ -918,9 +934,8 @@ void Render()
     //
     // g_pImmediateContext->ClearRenderTargetView( g_pRenderTargetView, Colors::MidnightBlue );
 	// SPOUT
-	// Change backgound colour for better contrast with a blue sender
-	FLOAT backgnd[4] = { 0.39f, 0.025f, 0.0f }; // red/brown
-	g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, backgnd);
+	// Change backgound colour for better contrast with the blue demo sender
+	g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, Colors::DarkRed);
 
     //
     // Clear the depth buffer to 1.0 (max depth)
@@ -946,7 +961,7 @@ void Render()
     g_pImmediateContext->PSSetConstantBuffers( 2, 1, &g_pCBChangesEveryFrame );
 	
 	// SPOUT
-	// Use the sender's texture shader resource view
+	// Use the sender's texture shader resource view if received
 	if(g_pSpoutTextureRV)	
 		g_pImmediateContext->PSSetShaderResources(0, 1, &g_pSpoutTextureRV);
 	else
@@ -963,10 +978,11 @@ void Render()
 	//
 	// SPOUT - fps control
 	//
-	// Hold a target frame rate - e.g. 60 or 30fps
-	// This is not necessary if the application already has
-	// fps control but in this example rendering is done
-	// during idle time and render rate can be extremely high.
+	// Hold a target frame rate - e.g. 60 or 30fps.
+	// Here you could also use a different Present method such as
+	// "Present( 1, 0 )" to synchronize with vertical blank.
+	// Build with different options to explore.
+	// sender.HoldFps(60);
 	receiver.HoldFps(60);
 
 }
@@ -1038,8 +1054,12 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 void SelectAdapter()
 {
-	currentadapter = receiver.GetAdapter(); // Get the current adapter index
-	selectedadapter = currentadapter; // The index to be selected in the dialog
+	// The current adapter index
+	currentadapter = receiver.GetAdapter();
+
+	// The index to be selected in the dialog
+	selectedadapter = currentadapter;
+
 	// Create an adapter name list for the dialog
 	adaptercount = receiver.GetNumAdapters();
 	adaptername->clear();
@@ -1053,32 +1073,30 @@ void SelectAdapter()
 	int retvalue = (int)DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ADAPTERBOX), g_hWnd, (DLGPROC)AdapterProc);
 
 	if (retvalue != 0) {
+
 		// OK - adapter index (selectedadapter) has been selected
 		// Set the selected adapter if different
 		if (selectedadapter != currentadapter) {
-
-			SpoutLogNotice("Tutorial07 : selectedadapter = %d, currentadapter = %d", selectedadapter, currentadapter);
-
-			// A new sender using the selected adapter will be detected
-			// on the first ReceiveTexture call (Requires 2.007)
-			receiver.ReleaseReceiver();
-			if (!receiver.SetAdapter(selectedadapter)) {
-				// SetAdapter returns to the primary adapter for failure
-				// Refer to error logs for diagnostics
-				MessageBoxA(NULL, "Could not select graphics adapter", "Tutorial07", MB_OK | MB_TOPMOST | MB_ICONEXCLAMATION);
-				// Set the adapter back to what it was (the compatibility test is repeated)
-				receiver.SetAdapter(currentadapter);
-			}
-			else {
-				// Change the application current adapter index to the one selected
-				// This will take effect when the sender is re-created
+			SpoutLogNotice("Tutorial07:SelectAdapter() - selected = %d, current = %d", selectedadapter, currentadapter);
+			if (receiver.SetAdapter(selectedadapter)) {
+				// The adapter index was changed successfully. 
 				currentadapter = selectedadapter;
 			}
-			// Reset everything to create a new device with the selected adapter
+			else {
+				MessageBoxA(NULL, "Could not select graphics adapter", "Tutorial07", MB_OK | MB_TOPMOST | MB_ICONEXCLAMATION);
+				// SetAdapter returns to the primary adapter for failure
+				// so set the adapter index back to what it was
+				receiver.SetAdapter(currentadapter);
+			}
+
+			// Reset everything to create a new device with the new adapter
+			// A new sender using the selected adapter is detected on the first ReceiveTexture call
 			ResetDevice();
+
 		}
 	}
 }
+
 
 // Message handler for selecting adapter
 INT_PTR  CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)

@@ -4,7 +4,7 @@
 
 			Sender and receiver for DirectX applications
 
-	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2021, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -54,6 +54,7 @@ class SPOUT_DLLEXP spoutDX {
 	//
 	// DIRECTX
 	//
+
 	bool OpenDirectX11(ID3D11Device* pDevice = nullptr);
 	ID3D11Device* GetDX11Device();
 	ID3D11DeviceContext* GetDX11Context();
@@ -160,18 +161,26 @@ class SPOUT_DLLEXP spoutDX {
 	int GetNumAdapters();
 	// Get the adapter name for a given index
 	bool GetAdapterName(int index, char *adaptername, int maxchars);
+	// Get the current adapter description
+	bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
 	// Get the current adapter index
 	int  GetAdapter();
-	// Set required graphics adapter for output
-	bool SetAdapter(int index = 0);
-	// Get sender adapter index and name fro a given sender
-	int  GetSenderAdapter(const char* sendername, char* adaptername, int maxchars);
+	// Set required graphics adapter for output (no args or -1 to reset)
+	bool SetAdapter(int index = -1);
+	// Get adapter pointer for a given adapter (-1 means current)
+	IDXGIAdapter* GetAdapterPointer(int index = -1);
+	// Set required graphics adapter for creating a device
+	void SetAdapterPointer(IDXGIAdapter* pAdapter);
+	// Get auto device switching status
+	bool GetAdapterAuto();
+	// Auto switch receiving device to use the same graphics adapter as the sender
+	void SetAdapterAuto(bool bAuto = true);
+	// Get sender adapter index and name for a given sender
+	int GetSenderAdapter(const char* sendername, char* adaptername = nullptr, int maxchars = 256);
 
 	//
 	// Sharing modes (2.006 compatibility)
 	//
-
-	
 
 	// Get user selected DX9 mode (2.006)
 	bool GetDX9();
@@ -181,6 +190,7 @@ class SPOUT_DLLEXP spoutDX {
 	// Utility
 	//
 
+	void CheckSenderFormat(const char * sendername);
 	bool CreateDX11texture(ID3D11Device* pd3dDevice,
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);

@@ -94,6 +94,9 @@ void Render();
 
 // SPOUT
 spoutDX sender;
+
+// Functions for selecting graphics adapter
+// In development, but is implemented here for testing.
 void ResetDevice();
 void SelectAdapter();
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
@@ -138,9 +141,11 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// Initialize DirectX.
 	// The device pointer must be passed in if a DirectX 11.0 device is available.
-	// Otherwise a device is created in the SpoutDX class and the The function 
-	// does nothing if a class device was already created.
-	// See above for graphics adapter selection.
+	// Otherwise a device is created in the SpoutDX class.
+	// The function does nothing if a class device was already created.
+	//
+	// See InitDevice for creating a class device
+	//
 	if (!sender.OpenDirectX11(g_pd3dDevice))
 		return FALSE;
 
@@ -300,7 +305,6 @@ HRESULT InitDevice()
 	// Graphics adapter selection is intended for for development work
 	// If this is used, don't forget to comment out the application device creation below
 
-	/*
 	// ===============================================================
 	if (sender.OpenDirectX11()) {
 		g_pd3dDevice = sender.GetDX11Device();
@@ -310,8 +314,8 @@ HRESULT InitDevice()
 		return 0;
 	}
 	// ===============================================================
-	*/
 
+	/*
 	// ===============================================================
 
 	// SPOUT note
@@ -375,6 +379,7 @@ HRESULT InitDevice()
     if( FAILED( hr ) )
         return hr;
 	// ===============================================================
+	*/
 
 
     // Obtain DXGI factory from device (since we used nullptr for pAdapter above)
@@ -412,7 +417,10 @@ HRESULT InitDevice()
         DXGI_SWAP_CHAIN_DESC1 sd = {};
         sd.Width = width;
         sd.Height = height;
-        sd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		// SPOUT
+		// For compatibility with DirectX9 shared textures
+		// the format should be BGRA instead of RGBA
+		sd.Format = DXGI_FORMAT_B8G8R8A8_UNORM;	// DXGI_FORMAT_R8G8B8A8_UNORM;
         sd.SampleDesc.Count = 1;
         sd.SampleDesc.Quality = 0;
         sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -433,7 +441,10 @@ HRESULT InitDevice()
         sd.BufferCount = 1;
         sd.BufferDesc.Width = width;
         sd.BufferDesc.Height = height;
-        sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		// SPOUT
+		// For compatibility with DirectX9 shared textures
+		// the format should be BGRA instead of RGBA
+		sd.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; //  DXGI_FORMAT_R8G8B8A8_UNORM;
         sd.BufferDesc.RefreshRate.Numerator = 60;
         sd.BufferDesc.RefreshRate.Denominator = 1;
         sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -797,10 +808,10 @@ void Render()
 	//
 	// SPOUT - fps control
 	//
-	// Hold a target frame rate - e.g. 60 or 30fps
-	// This is not necessary if the application already has
-	// fps control but in this example rendering is done
-	// during idle time and render rate can be extremely high.
+	// Hold a target frame rate - e.g. 60 or 30fps.
+	// Here you could also use a different Present method such as
+	// "Present( 1, 0 )" to synchronize with vertical blank.
+	// Build with different options to explore.
 	sender.HoldFps(60);
 
 }

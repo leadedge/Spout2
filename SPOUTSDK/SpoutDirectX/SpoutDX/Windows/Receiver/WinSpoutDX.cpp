@@ -268,10 +268,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // Parse the menu selections:
             switch (wmId)
             {
+
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
-            case IDM_EXIT:
+			case IDM_OPEN:
+				// Open select a sender
+				receiver.SelectSender();
+				break;
+			case IDM_EXIT:
                 DestroyWindow(hWnd);
                 break;
             default:
@@ -311,8 +316,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					bmi.bmiHeader.biPlanes = 1;
 					bmi.bmiHeader.biBitCount = 32;
 					bmi.bmiHeader.biCompression = BI_RGB;
-					// If the format is BGRA it's a natural match
-					if (g_SenderFormat == 87) {
+					// If the format is BGRA or BGRX it's a natural match
+					if (g_SenderFormat == 87 || g_SenderFormat == 88) {
 						// Very fast (< 1msec at 1280x720)
 						// StretchDIBits adapts the pixel buffer received from the sender
 						// to the window size. The sender can be resized or changed.
