@@ -630,7 +630,7 @@ namespace spoututils {
 	double EndTiming() {
 		end = std::chrono::steady_clock::now();
 		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		// printf("elapsed [%.3f] msec\n", elapsed / 1000.0);
+		printf("elapsed [%.3f] msec\n", elapsed / 1000.0);
 		// printf("elapsed [%.3f] u/sec\n", elapsed);
 		return elapsed;
 	}

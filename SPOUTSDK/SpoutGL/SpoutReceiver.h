@@ -143,16 +143,14 @@ class SPOUT_DLLEXP SpoutReceiver {
 	int GetNumAdapters();
 	// Get adapter item name
 	bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
-	// Get adapter index
+	// Current adapter name
+	char * AdapterName();
+	// Get current adapter index
 	int GetAdapter();
 	// Set graphics adapter for output
 	bool SetAdapter(int index = 0);
 	// Get the current adapter description
 	bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
-	// Current adapter
-	int Adapter();
-	// Current adapter name
-	char * AdapterName();
 
 	//
 	// User settings recorded by "SpoutSettings"

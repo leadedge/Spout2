@@ -320,6 +320,12 @@ bool SpoutSender::GetAdapterName(int index, char *adaptername, int maxchars)
 }
 
 //---------------------------------------------------------
+char * SpoutSender::AdapterName()
+{
+	return spout.AdapterName();
+}
+
+//---------------------------------------------------------
 int SpoutSender::GetAdapter()
 {
 	return spout.GetAdapter();
@@ -335,18 +341,6 @@ bool SpoutSender::SetAdapter(int index)
 bool SpoutSender::GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars)
 {
 	return spout.GetAdapterInfo(renderdescription, displaydescription, maxchars);
-}
-
-//---------------------------------------------------------
-int SpoutSender::Adapter()
-{
-	return spout.Adapter();
-}
-
-//---------------------------------------------------------
-char * SpoutSender::AdapterName()
-{
-	return spout.AdapterName();
 }
 
 //
