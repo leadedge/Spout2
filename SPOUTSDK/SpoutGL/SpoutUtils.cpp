@@ -422,7 +422,7 @@ namespace spoututils {
 			if (regres == ERROR_SUCCESS)
 				return true;
 		}
-
+	
 		// Just quit if the key does not exist
 		return false;
 
@@ -660,6 +660,7 @@ namespace spoututils {
 			// Prevent multiple logs by comparing with the last
 			if (logString == LastSpoutLog)
 				return;
+
 			LastSpoutLog = logString; // update the last log
 
 			// Console logging

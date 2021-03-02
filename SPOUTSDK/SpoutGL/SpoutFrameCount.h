@@ -35,6 +35,8 @@
 #include <vector>
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
+
+
 #include <d3d11.h> // for keyed mutex texture access
 #pragma comment (lib, "d3d11.lib")
 

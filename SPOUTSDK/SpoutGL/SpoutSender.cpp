@@ -62,6 +62,8 @@
 //					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
 //		17.10.20	- Change SetDX9format from D3D_FORMAT to DWORD
 //		27.12.20	- Multiple changes for SpoutGL base class - see SpoutSDK.cpp
+//		24.01.21	- Rebuild with SDK restructure.
+//		05.02.21	- Add GetCPUshare and SetCPUshare
 //
 // ====================================================================================
 /*
@@ -246,6 +248,18 @@ bool SpoutSender::GetAutoShare()
 void SpoutSender::SetAutoShare(bool bAuto)
 {
 	spout.SetAutoShare(bAuto);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::GetCPUshare()
+{
+	return spout.GetCPUshare();
+}
+
+//---------------------------------------------------------
+void SpoutSender::SetCPUshare(bool bCPU)
+{
+	spout.SetCPUshare(bCPU);
 }
 
 //---------------------------------------------------------

@@ -84,8 +84,10 @@ class SPOUT_DLLEXP SpoutReceiver {
 	long GetSenderFrame();
 	// Received sender share handle
 	HANDLE GetSenderHandle();
-	// Received sender sharing mode
-	bool GetSenderCPUmode();
+	// Received sender sharing method
+	bool GetSenderCPUshare();
+	// Received sender GL/DX hardware compatibility
+	bool GetSenderGLDXready();
 	// Open sender selection dialog
 	void SelectSender();
 
@@ -106,10 +108,15 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// Graphics compatibility
 	//
 
-	// Get auto GPU/CPU share depending on compatibility
+	// Get user auto GPU/CPU share
 	bool GetAutoShare();
-	// Set auto GPU/CPU share depending on compatibility
+	// Set application auto GPU/CPU share
 	void SetAutoShare(bool bAuto = true);
+	// Get user CPU share
+	bool GetCPUshare();
+	// Set application CPU share
+	// (re-test GL/DX compatibility if set to false)
+	void SetCPUshare(bool bCPU = true);
 	// OpenGL texture share compatibility
 	bool IsGLDXready();
 

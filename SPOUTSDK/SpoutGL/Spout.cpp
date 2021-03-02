@@ -187,6 +187,9 @@
 //					  in spoutSenderNames::CreateSender
 //		13.01.21	- Release orphaned senders in SpoutPanel.exe instead of SelectSenderPanel
 //					  Additional checks for un-registered senders
+//		18.01.21	- ReceiveSenderData : Check if the name is in the sender list
+//		26.02.21	- Add GetSenderGLDXready() for receiver
+//		01.03.21	- Add SetSenderID
 //
 // ====================================================================================
 /*
@@ -240,8 +243,8 @@
 // - SpoutUtils
 //
 // Note that Sender and Receiver functions cannot be used within the same object.
-// The SpoutSender and SpoutReceiver classes are convenience wrappers which
-// insulate the sending and receiving functions for the programmer.
+// The SpoutSender and SpoutReceiver classes are convenience wrappers which assist
+// the programmer by exposing only sender or receiver specific functions.
 //
 // - SpoutSender
 // - SpoutReceiver
@@ -251,12 +254,15 @@
 // Also refer to the SpoutLibrary folder for a C-compatible dll which can be 
 // used with compilers other than Visual Studio.
 //
-// More detailed information can be found in the header files SpoutSDK.h and SpoutGL.h.
+// For conversion of existing 2.006 applications, refer to "Porting.txt" in the "Docs" section
+// as well as the introductory document *SpoutSDK_2007.pdf*.
+//
+// More detailed information can be found in the header files for each class.
 // Functions for individual classes are documented within the respective source files.
-// You can access these from the following objects included in the Spout class.
+// You can access these from the following objects that are included in the Spout class.
 //
 // - spoutDirectX spoutdx; (DirectX 11 texture sharing)
-// - spoutCopy spoutcopy; (Pixel buffer copying)
+// - spoutCopy spoutcopy; (Pixel data copy)
 // - spoutSenderNames sendernames; (Spout sender management)
 // - spoutFrameCount frame; (Frame counting management)
 //
@@ -375,11 +381,11 @@ bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool 
 		return false;
 
 	// All clear to send the fbo texture
-	if (m_bUseGLDX) {
+	if(m_bTextureShare) {
 		// 3840-2160 - 60fps (0.45 msec per frame)
 		return WriteGLDXtexture(0, 0, width, height, bInvert, FboID);
 	}
-	else if (m_bAuto) {
+	else if (m_bCPUshare) {
 		// Auto share enabled for DirectX CPU backup
 		// 3840-2160 - 43fps (5-7msec/frame)
 		// Create a local class texture if not already
@@ -407,16 +413,17 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 	if (TextureID <= 0 || width == 0 || height == 0)
 		return false;
 
+
 	// Create or update the sender
 	if (!CheckSender(width, height))
 		return false;
 
-	if (m_bUseGLDX) {
+	if (m_bTextureShare) {
 		// Send OpenGL texture if GL/DX interop compatible
 		// 3840-2160 - 60fps (0.45 msec per frame)
 		return WriteGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
 	}
-	else if (m_bAuto) {
+	else if (m_bCPUshare) {
 		// Auto share enabled for DirectX CPU backup
 		// 3840-2160 47fps (6-7 msec per frame with PBOs)
 		return WriteDX11texture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
@@ -456,11 +463,11 @@ bool Spout::SendImage(const unsigned char* pixels, unsigned int width, unsigned 
 	//
 	// Write pixel data to the rgba shared texture according to pixel format
 	//
-	if (m_bUseGLDX) {
+	if (m_bTextureShare) {
 		// Texture share compatible
 		return WriteGLDXpixels(pixels, width, height, glformat, bInvert, HostFBO);
 	}
-	else if (m_bAuto) {
+	else if (m_bCPUshare) {
 		// Auto share enabled for DirectX CPU backup
 		return WriteDX11pixels(pixels, width, height, glformat, bInvert);
 	}
@@ -525,16 +532,21 @@ HANDLE Spout::GetHandle()
 	return m_dxShareHandle;
 }
 
+
 //
 // Group: Receiver
 //
-// ReceiveTexture and ReceiveImage
+// Receiving functions
 //
-//	- Connect to a sender
-//	- Set class variables for sender name, width and height
-//  - If the sender has changed size, set a flag for the application to update receiving 
-//    texture or image which is re-allocated if IsUpdated() returns true.
-//  - Copy the sender shared texture to the user texture or image.
+// ReceiveTexture and ReceiveImage 
+//
+//		- Connect to a sender
+//
+//		- Set class variables for sender name, width and height
+//
+//		- If the sender has changed size, set a flag for the application to update the receiving texture or image if IsUpdated() returns true.
+//
+//		- Copy the sender shared texture to the user texture or image.
 //
 
 //---------------------------------------------------------
@@ -585,8 +597,10 @@ void Spout::ReleaseReceiver()
 	m_pSharedTexture = nullptr;
 	m_dxShareHandle = nullptr;
 
-	// Reset receiver detected share mode
-	m_bSenderCPUmode = false;
+	// Reset connected sender share mode and compatibility.
+	// Assume texture share and hardware compatible by default.
+	m_bSenderCPU = false;
+	m_bSenderGLDX = true;
 
 	// Release staging textures if they have been used
 	if (m_pStaging[0]) spoutdx.ReleaseDX11Texture(spoutdx.GetDX11Device(), m_pStaging[0]);
@@ -648,7 +662,7 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 			// If the sender is new or changed, reset shared textures and
 			// return to update the receiving texture.
 			// The application detects the change with IsUpdated().
-			if (m_bUseGLDX) {
+			if (m_bTextureShare) {
 				// CreateInterop set "true" for receiver
 				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 					return false;
@@ -661,12 +675,13 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 			// Possible existence of sender memory share map
 			ReadMemory(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
 		}
-		else if (m_bUseGLDX) {
+
+		if (m_bTextureShare) {
 			// Texture share compatible
 			// 3840x2160 60 fps - 0.45 msec/frame
 			ReadGLDXtexture(TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
 		}
-		else if (m_bAuto) {
+		else if (m_bCPUshare) {
 			// Auto share enabled for DirectX CPU backup
 			// 3840x2160 33 fps - 5-7 msec/frame
 			ReadDX11texture(TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
@@ -794,11 +809,19 @@ HANDLE Spout::GetSenderHandle()
 }
 
 //---------------------------------------------------------
-// Function: GetSenderCPUmode
-// Received sender sharing mode
-bool Spout::GetSenderCPUmode()
+// Function: GetSenderCPUshare
+// Received sender sharing method
+bool Spout::GetSenderCPUshare()
 {
-	return m_bSenderCPUmode;
+	return m_bSenderCPU;
+}
+
+//---------------------------------------------------------
+// Function: GetSenderGLDXready
+// Received sender sharing mode
+bool Spout::GetSenderGLDXready()
+{
+	return m_bSenderGLDX;
 }
 
 //---------------------------------------------------------
@@ -900,7 +923,7 @@ bool Spout::GetSenderInfo(const char* sendername, unsigned int &width, unsigned 
 
 //---------------------------------------------------------
 // Function: GetActiveSender
-// Current active sender
+// Current active sender name
 bool Spout::GetActiveSender(char* Sendername)
 {
 	return sendernames.GetActiveSender(Sendername);
@@ -942,8 +965,16 @@ bool Spout::GetAdapterName(int index, char *adaptername, int maxchars)
 }
 
 //---------------------------------------------------------
+// Function: AdapterName
+// Return current adapter name
+char * Spout::AdapterName()
+{
+	return m_AdapterName;
+}
+
+//---------------------------------------------------------
 // Function: GetAdapter
-// Get adapter index
+// Get current adapter index
 int Spout::GetAdapter()
 {
 	return spoutdx.GetAdapter();
@@ -986,27 +1017,12 @@ bool Spout::GetAdapterInfo(char *renderdescription, char *displaydescription, in
 	return spoutdx.GetAdapterInfo(renderdescription, displaydescription, maxchars);
 }
 
-//---------------------------------------------------------
-// Function: Adapter
-// Current adapter
-int Spout::Adapter()
-{
-	return m_AdapterIndex;
-}
-
-//---------------------------------------------------------
-// Function: AdapterName
-// Current adapter name
-char * Spout::AdapterName()
-{
-	return m_AdapterName;
-}
 
 //
 // Group: 2.006 compatibility
 //
-// These functions are not necessary for Version 2.007.
-// But are retained for compatibility with existing 2.006 code.
+// These functions are not necessary for Version 2.007
+// but are retained for compatibility with existing 2.006 code.
 //
 
 //---------------------------------------------------------
@@ -1020,10 +1036,7 @@ bool Spout::FindNVIDIA(int &nAdapter)
 //---------------------------------------------------------
 // Function: GetAdapterInfo
 // Get detailed information for the current graphics adapter
-//
 // Must be called after DirectX initialization, not before
-//
-// https://code.google.com/p/chromium/issues/detail?id=106438
 //
 // NOTES : On a “normal” system EnumDisplayDevices and IDXGIAdapter::GetDesc always concur
 // i.e. the device that owns the head will be the device that performs the rendering. 
@@ -1033,13 +1046,11 @@ bool Spout::FindNVIDIA(int &nAdapter)
 //
 // This function compares the adapter descriptions of the two
 // The string "Intel" reveals that it is an Intel device but 
-// the Vendor ID could also be used
-//
-//	0x10DE	NVIDIA
-//	0x163C	intel
-//	0x8086  Intel
-//	0x8087  Intel
-//
+// the Vendor ID could also be used. For example :
+//	- 0x10DE NVIDIA
+//	- 0x163C Intel
+//	- 0x8086 Intel
+//	- 0x8087 Intel
 // See also the DirectX only version :
 // bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 //
@@ -1090,7 +1101,6 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	if (!renderadapter[0])
 		return false;
 
-	// TODO - check default Windows render adapter is the DirectX one ?
 	strcpy_s(renderdescription, (rsize_t)maxsize, renderadapter);
 
 	// Use Windows functions to look for Intel graphics to see if it is
@@ -1103,13 +1113,10 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	DISPLAY_DEVICE DisplayDevice;
 	DisplayDevice.cb = sizeof(DISPLAY_DEVICE);
 
-	// 31.10.14 detect the adapter attached to the desktop
-	// To query all display devices in the current session, 
-	// call this function in a loop, starting with iDevNum set to 0, 
-	// and incrementing iDevNum until the function fails. 
+	// Detect the adapter attached to the desktop.
+	//
 	// To select all display devices in the desktop, use only the display devices
 	// that have the DISPLAY_DEVICE_ATTACHED_TO_DESKTOP flag in the DISPLAY_DEVICE structure.
-
 	int nDevices = 0;
 	for (int i = 0; i < 10; i++) { // should be much less than 10 adapters
 		if (EnumDisplayDevices(NULL, (DWORD)i, &DisplayDevice, 0)) {
@@ -1121,16 +1128,13 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 			OpenDeviceKey(regkey, 256, driverdescription, driverversion);
 			// Is it a render adapter ?
 			if (renderadapter && strcmp(driverdescription, renderadapter) == 0) {
-				// printf("Windows render adapter matches : [%s] Vers [%s]\n", driverdescription, driverversion);
 				strcpy_s(renderdescription, (rsize_t)maxsize, driverdescription);
 				strcpy_s(renderversion, (rsize_t)maxsize, driverversion);
 			}
 			// Is it a display adapter
 			if (DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-				// printf("Display adapter : [%s] Vers: %s ", driverdescription, driverversion);
 				strcpy_s(displaydescription, 256, driverdescription);
 				strcpy_s(displayversion, 256, driverversion);
-				// printf("(Attached to desktop)\n");
 			} // endif attached to desktop
 
 		} // endif EnumDisplayDevices
@@ -1139,7 +1143,6 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	// The render adapter description
 	if (renderdescription) trim(renderdescription);
 
-	// 16-06-18
 	if (pDXGIDevice) pDXGIDevice->Release();
 
 	return true;
@@ -1180,11 +1183,12 @@ bool Spout::UpdateSender(const char* name, unsigned int width, unsigned int heig
 #ifdef legacyOpenGL
 //---------------------------------------------------------
 // Function: DrawToSharedTexture
-// Render OpenGL texture to the sender shared OpenGL texture
+// Render OpenGL texture to the sender shared OpenGL texture.
 //
 // Legacy OpenGL function
 //
 // Enabled for build with "legacyOpenGL" defined in SpoutCommon.h
+//
 bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height,
 	float max_x, float max_y, float aspect,
@@ -1284,7 +1288,7 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 		// and shared texture pointer have been retrieved.
 		if (m_bUpdated) {
 			// If the sender is new or changed, create or re-create interop
-			if (m_bUseGLDX) {
+			if (m_bTextureShare) {
 				// Flag "true" for receive
 				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true))
 					return false;
@@ -1377,7 +1381,7 @@ bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, G
 
 			// If the sender is new or changed, return to update the receiving texture.
 			// The application detects the change with IsUpdated().
-			if (m_bUseGLDX) {
+			if (m_bTextureShare) {
 				// Flag "true" for receive
 				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true))
 					return false;
@@ -1403,7 +1407,7 @@ bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, G
 			// Possible existence of sender memory share map
 			ReadMemoryPixels(m_SenderName, pixels, m_Width, m_Height, glFormat, bInvert);
 		}
-		else if (m_bUseGLDX && m_bPBOavailable) {
+		else if (m_bTextureShare && m_bPBOavailable) {
 			// Texture share compatible
 			// Read pixels using OpenGL via PBO
 			// PBO (UnloadTexturePixels)
@@ -1413,7 +1417,7 @@ bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, G
 			// 3840x2160 RGB 30-60 msec/frame RGBA 30-60 msec/frame
 			ReadGLDXpixels(pixels, m_Width, m_Height, glformat, bInvert, HostFbo);
 		}
-		else if (m_bAuto) {
+		else if (m_bCPUshare) {
 			// Auto share enabled for DirectX CPU backup
 			// Read pixels via DX11 staging textures to an rgba or rgb buffer
 			// 1920x1080 RGB 7 msec/frame RGBA 2 msec/frame
@@ -1658,7 +1662,8 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 	if (!m_bInitialized) {
 		// Make sure that Spout has been initialized and an OpenGL context is available
 		if (OpenSpout()) {
-			if (m_bUseGLDX) {
+
+			if (m_bTextureShare) {
 				// Create interop for GL/DX transfer
 				// Flag "false" for sender so that a new shared texture is created
 				// (for a receiver the shared texture is cretaed from the sender share handle)
@@ -1674,27 +1679,25 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 					return false;
 				}
 			}
-
 			// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
 			if (sendernames.CreateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
 
 				m_Width = width;
 				m_Height = height;
 
-				// TODO : not optimal
-
-				// SetSenderCPUmode reads and writes to the sender shared texture memory.
-				// TODO : do when the sender is created and before this is called using a global.
-				// spoutSenderNames::CreateSender(m_SenderName, width, height, m_dxSharehandle, m_dwFormat, m_bCPU);
-				// Need m_bCPU = !m_bUseGLDX ?
-
-				// Set CPU sharing mode (i.e. not GL/DX compatible)
-				// to the top bit of 32 bit partnerID field in sender shared memory
-				SetSenderCPUmode(m_SenderName, !m_bUseGLDX);
-				 
-				// Write host path to the sender shared memory Description field
-				// (Now done in spoutSenderNames::CreateSender)
-				// SetHostPath(m_SenderName);
+				//
+				// SetSenderID writes to the sender shared texture memory
+				// to set sender CPU sharing mode and hardware GL/DX compatibility
+				//
+				// Using CPU sharing methods (m_bCPUshare) - set top bit
+				// 1000 0000 0000 0000 0000 0000 0000 0000
+				//
+				// GL/DX compatible hardware (m_bUseGLDX) - set next to top bit
+				// 0100 0000 0000 0000 0000 0000 0000 0000
+				//
+				// Both bits can be set if GL/DX compatible but the user has selected CPU share mode
+				//
+				SetSenderID(m_SenderName, m_bCPUshare, m_bUseGLDX);
 
 				// Get current adapter index and name
 				m_AdapterIndex = spoutdx.GetAdapter();
@@ -1725,7 +1728,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 	// The sender is initialized but has the sending texture changed size ?
 	else if (m_Width != width || m_Height != height) {
 		// Update the shared textures and interop
-		if (m_bUseGLDX) {
+		if (m_bTextureShare) {
 			// Flag "false" for sender to create a new shared texture
 			if (!CreateInterop(width, height, m_dwFormat, false))
 				return false;
@@ -1744,9 +1747,6 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 		sendernames.UpdateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat);
 		m_Width = width;
 		m_Height = height;
-	}
-	else {
-
 	}
 	// endif initialization or size checks
 
@@ -1795,7 +1795,7 @@ bool Spout::ReceiveSenderData()
 	char sendername[256];
 	strcpy_s(sendername, 256, m_SenderName);
 
-	// Check the entered Sender name to see if it exists
+	// Check again to see if the sender exists
 	if (sendername[0] == 0) {
 		// Passed name was null, so find the active sender
 		if (!GetActiveSender(sendername))
@@ -1820,21 +1820,47 @@ bool Spout::ReceiveSenderData()
 	SharedTextureInfo info;
 	if (sendernames.getSharedInfo(sendername, &info)) {
 
-		// Received sender share mode
-		if (info.partnerId & 0x80000000) // CPU mode - top bit of 32 bit partner ID field
-			m_bSenderCPUmode = true;
-		else
-			m_bSenderCPUmode = false; // Texture share default
-
 		width = info.width;
 		height = info.height;
 		dxShareHandle = (HANDLE)(LongToHandle((long)info.shareHandle));
 		dwFormat = info.format;
-
 		// printf("    info.width = %d\n", info.width);
 		// printf("    info.height = %d\n", info.height);
-		// printf("    info.shareHandle = %d\n", info.shareHandle);
+		// printf("    info.shareHandle = 0x%.7X\n", LOWORD(info.shareHandle) );
 		// printf("    info.format = %d\n", info.format);
+		// printf("    info.partnerId = 0x%.7X\n", info.partnerId);
+
+		//
+		// 32 bit partner ID field
+		//
+
+		// GPU texture share and hardware GL/DX compatible by default
+		m_bSenderCPU  = false;
+		m_bSenderGLDX = true;
+		
+		// Top bit only
+		//   o Sender is using CPU share methods
+		//   o Hardware GL/DX compatibility undefined - assume false
+		if (info.partnerId == 0x80000000) {
+			m_bSenderCPU = true;
+			m_bSenderGLDX = false;
+		}
+
+		// Next top bit only
+		//   o Sender hardware is GL/DX compatible
+		//   o Using texture share methods
+		if (info.partnerId == 0x40000000) {
+			m_bSenderCPU = false;
+			m_bSenderGLDX = true;
+		}
+
+		// Both bits set
+		//   o Sender is using CPU share methods
+		//   o Sender hardware is GL/DX compatible
+		if (info.partnerId == 0xC0000000) {
+			m_bSenderCPU = true;
+			m_bSenderGLDX = true;
+		}
 
 		// Compatible DX9 formats
 		// 21 =	D3DFMT_A8R8G8B8
@@ -1861,10 +1887,11 @@ bool Spout::ReceiveSenderData()
 			if (m_dxShareHandle) {
 				// Get a new shared texture pointer (m_pSharedTexture)
 				if (!spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &m_pSharedTexture, dxShareHandle)) {
-					// If this fails, something is wrong
-					// the sender graphics adapter might be different or some other reason
-					SpoutLogWarning("Spout::ReceiveSenderData - could not retrieve sender texture from share handle");
-					// Retain the share handle so we don't query it again.
+					// If this fails, something is wrong.
+					// The sender graphics adapter might be different or some other reason.
+					// Error log is generated in OpenDX11shareHandle.
+					// SpoutLogWarning("Spout::ReceiveSenderData - could not retrieve sender texture from share handle");
+					// Retain the share handle so we don't query the same sender again.
 					// m_pSharedTexture is null but will not be used.
 					// Return true and wait until another sender is selected.
 					return true;

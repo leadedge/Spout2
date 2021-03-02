@@ -98,7 +98,7 @@ class SPOUT_DLLEXP spoutSenderNames {
 
 		// Register a sender name in the list of senders
 		bool RegisterSenderName(const char* sendername);
-		// Remove a name fromn the list
+		// Remove a name from the list
 		bool ReleaseSenderName(const char* sendername);
 		// Find a name in the list
 		bool FindSenderName(const char* sendername);
@@ -132,6 +132,8 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool GetSenderInfo (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
 		// Set sender information
 		bool SetSenderInfo (const char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat);
+		// Set sender PartnerID field with "CPU" sharing method and GL/DX compatibility
+		bool SetSenderID(const char *sendername, bool bCPU, bool bGLDX);
 		// Generic sender map info read (returned in a shared texture information structure)
 		bool getSharedInfo (const char* sendername, SharedTextureInfo* info);
 		// Generic sender map info write
@@ -167,6 +169,10 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool FindSender   (char* sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 		// Release orphaned senders
 		void CleanSenders();
+
+		// LJ DEBUG
+		// Get senders in this class
+		bool GetSender(const char* sendername);
 
 		// Debuging function
 		bool SenderDebug (const char* sendername, int size);

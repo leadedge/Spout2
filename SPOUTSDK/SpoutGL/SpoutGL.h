@@ -70,19 +70,20 @@ class SPOUT_DLLEXP spoutGL {
 	// Graphics compatibility
 	//
 
-	// Get auto GPU/CPU share depending on compatibility
+	// Get user auto GPU/CPU share
 	bool GetAutoShare();
-	// Set auto GPU/CPU share depending on compatibility
+	// Set application auto GPU/CPU share
 	void SetAutoShare(bool bAuto = true);
-	// Get forced CPU share
+	// Get user CPU share
 	bool GetCPUshare();
-	// Set forced CPU share
+	// Set application CPU share
+	// (re-test GL/DX compatibility if set to false)
 	void SetCPUshare(bool bCPU = true);
 	// OpenGL texture share compatibility
 	bool IsGLDXready();
 
 	//
-	// User settings recorded by "SpoutSettings"
+	// User settings recorded in the registry by "SpoutSettings"
 	//
 	
 	// Get user buffering mode
@@ -176,12 +177,15 @@ class SPOUT_DLLEXP spoutGL {
 
 	// Perform tests for GL/DX interop availability and compatibility
 	bool GLDXready();
-	// Set host path to sender information
+	// Set host path to sender shared memory
 	bool SetHostPath(const char *sendername);
-	// Set GL/DX compatibility to sender information
-	bool SetSenderCPUmode(const char *sendername, bool bCPU);
+	// Set sender PartnerID field with CPU sharing method and GL/DX compatibility
+	bool SetSenderID(const char *sendername, bool bCPU, bool bGLDX);
 
+	//
 	// 2.006 compatibility
+	//
+
 	bool OpenDirectX11();
 	ID3D11Device* GetDX11Device();
 	ID3D11DeviceContext* GetDX11Context();
@@ -189,7 +193,10 @@ class SPOUT_DLLEXP spoutGL {
 	void CleanupDX11();
 	void CleanupInterop();
 
+	//
 	// OpenGL extensions
+	//
+
 	bool LoadGLextensions();
 	bool IsGLDXavailable(); // GL/DX interop extensions supported
 	bool IsBLITavailable(); // fbo blit extensions available
@@ -199,22 +206,32 @@ class SPOUT_DLLEXP spoutGL {
 	bool IsPBOavailable();  // pbo extensions supported
 	bool IsCONTEXTavailable(); // Context extension supported
 
+	//
 	// Legacy OpenGL functions
+	//
+
 	// See _SpoutCommon.h_ #define legacyOpenGL
 #ifdef legacyOpenGL
 	void SaveOpenGLstate(unsigned int width, unsigned int height, bool bFitWindow = true);
 	void RestoreOpenGLstate();
 #endif
 
-
+	//
 	// Public for special use
+	//
 
 	// Link a shared DirectX texture to an OpenGL texture
 	HANDLE LinkGLDXtextures(void* pDXdevice, void* pSharedTexture, HANDLE dxShareHandle, GLuint glTextureID);
 	// Return a handle to the the DX/GL interop device
 	HANDLE GetInteropDevice();
+	// Copy OpenGL to shared DirectX 11 texture via CPU
+	bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
+	// Copy from shared DX11 texture to OpenGL via CPU
+	bool ReadDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 
+	//
 	// For external access
+	//
 
 	// DirectX 11 texture sharing
 	spoutDirectX spoutdx;
@@ -226,7 +243,7 @@ class SPOUT_DLLEXP spoutGL {
 	spoutFrameCount frame;
 
 	//
-	// Memory sharing - receive only
+	// 2.006 Memory sharing - receive only
 	//
 	// Used if a receiver detects a zero share handle for an existing 2.006 sender.
 	// Retained for 2.006 compatibility but may be removed for future release.
@@ -321,8 +338,8 @@ protected :
 		bool bInvert = false, GLuint HostFBO = 0);
 	
 	// OpenGL <-> DX11
-	bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
-	bool ReadDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
+	// WriteDX11texture - public
+	// ReadDX11texture  - public
 	bool ReadTextureData(GLuint SourceID, GLuint SourceTarget, unsigned int width, unsigned int height, unsigned int pitch, unsigned char* dest, GLenum GLformat, bool bInvert, GLuint HostFBO);
 	
 	// Pixels <-> DX11
@@ -391,11 +408,17 @@ protected :
 	bool m_bSwapRB;  // RGB <> BGR (used for SpoutCam)
 
 	// Sharing modes
-	bool m_bAuto; // Auto share mode
-	bool m_bCPU;  // Force CPU mode (registry edit)
-	bool m_bUseGLDX; // GL/DX interop compatibility
-	bool m_bSenderCPUmode; // Sender GL/DX compatibility
+	bool m_bAuto;         // Auto share mode - user set
+	bool m_bCPU;          // Global CPU mode - user set
+	bool m_bUseGLDX;      // Hardware GL/DX interop compatibility
+	bool m_bTextureShare; // Using texture sharing methods
+	bool m_bCPUshare;     // Using CPU sharing methods
+	
+	// Sender sharing modes
+	bool m_bSenderCPU;    // Sender using CPU sharing methods
+	bool m_bSenderGLDX;   // Sender hardware GL/DX compatibility
 
+	// For SpoutPanel sender selection
 	bool m_bSpoutPanelOpened;
 	bool m_bSpoutPanelActive;
 	SHELLEXECUTEINFOA m_ShExecInfo;

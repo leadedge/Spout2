@@ -129,8 +129,10 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	long GetSenderFrame();
 	// Received sender share handle
 	HANDLE GetSenderHandle();
-	// Received sender sharing mode
-	bool GetSenderCPUmode();
+	// Received sender sharing method
+	bool GetSenderCPUshare();
+	// Received sender GL/DX hardware compatibility
+	bool GetSenderGLDXready();
 	// Open sender selection dialog
 	void SelectSender();
 
@@ -170,16 +172,14 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	int GetNumAdapters();
 	// Get adapter item name
 	bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
-	// Get adapter index
+	// Return current adapter name
+	char * AdapterName();
+	// Get current adapter index
 	int GetAdapter();
 	// Set graphics adapter for output
 	bool SetAdapter(int index = 0);
 	// Get the current adapter description
 	bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
-	// Current adapter
-	int Adapter();
-	// Current adapter name
-	char * AdapterName();
 
 	//
 	// 2.006 compatibility

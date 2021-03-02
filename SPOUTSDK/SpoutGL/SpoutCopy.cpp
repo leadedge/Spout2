@@ -1,6 +1,6 @@
 /**
 
-	Functions to manage pixel buffer copying
+	Functions to manage pixel data copy
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -54,6 +54,13 @@
 
 */
 #include "SpoutCopy.h"
+
+//
+// Class: spoutCopy
+//
+// Functions to manage pixel data copy.
+// Refer to source code for documentation.
+//
 
 spoutCopy::spoutCopy() {
 	m_bSSE2 = false;

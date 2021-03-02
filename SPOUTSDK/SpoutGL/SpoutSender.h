@@ -89,10 +89,16 @@ class SPOUT_DLLEXP SpoutSender {
 	// Graphics compatibility
 	//
 
-	// Get auto GPU/CPU share depending on compatibility
+	// Get user Auto GPU/CPU share
 	bool GetAutoShare();
-	// Set auto GPU/CPU share depending on compatibility
+	// Set application Auto GPU/CPU share
 	void SetAutoShare(bool bAuto = true);
+	// Get user CPU share
+	bool GetCPUshare();
+	// Set application CPU share
+	// (re-test GL/DX compatibility if set to false)
+	void SetCPUshare(bool bCPU = true);
+
 	// OpenGL texture share compatibility
 	bool IsGLDXready();
 
@@ -131,7 +137,7 @@ class SPOUT_DLLEXP SpoutSender {
 	char * AdapterName();
 
 	//
-	// User settings recorded by "SpoutSettings"
+	// User settings recorded in the registry by "SpoutSettings"
 	//
 
 	// Get user buffering mode

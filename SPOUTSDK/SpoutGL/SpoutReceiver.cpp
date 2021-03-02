@@ -58,8 +58,9 @@
 //					  Add GetSenderAdapter
 //		25.09.20	- Remove GetSenderAdapter - not reliable 
 //		17.10.20	- Change SetDX9format from D3D_FORMAT to DWORD
-//
 //		27.12.20	- Multiple changes for SpoutGL base class - see SpoutSDK.cpp
+//		05.02.21	- Add GetCPUshare and SetCPUshare
+//		26.02.21	- Add GetSenderGLDXready
 //
 // ====================================================================================
 //
@@ -220,9 +221,15 @@ HANDLE SpoutReceiver::GetSenderHandle()
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::GetSenderCPUmode()
+bool SpoutReceiver::GetSenderCPUshare()
 {
-	return spout.GetSenderCPUmode();
+	return spout.GetSenderCPUshare();
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetSenderGLDXready()
+{
+	return spout.GetSenderGLDXready();
 }
 
 //---------------------------------------------------------
@@ -270,6 +277,18 @@ bool SpoutReceiver::GetAutoShare()
 void SpoutReceiver::SetAutoShare(bool bAuto)
 {
 	spout.SetAutoShare(bAuto);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetCPUshare()
+{
+	return spout.GetCPUshare();
+}
+
+//---------------------------------------------------------
+void SpoutReceiver::SetCPUshare(bool bCPU)
+{
+	spout.SetCPUshare(bCPU);
 }
 
 //---------------------------------------------------------

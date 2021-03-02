@@ -21,6 +21,13 @@
 //					  add bInvert and HostFBO options to WriteTextureReadback
 //		04.02.21	- SetHostPath and SetSenderCPUmode public
 //					  Add GetCPUshare and SetCPUshare for forced CPU share testing
+//		05.02.21	- Introduced m_bTextureShare and m_bCPUshare flags to handle mutiple options
+//		08.02.21	- WriteDX11texture, ReadTextureData, OpenSpout, LoadGLextensions cleanup
+//					  OpenSpout look for DirectX to prevent repeat
+//		26.02.21	- Change m_bSenderCPUmode to m_bSenderCPU
+//					- Add m_bSenderGLDX
+//					- Change SetSenderCPUmode to include CPU sharing mode and GLDX compatibility
+//					- Change SetSenderCPUmode name to SetSenderID
 //
 // ====================================================================================
 /*
@@ -65,7 +72,11 @@ spoutGL::spoutGL()
 	m_bAuto = true;
 	m_bCPU = false;
 	m_bUseGLDX = true;
-	m_bSenderCPUmode = false;
+	m_bTextureShare = true;
+	m_bCPUshare = false;
+	// Texture share assumed by default
+	m_bSenderCPU = false;
+	m_bSenderGLDX = true;
 	
 	m_bConnected = false;
 	m_bNewFrame = false;
@@ -109,7 +120,7 @@ spoutGL::spoutGL()
 	m_bSWAPavailable = false;
 	m_bGLDXavailable = false;
 	m_bCOPYavailable = false;
-	m_bPBOavailable  = true; // Assume true until tested by LoadGLextensions
+	m_bPBOavailable = true; // Assume true until tested by LoadGLextensions
 	m_bCONTEXTavailable = false;
 
 	// PBO support
@@ -128,7 +139,7 @@ spoutGL::spoutGL()
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Auto", &dwValue))
 		m_bAuto = (dwValue == 1);
 
-	// Check for user registry edit to force CPU mode
+	// Check for 2.006 registry CPU mode
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "CPU", &dwValue))
 		m_bCPU = (dwValue == 1);
 
@@ -274,23 +285,34 @@ void spoutGL::SetAutoShare(bool bAuto)
 }
 
 //---------------------------------------------------------
-// Function: GetAutoShare
-// Get auto GPU/CPU share depending on compatibility
+// Function: GetCPUShare
+// Get CPU share for the application
+// This is determined by compatibility or set by the application
 bool spoutGL::GetCPUshare()
 {
-	return m_bCPU;
+	return m_bCPUshare;
 }
 
 //---------------------------------------------------------
 // Function: SetCPUshare
-// Set forced CPU share
+// Set CPU share for the application.
+// If set false, GL/DX compatibility is re-tested.
+// CPU share can also be set globally with "SetCPUmode".
 void spoutGL::SetCPUshare(bool bCPU)
 {
-	SpoutLogNotice("spoutGL::SetCPUshare(%d) - re-testing GL/DX compatibility", bCPU);
+	m_bCPUshare = bCPU;
 
-	m_bCPU = bCPU;
-	// Re-test compatibility
-	OpenSpout(true);
+	if (m_bCPUshare) {
+		m_bTextureShare = false;
+	}
+	else {
+		// Re-test GL/DX compatibility
+		SpoutLogNotice("spoutGL::SetCPUshare(%d) - re-testing GL/DX compatibility", bCPU);
+		OpenSpout(true);
+		if (m_bCPUshare) {
+			SpoutLogWarning("    Cannot disable CPU sharing mode. System is not GL/DX compatible");
+		}
+	}
 
 }
 
@@ -313,10 +335,13 @@ bool spoutGL::IsGLDXready()
 //     - Open DirectX and check for availability
 //     - Compatibility test for use or GL/DX interop
 //     - Optionally re-test compatibility even if already initialized
+// Failure means that all of the above failed
+// DirectX could still be available.
 bool spoutGL::OpenSpout(bool bRetest)
 {
 	// Return if already initialized and not re-testing compatibility
-	if (m_hWnd > 0 && !bRetest)
+	// Look for DirectX to prevent repeat
+	if(spoutdx.GetDX11Device() > 0 && !bRetest)
 		return true;
 
 	printf("\n"); // This is the start, so make a new line in the log
@@ -327,7 +352,10 @@ bool spoutGL::OpenSpout(bool bRetest)
 #endif
 
 	m_bUseGLDX = false;
+	m_bTextureShare = false;
+	m_bCPUshare = false;
 
+	// DirectX capability is the minimum
 	if (!OpenDirectX()) {
 		SpoutLogFatal("spoutGL::OpenSpout - Could not initialize DirectX 11");
 		return false;
@@ -336,49 +364,75 @@ bool spoutGL::OpenSpout(bool bRetest)
 	// DirectX is OK
 	// OpenGL device context is needed to go on
 	HDC hdc = wglGetCurrentDC();
-	if (!hdc) {
-		SpoutLogFatal("spoutGL::OpenSpout - Cannot get GL device context");
-		return false;
-	}
-
-	// Get a window handle
-	m_hWnd = WindowFromDC(hdc);
-
-	// Load extensions
-	if (!LoadGLextensions()) {
-		SpoutLogFatal("spoutGL::OpenSpout - Could not load GL extensions");
-		return false;
-	}
-
-	// If DirectX and OpenGL are both OK - test GLDX compatibility
-
-	// For a re-test, create a new interop device in GLDXReady()
-	if (bRetest)
-		CleanupInterop();
-
-	// If not compatible or force CPU mode
-	if(!GLDXready() || m_bCPU) {
-
-		if(GLDXready() && m_bCPU)
-			// Not GL/DX compatible.
-			SpoutLogWarning("spoutGL::OpenSpout - GL/DX interop compatible - CPU testing mode");
-		else
-			// Not GL/DX compatible.
-			SpoutLogWarning("spoutGL::OpenSpout - system is not compatible with GL/DX interop");
-		
-		// Use CPU backup if Auto share enabled or CPU mode set in the registry
-		if (m_bAuto || m_bCPU)
-			SpoutLogWarning("   Using CPU share mode");
-		else
-			SpoutLogWarning("   Cannot share textures");
-
-		// Set compatibility flag for forced CPU mode
-		m_bUseGLDX = false;
-
+	if (hdc) {
+		// Get a window handle
+		m_hWnd = WindowFromDC(hdc);
+		// Load extensions
+		if (LoadGLextensions()) {
+			// If DirectX and OpenGL are both OK - test GLDX compatibility
+			// For a re-test, create a new interop device in GLDXReady()
+			if (bRetest)
+				CleanupInterop();
+		}
+		else {
+			SpoutLogWarning("spoutGL::OpenSpout - Could not load GL extensions");
+		}
 	}
 	else {
-		// GL/DX compatible. Use GL/DX interop.
-		SpoutLogNotice("    Using texture share mode");
+		SpoutLogWarning("spoutGL::OpenSpout - Cannot get GL device context");
+		// There might still be a chance with DirectX shared textures
+	}
+
+	//
+	// OpenGL GPU texture sharing is used if GL/DX compatible (m_bUseGLDX = true)
+	//
+	// DirectX CPU backup is used if :
+	//     Graphics is incompatible (m_bUseGLDX = false)
+	//   and
+	//     The user has selected "Auto" share in SpoutSettings (m_bAuto = false)
+	//   or
+	//     The user has selected CPU mode (2.006 setting or by registry edit of the CPU entry)
+	//
+	//   m_bUseGLDX      - shows graphics GL/DX compatibility, not the sharing method to be used
+	//   m_bTextureShare - use OpenGL GL/DX methods
+	//   m_bCPUshare     - use DirectX CPU methods
+	//   Neither method  - do not process at all
+	//
+	
+	if (GLDXready())
+		// GL/DX compatible.
+		SpoutLogNotice("spoutGL::OpenSpout - GL/DX interop compatible");
+	else
+		// Not GL/DX compatible.
+		SpoutLogWarning("spoutGL::OpenSpout - system is not compatible with GL/DX interop");
+
+	// Work out sharing methods
+	m_bTextureShare = false; // use GL/DX methods
+	m_bCPUshare = false; // Use DirectX CPU methods
+
+	// Texture share requires GL/DX compatibility
+	m_bTextureShare = m_bUseGLDX;
+
+	// If not compatible, Use CPU share only if Auto has been set in SpoutSettings
+	if (!m_bTextureShare && m_bAuto)
+		m_bCPUshare = true;
+
+	// Or CPU share over-ride for 2.006 setting or direct registry edit
+	if (m_bCPU) {
+		m_bTextureShare = false; // Do not use texture share
+		m_bCPUshare = true; // Use CPU share
+	}
+	// printf("    m_bUseGLDX = %d, m_bCPUshare = %d, m_bAuto = %d, m_bTextureShare = %d\n", m_bUseGLDX, m_bCPUshare, m_bAuto, m_bTextureShare);
+	
+	// Show the sharing method to be used
+	if (m_bTextureShare) {
+		SpoutLogNotice("    Using GPU OpenGL GL/DX methods");
+	}
+	else if (m_bCPUshare) {
+		SpoutLogWarning("   Using CPU DirectX methods");
+	}
+	else {
+		SpoutLogWarning("   Cannot share textures");
 	}
 
 	return true;
@@ -576,6 +630,8 @@ bool spoutGL::GLDXready()
 	// === Simulate failure for debugging ===
 	// SpoutLogNotice("spoutGL::GLDXready - simulated compatibility failure");
 	// m_bUseGLDX = false;
+	// m_bTextureShare = false;
+	// m_bCPUshare = true;
 	// return false;
 
 	// Test whether the NVIDIA OpenGL/DirectX interop extensions function correctly. 
@@ -667,17 +723,22 @@ bool spoutGL::GLDXready()
 	// Use of texture sharing or CPU backup is assessed from
 	// user settings (retrieved with GetAutoShare)
 	// and actual GL/DX compatibility (retrieved with GetGLDXready)
-
+	//
 	// The result is tested in OpenSpout
+	//
 	// Texture sharing is used if GL/DX compatible (m_bUseGLDX = true)
+	//
 	// CPU backup is used if :
-	//   1) Graphics is incompatible (m_bUseGLDX = false)
-	//   2) The user has selected "Auto" share in SpoutSettings (m_bAuto = false)
-	//   3) The user has forced CPU mode by registry edit of the CPU entry 	
+	//     Graphics is incompatible (m_bUseGLDX = false)
+	//   and
+	//     The user has selected "Auto" share in SpoutSettings (m_bAuto = false)
+	//   or
+	//     The user has forced CPU mode by registry edit of the CPU entry 	
+	//
 	// Otherwise no sharing is performed.
 
 	// If not GLDX compatible, LinkGLDXtexture will not be called (see CreateDX11interop)
-	// ReadDX11Texture and WriteDX11Texture using staging textures will be used instead
+	// ReadDX11Texture and WriteDX11Texture will be used instead via CPU staging textures 
 
 	return m_bUseGLDX;
 
@@ -704,32 +765,32 @@ bool spoutGL::SetHostPath(const char *sendername)
 }
 
 
-//---------------------------------------------------------
-// CPU mode is "not GL/DX compatible"
-// 2.006 senders will typically not have this bit set
-// so GL/DX compatibility is assumed
-bool spoutGL::SetSenderCPUmode(const char *sendername, bool bCPU)
+//----------------------------------------------------------
+// SetSenderID - set top two bits of 32 bit partner ID field
+//
+//   bCPU  - means "using CPU sharing methods"
+//     1000 0000 0000 0000 0000 0000 0000 0000 = 0x80000000
+//   bGLDX - means "hardware is compatible with OpenGL/DirectX interop"
+//     0100 0000 0000 0000 0000 0000 0000 0000 = 0x40000000
+//   Both set - means "hardware is GL/DX compatible but using CPU sharing methods"
+//     1100 0000 0000 0000 0000 0000 0000 0000 = 0xC0000000
+// 
+// 2.006 senders may or may not have these bits set, but will rarely have the exact values.
+//
+bool spoutGL::SetSenderID(const char *sendername, bool bCPU, bool bGLDX)
 {
-	SharedTextureInfo info;
+	// Texture share and hardware compatibility assumed by default
+	m_bSenderCPU = false;
+	m_bSenderGLDX = true;
 
-	if (sendernames.getSharedInfo(sendername, &info)) {
-		// CPU mode - set top bit of 32 bit partner ID field
-		// 1000 0000 0000 0000 0000 0000 0000 0000
-		if (bCPU) {
-			info.partnerId = info.partnerId | 0x80000000; // Set bit
-			m_bSenderCPUmode = true;
-		}
-		else {
-			info.partnerId = info.partnerId & ~0x80000000; // Clear bit default
-			m_bSenderCPUmode = false;
-		}
-
-		// Save the info for this sender in the sender shared memory map
-		sendernames.setSharedInfo(sendername, &info);
-		return true;
+	// Set the requested flags to the PartnerID field of sender shared memory.
+	// If the method succeeds, set class flags.
+	if (sendernames.SetSenderID(sendername, bCPU, bGLDX)) {
+			m_bSenderCPU  = bCPU;
+			m_bSenderGLDX = bGLDX;
+			return true;
 	}
 	return false;
-
 }
 
 
@@ -1576,7 +1637,6 @@ bool spoutGL::WriteDX11texture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource;
-	bool bRet = false;
 
 	// Only for DX11 mode
 	if (!spoutdx.GetDX11Context()) {
@@ -1587,34 +1647,33 @@ bool spoutGL::WriteDX11texture(GLuint TextureID, GLuint TextureTarget,
 	// Only one staging texture is required. Buffering read from GPU is done by OpenGL PBO.
 	if (!CheckStagingTextures(width, height, 1))
 		return false;
-	
+
 	// Map the DX11 staging texture and write the sender OpenGL texture pixels to it
 	if (SUCCEEDED(spoutdx.GetDX11Context()->Map(m_pStaging[0], 0, D3D11_MAP_WRITE, 0, &mappedSubResource))) {
-		
+
 		// Staging texture width is multiples of 16 and pitch can be greater that width*4
-		// Copy OpenGL texture pixelsto the staging texture taking account of the destination row pitch
-		if (m_bPBOavailable) {
-			bRet = UnloadTexturePixels(TextureID, TextureTarget,
-				width, height,
-				mappedSubResource.RowPitch,
-				(unsigned char *)mappedSubResource.pData,
-				GL_BGRA_EXT, bInvert, HostFBO);
-		}
-		else {
-			bRet = ReadTextureData(TextureID, TextureTarget, // OpenGL source texture
-				width, height, // width and height of OpenGL texture
-				mappedSubResource.RowPitch, // bytes per line of staging texture
-				(unsigned char *)mappedSubResource.pData, // staging texture pixels
-				GL_BGRA_EXT, bInvert, HostFBO);
-		}
+			// Copy OpenGL texture pixelsto the staging texture taking account of the destination row pitch
+			if (m_bPBOavailable) {
+				if(!UnloadTexturePixels(TextureID, TextureTarget,
+					width, height,
+					mappedSubResource.RowPitch,
+					(unsigned char *)mappedSubResource.pData,
+					GL_BGRA_EXT, bInvert, HostFBO))
+				return false;
+			}
+			else {
+				if (!ReadTextureData(TextureID, TextureTarget, // OpenGL source texture
+						width, height, // width and height of OpenGL texture
+						mappedSubResource.RowPitch, // bytes per line of staging texture
+						(unsigned char *)mappedSubResource.pData, // staging texture pixels
+						GL_BGRA_EXT, bInvert, HostFBO))
+					return false;
+			}
+			spoutdx.GetDX11Context()->Unmap(m_pStaging[0], 0);
 
-		spoutdx.GetDX11Context()->Unmap(m_pStaging[0], 0);
-
-		// The staging texture is updated with the OpenGL texture data
-		// Write it to the sender's shared texture
-		WriteTexture(&m_pStaging[0]);
-
-		return true;
+			// The staging texture is updated with the OpenGL texture data
+			// Write it to the sender's shared texture
+			return WriteTexture(&m_pStaging[0]);
 
 	}
 
@@ -1705,6 +1764,9 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 {
 	GLenum status;
 
+	if (!m_bFBOavailable)
+		return false;
+
 	// Create or resize a local OpenGL texture
 	CheckOpenGLTexture(m_TexID, GL_RGBA, width, height);
 
@@ -1735,33 +1797,26 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 
 	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-
 		if (bInvert && m_bBLITavailable) {
-
 			// copy the source texture (0) to the local texture (1) while flipping upside down 
-			glBlitFramebufferEXT(0,	0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			glBlitFramebufferEXT(0, 0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 			// Bind local fbo for read
 			glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, m_fbo);
 			// Read from attachment point 1
 			glReadBuffer(GL_COLOR_ATTACHMENT1_EXT);
-			
 			// Read pixels from it
 			glPixelStorei(GL_PACK_ROW_LENGTH, pitch / 4); // row length in pixels
 			glReadPixels(0, 0, width, height, GLformat, GL_UNSIGNED_BYTE, (GLvoid *)dest);
 			glPixelStorei(GL_PACK_ROW_LENGTH, 0);
-
 		}
 		else {
-
 			// No invert or no fbo blit extension
 			// Read from the source texture attachment point 0
 			// This will be the local fbo if a texture ID was passed in
-
 			// Pitch is destination line length in bytes. Divide by 4 to get the width in rgba pixels.
-			glPixelStorei(GL_PACK_ROW_LENGTH, pitch/4); // row length in pixels
+			glPixelStorei(GL_PACK_ROW_LENGTH, pitch / 4); // row length in pixels
 			glReadPixels(0, 0, width, height, GLformat, GL_UNSIGNED_BYTE, (GLvoid *)dest);
 			glPixelStorei(GL_PACK_ROW_LENGTH, 0);
-
 		}
 	}
 	else {
@@ -1769,10 +1824,9 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 		return false;
 	}
-
 	// restore the previous fbo - default is 0
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-
+	
 	return true;
 
 } // end ReadTextureData
@@ -2218,6 +2272,14 @@ bool spoutGL::LoadGLextensions()
 	if (m_caps > 0)
 		return true;
 
+	m_bFBOavailable = false;
+	m_bGLDXavailable = false;
+	m_bBLITavailable = false;
+	m_bSWAPavailable = false;
+	m_bBGRAavailable = false;
+	m_bCOPYavailable = false;
+	m_bCONTEXTavailable = false;
+
 	m_caps = loadGLextensions(); // in spoutGLextensions
 
 	if (m_caps == 0) {
@@ -2225,7 +2287,6 @@ bool spoutGL::LoadGLextensions()
 		return false;
 	}
 
-	m_bFBOavailable = false;
 	if (m_caps & GLEXT_SUPPORT_FBO) m_bFBOavailable = true;
 	// FBO not available is terminal
 	if (!m_bFBOavailable) {
@@ -2233,6 +2294,7 @@ bool spoutGL::LoadGLextensions()
 		return false;
 	}
 
+	m_bFBOavailable = false;
 	m_bGLDXavailable = false;
 	m_bBLITavailable = false;
 	m_bSWAPavailable = false;
@@ -2246,6 +2308,7 @@ bool spoutGL::LoadGLextensions()
 	if (m_caps & GLEXT_SUPPORT_BGRA)      m_bBGRAavailable = true;
 	if (m_caps & GLEXT_SUPPORT_COPY)      m_bCOPYavailable = true;
 	if (m_caps & GLEXT_SUPPORT_CONTEXT)   m_bCONTEXTavailable = true;
+	if (m_caps && GLEXT_SUPPORT_PBO)      m_bPBOavailable = true;
 
 	// Test PBO availability unless user has selected buffering off
 	// m_bPBOavailable also set by SetBufferMode()
@@ -2694,9 +2757,12 @@ bool spoutGL::GetHostPath(const char* sendername, char* hostpath, int maxchars)
 	}
 
 	n = maxchars;
-	if (n > 256) n = 256; // maximum field width in shared memory
-
+	if (n > 256) n = 256; // maximum field width in shared memory (128 wide chars)
 	strcpy_s(hostpath, n, (char*)info.description);
+
+	// LJ DEBUG
+	// printf("    GetHostPath[%s]\n", hostpath);
+
 
 	return true;
 }
@@ -2906,3 +2972,5 @@ bool spoutGL::WriteTexture(ID3D11Texture2D** texture)
 
 	return bRet;
 }
+
+

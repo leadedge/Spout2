@@ -240,7 +240,6 @@ char* SpoutSharedMemory::Lock()
 
 void SpoutSharedMemory::Unlock()
 {
-
 	assert(m_hMutex);
 
 	m_lockCount--;
