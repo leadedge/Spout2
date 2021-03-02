@@ -92,6 +92,7 @@
 //					  Add default args to to GetSenderAdapter
 //		21.02.21	- Add GetAdapterAuto
 //		22.02.21	- Add missing OpenDirectX11 test in SendTexture
+//		02.03.21	- SetAdapterAuto - warn if not using class device
 //
 // ====================================================================================
 /*
@@ -1012,6 +1013,10 @@ bool spoutDX::GetAdapterAuto()
 // Auto switch receiving device to use the same adapter as the sender
 void spoutDX::SetAdapterAuto(bool bAdapt)
 {
+	if (bAdapt && !IsClassDevice()) {
+		SpoutLogWarning("spoutDX::SetAdapterAuto : D3D11 device created outside the class");
+		return;
+	}
 	m_bAdapt = bAdapt;
 }
 

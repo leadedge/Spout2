@@ -117,6 +117,7 @@ void ResetDevice();
 void SelectAdapter();
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+bool g_bAutoAdapt = false; // Auto switch to the same adapter as the sender (menu option)
 static std::string adaptername[10];
 static int adaptercount = 0;
 static int currentadapter = 0;
@@ -160,23 +161,28 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	//
 
 	//
-	// Option
+	// Menu options for change of graphics adapter
 	//
 	// Both sender and receiver must use the same graphics adapter.
-	// SetAdapterAuto() enables auto switch to the same adapter as the sender.
-	// The device being used must have been be created within the SpoutDX class.
 	//
-	// If you build the project with this enabled, manual selection for graphics
-	// adapter will result in change back to the sender graphics adapter.
-	// The menu option could be removed here but it's useful for the demonstration.
+	// "Select graphics adapter" allows manual selection and change
+	// to the same adapter as used by a particluar sender.
 	//
-	if (receiver.IsClassDevice())
-		receiver.SetAdapterAuto();
-
+	// "Auto switch adapter" enables auto switch to the same adapter as the sender.
+	// The "SetAdapterAuto()" function enables or disables this option.
+	// The D3D11 device must have been be created within the SpoutDX class
+	// or the function has no effect.
+	// If this menu option is enabled, manual selection of graphics adapter
+	// will result in change back to the sender graphics adapter.
+	//
+	// See : IDM_AUTO_ADAPTER
+	// receiver.SetAdapterAuto();
+	//
 	// Selection of graphics adapter requires a class device
 	if (!receiver.IsClassDevice()) {
 		HMENU hPopup = GetSubMenu(GetMenu(g_hWnd), 0);
 		RemoveMenu(hPopup, IDM_ADAPTER, MF_BYCOMMAND);
+		RemoveMenu(hPopup, IDM_AUTO_ADAPTER, MF_BYCOMMAND);
 	}
 
 	// Main message loop
@@ -784,8 +790,32 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 		// Parse the menu selections:
 		switch (LOWORD(wParam))
 		{
+			// Select graphics adapter
 			case IDM_ADAPTER:
 				SelectAdapter();
+				break;
+			// Auto switch to sender adapter
+			case IDM_AUTO_ADAPTER:
+				{
+					g_bAutoAdapt = !g_bAutoAdapt;
+					if (g_bAutoAdapt) {
+						receiver.SetAdapterAuto(true);
+						// Switch to sender adapter if connected.
+						// See details in SelectAdapter()
+						if (receiver.IsConnected()) {
+							selectedadapter = receiver.GetSenderAdapter(receiver.GetSenderName());
+							if (receiver.SetAdapter(selectedadapter)) {
+								currentadapter = selectedadapter;
+								ResetDevice();
+							}
+						}
+						CheckMenuItem(GetMenu(g_hWnd), IDM_AUTO_ADAPTER, MF_CHECKED);
+					}
+					else {
+						receiver.SetAdapterAuto(false);
+						CheckMenuItem(GetMenu(g_hWnd), IDM_AUTO_ADAPTER, MF_UNCHECKED);
+					}
+				}
 				break;
 			case IDM_ABOUT:
 				DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), g_hWnd, About);
