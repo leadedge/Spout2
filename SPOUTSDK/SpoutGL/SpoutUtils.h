@@ -204,6 +204,20 @@ namespace spoututils {
 	// Find subkey
 	bool FindSubKey(HKEY hKey, const char *subkey);
 
+	//
+	// Timing functions
+	//
+#ifdef USE_CHRONO
+	// Start timing period
+	void StartTiming();
+	// Stop timing and return microseconds elapsed.
+	// Code console output can be enabled for quick timing tests.
+	double EndTiming();
+#endif
+
+	// Get SDK version number string e.g. "2.007.000"
+	std::string GetSDKversion();
+
 	// Logging function.
 	// Used internally to perform logging.  
 	// The function code can be changed to produce logs as required
@@ -226,17 +240,6 @@ namespace spoututils {
 		bool ExecuteProcess(char *path);
 	}
 
-
-	//
-	// Timing functions
-	//
-#ifdef USE_CHRONO
-	// Start timing period
-	void StartTiming();
-	// Stop timing and return microseconds elapsed.
-	// Code console output can be enabled for quick timing tests.
-	double EndTiming();
-#endif
 
 
 }

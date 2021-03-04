@@ -65,6 +65,7 @@
 		23.09.20 - _doLog : always prevent multiple logs by comparing with the last
 				   instead of reserving for > warnings
 		16.10.20 - Add bool WriteBinaryToRegistry
+		04.03.21 - Add std::string GetSDKversion()
 
 */
 #include "SpoutUtils.h"
@@ -100,6 +101,7 @@ namespace spoututils {
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
 #endif
+	std::string SDKversion = "2.007.001"; // Spout SDK version number string
 
 	//
 	// Console management
@@ -630,11 +632,17 @@ namespace spoututils {
 	double EndTiming() {
 		end = std::chrono::steady_clock::now();
 		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		printf("elapsed [%.3f] msec\n", elapsed / 1000.0);
+		// printf("elapsed [%.4f] msec\n", elapsed / 1000.0);
 		// printf("elapsed [%.3f] u/sec\n", elapsed);
 		return elapsed;
 	}
 #endif
+
+	// Get SDK version number string e.g. "2.007.000"
+	std::string GetSDKversion()
+	{
+		return SDKversion;
+	}
 
 	// Perform the log
 	void _doLog(SpoutLogLevel level, const char* format, va_list args)
