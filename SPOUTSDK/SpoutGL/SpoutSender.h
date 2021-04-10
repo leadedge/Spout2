@@ -71,6 +71,10 @@ class SPOUT_DLLEXP SpoutSender {
 	long GetFrame();
 	// Sender share handle
 	HANDLE GetHandle();
+	// Sender sharing method
+	bool GetCPU();
+	// Sender GL/DX hardware compatibility
+	bool GetGLDX();
 
 	//
 	// Frame count
@@ -84,7 +88,18 @@ class SPOUT_DLLEXP SpoutSender {
 	bool IsFrameCountEnabled();
 	// Frame rate control
 	void HoldFps(int fps);
+	// Signal sync event 
+	void SetFrameSync(const char* SenderName);
+	// Wait or test for a sync event
+	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 
+	//
+	// Memory sharing
+	//
+
+	// Write data
+	bool WriteMemoryBuffer(const char *sendername, const char* data, int length);
+	
 	//
 	// Graphics compatibility
 	//

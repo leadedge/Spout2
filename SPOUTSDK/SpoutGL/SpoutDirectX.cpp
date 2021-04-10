@@ -189,7 +189,7 @@ void spoutDirectX::CloseDirectX11()
 
 
 //
-// Notes for DX11 : https://www.opengl.org/registry/specs/NV/DX_interop2.txt
+// Notes for DX11 : https://www.khronos.org/registry/OpenGL/extensions/NV/WGL_NV_DX_interop2.txt
 //
 // Valid device types for the <dxDevice> parameter of wglDXOpenDeviceNV and associated restrictions
 // DirectX device type ID3D11Device - can only be used on WDDM operating systems; XXX Must be multithreaded

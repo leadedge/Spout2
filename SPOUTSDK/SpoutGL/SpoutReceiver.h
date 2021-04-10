@@ -85,9 +85,9 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// Received sender share handle
 	HANDLE GetSenderHandle();
 	// Received sender sharing method
-	bool GetSenderCPUshare();
+	bool GetSenderCPU();
 	// Received sender GL/DX hardware compatibility
-	bool GetSenderGLDXready();
+	bool GetSenderGLDX();
 	// Open sender selection dialog
 	void SelectSender();
 
@@ -103,6 +103,17 @@ class SPOUT_DLLEXP SpoutReceiver {
 	bool IsFrameCountEnabled();
 	// Frame rate control
 	void HoldFps(int fps);
+	// Signal sync event 
+	void SetFrameSync(const char* SenderName);
+	// Wait or test for a sync event
+	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+
+	//
+	// Memory sharing
+	//
+
+	// Read data
+	int ReadMemoryBuffer(const char* sendername, char* data, int maxlength);
 
 	//
 	// Graphics compatibility

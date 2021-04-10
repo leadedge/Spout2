@@ -28,6 +28,17 @@
 //					- Add m_bSenderGLDX
 //					- Change SetSenderCPUmode to include CPU sharing mode and GLDX compatibility
 //					- Change SetSenderCPUmode name to SetSenderID
+//		13.03.21	- Add m_bMemoryShare for possible older 2.006 apps
+//					  Add memoryshare.CreateSenderMemory
+//					  memoryshare.CloseSenderMemory() in destructor
+//					  Add WriteMemoryPixels
+//					  Change ReadMemoryPixels to accept GL_LUMINANCE
+//					  Use reinterpret_cast for memoryshare.LockSenderMemory()
+//		15.03.21	- Remove m_bNewFrame
+//		20.03.21	- Add memoryshare.GetSenderMemoryName()
+//		25.03.21	- Disable frame sync in destructor
+//		02.04.21	- Change ReadMemory to ReadMemoryTexture
+//		04.04.21	- Add GetSenderMemory
 //
 // ====================================================================================
 /*
@@ -60,7 +71,7 @@
 // Class: spoutGL
 // Base class for OpenGL texture sharing using the NVIDIA GL/DX interop extensions.
 // This class should not be used directly because it is the base for the Spout, SpoutSender and SpoutReceiver classes.
-// Refer to the Spout class for documentation and details.
+// Refer to the Spout class for further documentation and details.
 spoutGL::spoutGL()
 {
 	m_SenderName[0] = 0;
@@ -79,7 +90,6 @@ spoutGL::spoutGL()
 	m_bSenderGLDX = true;
 	
 	m_bConnected = false;
-	m_bNewFrame = false;
 	m_bInitialized = false;
 	m_bSpoutPanelOpened = false;;
 	m_bSpoutPanelActive = false;;
@@ -157,6 +167,14 @@ spoutGL::spoutGL()
 		m_SpoutVersion = (int)dwValue; // 0 for earlier than 2.005
 	else
 		m_SpoutVersion = -1; // Spout not installed
+
+	// 2.006 memoryshare mode
+	// Only set if 2.006 SpoutSettings has been used
+	// Removed by 2.007 SpoutSettings
+	m_bMemoryShare = GetMemoryShareMode();
+
+	EnableSpoutLog();
+
 	   
 }
 
@@ -166,6 +184,8 @@ spoutGL::~spoutGL()
 		sendernames.ReleaseSenderName(m_SenderName);
 		frame.CleanupFrameCount();
 		frame.CloseAccessMutex();
+		frame.CloseFrameSync();
+		memoryshare.CloseSenderMemory();
 	}
 
 	if (m_fbo > 0) {
@@ -206,7 +226,7 @@ spoutGL::~spoutGL()
 
 //---------------------------------------------------------
 // Function: BindSharedTexture
-// Bind OpenGL shared texture
+// Bind OpenGL shared texture.
 bool spoutGL::BindSharedTexture()
 {
 	// Only for GL/DX interop mode
@@ -238,7 +258,7 @@ bool spoutGL::BindSharedTexture()
 
 //---------------------------------------------------------
 // Function: UnBindSharedTexture
-// Un-bind OpenGL shared texture
+// Un-bind OpenGL shared texture.
 bool spoutGL::UnBindSharedTexture()
 {
 	// Only for GL/DX interop mode
@@ -258,7 +278,7 @@ bool spoutGL::UnBindSharedTexture()
 
 //---------------------------------------------------------
 // Function: GetSharedTextureID
-// OpenGL shared texture ID
+// OpenGL shared texture ID.
 GLuint spoutGL::GetSharedTextureID()
 {
 	return m_glTexture;
@@ -270,7 +290,7 @@ GLuint spoutGL::GetSharedTextureID()
 
 //---------------------------------------------------------
 // Function: GetAutoShare
-// Get auto GPU/CPU share depending on compatibility
+// Get auto GPU/CPU share depending on compatibility.
 bool spoutGL::GetAutoShare()
 {
 	return m_bAuto;
@@ -278,7 +298,7 @@ bool spoutGL::GetAutoShare()
 
 //---------------------------------------------------------
 // Function: SetAutoShare
-// Set auto GPU/CPU share depending on compatibility
+// Set auto GPU/CPU share depending on compatibility.
 void spoutGL::SetAutoShare(bool bAuto)
 {
 	m_bAuto = bAuto;
@@ -286,7 +306,7 @@ void spoutGL::SetAutoShare(bool bAuto)
 
 //---------------------------------------------------------
 // Function: GetCPUShare
-// Get CPU share for the application
+// Get CPU share for the application.
 // This is determined by compatibility or set by the application
 bool spoutGL::GetCPUshare()
 {
@@ -318,7 +338,7 @@ void spoutGL::SetCPUshare(bool bCPU)
 
 //---------------------------------------------------------
 // Function: IsGLDXready
-// OpenGL texture share compatibility
+// OpenGL texture share compatibility.
 bool spoutGL::IsGLDXready()
 {
 	return m_bUseGLDX;
@@ -330,13 +350,38 @@ bool spoutGL::IsGLDXready()
 
 //---------------------------------------------------------
 // Function: OpenSpout
-// Initialize OpenGL and DX11
-//     - Load extensions and check for availability and function
+//
+// Initialize OpenGL and DX11.
+//
 //     - Open DirectX and check for availability
+//     - Load extensions and check for availability and function
 //     - Compatibility test for use or GL/DX interop
 //     - Optionally re-test compatibility even if already initialized
-// Failure means that all of the above failed
-// DirectX could still be available.
+//
+// Failure means that DirectX is not available.
+//
+// OpenGL GPU texture sharing is used only if GL/DX compatible (m_bUseGLDX = true).
+//
+// DirectX CPU backup is used if :
+//
+//     - Graphics is incompatible (m_bUseGLDX = false)
+//
+//   and
+//
+//     - The user has selected "Auto" share in SpoutSettings (m_bAuto = false)
+//
+//   or
+//
+//     - The user has selected CPU mode (2.006 setting or by registry edit of the CPU entry)
+//
+// Class flags :
+//
+//   m_bUseGLDX -       graphics GL/DX compatibility, not the sharing method to be used
+//   m_bTextureShare -  use OpenGL GL/DX methods
+//   m_bCPUshare -      use DirectX CPU methods
+//   Neither method -   do not process at all
+//
+	
 bool spoutGL::OpenSpout(bool bRetest)
 {
 	// Return if already initialized and not re-testing compatibility
@@ -422,7 +467,6 @@ bool spoutGL::OpenSpout(bool bRetest)
 		m_bTextureShare = false; // Do not use texture share
 		m_bCPUshare = true; // Use CPU share
 	}
-	// printf("    m_bUseGLDX = %d, m_bCPUshare = %d, m_bAuto = %d, m_bTextureShare = %d\n", m_bUseGLDX, m_bCPUshare, m_bAuto, m_bTextureShare);
 	
 	// Show the sharing method to be used
 	if (m_bTextureShare) {
@@ -802,8 +846,6 @@ bool spoutGL::SetSenderID(const char *sendername, bool bCPU, bool bGLDX)
 bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive)
 {
 	SpoutLogNotice("spoutGL::CreateInterop");
-
-	// printf("spoutGL::CreateInterop %dx%d - format = %d\n", width, height, dwFormat);
 
 	// Create or use a shared DirectX texture that will be linked
 	// to the OpenGL texture and get it's share handle for sharing textures
@@ -1290,7 +1332,6 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 
 	// Wait for access to the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
-
 		// Read the shared texture if the sender has produced a new frame
 		// GetNewFrame updates sender frame count and fps
 		if (frame.GetNewFrame()) {
@@ -1302,7 +1343,6 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 				}
 			}
 		}
-
 		// Release mutex and allow access to the texture
 		frame.AllowTextureAccess(m_pSharedTexture);
 	}
@@ -1757,6 +1797,127 @@ bool spoutGL::ReadDX11texture(GLuint TextureID, GLuint TextureTarget,
 } // end ReadDX11texture
 
 
+//
+// Group: Memory sharing
+//
+//   General purpose data exchange functions using shared memory.
+//   These functions can be used in addition to texture sharing.
+//   Typical uses will be for data attached to the video frame,
+//   commonly referred to as Metadata.
+//
+//   If used directly after sending and after receiving, the data
+//   will be associated with the same video frame, but frames may 
+//   be missed if sender and receiver have different frame rates.
+//   If strict synchronization is required, they should be used
+//   in combination with event signal functions.
+//
+//      - void SetFrameSync(const char* SenderName);
+//      - bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+//   
+//   Before sending a frame and/or writing data, the sender should wait
+//   for a signal from the receiver that it is ready to read another frame.
+//   Use this before any rendering occurs to prevent timing variability.
+//   After reading a frame and data, the receiver should signal that it is
+//   ready to read another. Use this after rendering has completed.
+//   The practical result is that the sender will be matched exactly to the
+//   frame rate of the receiver and there will be no missed frames.
+//
+//   Shared memory is created and the size established on the first call
+//   to WriteMemoryBuffer and is released when a sender or receiver is closed.
+//
+
+
+//---------------------------------------------------------
+// Function: WriteMemoryBuffer
+// Write buffer to shared memory.
+//
+//    Creates a shared memory map of the required size if it does not exist yet
+//    The map is closed when the sender is released.
+bool spoutGL::WriteMemoryBuffer(const char *sendername, const char* data, int length)
+{
+	if (!sendername || !sendername[0]) {
+		SpoutLogError("spoutGLDXinterop::WriteMemoryBuffer - no sender name");
+		return false;
+	}
+
+	if (!data) {
+		SpoutLogError("spoutGLDXinterop::WriteMemoryBuffer - no data");
+		return false;
+	}
+
+	if (memoryshare.GetSenderMemorySize() == 0) {
+		if (!CreateMemoryBuffer(sendername, length))
+			return false;
+	}
+
+	unsigned char* pBuffer = memoryshare.LockSenderMemory();
+	if (!pBuffer) {
+		SpoutLogError("spoutGLDXinterop::WriteMemoryBuffer - no buffer lock");
+		return false;
+	}
+
+	// Write user data to shared memory
+	unsigned char *dest = pBuffer;
+	dest += 16;
+
+	memcpy(reinterpret_cast<void *>(pBuffer + 16), reinterpret_cast<const void *>(data), length);
+
+	memoryshare.UnlockSenderMemory();
+
+	return true;
+}
+
+//---------------------------------------------------------
+// Function: ReadMemoryBuffer
+// Read shared memory to buffer.
+//
+//    Opens a sender memory map and retains the handle.
+//    The map is closed when the receiver is released.
+int spoutGL::ReadMemoryBuffer(const char* sendername, char* data, int maxlength)
+{
+	if (!sendername || !sendername[0]) {
+		SpoutLogError("spoutGLDXinterop::ReadMemoryBuffer - no sender name");
+		return false;
+	}
+
+	if (!data) {
+		SpoutLogError("spoutGLDXinterop::ReadMemoryBuffer - no data");
+		return 0;
+	}
+
+	// Open a shared memory map if it not already
+	if (!memoryshare.GetSenderMemoryName()) {
+		if (!memoryshare.OpenSenderMemory(sendername)) {
+			SpoutLogError("spoutGLDXinterop::ReadMemoryBuffer - could not open sender memory map");
+			return 0;
+		}
+		SpoutLogNotice("spoutGLDXinterop::ReadMemoryBuffer - opened sender memory map [%s]", memoryshare.GetSenderMemoryName());
+	}
+
+	unsigned char* pBuffer = memoryshare.LockSenderMemory();
+	if (!pBuffer) {
+		SpoutLogError("spoutGLDXinterop::ReadMemoryBuffer - no buffer lock");
+		return 0;
+	}
+
+	// The memory map includes it's size, saved as the first 16 bytes
+	*(pBuffer + 15) = 0; // End for atoi
+	int nbytes = atoi(reinterpret_cast<char *>(pBuffer));
+
+	// Reduce if the user buffer max length is less
+	if (maxlength < nbytes)
+		nbytes = maxlength;
+
+	// Copy bytes from shared memory to the user buffer
+	if (nbytes > 0)
+		memcpy(reinterpret_cast<void *>(data), reinterpret_cast<const void *>(pBuffer + 16), nbytes);
+
+	// Done with the shared memory buffer pointer
+	memoryshare.UnlockSenderMemory();
+
+	return nbytes;
+}
+
 // Copy OpenGL texture data to a pixel buffer via fbo
 bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 	unsigned int width, unsigned int height, unsigned int pitch,
@@ -2110,17 +2271,21 @@ bool spoutGL::CheckStagingTextures(unsigned int width, unsigned int height, int 
 //
 // Read rgba shared memory to texture pixel data
 //
-bool spoutGL::ReadMemory(const char* sendername, GLuint TexID, GLuint TextureTarget,
+bool spoutGL::ReadMemoryTexture(const char* sendername, GLuint TexID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
-	// Open the sender memory map and close it afterwards for a read,
-	// so that the receiver does not retain a handle to the shared memory
-	if (!memoryshare.OpenSenderMemory(sendername))
-		return false;
+	// Open a sender shared memory map if not done yet
+	if (!memoryshare.GetSenderMemoryName()) {
+		if (!memoryshare.OpenSenderMemory(sendername)) {
+			SpoutLogError("spoutGLDXinterop::ReadMemoryTexture - could no buffer");
+			return false;
+		}
+		SpoutLogNotice("spoutGLDXinterop::ReadMemoryTexture - opened sender memory map [%s]", memoryshare.GetSenderMemoryName());
+	}
 
 	unsigned char* pBuffer = memoryshare.LockSenderMemory();
-
 	if (!pBuffer) {
+		SpoutLogError("spoutGLDXinterop::ReadMemory - cannot open buffer");
 		memoryshare.CloseSenderMemory();
 		return false;
 	}
@@ -2149,50 +2314,121 @@ bool spoutGL::ReadMemory(const char* sendername, GLuint TexID, GLuint TextureTar
 
 	memoryshare.UnlockSenderMemory();
 
-	// Close the memory map handle so the sender can finally close the map
-	memoryshare.CloseSenderMemory();
-
 	return bRet;
 
 }
 
 //
-// Read rgba shared memory to image pixels
+// Read shared memory to image pixels
 //
 bool spoutGL::ReadMemoryPixels(const char* sendername, unsigned char* pixels,
 	unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
 {
-	if (!pixels)
+	if (!pixels || glFormat != GL_RGBA) {
+		SpoutLogError("spoutGLDXinterop::ReadMemoryPixels - no data or incorrect format");
 		return false;
+	}
 
-	// Open the sender memory map and close it afterwards for a read,
-	// so that the receiver does not retain a handle to the shared memory.
-	if (!memoryshare.OpenSenderMemory(sendername)) {
-		SpoutLogWarning("spoutGLDXinterop::ReadMemoryPixels - no buffer");
-		return false;
+	// Open a sender shared memory map if not done yet
+	if (!memoryshare.GetSenderMemoryName()) {
+		if (!memoryshare.OpenSenderMemory(sendername)) {
+			SpoutLogError("spoutGLDXinterop::ReadMemoryPixels - could not open sender map");
+			return false;
+		}
+		SpoutLogNotice("spoutGLDXinterop::ReadMemoryPixels - opened sender memory map [%s]", memoryshare.GetSenderMemoryName());
 	}
 
 	unsigned char* pBuffer = memoryshare.LockSenderMemory();
 	if (!pBuffer) {
-		memoryshare.CloseSenderMemory();
-		SpoutLogWarning("spoutGLDXinterop::ReadMemoryPixels - no buffer lock");
+		SpoutLogError("spoutGLDXinterop::ReadMemoryPixels - no buffer lock");
 		return false;
 	}
 
 	// Query a new frame and read pixels while the buffer is locked
 	if (frame.GetNewFrame()) {
 		// Read pixels from shared memory
-		if (glFormat == GL_RGBA) {
-			spoutcopy.CopyPixels(pBuffer, pixels, width, height, GL_RGBA, bInvert);
-		}
+		spoutcopy.CopyPixels(pBuffer, pixels, width, height, glFormat, bInvert);
 	}
+
 	memoryshare.UnlockSenderMemory();
-	// Close the memory map handle so the sender can close the map
-	memoryshare.CloseSenderMemory();
 
 	return true;
 
 }
+
+//
+// Write image pixels to shared memory
+//
+bool spoutGL::WriteMemoryPixels(const char *sendername, const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
+{
+	if (!pixels || glFormat != GL_RGBA) {
+		SpoutLogError("spoutGLDXinterop::WriteMemoryPixels - no data or incorrect format");
+		return false;
+	}
+
+	// Create a sender shared memory map if it does not exist
+	if (memoryshare.GetSenderMemorySize() == 0) {
+		SpoutLogNotice("spoutGLDXinterop::WriteMemoryPixels - creating sender memory");
+		memoryshare.CreateSenderMemory(sendername, width * 4, height);
+	}
+
+	unsigned char* pBuffer = memoryshare.LockSenderMemory();
+	if (!pBuffer) {
+		SpoutLogError("spoutGLDXinterop::WriteMemoryPixels - no buffer lock");
+		return false;
+	}
+
+	// Write pixel data to shared memory
+	spoutcopy.CopyPixels(pixels, pBuffer, width, height, glFormat, bInvert);
+
+	memoryshare.UnlockSenderMemory();
+
+	return true;
+
+}
+
+//
+// Create shared memory buffer
+//
+bool spoutGL::CreateMemoryBuffer(const char *sendername, unsigned int length)
+{
+	if (!sendername || !sendername[0]) {
+		SpoutLogError("spoutGLDXinterop::CreateMemoryBuffer - cannot create buffer");
+		return false;
+	}
+
+	// A memory map is created and the handle retained.
+	// The map is closed when the object is released
+
+	// Create a shared memory map if it does not exist yet
+	if (memoryshare.GetSenderMemorySize() == 0) {
+		// The first 16 bytes are reserved for the memory map size. Make the map larger to compensate. 
+		if (memoryshare.CreateSenderMemory(sendername, length + 16, 1)) {
+			SpoutLogNotice("spoutGLDXinterop::CreateMemoryBuffer - created shared memory [%s], %d bytes", sendername, length);
+		}
+		else {
+			SpoutLogError("spoutGLDXinterop::CreateMemoryBuffer - could not create shared memory");
+			return false;
+		}
+	}
+
+	unsigned char* pBuffer = memoryshare.LockSenderMemory();
+	if (!pBuffer) {
+		SpoutLogError("spoutGLDXinterop::CreateMemoryBuffer - no buffer lock");
+		return false;
+	}
+
+	// Convert the map size to decimal digit chars directly to shared memory
+	_itoa_s(length, reinterpret_cast<char *>(pBuffer), 16, 10);
+
+	memoryshare.UnlockSenderMemory();
+
+	return true;
+}
+
+//
+// Directx 11
+//
 
 //---------------------------------------------------------
 bool spoutGL::OpenDirectX11()
@@ -2556,7 +2792,7 @@ bool spoutGL::GLerror() {
 	bool bError = false;
 	while ((err = glGetError()) != GL_NO_ERROR) {
 		// SpoutLogError("    GLerror - OpenGL error = %u (0x%.7X)", err, err);
-		printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
+		// printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
 		bError = true;
 		// gluErrorString needs glu32.lib
 		// printf("GL error = %d (0x%.7X) %s\n", err, err, gluErrorString(err));
@@ -2759,10 +2995,6 @@ bool spoutGL::GetHostPath(const char* sendername, char* hostpath, int maxchars)
 	n = maxchars;
 	if (n > 256) n = 256; // maximum field width in shared memory (128 wide chars)
 	strcpy_s(hostpath, n, (char*)info.description);
-
-	// LJ DEBUG
-	// printf("    GetHostPath[%s]\n", hostpath);
-
 
 	return true;
 }

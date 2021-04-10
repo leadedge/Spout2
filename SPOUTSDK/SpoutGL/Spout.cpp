@@ -98,7 +98,7 @@
 //		04.05.16	- SetPBOavailable(true/false) added to enable/disable pbo functions
 //		07.05.16	- SetPBOavailable changed to SetBufferMode
 //		18.06.16	- Add invert to ReceiveImage
-//					2.005 release 23-06-16
+//			2.005 release 23-06-16
 //		29.06.16	- Added ReportMemory() for debugging
 //					- Changed OpenSpout to fail for DX9 if no hwnd
 //					  https://github.com/leadedge/Spout2/issues/18
@@ -176,7 +176,6 @@
 //		24.09.20	- Correction of SetSenderAdapter as bool not void
 //		25.09.20	- Remove GetSenderAdapter/SetSenderAdapter - not reliable
 //		17.10.20	- Change SetDX9format from D3D_FORMAT to DWORD
-//
 //		27.12.20	- Multiple changes for SpoutGL base class - see SpoutSDK.cpp
 //					  Remove DX9 support
 //					  CPU backup enhanced using dual DirectX staging textures
@@ -190,6 +189,13 @@
 //		18.01.21	- ReceiveSenderData : Check if the name is in the sender list
 //		26.02.21	- Add GetSenderGLDXready() for receiver
 //		01.03.21	- Add SetSenderID
+//		11.03.21	- Rename functions GetSenderCPU and GetSenderGLDX
+//		13.03.21	- memoryshare.CloseSenderMemory() in ReleaseSender
+//		15.03.21	- IsFrameNew - return frame.IsFrameNew()
+//		20.03.21	- memoryshare.CloseSenderMemory() in ReleaseReceiver
+//		02.04.21	- Add event functions SetFrameSync/WaitFrameSync
+//					- Add data functions WriteMemoryBuffer/ReadMemoryBuffer
+//		07.04.21	- Close sync event in ReleaseSender
 //
 // ====================================================================================
 /*
@@ -270,18 +276,22 @@
 // The methods are simple and you should be able to quickly extend to your own application
 // or to other frameworks.
 //
+// Refer to the SpoutGL base class for further documentation and details.
+//
 Spout::Spout()
 {
 	// Get graphics adapter number, index and name
 	m_AdapterNumber = GetNumAdapters();
 	m_AdapterIndex = spoutdx.GetAdapter();
 	GetAdapterName(m_AdapterIndex, m_AdapterName, 256);
-
 }
 
 Spout::~Spout()
 {
-	
+	// Close shared memory if used
+	memoryshare.CloseSenderMemory();
+	// Release event if used
+	frame.CloseFrameSync();
 }
 
 //
@@ -294,13 +304,13 @@ Spout::~Spout()
 //    - Make sure Spout has been initialized and OpenGL context is available
 //    - Perform a compatibility check for GL/DX interop
 //    - If compatible, create interop for GL/DX transfer
-//    - If not compatible, create a shared texture for the sender
+//    - If not compatible, create a DirectX 11 shared texture for the sender
 //    - Create a sender using the DX11 shared texture handle
 //
 // - If the sender exists, test for size change :
 //
 //    - If compatible, update the shared textures and GL/DX interop
-//    - If not compatible, re-create the class shared texture to the new size
+//    - If not compatible, re-create the class DirectX shared texture to the new size
 //    - Update the sender and class variables	
 //
 
@@ -308,7 +318,9 @@ Spout::~Spout()
 // Function: SetSenderName
 // Set name for sender creation
 //
-//   If no name is specified, the executable name is used. 
+//     If no name is specified, the executable name is used. 
+//     Thereafter, all sending functions create and update a sender
+//     based on the size passed and the name that has been set
 void Spout::SetSenderName(const char* sendername)
 {
 	if (!sendername) {
@@ -358,6 +370,11 @@ void Spout::ReleaseSender()
 		frame.CloseAccessMutex();
 	}
 
+	// Close shared memory and sync event if used
+	memoryshare.CloseSenderMemory();
+	frame.CloseFrameSync();
+
+
 	CleanupGL();
 
 }
@@ -367,9 +384,11 @@ void Spout::ReleaseSender()
 // Send texture attached to fbo.
 //
 //   The fbo must be currently bound.  
+//
 //   The sending texture can be larger than the size that the sender is set up for.  
 //   For example, if the application is using only a portion of the allocated texture space,  
 //   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture).
+//
 bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
 {
 	// For texture sharing, the fbo must be equal to or larger than the shared texture
@@ -406,6 +425,17 @@ bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool 
 // Function: SendTexture
 // Send OpenGL texture
 //
+//     SendTexture creates a shared texture for all receivers to access.
+//
+//     The invert flag is optional and by default true. This flips the texture
+//     in the Y axis, which is necessary because DirectX and OpenGL textures
+//     are opposite in Y. If it is set to false no flip occurs and the result
+//     may appear upside down.
+//
+//     The host fbo argument is optional (default 0) but an fbo ID is necessary
+//     if it is currently bound, then that binding is restored. Otherwise the
+//     binding is lost.
+//
 bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
@@ -415,6 +445,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 
 
 	// Create or update the sender
+	// < 0.001 msec 
 	if (!CheckSender(width, height))
 		return false;
 
@@ -436,9 +467,17 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 //---------------------------------------------------------
 // Function: SendImage
 // Send pixel image
+//
+//     SendImage creates a shared texture using image pixels as the source
+//     instead of an OpenGL texture. The format of the image to be sent is RGBA 
+//     by default but can be a different OpenGL format, for example GL_RGB or GL_BGRA_EXT.
+//
+//     The invert flag is optional and false by default.
+//
+//     As for SendTexture, the ID of a currently bound fbo should be passed in.
+//
 bool Spout::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
-
 	// Dimensions should be the same as the sender
 	if (!pixels || width == 0 || height == 0)
 		return false;
@@ -532,6 +571,24 @@ HANDLE Spout::GetHandle()
 	return m_dxShareHandle;
 }
 
+//---------------------------------------------------------
+// Function: GetCPU
+// Sender sharing method.
+//   Returns true if the sender is using CPU methods
+bool Spout::GetCPU()
+{
+	return m_bSenderCPU;
+}
+
+//---------------------------------------------------------
+// Function: GetGLDX
+//Sender sharing compatibility.
+//  Returns true if the sender graphics hardware is 
+//  compatible with NVIDIA NV_DX_interop2 extension
+bool Spout::GetGLDX()
+{
+	return m_bSenderGLDX;
+}
 
 //
 // Group: Receiver
@@ -548,6 +605,8 @@ HANDLE Spout::GetHandle()
 //
 //		- Copy the sender shared texture to the user texture or image.
 //
+// Any changes to sender size are managed. However, if you are receiving to a local texture or image,
+// the application must check for update at every cycle before receiving any data using "IsUpdated()"
 
 //---------------------------------------------------------
 // Function: SetReceiverName
@@ -610,6 +669,10 @@ void Spout::ReleaseReceiver()
 	m_Index = 0;
 	m_NextIndex = 0;
 
+	// Close shared memory and sync event if used
+	memoryshare.CloseSenderMemory();
+	frame.CloseFrameSync();
+	
 	m_bConnected = false;
 	m_bInitialized = false;
 
@@ -624,6 +687,7 @@ void Spout::ReleaseReceiver()
 //		- BindSharedTexture();
 //		- UnBindSharedTexture();
 //		- GetSharedTextureID();
+//
 bool Spout::ReceiveTexture()
 {
 	return ReceiveTexture(0, 0);
@@ -635,6 +699,10 @@ bool Spout::ReceiveTexture()
 //
 //    The receiving texture can only be RGBA of dimension (width * height)
 //    and must be re-allocated if IsUpdated() returns true
+//
+//    As for SendTexture, the host fbo argument is optional (default 0)
+//    but an fbo ID is necessary if it is currently bound, then that binding
+//    is restored. Otherwise the binding is lost.
 //
 bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
@@ -671,12 +739,14 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 		}
 
 		// Was the sender's shared texture handle null ?
-		if (!m_dxShareHandle) {
+		if (!m_dxShareHandle || m_bMemoryShare) {
 			// Possible existence of sender memory share map
-			ReadMemory(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
+			// Currently only works for Texture share mode
+			if (m_bTextureShare) {
+				ReadMemoryTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
+			}
 		}
-
-		if (m_bTextureShare) {
+		else if (m_bTextureShare) {
 			// Texture share compatible
 			// 3840x2160 60 fps - 0.45 msec/frame
 			ReadGLDXtexture(TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
@@ -701,8 +771,16 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 // Function: ReceiveImage
 // Copy the sender texture to image pixels.
 //
-//    The receiving image can be RGBA, RGB or BGR of dimension (width * height)
-//    and must be re-allocated if IsUpdated() returns true
+//    Formats supported are : GL_RGBA, GL_RGB, GL_BGRA_EXT, GL_BGR_EXT.
+//    GL_BGRA_EXT and GL_BGR_EXT are dependent on those extensions being supported at runtime.
+//    If they are not, the rgba and rgb equivalents are used.
+//    The same sender size changes are handled with IsUpdated() as for ReceiveTexture.
+//    and the receiving buffer must be re-allocated if IsUpdated() returns true.
+//    NOTE : images with padding on each line are not supported.
+//    Also the width should be a multiple of 4
+//
+//    As for ReceiveTexture, the ID of a currently bound fbo should be passed in.
+//
 bool Spout::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height,
 	unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
@@ -748,7 +826,7 @@ bool Spout::IsConnected()
 //   This can be queried to process texture data only for new frames
 bool Spout::IsFrameNew()
 {
-	return m_bNewFrame;
+	return frame.IsFrameNew();
 }
 
 //---------------------------------------------------------
@@ -809,17 +887,20 @@ HANDLE Spout::GetSenderHandle()
 }
 
 //---------------------------------------------------------
-// Function: GetSenderCPUshare
-// Received sender sharing method
-bool Spout::GetSenderCPUshare()
+// Function: GetSenderCPU
+// Received sender sharing method.
+//   Returns true if the sender is using CPU methods
+bool Spout::GetSenderCPU()
 {
 	return m_bSenderCPU;
 }
 
 //---------------------------------------------------------
-// Function: GetSenderGLDXready
-// Received sender sharing mode
-bool Spout::GetSenderGLDXready()
+// Function: GetSenderGLDX
+// Received sender sharing compatibility.
+//   Returns true if the sender graphics hardware is 
+//   compatible with NVIDIA NV_DX_interop2 extension
+bool Spout::GetSenderGLDX()
 {
 	return m_bSenderGLDX;
 }
@@ -861,10 +942,37 @@ bool Spout::IsFrameCountEnabled()
 
 //---------------------------------------------------------
 // Function: HoldFps
-// Frame rate control
+// Frame rate control.
+//    Desired frames per second.
 void Spout::HoldFps(int fps)
 {
 	frame.HoldFps(fps);
+}
+
+// -----------------------------------------------
+// Function: SetFrameSync
+// Signal sync event.
+//   Creates a named sync event and sets for test
+void Spout::SetFrameSync(const char* SenderName)
+{
+	if (SenderName && SenderName[0] && m_bInitialized)
+		frame.SetFrameSync(SenderName);
+}
+
+// -----------------------------------------------
+// Function: WaitFrameSync
+// Wait or test for named sync event.
+// Wait until the sync event is signalled or the timeout elapses.
+// Events are typically created based on the sender name and are
+// effective between a single sender/receiver pair.
+//   - For testing for a signal, use a wait timeout of zero.
+//   - For synchronization, use a timeout greater than the expected delay
+// 
+bool Spout::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
+{
+	if (!SenderName || !SenderName[0] || !m_bInitialized)
+		return false;
+	return frame.WaitFrameSync(SenderName, dwTimeout);
 }
 
 //
@@ -1179,92 +1287,6 @@ bool Spout::UpdateSender(const char* name, unsigned int width, unsigned int heig
 	return CheckSender(width, height);
 }
 
-// Legacy OpenGL DrawTo function
-#ifdef legacyOpenGL
-//---------------------------------------------------------
-// Function: DrawToSharedTexture
-// Render OpenGL texture to the sender shared OpenGL texture.
-//
-// Legacy OpenGL function
-//
-// Enabled for build with "legacyOpenGL" defined in SpoutCommon.h
-//
-bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget,
-	unsigned int width, unsigned int height,
-	float max_x, float max_y, float aspect,
-	bool bInvert, GLuint HostFBO)
-{
-	GLenum status;
-	bool bRet = false;
-
-	if (!m_hInteropDevice || !m_hInteropObject)
-		return false;
-
-	if (width != (unsigned  int)m_Width || height != (unsigned  int)m_Height)
-		return false;
-
-	// Wait for access to the shared texture
-	if (frame.CheckTextureAccess(m_pSharedTexture)) {
-		if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
-			// Draw the input texture into the shared texture via an fbo
-			// Bind our fbo and attach the shared texture to it
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-			glClearColor(0.f, 0.f, 0.f, 1.f);
-			glClear(GL_COLOR_BUFFER_BIT);
-			glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
-			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-			if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-				glColor4f(1.f, 1.f, 1.f, 1.f);
-				glEnable(TextureTarget);
-				glBindTexture(TextureTarget, TextureID);
-				GLfloat tc[4][2] = { 0 };
-				// Invert texture coord to user requirements
-				if (bInvert) {
-					tc[0][0] = 0.0;   tc[0][1] = max_y;
-					tc[1][0] = 0.0;   tc[1][1] = 0.0;
-					tc[2][0] = max_x; tc[2][1] = 0.0;
-					tc[3][0] = max_x; tc[3][1] = max_y;
-				}
-				else {
-					tc[0][0] = 0.0;   tc[0][1] = 0.0;
-					tc[1][0] = 0.0;   tc[1][1] = max_y;
-					tc[2][0] = max_x; tc[2][1] = max_y;
-					tc[3][0] = max_x; tc[3][1] = 0.0;
-				}
-				GLfloat verts[] = {
-								-aspect, -1.0,   // bottom left
-								-aspect,  1.0,   // top left
-								 aspect,  1.0,   // top right
-								 aspect, -1.0 }; // bottom right
-				glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-				glTexCoordPointer(2, GL_FLOAT, 0, tc);
-				glEnableClientState(GL_VERTEX_ARRAY);
-				glVertexPointer(2, GL_FLOAT, 0, verts);
-				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-				glDisableClientState(GL_VERTEX_ARRAY);
-				glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-				glBindTexture(TextureTarget, 0);
-				glDisable(TextureTarget);
-				bRet = true; // success
-			}
-			else {
-				PrintFBOstatus(status);
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-				UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-			}
-			// restore the previous fbo - default is 0
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-		} // end interop lock
-		// Release mutex and allow access to the texture
-		frame.AllowTextureAccess(m_pSharedTexture);
-	} // mutex access failed
-
-	return bRet;
-
-} // end DrawToSharedTexture
-#endif
-
 //---------------------------------------------------------
 // Function: CreateReceiver
 // Create receiver connection
@@ -1403,9 +1425,12 @@ bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, G
 		//
 
 		// Was the sender's shared texture handle null ?
-		if (!m_dxShareHandle) {
+		if (!m_dxShareHandle || m_bMemoryShare) {
 			// Possible existence of sender memory share map
-			ReadMemoryPixels(m_SenderName, pixels, m_Width, m_Height, glFormat, bInvert);
+			// Currently only works for Texture share mode
+			if (m_bTextureShare) {
+				ReadMemoryPixels(m_SenderName, pixels, m_Width, m_Height, glFormat, bInvert);
+			}
 		}
 		else if (m_bTextureShare && m_bPBOavailable) {
 			// Texture share compatible
@@ -1575,16 +1600,18 @@ bool Spout::SelectSenderPanel(const char *message)
 } // end SelectSenderPanel
 
 
-// Legacy OpenGL Draw function
+//
+// Group: Legacy OpenGL Draw functions
+//
+// These functions are retained for compatibility with existing 2.006 code.
+//
+// Enabled for build with "legacyOpenGL" defined in SpoutCommon.h
+//
 #ifdef legacyOpenGL
+
 //---------------------------------------------------------
 // Function: DrawSharedTexture
 // Render the sender shared OpenGL texture
-//
-// Legacy OpenGL function
-//
-// Enabled for build with "legacyOpenGL" defined in SpoutCommon.h
-//---------------------------------------------------------
 bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInvert, GLuint HostFBO)
 {
 	UNREFERENCED_PARAMETER(HostFBO);
@@ -1629,6 +1656,84 @@ bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInve
 	return bRet;
 
 } // end DrawSharedTexture
+
+//---------------------------------------------------------
+// Function: DrawToSharedTexture
+// Render OpenGL texture to the sender shared OpenGL texture.
+bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget,
+	unsigned int width, unsigned int height,
+	float max_x, float max_y, float aspect,
+	bool bInvert, GLuint HostFBO)
+{
+	GLenum status;
+	bool bRet = false;
+
+	if (!m_hInteropDevice || !m_hInteropObject)
+		return false;
+
+	if (width != (unsigned  int)m_Width || height != (unsigned  int)m_Height)
+		return false;
+
+	// Wait for access to the shared texture
+	if (frame.CheckTextureAccess(m_pSharedTexture)) {
+		if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+			// Draw the input texture into the shared texture via an fbo
+			// Bind our fbo and attach the shared texture to it
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+			glClearColor(0.f, 0.f, 0.f, 1.f);
+			glClear(GL_COLOR_BUFFER_BIT);
+			glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
+			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+			if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+				glColor4f(1.f, 1.f, 1.f, 1.f);
+				glEnable(TextureTarget);
+				glBindTexture(TextureTarget, TextureID);
+				GLfloat tc[4][2] = { 0 };
+				// Invert texture coord to user requirements
+				if (bInvert) {
+					tc[0][0] = 0.0;   tc[0][1] = max_y;
+					tc[1][0] = 0.0;   tc[1][1] = 0.0;
+					tc[2][0] = max_x; tc[2][1] = 0.0;
+					tc[3][0] = max_x; tc[3][1] = max_y;
+				}
+				else {
+					tc[0][0] = 0.0;   tc[0][1] = 0.0;
+					tc[1][0] = 0.0;   tc[1][1] = max_y;
+					tc[2][0] = max_x; tc[2][1] = max_y;
+					tc[3][0] = max_x; tc[3][1] = 0.0;
+				}
+				GLfloat verts[] = {
+								-aspect, -1.0,   // bottom left
+								-aspect,  1.0,   // top left
+								 aspect,  1.0,   // top right
+								 aspect, -1.0 }; // bottom right
+				glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+				glTexCoordPointer(2, GL_FLOAT, 0, tc);
+				glEnableClientState(GL_VERTEX_ARRAY);
+				glVertexPointer(2, GL_FLOAT, 0, verts);
+				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+				glDisableClientState(GL_VERTEX_ARRAY);
+				glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+				glBindTexture(TextureTarget, 0);
+				glDisable(TextureTarget);
+				bRet = true; // success
+			}
+			else {
+				PrintFBOstatus(status);
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+				UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+			}
+			// restore the previous fbo - default is 0
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+		} // end interop lock
+		// Release mutex and allow access to the texture
+		frame.AllowTextureAccess(m_pSharedTexture);
+	} // mutex access failed
+
+	return bRet;
+
+} // end DrawToSharedTexture
 #endif
 
 //
@@ -1666,7 +1771,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			if (m_bTextureShare) {
 				// Create interop for GL/DX transfer
 				// Flag "false" for sender so that a new shared texture is created
-				// (for a receiver the shared texture is cretaed from the sender share handle)
+				// (for a receiver the shared texture is created from the sender share handle)
 				if (!CreateInterop(width, height, m_dwFormat, false))
 					return false;
 			}
@@ -1744,7 +1849,17 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			}
 		}
 		// Update the sender with the new texture and size
-		sendernames.UpdateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat);
+		if (!sendernames.UpdateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
+			ReleaseSender();
+			m_SenderName[0] = 0;
+			m_Width = 0;
+			m_Height = 0;
+			m_dwFormat = m_DX11format;
+			m_AdapterIndex = 0;
+			m_AdapterName[0] = 0;
+			return false;
+		}
+
 		m_Width = width;
 		m_Height = height;
 	}
@@ -1774,8 +1889,6 @@ void Spout::InitReceiver(const char * SenderName, unsigned int width, unsigned i
 	m_AdapterNumber = GetNumAdapters();
 	m_AdapterIndex = spoutdx.GetAdapter();
 	GetAdapterName(m_AdapterIndex, m_AdapterName, 256);
-
-	// printf("Spout::CreateReceiver(%s, %d x %d) - format = %d\n", SenderName, width, height, m_dwFormat);
 
 	m_bInitialized = true;
 
@@ -1824,21 +1937,15 @@ bool Spout::ReceiveSenderData()
 		height = info.height;
 		dxShareHandle = (HANDLE)(LongToHandle((long)info.shareHandle));
 		dwFormat = info.format;
-		// printf("    info.width = %d\n", info.width);
-		// printf("    info.height = %d\n", info.height);
-		// printf("    info.shareHandle = 0x%.7X\n", LOWORD(info.shareHandle) );
-		// printf("    info.format = %d\n", info.format);
-		// printf("    info.partnerId = 0x%.7X\n", info.partnerId);
-
-		//
-		// 32 bit partner ID field
-		//
 
 		// GPU texture share and hardware GL/DX compatible by default
 		m_bSenderCPU  = false;
 		m_bSenderGLDX = true;
 		
-		// Top bit only
+		//
+		// 32 bit partner ID field
+		//
+		// Top bit
 		//   o Sender is using CPU share methods
 		//   o Hardware GL/DX compatibility undefined - assume false
 		if (info.partnerId == 0x80000000) {
@@ -1869,8 +1976,6 @@ bool Spout::ReceiveSenderData()
 			// Create a DX11 receiving texture with compatible format
 			dwFormat = (DWORD)DXGI_FORMAT_B8G8R8A8_UNORM;
 		}
-
-		// printf("    Found new sender (%dx%d) : dxShareHandle = 0x%.7X\n", width, height, LOWORD(dxShareHandle));
 
 		// The shared texture handle will be different
 		//   o for texture size or format change

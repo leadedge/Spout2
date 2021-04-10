@@ -73,6 +73,9 @@ public:
 	// Unlock a map
 	void Unlock();
 
+	// Name of an existing map
+	const char* Name();
+
 	// Print map information for debugging
 	void Debug();
 

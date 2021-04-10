@@ -64,6 +64,9 @@
 //		27.12.20	- Multiple changes for SpoutGL base class - see SpoutSDK.cpp
 //		24.01.21	- Rebuild with SDK restructure.
 //		05.02.21	- Add GetCPUshare and SetCPUshare
+//		02.04.21	- Add event functions SetFrameSync/WaitFrameSync
+//					- Add data function WriteMemoryBuffer
+//		10.04.21	- Add GetCPU and GetGLDX
 //
 // ====================================================================================
 /*
@@ -106,6 +109,7 @@
 //
 // The main Spout class can be used but will expose both Sender and Receiver functions
 // which cannot be used within the same object.
+//
 // A Sender can still access lower level common functions for example :
 // --- Code
 //      SpoutSender sender;
@@ -206,6 +210,18 @@ HANDLE SpoutSender::GetHandle()
 	return spout.GetHandle();
 }
 
+//---------------------------------------------------------
+bool SpoutSender::GetCPU()
+{
+	return spout.GetCPU();
+}
+
+//---------------------------------------------------------
+bool SpoutSender::GetGLDX()
+{
+	return spout.GetGLDX();
+}
+
 //
 // Frame count
 //
@@ -232,6 +248,28 @@ bool SpoutSender::IsFrameCountEnabled()
 void SpoutSender::HoldFps(int fps)
 {
 	spout.HoldFps(fps);
+}
+
+//---------------------------------------------------------
+void SpoutSender::SetFrameSync(const char* SenderName)
+{
+	spout.SetFrameSync(SenderName);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
+{
+	return spout.WaitFrameSync(SenderName, dwTimeout);
+}
+
+//
+// Memory sharing
+//
+
+//---------------------------------------------------------
+bool SpoutSender::WriteMemoryBuffer(const char *sendername, const char* data, int length)
+{
+	return spout.WriteMemoryBuffer(sendername, data, length);
 }
 
 //

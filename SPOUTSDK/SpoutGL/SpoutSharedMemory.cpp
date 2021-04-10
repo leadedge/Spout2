@@ -250,6 +250,11 @@ void SpoutSharedMemory::Unlock()
 	}
 }
 
+const char* SpoutSharedMemory::Name()
+{
+	return m_pName;
+}
+
 void SpoutSharedMemory::Debug()
 {
 	if (m_pName) {

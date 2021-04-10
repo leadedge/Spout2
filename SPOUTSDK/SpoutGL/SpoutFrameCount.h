@@ -106,7 +106,18 @@ class SPOUT_DLLEXP spoutFrameCount {
 	// Allow access after gaining ownership
 	void AllowAccess();
 
-protected :
+	//
+	// Sync events
+	//
+
+	// Set sync event 
+	void SetFrameSync(const char* SenderName);
+	// Wait or test for a sync event
+	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+	// Close sync event
+	void CloseFrameSync();
+
+protected:
 
 	// Texture access named mutex
 	HANDLE m_hAccessMutex;
@@ -117,9 +128,10 @@ protected :
 	bool IsKeyedMutex(ID3D11Texture2D* D3D11texture);
 
 	// Frame count semaphore
-	bool m_bFrameCount; // User selection of frame count in SpoutSettings
+	bool m_bFrameCount; // Registry setting of frame count
 	bool m_bDisabled; // application disable
 	bool m_bIsNewFrame; // received frame is new
+
 	HANDLE m_hCountSemaphore; // semaphore handle
 	char m_CountSemaphoreName[256]; // semaphore name
 	char m_SenderName[256]; // sender currently connected to a receiver
@@ -137,12 +149,17 @@ protected :
 	// Fps control
 	double m_millisForFrame;
 
+	// Sync event
+	HANDLE m_hSyncEvent;
+	void OpenFrameSync(const char* SenderName);
+
 #ifdef USE_CHRONO
 	// Avoid C4251 warnings in SpoutLibrary by using pointers
 	// USE_CHRONO is defined in SpoutUtils.h
+	std::chrono::steady_clock::time_point * m_FpsStartPtr;
+	std::chrono::steady_clock::time_point * m_FpsEndPtr;
 	std::chrono::steady_clock::time_point * m_FrameStartPtr;
 	std::chrono::steady_clock::time_point * m_FrameEndPtr;
-	std::chrono::steady_clock::time_point * m_FramePtr;
 #endif
 
 	// PC timer

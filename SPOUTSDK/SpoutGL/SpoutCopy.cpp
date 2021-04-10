@@ -51,6 +51,7 @@
 	25.10.20 - Add rgb2rgba with dest pitch
 	26.10.20 - Add rgb2bgra with dest pitch
 	09.12.20 - Correct movsd line pitch in RemovePadding
+	13.03.21 - Change CopyPixels and FlipBuffer to accept GL_LUMINANCE
 
 */
 #include "SpoutCopy.h"
@@ -59,6 +60,7 @@
 // Class: spoutCopy
 //
 // Functions to manage pixel data copy.
+//
 // Refer to source code for documentation.
 //
 
@@ -74,13 +76,15 @@ spoutCopy::~spoutCopy() {
 
 }
 
-
 void spoutCopy::CopyPixels(const unsigned char *source, unsigned char *dest,
 	unsigned int width, unsigned int height, 
 	GLenum glFormat, bool bInvert) const
 {
-	unsigned int Size = width*height * 4; // RGBA default
-	if (glFormat == GL_RGB || glFormat == GL_BGR_EXT)
+	unsigned int Size = width*height; // GL_LUMINANCE default
+
+	if (glFormat == GL_RGBA || glFormat == GL_BGRA_EXT)
+		Size = width * height * 4;
+	else if (glFormat == GL_RGB || glFormat == GL_BGR_EXT)
 		Size = width*height * 3;
 
 	if (bInvert) {
@@ -112,8 +116,10 @@ void spoutCopy::FlipBuffer(const unsigned char *src,
 	unsigned int height,
 	GLenum glFormat) const
 {
-	unsigned int pitch = width * 4; // RGBA default
-	if (glFormat == GL_RGB || glFormat == GL_BGR_EXT)
+	unsigned int pitch = width; // GL_LUMINANCE default
+	if (glFormat == GL_RGBA || glFormat == GL_BGRA_EXT)
+		pitch = width * 4; // RGBA format specified
+	else if (glFormat == GL_RGB || glFormat == GL_BGR_EXT)
 		pitch = width * 3; // RGB format specified
 
 	unsigned int line_s = 0;

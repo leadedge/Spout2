@@ -66,6 +66,7 @@
 				   instead of reserving for > warnings
 		16.10.20 - Add bool WriteBinaryToRegistry
 		04.03.21 - Add std::string GetSDKversion()
+		09.03.21 - Fix code if USE_CHRONO not defined
 
 */
 #include "SpoutUtils.h"
@@ -97,7 +98,7 @@ namespace spoututils {
 	std::string logFileName = ""; // file name for the logfile
 	std::string LastSpoutLog = "";
 	bool bConsole = false;
-#if _MSC_VER >= 1900
+#ifdef USE_CHRONO
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
 #endif
@@ -552,11 +553,6 @@ namespace spoututils {
 		}
 
 		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
-
-			// Write the binary string
-			// printf("\nhexdata size = %d\n", (int)sizeof(hexdata));
-
-			
 			regres = RegSetValueExA(hRegKey, valuename, 0, REG_BINARY, (BYTE *)hexdata, nChars);
 			RegCloseKey(hRegKey);
 		}
@@ -624,19 +620,23 @@ namespace spoututils {
 	}
 
 	// Timing utility functions
-#ifdef USE_CHRONO
 	void StartTiming() {
+#ifdef USE_CHRONO
 		start = std::chrono::steady_clock::now();
+#endif
 	}
 
 	double EndTiming() {
+#ifdef USE_CHRONO
 		end = std::chrono::steady_clock::now();
 		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		// printf("elapsed [%.4f] msec\n", elapsed / 1000.0);
+		// printf("    elapsed [%.4f] msec\n", elapsed / 1000.0);
 		// printf("elapsed [%.3f] u/sec\n", elapsed);
 		return elapsed;
-	}
+#else
+		return 0.0;
 #endif
+	}
 
 	// Get SDK version number string e.g. "2.007.000"
 	std::string GetSDKversion()
@@ -867,13 +867,11 @@ namespace spoututils {
 			// Find SpoutSettings path
 			char exePath[MAX_PATH];
 			if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "SpoutSettings", exePath)) {
-				printf("Spout::SetNVIDIAmode - SpoutSettings path not found\n");
 				SpoutLogError("Spout::SetNVIDIAmode - SpoutSettings path not found");
 				return false;
 			}
 
 			if (!PathFileExistsA(exePath)) {
-				printf("Spout::SetNVIDIAmode - SpoutSettings.exe not found\n[%s]\n", exePath);
 				SpoutLogError("Spout::SetNVIDIAmode - SpoutSettings.exe not found");
 				return false;
 			}

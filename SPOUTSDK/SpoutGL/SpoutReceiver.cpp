@@ -61,6 +61,9 @@
 //		27.12.20	- Multiple changes for SpoutGL base class - see SpoutSDK.cpp
 //		05.02.21	- Add GetCPUshare and SetCPUshare
 //		26.02.21	- Add GetSenderGLDXready
+//		11.03.21	- Rename functions GetSenderCPU and GetSenderGLDX
+//		02.04.21	- Add event functions SetFrameSync/WaitFrameSync
+//					- Add data function ReadMemoryBuffer
 //
 // ====================================================================================
 //
@@ -221,15 +224,15 @@ HANDLE SpoutReceiver::GetSenderHandle()
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::GetSenderCPUshare()
+bool SpoutReceiver::GetSenderCPU()
 {
-	return spout.GetSenderCPUshare();
+	return spout.GetSenderCPU();
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::GetSenderGLDXready()
+bool SpoutReceiver::GetSenderGLDX()
 {
-	return spout.GetSenderGLDXready();
+	return spout.GetSenderGLDX();
 }
 
 //---------------------------------------------------------
@@ -237,7 +240,6 @@ void SpoutReceiver::SelectSender()
 {
 	spout.SelectSenderPanel();
 }
-
 
 //
 // Frame count
@@ -265,6 +267,24 @@ bool SpoutReceiver::IsFrameCountEnabled()
 void SpoutReceiver::HoldFps(int fps)
 {
 	spout.HoldFps(fps);
+}
+
+//---------------------------------------------------------
+void SpoutReceiver::SetFrameSync(const char* SenderName)
+{
+	spout.SetFrameSync(SenderName);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
+{
+	return spout.WaitFrameSync(SenderName, dwTimeout);
+}
+
+//---------------------------------------------------------
+int SpoutReceiver::ReadMemoryBuffer(const char* sendername, char* data, int maxlength)
+{
+	return spout.ReadMemoryBuffer(sendername, data, maxlength);
 }
 
 //---------------------------------------------------------
