@@ -36,6 +36,7 @@
 //		02.04.21	- Add sync event functions
 //					  SetFrameSync/WaitFrameSync/OpenFrameSync/CloseFrameSync
 //		07.04.21	- CloseFrameSync public for use by other classes
+//		17.04.21	- WaitFrameSync - close handle on error
 //
 // ====================================================================================
 //
@@ -692,6 +693,8 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 	if (!sendername || !sendername[0])
 		return false;
 
+	bool bSignal = false;
+
 	char SyncEventName[256];
 	sprintf_s(SyncEventName, 256, "%s_Sync_Event", sendername);
 
@@ -712,8 +715,9 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 	switch (dwWaitResult) {
 	case WAIT_OBJECT_0:
 		// The state of the object is signalled.
-		CloseHandle(hSyncEvent);
-		return true;
+		bSignal = true;
+		break;
+		// return true;
 	case WAIT_ABANDONED:
 		SpoutLogError("spoutFrameCount::WaitFrameSync - WAIT_ABANDONED");
 		break;
@@ -730,7 +734,7 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 
 	CloseHandle(hSyncEvent);
 
-	return false;
+	return bSignal;
 
 }
 

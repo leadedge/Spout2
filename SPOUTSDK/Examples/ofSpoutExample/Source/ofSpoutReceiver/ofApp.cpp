@@ -56,13 +56,17 @@ void ofApp::setup(){
 	ofBackground(0, 0, 0);
 
 	// Allocate an RGBA texture to receive from the sender
-	// It can be resized later to match the sender - see Update()
+	// It is resized later to match the sender - see Update()
 	myTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 
 	// Allocate an RGB image for this example
 	// it can also be RGBA, BGRA or BGR
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
 
+	// For sender data
+	mousex = 0;
+	mousey = 0;
+	
 } // end setup
 
 
@@ -91,46 +95,79 @@ void ofApp::draw() {
 	//		DWORD GetSenderFormat();
 	//		double GetSenderFps();
 	//		long GetSenderFrame();
-	// If receive fails, the sender has closed
 	//
+	// If receive fails, the sender has closed
 	// Connection can be tested at any time with 
 	//		bool IsConnected();
 	//
 
 	// Option 1 : Receive texture
-	if(receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget))
+	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
+
 		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
+
+		// Example of receiving a data buffer.
+		// In this case, receive mouse coordinates from the example sender.
+		// Refer to the sender example.
+		if (receiver.IsFrameNew()) {
+			if (receiver.ReadMemoryBuffer(receiver.GetSenderName(), senderdata, 256)) {
+				sscanf_s(senderdata, "%d %d", &mousex, &mousey);
+			}
+			else {
+				mousex = 0;
+				mousey = 0;
+			}
+		}
+	}
 
 	// Option 2 : Receive pixel data
 	// Specify RGB for this example. Default is RGBA.
-	// if (receiver.ReceiveImage(myImage.getPixels().getData(), GL_RGB)) {
+	/*
+	if (receiver.ReceiveImage(myImage.getPixels().getData(), GL_RGB)) {
 		// ofImage update is necessary because the pixels have been changed externally
-		// myImage.update();
-		// myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
-	// }
-
+		myImage.update();
+		myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
+	}
+	*/
+	
 	/*
 	// Option 3 : Receive an OpenGL shared texture to access directly
 	// Only if compatible for GL/DX interop, or BindSharedTexture fails
 	if(receiver.ReceiveTexture()) {
 		// Bind to get access to the shared texture
 		if (receiver.BindSharedTexture()) {
-			// Get the shared texture ID
+			// Get the shared texture ID and do something with it
 			GLuint texID = receiver.GetSharedTextureID();
-			// Do something with it
-			// For this example, copy the shared texture to the local texture
-			receiver.CopyTexture(texID, GL_TEXTURE_2D,
-				myTexture.getTextureData().textureID,
-				myTexture.getTextureData().textureTarget,
-				receiver.GetSenderWidth(), receiver.GetSenderHeight());
+			// For this example, copy from the shared texture 
+			// if the local texture has been updated in ofApp::update()
+			if ((int)myTexture.getWidth() == receiver.GetSenderWidth()
+				&& (int)myTexture.getHeight() == receiver.GetSenderHeight()) {
+				receiver.CopyTexture(texID, GL_TEXTURE_2D,
+					myTexture.getTextureData().textureID,
+					myTexture.getTextureData().textureTarget,
+					receiver.GetSenderWidth(), receiver.GetSenderHeight());
+			}
+			// Un-bind to release access to the shared texture
 			receiver.UnBindSharedTexture();
 			myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 		}
 	}
 	*/
 
+	// Draw the sender mouse position if data has been received.
+	if (receiver.IsConnected() && mousex > 0) {
+		ofSetColor(255, 0, 0);
+		ofDrawCircle((float)mousex, (float)mousey, 0, 16);
+	}
+
 	// On-screen display
 	showInfo();
+
+	// To synchronise the sender to the receiver,
+	// send a ready signal after rendering.
+	// Refer to the sender example.
+	// receiver.SetFrameSync(receiver.GetSenderName());
+
 
 }
 
@@ -139,7 +176,7 @@ void ofApp::draw() {
 void ofApp::showInfo() {
 
 	std::string str;
-	ofSetColor(255);
+	ofSetColor(255, 255, 255);
 
 	if(receiver.IsConnected()) {
 
@@ -148,7 +185,7 @@ void ofApp::showInfo() {
 		str += " (";
 
 		// Show sender sharing mode if not OpenGL compatible
-		if (receiver.GetSenderCPUmode())
+		if (receiver.GetSenderCPU())
 			str += "CPU share : "; 
 
 		// Show sender size
@@ -165,6 +202,7 @@ void ofApp::showInfo() {
 			str += to_string(receiver.GetSenderFrame()); // frame since the sender started
 		}
 		str += ") ";
+		
 		ofDrawBitmapString(str, 10, 20);
 	}
 	else {
@@ -186,7 +224,7 @@ void ofApp::showInfo() {
 
 		// Show current graphics adapter
 		str = "Graphics adapter ";
-		str += to_string(receiver.Adapter());
+		str += to_string(receiver.GetAdapter());
 		str += " : ";
 		str += receiver.AdapterName();
 		ofDrawBitmapString(str, 10, 50);

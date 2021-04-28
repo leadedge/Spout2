@@ -67,6 +67,7 @@
 //		02.04.21	- Add event functions SetFrameSync/WaitFrameSync
 //					- Add data function WriteMemoryBuffer
 //		10.04.21	- Add GetCPU and GetGLDX
+//		24.04.21	- Add OpenGL shared texture access functions
 //
 // ====================================================================================
 /*
@@ -270,6 +271,28 @@ bool SpoutSender::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 bool SpoutSender::WriteMemoryBuffer(const char *sendername, const char* data, int length)
 {
 	return spout.WriteMemoryBuffer(sendername, data, length);
+}
+
+//
+// OpenGL shared texture access
+//
+
+//---------------------------------------------------------
+bool SpoutSender::BindSharedTexture()
+{
+	return spout.BindSharedTexture();
+}
+
+//---------------------------------------------------------
+bool SpoutSender::UnBindSharedTexture()
+{
+	return spout.UnBindSharedTexture();
+}
+
+//---------------------------------------------------------
+GLuint SpoutSender::GetSharedTextureID()
+{
+	return spout.GetSharedTextureID();
 }
 
 //

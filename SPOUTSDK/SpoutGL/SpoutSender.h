@@ -47,9 +47,9 @@ class SPOUT_DLLEXP SpoutSender {
 	// Close sender and free resources
 	//   A sender is created or updated by all sending functions
 	void ReleaseSender();
-	// Send texture attached to fbo.
+	// Send a framebuffer.
 	//   The fbo must be currently bound.  
-	//   The sending texture can be larger than the size that the sender is set up for.  
+	//   The fbo can be larger than the size that the sender is set up for.  
 	//   For example, if the application is using only a portion of the allocated texture space,  
 	//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture).
 	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
@@ -99,6 +99,17 @@ class SPOUT_DLLEXP SpoutSender {
 
 	// Write data
 	bool WriteMemoryBuffer(const char *sendername, const char* data, int length);
+
+	//
+	// OpenGL shared texture access
+	//
+
+	// Bind OpenGL shared texture
+	bool BindSharedTexture();
+	// Un-bind OpenGL shared texture
+	bool UnBindSharedTexture();
+	// OpenGL shared texture ID
+	GLuint GetSharedTextureID();
 	
 	//
 	// Graphics compatibility

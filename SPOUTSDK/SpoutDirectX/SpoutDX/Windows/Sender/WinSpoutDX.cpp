@@ -233,7 +233,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    // Create window
    // SPOUT - modified for 640x360 starting client size
    RECT rc = { 0, 0, 640, 360 }; // Desired client size
-   AdjustWindowRect(&rc, WS_CAPTION | WS_SYSMENU | WS_THICKFRAME, TRUE);
+   AdjustWindowRect(&rc, WS_CAPTION | WS_SYSMENU, TRUE);
    HWND hWnd = CreateWindowW(szWindowClass, szTitle,
 	   // WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
 	   // CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);

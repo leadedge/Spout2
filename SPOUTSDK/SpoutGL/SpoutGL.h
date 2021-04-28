@@ -355,7 +355,7 @@ class SPOUT_DLLEXP spoutGL {
 		}
 
 	} memoryshare;
-
+	
 	//
 	// For external access
 	//

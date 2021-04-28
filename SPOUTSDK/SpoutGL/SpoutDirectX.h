@@ -76,12 +76,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
 		// Get adapter pointer for a given adapter (-1 means current)
 		IDXGIAdapter* GetAdapterPointer(int index = -1);
-
 		// Set required graphics adapter for CreateDX11device
 		void SetAdapterPointer(IDXGIAdapter* pAdapter);
-		// LJ DEBUG
-		void SetAdapterIndex(int index);
-
 		// Find the index of the NVIDIA adapter in a multi-adapter system
 		bool FindNVIDIA(int &nAdapter);
 

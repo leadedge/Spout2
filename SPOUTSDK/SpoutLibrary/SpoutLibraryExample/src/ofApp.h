@@ -26,20 +26,21 @@
 
 class ofApp : public ofBaseApp{
 	public:
+
 		void setup();
 		void update();
 		void draw();
 		void exit();
-		void windowResized(int w, int h);
+		void mousePressed(int x, int y, int button);
 
-		SPOUTLIBRARY * sender; // A sender object pointer
-		char sendername[256]; // Sender name
-		unsigned int senderwidth; // Dimensions of sender and fbo can be
-		unsigned int senderheight; // independent of the application window
-		ofImage myBoxImage; // Image for the 3D demo
-		ofFbo myFbo; // For texture sharing
-		ofPixels myPixels; // For pixel sharing
-		float rotX, rotY;
-		bool bResized;
-	
+		SPOUTLIBRARY * receiver; // A receiver object pointer
+		ofTexture myTexture; // Receiving texture
+		ofImage myImage; // Receiving image
+		void showInfo();
+
+		// For sender data
+		int mousex;
+		int mousey;
+		char senderdata[256];
+
 };

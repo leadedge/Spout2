@@ -172,9 +172,6 @@ spoutGL::spoutGL()
 	// Only set if 2.006 SpoutSettings has been used
 	// Removed by 2.007 SpoutSettings
 	m_bMemoryShare = GetMemoryShareMode();
-
-	EnableSpoutLog();
-
 	   
 }
 
@@ -494,7 +491,24 @@ bool spoutGL::OpenDirectX()
 
 //---------------------------------------------------------
 // Function: SetDX11format
-// Set sender DX11 shared texture format
+//   Set sender DX11 shared texture format
+//
+//   Texture formats compatible with WGL_NV_DX_interop
+//   https://www.khronos.org/registry/OpenGL/extensions/NV/WGL_NV_DX_interop.txt
+//   https://www.khronos.org/registry/OpenGL/extensions/NV/WGL_NV_DX_interop2.txt
+//   D3DFMT_A8R8G8B8                         = 21
+//   D3DFMT_X8R8G8B8                         = 22
+//   DXGI_FORMAT_R32G32B32A32_FLOAT          = 2
+//   DXGI_FORMAT_R16G16B16A16_FLOAT          = 10
+//   DXGI_FORMAT_R16G16B16A16_UNORM          = 11
+//   DXGI_FORMAT_R16G16B16A16_SNORM          = 13
+//   DXGI_FORMAT_R10G10B10A2_UNORM           = 24
+//   DXGI_FORMAT_R8G8B8A8_UNORM              = 28
+//   DXGI_FORMAT_R8G8B8A8_UNORM_SRGB         = 29
+//   DXGI_FORMAT_R8G8B8A8_SNORM              = 31
+//   DXGI_FORMAT_B8G8R8A8_UNORM              = 87 (default)
+//   DXGI_FORMAT_B8G8R8X8_UNORM              = 88
+//
 void spoutGL::SetDX11format(DXGI_FORMAT textureformat)
 {
 	m_DX11format = textureformat;
@@ -861,18 +875,7 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 		// A sender creates a new texture with a new share handle
 		m_dxShareHandle = nullptr;
 
-		//
-		// Texture format tests
-		//
-		// DX9 compatible formats
-		// DXGI_FORMAT_B8G8R8A8_UNORM; // compatible DX11 format - works with DX9 (87)
-		// DXGI_FORMAT_B8G8R8X8_UNORM; // compatible DX11 format - works with DX9 (88)
-		//
-		// Other formats that work with DX11 but not with DX9
-		// DXGI_FORMAT_R16G16B16A16_FLOAT
-		// DXGI_FORMAT_R16G16B16A16_SNORM
-		// DXGI_FORMAT_R10G10B10A2_UNORM
-		//
+		// Compatible formats - see SetDX11format
 		// A directX 11 receiver accepts DX9 formats
 		DWORD format = (DWORD)DXGI_FORMAT_B8G8R8A8_UNORM; // (87) default compatible with DX9
 		if (dwFormat > 0) {
@@ -1274,10 +1277,9 @@ void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, un
 //
 // COPY AN OPENGL TEXTURE TO THE SHARED OPENGL TEXTURE
 //
-// Allows for a texture attached to the host fbo
-// Where the input texture can be larger than the shared texture
+// Allows for a texture attached to the fbo
+// where the input texture can be larger than the shared texture
 // and Width and height are the used portion. Only the used part is copied.
-// For example Freeframe textures.
 //
 bool spoutGL::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
@@ -1357,18 +1359,15 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 	GLenum status = 0;
 	bool bRet = false;
 
-	// "TextureID" can be NULL if it is attached to the host fbo
-	// m_fbo is a local FBO
-	// "m_glTexture" is destination texture
-	// width/height are the dimensions of the destination texture
+	// "TextureID" can be zero if it is attached to the fbo
+	// m_fbo is a local FBO, "m_glTexture" is destination texture,
+	// width/height are the dimensions of the destination texture.
 	// Because two fbos are used, the input texture can be larger than the shared texture
 	// Width and height are the used portion and only the used part is copied
 
-	if (TextureID == 0 && HostFBO > 0 && glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
+	if (TextureID == 0 && HostFBO >= 0 && glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
 
-		// Enter with the input texture attached to
-		// attachment point 0 of the currently bound fbo
-		// and set for read or read/write
+		// The input texture is attached to attachment point 0 of the fbo passed in
 
 		// Bind our local fbo for draw
 		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, m_fbo);
@@ -1376,12 +1375,12 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
 		// Attach the texture we write into (the shared texture)
 		glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
-		// Check fbo for completeness
+		// Check draw fbo for completeness
 		status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 		if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 			if (m_bBLITavailable) {
 				if (bInvert)
-					// copy one texture buffer to the other while flipping upside down 
+					// copy from one framebuffer to the other while flipping upside down 
 					glBlitFramebufferEXT(0, 0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 				else
 					// Do not flip during blit
@@ -1389,8 +1388,7 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 			}
 			else {
 				// No fbo blit extension
-				// Copy from the host fbo (input texture attached)
-				// to the shared texture
+				// Copy from the host fbo (input texture attached) to the shared texture
 				glBindTexture(GL_TEXTURE_2D, m_glTexture);
 				glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
 				glBindTexture(GL_TEXTURE_2D, 0);
@@ -1401,8 +1399,10 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 			PrintFBOstatus(status);
 			bRet = false;
 		}
-		// restore the host fbo
+
+		// Restore the fbo binding
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+
 	}
 	else if (TextureID > 0) {
 		// There is a valid texture passed in.
@@ -1432,21 +1432,22 @@ bool spoutGL::GetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, TextureTarget, TextureID, 0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
 
+	// Check read/draw fbo for completeness
 	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 		if (m_bBLITavailable) {
 			// Flip if the user wants that
 			if (bInvert) {
 				// copy one texture buffer to the other while flipping upside down
-				glBlitFramebufferEXT(0, 0,		// srcX0, srcY0, 
-					width, height, // srcX1, srcY1
-					0, height,	// dstX0, dstY0,
+				glBlitFramebufferEXT(0, 0,	// srcX0, srcY0, 
+					width, height,	// srcX1, srcY1
+					0, height,		// dstX0, dstY0,
 					width, 0,		// dstX1, dstY1,
 					GL_COLOR_BUFFER_BIT, GL_LINEAR);
 			}
 			else {
 				// Do not flip during blit
-				glBlitFramebufferEXT(0, 0,			// srcX0, srcY0, 
+				glBlitFramebufferEXT(0, 0,	// srcX0, srcY0, 
 					width, height,	// srcX1, srcY1
 					0, 0,			// dstX0, dstY0,
 					width, height,	// dstX1, dstY1,
@@ -1831,7 +1832,7 @@ bool spoutGL::ReadDX11texture(GLuint TextureID, GLuint TextureTarget,
 // Function: WriteMemoryBuffer
 // Write buffer to shared memory.
 //
-//    Creates a shared memory map of the required size if it does not exist yet
+//    Create a shared memory map of the required size if it does not exist yet
 //    The map is closed when the sender is released.
 bool spoutGL::WriteMemoryBuffer(const char *sendername, const char* data, int length)
 {
@@ -1848,6 +1849,7 @@ bool spoutGL::WriteMemoryBuffer(const char *sendername, const char* data, int le
 	if (memoryshare.GetSenderMemorySize() == 0) {
 		if (!CreateMemoryBuffer(sendername, length))
 			return false;
+		SpoutLogNotice("spoutGLDXinterop::WriteMemoryBuffer - created memory buffer");
 	}
 
 	unsigned char* pBuffer = memoryshare.LockSenderMemory();
@@ -1871,7 +1873,7 @@ bool spoutGL::WriteMemoryBuffer(const char *sendername, const char* data, int le
 // Function: ReadMemoryBuffer
 // Read shared memory to buffer.
 //
-//    Opens a sender memory map and retains the handle.
+//    Open a sender memory map and retain the handle.
 //    The map is closed when the receiver is released.
 int spoutGL::ReadMemoryBuffer(const char* sendername, char* data, int maxlength)
 {
@@ -1909,8 +1911,10 @@ int spoutGL::ReadMemoryBuffer(const char* sendername, char* data, int maxlength)
 		nbytes = maxlength;
 
 	// Copy bytes from shared memory to the user buffer
-	if (nbytes > 0)
+	if (nbytes > 0) {
 		memcpy(reinterpret_cast<void *>(data), reinterpret_cast<const void *>(pBuffer + 16), nbytes);
+		// printf("nbytes = %d [%s]\n", nbytes, data);
+	}
 
 	// Done with the shared memory buffer pointer
 	memoryshare.UnlockSenderMemory();
@@ -1956,6 +1960,7 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 	// Attach the texture we write into (the local texture) to attachment point 1
 	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, m_TexID, 0);
 
+	// Check read/draw fbo for completeness
 	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 		if (bInvert && m_bBLITavailable) {
@@ -2403,10 +2408,7 @@ bool spoutGL::CreateMemoryBuffer(const char *sendername, unsigned int length)
 	// Create a shared memory map if it does not exist yet
 	if (memoryshare.GetSenderMemorySize() == 0) {
 		// The first 16 bytes are reserved for the memory map size. Make the map larger to compensate. 
-		if (memoryshare.CreateSenderMemory(sendername, length + 16, 1)) {
-			SpoutLogNotice("spoutGLDXinterop::CreateMemoryBuffer - created shared memory [%s], %d bytes", sendername, length);
-		}
-		else {
+		if (!memoryshare.CreateSenderMemory(sendername, length + 16, 1)) {
 			SpoutLogError("spoutGLDXinterop::CreateMemoryBuffer - could not create shared memory");
 			return false;
 		}

@@ -67,6 +67,8 @@
 		16.10.20 - Add bool WriteBinaryToRegistry
 		04.03.21 - Add std::string GetSDKversion()
 		09.03.21 - Fix code if USE_CHRONO not defined
+		17.04.21 - Disable close button on console
+				   Bring the main window to the top again
 
 */
 #include "SpoutUtils.h"
@@ -116,11 +118,18 @@ namespace spoututils {
 			bConsole = true;
 		}
 		else {
+			// Get calling process window
+			HWND hwndFgnd = GetForegroundWindow();
 			if (AllocConsole()) {
 				errno_t err = freopen_s(&pCout, "CONOUT$", "w", stdout);
 				if (err == 0) {
 					SetConsoleTitleA("Spout Log");
 					bConsole = true;
+					// Disable close button
+					HMENU hmenu = GetSystemMenu(GetConsoleWindow(), FALSE);
+					EnableMenuItem(hmenu, SC_CLOSE, MF_GRAYED);
+					// Bring the main window to the top again
+					SetWindowPos(hwndFgnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 				}
 				else {
 					pCout = NULL;
@@ -128,7 +137,6 @@ namespace spoututils {
 				}
 			}
 		}
-
 	}
 	
 	void CloseSpoutConsole(bool bWarning)

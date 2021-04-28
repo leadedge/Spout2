@@ -60,6 +60,9 @@
 //		10.04.21 - Add GetSenderGLDX(), GetCPU() and GetGLDX()
 //				   Update documentation comments
 //				   Re-build 32/64 bit - VS2017 / MT
+//		24.04.21 - ReceiveTexture - return if flagged for update
+//				   only if there is a texture to receive into.
+//				   Re-build 32/64 bit - VS2017 / MT
 //
 /*
 		Copyright (c) 2016-2021, Lynn Jarvis. All rights reserved.
@@ -316,25 +319,26 @@ private: // Spout SDK functions
 
 	// Function: ReceiveTexture
 	//
+	//   For a valid OpenGL receving texture :
+	//
+	//   Copy from the sender shared texture if there is a texture to receive into.
+	//   The receiving OpenGL texture can only be RGBA of dimension (width * height)
+	//   and must be re-allocated if IsUpdated() returns true. Return if flagged for update.
+	//   The update flag is reset when the receiving application calls IsUpdated().
+	//
 	//   If no arguments are passed :
-	//     Connect to a sender and retrieve shared texture details
 	//
-	//  The texture can then be accessed using :
-	//
+	//   Connect to a sender and retrieve shared texture details,
+	//	 initialize GL/DX interop for OpenGL texture access, and update
+	//   the sender shared texture, frame count and framerate.
+	//   The texture can then be accessed using :
 	//		- BindSharedTexture();
 	//		- UnBindSharedTexture();
 	//		- GetSharedTextureID();
 	//
-	//   For a valid OpenGL texture passed :
-	//
-	//  Copy the sender shared texture
-	//
-	//    The receiving texture can only be RGBA of dimension (width * height)
-	//    and must be re-allocated if IsUpdated() returns true
-	//
-	//    As for SendTexture, the host fbo argument is optional (default 0)
-	//    but an fbo ID is necessary if it is currently bound, then that binding
-	//    is restored. Otherwise the binding is lost.
+	//   As for SendTexture, the host fbo argument is optional (default 0)
+	//   but an fbo ID is necessary if it is currently bound, then that binding
+	//   is restored. Otherwise the binding is lost.
 	bool ReceiveTexture(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
 	
 	// Function: ReceiveImage

@@ -8,8 +8,7 @@
 #define IDD_WINSPOUTDX_DIALOG	102
 #define IDD_ABOUTBOX			103
 #define IDM_ABOUT				104
-#define IDM_OPEN				105
-#define IDM_EXIT				106
+#define IDM_EXIT				105
 #define IDI_WINSPOUTDX			107
 // Not used #define IDI_SMALL	108
 #define IDC_WINSPOUTDX			109

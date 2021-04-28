@@ -28,7 +28,7 @@
 	    sender = GetSpout(); 
 
 	4) Use the object as usual :
-	    sender->CreateSender etc.
+	    sender->SendTexture(... ) etc.
 
 	Compare with the graphics sender example using the Spout SDK source files.
 
@@ -36,7 +36,7 @@
 	OpenFrameworks 10
 	Visual Studio 2017
 
-	Copyright (C) 2020 Lynn Jarvis.
+	Copyright (C) 2021 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -70,25 +70,28 @@ void ofApp::setup(){
 	}
 
 	//
-	// Optional : enable Spout logging to detect warnings and errors
-	// sender->EnableSpoutLog();
+	// Options
 	//
-	// Output is to a console window.
+
+	// sender->OpenSpoutConsole(); // Empty console for debugging
+	// Enable Spout logging to detect warnings and errors
+	// (Logging functions are in the "spoututils" namespace so they can be called directly.)
+	sender->EnableSpoutLog(); // Output is to a console window.
 	//
 	// You can set the level above which the logs are shown
-	// (0) SPOUT_LOG_SILENT  : (1) SPOUT_LOG_VERBOSE : (2) SPOUT_LOG_NOTICE (default)
-	// (3) SPOUT_LOG_WARNING : (4) SPOUT_LOG_ERROR   : (5) SPOUT_LOG_FATAL
+	// SPOUT_LOG_SILENT  : SPOUT_LOG_VERBOSE : SPOUT_LOG_NOTICE (default)
+	// SPOUT_LOG_WARNING : SPOUT_LOG_ERROR   : SPOUT_LOG_FATAL
 	// For example, to show only warnings and errors (you shouldn't see any)
-	// or leave set to Notice to see more information.
+	// or leave set to default Notice to see more information.
 	//    sender->SetSpoutLogLevel(SPOUT_LOG_WARNING);
 	//
-	// You can instead, or also, specify output to a text file
+	// You can instead, or additionally, specify output to a text file
 	// with the extension of your choice
-	//    sender->EnableSpoutLogFile("SpoutLibrary Sender.log");
+	//    sender->EnableSpoutLogFile("OF Spout Graphics sender->log");
 	//
 	// The log file is re-created every time the application starts
 	// unless you specify to append to the existing one :
-	//    sender->EnableSpoutLogFile("SpoutLibrary Sender.log", true);
+	//    sender->EnableSpoutLogFile("OF Spout Graphics sender->log", true);
 	//
 	// The file is saved in the %AppData% folder 
 	//    C:>Users>username>AppData>Roaming>Spout
@@ -96,25 +99,64 @@ void ofApp::setup(){
 	// After the application has run you can find and examine the log file
 	//
 	// This folder can also be shown in Windows Explorer directly from the application.
-	//	sender->ShowSpoutLogs();
+	//    sender->ShowSpoutLogs();
 	//
 	// Or the entire log can be returned as a string
-	//	std::string logstring = sender->GetSpoutLog();
+	//    std::string logstring = sender->GetSpoutLog();
 	//
-	// You can create your own logs
+	// You can also create your own logs
 	// For example :
-	//	sender->SpoutLog("SpoutLog test");
+	//    sender->SpoutLog("SpoutLog test");
 	//
-	// You can also specify the logging level :
+	// Or specify the logging level :
 	// For example :
 	//    sender->SpoutLogNotice("Important notice");
 	// or :
 	//    sender->SpoutLogFatal("This should not happen");
 	// or :
-	//    sender->SetSpoutLogLevel(1);
+	//    sender->SetSpoutLogLevel(SPOUT_LOG_VERBOSE);
 	//    sender->SpoutLogVerbose("Message");
 	//
-	sender->OpenSpoutConsole();
+
+	//
+	// Other options
+	//
+
+	//
+	// Sharing mode
+	//
+	// By default, graphics is tested for OpenGL/DirectX compatibility
+	// and, if not compatible, textures are shared using system memory
+	// This can be disabled if necessary
+	// sender->SetAutoShare(false); // Disable auto sharing for this application
+
+	//
+	// Graphics adapter
+	//
+	// If there are multiple graphics cards in the system,
+	// you may wish to use a particular one for texture sharing
+	//
+	// The number of adapters available can be queried :
+	// int nAdapters = sender->GetNumAdapters();
+	// printf("Number of adapters = %d\n", nAdapters);
+	//
+	// The names can be retrieved :
+	// bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
+	//
+	// Set a specific adapter from it's index :
+	// sender->SetAdapter(1); // use the second in the list (0, 1, 2 etc.)
+
+	// Frame counting is enabled by default
+	// Status can be queried with IsFrameCountEnabled();
+	// Frame counting can be independently disabled for this application
+	// sender->DisableFrameCount();
+
+	// Set the frame rate of the application.
+	// In this example, the frame rate can be set with : ofSetFrameRate(30)
+	// but applications without frame rate control can use "HoldFps" (see Draw())
+
+	// ----------------------------------------------
+
 
 	// 3D drawing setup for the demo 
 	ofDisableArbTex(); // Needed for ofBox texturing
@@ -137,6 +179,8 @@ void ofApp::setup(){
 	// Give the sender a name
 	// If no name is specified, the executable name is used
 	sender->SetSenderName(sendername);
+	// Update caption in case of multiples of the same sender
+	ofSetWindowTitle(sender->GetName());
 
 	// Optional : set the frame rate of the application.
 	// If the user has selected "Frame count" in SpoutSettings
@@ -145,6 +189,9 @@ void ofApp::setup(){
 	// a Spout function "HoldFps" to control frame rate (see Draw())
 	// ofSetFrameRate(30);
 
+	// Mouse coordinates to send to receiver
+	mousex = 0;
+	mousey = 0;
 
 } // end setup
 
@@ -157,11 +204,19 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	// All sending functions check the sending dimensions
-	// and create or update the sender if necessary
+	// For applications requiring frame accuracy between 
+	// sender and receiver, wait for a ready signal from 
+	// the receiver before rendering to synchronise with
+	// the receiver fps. Use a timeout greater than the
+	// expected delay. Refer to the receiver example.
+	// sender.WaitFrameSync(sender.GetName(), 67);
+
+	// All sending functions check the sender name and dimensions
+	// and create or update the sender as necessary
 
 	// In this example, the fbo texture is already inverted
 	// so set the invert option false for all sending functions
+
 
 	// Draw 3D graphics demo into the fbo
 	// This could be anything for your application
@@ -181,8 +236,9 @@ void ofApp::draw() {
 	rotX += 0.6;
 	rotY += 0.6;
 
-	// Option 1 : Send the texture attached to point 0 while the fbo is bound
-	// (Not available for memoryshare mode)
+	// Send fbo
+	//   The fbo must be bound for read.
+	//   The invert option is false because the fbo is already flipped in y.
 	sender->SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
@@ -195,10 +251,16 @@ void ofApp::draw() {
 
 	// Option 3 : Send image pixels
 	// myFbo.readToPixels(myPixels);
-	// sender.SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
+	// sender->SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
 
 	// Show the result sized to the application window
 	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
+
+	// Option : send a data buffer.
+	// Send mouse coordinates to the receiver.
+	// Refer to the receiver example.
+	sprintf_s(senderdata, 256, "%d %d", mousex, mousey);
+	sender->WriteMemoryBuffer(sender->GetName(), senderdata, 256);
 
 	// Show what it is sending
 	ofSetColor(255);
@@ -207,7 +269,7 @@ void ofApp::draw() {
 	str += ofToString(sender->GetWidth()); str += "x";
 	str += ofToString(sender->GetHeight()); str += ")";
 
-	// Show sender fps and framecount if selected
+	// Show sender fps and framecount if available
 	if (sender->GetFrame() > 0) {
 		str += " fps ";
 		str += ofToString((int)roundf(sender->GetFps()));
@@ -218,7 +280,19 @@ void ofApp::draw() {
 		// Show Openframeworks fps
 		str += " fps : " + ofToString((int)roundf(ofGetFrameRate()));
 	}
-	ofDrawBitmapString(str, 20, 30);
+	ofDrawBitmapString(str, 10, 30);
+
+	// Show more details if graphics is not texture share compatible
+	if (!sender->IsGLDXready()) {
+		// If Auto switching is allowed
+		if (sender->GetAutoShare())
+			str = "CPU share mode";
+		else
+			str = "Graphics not texture share compatible";
+		ofDrawBitmapString(str, 10, 35);
+		// Show the graphics adapter currently being used
+		ofDrawBitmapString(sender->AdapterName(), 10, 50);
+	}
 
 	//
 	// Applications without frame rate control can call this
@@ -228,8 +302,6 @@ void ofApp::draw() {
 	// the cube will rotate more slowly (increase RotX and RotY).
 	//
 	// sender->HoldFps(30);
-
-
 
 }
 
@@ -242,22 +314,22 @@ void ofApp::exit() {
 }
 
 //--------------------------------------------------------------
-void ofApp::mouseReleased(int x, int y, int button)
+void ofApp::windowResized(int w, int h)
 {
-
-}
-
-
-//--------------------------------------------------------------
-void ofApp::windowResized(int w, int h) 
-{
-	// Update the sending fbo, texture or image
+	// If the sending size matches the window size,
+	// the fbo, texture or image should be updated here.
 	if (w > 0 && h > 0) {
 		senderwidth = w;
 		senderheight = h;
 		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
 		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
 	}
+}
 
+//--------------------------------------------------------------
+void ofApp::mouseMoved(int x, int y)
+{
+	mousex = x;
+	mousey = y;
 }
 

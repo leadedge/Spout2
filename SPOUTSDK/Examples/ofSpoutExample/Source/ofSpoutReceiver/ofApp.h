@@ -37,4 +37,9 @@ class ofApp : public ofBaseApp{
 		unsigned int sWidth, sHeight;
 		void showInfo();
 
+		// For sender data
+		int mousex;
+		int mousey;
+		char senderdata[256];
+
 };

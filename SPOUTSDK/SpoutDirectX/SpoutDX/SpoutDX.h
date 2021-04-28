@@ -127,12 +127,17 @@ class SPOUT_DLLEXP spoutDX {
 	// COMMON
 	//
 
-	// Hold frame rate
+	// Frame rate control
 	void HoldFps(int fps);
 	// Disable frame counting for this application
 	void DisableFrameCount();
 	// Return frame count status
 	bool IsFrameCountEnabled();
+	// Signal sync event 
+	void SetFrameSync(const char* SenderName);
+	// Wait or test for a sync event
+	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+
 								
 	//
 	// Sender names
@@ -195,6 +200,134 @@ class SPOUT_DLLEXP spoutDX {
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
 
+
+	//
+	// Memory sharing
+	//
+
+	// Write data
+	bool WriteMemoryBuffer(const char *sendername, const char* data, int length);
+	// Read data
+	int  ReadMemoryBuffer(const char* sendername, char* data, int maxlength);
+
+	struct {
+
+		SpoutSharedMemory *senderMem;
+		unsigned int m_Width;
+		unsigned int m_Height;
+
+		// Create a sender named shared memory map for general purpose
+		// NOTE:
+		//    Width and height are in bytes
+		//    Height may be 1 for a luminance map
+		//    Width should be a multiple of 16 for best performance
+		bool CreateSenderMemory(const char *sendername, unsigned int width, unsigned int height)
+		{
+			std::string namestring = sendername;
+
+			// Create a name for the map from the sender name
+			namestring += "_map";
+
+			// Close an existing map
+			if (senderMem) {
+				CloseSenderMemory();
+				senderMem = nullptr;
+			}
+
+			// Create a new shared memory class object
+			senderMem = new SpoutSharedMemory();
+
+			// Create the sender's shared memory map.
+			// This also creates a mutex to lock and unlock the map for reads.
+			SpoutCreateResult result = senderMem->Create(namestring.c_str(), (int)(width*height));
+			if (result == SPOUT_CREATE_FAILED) {
+				delete senderMem;
+				senderMem = nullptr;
+				m_Width = 0;
+				m_Height = 0;
+				return false;
+			}
+
+			// Set the width and height for future reference
+			m_Width = width;
+			m_Height = height;
+
+			return true;
+
+		} // end CreateSenderMemory
+
+		// Open an existing named shared memory map
+		bool OpenSenderMemory(const char *sendername)
+		{
+			std::string namestring = sendername;
+			// Create a name for the map from the sender name
+			namestring += "_map";
+			// Create a new shared memory class object for this receiver
+			if (!senderMem)
+				senderMem = new SpoutSharedMemory();
+			// Open the sender's shared memory map.
+			// This also creates a mutex for the receiver
+			// to lock and unlock the map for reads.
+			if (!senderMem->Open(namestring.c_str())) {
+				// SpoutLogError("spoutGL.memoryshare::OpenSenderMemory - open shared memory failed");
+				return false;
+			}
+			return true;
+		} // end OpenSenderMemory
+
+		// Close the sender shared memory map
+		void CloseSenderMemory()
+		{
+			if (senderMem) {
+				senderMem->Close();
+				delete senderMem;
+			}
+			senderMem = nullptr;
+			m_Width = 0;
+			m_Height = 0;
+		} // end CloseSenderMemory
+
+		// Lock and unlock memory and retrieve buffer pointer - no size checks
+		unsigned char * LockSenderMemory()
+		{
+			if (!senderMem) return nullptr;
+			char *pBuf = senderMem->Lock();
+			if (!pBuf) {
+				// https://github.com/leadedge/Spout2/issues/15
+				// senderMem->Unlock();
+				return nullptr;
+			}
+			return reinterpret_cast<unsigned char *>(pBuf);
+		}
+
+		void UnlockSenderMemory()
+		{
+			if (!senderMem) return;
+			senderMem->Unlock();
+		}
+
+		unsigned int GetSenderMemorySize()
+		{
+			return m_Width * m_Height;
+		}
+
+		const char* GetSenderMemoryName()
+		{
+			if (!senderMem)
+				return nullptr;
+			return senderMem->Name();
+		}
+
+		bool GetSenderMemory(const char *sendername)
+		{
+			if (sendername[0] == 0)
+				return false;
+
+			return senderMem->Open(sendername);
+		}
+
+	} memoryshare;
+
 	//
 	// Public for external access
 	//
@@ -214,6 +347,7 @@ class SPOUT_DLLEXP spoutDX {
 	bool m_bSwapRB;
 
 protected :
+
 
 	ID3D11Device* m_pd3dDevice;
 	ID3D11DeviceContext* m_pImmediateContext;
@@ -252,7 +386,7 @@ protected :
 
 	void SelectSenderPanel();
 	bool CheckSpoutPanel(char *sendername, int maxchars = 256);
-
+	bool CreateMemoryBuffer(const char *sendername, unsigned int length);
 
 };
 

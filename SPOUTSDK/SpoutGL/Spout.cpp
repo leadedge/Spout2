@@ -196,6 +196,9 @@
 //		02.04.21	- Add event functions SetFrameSync/WaitFrameSync
 //					- Add data functions WriteMemoryBuffer/ReadMemoryBuffer
 //		07.04.21	- Close sync event in ReleaseSender
+//		20.04.21	- SendFbo - protect against SendFbo fail for default framebuffer if iconic
+//		24.04.21	- ReceiveTexture - return if flagged for update
+//					  only if there is a texture to receive into.
 //
 // ====================================================================================
 /*
@@ -351,10 +354,12 @@ void Spout::SetSenderName(const char* sendername)
 //---------------------------------------------------------
 // Function: SetSenderFormat
 // Set the sender DX11 shared texture format
+//    Compatible formats - see SpoutGL::SetDX11format
 void Spout::SetSenderFormat(DWORD dwFormat)
 {
 	m_dwFormat = dwFormat;
-	m_DX11format = (DXGI_FORMAT)dwFormat;
+	// Update SpoutGL class global texture format
+	SetDX11format((DXGI_FORMAT)dwFormat);
 }
 
 //---------------------------------------------------------
@@ -381,18 +386,25 @@ void Spout::ReleaseSender()
 
 //---------------------------------------------------------
 // Function: SendFbo
-// Send texture attached to fbo.
+// Send a framebuffer
 //
-//   The fbo must be currently bound.  
+//   The fbo must be bound for read. 
 //
-//   The sending texture can be larger than the size that the sender is set up for.  
+//   The fbo can be larger than the size that the sender is set up for.  
 //   For example, if the application is using only a portion of the allocated texture space,  
 //   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture).
+//   The function can also be used with the OpenGL default framebuffer by
+//   specifying "0" for the fbo ID.
 //
 bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
 {
-	// For texture sharing, the fbo must be equal to or larger than the shared texture
-	if (FboID <= 0 || width == 0 || height == 0)
+	// For texture sharing, the size of the texture attached to the
+	// fbo must be equal to or larger than the shared texture
+	if (width == 0 || height == 0)
+		return false;
+
+	// Default framebuffer fails if iconic
+	if (FboID == 0 && IsIconic(m_hWnd))
 		return false;
 
 	// Create or update the sender
@@ -414,7 +426,7 @@ bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool 
 		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		// Copy from the OpenGL class texture to the shared DX11 texture by way of staging texture
-		return WriteDX11texture(m_TexID, GL_TEXTURE_2D, width, height, bInvert, 0);
+		return WriteDX11texture(m_TexID, GL_TEXTURE_2D, width, height, bInvert, FboID);
 	}
 
 	return false;
@@ -432,9 +444,7 @@ bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool 
 //     are opposite in Y. If it is set to false no flip occurs and the result
 //     may appear upside down.
 //
-//     The host fbo argument is optional (default 0) but an fbo ID is necessary
-//     if it is currently bound, then that binding is restored. Otherwise the
-//     binding is lost.
+//     The ID of a currently bound fbo should be passed in.
 //
 bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
@@ -474,7 +484,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 //
 //     The invert flag is optional and false by default.
 //
-//     As for SendTexture, the ID of a currently bound fbo should be passed in.
+//     The ID of a currently bound fbo should be passed in.
 //
 bool Spout::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
@@ -681,13 +691,6 @@ void Spout::ReleaseReceiver()
 //---------------------------------------------------------
 // Function: ReceiveTexture
 //     Connect to a sender and retrieve shared texture details
-//
-//  The texture can then be accessed using :
-//
-//		- BindSharedTexture();
-//		- UnBindSharedTexture();
-//		- GetSharedTextureID();
-//
 bool Spout::ReceiveTexture()
 {
 	return ReceiveTexture(0, 0);
@@ -695,20 +698,35 @@ bool Spout::ReceiveTexture()
 
 //---------------------------------------------------------
 // Function: ReceiveTexture
-//  Copy the sender shared texture
+//   Receive the sender shared texture
 //
-//    The receiving texture can only be RGBA of dimension (width * height)
-//    and must be re-allocated if IsUpdated() returns true
+//   For a valid OpenGL receiving texture :
 //
-//    As for SendTexture, the host fbo argument is optional (default 0)
-//    but an fbo ID is necessary if it is currently bound, then that binding
-//    is restored. Otherwise the binding is lost.
+//   Copy from the sender shared texture if there is a texture to receive into.
+//   The receiving OpenGL texture can only be RGBA of dimension (width * height)
+//   and must be re-allocated for sender size change. Return if flagged for update.
+//   The update flag is reset when the receiving application calls IsUpdated().
+//
+//   If no arguments are passed :
+//
+//   Connect to a sender and retrieve shared texture details,
+//	 initialize GL/DX interop for OpenGL texture access, and update
+//   the sender shared texture, frame count and framerate.
+//   The texture can then be accessed using :
+//
+//		- BindSharedTexture();
+//		- UnBindSharedTexture();
+//		- GetSharedTextureID();
+//
+//   As for SendTexture, the host fbo argument is optional (default 0)
+//   but an fbo ID is necessary if it is currently bound, then that binding
+//   is restored. Otherwise the binding is lost.
 //
 bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
-	// Return if flagged for update
-	// The update flag is reset when the receiving application calls IsUpdated()
-	if (m_bUpdated) {
+	// Return if flagged for update and there is a texture to receive into.
+	// The update flag is reset when the receiving application calls IsUpdated().
+	if (m_bUpdated && TextureID != 0 && TextureTarget != 0) {
 		return true;
 	}
 
@@ -727,15 +745,17 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 		m_bConnected = true;
 
 		if (m_bUpdated) {
-			// If the sender is new or changed, reset shared textures and
-			// return to update the receiving texture.
-			// The application detects the change with IsUpdated().
+			// If the sender is new or changed, reset shared textures
 			if (m_bTextureShare) {
 				// CreateInterop set "true" for receiver
 				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 					return false;
 				}
 			}
+			// If receiving to a texture, return to update it.
+			// The application detects the change with IsUpdated().
+			if (TextureID != 0 && TextureTarget != 0)
+				return true;
 		}
 
 		// Was the sender's shared texture handle null ?
@@ -952,7 +972,7 @@ void Spout::HoldFps(int fps)
 // -----------------------------------------------
 // Function: SetFrameSync
 // Signal sync event.
-//   Creates a named sync event and sets for test
+//   Create a named sync event and set for test
 void Spout::SetFrameSync(const char* SenderName)
 {
 	if (SenderName && SenderName[0] && m_bInitialized)

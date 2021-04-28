@@ -116,6 +116,17 @@ class SPOUT_DLLEXP SpoutReceiver {
 	int ReadMemoryBuffer(const char* sendername, char* data, int maxlength);
 
 	//
+	// OpenGL shared texture access
+	//
+
+	// Bind OpenGL shared texture
+	bool BindSharedTexture();
+	// Un-bind OpenGL shared texture
+	bool UnBindSharedTexture();
+	// OpenGL shared texture ID
+	GLuint GetSharedTextureID();
+
+	//
 	// Graphics compatibility
 	//
 

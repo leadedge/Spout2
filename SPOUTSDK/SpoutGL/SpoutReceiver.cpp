@@ -64,6 +64,7 @@
 //		11.03.21	- Rename functions GetSenderCPU and GetSenderGLDX
 //		02.04.21	- Add event functions SetFrameSync/WaitFrameSync
 //					- Add data function ReadMemoryBuffer
+//		24.04.21	- Add OpenGL shared texture access functions
 //
 // ====================================================================================
 //
@@ -286,6 +287,32 @@ int SpoutReceiver::ReadMemoryBuffer(const char* sendername, char* data, int maxl
 {
 	return spout.ReadMemoryBuffer(sendername, data, maxlength);
 }
+
+//
+// OpenGL shared texture access
+//
+
+//---------------------------------------------------------
+bool SpoutReceiver::BindSharedTexture()
+{
+	return spout.BindSharedTexture();
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::UnBindSharedTexture()
+{
+	return spout.UnBindSharedTexture();
+}
+
+//---------------------------------------------------------
+GLuint SpoutReceiver::GetSharedTextureID()
+{
+	return spout.GetSharedTextureID();
+}
+
+//
+// Graphics compatibility
+//
 
 //---------------------------------------------------------
 bool SpoutReceiver::GetAutoShare()

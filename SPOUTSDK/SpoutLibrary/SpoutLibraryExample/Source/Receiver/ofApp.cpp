@@ -28,7 +28,7 @@
 	    receiver = GetSpout(); 
 
 	4) Use the object as usual :
-	    receiver->SetReceiverName etc.
+	    receiver->ReceiveTexture(... ) etc.
 
 	Compare with the receiver example using the Spout SDK source files.
 
@@ -36,7 +36,7 @@
 	OpenFrameworks 10
 	Visual Studio 2017
 
-	Copyright (C) 2020 Lynn Jarvis.
+	Copyright (C) 2021 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -59,8 +59,10 @@
 void ofApp::setup(){
 
 	ofBackground(0, 0, 0);
+	ofSetWindowTitle("SpoutLibrary Receiver Example");
 
-	receiver = GetSpout(); // Create an instance of the Spout library
+	// Create an instance of the Spout library
+	receiver = GetSpout();
 	if (!receiver) {
 		MessageBoxA(NULL, "Spout library load failed", "Spout Receiver", MB_ICONERROR);
 		exit();
@@ -74,13 +76,30 @@ void ofApp::setup(){
 	// it can also be RGBA, BGRA or BGR
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
 
-	// Optional : enable logging
-	receiver->EnableSpoutLog();
+	// For sender data
+	mousex = 0;
+	mousey = 0;
+
+	//
+	// Options
+	//
+
+	// Logging (see sender example)
+	// receiver->OpenSpoutConsole(); // for debugging when a console is not availlable
+	receiver->EnableSpoutLog(); // Spout logging to console
 
 	// Optionally specify the sender to connect to.
 	// The application will not connect to any other unless the user selects one.
 	// If that sender closes, the application will wait for the nominated sender to open.
-	// receiver->SetReceiverName("Spout DX11 Sender");
+	// receiver->SetReceiverName("Spout Demo Sender");
+
+	// Disable CPU sharing backup
+	// If the graphics is not compatible for OpenGL/DirectX texture sharing,
+	// CPU backup methods with system memory and DirectX textures are used.
+	// In most cases it is satisfactory to leave auto-detection enabled,
+	// but sometimes it may be preferable to simply fail if incompatible
+	// so that it is clear whether high speed texture sharing is being used.
+	// receiver->SetAutoShare(false);
 
 } // end setup
 
@@ -99,77 +118,146 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	// ReceiveTexture and ReceiveImage connect to and receive from a sender
+	//
+	// ReceiveTexture or ReceiveImage connect to and receive from a sender
 	// Optionally include the ID of an fbo if one is currently bound
+	//
+	// For successful receive, sender details can be retrieved with
+	//		const char * GetSenderName();
+	//		unsigned int GetSenderWidth();
+	//		unsigned int GetSenderHeight();
+	//		DWORD GetSenderFormat();
+	//		double GetSenderFps();
+	//		long GetSenderFrame();
+	//
+	// If receive fails, the sender has closed
+	// Connection can be tested at any time with 
+	//		bool IsConnected();
+	//
 
 	// Option 1 : Receive texture
-	receiver->ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget);
-	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
+	if (receiver->ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
 
-	/*
-	// Option 2 : Receive image
+		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
+
+		// Example of receiving a data buffer.
+		// In this case, receive mouse coordinates from the example sender.
+		// Refer to the sender example.
+		if (receiver->IsFrameNew()) {
+			if (receiver->ReadMemoryBuffer(receiver->GetSenderName(), senderdata, 256)) {
+				sscanf_s(senderdata, "%d %d", &mousex, &mousey);
+			}
+			else {
+				mousex = 0;
+				mousey = 0;
+			}
+		}
+	}
+
+	// Option 2 : Receive pixel data
 	// Specify RGB for this example. Default is RGBA.
+	/*
 	if (receiver->ReceiveImage(myImage.getPixels().getData(), GL_RGB)) {
 		// ofImage update is necessary because the pixels have been changed externally
 		myImage.update();
+		myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
-	myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
 	*/
 
+	// Option 3 : Receive an OpenGL shared texture to access directly
+	// Only if compatible for GL/DX interop, or BindSharedTexture fails
 	/*
-	// Option 3 : Receive a shared texture and use locally
-	if(receiver->ReceiveTexture()) {
+	if (receiver->ReceiveTexture()) {
 		// Bind to get access to the shared texture
-		receiver->BindSharedTexture();
-		// Get the shared texture ID
-		GLuint texID = receiver->GetSharedTextureID();
-		// Do something with it
-		// For this example, copy the shared texture to the local texture
-		receiver->CopyTexture(texID, GL_TEXTURE_2D,
-			myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget,
-			receiver->GetSenderWidth(), receiver->GetSenderHeight());
-		receiver->UnBindSharedTexture();
+		if (receiver->BindSharedTexture()) {
+			// Get the shared texture ID and do something with it
+			GLuint texID = receiver->GetSharedTextureID();
+			// For this example, copy from the shared texture 
+			// if the local texture has been updated in ofApp::update()
+			if ((int)myTexture.getWidth() == receiver->GetSenderWidth()
+				&& (int)myTexture.getHeight() == receiver->GetSenderHeight()) {
+				receiver->CopyTexture(texID, GL_TEXTURE_2D,
+					myTexture.getTextureData().textureID,
+					myTexture.getTextureData().textureTarget,
+					receiver->GetSenderWidth(), receiver->GetSenderHeight());
+			}
+			// Un-bind to release access to the shared texture
+			receiver->UnBindSharedTexture();
+			myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
+		}
 	}
-	myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 	*/
+
+	// Draw the sender mouse position if data has been received.
+	if (receiver->IsConnected() && mousex > 0) {
+		ofSetColor(255, 0, 0);
+		ofDrawCircle((float)mousex, (float)mousey, 0, 16);
+	}
 
 	// On-screen display
 	showInfo();
 
+	// To synchronise the sender to the receiver,
+	// send a ready signal after rendering.
+	// Refer to the sender example.
+	// receiver->SetFrameSync(receiver->GetSenderName());
 }
 
 //--------------------------------------------------------------
 void ofApp::showInfo() {
 
-	char str[256];
+	std::string str;
 	ofSetColor(255);
 
 	if (receiver->IsConnected()) {
 
+		// Show sender details
+		str = receiver->GetSenderName(); // sender name
+		str += " (";
+
+		// Show sender sharing mode
+		if (receiver->GetSenderCPU())
+			str += " (CPU share : ";
+
+		// Show sender size
+		str += to_string(receiver->GetSenderWidth()); // width
+		str += "x";
+		str += to_string(receiver->GetSenderHeight()); // height 
+
 		// Applications < 2.007 will return no frame count information
 		// Frame counting can also be disabled in SpoutSettings
 		if (receiver->GetSenderFrame() > 0) {
-			sprintf_s(str, 256, "Receiving : [%s] (%dx%d : fps %2.0f : frame %d)",
-				receiver->GetSenderName(), // sender name
-				receiver->GetSenderWidth(), // width
-				receiver->GetSenderHeight(), // height 
-				receiver->GetSenderFps(), // fps
-				receiver->GetSenderFrame()); // frame since the sender started
+			str += " : fps ";
+			str += to_string((int)(round(receiver->GetSenderFps()))); // frames per second
+			str += " : frame ";
+			str += to_string(receiver->GetSenderFrame()); // frame since the sender started
 		}
-		else {
-			sprintf_s(str, 256, "Receiving : [%s] (%dx%d)",
-				receiver->GetSenderName(),
-				receiver->GetSenderWidth(),
-				receiver->GetSenderHeight());
-		}
+		str += ") ";
 		ofDrawBitmapString(str, 10, 20);
-		sprintf_s(str, 256, "RH click select sender");
-		ofDrawBitmapString(str, 10, ofGetHeight() - 20);
-
 	}
 	else {
-		sprintf_s(str, 256, "No sender detected");
-		ofDrawBitmapString(str, 20, 20);
+		str = "No sender detected";
+		ofDrawBitmapString(str, 10, 20);
+	}
+
+	// Show more details if not OpenGL/DirectX compatible
+	if (!receiver->IsGLDXready()) {
+		if (receiver->GetAutoShare()) {
+			// CPU share allowed (default)
+			str = "CPU share receiver";
+		}
+		else {
+			// CPU share disabled (program setting)
+			str = "Graphics not texture share compatible";
+		}
+		ofDrawBitmapString(str, 10, 35);
+
+		// Show current graphics adapter
+		str = "Graphics adapter ";
+		str += to_string(receiver->GetAdapter());
+		str += " : ";
+		str += receiver->AdapterName();
+		ofDrawBitmapString(str, 10, 50);
 	}
 
 }

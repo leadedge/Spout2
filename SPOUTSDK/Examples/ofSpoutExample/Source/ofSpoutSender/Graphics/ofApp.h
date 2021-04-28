@@ -31,6 +31,7 @@ class ofApp : public ofBaseApp{
 		void draw();
 		void exit();
 		void windowResized(int w, int h);
+		void mouseMoved(int x, int y);
 
 		SpoutSender sender;    // Spout sender object
 
@@ -41,5 +42,10 @@ class ofApp : public ofBaseApp{
 		ofFbo myFbo;           // For texture send example
 		ofPixels myPixels;     // For pixel send example
 		float rotX, rotY;
+
+		// For sender data
+		int mousex;
+		int mousey;
+		char senderdata[256];
 
 };

@@ -102,7 +102,7 @@ void ofApp::setup(){
 	//
 	// The number of adapters available can be queried :
 	// int nAdapters = sender.GetNumAdapters();
-	// printf("Number of adapters = %d\n", nAdapters);
+	// SpoutLog("Number of adapters = %d", nAdapters);
 	//
 	// The names can be retrieved :
 	// bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
@@ -110,13 +110,13 @@ void ofApp::setup(){
 	// Set a specific adapter from it's index :
 	// sender.SetAdapter(1); // use the second in the list (0, 1, 2 etc.)
 
-	// Frame counting is enabled depending on the user selection in SpoutSettings
+	// Frame counting is enabled by default.
 	// Status can be queried with IsFrameCountEnabled();
 	// Frame counting can be independently disabled for this application
 	// sender.DisableFrameCount();
 
 	// Set the frame rate of the application.
-	// In this example, the frame rate can be set with : ofSetFrameRate(30)
+	// In this example, the frame rate can be set with : ofSetFrameRate
 	// but applications without frame rate control can use "HoldFps" (see Draw())
 
 	// ----------------------------------------------
@@ -147,6 +147,10 @@ void ofApp::setup(){
 	// Update caption in case of multiples of the same sender
 	ofSetWindowTitle(sender.GetName());
 
+	// Mouse coordinates to send to receiver
+	mousex = 0;
+	mousey = 0;
+
 
 } // end setup
 
@@ -159,16 +163,28 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
+	// For applications requiring frame accuracy between 
+	// sender and receiver, wait for a ready signal from 
+	// the receiver before rendering to synchronise with
+	// the receiver fps. Use a timeout greater than the
+	// expected delay. Refer to the receiver example.
+	// sender.WaitFrameSync(sender.GetName(), 67);
+
 	// All sending functions check the sender name and dimensions
 	// and create or update the sender as necessary
 
 	// In this example, the fbo texture is already inverted
 	// so the invert option is false for all sending functions
+	
+	// For all sending functions, include the ID of the active
+	// framebuffer if one is currently bound.
+
 
 	// Draw 3D graphics demo into the fbo
 	// This could be anything
 	// - - - - - - - - - - - - - - - - 
 	myFbo.begin();
+
 	// Clear to reset the background and depth buffer
 	// Clear background alpha to opaque for the receiver
 	ofClear(10, 100, 140, 255);
@@ -182,24 +198,32 @@ void ofApp::draw() {
 	ofPopMatrix();
 	rotX += 0.6;
 	rotY += 0.6;
-
-	// Option 1 : Send the texture attached to point 0 while the fbo is bound
+	
+	// Send fbo
+	//   The fbo must be bound for read.
+	//   The invert option is false because the fbo is already flipped in y.
 	sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
 
-	// Option 2 : Send texture (fastest method)
+	// Send texture (fastest method)
 	// sender.SendTexture(myFbo.getTexture().getTextureData().textureID,
 		// myFbo.getTexture().getTextureData().textureTarget,
 		// senderwidth, senderheight, false);
 
-	// Option 3 : Send image pixels
+	// Send image pixels
 	// myFbo.readToPixels(myPixels); // readToPixels is slow - but this is just an example
 	// sender.SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
 
 	// Show the result sized to the application window
 	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
+
+	// Option : send a data buffer.
+	// Send mouse coordinates to the receiver.
+	// Refer to the receiver example.
+	sprintf_s(senderdata, 256, "%d %d", mousex, mousey);
+	sender.WriteMemoryBuffer(sender.GetName(), senderdata, 256);
 
 	// Show what it is sending
 	ofSetColor(255);
@@ -208,7 +232,7 @@ void ofApp::draw() {
 	str += ofToString(sender.GetWidth()); str += "x";
 	str += ofToString(sender.GetHeight()); str += ")";
 
-	// Show sender fps and framecount if selected
+	// Show sender fps and framecount if available
 	if (sender.GetFrame() > 0) {
 		str += " fps ";
 		str += ofToString((int)roundf(sender.GetFps()));
@@ -262,5 +286,11 @@ void ofApp::windowResized(int w, int h)
 		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
 		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
 	}
+}
+
+void ofApp::mouseMoved(int x, int y)
+{
+	mousex = x;
+	mousey = y;
 }
 

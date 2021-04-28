@@ -32,16 +32,11 @@
 #ifndef __spoutDX9__ 
 #define __spoutDX9__
 
-#pragma warning( disable : 4005 ) // Disable macro re-definition warnings
-
 #include "..\..\..\SpoutGL\SpoutCommon.h"
 #include "..\..\..\SpoutGL\SpoutSenderNames.h" // for sender creation and update
 #include "..\..\..\SpoutGL\SpoutFrameCount.h" // for mutex lock and new frame signal
 #include "..\..\..\SpoutGL\SpoutUtils.h" // for logging utilites
 
-#include <direct.h> // for _getcwd
-#include <TlHelp32.h> // for PROCESSENTRY32
-#include <tchar.h> // for _tcsicmp
 #include <d3d9.h>
 #pragma comment (lib, "d3d9.lib")
 
@@ -54,92 +49,33 @@ class SPOUT_DLLEXP spoutDX9 {
 		spoutDX9();
 		~spoutDX9();
 
-		//
-		// DIRECTX9
-		//
+
+		bool SendDX9surface(IDirect3DSurface9* pSurface);
+		bool CheckDX9sender(unsigned int width, unsigned int height, DWORD dwFormat);
+		void ReleaseDX9sender();
+		bool SetSenderName(const char* sendername = nullptr);
+		void HoldFps(int fps);
 
 		// Initialize and prepare DirectX 9
 		bool OpenDirectX9(HWND hWnd = nullptr);
 		// Release DirectX9 class object and device
 		void CloseDirectX9();
-
 		// Create a DirectX9 object
 		IDirect3D9Ex* CreateDX9object();
 		// Create a DirectX9 device
 		IDirect3DDevice9Ex* CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd, unsigned int AdapterIndex = 0);
-
-		// Get DirectX9 object
+		// Create a DirectX9 shared texture
+		bool CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle);
+		// Create a DirectX9 object
 		IDirect3D9Ex* GetDX9object();
-		// Get DirectX9 device
+		// Create a DirectX9 device
 		IDirect3DDevice9Ex* GetDX9device();
 		// Set a DirectX9 device
 		void SetDX9device(IDirect3DDevice9Ex* pDevice);
-
-		//
-		// SENDER
-		//
-
-		// Set the sender name
-		bool SetSenderName(const char* sendername = nullptr);
-		// Send a DirectX9 surface
-		bool SendDX9surface(IDirect3DSurface9* pSurface);
-		// Close sender and free resources
-		void ReleaseDX9sender();
-		// Sender status
-		bool IsInitialized();
-		// Sender name
-		const char * GetName();
-		// Get width
-		unsigned int GetWidth();
-		// Get height
-		unsigned int GetHeight();
-		// Get frame rate
-		double GetFps();
-		// Get frame number
-		long GetFrame();
-
-		//
-		// RECEIVER
-		//
-
-		// Set the sender to connect to
-		void SetReceiverName(const char * sendername);
-		// Receive a DirectX 9 texture from a sender
-		bool ReceiveDX9Texture(LPDIRECT3DTEXTURE9 &pTexture);
-		// Close receiver and free resources
-		void ReleaseReceiver();
-		// Open sender selection dialog
-		void SelectSender();
-		// Sender has changed
-		bool IsUpdated();
-		// Connected to a sender
-		bool IsConnected();
-		// Received frame is new
-		bool IsFrameNew();
-		// Received sender share handle
-		HANDLE GetSenderHandle();
-		// Received sender texture format (DX11)
-		DWORD GetSenderFormat();
-		// Received sender name
-		const char * GetSenderName();
-		// Received sender width
-		unsigned int GetSenderWidth();
-		// Received sender height
-		unsigned int GetSenderHeight();
-		// Received sender frame rate
-		double GetSenderFps();
-		// Received sender frame number
-		long GetSenderFrame();
-
-		//
-		// COMMON
-		//
-
-		// Hold frame rate
-		void HoldFps(int fps);
-		// Create a DirectX9 shared texture
-		bool CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle);
-
+		// Write to a DirectX9 system memory surface
+		bool WriteDX9memory (IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface, LPDIRECT3DTEXTURE9 dxTexture);
+		// Copy from a GPU DX9 surface to the DX9 shared texture
+		bool WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface, LPDIRECT3DTEXTURE9 dxTexture);
 
 	protected:
 
@@ -157,31 +93,7 @@ class SPOUT_DLLEXP spoutDX9 {
 		char m_SenderName[256];
 		unsigned int m_Width;
 		unsigned int m_Height;
-		bool m_bUpdated;
-		bool m_bConnected;
-		bool m_bNewFrame;
-		bool m_bSpoutPanelOpened;
-		bool m_bSpoutPanelActive;
-		bool m_bClassDevice;
-		SHELLEXECUTEINFOA m_ShExecInfo;
 
-		// Check that a sender is up to date
-		bool CheckDX9sender(unsigned int width, unsigned int height, DWORD dwFormat);
-		// Write to a DirectX9 system memory surface
-		bool WriteDX9memory(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface, LPDIRECT3DTEXTURE9 dxTexture);
-		// Copy from a GPU DX9 surface to the DX9 shared texture
-		bool WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface, LPDIRECT3DTEXTURE9 dxTexture);
-
-		// Connect to a sender
-		bool ReceiveSenderData();
-		// Copy from a sender shared texture to a DX9 texture
-		bool ReadDX9texture(IDirect3DDevice9Ex* pDevice, LPDIRECT3DTEXTURE9 &dxTexture);
-		// Create receiver resources
-		void CreateReceiver(const char * SenderName, unsigned int width, unsigned int height, DWORD dwFormat);
-		// Pop up SpoutPanel to allow the user to select a sender
-		void SelectSenderPanel();
-		// Check whether SpoutPanel opened and return the new sender name
-		bool CheckSpoutPanel(char *sendername, int maxchars = 256);
 
 };
 

@@ -7,6 +7,7 @@
 # 29/12/20 - Specify Spout Version 2.007                                       #
 # 31/12/20 - Add /MT build option                                              #
 #          - Add DirectX library build option                                  #
+# 28/04/20 - /MT build option default OFF
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -27,7 +28,7 @@ if(NOT WIN32)
   return()
 endif()
 
-OPTION(SPOUT_BUILD_CMT "For Visual Studio - build /MT to link runtime libraries" ON)
+OPTION(SPOUT_BUILD_CMT "For Visual Studio - build /MT to link runtime libraries" OFF)
 if(SPOUT_BUILD_CMT)
 	# https://gitlab.kitware.com/cmake/cmake/-/issues/18390
 	if(MSVC)
