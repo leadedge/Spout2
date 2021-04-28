@@ -137,8 +137,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT Options
 	//
 
-	// OpenSpoutConsole(); // Console only for debugging
-	// EnableSpoutLog(); // Enable Spout logging to console
+	OpenSpoutConsole(); // Console only for debugging
+	EnableSpoutLog(); // Enable Spout logging to console
 	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
@@ -858,7 +858,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 //--------------------------------------------------------------------------------------
 void Render()
 {
-
     // Update our time
     static float t = 0.0f;
     if( g_driverType == D3D_DRIVER_TYPE_REFERENCE )
@@ -923,7 +922,7 @@ void Render()
 		}
 
 		// A texture has been received
-
+		
 		// In this example, a shader resource view is created if the frame is new
 		if (receiver.IsFrameNew()) {
 			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
@@ -1012,7 +1011,6 @@ void Render()
 	// Here you could also use a different Present method such as
 	// "Present( 1, 0 )" to synchronize with vertical blank.
 	// Build with different options to explore.
-	// sender.HoldFps(60);
 	receiver.HoldFps(60);
 
 }

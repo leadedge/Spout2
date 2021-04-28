@@ -96,7 +96,6 @@ void Render();
 spoutDX sender;
 
 // Functions for selecting graphics adapter
-// In development, but is implemented here for testing.
 void ResetDevice();
 void SelectAdapter();
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
@@ -808,7 +807,8 @@ void Render()
 	//
 	// SPOUT - fps control
 	//
-	// Hold a target frame rate - e.g. 60 or 30fps.
+	// Hold a target frame rate/ e.g. 60 or 30fps
+	// use numerator an denominator e.g. 30000/2001 = 29.97 fps
 	// Here you could also use a different Present method such as
 	// "Present( 1, 0 )" to synchronize with vertical blank.
 	// Build with different options to explore.
