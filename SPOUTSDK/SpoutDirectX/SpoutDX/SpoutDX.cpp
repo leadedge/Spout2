@@ -97,6 +97,7 @@
 //		16.03.21	- Add memoryshare struct, ReadMemoryBuffer and WriteMemoryBuffer
 //					  memoryshare.CloseSenderMemory() in destructor and ReleaseSender
 //		15.04.21	- Add SetFrameSync and WaitFrameSync
+//		29.04.21	- Change IsFrameNew() to return frame class global.
 //
 // ====================================================================================
 /*
@@ -151,7 +152,6 @@ spoutDX::spoutDX()
 	m_Height = 0;
 	m_bUpdated = false;
 	m_bConnected = false;
-	m_bNewFrame = false;
 	m_bSpoutInitialized = false;
 	m_bSpoutPanelOpened = false;
 	m_bSpoutPanelActive = false;
@@ -613,7 +613,6 @@ bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 		// Found a sender
 		//
 		if (frame.CheckTextureAccess(m_pSharedTexture)) {
-			m_bNewFrame = false; // For query of new frame
 			// Check if the sender has produced a new frame.
 			if (frame.GetNewFrame()) {
 				// Copy from the sender's shared texture to the receiving texture.
@@ -623,7 +622,6 @@ bool spoutDX::ReceiveTexture(ID3D11Texture2D** ppTexture)
 				// May be removed if the texture is not immediately copied.
 				// Test for the individual application.
 				m_pImmediateContext->Flush();
-				m_bNewFrame = true; // The application can query IsNewFrame()
 			 }
 			// Allow access to the shared texture
 			frame.AllowTextureAccess(m_pSharedTexture);
@@ -697,7 +695,6 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 			// Allow access to the shared texture
 			frame.AllowTextureAccess(m_pSharedTexture);
 		}
-
 		m_bConnected = true;
 	} // sender exists
 	else {
@@ -754,7 +751,7 @@ bool spoutDX::IsConnected()
 //   This can be queried to process texture data only for new frames
 bool spoutDX::IsFrameNew()
 {
-	return m_bNewFrame;
+	return frame.IsFrameNew();
 }
 
 //---------------------------------------------------------

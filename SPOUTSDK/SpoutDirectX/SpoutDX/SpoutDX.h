@@ -365,7 +365,6 @@ protected :
 	unsigned int m_Height;
 	bool m_bUpdated;
 	bool m_bConnected;
-	bool m_bNewFrame;
 	bool m_bSpoutInitialized;
 	bool m_bSpoutPanelOpened;
 	bool m_bSpoutPanelActive;
