@@ -38,8 +38,10 @@ class ofApp : public ofBaseApp{
 		void showInfo();
 
 		// For sender data
-		int mousex;
-		int mousey;
+		float sendermousex;
+		float sendermousey;
+		float senderbutton;
+		std::vector<ofVec2f> senderpoints;
 		char senderdata[256];
 
 };

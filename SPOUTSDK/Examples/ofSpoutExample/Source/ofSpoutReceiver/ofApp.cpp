@@ -64,8 +64,7 @@ void ofApp::setup(){
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
 
 	// For sender data
-	mousex = 0;
-	mousey = 0;
+	sendermousex = sendermousey = senderbutton = 0.0f;
 	
 } // end setup
 
@@ -108,14 +107,18 @@ void ofApp::draw() {
 
 		// Example of receiving a data buffer.
 		// In this case, receive mouse coordinates from the example sender.
-		// Refer to the sender example.
+		// Refer to the Openframeworks sender example.
 		if (receiver.IsFrameNew()) {
 			if (receiver.ReadMemoryBuffer(receiver.GetSenderName(), senderdata, 256)) {
-				sscanf_s(senderdata, "%d %d", &mousex, &mousey);
+				// We are expecting mouse coordinates and button status from the 
+				// example graphics sender, saved as 3 byte decimal numbers
+				// (3+1+3+1+3+1 = 12 bytes). For the Spout Demo sender and other examples 
+				// without button status, the last 4 bytes are zero and senderbutton will be zero.
+				// Here we use sscanf to convert the data to floats.
+				sscanf_s(senderdata, "%f %f %f", &sendermousex, &sendermousey, &senderbutton);
 			}
 			else {
-				mousex = 0;
-				mousey = 0;
+				sendermousex = sendermousey = senderbutton = 0.0f;
 			}
 		}
 	}
@@ -154,10 +157,29 @@ void ofApp::draw() {
 	}
 	*/
 
+	// Example of receiving data from the sender
 	// Draw the sender mouse position if data has been received.
-	if (receiver.IsConnected() && mousex > 0) {
+	// Refer to the Openframeworks sender example.
+	if (receiver.IsConnected() && sendermousex > 0.0f) {
+
+		// Draw a red ball at the sender mouse position
 		ofSetColor(255, 0, 0);
-		ofDrawCircle((float)mousex, (float)mousey, 0, 16);
+		ofDrawCircle(sendermousex, sendermousey, 0, 16);
+
+		// Draw a line if the sender mouse is dragged
+		ofSetLineWidth(2.0f);
+		// Accumulate points on LH button drag
+		if (senderbutton == 1.0f)
+			senderpoints.push_back(ofVec2f(sendermousex, sendermousey));
+		// Clear points on sender RH button click
+		if (senderbutton == 2.0f)
+			senderpoints.clear();
+		// Draw all points
+		if (senderpoints.size() > 1) {
+			for (int i = 0; i < (int)senderpoints.size() - 1; i++)
+				ofDrawLine(senderpoints[i], senderpoints[i + 1]);
+		}
+
 	}
 
 	// On-screen display

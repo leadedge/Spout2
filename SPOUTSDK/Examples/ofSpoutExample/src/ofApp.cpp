@@ -150,6 +150,7 @@ void ofApp::setup(){
 	// Mouse coordinates to send to receiver
 	mousex = 0;
 	mousey = 0;
+	mousebutton = 0;
 
 
 } // end setup
@@ -220,9 +221,9 @@ void ofApp::draw() {
 	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	// Option : send a data buffer.
-	// Send mouse coordinates to the receiver.
+	// Send mouse coordinates and button down status to the receiver.
 	// Refer to the receiver example.
-	sprintf_s(senderdata, 256, "%d %d", mousex, mousey);
+	sprintf_s(senderdata, 256, "%d %d %d", mousex, mousey, mousebutton);
 	sender.WriteMemoryBuffer(sender.GetName(), senderdata, 256);
 
 	// Show what it is sending
@@ -288,9 +289,25 @@ void ofApp::windowResized(int w, int h)
 	}
 }
 
+//--------------------------------------------------------------
+void ofApp::mousePressed(int x, int y, int button)
+{
+	mousebutton = button;
+}
+
+//--------------------------------------------------------------
 void ofApp::mouseMoved(int x, int y)
 {
 	mousex = x;
 	mousey = y;
+	mousebutton = 0;
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseDragged(int x, int y, int button)
+{
+	mousex = x;
+	mousey = y;
+	mousebutton = 1;
 }
 
