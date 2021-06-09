@@ -230,132 +230,20 @@ class SPOUT_DLLEXP spoutGL {
 	bool ReadDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 
 	//
-	// Memory sharing
+	// Data sharing
 	//
 
-	// Write data
-	bool WriteMemoryBuffer(const char *sendername, const char* data, int length);
-	// Read data
-	int  ReadMemoryBuffer(const char* sendername, char* data, int maxlength);
+	// Write data to shared memory
+	bool WriteMemoryBuffer(const char *name, const char* data, int length);
+	// Read data from shared memory
+	int ReadMemoryBuffer(const char* name, char* data, int maxlength);
+	// Create a shared memory buffer
+	bool CreateMemoryBuffer(const char *name, int length);
+	// Delete a shared memory buffer
+	bool DeleteMemoryBuffer();
+	// Get the number of bytes available for data transfer
+	int GetMemoryBufferSize(const char *name);
 
-	struct {
-
-		SpoutSharedMemory *senderMem;
-		unsigned int m_Width;
-		unsigned int m_Height;
-
-		// Create a sender named shared memory map for general purpose
-		// NOTE:
-		//    Width and height are in bytes
-		//    Height may be 1 for a luminance map
-		//    Width should be a multiple of 16 for best performance
-		bool CreateSenderMemory(const char *sendername, unsigned int width, unsigned int height)
-		{
-			std::string namestring = sendername;
-
-			// Create a name for the map from the sender name
-			namestring += "_map";
-
-			// Close an existing map
-			if (senderMem) {
-				CloseSenderMemory();
-				senderMem = nullptr;
-			}
-
-			// Create a new shared memory class object
-			senderMem = new SpoutSharedMemory();
-
-			// Create the sender's shared memory map.
-			// This also creates a mutex to lock and unlock the map for reads.
-			SpoutCreateResult result = senderMem->Create(namestring.c_str(), (int)(width*height));
-			if (result == SPOUT_CREATE_FAILED) {
-				delete senderMem;
-				senderMem = nullptr;
-				m_Width = 0;
-				m_Height = 0;
-				return false;
-			}
-
-			// Set the width and height for future reference
-			m_Width = width;
-			m_Height = height;
-
-			return true;
-
-		} // end CreateSenderMemory
-
-		// Open an existing named shared memory map
-		bool OpenSenderMemory(const char *sendername)
-		{
-			std::string namestring = sendername;
-			// Create a name for the map from the sender name
-			namestring += "_map";
-			// Create a new shared memory class object for this receiver
-			if (!senderMem)
-				senderMem = new SpoutSharedMemory();
-			// Open the sender's shared memory map.
-			// This also creates a mutex for the receiver
-			// to lock and unlock the map for reads.
-			if (!senderMem->Open(namestring.c_str())) {
-				// SpoutLogError("spoutGL.memoryshare::OpenSenderMemory - open shared memory failed");
-				return false;
-			}
-			return true;
-		} // end OpenSenderMemory
-
-		// Close the sender shared memory map
-		void CloseSenderMemory()
-		{
-			if (senderMem) {
-				senderMem->Close();
-				delete senderMem;
-			}
-			senderMem = nullptr;
-			m_Width = 0;
-			m_Height = 0;
-		} // end CloseSenderMemory
-
-		// Lock and unlock memory and retrieve buffer pointer - no size checks
-		unsigned char * LockSenderMemory()
-		{
-			if (!senderMem) return nullptr;
-			char *pBuf = senderMem->Lock();
-			if (!pBuf) {
-				// https://github.com/leadedge/Spout2/issues/15
-				// senderMem->Unlock();
-				return nullptr;
-			}
-			return reinterpret_cast<unsigned char *>(pBuf);
-		}
-
-		void UnlockSenderMemory()
-		{
-			if (!senderMem) return;
-			senderMem->Unlock();
-		}
-
-		unsigned int GetSenderMemorySize()
-		{
-			return m_Width*m_Height;
-		}
-
-		const char* GetSenderMemoryName()
-		{
-			if (!senderMem)
-				return nullptr;
-			return senderMem->Name();
-		}
-
-		bool GetSenderMemory(const char *sendername)
-		{
-			if (sendername[0] == 0)
-				return false;
-
-			return senderMem->Open(sendername);
-		}
-
-	} memoryshare;
-	
 	//
 	// For external access
 	//
@@ -370,6 +258,10 @@ class SPOUT_DLLEXP spoutGL {
 	spoutFrameCount frame;
 
 protected :
+
+	
+	// For 2.006(receive only) / WriteMemoryBuffer / ReadMemoryBuffer
+	SpoutSharedMemory memoryshare;
 
 	// GL/DX functions
 	bool CreateInterop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive);
@@ -418,11 +310,10 @@ protected :
 	int m_NextIndex;
 	bool CheckStagingTextures(unsigned int width, unsigned int height, int nTextures);
 
-	// Shared memory
+	// 2.006 shared memory
 	bool ReadMemoryTexture(const char* sendername, GLuint TexID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
 	bool ReadMemoryPixels(const char* sendername, unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
 	bool WriteMemoryPixels(const char *sendername, const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
-	bool CreateMemoryBuffer(const char *sendername, unsigned int length);
 
 	// Utility
 	bool OpenDeviceKey(const char* key, int maxsize, char* description, char* version);
@@ -478,7 +369,7 @@ protected :
 	bool m_bUseGLDX;      // Hardware GL/DX interop compatibility
 	bool m_bTextureShare; // Using texture sharing methods
 	bool m_bCPUshare;     // Using CPU sharing methods
-	bool m_bMemoryShare;  // 2.006 sender using memoryshare methods
+	bool m_bMemoryShare;  // Using 2.006 memoryshare methods
 	
 	// Sender sharing modes
 	bool m_bSenderCPU;    // Sender using CPU sharing methods

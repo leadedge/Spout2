@@ -69,6 +69,8 @@
 		09.03.21 - Fix code if USE_CHRONO not defined
 		17.04.21 - Disable close button on console
 				   Bring the main window to the top again
+		07.05.21 - Remove noisy warning from ReadPathFromRegistry
+		09.06.21 - Update Version to "2.007.002"
 
 */
 #include "SpoutUtils.h"
@@ -104,7 +106,7 @@ namespace spoututils {
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
 #endif
-	std::string SDKversion = "2.007.001"; // Spout SDK version number string
+	std::string SDKversion = "2.007.002"; // Spout SDK version number string
 
 	//
 	// Console management
@@ -498,8 +500,6 @@ namespace spoututils {
 				return true;
 		}
 		// Quit if the key does not exist
-		SpoutLogWarning("ReadPathFromRegistry - could not open subkey [%s] Error (%ld)", subkey, regres);
-
 		return false;
 	}
 	

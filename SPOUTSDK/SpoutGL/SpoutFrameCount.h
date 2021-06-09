@@ -111,9 +111,9 @@ class SPOUT_DLLEXP spoutFrameCount {
 	//
 
 	// Set sync event 
-	void SetFrameSync(const char* SenderName);
+	void SetFrameSync(const char* name);
 	// Wait or test for a sync event
-	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+	bool WaitFrameSync(const char *name, DWORD dwTimeout = 0);
 	// Close sync event
 	void CloseFrameSync();
 

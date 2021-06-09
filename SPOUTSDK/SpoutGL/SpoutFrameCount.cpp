@@ -79,6 +79,7 @@ spoutFrameCount::spoutFrameCount()
 {
 	m_hAccessMutex = NULL;
 	m_hCountSemaphore = NULL;
+	m_hSyncEvent = NULL;
 	m_SenderName[0] = 0;
 	m_CountSemaphoreName[0] = 0;
 	m_FrameCount = 0L;
@@ -116,9 +117,6 @@ spoutFrameCount::spoutFrameCount()
 	StartCounter();
 #endif
 
-	m_hSyncEvent = NULL;
-	m_SenderName[0] = 0;
-
 }
 
 // -----------------------------------------------
@@ -140,10 +138,10 @@ spoutFrameCount::~spoutFrameCount()
 	if (m_hAccessMutex) CloseHandle(m_hAccessMutex);
 	m_hAccessMutex = NULL;
 
-	// Close the frame sync event
-	if (m_hSyncEvent) CloseHandle(m_hSyncEvent);
-	m_hSyncEvent = NULL;
-
+	// Close the sync event
+	// Also closed in sender/receiver release
+	CloseFrameSync();
+	
 }
 
 
@@ -603,6 +601,7 @@ void spoutFrameCount::CloseAccessMutex()
 {
 	// Close the texture access mutex. If another application first opened
 	// the mutex it will not be finally closed here.
+	SpoutLogNotice("SpoutFrameCount::CloseAccessMutex");
 	if (m_hAccessMutex) CloseHandle(m_hAccessMutex);
 	m_hAccessMutex = NULL;
 }
@@ -752,7 +751,6 @@ void spoutFrameCount::CloseFrameSync()
 }
 
 
-
 // ===============================================================================
 //                                Protected
 // ===============================================================================
@@ -899,12 +897,18 @@ double spoutFrameCount::GetRefreshRate()
 
 // -----------------------------------------------
 //
-// Enable sync to frame rate
-//   Only effective between one sender/receiver pair.
-//   The event name is derived from the sender name and 
-//   is closed when a sender closes or receiver releases connection.
-//   This function is used by the first call to SetFrameSync.
+// Enable sync event
+//
+//   Create a named event that can be used to signal
+//   from one application to another.
+//
+//   If used for frame sychronisation, the event name is 
+//   derived from the sender name and is closed when a sender
+//   closes or receiver releases connection.
 //   A sender name must be established by the sender or receiver.
+//   Only effective between one sender / receiver pair.
+//
+//   This function is used by the first call to SetFrameSync.
 void spoutFrameCount::OpenFrameSync(const char* SenderName)
 {
 	// A sender name is required

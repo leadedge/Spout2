@@ -109,11 +109,13 @@ class SPOUT_DLLEXP SpoutReceiver {
 	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 
 	//
-	// Memory sharing
+	// Data sharing
 	//
 
 	// Read data
-	int ReadMemoryBuffer(const char* sendername, char* data, int maxlength);
+	int ReadMemoryBuffer(const char* name, char* data, int maxlength);
+	// Get the size of a shared memory buffer
+	int GetMemoryBufferSize(const char* name);
 
 	//
 	// OpenGL shared texture access

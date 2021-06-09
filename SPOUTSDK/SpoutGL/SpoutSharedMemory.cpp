@@ -32,7 +32,7 @@
 	LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
+	
 */
 
 #include "SpoutSharedMemory.h"
@@ -113,6 +113,9 @@ SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 		}
 	}
 
+	// We can depend on the mapping object to be initially zeros.
+	// https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createfilemappinga
+
 	m_pBuffer = (char*)MapViewOfFile(m_hMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
 	if (!m_pBuffer)	{
@@ -173,6 +176,8 @@ bool SpoutSharedMemory::Open(const char* name)
 	}
 
 	m_pName = _strdup(name);
+	// OpenFileMapping/MapViewOfFile do not return the map size
+	// Only the process that creates the shared memory can save it's size.
 	m_size = 0;
 
 	return true;
@@ -200,6 +205,8 @@ void SpoutSharedMemory::Close()
 		free((void*)m_pName);
 		m_pName = NULL;
 	}
+
+	m_size = 0;
 
 }
 
@@ -253,6 +260,11 @@ void SpoutSharedMemory::Unlock()
 const char* SpoutSharedMemory::Name()
 {
 	return m_pName;
+}
+
+int SpoutSharedMemory::Size()
+{
+	return m_size;
 }
 
 void SpoutSharedMemory::Debug()

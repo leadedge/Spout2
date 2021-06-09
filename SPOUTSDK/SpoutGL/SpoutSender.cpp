@@ -68,6 +68,7 @@
 //					- Add data function WriteMemoryBuffer
 //		10.04.21	- Add GetCPU and GetGLDX
 //		24.04.21	- Add OpenGL shared texture access functions
+//		03.06.21	- Add CreateMemoryBuffer, DeleteMemoryBuffer, GetMemoryBufferSize
 //
 // ====================================================================================
 /*
@@ -264,14 +265,33 @@ bool SpoutSender::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 }
 
 //
-// Memory sharing
+// Data sharing
 //
 
 //---------------------------------------------------------
-bool SpoutSender::WriteMemoryBuffer(const char *sendername, const char* data, int length)
+bool SpoutSender::WriteMemoryBuffer(const char *name, const char* data, int length)
 {
-	return spout.WriteMemoryBuffer(sendername, data, length);
+	return spout.WriteMemoryBuffer(name, data, length);
 }
+
+//---------------------------------------------------------
+bool SpoutSender::CreateMemoryBuffer(const char *name, int length)
+{
+	return spout.CreateMemoryBuffer(name,length);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::DeleteMemoryBuffer()
+{
+	return spout.DeleteMemoryBuffer();
+}
+
+//---------------------------------------------------------
+int SpoutSender::GetMemoryBufferSize(const char* name)
+{
+	return spout.GetMemoryBufferSize(name);
+}
+
 
 //
 // OpenGL shared texture access

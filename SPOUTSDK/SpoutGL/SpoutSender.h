@@ -94,11 +94,17 @@ class SPOUT_DLLEXP SpoutSender {
 	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 
 	//
-	// Memory sharing
+	// Data sharing
 	//
 
 	// Write data
-	bool WriteMemoryBuffer(const char *sendername, const char* data, int length);
+	bool WriteMemoryBuffer(const char *name, const char* data, int length);
+	// Create a shared memory buffer
+	bool CreateMemoryBuffer(const char *name, int length);
+	// Delete a shared memory buffer
+	bool DeleteMemoryBuffer();
+	// Get the size of a shared memory buffer
+	int GetMemoryBufferSize(const char* name);
 
 	//
 	// OpenGL shared texture access

@@ -199,6 +199,7 @@
 //		20.04.21	- SendFbo - protect against SendFbo fail for default framebuffer if iconic
 //		24.04.21	- ReceiveTexture - return if flagged for update
 //					  only if there is a texture to receive into.
+//		10.05.21	- ReceiveTexture - allow for the possibility of 2.006 memoryshare sender.
 //
 // ====================================================================================
 /*
@@ -291,10 +292,7 @@ Spout::Spout()
 
 Spout::~Spout()
 {
-	// Close shared memory if used
-	memoryshare.CloseSenderMemory();
-	// Release event if used
-	frame.CloseFrameSync();
+
 }
 
 //
@@ -376,9 +374,8 @@ void Spout::ReleaseSender()
 	}
 
 	// Close shared memory and sync event if used
-	memoryshare.CloseSenderMemory();
+	memoryshare.Close();
 	frame.CloseFrameSync();
-
 
 	CleanupGL();
 
@@ -680,7 +677,7 @@ void Spout::ReleaseReceiver()
 	m_NextIndex = 0;
 
 	// Close shared memory and sync event if used
-	memoryshare.CloseSenderMemory();
+	memoryshare.Close();
 	frame.CloseFrameSync();
 	
 	m_bConnected = false;
@@ -758,15 +755,23 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 				return true;
 		}
 
-		// Was the sender's shared texture handle null ?
+		// Was the sender's shared texture handle null
+		// or has the user set 2.006 memoryshare mode?
 		if (!m_dxShareHandle || m_bMemoryShare) {
-			// Possible existence of sender memory share map
-			// Currently only works for Texture share mode
+			// Possible existence of 2.006 memoryshare sender
+			// (ReadMemoryTexture currently only works if texture share compatible)
 			if (m_bTextureShare) {
-				ReadMemoryTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
+				if (ReadMemoryTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo))
+					return true;
 			}
+			// ReadMemoryTexture failed, is there is a texture share handle ?
+			if (!m_dxShareHandle)
+				return false;
+			// This could be a 2.007 sender but the user has set 2.006 memoryshare mode
+			// Drop though
 		}
-		else if (m_bTextureShare) {
+
+		if (m_bTextureShare) {
 			// Texture share compatible
 			// 3840x2160 60 fps - 0.45 msec/frame
 			ReadGLDXtexture(TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
@@ -776,6 +781,7 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 			// 3840x2160 33 fps - 5-7 msec/frame
 			ReadDX11texture(TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
 		}
+
 	} // endif sender exists
 	else {
 		// ReceiveSenderData fails if there is no sender or the connected sender closed.

@@ -65,6 +65,7 @@
 //		02.04.21	- Add event functions SetFrameSync/WaitFrameSync
 //					- Add data function ReadMemoryBuffer
 //		24.04.21	- Add OpenGL shared texture access functions
+//		03.06.21	- Add GetMemoryBufferSize
 //
 // ====================================================================================
 //
@@ -283,10 +284,17 @@ bool SpoutReceiver::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 }
 
 //---------------------------------------------------------
-int SpoutReceiver::ReadMemoryBuffer(const char* sendername, char* data, int maxlength)
+int SpoutReceiver::ReadMemoryBuffer(const char* name, char* data, int maxlength)
 {
-	return spout.ReadMemoryBuffer(sendername, data, maxlength);
+	return spout.ReadMemoryBuffer(name, data, maxlength);
 }
+
+//---------------------------------------------------------
+int SpoutReceiver::GetMemoryBufferSize(const char* name)
+{
+	return spout.GetMemoryBufferSize(name);
+}
+
 
 //
 // OpenGL shared texture access
