@@ -34,14 +34,6 @@ class ofApp : public ofBaseApp{
 		SpoutReceiver receiver; // A Spout receiver object
 		ofTexture myTexture; // Receiving texture
 		ofImage myImage; // Receiving image
-		unsigned int sWidth, sHeight;
 		void showInfo();
-
-		// For sender data
-		float sendermousex;
-		float sendermousey;
-		float senderbutton;
-		std::vector<ofVec2f> senderpoints;
-		char senderdata[256];
 
 };
