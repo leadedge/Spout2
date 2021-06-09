@@ -42,8 +42,6 @@ class FboBasicApp : public App {
 	void	quit() override;
 #ifdef _receiver
 	void    mouseDown(MouseEvent event) override;
-#else
-	void    mouseMove(MouseEvent event) override;
 #endif
 
   private:
@@ -60,12 +58,7 @@ class FboBasicApp : public App {
 	static const int	FBO_WIDTH = 256, FBO_HEIGHT = 256;
 #endif
 
-	// For data exchange between sender and receiver
-	int mousex = 0;
-	int mousey = 0;
-	char senderdata[256];
 	void showInfo();
-
 
 };
 
@@ -74,7 +67,7 @@ void FboBasicApp::setup()
 	// SPOUT
 	// Optional console or logging
 	// OpenSpoutConsole();
-	EnableSpoutLog();
+	// EnableSpoutLog();
 	
 	// Match window size to Spout demo programs
 	setWindowSize(640, 360);
@@ -166,47 +159,19 @@ void FboBasicApp::draw()
 	// Include the ID of the active framebuffer if one is currently bound.
 	receiver.ReceiveTexture(spoutTexture->getId(), spoutTexture->getTarget(), true);
 	
-	// Example of receiving a data buffer.
-	// Receive mouse coordinates from the example sender.
-	// Refer to the sender code.
-	if (receiver.IsFrameNew()) {
-		if (receiver.ReadMemoryBuffer(receiver.GetSenderName(), senderdata, 256)) {
-			sscanf_s(senderdata, "%d %d", &mousex, &mousey);
-		}
-	}
-
 	// Draw the texture and fill the screen if connected to a sender
 	if (receiver.IsConnected()) {
 
 		gl::color(Color::white());
 		gl::draw(spoutTexture, getWindowBounds());
 
-		// Draw the sender mouse position if data has been received.
-		if (mousex > 0) {
-			gl::color(Color(1.0f, 0.0f, 0.0f));
-			gl::drawSolidCircle(vec2(mousex, mousey), 16.0f);
-		}
-
 	}
-
-	// For applications requiring frame accuracy between 
-	// sender and receiver, send a ready signal after
-	// rendering to synchronise the sender to the receiver.
-	// Refer to the sender code.
-	// receiver.SetFrameSync(receiver.GetSenderName());
 
 	// Show what it is receiving
 	showInfo();
 
 #else
-
-	// For applications requiring frame accuracy between 
-	// sender and receiver, wait for a ready signal from 
-	// the receiver before rendering to synchronise with
-	// the receiver fps. Use a timeout greater than the
-	// expected delay. Refer to the receiver code.
-	// sender.WaitFrameSync(sender.GetName(), 67);
-
+	
 	// setup our camera to render the cube
 	CameraPersp cam(getWindowWidth(), getWindowHeight(), 60.0f);
 	cam.setPerspective(60, getWindowAspectRatio(), 1, 1000);
@@ -251,13 +216,7 @@ void FboBasicApp::draw()
 		mFbo->getColorTexture()->getWidth(),
 		mFbo->getColorTexture()->getHeight());
 	*/
-
-	// Option : Send a data buffer.
-	//   In this example, send mouse coordinates to the receiver.
-	//   Refer to the receiver code.
-	sprintf_s(senderdata, 256, "%d %d", mousex, mousey);
-	sender.WriteMemoryBuffer(sender.GetName(), senderdata, 256);
-
+	
 	// Show what it is sending
 	showInfo();
 
@@ -277,13 +236,6 @@ void FboBasicApp::draw()
 			receiver.SelectSender();
 		}
 	}
-#else
-void FboBasicApp::mouseMove(MouseEvent event)
-{
-	// Save the current mouse position
-	mousex = event.getPos().x;
-	mousey = event.getPos().y;
-}
 #endif
 
 // Close the sender or receiver on exit
