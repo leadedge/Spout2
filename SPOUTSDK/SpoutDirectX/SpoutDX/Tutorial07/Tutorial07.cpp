@@ -137,8 +137,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT Options
 	//
 
-	OpenSpoutConsole(); // Console only for debugging
-	EnableSpoutLog(); // Enable Spout logging to console
+	// OpenSpoutConsole(); // Console only for debugging
+	// EnableSpoutLog(); // Enable Spout logging to console
 	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
@@ -150,7 +150,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
 
-    if( FAILED( InitDevice() ) )
+	// SPOUT
+	// See InitDevice for creating a Spout class device
+	if( FAILED( InitDevice() ) )
     {
         CleanupDevice();
         return 0;
@@ -160,25 +162,34 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT
 	//
 
+	// Initialize DirectX.
+	// The device pointer must be passed in if a DirectX 11.0 device is available.
+	// Otherwise a device is created in the SpoutDX class.
+	// The function does nothing if a class device was already created.
+	// See InitDevice for creating a class device
+	//
+	if (!receiver.OpenDirectX11(g_pd3dDevice))
+		return FALSE;
+
 	//
 	// Menu options for change of graphics adapter
 	//
+
+	// The "Select graphics adapter" menu option allows selection
+	// and change to the same adapter as used by a particluar sender.
+	//
+	// The "Auto switch adapter" menu option enables auto switch to
+	// the same adapter as the sender.
+	// Search for : IDM_AUTO_ADAPTER for more detail on the "SetAdapterAuto()" 
+	// function which enables or disables this option..
+	//
 	// Both sender and receiver must use the same graphics adapter.
+	// If the "Auto switch adapter" menu option is enabled, selection of a different
+	// graphics adapter will result in change back to the sender graphics adapter.
 	//
-	// "Select graphics adapter" allows manual selection and change
-	// to the same adapter as used by a particluar sender.
-	//
-	// "Auto switch adapter" enables auto switch to the same adapter as the sender.
-	// The "SetAdapterAuto()" function enables or disables this option.
 	// The D3D11 device must have been be created within the SpoutDX class
-	// or the function has no effect.
-	// If this menu option is enabled, manual selection of graphics adapter
-	// will result in change back to the sender graphics adapter.
+	// If a class device was not created, remove both menu options.
 	//
-	// See : IDM_AUTO_ADAPTER
-	// receiver.SetAdapterAuto();
-	//
-	// Selection of graphics adapter requires a class device
 	if (!receiver.IsClassDevice()) {
 		HMENU hPopup = GetSubMenu(GetMenu(g_hWnd), 0);
 		RemoveMenu(hPopup, IDM_ADAPTER, MF_BYCOMMAND);
@@ -325,10 +336,10 @@ HRESULT InitDevice()
 	//
 	// SPOUT
 	//
-	// Option
-	//
-	// Create a device within the SpoutDX class.
-	// IsClassDevice() will return whether this has been done.
+	// Option: Create a device within the SpoutDX class.
+	// See below for device reaction code that has been commented out.
+	// IsClassDevice() will return the hr result whether this has been done or not.
+	// See also the option to use OpenDirectX11() after an application device has been created.
 	// ===============================================================
 	if (receiver.OpenDirectX11()) {
 		g_pd3dDevice = receiver.GetDX11Device();

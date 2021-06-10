@@ -105,8 +105,7 @@ HRESULT InitD3D( HWND hWnd )
 	g_pd3dDevice = sender.GetDX9device();
 
 	// Load a texture for display
-	// D3DXCreateTextureFromFileA(g_pd3dDevice, "koala-on-tree.jpg", &g_pTexture);
-	D3DXCreateTextureFromFileA(g_pd3dDevice, "Australia_Zoo_Wombat.jpg", &g_pTexture);
+	D3DXCreateTextureFromFileA(g_pd3dDevice, "koala-on-tree.jpg", &g_pTexture);
 
 	// ================================================================================
 
@@ -291,11 +290,6 @@ LRESULT WINAPI MsgProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )
 {
     switch( msg )
     {
-		// SPOUT - RH click to open SpoutPanel
-		case WM_RBUTTONDOWN:
-			sender.SelectSender();
-			break;
-	
 		case WM_DESTROY:
             Cleanup();
             PostQuitMessage( 0 );
