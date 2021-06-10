@@ -177,13 +177,19 @@ struct SPOUTLIBRARY
 	virtual bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0) = 0;
 
 	//
-	// Memory sharing
+	// Data sharing
 	//
 
 	// Write data
 	virtual bool WriteMemoryBuffer(const char *sendername, const char* data, int length) = 0;
 	// Read data
 	virtual int  ReadMemoryBuffer(const char* sendername, char* data, int maxlength) = 0;
+	// Create a shared memory buffer
+	virtual bool CreateMemoryBuffer(const char *name, int length) = 0;
+	// Delete a shared memory buffer
+	virtual bool DeleteMemoryBuffer() = 0;
+	// Get the number of bytes available for data transfer
+	virtual int GetMemoryBufferSize(const char *name) = 0;
 
 	//
 	// Log utilities

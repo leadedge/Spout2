@@ -61,8 +61,8 @@
 //				   Update documentation comments
 //				   Re-build 32/64 bit - VS2017 / MT
 //		24.04.21 - ReceiveTexture - return if flagged for update
-//				   only if there is a texture to receive into.
-//				   Re-build 32/64 bit - VS2017 / MT
+//		10.06.21 - Re-build 32/64 bit - VS2017 / MT
+
 //
 /*
 		Copyright (c) 2016-2021, Lynn Jarvis. All rights reserved.
@@ -454,42 +454,68 @@ private: // Spout SDK functions
 	//   General purpose data exchange functions using shared memory.
 	//   These functions can be used in addition to texture sharing.
 	//   Typical uses will be for data attached to the video frame,
-	//   commonly referred to as Metadata.
+	//   commonly referred to as "per frame Metadata".
 	//
-	//   If used directly after sending and after receiving, the data
-	//   will be associated with the same video frame, but frames may 
-	//   be missed if sender and receiver have different frame rates.
-	//   If strict synchronization is required, they should be used
-	//   in combination with event signal functions.
+	//   Notes for synchronisation.
+	//
+	//   If used before sending and after receiving, the data will be 
+	//   associated with the same video frame, but frames may be missed 
+	//   if the receiver has a lower frame rate than the sender.
+	//
+	//   If strict synchronization is required, the data sharing functions
+	//   should be used in combination with event signal functions. The sender
+	//   frame rate will be matched exactly to that of the receiver and the 
+	//   receiver will not miss any frames.
 	//
 	//      - void SetFrameSync(const char* SenderName);
 	//      - bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
-	//   
-	//   Before sending a frame and/or writing data, the sender should wait
-	//   for a signal from the receiver that it is ready to read another frame.
-	//   Use this before any rendering occurs to prevent timing variability.
-	//   After reading a frame and data, the receiver should signal that it is
-	//   ready to read another. Use this after rendering has completed.
-	//   The practical result is that the sender will be matched exactly to the
-	//   frame rate of the receiver and there will be no missed frames.
 	//
-	//   Shared memory is created and the size established on the first call
-	//   to WriteMemoryBuffer and is released when a sender or receiver is closed.
+	//   WaitFrameSync
+	//   A sender should use this before rendering or sending texture or data and
+	//   wait for a signal from the receiver that it is ready to read another frame.
+	//
+	//   SetFrameSync
+	//   After receiving a texture, rendering the result and reading data
+	//   a receiver should signal that it is ready to read another. 
 	//
 
 	// Function: WriteMemoryBuffer
 	// Write buffer to shared memory.
 	//
-	//    Creates a shared memory map of the required size if it does not exist yet
+	//    If shared memory has not been created in advance, it will be
+	//    created on the first call to this function at the length specified.
+	//
+	//    This is acceptable if the data to send is fixed in length.
+	//    Otherwise the shared memory should be created in advance of sufficient
+	//    size to contain the maximum length expected (see CreateMemoryBuffer).
+	//
 	//    The map is closed when the sender is released.
+	//
 	bool WriteMemoryBuffer(const char *sendername, const char* data, int length);
 
 	// Function: ReadMemoryBuffer
-	// Read shared memory to buffer.
+	// Read shared memory to a buffer.
 	//
-	//    Opens a sender memory map and retains the handle.
+	//    Open a memory map and retain the handle.
 	//    The map is closed when the receiver is released.
 	int  ReadMemoryBuffer(const char* sendername, char* data, int maxlength);
+
+	// Function: CreateMemoryBuffer
+	// Create a shared memory buffer.
+	//
+	//    Create a memory map and retain the handle.
+	//    This function should be called before any buffer write
+	//    if the length of the data to send will vary.
+	//    The map is closed when the sender is released.
+	bool CreateMemoryBuffer(const char *name, int length);
+
+	// Function: DeleteMemoryBuffer
+	// Delete a sender shared memory buffer.
+	bool DeleteMemoryBuffer();
+
+	// Function: GetMemoryBufferSize
+	// Get the number of bytes available for data transfer.
+	int GetMemoryBufferSize(const char *name);
 
 	//
 	// Group: Log utilities
@@ -1050,14 +1076,29 @@ bool SPOUTImpl::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 	return spout->WaitFrameSync(SenderName, dwTimeout);
 }
 
-bool SPOUTImpl::WriteMemoryBuffer(const char *sendername, const char* data, int length)
+bool SPOUTImpl::WriteMemoryBuffer(const char *name, const char* data, int length)
 {
-	return spout->WriteMemoryBuffer(sendername, data, length);
+	return spout->WriteMemoryBuffer(name, data, length);
 }
 
-int SPOUTImpl::ReadMemoryBuffer(const char* sendername, char* data, int maxlength)
+int SPOUTImpl::ReadMemoryBuffer(const char* name, char* data, int maxlength)
 {
-	return spout->ReadMemoryBuffer(sendername, data, maxlength);
+	return spout->ReadMemoryBuffer(name, data, maxlength);
+}
+
+bool SPOUTImpl::CreateMemoryBuffer(const char *name, int length)
+{
+	return spout->CreateMemoryBuffer(name, length);
+}
+
+bool SPOUTImpl::DeleteMemoryBuffer()
+{
+	return spout->DeleteMemoryBuffer();
+}
+
+int SPOUTImpl::GetMemoryBufferSize(const char *name)
+{
+	return spout->GetMemoryBufferSize(name);
 }
 
 

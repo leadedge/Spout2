@@ -38,9 +38,4 @@ class ofApp : public ofBaseApp{
 		ofImage myImage; // Receiving image
 		void showInfo();
 
-		// For sender data
-		int mousex;
-		int mousey;
-		char senderdata[256];
-
 };

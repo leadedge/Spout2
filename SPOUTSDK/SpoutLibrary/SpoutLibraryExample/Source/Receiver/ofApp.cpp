@@ -75,11 +75,7 @@ void ofApp::setup(){
 	// Also allocate an RGB image for this example
 	// it can also be RGBA, BGRA or BGR
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
-
-	// For sender data
-	mousex = 0;
-	mousey = 0;
-
+	
 	//
 	// Options
 	//
@@ -137,21 +133,7 @@ void ofApp::draw() {
 
 	// Option 1 : Receive texture
 	if (receiver->ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
-
 		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
-
-		// Example of receiving a data buffer.
-		// In this case, receive mouse coordinates from the example sender.
-		// Refer to the sender example.
-		if (receiver->IsFrameNew()) {
-			if (receiver->ReadMemoryBuffer(receiver->GetSenderName(), senderdata, 256)) {
-				sscanf_s(senderdata, "%d %d", &mousex, &mousey);
-			}
-			else {
-				mousex = 0;
-				mousey = 0;
-			}
-		}
 	}
 
 	// Option 2 : Receive pixel data
@@ -188,19 +170,9 @@ void ofApp::draw() {
 	}
 	*/
 
-	// Draw the sender mouse position if data has been received.
-	if (receiver->IsConnected() && mousex > 0) {
-		ofSetColor(255, 0, 0);
-		ofDrawCircle((float)mousex, (float)mousey, 0, 16);
-	}
-
 	// On-screen display
 	showInfo();
 
-	// To synchronise the sender to the receiver,
-	// send a ready signal after rendering.
-	// Refer to the sender example.
-	// receiver->SetFrameSync(receiver->GetSenderName());
 }
 
 //--------------------------------------------------------------
@@ -274,7 +246,7 @@ void ofApp::exit() {
 void ofApp::mousePressed(int x, int y, int button) {
 	if (button == 2) { // rh button
 		// Open the sender selection panel
-		// Spout must have been installed
+		// SpoutSettings must have been used at least once
 		receiver->SelectSender();
 	}
 }
