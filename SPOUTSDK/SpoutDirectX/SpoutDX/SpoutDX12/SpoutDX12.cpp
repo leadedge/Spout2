@@ -9,11 +9,12 @@
 //		04.12.20	- start class
 //		26.01.21	- First working version
 //		01.03.21	- Cleanup
+//		11.06.21	- Add documentation
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2021. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2020-2021. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -39,6 +40,16 @@
 
 #include "SpoutDX12.h"
 
+//
+// Class: spoutDX12
+//
+// Functions to manage DirectX12 texture sharing by way of D3D11on12.
+//
+// Base class is spoutDX for D3D11 and Spout functions.
+//
+// Refer to source code for further details.
+//
+
 spoutDX12::spoutDX12() {
 
 	m_pd3dDevice12 = nullptr;// D3D12 device
@@ -60,11 +71,27 @@ spoutDX12::~spoutDX12() {
 
 }
 
+//
+// Group: DirectX12
+//
+
+// Function: OpenDirectX12
+// Initialize and prepare DirectX 12 using a class D3D12 device.
 bool spoutDX12::OpenDirectX12()
 {
 	return OpenDirectX12(nullptr, nullptr);
 }
 
+
+// Function: OpenDirectX12
+// Initialize and prepare DirectX 12 using the D3D12 device and command queue passed in.
+// If these arguents are NULL, a class D3D12 device is created with no command queue.
+//
+// Create a class D3D11on12 device using the D3D12 device and command queue.
+// Retain the D3D11 device and context created by CreateDX11on12device for subsequent functions.
+//
+// Initialize DirectX11 using the D3D11 device created by CreateDX11on12device
+// so that textures can be created and copied.
 bool spoutDX12::OpenDirectX12(ID3D12Device* pd3dDevice12, IUnknown** ppCommandQueue)
 {
 	if (!m_pd3dDevice12) {
@@ -106,7 +133,8 @@ bool spoutDX12::OpenDirectX12(ID3D12Device* pd3dDevice12, IUnknown** ppCommandQu
 	return true;
 }
 
-
+// Function: CloseDirectX12
+// Close DirectX12 and free resources.
 void spoutDX12::CloseDirectX12()
 {
 	SpoutLogNotice("spoutDX12::CloseDirectX12()");
@@ -134,7 +162,8 @@ void spoutDX12::CloseDirectX12()
 
 }
 
-// Send wrapped D3D11on12 D3D11 texture resource
+// Function: SendDX11Resource
+// Send wrapped D3D11on12 D3D11 texture resource.
 bool spoutDX12::SendDX11Resource(ID3D11Resource *pWrappedResource)
 {
 	if (!pWrappedResource || !m_pd3d11On12Device || !m_pd3dDeviceContext11)
@@ -153,8 +182,8 @@ bool spoutDX12::SendDX11Resource(ID3D11Resource *pWrappedResource)
 
 }
 
-
-// Receive a texture from a sender to a D3D12 texture resource
+// Function: ReceiveDX12Resource
+// Receive a texture from a sender to a D3D12 texture resource.
 bool spoutDX12::ReceiveDX12Resource(ID3D12Resource** ppDX12Resource)
 {
 	// Return if flagged for update
@@ -238,8 +267,10 @@ bool spoutDX12::ReceiveDX12Resource(ID3D12Resource** ppDX12Resource)
 
 }
 
-
-// Create a D3D11on12 device
+// Function: CreateDX11on12device
+// Create a D3D11on12 device from a D3D12 device and context.
+//
+// Retain the D3D11on12 device, D3D11 device and D3D11 context for subsequent functions.
 ID3D11On12Device* spoutDX12::CreateDX11on12device(ID3D12Device* pDevice12, IUnknown** ppCommandQueue)
 {
 	ID3D11Device* pDevice11 = nullptr;
@@ -306,7 +337,8 @@ ID3D11On12Device* spoutDX12::CreateDX11on12device(ID3D12Device* pDevice12, IUnkn
 
 }
 
-// Wrap a D3D12 resource for use with D3D11
+// Function: WrapDX12Resource
+// Wrap a D3D12 resource for use with D3D11.
 bool spoutDX12::WrapDX12Resource(ID3D12Resource* pDX12Resource, ID3D11Resource** ppWrapped11Resource, D3D12_RESOURCE_STATES InitialState)
 {
 	HRESULT hr = S_OK;
@@ -355,8 +387,8 @@ bool spoutDX12::WrapDX12Resource(ID3D12Resource* pDX12Resource, ID3D11Resource**
 }
 
 
-
-// Update a wrapped D3D11 texture resource with a D3D11 texture
+// Function: UpdateWrappedResource
+// Update a wrapped D3D11 texture resource with a D3D11 texture.
 void spoutDX12::UpdateWrappedResource(ID3D11Resource* pWrappedResource, ID3D11Resource *pResource)
 {
 	if (!pResource || !pWrappedResource || !m_pd3d11On12Device || !m_pd3dDeviceContext11)
@@ -369,7 +401,8 @@ void spoutDX12::UpdateWrappedResource(ID3D11Resource* pWrappedResource, ID3D11Re
 }
 
 
-// Create a D3D12 texture resource
+// Function: CreateDX12texture
+// Create a D3D12 texture resource.
 bool spoutDX12::CreateDX12texture(ID3D12Device* pd3dDevice12, 
 										unsigned int width, 
 										unsigned int height,
@@ -446,7 +479,8 @@ bool spoutDX12::CreateDX12texture(ID3D12Device* pd3dDevice12,
 // Note that both the Sender and Receiver must use the same graphics adapter.
 //
 
-// Get adapter pointer for a given adapter (-1 means current)
+// Function: GetAdapterPointer1
+// Get adapter pointer for a given adapter (-1 means current).
 IDXGIAdapter1* spoutDX12::GetAdapterPointer1(int index)
 {
 	IDXGIAdapter* pAdapter = spoutdx.GetAdapterPointer(index);
@@ -458,7 +492,8 @@ IDXGIAdapter1* spoutDX12::GetAdapterPointer1(int index)
 
 }
 
-// Set required graphics adapter for creating a class D3D12 device
+// Function: SetAdapterPointer1
+// Set required graphics adapter for creating a class D3D12 device.
 void spoutDX12::SetAdapterPointer1(IDXGIAdapter1* pAdapter)
 {
 	m_pAdapterDX12 = pAdapter;
@@ -469,25 +504,29 @@ void spoutDX12::SetAdapterPointer1(IDXGIAdapter1* pAdapter)
 // Group: Device
 //
 
-// Return class D3D12 device
+// Function: GetD3D12device
+// Return class D3D12 device.
 ID3D12Device* spoutDX12::GetD3D12device()
 {
 	return m_pd3dDevice12;
 }
 
-// D3D11on12 D3D11 device
+// Function: GetD3D11device
+// Return D3D11on12 D3D11 device..
 ID3D11Device* spoutDX12::GetD3D11device()
 {
 	return m_pd3dDevice11;
 }
 
-// D3D11on12 D3D11 context
+// Function: GetD3D11context
+// Return D3D11on12 D3D11 context.
 ID3D11DeviceContext* spoutDX12::GetD3D11context()
 {
 	return m_pd3dDeviceContext11;
 }
 
-// D3D11on12 device
+// Function: GetD3D11On12device
+// Return D3D11on12 device.
 ID3D11On12Device* spoutDX12::GetD3D11On12device()
 {
 	return m_pd3d11On12Device;
@@ -499,7 +538,7 @@ ID3D11On12Device* spoutDX12::GetD3D11On12device()
 // Private functions
 //
 
-// Create DX12 device
+// Create DX12 device.
 ID3D12Device* spoutDX12::CreateDX12device()
 {
 	ID3D12Device* pd3dDevice12 = nullptr;

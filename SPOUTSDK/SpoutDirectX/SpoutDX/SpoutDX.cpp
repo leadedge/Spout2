@@ -186,6 +186,7 @@ spoutDX::~spoutDX()
 
 // Function: OpenDirectX11
 // Initialize and prepare Directx 11
+// Retain a class device and context
 bool spoutDX::OpenDirectX11(ID3D11Device* pDevice)
 {
 	if (!m_pd3dDevice) {
@@ -215,14 +216,14 @@ bool spoutDX::OpenDirectX11(ID3D11Device* pDevice)
 }
 
 // Function: OpenDirectX11
-// Return the DirectX11 device
+// Return the class DirectX11 device
 ID3D11Device* spoutDX::GetDX11Device()
 {
 	return m_pd3dDevice;
 }
 
 // Function: GetDX11Context
-// Return the DirectX11 immediate context
+// Return the class DirectX11 immediate context
 ID3D11DeviceContext* spoutDX::GetDX11Context()
 {
 	return m_pImmediateContext;
@@ -1118,95 +1119,6 @@ int spoutDX::GetSenderAdapter(const char* sendername, char* adaptername, int max
 
 }
 
-
-//
-// Sharing modes
-//
-
-//
-// Group: Retained for 2.006 compatibility
-//
-
-//---------------------------------------------------------
-// Function: GetDX9
-// Get user DX9 mode
-bool spoutDX::GetDX9()
-{
-	DWORD dwDX9 = 0;
-	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "DX9", &dwDX9);
-	return (dwDX9 == 1);
-}
-
-//---------------------------------------------------------
-// Function: GetMemoryShareMode
-// Get user memory share mode
-bool spoutDX::GetMemoryShareMode()
-{
-	bool bRet = false;
-	DWORD dwMem = 0;
-	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", &dwMem)) {
-		bRet = (dwMem == 1);
-	}
-	return bRet;
-}
-
-//
-// Utilities
-//
-
-//---------------------------------------------------------
-// Function: CreateDX11texture
-// Create a texture that is not shared
-bool spoutDX::CreateDX11texture(ID3D11Device* pd3dDevice,
-	unsigned int width, unsigned int height,
-	DXGI_FORMAT format, ID3D11Texture2D** ppTexture)
-{
-	return spoutdx.CreateDX11Texture(pd3dDevice, width, height, format, ppTexture);
-}
-
-//---------------------------------------------------------
-// Function: CheckSenderFormat
-// Find sender shared memory.
-// If format is zero, try to pen the sharehandle
-// and write the correct format back to shared memory
-// Also register the sender name if not already
-void spoutDX::CheckSenderFormat(const char * sendername)
-{
-	SharedTextureInfo info;
-
-	// Correct for format 0 and un-registered
-	if (sendernames.getSharedInfo(sendername, &info)) {
-		if (info.format == 0) {
-			ID3D11Device *pDummyDevice = nullptr;
-			ID3D11Texture2D* pSharedTexture = nullptr;
-			pDummyDevice = spoutdx.CreateDX11device();
-			if (pDummyDevice) {
-				// Try to open the share handle
-				// If it's DirectX9, the handle will not open
-				if (spoutdx.OpenDX11shareHandle(pDummyDevice, &pSharedTexture, LongToHandle((LONG)info.shareHandle) )) {
-					if (pSharedTexture) {
-						// Get the texture details
-						D3D11_TEXTURE2D_DESC desc;
-						pSharedTexture->GetDesc(&desc);
-						// Set the format to the sender info
-						info.format = (DWORD)desc.Format;
-						sendernames.setSharedInfo(sendername, &info);
-						pSharedTexture->Release();
-					}
-				}
-			}
-		}
-
-		// Register the sender name if not already
-		sendernames.RegisterSenderName(sendername);
-
-		// Make active if there is no active sender
-		char activename[256];
-		if (!sendernames.GetActiveSender(activename))
-			sendernames.SetActiveSender(sendername);
-	}
-}
-
 //
 // Group: Data sharing
 //
@@ -1350,7 +1262,7 @@ int spoutDX::ReadMemoryBuffer(const char* name, char* data, int maxlength)
 
 	// The memory map includes it's size, saved as the first 16 bytes
 	*(pBuffer + 15) = 0; // End for atoi
-	
+
 	// Number of bytes available for data transfer
 	int nbytes = atoi(reinterpret_cast<char *>(pBuffer));
 
@@ -1368,7 +1280,6 @@ int spoutDX::ReadMemoryBuffer(const char* name, char* data, int maxlength)
 	return nbytes;
 
 }
-
 
 //---------------------------------------------------------
 // Function: CreateMemoryBuffer
@@ -1425,8 +1336,6 @@ bool spoutDX::CreateMemoryBuffer(const char *name, int length)
 
 	return true;
 }
-
-
 
 //---------------------------------------------------------
 // Function: DeleteMemoryBuffer
@@ -1499,6 +1408,93 @@ int spoutDX::GetMemoryBufferSize(const char *name)
 
 }
 
+//
+// Sharing modes
+//
+
+//
+// Group: Retained for 2.006 compatibility
+//
+
+//---------------------------------------------------------
+// Function: GetDX9
+// Get user DX9 mode
+bool spoutDX::GetDX9()
+{
+	DWORD dwDX9 = 0;
+	ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "DX9", &dwDX9);
+	return (dwDX9 == 1);
+}
+
+//---------------------------------------------------------
+// Function: GetMemoryShareMode
+// Get user memory share mode
+bool spoutDX::GetMemoryShareMode()
+{
+	bool bRet = false;
+	DWORD dwMem = 0;
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MemoryShare", &dwMem)) {
+		bRet = (dwMem == 1);
+	}
+	return bRet;
+}
+
+//
+// Utilities
+//
+
+//---------------------------------------------------------
+// Function: CreateDX11texture
+// Create a texture that is not shared
+bool spoutDX::CreateDX11texture(ID3D11Device* pd3dDevice,
+	unsigned int width, unsigned int height,
+	DXGI_FORMAT format, ID3D11Texture2D** ppTexture)
+{
+	return spoutdx.CreateDX11Texture(pd3dDevice, width, height, format, ppTexture);
+}
+
+//---------------------------------------------------------
+// Function: CheckSenderFormat
+// Find sender shared memory.
+// If format is zero, try to pen the sharehandle
+// and write the correct format back to shared memory
+// Also register the sender name if not already
+void spoutDX::CheckSenderFormat(const char * sendername)
+{
+	SharedTextureInfo info;
+
+	// Correct for format 0 and un-registered
+	if (sendernames.getSharedInfo(sendername, &info)) {
+		if (info.format == 0) {
+			ID3D11Device *pDummyDevice = nullptr;
+			ID3D11Texture2D* pSharedTexture = nullptr;
+			pDummyDevice = spoutdx.CreateDX11device();
+			if (pDummyDevice) {
+				// Try to open the share handle
+				// If it's DirectX9, the handle will not open
+				if (spoutdx.OpenDX11shareHandle(pDummyDevice, &pSharedTexture, LongToHandle((LONG)info.shareHandle) )) {
+					if (pSharedTexture) {
+						// Get the texture details
+						D3D11_TEXTURE2D_DESC desc;
+						pSharedTexture->GetDesc(&desc);
+						// Set the format to the sender info
+						info.format = (DWORD)desc.Format;
+						sendernames.setSharedInfo(sendername, &info);
+						pSharedTexture->Release();
+					}
+				}
+			}
+		}
+
+		// Register the sender name if not already
+		sendernames.RegisterSenderName(sendername);
+
+		// Make active if there is no active sender
+		char activename[256];
+		if (!sendernames.GetActiveSender(activename))
+			sendernames.SetActiveSender(sendername);
+	}
+}
 
 //
 // PRIVATE

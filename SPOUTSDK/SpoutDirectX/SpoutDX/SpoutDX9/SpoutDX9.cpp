@@ -12,11 +12,12 @@
 //		28.01.21	- Conversion for 2.007 support class
 //		01.03.21	- Vertices sener and receiver completed
 //		07.03.21	- Change HoldFps to allow numerator and denominator
+//		11.06.21	- Add documentation
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2021. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2020-2021. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -42,6 +43,14 @@
 
 #include "SpoutDX9.h"
 
+//
+// Class: spoutDX9
+//
+// Functions to manage DirectX9 texture sharing.
+//
+// Refer to source code for further details.
+//
+
 spoutDX9::spoutDX9() {
 
 	m_pD3D = nullptr;
@@ -66,10 +75,12 @@ spoutDX9::~spoutDX9() {
 
 
 //
-// DIRECTX9
+// Group: DirectX9
 //
 
-// Initialize and prepare DirectX 9
+// Function: OpenDirectX9
+// Initialize and prepare DirectX 9.
+// Retain a class object and device.
 bool spoutDX9::OpenDirectX9(HWND hWnd)
 {
 	HWND fgWnd = NULL;
@@ -137,6 +148,8 @@ bool spoutDX9::OpenDirectX9(HWND hWnd)
 	return true;
 }
 
+// Function: CloseDirectX9
+// Close DirectX9 and free resources.
 void spoutDX9::CloseDirectX9()
 {
 	SpoutLogNotice("spoutDX9::CloseDirectX9");
@@ -152,7 +165,8 @@ void spoutDX9::CloseDirectX9()
 
 }
 
-// Create a DX9 object
+// Function: CreateDX9object
+// Create a DX9 object.
 IDirect3D9Ex* spoutDX9::CreateDX9object()
 {
 	IDirect3D9Ex* pD3D;
@@ -163,7 +177,8 @@ IDirect3D9Ex* spoutDX9::CreateDX9object()
 	return pD3D;
 }
 
-// Create a DX9 device
+// Function: CreateDX9device
+// Create a DX9 device.
 IDirect3DDevice9Ex* spoutDX9::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd, unsigned int AdapterIndex)
 {
 	IDirect3DDevice9Ex* pDevice;
@@ -223,20 +238,27 @@ IDirect3DDevice9Ex* spoutDX9::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd, uns
 
 } // end CreateDX9device
 
-
+// Function: GetDX9object
+// Return the class DirectX9 object.
 IDirect3D9Ex* spoutDX9::GetDX9object()
 {
 	return m_pD3D;
 }
 
+// Function: GetDX9device
+// Return the class DirectX9 device.
 IDirect3DDevice9Ex* spoutDX9::GetDX9device()
 {
 	return m_pDevice;
 }
 
+// Function: SetDX9device
+// Set the DirectX9 device to be used subsequently.
+// The class DX9 object and device are not created or used
+// if the device is set externally.
 void spoutDX9::SetDX9device(IDirect3DDevice9Ex* pDevice)
 {
-	// The Spout DX9 object is not used if the device is set externally
+	// The class DX9 object is not used if the device is set externally
 	if (m_pD3D) {
 		m_pD3D->Release();
 		// The Spout DX9 device can be released here because
@@ -261,14 +283,13 @@ void spoutDX9::SetDX9device(IDirect3DDevice9Ex* pDevice)
 }
 
 //
-// Sender
+// Group: Sender
 //
 
 
 //---------------------------------------------------------
 // Function: SetSenderName
-// Set name for sender creation
-//
+// Set name for sender creation.
 //   If no name is specified, the executable name is used. 
 bool spoutDX9::SetSenderName(const char* sendername)
 {
@@ -298,7 +319,9 @@ bool spoutDX9::SetSenderName(const char* sendername)
 	return true;
 }
 
-
+//---------------------------------------------------------
+// Function: SendDX9surface
+// Send DirectX9 surface using the surface format.
 bool spoutDX9::SendDX9surface(IDirect3DSurface9* pSurface)
 {
 	// Quit if no data
@@ -334,8 +357,7 @@ bool spoutDX9::SendDX9surface(IDirect3DSurface9* pSurface)
 //---------------------------------------------------------
 // Function: ReleaseSender
 // Close receiver and release resources.
-//
-// A new sender is created or updated by all sending functions
+// A new sender is created or updated by all sending functions.
 void spoutDX9::ReleaseDX9sender()
 {
 	if (m_pSharedTexture)
@@ -357,7 +379,7 @@ void spoutDX9::ReleaseDX9sender()
 
 //---------------------------------------------------------
 // Function: IsInitialized
-// Initialization status
+// Initialization status.
 bool spoutDX9::IsInitialized()
 {
 	return m_bSpoutInitialized;
@@ -365,7 +387,7 @@ bool spoutDX9::IsInitialized()
 
 //---------------------------------------------------------
 // Function: GetName
-// Sender name
+// Sender name.
 const char * spoutDX9::GetName()
 {
 	return m_SenderName;
@@ -373,7 +395,7 @@ const char * spoutDX9::GetName()
 
 //---------------------------------------------------------
 // Function: GetWidth
-// Sender width
+// Sender width.
 unsigned int spoutDX9::GetWidth()
 {
 	return m_Width;
@@ -381,7 +403,7 @@ unsigned int spoutDX9::GetWidth()
 
 //---------------------------------------------------------
 // Function: GetHeight
-// Sender height
+// Sender height.
 unsigned int spoutDX9::GetHeight()
 {
 	return m_Height;
@@ -389,7 +411,7 @@ unsigned int spoutDX9::GetHeight()
 
 //---------------------------------------------------------
 // Function: GetFps
-// Sender frame rate
+// Sender frame rate.
 double spoutDX9::GetFps()
 {
 	return (frame.GetSenderFps());
@@ -397,7 +419,7 @@ double spoutDX9::GetFps()
 
 //---------------------------------------------------------
 // Function: GetFrame
-// Sender frame number
+// Sender frame number.
 long spoutDX9::GetFrame()
 {
 	return (frame.GetSenderFrame());
@@ -412,13 +434,6 @@ long spoutDX9::GetFrame()
 
 //
 // Group: Receiver
-//
-// ReceiveDX9Texture
-//	- Connect to a sender
-//	- Set class variables for sender name, width and height
-//  - If the sender has changed size, set a flag for the application to update
-//	  the receiving texture or imageif IsUpdated() returns true.
-//  - Copy the sender shared texture to the user texture or image.
 //
 
 //---------------------------------------------------------
@@ -440,8 +455,12 @@ void spoutDX9::SetReceiverName(const char * SenderName)
 // Function: ReceiveDX9Texture
 //  Copy from the sender shared texture
 //
-//    The receiving texture must be the same format
-//    and must be re-allocated if IsUpdated() returns true
+//	- Connect to a sender
+//	- Set class variables for sender name, width and height
+//  - If the sender has changed size, set a flag for the application to 
+//	  re-allocate the receiving texture if IsUpdated() returns true.
+//	  The receiving texture must be the same format.
+//  - Copy the sender shared texture to the user texture or image.
 //
 bool spoutDX9::ReceiveDX9Texture(LPDIRECT3DTEXTURE9 &pTexture)
 {
@@ -475,7 +494,7 @@ bool spoutDX9::ReceiveDX9Texture(LPDIRECT3DTEXTURE9 &pTexture)
 
 //---------------------------------------------------------
 // Function: ReleaseReceiver
-// Close receiver and release resources ready to connect to another sender
+// Close receiver and release resources ready to connect to another sender.
 void spoutDX9::ReleaseReceiver()
 {
 	if (!m_bSpoutInitialized)
@@ -513,7 +532,7 @@ void spoutDX9::ReleaseReceiver()
 
 //---------------------------------------------------------
 // Function: SelectSender
-// Open sender selection dialog
+// Open sender selection dialog.
 void spoutDX9::SelectSender()
 {
 	SelectSenderPanel();
@@ -524,7 +543,6 @@ void spoutDX9::SelectSender()
 // Query whether the sender has changed.
 //
 //   Must be checked at every cycle before receiving data. 
-//
 //   If this is not done, the receiving functions fail.
 bool spoutDX9::IsUpdated()
 {
@@ -550,7 +568,7 @@ bool spoutDX9::IsConnected()
 // Query received frame status
 //
 //   The receiving texture or pixel buffer is refreshed if the sender has produced a new frame  
-//   This can be queried to process texture data only for new frames
+//   This can be queried to process texture data only for new frames.
 bool spoutDX9::IsFrameNew()
 {
 	return m_bNewFrame;
@@ -558,7 +576,7 @@ bool spoutDX9::IsFrameNew()
 
 //---------------------------------------------------------
 // Function: GetSenderHandle
-// Received sender share handle
+// Received sender share handle.
 HANDLE spoutDX9::GetSenderHandle()
 {
 	return m_dxShareHandle;
@@ -566,7 +584,7 @@ HANDLE spoutDX9::GetSenderHandle()
 
 //---------------------------------------------------------
 // Function: GetSenderFormat
-// Get sender DirectX texture format
+// Get sender DirectX texture format.
 DWORD spoutDX9::GetSenderFormat()
 {
 	return m_dwFormat;
@@ -575,7 +593,7 @@ DWORD spoutDX9::GetSenderFormat()
 
 //---------------------------------------------------------
 // Function: GetSenderName
-// Get sender name
+// Get sender name.
 const char * spoutDX9::GetSenderName()
 {
 	return m_SenderName;
@@ -583,7 +601,7 @@ const char * spoutDX9::GetSenderName()
 
 //---------------------------------------------------------
 // Function: GetSenderWidth
-// Get sender width
+// Get sender width.
 unsigned int spoutDX9::GetSenderWidth()
 {
 	return m_Width;
@@ -591,7 +609,7 @@ unsigned int spoutDX9::GetSenderWidth()
 
 //---------------------------------------------------------
 // Function: GetSenderHeight
-// Get sender height
+// Get sender height.
 unsigned int spoutDX9::GetSenderHeight()
 {
 	return m_Height;
@@ -600,7 +618,7 @@ unsigned int spoutDX9::GetSenderHeight()
 
 //---------------------------------------------------------
 // Function: GetSenderFps
-// Get sender frame rate
+// Get sender frame rate.
 double spoutDX9::GetSenderFps()
 {
 	return frame.GetSenderFps();
@@ -608,7 +626,7 @@ double spoutDX9::GetSenderFps()
 
 //---------------------------------------------------------
 // Function: GetSenderFrame
-// Get sender frame number
+// Get sender frame number.
 long spoutDX9::GetSenderFrame()
 {
 	return frame.GetSenderFrame();
@@ -617,19 +635,23 @@ long spoutDX9::GetSenderFrame()
 
 //---------------------------------------------------------
 // Function: HoldFps
-// Frame rate control
-//    Desired frames per second
+// Frame rate control with desired frames per second.
 void spoutDX9::HoldFps(int fps)
 {
 	frame.HoldFps(fps);
 }
 
 
+//
+// Group: Utility
+//
 
+//---------------------------------------------------------
+// Function: CreateSharedDX9Texture
 // Create a shared DirectX9 texture
-// by giving it a sharehandle variable - dxShareHandle
-// For a SENDER   : the sharehandle is NULL and a new texture is created
-// For a RECEIVER : the sharehandle is valid and a handle to the existing shared texture is created
+// by giving it a sharehandle variable - dxShareHandle.
+// - for a SENDER   : the sharehandle is NULL and a new texture is created
+// - for a RECEIVER : the sharehandle is valid and a handle to the existing shared texture is created
 bool spoutDX9::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle)
 {
 	if (!pDevice) {
