@@ -47,9 +47,9 @@ The example project files are created for Visual Studio 2017. To build them, ret
       SpoutGL <- this folder has all the Spout SDK source files in it for OpenGL. 
 	  SpoutDirectX <- this folder is for examples and the SpoutDX support class
 	      Basic <- basic DirectX 11 tutorial examples
-	          Tutorial04 <- DirectX texture sender
-	          Tutorial07 <- DirectX texture receiver
-	      SpoutDX <- the SpoutDX class
+	          Tutorial04 <- DirectX 11 texture sender
+	          Tutorial07 <- DirectX 11 texture receiver
+	      SpoutDX <- Support class for DirectX 11
 			  SpoutDX.cpp
 			  SpoutDX.h
 	          Tutorial04 <- DirectX texture sender
@@ -57,7 +57,20 @@ The example project files are created for Visual Studio 2017. To build them, ret
               Windows <- Windows examples
 			      Sender   <- Image sender
 			      Receiver <- Image receiver
-
+			      Video    <- FFmpeg video sender
+		  SpoutDX9 <- Support class for DirectX 9
+			  SpoutDX9.cpp
+			  SpoutDX9.h
+	          Tut02_Vertices_Sender <- DirectX 9 texture sender
+	          Tut02_Vertices_Receiver <- DirectX 9 texture receiver
+			  readme.md
+		  SpoutDX12 <- Support class for DirectX 12
+			  SpoutDX12.cpp
+			  SpoutDX12.h
+	          D3D12TextureReceiver <- DirectX 12 texture sender
+	          Tut02_Vertices_Receiver <- DirectX 12 texture receiver
+			  readme.md
+			  
 Open each solution file, change to release and build. For all examples, search for "SPOUT" to see the changes made to the original code. Try them first from the Binaries folder that has pre-built executables. Refer to SpoutDX.pdf for further information.
 
 - Using CMake\
