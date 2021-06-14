@@ -99,6 +99,7 @@ void ofApp::setup(){
 	//
 	// If there are multiple graphics cards in the system,
 	// you may wish to use a particular one for texture sharing
+	// Sender and Receiver must use the same adapter.
 	//
 	// The number of adapters available can be queried :
 	// int nAdapters = sender.GetNumAdapters();
@@ -108,7 +109,7 @@ void ofApp::setup(){
 	// bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
 	//
 	// Set a specific adapter from it's index :
-	// sender.SetAdapter(1); // use the second in the list (0, 1, 2 etc.)
+	// sender.SetAdapter(1); // Example - use the second in the list (0, 1, 2 etc.)
 
 	// Frame counting is enabled by default.
 	// Status can be queried with IsFrameCountEnabled();
@@ -147,12 +148,6 @@ void ofApp::setup(){
 	// Update caption in case of multiples of the same sender
 	ofSetWindowTitle(sender.GetName());
 
-	// Mouse coordinates to send to receiver
-	mousex = 0;
-	mousey = 0;
-	mousebutton = 0;
-
-
 } // end setup
 
 
@@ -164,22 +159,14 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	// For applications requiring frame accuracy between 
-	// sender and receiver, wait for a ready signal from 
-	// the receiver before rendering to synchronise with
-	// the receiver fps. Use a timeout greater than the
-	// expected delay. Refer to the receiver example.
-	// sender.WaitFrameSync(sender.GetName(), 67);
-
 	// All sending functions check the sender name and dimensions
 	// and create or update the sender as necessary
 
-	// In this example, the fbo texture is already inverted
+	// In this Openframeworks example, the fbo texture is already inverted
 	// so the invert option is false for all sending functions
 	
-	// For all sending functions, include the ID of the active
-	// framebuffer if one is currently bound.
-
+	// For all sending functions other than SendFbo, include the ID of
+	// the active framebuffer if one is currently bound.
 
 	// Draw 3D graphics demo into the fbo
 	// This could be anything
@@ -220,12 +207,6 @@ void ofApp::draw() {
 	// Show the result sized to the application window
 	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
 
-	// Option : send a data buffer.
-	// Send mouse coordinates and button down status to the receiver.
-	// Refer to the receiver example.
-	sprintf_s(senderdata, 256, "%d %d %d", mousex, mousey, mousebutton);
-	sender.WriteMemoryBuffer(sender.GetName(), senderdata, 256);
-
 	// Show what it is sending
 	ofSetColor(255);
 	std::string str = "Sending as : ";
@@ -262,8 +243,7 @@ void ofApp::draw() {
 	// Applications without frame rate control can call this
 	// function to introduce the required delay between frames.
 	//
-	// Note : the default frame rate is 60.
-	// If you change to a lower fps in this example,
+	// Note : If you change to a lower fps in this example,
 	// the cube will rotate more slowly (increase RotX and RotY).
 	//
 	// sender.HoldFps(30);
@@ -287,27 +267,5 @@ void ofApp::windowResized(int w, int h)
 		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
 		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
 	}
-}
-
-//--------------------------------------------------------------
-void ofApp::mousePressed(int x, int y, int button)
-{
-	mousebutton = button;
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseMoved(int x, int y)
-{
-	mousex = x;
-	mousey = y;
-	mousebutton = 0;
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseDragged(int x, int y, int button)
-{
-	mousex = x;
-	mousey = y;
-	mousebutton = 1;
 }
 

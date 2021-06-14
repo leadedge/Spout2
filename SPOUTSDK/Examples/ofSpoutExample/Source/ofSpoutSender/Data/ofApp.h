@@ -1,6 +1,6 @@
 /*
 
-	Spout OpenFrameworks Graphics Sender example
+	Spout OpenFrameworks Data Sender example
 
 	Copyright (C) 2021 Lynn Jarvis.
 
@@ -22,7 +22,7 @@
 
 #include "ofMain.h"
 #include "..\..\..\SpoutGL\SpoutSender.h"
-
+#include "ofxXmlSettings.h"
 
 class ofApp : public ofBaseApp{
 	public:
@@ -31,6 +31,10 @@ class ofApp : public ofBaseApp{
 		void draw();
 		void exit();
 		void windowResized(int w, int h);
+		void mousePressed(int x, int y, int button);
+		void mouseReleased(int x, int y, int button);
+		void mouseMoved(int x, int y);
+		void mouseDragged(int x, int y, int button);
 
 		SpoutSender sender;    // Spout sender object
 
@@ -41,5 +45,15 @@ class ofApp : public ofBaseApp{
 		ofFbo myFbo;           // For texture send example
 		ofPixels myPixels;     // For pixel send example
 		float rotX, rotY;
+
+		// For sender data
+		int mousex;
+		int mousey;
+		int mousebutton;  // 0 - left, 1 - centre, 2 - right
+		int mousepressed; // 1 - pressed, 0 - released
+		int mousedragged; // 1 - moved with button down, 0 - released or moved with button up
+
+		char senderdata[256];
+		ofxXmlSettings xml;
 
 };
