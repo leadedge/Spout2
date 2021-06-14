@@ -1306,6 +1306,7 @@ bool spoutGL::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		// lock dx interop object
 		if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+
 			// Write to the shared texture
 			if (SetSharedTextureData(TextureID, TextureTarget, width, height, bInvert, HostFBO)) {
 				// Increment the sender frame counter for successful write
@@ -2935,6 +2936,7 @@ bool spoutGL::GLerror() {
 		// gluErrorString needs glu32.lib
 		// printf("GL error = %d (0x%.7X) %s\n", err, err, gluErrorString(err));
 	}
+
 	return bError;
 }
 

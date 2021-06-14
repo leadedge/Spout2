@@ -377,6 +377,7 @@ void Spout::ReleaseSender()
 	memoryshare.Close();
 	frame.CloseFrameSync();
 
+	// Release OpenGL resources
 	CleanupGL();
 
 }
@@ -397,16 +398,18 @@ bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool 
 {
 	// For texture sharing, the size of the texture attached to the
 	// fbo must be equal to or larger than the shared texture
-	if (width == 0 || height == 0)
+	if (width == 0 || height == 0) {
 		return false;
+	}
 
 	// Default framebuffer fails if iconic
 	if (FboID == 0 && IsIconic(m_hWnd))
 		return false;
 
 	// Create or update the sender
-	if (!CheckSender(width, height))
+	if (!CheckSender(width, height)) {
 		return false;
+	}
 
 	// All clear to send the fbo texture
 	if(m_bTextureShare) {
