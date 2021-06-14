@@ -100,6 +100,10 @@ struct SPOUTLIBRARY
 	virtual long GetFrame() = 0;
 	// Sender share handle
 	virtual HANDLE GetHandle() = 0;
+	// Sender sharing method
+	virtual bool GetCPU() = 0;
+	// Sender GL/DX hardware compatibility
+	virtual bool GetGLDX() = 0;
 
 	//
 	// Receiver
@@ -149,7 +153,9 @@ struct SPOUTLIBRARY
 	// Received sender share handle
 	virtual HANDLE GetSenderHandle() = 0;
 	// Received sender sharing mode
-	virtual bool GetSenderCPUmode() = 0;
+	virtual bool GetSenderCPU() = 0;
+	// Received sender GL/DX compatibility
+	virtual bool GetSenderGLDX() = 0;
 	// Open sender selection dialog
 	virtual void SelectSender() = 0;
 
@@ -165,6 +171,25 @@ struct SPOUTLIBRARY
 	virtual bool IsFrameCountEnabled() = 0;
 	// Sender frame rate control
 	virtual void HoldFps(int fps) = 0;
+	// Signal sync event 
+	virtual void SetFrameSync(const char* SenderName) = 0;
+	// Wait or test for a sync event
+	virtual bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0) = 0;
+
+	//
+	// Data sharing
+	//
+
+	// Write data
+	virtual bool WriteMemoryBuffer(const char *sendername, const char* data, int length) = 0;
+	// Read data
+	virtual int  ReadMemoryBuffer(const char* sendername, char* data, int maxlength) = 0;
+	// Create a shared memory buffer
+	virtual bool CreateMemoryBuffer(const char *name, int length) = 0;
+	// Delete a shared memory buffer
+	virtual bool DeleteMemoryBuffer() = 0;
+	// Get the number of bytes available for data transfer
+	virtual int GetMemoryBufferSize(const char *name) = 0;
 
 	//
 	// Log utilities
@@ -341,14 +366,12 @@ struct SPOUTLIBRARY
 	virtual int GetNumAdapters() = 0;
 	// Adapter item name
 	virtual bool GetAdapterName(int index, char *adaptername, int maxchars) = 0;
+	// Return current adapter name
+	virtual char * AdapterName() = 0;
 	// Get adapter index 
 	virtual int GetAdapter() = 0;
 	// Set graphics adapter for output
 	virtual bool SetAdapter(int index = 0) = 0;
-	// Current adapter index 
-	virtual int Adapter() = 0;
-	// Current adapter name
-	virtual char * AdapterName() = 0;
 
 	//
 	// OpenGL utilities

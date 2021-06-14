@@ -76,7 +76,7 @@
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);src;..\..\..\addons\ofxXmlSettings\libs;..\..\..\addons\ofxXmlSettings\src</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <Link>
@@ -96,6 +96,10 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\addons\ofxXmlSettings\libs\tinyxml.cpp" />
+    <ClCompile Include="..\..\..\addons\ofxXmlSettings\libs\tinyxmlerror.cpp" />
+    <ClCompile Include="..\..\..\addons\ofxXmlSettings\libs\tinyxmlparser.cpp" />
+    <ClCompile Include="..\..\..\addons\ofxXmlSettings\src\ofxXmlSettings.cpp" />
     <ClCompile Include="..\Spout.cpp" />
     <ClCompile Include="..\SpoutCopy.cpp" />
     <ClCompile Include="..\SpoutDirectX.cpp" />
@@ -111,6 +115,8 @@
     <ClCompile Include="src\ofApp.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\addons\ofxXmlSettings\libs\tinyxml.h" />
+    <ClInclude Include="..\..\..\addons\ofxXmlSettings\src\ofxXmlSettings.h" />
     <ClInclude Include="..\Spout.h" />
     <ClInclude Include="..\SpoutCommon.h" />
     <ClInclude Include="..\SpoutCopy.h" />

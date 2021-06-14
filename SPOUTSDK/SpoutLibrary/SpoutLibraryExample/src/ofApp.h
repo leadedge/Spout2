@@ -40,6 +40,5 @@ class ofApp : public ofBaseApp{
 		ofFbo myFbo; // For texture sharing
 		ofPixels myPixels; // For pixel sharing
 		float rotX, rotY;
-		bool bResized;
 	
 };

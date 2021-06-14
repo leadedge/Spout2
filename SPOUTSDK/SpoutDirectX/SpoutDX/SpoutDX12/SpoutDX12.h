@@ -4,7 +4,7 @@
 
 	Functions to manage DirectX 12 texture sharing by way of the D3D11On12
 
-	Copyright (c) 2014 - 2021, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2020-2021, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -87,7 +87,7 @@ class spoutDX12 : public spoutDX {
 
 		// Initialize and prepare DirectX 12
 		bool OpenDirectX12();
-		bool OpenDirectX12(ID3D12Device* pd3dDevice12, IUnknown** ppCommandQueue);
+		bool OpenDirectX12(ID3D12Device* pd3dDevice12, IUnknown** ppCommandQueue = nullptr);
 
 		// Release DirectX 12
 		void CloseDirectX12();
@@ -102,7 +102,7 @@ class spoutDX12 : public spoutDX {
 		ID3D11On12Device* CreateDX11on12device(ID3D12Device* pDevice12, IUnknown** ppCommandQueue = nullptr);
 
 		// Wrap a D3D12 resource for use with D3D11
-		bool WrapDX12Resource(ID3D12Resource* pDX12Resource, ID3D11Resource** ppWrapped11Resource);
+		bool WrapDX12Resource(ID3D12Resource* pDX12Resource, ID3D11Resource** ppWrapped11Resource, D3D12_RESOURCE_STATES InitialState);
 
 		// Update a wrapped D3D11 texture resource with a D3D11 texture
 		void UpdateWrappedResource(ID3D11Resource* pWrappedResource, ID3D11Resource *pResource);
@@ -111,7 +111,18 @@ class spoutDX12 : public spoutDX {
 		bool CreateDX12texture(ID3D12Device* pDevice12, 
 			unsigned int width, unsigned int height,
 			D3D12_RESOURCE_STATES InitialState,
-			DXGI_FORMAT *format, ID3D12Resource** ppTexture);
+			DXGI_FORMAT format,
+			ID3D12Resource** ppTexture);
+
+		//
+		// Adapter functions
+		//
+		
+		// Get IDXGIAdapter1 pointer for a given adapter (-1 means current)
+		IDXGIAdapter1* GetAdapterPointer1(int index = -1);
+		// Set required graphics adapter for creating a class D3D12 device
+		void SetAdapterPointer1(IDXGIAdapter1* pAdapter);
+
 
 		// Device pointers
 		ID3D12Device* GetD3D12device(); // D3D12 device
@@ -132,6 +143,9 @@ class spoutDX12 : public spoutDX {
 
 		// The wrapped D3D11 resource for D3D12
 		ID3D11Resource* m_pReceivedResource11;
+
+		// Class adapter pointer
+		IDXGIAdapter1* m_pAdapterDX12;
 
 };
 

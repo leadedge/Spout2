@@ -84,8 +84,10 @@ class SPOUT_DLLEXP SpoutReceiver {
 	long GetSenderFrame();
 	// Received sender share handle
 	HANDLE GetSenderHandle();
-	// Received sender sharing mode
-	bool GetSenderCPUmode();
+	// Received sender sharing method
+	bool GetSenderCPU();
+	// Received sender GL/DX hardware compatibility
+	bool GetSenderGLDX();
 	// Open sender selection dialog
 	void SelectSender();
 
@@ -101,15 +103,44 @@ class SPOUT_DLLEXP SpoutReceiver {
 	bool IsFrameCountEnabled();
 	// Frame rate control
 	void HoldFps(int fps);
+	// Signal sync event 
+	void SetFrameSync(const char* SenderName);
+	// Wait or test for a sync event
+	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+
+	//
+	// Data sharing
+	//
+
+	// Read data
+	int ReadMemoryBuffer(const char* name, char* data, int maxlength);
+	// Get the size of a shared memory buffer
+	int GetMemoryBufferSize(const char* name);
+
+	//
+	// OpenGL shared texture access
+	//
+
+	// Bind OpenGL shared texture
+	bool BindSharedTexture();
+	// Un-bind OpenGL shared texture
+	bool UnBindSharedTexture();
+	// OpenGL shared texture ID
+	GLuint GetSharedTextureID();
 
 	//
 	// Graphics compatibility
 	//
 
-	// Get auto GPU/CPU share depending on compatibility
+	// Get user auto GPU/CPU share
 	bool GetAutoShare();
-	// Set auto GPU/CPU share depending on compatibility
+	// Set application auto GPU/CPU share
 	void SetAutoShare(bool bAuto = true);
+	// Get user CPU share
+	bool GetCPUshare();
+	// Set application CPU share
+	// (re-test GL/DX compatibility if set to false)
+	void SetCPUshare(bool bCPU = true);
 	// OpenGL texture share compatibility
 	bool IsGLDXready();
 
@@ -136,16 +167,14 @@ class SPOUT_DLLEXP SpoutReceiver {
 	int GetNumAdapters();
 	// Get adapter item name
 	bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
-	// Get adapter index
+	// Current adapter name
+	char * AdapterName();
+	// Get current adapter index
 	int GetAdapter();
 	// Set graphics adapter for output
 	bool SetAdapter(int index = 0);
 	// Get the current adapter description
 	bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
-	// Current adapter
-	int Adapter();
-	// Current adapter name
-	char * AdapterName();
 
 	//
 	// User settings recorded by "SpoutSettings"

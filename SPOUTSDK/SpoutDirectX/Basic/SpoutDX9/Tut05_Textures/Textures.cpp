@@ -353,9 +353,6 @@ VOID Render()
 	DWORD dwFormat = 0;
 	if (spoutsender.FindSender(g_SenderName, width, height, g_dxShareHandle, dwFormat)) {
 
-		// printf("Found [%s]\n", g_SenderName);
-
-
 		// Set up if not initialized yet
 		if (!bSpoutInitialized) {
 			// Open a named mutex to control access to the sender's shared texture
@@ -371,8 +368,6 @@ VOID Render()
 			// Update globals for subsequent size checks
 			g_Width = width;
 			g_Height = height;
-
-			printf("Size change [%s] %dx%d - format %d\n", g_SenderName, g_Width, g_Height, dwFormat);
 
 			// Access the sender shared texture
 			// (See comments in the CheckTextureAccess function)
@@ -430,8 +425,6 @@ VOID Render()
 		// could be released now but they are updated when connected to another sender.
 		// They should be released when the program closes
 		if (bSpoutInitialized) {
-
-			printf("Sender closed\n");
 
 			// If a connecting name has been specified, reset the global name to it.
 			// Otherwise zero the name to look for the active sender next time

@@ -66,6 +66,12 @@
 			   Write host path to the sender shared memory Description field in CreateSender
 	13.01.21 - Remove CleanSenders until sender registration investigations are completed
 			   Fix typo in host path write. To be tested.
+	10.02.21 - GetActiveSender - erase the active sender memory map if the sender info is closed
+	15.02.21 - Rebuild Win32 /MD for GitHub 2.007b release
+	26.02.21 - Change SetSenderCPUmode to include CPU sharing mode and GLDX compatibility
+	27.02.21 - Change SetSenderCPUmode name to SetSenderID
+	09.04.21 - Add GetSender to retrieve class sender.
+			   Remove SenderDebug
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2021, Lynn Jarvis. All rights reserved.
@@ -200,6 +206,7 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 	// Create the shared memory for the sender name set if it does not exist
 	if(!CreateSenderSet()) return false;
 
+	// Get the current map into a buffer
 	char *pBuf = m_senderNames.Lock();
 	if (!pBuf) return false;
 
@@ -210,6 +217,7 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 		m_senders->erase(namestring);
 	}
 
+	// Read the buffer to a set to iterate through the names
 	readSenderSetFromBuffer(pBuf, SenderNames, m_MaxSenders);
 
 	// Discovered that the project properties had been set to CLI
@@ -217,16 +225,16 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 	// and this caused the set "find" function not to work.
 	// It also disabled intellisense.
 
-	// Get the current map to update the list
+	// If the sender exists
 	if(SenderNames.find(Sendername) != SenderNames.end() ) {
-		SenderNames.erase(Sendername); // erase the matching Sender
+		SenderNames.erase(Sendername);
+		// Write the sender names back to the buffer
 		writeBufferFromSenderSet(SenderNames, pBuf, m_MaxSenders);
 		// Is there a set left ?
 		if(SenderNames.size() > 0) {
-			// This should be OK because the user selects the active sender
 			// Was it the active sender ?
 			if( (getActiveSenderName(name) && strcmp(name, Sendername) == 0) || SenderNames.size() == 1) { 
-				// It was, so choose the first in the list
+				// It was, so choose the first in the list and make it active instead
 				std::set<std::string>::iterator iter = SenderNames.begin();
 				namestring = *iter;
 				strcpy_s(name, namestring.c_str());
@@ -481,7 +489,7 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 	{
 		return false;
 	}
-	
+		
 	info.width       = (unsigned __int32)width;
 	info.height      = (unsigned __int32)height;
 #ifdef _M_X64
@@ -498,13 +506,14 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 	// Texture usage
 	info.usage = 0;
 
-	// Partner ID : Sender CPU mode
-	// TODO
-	// info.partnerId = 0;
-
 	// Description : Host path
 	char exepath[256];
 	GetModuleFileNameA(NULL, exepath, sizeof(exepath));
+
+	// Partner ID : Sender CPU sharing mode
+	// Set by SetSenderID
+	// TODO : combine here
+
 	// Description is defined as wide chars, but the path is stored as byte chars
 	memcpy((void *)info.description, (void *)exepath, 256); // wchar 128
 
@@ -517,6 +526,47 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 
 } // end SetSenderInfo
 
+
+//
+// Set sender CPU sharing mode and hardware compatibility with GL/DX linkage
+// to the two top bits of the 32 bit partnerID field in sender shared memory
+//
+//   bCPU  - means "using CPU sharing methods"
+//     1000 0000 0000 0000 0000 0000 0000 0000 = 0x80000000
+//   bGLDX - means "compatible with OpenGL/DirectX interop"
+//     0100 0000 0000 0000 0000 0000 0000 0000 = 0x40000000
+//   Both set - means "GL/DX compatible but using CPU sharing methods"
+//     1100 0000 0000 0000 0000 0000 0000 0000 = 0xC0000000
+// 
+// 2.006 senders may or may not have these bits set but will rarely have the exact values.
+//
+bool spoutSenderNames::SetSenderID(const char *sendername, bool bCPU, bool bGLDX)
+{
+	SharedTextureInfo info;
+
+	SpoutLogNotice("spoutSenderNames::SetSenderID(%s, %d, %d)", sendername, bCPU, bGLDX);
+
+	if (getSharedInfo(sendername, &info)) {
+
+		// Using CPU sharing methods - set top bit
+		// 1000 0000 0000 0000 0000 0000 0000 0000
+		// GL/DX compatible hardware - set next to top bit
+		// 0100 0000 0000 0000 0000 0000 0000 0000
+
+		info.partnerId = 0x00000000; // Default both bits clear
+		if (bCPU)
+			info.partnerId = 0x80000000;
+		if (bGLDX)
+			info.partnerId |= 0x40000000;
+
+		// Save the info for this sender in the sender shared memory map
+		setSharedInfo(sendername, &info);
+
+		return true;
+	}
+
+	return false;
+}
 
 // Functions to set or get the active Sender name
 // The "active" Sender is the one of the multiple Senders
@@ -560,7 +610,6 @@ bool spoutSenderNames::SetActiveSender(const char *Sendername)
 
 } // end SetActiveSender
 
-
 // Retrieve the current active Sender name
 bool spoutSenderNames::GetActiveSender(char Sendername[SpoutMaxSenderNameLen])
 {
@@ -574,7 +623,8 @@ bool spoutSenderNames::GetActiveSender(char Sendername[SpoutMaxSenderNameLen])
 			return true;
 		}
 		else {
-			// Erase the active sender name ?
+			// Erase the active sender memory map
+			m_activeSender.Close();
 		}
 	}
 	
@@ -625,11 +675,10 @@ bool spoutSenderNames::FindActiveSender(char sendername[SpoutMaxSenderNameLen], 
 
 } // end FindActiveSender
 
-
-/////////////////////////////////////////////////////////////////////////////////////
-// Functions to Create, Update and Close a sender and retrieve sender texture info //
-// without initializing DirectX or the GL/DX interop functions                     //
-/////////////////////////////////////////////////////////////////////////////////////
+// ===============================================================================
+// Functions to Create, Update and Close a sender and retrieve sender texture info
+// without initializing DirectX or the GL/DX interop functions
+// ===============================================================================
 
 //	Create a sender
 bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
@@ -655,25 +704,24 @@ bool spoutSenderNames::UpdateSender(const char *sendername, unsigned int width, 
 {
 	std::string namestring = sendername;
 
-	if (m_senders->find(namestring) == m_senders->end()) {
+	if (m_senders->find(namestring) == m_senders->end()) { // New sender
+
 		// Create or open a shared memory map for this sender - allocate enough for the texture info
 		SpoutSharedMemory *senderInfoMem = new SpoutSharedMemory();
 		SpoutCreateResult result = senderInfoMem->Create(sendername, sizeof(SharedTextureInfo));
-		if(result == SPOUT_CREATE_FAILED) {
+
+		if (result == SPOUT_CREATE_FAILED) {
 			delete senderInfoMem;
 			m_senderNames.Unlock();
 			return false;
 		}
+
 		(*m_senders)[namestring] = senderInfoMem;
-	}
 
+	}
+	
 	// Save the info for this sender in the sender shared memory map
-	if(!SetSenderInfo(sendername, width, height, hSharehandle, dwFormat)) {
-		return false;
-	}
-
-
-	return true;
+	return SetSenderInfo(sendername, width, height, hSharehandle, dwFormat);
 		
 } // end UpdateSender
 
@@ -687,47 +735,6 @@ bool spoutSenderNames::UpdateSender(const char *sendername, unsigned int width, 
 //		DX9  - D3DUSAGE_RENDERTARGET
 //		DX11 - D3D11_USAGE_DEFAULT 
 // ===============================================================================
-
-// Find a sender and return the name, width and height, sharhandle and format
-bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat)
-{
-	SharedTextureInfo info;
-
-	// Check the user entered Sender name to see if it exists
-	if(sendername[0] == 0) {
-		// Passed name was null, so find the active sender
-		if(!GetActiveSender(sendername))
-			return false;
-	}
-	// now we have either an existing sender name or the active sender name
-
-	// 01.08.15 - Is the given sender registered ?
-	// 09.03.18 - change to logic so that the sendernames map is not
-	// accessed every frame by a receiver when looking for a named sender
-	// getSharedInfo fails if the sender is not there and ReleaseSenderName 
-	// is not necessary.  A sender will release it's name from the list when it closes
-	// and will only not do so if the sender crashes.
-	// Then SpoutPanel will clean the sender set and remove senders that do not exist
-	// This is also done by RegisterSenderName for every sender that is registered
-
-	// Try to get the sender information
-	if(getSharedInfo(sendername, &info)) {
-		width			= (unsigned int)info.width; // pass back sender size
-		height			= (unsigned int)info.height;
-#ifdef _M_X64
-		hSharehandle = (HANDLE)(LongToHandle((long)info.shareHandle));
-#else
-		hSharehandle = (HANDLE)info.shareHandle;
-#endif
-		dwFormat		= (DWORD)info.format;
-		return true;
-	}
-
-	// Not there - could have closed or crashed
-	return false;
-
-} // end FindSender
-
 
 //
 //	Check the details of an existing sender
@@ -749,8 +756,8 @@ bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidt
 {
 	SharedTextureInfo info;
 
-	//// Is the given sender registered ?
-	// if(FindSenderName(sendername)) {
+	// Is the given sender registered ?
+	if(FindSenderName(sendername)) {
 		// Does it still exist ?
 		if(getSharedInfo(sendername, &info)) {
 			// Return the texture info
@@ -764,11 +771,11 @@ bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidt
 			dwFormat		= (DWORD)info.format;
 
 			return true;
-		// }
-		// else {
+		}
+		else {
 			// Sender is registered but does not exist so close it
-			// ReleaseSenderName(sendername);
-		// }
+			ReleaseSenderName(sendername);
+		}
 
 	}
 
@@ -780,6 +787,55 @@ bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidt
 
 } // end CheckSender
 
+// Find a sender and return the name, width and height, sharhandle and format
+bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat)
+{
+	SharedTextureInfo info;
+
+	// Check the user entered Sender name to see if it exists
+	if (sendername[0] == 0) {
+		// Passed name was null, so find the active sender
+		if (!GetActiveSender(sendername))
+			return false;
+	}
+	// now we have either an existing sender name or the active sender name
+
+	// 01.08.15 - Is the given sender registered ?
+	// 09.03.18 - change to logic so that the sendernames map is not
+	// accessed every frame by a receiver when looking for a named sender
+	// getSharedInfo fails if the sender is not there and ReleaseSenderName 
+	// is not necessary.  A sender will release it's name from the list when it closes
+	// and will only not do so if the sender crashes.
+	// Then SpoutPanel will clean the sender set and remove senders that do not exist
+	// This is also done by RegisterSenderName for every sender that is registered
+
+	// Try to get the sender information
+	if (getSharedInfo(sendername, &info)) {
+		width = (unsigned int)info.width; // pass back sender size
+		height = (unsigned int)info.height;
+#ifdef _M_X64
+		hSharehandle = (HANDLE)(LongToHandle((long)info.shareHandle));
+#else
+		hSharehandle = (HANDLE)info.shareHandle;
+#endif
+		dwFormat = (DWORD)info.format;
+		return true;
+	}
+
+	// Not there - could have closed or crashed
+	return false;
+
+} // end FindSender
+
+// Get sender in this class
+bool spoutSenderNames::GetSender(const char* sendername)
+{
+	std::string namestring = sendername;
+	if (m_senders->find(namestring) != m_senders->end())
+		return true;
+
+	return false;
+}
 
 // Release any orphaned senders if the name exists
 // in the sender list but the shared memory info does not
@@ -805,7 +861,6 @@ void spoutSenderNames::CleanSenders()
 			// we have the name already, so look for it's info
 			if (!getSharedInfo(name, &info)) {
 				// Sender does not exist any more so release from the name list
-				// printf("[%s] does not exist any more\n", name);
 				ReleaseSenderName(name);
 			}
 		}
@@ -895,7 +950,6 @@ bool spoutSenderNames::CreateSenderSet()
 		SpoutLogError("spoutSenderNames::CreateSenderSet() : SPOUT_CREATE_FAILED");
 		return false;
 	}
-
 	return true;
 
 } // end CreateSenderSet
@@ -1041,82 +1095,3 @@ bool spoutSenderNames::hasSharedInfo(const char* sharedMemoryName)
 
 } // end hasSharedInfo
 
-
-
-//---------------------------------------------------------
-bool spoutSenderNames::SenderDebug(const char *Sendername, int size)
-{
-	// HANDLE hMap1 = NULL;
-	// HANDLE hMap2 = NULL;
-	// HANDLE hMap3 = NULL;
-	std::set<std::string> SenderNames;
-	std::set<std::string>::iterator iter;
-	std::string namestring;
-
-	UNREFERENCED_PARAMETER(Sendername);
-	UNREFERENCED_PARAMETER(size);
-
-	// printf("**** SENDER DEBUG ****\n");
-
-	// m_senderNames.Debug();
-
-	// Check the sender names
-	/*
-	// printf("    GetSenderSet\n");
-	if(GetSenderSet(SenderNames)) {
-		// printf("        SenderNames size = [%d]\n", SenderNames.size());
-		if (SenderNames.size() > 0) {
-			for(iter = SenderNames.begin(); iter != SenderNames.end(); iter++) {
-				namestring = *iter;
-				// printf("            Sender : [%s]\n", namestring.c_str());
-			}
-		}
-	}
-	else {
-		// printf("    GetSenderSet failed\n");
-	}
-	*/
-
-	/*
-	printf("    GetSenderNames\n");
-	if(GetSenderNames(&SenderNames)) {
-		printf("        SenderNames size = [%d]\n", SenderNames.size());
-		if (SenderNames.size() > 0) {
-			for(iter = SenderNames.begin(); iter != SenderNames.end(); iter++) {
-				namestring = *iter;
-				printf("            Sender : [%s]\n", namestring.c_str());
-			}
-		}
-		else {
-			printf("    SenderNames size = 0\n");
-		}
-	}
-	else {
-		printf("    GetSenderSet failed\n");
-	}
-	*/
-
-	// MessageBoxA(NULL,"spoutSenderNames::SenderDebug()", "Info", MB_OK);
-
-	/*
-	// printf("2) Closing - hSenderNamesMap = [%x], pSenderNamesMap = [%x]\n", m_hSenderNamesMap, m_pSenderNamesMap);
-
-	// Close and try to reopen
-	CloseMap(m_pSenderNamesMap, m_hSenderNamesMap);
-
-	hMap2 = OpenFileMappingA (FILE_MAP_ALL_ACCESS, false, "SpoutSenderNames");
-	if(hMap2) {
-		// printf("    Sendernames map [%x] did not close\n", hMap2);
-		CloseHandle(hMap2);
-	}
-	else {
-		// printf("    Closed sendernames map OK\n");
-	}
-
-	CloseMap(m_pActiveSenderMap, m_hActiveSenderMap);
-	*/
-
-	// m_activeSender.Debug();
-
-	return true;
-}

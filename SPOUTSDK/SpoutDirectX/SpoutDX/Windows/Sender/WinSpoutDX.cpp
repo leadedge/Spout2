@@ -164,6 +164,7 @@ void Render()
 	// Windows screen capture to rgba produces alpha 0 for the whole image.
 	// Some applications might display the received image as black
 	// so alpha of all the pixels should be converted to 255. 
+	// See also : http://www.winprog.org/tutorial/transparency.html
 	// Tests show that the following consumes
 	// 0.6 msec at 1280x720 and 1.5 msec at 1920x1080
 	//
@@ -233,7 +234,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    // Create window
    // SPOUT - modified for 640x360 starting client size
    RECT rc = { 0, 0, 640, 360 }; // Desired client size
-   AdjustWindowRect(&rc, WS_CAPTION | WS_SYSMENU, TRUE);
+   AdjustWindowRect(&rc, WS_CAPTION | WS_SYSMENU | WS_THICKFRAME, TRUE);
    HWND hWnd = CreateWindowW(szWindowClass, szTitle,
 	   // WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
 	   // CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
@@ -312,10 +313,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			//
 			// Draw the image bitmap
 			//
-
-			// LJ DEBUG
-			// http://www.winprog.org/tutorial/transparency.html
-
+			
 			// Get the client area
 			RECT rcClient;
 			GetClientRect(hWnd, &rcClient);

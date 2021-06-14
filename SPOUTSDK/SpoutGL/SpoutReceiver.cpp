@@ -58,8 +58,14 @@
 //					  Add GetSenderAdapter
 //		25.09.20	- Remove GetSenderAdapter - not reliable 
 //		17.10.20	- Change SetDX9format from D3D_FORMAT to DWORD
-//
 //		27.12.20	- Multiple changes for SpoutGL base class - see SpoutSDK.cpp
+//		05.02.21	- Add GetCPUshare and SetCPUshare
+//		26.02.21	- Add GetSenderGLDXready
+//		11.03.21	- Rename functions GetSenderCPU and GetSenderGLDX
+//		02.04.21	- Add event functions SetFrameSync/WaitFrameSync
+//					- Add data function ReadMemoryBuffer
+//		24.04.21	- Add OpenGL shared texture access functions
+//		03.06.21	- Add GetMemoryBufferSize
 //
 // ====================================================================================
 //
@@ -220,9 +226,15 @@ HANDLE SpoutReceiver::GetSenderHandle()
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::GetSenderCPUmode()
+bool SpoutReceiver::GetSenderCPU()
 {
-	return spout.GetSenderCPUmode();
+	return spout.GetSenderCPU();
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetSenderGLDX()
+{
+	return spout.GetSenderGLDX();
 }
 
 //---------------------------------------------------------
@@ -230,7 +242,6 @@ void SpoutReceiver::SelectSender()
 {
 	spout.SelectSenderPanel();
 }
-
 
 //
 // Frame count
@@ -261,6 +272,57 @@ void SpoutReceiver::HoldFps(int fps)
 }
 
 //---------------------------------------------------------
+void SpoutReceiver::SetFrameSync(const char* SenderName)
+{
+	spout.SetFrameSync(SenderName);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
+{
+	return spout.WaitFrameSync(SenderName, dwTimeout);
+}
+
+//---------------------------------------------------------
+int SpoutReceiver::ReadMemoryBuffer(const char* name, char* data, int maxlength)
+{
+	return spout.ReadMemoryBuffer(name, data, maxlength);
+}
+
+//---------------------------------------------------------
+int SpoutReceiver::GetMemoryBufferSize(const char* name)
+{
+	return spout.GetMemoryBufferSize(name);
+}
+
+
+//
+// OpenGL shared texture access
+//
+
+//---------------------------------------------------------
+bool SpoutReceiver::BindSharedTexture()
+{
+	return spout.BindSharedTexture();
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::UnBindSharedTexture()
+{
+	return spout.UnBindSharedTexture();
+}
+
+//---------------------------------------------------------
+GLuint SpoutReceiver::GetSharedTextureID()
+{
+	return spout.GetSharedTextureID();
+}
+
+//
+// Graphics compatibility
+//
+
+//---------------------------------------------------------
 bool SpoutReceiver::GetAutoShare()
 {
 	return spout.GetAutoShare();
@@ -270,6 +332,18 @@ bool SpoutReceiver::GetAutoShare()
 void SpoutReceiver::SetAutoShare(bool bAuto)
 {
 	spout.SetAutoShare(bAuto);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetCPUshare()
+{
+	return spout.GetCPUshare();
+}
+
+//---------------------------------------------------------
+void SpoutReceiver::SetCPUshare(bool bCPU)
+{
+	spout.SetCPUshare(bCPU);
 }
 
 //---------------------------------------------------------
@@ -330,6 +404,12 @@ bool SpoutReceiver::GetAdapterName(int index, char *adaptername, int maxchars)
 }
 
 //---------------------------------------------------------
+char * SpoutReceiver::AdapterName()
+{
+	return spout.AdapterName();
+}
+
+//---------------------------------------------------------
 int SpoutReceiver::GetAdapter()
 {
 	return spout.GetAdapter();
@@ -345,18 +425,6 @@ bool SpoutReceiver::SetAdapter(int index)
 bool SpoutReceiver::GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars)
 {
 	return spout.GetAdapterInfo(renderdescription, displaydescription, maxchars);
-}
-
-//---------------------------------------------------------
-int SpoutReceiver::Adapter()
-{
-	return spout.Adapter();
-}
-
-//---------------------------------------------------------
-char * SpoutReceiver::AdapterName()
-{
-	return spout.AdapterName();
 }
 
 //

@@ -4,7 +4,7 @@
 
 			Sender and receiver for DirectX applications
 
-	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2021, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -54,6 +54,7 @@ class SPOUT_DLLEXP spoutDX {
 	//
 	// DIRECTX
 	//
+
 	bool OpenDirectX11(ID3D11Device* pDevice = nullptr);
 	ID3D11Device* GetDX11Device();
 	ID3D11DeviceContext* GetDX11Context();
@@ -126,12 +127,17 @@ class SPOUT_DLLEXP spoutDX {
 	// COMMON
 	//
 
-	// Hold frame rate
+	// Frame rate control
 	void HoldFps(int fps);
 	// Disable frame counting for this application
 	void DisableFrameCount();
 	// Return frame count status
 	bool IsFrameCountEnabled();
+	// Signal sync event 
+	void SetFrameSync(const char* SenderName);
+	// Wait or test for a sync event
+	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+
 								
 	//
 	// Sender names
@@ -160,18 +166,26 @@ class SPOUT_DLLEXP spoutDX {
 	int GetNumAdapters();
 	// Get the adapter name for a given index
 	bool GetAdapterName(int index, char *adaptername, int maxchars);
+	// Get the current adapter description
+	bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
 	// Get the current adapter index
 	int  GetAdapter();
-	// Set required graphics adapter for output
-	bool SetAdapter(int index = 0);
-	// Get sender adapter index and name fro a given sender
-	int  GetSenderAdapter(const char* sendername, char* adaptername, int maxchars);
+	// Set required graphics adapter for output (no args or -1 to reset)
+	bool SetAdapter(int index = -1);
+	// Get adapter pointer for a given adapter (-1 means current)
+	IDXGIAdapter* GetAdapterPointer(int index = -1);
+	// Set required graphics adapter for creating a device
+	void SetAdapterPointer(IDXGIAdapter* pAdapter);
+	// Get auto device switching status
+	bool GetAdapterAuto();
+	// Auto switch receiving device to use the same graphics adapter as the sender
+	void SetAdapterAuto(bool bAuto = true);
+	// Get sender adapter index and name for a given sender
+	int GetSenderAdapter(const char* sendername, char* adaptername = nullptr, int maxchars = 256);
 
 	//
 	// Sharing modes (2.006 compatibility)
 	//
-
-	
 
 	// Get user selected DX9 mode (2.006)
 	bool GetDX9();
@@ -181,9 +195,25 @@ class SPOUT_DLLEXP spoutDX {
 	// Utility
 	//
 
+	void CheckSenderFormat(const char * sendername);
 	bool CreateDX11texture(ID3D11Device* pd3dDevice,
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
+
+	//
+	// Data sharing
+	//
+
+	// Write data to shared memory
+	bool WriteMemoryBuffer(const char *name, const char* data, int length);
+	// Read data from shared memory
+	int  ReadMemoryBuffer(const char* name, char* data, int maxlength);
+	// Create a shared memory buffer
+	bool CreateMemoryBuffer(const char *name, int length);
+	// Delete a shared memory buffer
+	bool DeleteMemoryBuffer();
+	// Get the number of bytes available for data transfer
+	int  GetMemoryBufferSize(const char *name);
 
 	//
 	// Public for external access
@@ -221,13 +251,16 @@ protected :
 	unsigned int m_Height;
 	bool m_bUpdated;
 	bool m_bConnected;
-	bool m_bNewFrame;
 	bool m_bSpoutInitialized;
 	bool m_bSpoutPanelOpened;
 	bool m_bSpoutPanelActive;
 	bool m_bClassDevice;
 	bool m_bAdapt;
+	bool m_bMemoryShare; // Using 2.006 memoryshare methods
 	SHELLEXECUTEINFOA m_ShExecInfo;
+
+	// For WriteMemoryBuffer/ReadMemoryBuffer
+	SpoutSharedMemory memorybuffer;
 
 	bool CheckSender(unsigned int width, unsigned int height, DWORD dwFormat);
 	ID3D11Texture2D* CheckSenderTexture(char *sendername, HANDLE dxShareHandle);
@@ -242,7 +275,6 @@ protected :
 
 	void SelectSenderPanel();
 	bool CheckSpoutPanel(char *sendername, int maxchars = 256);
-
 
 };
 

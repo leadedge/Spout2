@@ -108,6 +108,8 @@ glGetBufferParameterivPROC				glGetBufferParameterivEXT		= NULL;
 //-------------------
 #ifdef USE_COPY_EXTENSIONS
 PFNGLCOPYIMAGESUBDATAPROC glCopyImageSubData = NULL;
+glGetInternalFormativPROC glGetInternalFormativ = NULL;
+
 #endif
 
 //---------------------------
@@ -323,6 +325,8 @@ bool loadCopyExtensions()
 
 	// Copy extensions
 	glCopyImageSubData = (PFNGLCOPYIMAGESUBDATAPROC)wglGetProcAddress("glCopyImageSubData");
+
+	glGetInternalFormativ = (glGetInternalFormativPROC)wglGetProcAddress("glGetInternalFormativ");
 
 	if (glCopyImageSubData != NULL) {
 		return true;

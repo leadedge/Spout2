@@ -47,9 +47,9 @@ class SPOUT_DLLEXP SpoutSender {
 	// Close sender and free resources
 	//   A sender is created or updated by all sending functions
 	void ReleaseSender();
-	// Send texture attached to fbo.
+	// Send a framebuffer.
 	//   The fbo must be currently bound.  
-	//   The sending texture can be larger than the size that the sender is set up for.  
+	//   The fbo can be larger than the size that the sender is set up for.  
 	//   For example, if the application is using only a portion of the allocated texture space,  
 	//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture).
 	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
@@ -71,6 +71,10 @@ class SPOUT_DLLEXP SpoutSender {
 	long GetFrame();
 	// Sender share handle
 	HANDLE GetHandle();
+	// Sender sharing method
+	bool GetCPU();
+	// Sender GL/DX hardware compatibility
+	bool GetGLDX();
 
 	//
 	// Frame count
@@ -84,15 +88,49 @@ class SPOUT_DLLEXP SpoutSender {
 	bool IsFrameCountEnabled();
 	// Frame rate control
 	void HoldFps(int fps);
+	// Signal sync event 
+	void SetFrameSync(const char* SenderName);
+	// Wait or test for a sync event
+	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 
+	//
+	// Data sharing
+	//
+
+	// Write data
+	bool WriteMemoryBuffer(const char *name, const char* data, int length);
+	// Create a shared memory buffer
+	bool CreateMemoryBuffer(const char *name, int length);
+	// Delete a shared memory buffer
+	bool DeleteMemoryBuffer();
+	// Get the size of a shared memory buffer
+	int GetMemoryBufferSize(const char* name);
+
+	//
+	// OpenGL shared texture access
+	//
+
+	// Bind OpenGL shared texture
+	bool BindSharedTexture();
+	// Un-bind OpenGL shared texture
+	bool UnBindSharedTexture();
+	// OpenGL shared texture ID
+	GLuint GetSharedTextureID();
+	
 	//
 	// Graphics compatibility
 	//
 
-	// Get auto GPU/CPU share depending on compatibility
+	// Get user Auto GPU/CPU share
 	bool GetAutoShare();
-	// Set auto GPU/CPU share depending on compatibility
+	// Set application Auto GPU/CPU share
 	void SetAutoShare(bool bAuto = true);
+	// Get user CPU share
+	bool GetCPUshare();
+	// Set application CPU share
+	// (re-test GL/DX compatibility if set to false)
+	void SetCPUshare(bool bCPU = true);
+
 	// OpenGL texture share compatibility
 	bool IsGLDXready();
 
@@ -119,19 +157,17 @@ class SPOUT_DLLEXP SpoutSender {
 	int GetNumAdapters();
 	// Get adapter item name
 	bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
-	// Get adapter index
+	// Current adapter name
+	char * AdapterName();
+	// Get current adapter index
 	int GetAdapter();
 	// Set graphics adapter for output
 	bool SetAdapter(int index = 0);
 	// Get the current adapter description
 	bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
-	// Current adapter
-	int Adapter();
-	// Current adapter name
-	char * AdapterName();
 
 	//
-	// User settings recorded by "SpoutSettings"
+	// User settings recorded in the registry by "SpoutSettings"
 	//
 
 	// Get user buffering mode

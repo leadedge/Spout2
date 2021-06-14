@@ -77,6 +77,10 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	long GetFrame();
 	// Sender share handle
 	HANDLE GetHandle();
+	// Sender sharing method
+	bool GetCPU();
+	// Sender GL/DX hardware compatibility
+	bool GetGLDX();
 
 	//
 	// ====================== RECEIVER ===========================
@@ -129,8 +133,10 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	long GetSenderFrame();
 	// Received sender share handle
 	HANDLE GetSenderHandle();
-	// Received sender sharing mode
-	bool GetSenderCPUmode();
+	// Received sender sharing method
+	bool GetSenderCPU();
+	// Received sender GL/DX hardware compatibility
+	bool GetSenderGLDX();
 	// Open sender selection dialog
 	void SelectSender();
 
@@ -146,7 +152,11 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	bool IsFrameCountEnabled();
 	// Frame rate control
 	void HoldFps(int fps);
-
+	// Signal sync event 
+	void SetFrameSync(const char* SenderName);
+	// Wait or test for a sync event
+	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+	
 	//
 	// Sender names
 	//
@@ -170,16 +180,14 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	int GetNumAdapters();
 	// Get adapter item name
 	bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
-	// Get adapter index
+	// Return current adapter name
+	char * AdapterName();
+	// Get current adapter index
 	int GetAdapter();
 	// Set graphics adapter for output
 	bool SetAdapter(int index = 0);
 	// Get the current adapter description
 	bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
-	// Current adapter
-	int Adapter();
-	// Current adapter name
-	char * AdapterName();
 
 	//
 	// 2.006 compatibility
@@ -198,13 +206,6 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Update a sender
 	bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
 
-	// Legacy OpenGL DrawTo function
-	// See _SpoutCommon.h_ #define legacyOpenGL
-#ifdef legacyOpenGL
-	// Render a texture to the shared texture. 
-	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
-#endif
-
 	//
 	// 2.006 compatibility
 	//
@@ -221,11 +222,13 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	//   Optional message argument
 	bool SelectSenderPanel(const char* message = nullptr);
 
-	// Legacy OpenGL Draw function
+	// Legacy OpenGL Draw functions
 	// See _SpoutCommon.h_ #define legacyOpenGL
 #ifdef legacyOpenGL
 	// Render the shared texture
 	bool DrawSharedTexture(float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = true, GLuint HostFBO = 0);
+	// Render a texture to the shared texture. 
+	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
 #endif
 
 protected:
@@ -247,7 +250,6 @@ protected:
 	int m_AdapterNumber;
 	int m_AdapterIndex;
 	char m_AdapterName[256];
-
 
 };
 

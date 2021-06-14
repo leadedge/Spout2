@@ -25,6 +25,7 @@ using Microsoft::WRL::ComPtr;
 class D3D12HelloTriangle : public DXSample
 {
 public:
+
     D3D12HelloTriangle(UINT width, UINT height, std::wstring name);
 
     virtual void OnInit();
@@ -33,6 +34,7 @@ public:
     virtual void OnDestroy();
 
 private:
+
     static const UINT FrameCount = 2;
 
     struct Vertex

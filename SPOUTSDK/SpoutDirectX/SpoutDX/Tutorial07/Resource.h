@@ -10,11 +10,12 @@
 #define IDD_ABOUTBOX            103
 #define IDD_ADAPTERBOX          104
 #define IDM_ADAPTER             105
-#define IDM_ABOUT               106
-#define IDM_EXIT                107
-#define IDI_TUTORIAL1           108
-#define IDI_SMALL               109
-#define IDC_TUTORIAL1           110
+#define IDM_AUTO_ADAPTER        106
+#define IDM_ABOUT               107
+#define IDM_EXIT                108
+#define IDI_TUTORIAL1           109
+#define IDI_SMALL               110
+#define IDC_TUTORIAL1           111
 #define IDC_ABOUT_TEXT          201
 #define IDC_SPOUT_URL           202
 #define IDC_ADAPTERS            203

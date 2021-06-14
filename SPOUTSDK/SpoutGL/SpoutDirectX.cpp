@@ -89,6 +89,7 @@
 //		23.11.20	- Protect against null in GetAdapterName
 //		09.12.20	- CloseDirectX11() in destructor
 //		27.12.20	- Change all hex printf to 0x%.7X with PtrToUint helper
+//		20.02.21	- Add zero width/height check to CreateDX11Texture
 //
 // ====================================================================================
 /*
@@ -188,7 +189,7 @@ void spoutDirectX::CloseDirectX11()
 
 
 //
-// Notes for DX11 : https://www.opengl.org/registry/specs/NV/DX_interop2.txt
+// Notes for DX11 : https://www.khronos.org/registry/OpenGL/extensions/NV/WGL_NV_DX_interop2.txt
 //
 // Valid device types for the <dxDevice> parameter of wglDXOpenDeviceNV and associated restrictions
 // DirectX device type ID3D11Device - can only be used on WDDM operating systems; XXX Must be multithreaded
@@ -213,15 +214,14 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	// To use this flag, you must have D3D11_1SDKLayers.dll installed or device creation fails.
 	// To resolve this you can install the Windows 10 SDK.
 	// 
-	// Due to this dependency problem, you have to manually remove the comments below to enable it.
+	// Due to this dependency problem, you have to manually remove the comments below 
+	// to enable it once you have installed D3D11_1SDKLayers.dll.
 	// See also : void spoutDirectX::DebugLog
 	//
 
-/*
-#if defined(_DEBUG)
-	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-*/
+// #if defined(_DEBUG)
+	// createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+// #endif
 
 	// GL/DX interop Spec
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
@@ -329,7 +329,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 		SpoutLogWarning("spoutDirectX::CreateSharedDX11Texture NULL ppSharedTexture");
 		return false;
 	}
-	SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
+	// SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
 
 	//
 	// Create a new shared DX11 texture
@@ -342,14 +342,14 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 	ID3D11Texture2D* pTexture = nullptr; // The new texture pointer
 
-	SpoutLogVerbose("spoutDirectX::CreateSharedDX11Texture");
-	SpoutLogVerbose("    pDevice = 0x%.7X, width = %d, height = %d, format = %d", PtrToUint(pd3dDevice), width, height, format);
+	SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
+	SpoutLogNotice("    pDevice = 0x%.7X, width = %d, height = %d, format = %d", PtrToUint(pd3dDevice), width, height, format);
 
 	// Use the format passed in
 	// If that is zero or DX9 format, use the default format
-	DXGI_FORMAT texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
-	if (format != 0 && format != 21) // D3DFMT_A8R8G8B8 = 21
-		texformat = format;
+	DXGI_FORMAT texformat = format;
+	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
+		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
 	// Textures being shared from D3D9 to D3D11 have the following restrictions (LJ - D3D11 to D3D9 ?).
 	//		Textures must be 2D
@@ -432,6 +432,82 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 }
 
+// Create a texture which is not shared
+bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice, 
+	unsigned int width, unsigned int height,
+	DXGI_FORMAT format,	ID3D11Texture2D** ppTexture)
+{
+
+	if (width == 0 || height == 0)
+		return false;
+
+	if (!pd3dDevice) {
+		SpoutLogFatal("spoutDirectX::CreateDX11Texture NULL device");
+		return false;
+	}
+
+	if (!ppTexture) {
+		SpoutLogWarning("spoutDirectX::CreateDX11Texture NULL ppTexture");
+		return false;
+	}
+
+	SpoutLogNotice("spoutDirectX::CreateDX11Texture(0x%.X, %d, %d, %d)",
+		PtrToUint(pd3dDevice), width, height, format);
+
+	if (*ppTexture)
+		ReleaseDX11Texture(pd3dDevice, *ppTexture);
+
+	ID3D11Texture2D* pTexture = nullptr; // The new texture pointer
+
+	// Use the format passed in
+	// If that is zero or DX9 format, use the default format
+	DXGI_FORMAT texformat = format;
+	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
+		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+	D3D11_TEXTURE2D_DESC desc;
+	ZeroMemory(&desc, sizeof(desc));
+	desc.Width = width;
+	desc.Height = height;
+	desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = 0;
+	desc.Format = texformat;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.SampleDesc.Quality = 0;
+	desc.SampleDesc.Count = 1;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+
+	HRESULT res = 0;
+	
+	res = pd3dDevice->CreateTexture2D(&desc, NULL, &pTexture);
+
+	if (FAILED(res)) {
+		char tmp[256];
+		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11Texture ERROR - %d (0x%.X) : ", LOWORD(res), LOWORD(res));
+		switch (LOWORD(res)) {
+		case DXGI_ERROR_INVALID_CALL:
+			strcat_s(tmp, 256, "DXGI_ERROR_INVALID_CALL");
+			break;
+		case E_INVALIDARG:
+			strcat_s(tmp, 256, "E_INVALIDARG");
+			break;
+		case E_OUTOFMEMORY:
+			strcat_s(tmp, 256, "E_OUTOFMEMORY");
+			break;
+		default:
+			strcat_s(tmp, 256, "Unlisted error");
+			break;
+		}
+		SpoutLogFatal("%s", tmp);
+		return false;
+	}
+
+	*ppTexture = pTexture;
+
+	return true;
+
+}
 
 // Create a DirectX 11 staging texture for read and write
 bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
@@ -511,7 +587,8 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	try {
 		HRESULT hr = pDevice->OpenSharedResource(dxShareHandle, __uuidof(ID3D11Resource), (void**)(ppSharedTexture));
 		if (FAILED(hr)) {
-			SpoutLogError("spoutDirectX::OpenDX11shareHandle (0x%.7X) failed", LOWORD(dxShareHandle));
+			// Error 87 (0x75) - E_INVALIDARG
+			SpoutLogError("spoutDirectX::OpenDX11shareHandle (0x%.7X) failed : error = %d (0x%.7X)", LOWORD(dxShareHandle), LOWORD(hr), LOWORD(hr) );
 			return false;
 		}
 	}
@@ -782,9 +859,16 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 
 IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 {
-	// Return the current pointer for default
-	if (index < 0)
-		return m_pAdapterDX11;
+	int adapterindex = index;
+
+	// Return the current pointer for default if already determined
+	// Otherwise get the pointer for the first adapter
+	if (adapterindex < 0) {
+		if (m_pAdapterDX11)
+			return m_pAdapterDX11;
+		else
+			adapterindex = 0;
+	}
 
 	// Enum Adapters first : multiple video cards
 	IDXGIFactory1*	_dxgi_factory1;
@@ -795,7 +879,7 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 
 	IDXGIAdapter* adapter1_ptr = nullptr;
 	for ( UINT32 i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
-		if ( index == (int)i ) {
+		if (adapterindex == (int)i ) {
 			// Break when the requested index is found
 			
 			/*
@@ -994,8 +1078,10 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 
 	//
 	// Output for debug build
+	// Manually remove the comment block below if you have D3D11_1SDKLayers.dll installed.
 	// See comments in : ID3D11Device* spoutDirectX::CreateDX11device()
 	//
+
 /*
 #ifdef _DEBUG
 	
@@ -1026,8 +1112,9 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 
 		DebugDevice->Release();
 	}
-#else
+#endif
 */
+
 
 	UNREFERENCED_PARAMETER(pd3dDevice);
 

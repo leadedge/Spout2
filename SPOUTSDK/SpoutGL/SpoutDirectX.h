@@ -53,6 +53,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		ID3D11Device* CreateDX11device();
 		// Create a DirectX11 shared texture
 		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppSharedTexture, HANDLE &dxShareHandle);
+		// Create a DirectX11 texture
+		bool CreateDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
 		// Create a DirectX11 staging texture
 		bool CreateDX11StagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
 		// Return the pointer of a DirectX11 shared texture
@@ -69,7 +71,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Get the current adapter index
 		int GetAdapter();
 		// Set graphics adapter for CreateDX11device from an index
-		bool SetAdapter(int index); 
+		bool SetAdapter(int index = -1); 
 		// Get the current adapter description
 		bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
 		// Get adapter pointer for a given adapter (-1 means current)

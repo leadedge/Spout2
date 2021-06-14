@@ -135,6 +135,7 @@ void ofApp::setup(){
 	//
 	// If there are multiple graphics cards in the system,
 	// you may wish to use a particular one for texture sharing
+	// Sender and Receiver must use the same adapter.
 	//
 	// The number of adapters available can be queried :
 	// int nAdapters = sender->GetNumAdapters();
@@ -144,9 +145,9 @@ void ofApp::setup(){
 	// bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
 	//
 	// Set a specific adapter from it's index :
-	// sender->SetAdapter(1); // use the second in the list (0, 1, 2 etc.)
+	// sender->SetAdapter(1); // Example - use the second in the list (0, 1, 2 etc.)
 
-	// Frame counting is enabled depending on the user selection in SpoutSettings
+	// Frame counting is enabled by default
 	// Status can be queried with IsFrameCountEnabled();
 	// Frame counting can be independently disabled for this application
 	// sender->DisableFrameCount();
@@ -157,7 +158,6 @@ void ofApp::setup(){
 
 	// ----------------------------------------------
 
-
 	// 3D drawing setup for the demo 
 	ofDisableArbTex(); // Needed for ofBox texturing
 	ofEnableDepthTest(); // enable depth comparisons for the cube
@@ -166,7 +166,9 @@ void ofApp::setup(){
 	rotY = 0.0f;
 
 	// Set the sender size here 
-	// This example uses an fbo which can be different from the window size
+	// This example uses the window size to demonstrate sender re-sizing (see "windowResized").
+	// However, this application renders to an FBO, so the sender size can be independent 
+	// of the window if you wish.
 	senderwidth = ofGetWidth();
 	senderheight = ofGetHeight();
 
@@ -179,6 +181,8 @@ void ofApp::setup(){
 	// Give the sender a name
 	// If no name is specified, the executable name is used
 	sender->SetSenderName(sendername);
+	// Update caption in case of multiples of the same sender
+	ofSetWindowTitle(sender->GetName());
 
 	// Optional : set the frame rate of the application.
 	// If the user has selected "Frame count" in SpoutSettings
@@ -186,6 +190,7 @@ void ofApp::setup(){
 	// Applications without frame rate control can use 
 	// a Spout function "HoldFps" to control frame rate (see Draw())
 	// ofSetFrameRate(30);
+
 
 } // end setup
 
@@ -198,11 +203,15 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	// All sending functions check the sending dimensions
-	// and create or update the sender if necessary
+	// All sending functions check the sender name and dimensions
+	// and create or update the sender as necessary
 
-	// In this example, the fbo texture is already inverted
-	// so set the invert option false for all sending functions
+	// In this Openframeworks example, the fbo texture is already inverted
+	// so the invert option is false for all sending functions
+
+	// For all sending functions other than SendFbo, include the ID of
+	// the active framebuffer if one is currently bound.
+
 
 	// Draw 3D graphics demo into the fbo
 	// This could be anything for your application
@@ -222,7 +231,9 @@ void ofApp::draw() {
 	rotX += 0.6;
 	rotY += 0.6;
 
-	// Option 1 : Send the texture attached to point 0 while the fbo is bound
+	// Send fbo
+	//   The fbo must be bound for read.
+	//   The invert option is false because the fbo is already flipped in y.
 	sender->SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
@@ -234,12 +245,12 @@ void ofApp::draw() {
 		// senderwidth, senderheight, false);
 
 	// Option 3 : Send image pixels
-	// myFbo.readToPixels(myPixels);
+	// myFbo.readToPixels(myPixels); // readToPixels is slow - but this is just an example
 	// sender->SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
 
 	// Show the result sized to the application window
 	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
-
+	
 	// Show what it is sending
 	ofSetColor(255);
 	std::string str = "Sending as : ";
@@ -247,7 +258,7 @@ void ofApp::draw() {
 	str += ofToString(sender->GetWidth()); str += "x";
 	str += ofToString(sender->GetHeight()); str += ")";
 
-	// Show sender fps and framecount if selected
+	// Show sender fps and framecount if available
 	if (sender->GetFrame() > 0) {
 		str += " fps ";
 		str += ofToString((int)roundf(sender->GetFps()));
@@ -292,15 +303,15 @@ void ofApp::exit() {
 }
 
 //--------------------------------------------------------------
-void ofApp::windowResized(int w, int h) 
+void ofApp::windowResized(int w, int h)
 {
-	// Update the sending fbo, texture or image
+	// If the sending size matches the window size,
+	// the fbo, texture or image should be updated here.
 	if (w > 0 && h > 0) {
 		senderwidth = w;
 		senderheight = h;
 		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
 		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
 	}
-
 }
 

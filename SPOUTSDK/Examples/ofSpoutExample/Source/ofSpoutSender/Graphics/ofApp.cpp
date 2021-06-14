@@ -99,24 +99,25 @@ void ofApp::setup(){
 	//
 	// If there are multiple graphics cards in the system,
 	// you may wish to use a particular one for texture sharing
+	// Sender and Receiver must use the same adapter.
 	//
 	// The number of adapters available can be queried :
 	// int nAdapters = sender.GetNumAdapters();
-	// printf("Number of adapters = %d\n", nAdapters);
+	// SpoutLog("Number of adapters = %d", nAdapters);
 	//
 	// The names can be retrieved :
 	// bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
 	//
 	// Set a specific adapter from it's index :
-	// sender.SetAdapter(1); // use the second in the list (0, 1, 2 etc.)
+	// sender.SetAdapter(1); // Example - use the second in the list (0, 1, 2 etc.)
 
-	// Frame counting is enabled depending on the user selection in SpoutSettings
+	// Frame counting is enabled by default.
 	// Status can be queried with IsFrameCountEnabled();
 	// Frame counting can be independently disabled for this application
 	// sender.DisableFrameCount();
 
 	// Set the frame rate of the application.
-	// In this example, the frame rate can be set with : ofSetFrameRate(30)
+	// In this example, the frame rate can be set with : ofSetFrameRate
 	// but applications without frame rate control can use "HoldFps" (see Draw())
 
 	// ----------------------------------------------
@@ -147,7 +148,6 @@ void ofApp::setup(){
 	// Update caption in case of multiples of the same sender
 	ofSetWindowTitle(sender.GetName());
 
-
 } // end setup
 
 
@@ -162,13 +162,17 @@ void ofApp::draw() {
 	// All sending functions check the sender name and dimensions
 	// and create or update the sender as necessary
 
-	// In this example, the fbo texture is already inverted
+	// In this Openframeworks example, the fbo texture is already inverted
 	// so the invert option is false for all sending functions
+	
+	// For all sending functions other than SendFbo, include the ID of
+	// the active framebuffer if one is currently bound.
 
 	// Draw 3D graphics demo into the fbo
 	// This could be anything
 	// - - - - - - - - - - - - - - - - 
 	myFbo.begin();
+
 	// Clear to reset the background and depth buffer
 	// Clear background alpha to opaque for the receiver
 	ofClear(10, 100, 140, 255);
@@ -182,19 +186,21 @@ void ofApp::draw() {
 	ofPopMatrix();
 	rotX += 0.6;
 	rotY += 0.6;
-
-	// Option 1 : Send the texture attached to point 0 while the fbo is bound
+	
+	// Send fbo
+	//   The fbo must be bound for read.
+	//   The invert option is false because the fbo is already flipped in y.
 	sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
 
-	// Option 2 : Send texture (fastest method)
+	// Send texture (fastest method)
 	// sender.SendTexture(myFbo.getTexture().getTextureData().textureID,
 		// myFbo.getTexture().getTextureData().textureTarget,
 		// senderwidth, senderheight, false);
 
-	// Option 3 : Send image pixels
+	// Send image pixels
 	// myFbo.readToPixels(myPixels); // readToPixels is slow - but this is just an example
 	// sender.SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
 
@@ -208,7 +214,7 @@ void ofApp::draw() {
 	str += ofToString(sender.GetWidth()); str += "x";
 	str += ofToString(sender.GetHeight()); str += ")";
 
-	// Show sender fps and framecount if selected
+	// Show sender fps and framecount if available
 	if (sender.GetFrame() > 0) {
 		str += " fps ";
 		str += ofToString((int)roundf(sender.GetFps()));
@@ -237,8 +243,7 @@ void ofApp::draw() {
 	// Applications without frame rate control can call this
 	// function to introduce the required delay between frames.
 	//
-	// Note : the default frame rate is 60.
-	// If you change to a lower fps in this example,
+	// Note : If you change to a lower fps in this example,
 	// the cube will rotate more slowly (increase RotX and RotY).
 	//
 	// sender.HoldFps(30);

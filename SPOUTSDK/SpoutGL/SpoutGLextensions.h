@@ -385,6 +385,10 @@ extern glGetBufferParameterivPROC	glGetBufferParameterivEXT;
 #ifdef USE_COPY_EXTENSIONS
 typedef void (APIENTRY * PFNGLCOPYIMAGESUBDATAPROC)(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth);
 extern PFNGLCOPYIMAGESUBDATAPROC glCopyImageSubData;
+
+typedef void(APIENTRY * glGetInternalFormativPROC)(GLenum target, GLenum internalfrmat, GLenum pname, GLsizei buffSize, GLint *params);
+extern glGetInternalFormativPROC glGetInternalFormativ;
+
 #endif // USE_COPY_EXTENSIONS
 
 //---------------------------

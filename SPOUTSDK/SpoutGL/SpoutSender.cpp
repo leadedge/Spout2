@@ -62,6 +62,13 @@
 //					  GetSenderMemoryShare(const char* sendername) for compatibility with SpoutLibrary
 //		17.10.20	- Change SetDX9format from D3D_FORMAT to DWORD
 //		27.12.20	- Multiple changes for SpoutGL base class - see SpoutSDK.cpp
+//		24.01.21	- Rebuild with SDK restructure.
+//		05.02.21	- Add GetCPUshare and SetCPUshare
+//		02.04.21	- Add event functions SetFrameSync/WaitFrameSync
+//					- Add data function WriteMemoryBuffer
+//		10.04.21	- Add GetCPU and GetGLDX
+//		24.04.21	- Add OpenGL shared texture access functions
+//		03.06.21	- Add CreateMemoryBuffer, DeleteMemoryBuffer, GetMemoryBufferSize
 //
 // ====================================================================================
 /*
@@ -104,6 +111,7 @@
 //
 // The main Spout class can be used but will expose both Sender and Receiver functions
 // which cannot be used within the same object.
+//
 // A Sender can still access lower level common functions for example :
 // --- Code
 //      SpoutSender sender;
@@ -204,6 +212,18 @@ HANDLE SpoutSender::GetHandle()
 	return spout.GetHandle();
 }
 
+//---------------------------------------------------------
+bool SpoutSender::GetCPU()
+{
+	return spout.GetCPU();
+}
+
+//---------------------------------------------------------
+bool SpoutSender::GetGLDX()
+{
+	return spout.GetGLDX();
+}
+
 //
 // Frame count
 //
@@ -232,6 +252,69 @@ void SpoutSender::HoldFps(int fps)
 	spout.HoldFps(fps);
 }
 
+//---------------------------------------------------------
+void SpoutSender::SetFrameSync(const char* SenderName)
+{
+	spout.SetFrameSync(SenderName);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
+{
+	return spout.WaitFrameSync(SenderName, dwTimeout);
+}
+
+//
+// Data sharing
+//
+
+//---------------------------------------------------------
+bool SpoutSender::WriteMemoryBuffer(const char *name, const char* data, int length)
+{
+	return spout.WriteMemoryBuffer(name, data, length);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::CreateMemoryBuffer(const char *name, int length)
+{
+	return spout.CreateMemoryBuffer(name,length);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::DeleteMemoryBuffer()
+{
+	return spout.DeleteMemoryBuffer();
+}
+
+//---------------------------------------------------------
+int SpoutSender::GetMemoryBufferSize(const char* name)
+{
+	return spout.GetMemoryBufferSize(name);
+}
+
+
+//
+// OpenGL shared texture access
+//
+
+//---------------------------------------------------------
+bool SpoutSender::BindSharedTexture()
+{
+	return spout.BindSharedTexture();
+}
+
+//---------------------------------------------------------
+bool SpoutSender::UnBindSharedTexture()
+{
+	return spout.UnBindSharedTexture();
+}
+
+//---------------------------------------------------------
+GLuint SpoutSender::GetSharedTextureID()
+{
+	return spout.GetSharedTextureID();
+}
+
 //
 // Graphics compatibility
 //
@@ -246,6 +329,18 @@ bool SpoutSender::GetAutoShare()
 void SpoutSender::SetAutoShare(bool bAuto)
 {
 	spout.SetAutoShare(bAuto);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::GetCPUshare()
+{
+	return spout.GetCPUshare();
+}
+
+//---------------------------------------------------------
+void SpoutSender::SetCPUshare(bool bCPU)
+{
+	spout.SetCPUshare(bCPU);
 }
 
 //---------------------------------------------------------
@@ -306,6 +401,12 @@ bool SpoutSender::GetAdapterName(int index, char *adaptername, int maxchars)
 }
 
 //---------------------------------------------------------
+char * SpoutSender::AdapterName()
+{
+	return spout.AdapterName();
+}
+
+//---------------------------------------------------------
 int SpoutSender::GetAdapter()
 {
 	return spout.GetAdapter();
@@ -321,18 +422,6 @@ bool SpoutSender::SetAdapter(int index)
 bool SpoutSender::GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars)
 {
 	return spout.GetAdapterInfo(renderdescription, displaydescription, maxchars);
-}
-
-//---------------------------------------------------------
-int SpoutSender::Adapter()
-{
-	return spout.Adapter();
-}
-
-//---------------------------------------------------------
-char * SpoutSender::AdapterName()
-{
-	return spout.AdapterName();
 }
 
 //

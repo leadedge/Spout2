@@ -4,7 +4,6 @@
 
 	Functions to manage DirectX 9 texture sharing
 
-
 	Copyright (c) 2014 - 2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 

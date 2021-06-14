@@ -3,7 +3,7 @@
 	Spout OpenFrameworks Sender example
 	using 2.007 SpoutLibrary
 
-	Copyright (C) 2020 Lynn Jarvis.
+	Copyright (C) 2021 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by

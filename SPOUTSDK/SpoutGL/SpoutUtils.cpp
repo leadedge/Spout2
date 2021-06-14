@@ -65,6 +65,12 @@
 		23.09.20 - _doLog : always prevent multiple logs by comparing with the last
 				   instead of reserving for > warnings
 		16.10.20 - Add bool WriteBinaryToRegistry
+		04.03.21 - Add std::string GetSDKversion()
+		09.03.21 - Fix code if USE_CHRONO not defined
+		17.04.21 - Disable close button on console
+				   Bring the main window to the top again
+		07.05.21 - Remove noisy warning from ReadPathFromRegistry
+		09.06.21 - Update Version to "2.007.002"
 
 */
 #include "SpoutUtils.h"
@@ -96,10 +102,11 @@ namespace spoututils {
 	std::string logFileName = ""; // file name for the logfile
 	std::string LastSpoutLog = "";
 	bool bConsole = false;
-#if _MSC_VER >= 1900
+#ifdef USE_CHRONO
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
 #endif
+	std::string SDKversion = "2.007.002"; // Spout SDK version number string
 
 	//
 	// Console management
@@ -113,11 +120,18 @@ namespace spoututils {
 			bConsole = true;
 		}
 		else {
+			// Get calling process window
+			HWND hwndFgnd = GetForegroundWindow();
 			if (AllocConsole()) {
 				errno_t err = freopen_s(&pCout, "CONOUT$", "w", stdout);
 				if (err == 0) {
 					SetConsoleTitleA("Spout Log");
 					bConsole = true;
+					// Disable close button
+					HMENU hmenu = GetSystemMenu(GetConsoleWindow(), FALSE);
+					EnableMenuItem(hmenu, SC_CLOSE, MF_GRAYED);
+					// Bring the main window to the top again
+					SetWindowPos(hwndFgnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 				}
 				else {
 					pCout = NULL;
@@ -125,7 +139,6 @@ namespace spoututils {
 				}
 			}
 		}
-
 	}
 	
 	void CloseSpoutConsole(bool bWarning)
@@ -422,7 +435,7 @@ namespace spoututils {
 			if (regres == ERROR_SUCCESS)
 				return true;
 		}
-
+	
 		// Just quit if the key does not exist
 		return false;
 
@@ -487,8 +500,6 @@ namespace spoututils {
 				return true;
 		}
 		// Quit if the key does not exist
-		SpoutLogWarning("ReadPathFromRegistry - could not open subkey [%s] Error (%ld)", subkey, regres);
-
 		return false;
 	}
 	
@@ -550,11 +561,6 @@ namespace spoututils {
 		}
 
 		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
-
-			// Write the binary string
-			// printf("\nhexdata size = %d\n", (int)sizeof(hexdata));
-
-			
 			regres = RegSetValueExA(hRegKey, valuename, 0, REG_BINARY, (BYTE *)hexdata, nChars);
 			RegCloseKey(hRegKey);
 		}
@@ -622,19 +628,29 @@ namespace spoututils {
 	}
 
 	// Timing utility functions
-#ifdef USE_CHRONO
 	void StartTiming() {
+#ifdef USE_CHRONO
 		start = std::chrono::steady_clock::now();
+#endif
 	}
 
 	double EndTiming() {
+#ifdef USE_CHRONO
 		end = std::chrono::steady_clock::now();
 		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		// printf("elapsed [%.3f] msec\n", elapsed / 1000.0);
+		// printf("    elapsed [%.4f] msec\n", elapsed / 1000.0);
 		// printf("elapsed [%.3f] u/sec\n", elapsed);
 		return elapsed;
-	}
+#else
+		return 0.0;
 #endif
+	}
+
+	// Get SDK version number string e.g. "2.007.000"
+	std::string GetSDKversion()
+	{
+		return SDKversion;
+	}
 
 	// Perform the log
 	void _doLog(SpoutLogLevel level, const char* format, va_list args)
@@ -660,6 +676,7 @@ namespace spoututils {
 			// Prevent multiple logs by comparing with the last
 			if (logString == LastSpoutLog)
 				return;
+
 			LastSpoutLog = logString; // update the last log
 
 			// Console logging
@@ -858,13 +875,11 @@ namespace spoututils {
 			// Find SpoutSettings path
 			char exePath[MAX_PATH];
 			if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "SpoutSettings", exePath)) {
-				printf("Spout::SetNVIDIAmode - SpoutSettings path not found\n");
 				SpoutLogError("Spout::SetNVIDIAmode - SpoutSettings path not found");
 				return false;
 			}
 
 			if (!PathFileExistsA(exePath)) {
-				printf("Spout::SetNVIDIAmode - SpoutSettings.exe not found\n[%s]\n", exePath);
 				SpoutLogError("Spout::SetNVIDIAmode - SpoutSettings.exe not found");
 				return false;
 			}

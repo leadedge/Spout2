@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns:atg="http://atg.xbox.com" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{8e114980-c1a3-4ada-ad7c-83caadf5daeb}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
+    </Filter>
+    <Filter Include="SpoutDX9">
+      <UniqueIdentifier>{b6fa2810-b123-4417-9461-7ecf2574c15a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SpoutSDK">
+      <UniqueIdentifier>{67c9c117-0260-4291-b256-dfeed612a506}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\DXUT\Optional\directx.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Vertices.cpp" />
+    <ClCompile Include="..\SpoutDX9.cpp">
+      <Filter>SpoutDX9</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\SpoutGL\SpoutFrameCount.cpp">
+      <Filter>SpoutSDK</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\SpoutGL\SpoutSenderNames.cpp">
+      <Filter>SpoutSDK</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\SpoutGL\SpoutSharedMemory.cpp">
+      <Filter>SpoutSDK</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\SpoutGL\SpoutUtils.cpp">
+      <Filter>SpoutSDK</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\SpoutDX9.h">
+      <Filter>SpoutDX9</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\SpoutGL\SpoutCommon.h">
+      <Filter>SpoutSDK</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\SpoutGL\SpoutFrameCount.h">
+      <Filter>SpoutSDK</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\SpoutGL\SpoutSenderNames.h">
+      <Filter>SpoutSDK</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\SpoutGL\SpoutSharedMemory.h">
+      <Filter>SpoutSDK</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\SpoutGL\SpoutUtils.h">
+      <Filter>SpoutSDK</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CLInclude Include="resource.h">
+      <Filter>Resource Files</Filter>
+    </CLInclude>
+    <ResourceCompile Include="Vertices.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+</Project>

@@ -57,7 +57,7 @@
 // This definition enables legacy OpenGL rendering code
 // used for shared texture Draw functions in SpoutGLDXinterop.cpp
 // Disabled by default for OpenGL 4 compliance
-// #define legacyOpenGL
+#define legacyOpenGL
 
 // Common utility functions namespace
 #include "SpoutUtils.h"
