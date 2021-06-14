@@ -29,7 +29,8 @@ The example project files are for Visual Studio 2017. To build them, retain the 
 	  SpoutDirectX <- this folder is for DirectX examples and the SpoutDX support class
 	      SpoutDX <- using the SpoutDX support class
 	          SpoutDX9 <- the DirectX9 support class and examples
-	              Tut06_Meshes <- DirectX9 texture sender
+		      Tut02_Vertices_Receiver <- DirectX9 texture receiver
+	              Tut02_Vertices_Sender <- DirectX9 texture sender
 		  
 Open the solution file, change to release and build. For all examples, search for "SPOUT" to see the changes made to the original code. Refer to the source code for further information.
 
