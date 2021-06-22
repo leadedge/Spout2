@@ -90,6 +90,7 @@
 //		09.12.20	- CloseDirectX11() in destructor
 //		27.12.20	- Change all hex printf to 0x%.7X with PtrToUint helper
 //		20.02.21	- Add zero width/height check to CreateDX11Texture
+//		19.06.21	- Remove output check from FindNVIDIA
 //
 // ====================================================================================
 /*
@@ -703,7 +704,8 @@ int spoutDirectX::GetAdapter()
 }
 
 
-// FOR DEBUGGING 
+// For purposes where NVIDIA hardware acceleration is used
+// e.g. FFmpeg 
 bool spoutDirectX::FindNVIDIA(int &nAdapter)
 {
 	IDXGIFactory1* _dxgi_factory1;
@@ -720,10 +722,10 @@ bool spoutDirectX::FindNVIDIA(int &nAdapter)
 		// printf("spoutDirectX::FindNVIDIA - Adapter(%d) : %S\n", i, desc.Description );
 		DXGI_OUTPUT_DESC desc_out;
 		IDXGIOutput* p_output = nullptr;
-		if(adapter1_ptr->EnumOutputs(0, &p_output ) == DXGI_ERROR_NOT_FOUND) {
+		// if(adapter1_ptr->EnumOutputs(0, &p_output ) == DXGI_ERROR_NOT_FOUND) {
 			// printf("  No outputs\n");
-			continue;
-		}
+			// continue;
+		// }
 
 		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
 			if (p_output) {

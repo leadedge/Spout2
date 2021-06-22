@@ -623,12 +623,12 @@ bool spoutFrameCount::CheckAccess()
 	// Typically 2-3 microseconds.
 	// 10 receivers - no increase.
 	// Note that NVIDIA "Threaded optimization" can cause delay
-	// for WaitForSingleObject and is set OFF by SpoutSettinngs
-
+	// for WaitForSingleObject and can be set OFF by SpoutSettinngs
 	DWORD dwWaitResult = WaitForSingleObject(m_hAccessMutex, 67); // timeout 4 frames at 60fps
 	switch (dwWaitResult) {
 		case WAIT_OBJECT_0 :
 			// The state of the object is signalled.
+			// The thread got ownership of the mutex
 			return true;
 		case WAIT_ABANDONED:
 			SpoutLogError("spoutFrameCount::CheckAccess - WAIT_ABANDONED");

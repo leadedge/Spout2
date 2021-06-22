@@ -200,6 +200,7 @@
 //		24.04.21	- ReceiveTexture - return if flagged for update
 //					  only if there is a texture to receive into.
 //		10.05.21	- ReceiveTexture - allow for the possibility of 2.006 memoryshare sender.
+//		22.06.21	- Move code for GetSenderCount and GetSender to SpoutSenderNames class
 //
 // ====================================================================================
 /*
@@ -1013,41 +1014,15 @@ bool Spout::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 // Number of senders
 int Spout::GetSenderCount()
 {
-	std::set<std::string> SenderNameSet;
-	if (sendernames.GetSenderNames(&SenderNameSet)) {
-		return((int)SenderNameSet.size());
-	}
-	return 0;
+	return sendernames.GetSenderCount();
 }
 
 //---------------------------------------------------------
 // Function: GetSender
 // Sender item name in the sender names set
-bool Spout::GetSender(int index, char* sendername, int sendernameMaxSize)
+bool Spout::GetSender(int index, char* sendername, int MaxSize)
 {
-	std::set<std::string> SenderNameSet;
-	std::set<std::string>::iterator iter;
-	std::string namestring;
-	char name[256];
-	int i;
-
-	if (sendernames.GetSenderNames(&SenderNameSet)) {
-		if (SenderNameSet.size() < (unsigned int)index) {
-			return false;
-		}
-		i = 0;
-		for (iter = SenderNameSet.begin(); iter != SenderNameSet.end(); iter++) {
-			namestring = *iter; // the name string
-			strcpy_s(name, 256, namestring.c_str()); // the 256 byte name char array
-			if (i == index) {
-				strcpy_s(sendername, sendernameMaxSize, name); // the passed name char array
-				break;
-			}
-			i++;
-		}
-		return true;
-	}
-	return false;
+	return sendernames.GetSenderName(index, sendername, MaxSize);
 }
 
 //---------------------------------------------------------

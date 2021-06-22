@@ -72,6 +72,8 @@
 	27.02.21 - Change SetSenderCPUmode name to SetSenderID
 	09.04.21 - Add GetSender to retrieve class sender.
 			   Remove SenderDebug
+	22.06.21 - Restore 2.006 GetSenderNames function
+
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2021, Lynn Jarvis. All rights reserved.
@@ -384,6 +386,34 @@ int spoutSenderNames::GetSenderCount() {
 	m_senderNames.Unlock();
 
 	return 0;
+}
+
+bool spoutSenderNames::GetSenderName(int index, char* sendername, int sendernameMaxSize)
+{
+	std::set<std::string> SenderNameSet;
+	std::set<std::string>::iterator iter;
+	std::string namestring;
+	char name[256];
+	int i;
+
+	if (GetSenderNames(&SenderNameSet)) {
+		if (SenderNameSet.size() < (unsigned int)index) {
+			return false;
+		}
+		i = 0;
+		for (iter = SenderNameSet.begin(); iter != SenderNameSet.end(); iter++) {
+			namestring = *iter; // the name string
+			strcpy_s(name, 256, namestring.c_str()); // the 256 byte name char array
+			if (i == index) {
+				strcpy_s(sendername, sendernameMaxSize, name); // the passed name char array
+				break;
+			}
+			i++;
+		}
+		return true;
+	}
+	return false;
+
 }
 
 // Get sender info given a sender index and knowing the sender count

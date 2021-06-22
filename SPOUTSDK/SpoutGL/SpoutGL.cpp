@@ -1674,7 +1674,6 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 }
 
-
 //
 // Copy OpenGL to DirectX 11 texture via CPU where the GL/DX interop is not available
 //
