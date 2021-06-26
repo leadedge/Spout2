@@ -190,12 +190,21 @@ void ofApp::draw() {
 	// Send fbo
 	//   The fbo must be bound for read.
 	//   The invert option is false because the fbo is already flipped in y.
+	//   The fbo size can be different to the application window for a fixed sender size.
+	//   Disable the code in WindowResized() if you want this.
 	sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
 
-	// Send texture (fastest method)
+	// Show the result sized to the application window
+	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
+
+	// Send the application window (default framebuffer).
+	// The window width and height must be used if myFbo size is different.
+	// sender.SendFbo(0, ofGetWidth(), ofGetHeight(), false);
+
+	// Send texture
 	// sender.SendTexture(myFbo.getTexture().getTextureData().textureID,
 		// myFbo.getTexture().getTextureData().textureTarget,
 		// senderwidth, senderheight, false);
@@ -203,9 +212,6 @@ void ofApp::draw() {
 	// Send image pixels
 	// myFbo.readToPixels(myPixels); // readToPixels is slow - but this is just an example
 	// sender.SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
-
-	// Show the result sized to the application window
-	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	// Show what it is sending
 	ofSetColor(255);
