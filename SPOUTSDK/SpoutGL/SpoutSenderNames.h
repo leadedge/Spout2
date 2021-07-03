@@ -112,7 +112,7 @@ class SPOUT_DLLEXP spoutSenderNames {
 		// Number of senders in the list
 		int  GetSenderCount();
 		// Sender item name
-		bool GetSenderName(int index, char* sendername, int MaxSize = 256);
+		bool GetSender(int index, char* sendername, int MaxSize = 256);
 		// Information about a sender from an index into the list
 		bool GetSenderNameInfo(int index, char* sendername, int sendernameMaxSize, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle);
 
@@ -170,8 +170,8 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool CheckSender  (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 		// Find a sender and return details
 		bool FindSender   (char* sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
-		// Get sender in this class
-		bool GetSender(const char* sendername);
+		// Find a sender in the names set
+		bool FindSenderName(const char* sendername);
 		// Release orphaned senders
 		void CleanSenders();
 

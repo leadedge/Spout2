@@ -1386,12 +1386,14 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 		status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 		if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 			if (m_bBLITavailable) {
-				if (bInvert)
+				if (bInvert) {
 					// copy from one framebuffer to the other while flipping upside down 
 					glBlitFramebufferEXT(0, 0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-				else
+				}
+				else {
 					// Do not flip during blit
 					glBlitFramebufferEXT(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+				}
 			}
 			else {
 				// No fbo blit extension

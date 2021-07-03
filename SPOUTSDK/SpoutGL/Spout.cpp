@@ -201,6 +201,7 @@
 //					  only if there is a texture to receive into.
 //		10.05.21	- ReceiveTexture - allow for the possibility of 2.006 memoryshare sender.
 //		22.06.21	- Move code for GetSenderCount and GetSender to SpoutSenderNames class
+//		03.07.21	- Use changed SpoutSenderNames "GetSender" function name.
 //
 // ====================================================================================
 /*
@@ -1022,7 +1023,7 @@ int Spout::GetSenderCount()
 // Sender item name in the sender names set
 bool Spout::GetSender(int index, char* sendername, int MaxSize)
 {
-	return sendernames.GetSenderName(index, sendername, MaxSize);
+	return sendernames.GetSender(index, sendername, MaxSize);
 }
 
 //---------------------------------------------------------

@@ -73,6 +73,8 @@
 	09.04.21 - Add GetSender to retrieve class sender.
 			   Remove SenderDebug
 	22.06.21 - Restore 2.006 GetSenderNames function
+	03.07.21 - Change GetSenderNames to GetSender to align with Spout class.
+			   Change existing GetSender to FindSenderName.
 
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -388,7 +390,7 @@ int spoutSenderNames::GetSenderCount() {
 	return 0;
 }
 
-bool spoutSenderNames::GetSenderName(int index, char* sendername, int sendernameMaxSize)
+bool spoutSenderNames::GetSender(int index, char* sendername, int sendernameMaxSize)
 {
 	std::set<std::string> SenderNameSet;
 	std::set<std::string>::iterator iter;
@@ -857,8 +859,8 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 
 } // end FindSender
 
-// Get sender in this class
-bool spoutSenderNames::GetSender(const char* sendername)
+// Find a sender in the names set
+bool spoutSenderNames::FindSenderName(const char* sendername)
 {
 	std::string namestring = sendername;
 	if (m_senders->find(namestring) != m_senders->end())
