@@ -170,8 +170,8 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool CheckSender  (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
 		// Find a sender and return details
 		bool FindSender   (char* sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
-		// Find a sender in the names set
-		bool FindSenderName(const char* sendername);
+		// Find a sender in the class names set
+		bool FindSender   (const char* sendername);
 		// Release orphaned senders
 		void CleanSenders();
 

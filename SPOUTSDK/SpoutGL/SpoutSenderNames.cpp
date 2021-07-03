@@ -75,6 +75,8 @@
 	22.06.21 - Restore 2.006 GetSenderNames function
 	03.07.21 - Change GetSenderNames to GetSender to align with Spout class.
 			   Change existing GetSender to FindSenderName.
+			 - Change duplicate FindSenderName to FindSender overload
+			   testing function
 
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -859,8 +861,9 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 
 } // end FindSender
 
-// Find a sender in the names set
-bool spoutSenderNames::FindSenderName(const char* sendername)
+// Find a sender in the class names set
+// Used for testing - may be removed
+bool spoutSenderNames::FindSender(const char* sendername)
 {
 	std::string namestring = sendername;
 	if (m_senders->find(namestring) != m_senders->end())
