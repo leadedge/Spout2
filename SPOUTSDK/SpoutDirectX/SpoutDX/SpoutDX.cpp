@@ -100,6 +100,9 @@
 //		29.04.21	- Change IsFrameNew() to return frame class global.
 //		10.06.21	- Remove Memoryshare struct and replace with SpoutSharedMemory object
 //					  Update data functions
+//		01.07.21	- ReadPixelData - add swap r/b argument
+//		04.07.21	- GetSenderCount, GetSender pass through to sendernames class.
+//					- Destructor : do not release receiver connected sender name.
 //
 // ====================================================================================
 /*
@@ -170,10 +173,20 @@ spoutDX::spoutDX()
 
 spoutDX::~spoutDX()
 {
-	ReleaseSender();
-	ReleaseReceiver();
+	if (m_bConnected) {
+		// Receiver object
+		// Do not release the connected sender name
+		ReleaseReceiver();
+	}
+	else {
+		// Sender object (or receiver not connected. i.e. not initialized)
+		// Release the sender name if initialized
+		ReleaseSender();
+	}
+
 	CloseDirectX11();
 	memorybuffer.Close();
+
 }
 
 //---------------------------------------------------------
@@ -693,7 +706,7 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 				// Copy from the sender's shared texture to the first staging texture
 				m_pImmediateContext->CopyResource(m_pStaging[m_Index], m_pSharedTexture);
 				// Map and read from the second while the first is occupied
-				ReadPixelData(m_pStaging[m_NextIndex], pixels, width, height, bRGB, bInvert);
+				ReadPixelData(m_pStaging[m_NextIndex], pixels, width, height, bRGB, bInvert, false);
 			}
 			// Allow access to the shared texture
 			frame.AllowTextureAccess(m_pSharedTexture);
@@ -888,11 +901,7 @@ bool spoutDX::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 // Number of senders
 int spoutDX::GetSenderCount()
 {
-	std::set<std::string> SenderNameSet;
-	if (sendernames.GetSenderNames(&SenderNameSet)) {
-		return((int)SenderNameSet.size());
-	}
-	return 0;
+	return sendernames.GetSenderCount();
 }
 
 //---------------------------------------------------------
@@ -900,29 +909,7 @@ int spoutDX::GetSenderCount()
 // Sender item name in the sender names set
 bool spoutDX::GetSender(int index, char* sendername, int sendernameMaxSize)
 {
-	std::set<std::string> SenderNameSet;
-	std::set<std::string>::iterator iter;
-	std::string namestring;
-	char name[256];
-	int i;
-
-	if (sendernames.GetSenderNames(&SenderNameSet)) {
-		if (SenderNameSet.size() < (unsigned int)index) {
-			return false;
-		}
-		i = 0;
-		for (iter = SenderNameSet.begin(); iter != SenderNameSet.end(); iter++) {
-			namestring = *iter; // the name string
-			strcpy_s(name, 256, namestring.c_str()); // the 256 byte name char array
-			if (i == index) {
-				strcpy_s(sendername, sendernameMaxSize, name); // the passed name char array
-				break;
-			}
-			i++;
-		}
-		return true;
-	}
-	return false;
+	return sendernames.GetSender(index, sendername);
 }
 
 //---------------------------------------------------------
@@ -1798,53 +1785,67 @@ void spoutDX::CreateReceiver(const char * SenderName, unsigned int width, unsign
 //
 // A class device and context must have been created using OpenDirectX11()
 //
-bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingTexture, unsigned char* pixels,
-	unsigned int width, unsigned int height, bool bRGB, bool bInvert)
+// bRGB - pixel data is RGB instead of RGBA
+// bInvert - flip the image
+// bSwap - swap red/blue (BGRA/RGBA). Not available for re-sample
+//
+bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* destpixels,
+	unsigned int width, unsigned int height, bool bRGB, bool bInvert, bool bSwap)
 {
-	if (!m_pImmediateContext || !pStagingTexture || !pixels)
+	if (!m_pImmediateContext || !pStagingSource || !destpixels)
 		return false;
 
-	// Map the resource so we can access the pixels
+	// Map the staging texture resource so we can access the pixels
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource;
 	// Make sure all commands are done before mapping the staging texture
 	m_pImmediateContext->Flush();
 	// Map waits for GPU access
-	HRESULT hr = m_pImmediateContext->Map(pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
+	HRESULT hr = m_pImmediateContext->Map(pStagingSource, 0, D3D11_MAP_READ, 0, &mappedSubResource);
 	if (SUCCEEDED(hr)) {
 
 		// Copy the staging texture pixels to the user buffer
 		if (!bRGB) {
-			// RGBA buffer
+			// RGBA pixel buffer
 			// TODO : test rgba-rgba resample
+			// TODO : rgba2bgraResample
 			if (width != m_Width || height != m_Height) {
-				spoutcopy.rgba2rgbaResample(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
+				spoutcopy.rgba2rgbaResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
 			}
 			else {
-				spoutcopy.rgba2rgba(mappedSubResource.pData, pixels, width, height, mappedSubResource.RowPitch, bInvert);
+				if(bSwap)
+					spoutcopy.rgba2bgra(mappedSubResource.pData, destpixels, width, height, mappedSubResource.RowPitch, bInvert);
+				else
+					spoutcopy.rgba2rgba(mappedSubResource.pData, destpixels, width, height, mappedSubResource.RowPitch, bInvert);
 			}
 		}
-		else if (m_dwFormat == 28) {
-			// RGB buffer
+		else if (m_dwFormat == 28) { // DXGI_FORMAT_R8G8B8A8_UNORM
+			// RGBA texture - RGB/BGR pixel buffer
 			// If the texture format is RGBA it has to be converted to BGR by the staging texture copy
 			if (width != m_Width || height != m_Height) {
-				spoutcopy.rgba2bgrResample(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
+				if(bSwap)
+					spoutcopy.rgba2rgbResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
+				else
+					spoutcopy.rgba2bgrResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
 			}
 			else {
-				spoutcopy.rgba2bgr(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert);
+				if (bSwap)
+					spoutcopy.rgba2rgb(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert);
+				else
+					spoutcopy.rgba2bgr(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert);
 			}
 		}
 		else {
 			// Used for SpoutCam to receive RGB images
 			if (width != m_Width || height != m_Height) {
-				spoutcopy.rgba2rgbResample(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert, m_bMirror, m_bSwapRB);
+				spoutcopy.rgba2rgbResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert, m_bMirror, m_bSwapRB);
 			}
 			else {
 				// Approx 5 msec at 1920x1080
-				spoutcopy.rgba2rgb(mappedSubResource.pData, pixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert, m_bMirror, m_bSwapRB);
+				spoutcopy.rgba2rgb(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert, m_bMirror, m_bSwapRB);
 			}
 		}
 
-		m_pImmediateContext->Unmap(pStagingTexture, 0);
+		m_pImmediateContext->Unmap(pStagingSource, 0);
 
 		return true;
 	} // endif DX11 map OK
