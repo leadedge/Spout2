@@ -62,7 +62,9 @@
 //				   Re-build 32/64 bit - VS2017 / MT
 //		24.04.21 - ReceiveTexture - return if flagged for update
 //		10.06.21 - Re-build 32/64 bit - VS2017 / MT
-
+//		20.07.21 - Change generic local log level definition to avoid
+//				   conflict with other libraries and applications.
+//				   Re-build 32/64 bit - VS2017 / MT
 //
 /*
 		Copyright (c) 2016-2021, Lynn Jarvis. All rights reserved.
@@ -449,7 +451,7 @@ private: // Spout SDK functions
 	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 
 	//
-	// Group: Memory sharing
+	// Group: Data sharing
 	//
 	//   General purpose data exchange functions using shared memory.
 	//   These functions can be used in addition to texture sharing.
@@ -568,7 +570,7 @@ private: // Spout SDK functions
 
 	// Function: SetSpoutLogLevel
 	// Set the current log level
-	void SetSpoutLogLevel(LogLevel level);
+	void SetSpoutLogLevel(LibLogLevel level);
 
 	// Function: SpoutLog
 	// General purpose log
@@ -1145,7 +1147,7 @@ void SPOUTImpl::DisableSpoutLog()
 	spoututils::DisableSpoutLog();
 }
 
-void SPOUTImpl::SetSpoutLogLevel(LogLevel level)
+void SPOUTImpl::SetSpoutLogLevel(LibLogLevel level)
 {
 	spoututils::SetSpoutLogLevel((SpoutLogLevel)level);
 }

@@ -48,7 +48,9 @@
 #endif
 
 // Local log level definitions
-enum LogLevel {
+// SpoutLogLevel conflicts with previous definition
+// LogLevel is too generic
+enum LibLogLevel {
 	SPOUT_LOG_SILENT,
 	SPOUT_LOG_VERBOSE,
 	SPOUT_LOG_NOTICE,
@@ -216,7 +218,7 @@ struct SPOUTLIBRARY
 	// SPOUT_LOG_WARNING - Something might go wrong
 	// SPOUT_LOG_ERROR   - Something did go wrong
 	// SPOUT_LOG_FATAL   - Something bad happened
-	virtual void SetSpoutLogLevel(LogLevel level) = 0;
+	virtual void SetSpoutLogLevel(LibLogLevel level) = 0;
 	// General purpose log
 	virtual void SpoutLog(const char* format, ...) = 0;
 	// Verbose - show log for SPOUT_LOG_VERBOSE or above
