@@ -71,6 +71,8 @@ class SPOUT_DLLEXP spoutDX {
 	void SetSenderFormat(DXGI_FORMAT format);
 	// Close sender and free resources
 	void ReleaseSender();
+	// Send the back buffer
+	bool SendBackBuffer();
 	// Send a texture
 	bool SendTexture(ID3D11Texture2D* pTexture);
 	// Send an image

@@ -103,6 +103,8 @@
 //		01.07.21	- ReadPixelData - add swap r/b argument
 //		04.07.21	- GetSenderCount, GetSender pass through to sendernames class.
 //					- Destructor : do not release receiver connected sender name.
+//		20.07.21	- Correct GetSender to include max size
+//					  Add SendBackBuffer
 //
 // ====================================================================================
 /*
@@ -377,6 +379,31 @@ void spoutDX::ReleaseSender()
 	// Close shared memory buffer if used
 	memorybuffer.Close();
 
+}
+
+//---------------------------------------------------------
+// Function: SendBackbuffer
+// Get the swap chain's back buffer to a texture for sending.
+// Assumes a single render target view.
+// Refer to SendTexture for compatible formats.
+//
+bool spoutDX::SendBackBuffer()
+{
+	if (m_pImmediateContext) {
+		ID3D11RenderTargetView *rendertarget = nullptr;
+		m_pImmediateContext->OMGetRenderTargets(1, &rendertarget, nullptr);
+		if (rendertarget) {
+			ID3D11Resource* pBackBufferResource = nullptr;
+			rendertarget->GetResource(&pBackBufferResource);
+			if (pBackBufferResource) {
+				// SendTexture checks for DirectX initialization
+				// and handles sender creation and re-sizing.
+				SendTexture(reinterpret_cast<ID3D11Texture2D*>(pBackBufferResource));
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 //---------------------------------------------------------
@@ -909,7 +936,7 @@ int spoutDX::GetSenderCount()
 // Sender item name in the sender names set
 bool spoutDX::GetSender(int index, char* sendername, int sendernameMaxSize)
 {
-	return sendernames.GetSender(index, sendername);
+	return sendernames.GetSender(index, sendername, sendernameMaxSize);
 }
 
 //---------------------------------------------------------
