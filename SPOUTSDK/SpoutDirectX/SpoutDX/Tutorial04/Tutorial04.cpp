@@ -796,13 +796,20 @@ void Render()
 	// SPOUT
 	//
 
-	// Get the swap chain's backbuffer to a texture for sending
-	ID3D11Texture2D* pBackBuffer = nullptr;
-	HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
-	if (SUCCEEDED(hr)) {
-		// SendTexture handles sender creation and resizing
-		sender.SendTexture(pBackBuffer);
-	}
+	// Option 1 
+	// Send the swap chain's back buffer.
+	// A single render target view is assumed.
+	// Sending functions handle sender creation and resizing.
+	sender.SendBackBuffer();
+
+	// Option 2
+	// Send a texture.
+	// In this example, we get the back buffer but the texture can be independent.
+	// ID3D11Texture2D* pBackBuffer = nullptr;
+	// HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
+	// if (SUCCEEDED(hr)) {
+		// sender.SendTexture(pBackBuffer);
+	// }
 
     //
     // Present our back buffer to our front buffer
