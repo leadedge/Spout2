@@ -271,14 +271,6 @@ VOID Render()
 	// Present the backbuffer contents to the display
 	g_pd3dDevice->Present(NULL, NULL, NULL, NULL);
 
-	//
-	// SPOUT - fps control
-	//
-	// Hold a target frame rate - e.g. 60 or 30fps
-	// This is not necessary if the application already has fps control.
-	// If frame count is enabled, receivers will detect the sender fps
-	// sender.HoldFps(30);
-
 }
 
 
