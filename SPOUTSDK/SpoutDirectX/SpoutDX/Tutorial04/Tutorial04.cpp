@@ -121,7 +121,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	//
 
 	// Optionally enable logging to catch Spout warnings and errors
-	// OpenSpoutConsole(); // Console only for debugging
+	OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("Tutorial04.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
@@ -308,6 +308,7 @@ HRESULT InitDevice()
 	// Graphics adapter selection requires a class device.
 	// Don't forget to comment out the application device creation below
 
+	
 	// ===============================================================
 	if (sender.OpenDirectX11()) {
 		// Set the application device and context to those created in the SpoutDX class
@@ -318,6 +319,7 @@ HRESULT InitDevice()
 		return 0;
 	}
 	// ===============================================================
+	
 
 	/*
 	// ===============================================================
@@ -730,9 +732,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 //--------------------------------------------------------------------------------------
 void Render()
 {
-	//
-	// SPOUT
-	//
 	if (sender.IsInitialized()) {
 		// Has the window changed size?
 		if (!IsIconic(g_hWnd)) {
@@ -800,31 +799,29 @@ void Render()
 	// Send the swap chain's back buffer.
 	// A single render target view is assumed.
 	// Sending functions handle sender creation and resizing.
-	sender.SendBackBuffer();
+	// sender.SendBackBuffer();
 
 	// Option 2
 	// Send a texture.
 	// In this example, we get the back buffer but the texture can be independent.
-	// ID3D11Texture2D* pBackBuffer = nullptr;
-	// HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
-	// if (SUCCEEDED(hr)) {
-		// sender.SendTexture(pBackBuffer);
-	// }
-
+	ID3D11Texture2D* pBackBuffer = nullptr;
+	HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
+	if (SUCCEEDED(hr)) {
+		sender.SendTexture(pBackBuffer);
+	}
+	
     //
     // Present our back buffer to our front buffer
-    //
-    g_pSwapChain->Present( 0, 0 );
-
 	//
 	// SPOUT - fps control
 	//
-	// Hold a target frame rate/ e.g. 60 or 30fps
-	// use numerator an denominator e.g. 30000/2001 = 29.97 fps
-	// Here you could also use a different Present method such as
-	// "Present( 1, 0 )" to synchronize with vertical blank.
-	// Build with different options to explore.
-	sender.HoldFps(60);
+	// Here the frame rate can be extremely high.
+	// To avoid exessive processing, hold a target frame rate
+	// using a different sync interval for the Present method
+	// to synchronize with vertical blank, typically 60 fps.
+    // g_pSwapChain->Present( 0, 0 );
+	g_pSwapChain->Present(1, 0);
+
 
 }
 
