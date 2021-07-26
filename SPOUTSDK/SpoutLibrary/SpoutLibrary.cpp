@@ -64,7 +64,7 @@
 //		10.06.21 - Re-build 32/64 bit - VS2017 / MT
 //		20.07.21 - Change generic local log level definition to avoid
 //				   conflict with other libraries and applications.
-//				   Re-build 32/64 bit - VS2017 / MT
+//		25.07.21   Re-build 32/64 bit - VS2017 / Multi-threaded DLL (/MD)
 //
 /*
 		Copyright (c) 2016-2021, Lynn Jarvis. All rights reserved.

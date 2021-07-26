@@ -10,7 +10,7 @@
 	3) Tell the linker to input SpoutLibrary.lib to your project
 	   For Visual Studio this will be : Project > Properties > Linker > Input
 
-	4) Tell the linker where to find it
+	4) Tell the linker where to find it (libs)
 	   For Visual Studio this will be :
 	   Project > Properties > Linker > General > Aditional library directories
 
