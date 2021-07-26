@@ -202,6 +202,7 @@
 //		10.05.21	- ReceiveTexture - allow for the possibility of 2.006 memoryshare sender.
 //		22.06.21	- Move code for GetSenderCount and GetSender to SpoutSenderNames class
 //		03.07.21	- Use changed SpoutSenderNames "GetSender" function name.
+//		04.07.21	- Additional code comments concerning update in ReceiveTexture.
 //
 // ====================================================================================
 /*
@@ -746,6 +747,9 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 		// Let the application know
 		m_bConnected = true;
 
+		// If the connected sender sharehandle or name is different,
+		// the receiver is re-initialized and m_bUpdated is set true
+		// so that the application re-allocates the receiving texture.
 		if (m_bUpdated) {
 			// If the sender is new or changed, reset shared textures
 			if (m_bTextureShare) {
@@ -1995,6 +1999,7 @@ bool Spout::ReceiveSenderData()
 
 			// We have a valid share handle
 			if (m_dxShareHandle) {
+
 				// Get a new shared texture pointer (m_pSharedTexture)
 				if (!spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &m_pSharedTexture, dxShareHandle)) {
 					// If this fails, something is wrong.
@@ -2023,6 +2028,22 @@ bool Spout::ReceiveSenderData()
 		// Connected and intialized
 		// Sender name, width, height, format, texture pointer and share handle have been retrieved
 
+		// LJ DEBUG
+		// printf("    m_dxShareHandle = 0x%7X : m_pSharedTexture = 0x%7X\n", PtrToUint(m_dxShareHandle), PtrToUint(m_pSharedTexture));
+
+		// ID3D11Texture2D * texturePointer = m_pSharedTexture;
+		// D3D11_TEXTURE2D_DESC td;
+		// texturePointer->GetDesc(&td);
+		// printf("td.Format = %d\n", td.Format); // 87
+		// printf("td.Width = %d\n", td.Width);
+		// printf("td.Height = %d\n", td.Height);
+		// printf("td.MipLevels = %d\n", td.MipLevels);
+		// printf("td.Usage = %d\n", td.Usage);
+		// printf("td.ArraySize = %d\n",  td.ArraySize);
+		// printf("td.SampleDesc = %d\n", (int)td.SampleDesc);
+		// printf("td.BindFlags = %d\n", td.BindFlags);
+		// printf("td.MiscFlags = %d\n", td.MiscFlags); // D3D11_RESOURCE_MISC_SHARED
+
 		// The application can now access and copy the sender texture
 		return true;
 
@@ -2039,7 +2060,6 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 {
 	// If SpoutPanel has been activated, test if the user has clicked OK
 	if (m_bSpoutPanelOpened) { // User has activated spout panel
-
 		SharedTextureInfo TextureInfo;
 		HANDLE hMutex = NULL;
 		DWORD dwExitCode;
@@ -2095,6 +2115,7 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 		if (hMutex) CloseHandle(hMutex);
 		return bRet;
 	} // SpoutPanel has not been opened
+
 
 	return false;
 

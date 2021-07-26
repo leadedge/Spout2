@@ -37,6 +37,7 @@
 //					  SetFrameSync/WaitFrameSync/OpenFrameSync/CloseFrameSync
 //		07.04.21	- CloseFrameSync public for use by other classes
 //		17.04.21	- WaitFrameSync - close handle on error
+//		21.07.21	- Remove debug comment
 //
 // ====================================================================================
 //
@@ -317,7 +318,8 @@ void spoutFrameCount::SetNewFrame()
 				SpoutLogError("spoutFrameCount::SetNewFrame - ReleaseSemaphore failed");
 			}
 			else {
-				m_FrameCount++; // Increment the sender frame count
+				// Increment the sender frame count
+				m_FrameCount++;
 				// Update the sender fps calculations for the new frame
 				UpdateSenderFps(1);
 			}
@@ -490,7 +492,7 @@ void spoutFrameCount::HoldFps(int fps)
 	
 #ifdef USE_CHRONO
 	// Initialize frame time at target rate
-	if (m_millisForFrame < 0.01) {
+	if (m_millisForFrame < 0.001) {
 		m_millisForFrame = 1000.0 / framerate; // msec per frame
 		*m_FrameStartPtr = std::chrono::steady_clock::now();
 		SpoutLogNotice("spoutFrameCount::HoldFps(%.2f)", framerate);
@@ -871,6 +873,7 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 		m_lastFrame = thisFrame;
 #endif
 	}
+
 }
 
 // -----------------------------------------------
