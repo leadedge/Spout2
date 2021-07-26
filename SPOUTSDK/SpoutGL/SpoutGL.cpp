@@ -47,6 +47,7 @@
 //		09.06.21	- Add CreateMemoryBuffer, DeleteMemoryBuffer
 //					  Revise and test data functions
 //					  All data functions return false if 2.006 memoryshare mode.
+//		26.07.21	- Remove memorysize check from GetMemoryBufferSize for receiver
 //
 // ====================================================================================
 /*
@@ -1386,12 +1387,14 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 		status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 		if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 			if (m_bBLITavailable) {
-				if (bInvert)
+				if (bInvert) {
 					// copy from one framebuffer to the other while flipping upside down 
 					glBlitFramebufferEXT(0, 0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-				else
+				}
+				else {
 					// Do not flip during blit
 					glBlitFramebufferEXT(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+				}
 			}
 			else {
 				// No fbo blit extension
@@ -1673,7 +1676,6 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	return true;
 
 }
-
 
 //
 // Copy OpenGL to DirectX 11 texture via CPU where the GL/DX interop is not available
@@ -2006,7 +2008,7 @@ bool spoutGL::CreateMemoryBuffer(const char *name, int length)
 	_itoa_s(length, reinterpret_cast<char *>(pBuffer), 16, 10);
 
 	memoryshare.Unlock();
-	SpoutLogNotice("spoutGL::CreateMemoryBuffer - created shared memory buffer %d bytes", (length+32));
+	SpoutLogNotice("spoutGL::CreateMemoryBuffer - created shared memory buffer %d bytes", length);
 
 	return true;
 }
@@ -2043,9 +2045,6 @@ bool spoutGL::DeleteMemoryBuffer()
 //
 int spoutGL::GetMemoryBufferSize(const char *name)
 {
-	if (!m_bInitialized)
-		return 0;
-
 	// A writer has created the map and recorded the data length in the first 16 bytes.
 	// Another 16 bytes is added to allow for a terminating NULL. (See CreateMemoryBuffer)
 	// The remaining length is the number of bytes available for data transfer.
