@@ -333,16 +333,10 @@ void D3D12HelloTriangle::OnRender()
 	sender.SendDX11Resource(m_wrappedBackBuffers[m_frameIndex].Get());
 
 	// Present the frame.
-    ThrowIfFailed(m_swapChain->Present(1, 0));
+	ThrowIfFailed(m_swapChain->Present(1, 0));
 
     WaitForPreviousFrame();
 	
-	//
-	// SPOUT - fps control
-	//
-	// "sender.HoldFps(60);" can be used to hold a target frame rate - e.g. 60 or 30fps.
-	// Here it's not required because "Present(1, 0)" synchronizes to vertical blank.
-
 
 }
 

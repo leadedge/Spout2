@@ -71,6 +71,8 @@ class SPOUT_DLLEXP spoutDX {
 	void SetSenderFormat(DXGI_FORMAT format);
 	// Close sender and free resources
 	void ReleaseSender();
+	// Send the back buffer
+	bool SendBackBuffer();
 	// Send a texture
 	bool SendTexture(ID3D11Texture2D* pTexture);
 	// Send an image
@@ -199,7 +201,7 @@ class SPOUT_DLLEXP spoutDX {
 	bool CreateDX11texture(ID3D11Device* pd3dDevice,
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
-
+	
 	//
 	// Data sharing
 	//
@@ -268,8 +270,11 @@ protected :
 	bool ReceiveSenderData();
 	void CreateReceiver(const char * sendername, unsigned int width, unsigned int height, DWORD dwFormat);
 	
-	// Read pixels via staging texture
-	bool ReadPixelData(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, bool bRGB, bool bInvert);
+	// Read pixels from a staging texture
+	bool ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* destpixels,
+		unsigned int width, unsigned int height, bool bRGB, bool bInvert, bool bSwap);
+	
+	// Create staging textures
 	bool CheckStagingTextures(unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
 	bool CreateDX11StagingTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
 

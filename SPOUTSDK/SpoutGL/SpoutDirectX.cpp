@@ -90,6 +90,7 @@
 //		09.12.20	- CloseDirectX11() in destructor
 //		27.12.20	- Change all hex printf to 0x%.7X with PtrToUint helper
 //		20.02.21	- Add zero width/height check to CreateDX11Texture
+//		19.06.21	- Remove output check from FindNVIDIA
 //
 // ====================================================================================
 /*
@@ -599,21 +600,19 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	}
 
 
-	/*
 	// Can get sender format here
-	ID3D11Texture2D * texturePointer = *ppSharedTexture;
-	D3D11_TEXTURE2D_DESC td;
-	texturePointer->GetDesc(&td);
-	printf("td.Format = %d\n", td.Format); // 87
-	printf("td.Width = %d\n", td.Width);
-	printf("td.Height = %d\n", td.Height);
-	printf("td.MipLevels = %d\n", td.MipLevels);
-	printf("td.Usage = %d\n", td.Usage);
-	printf("td.ArraySize = %d\n", td.ArraySize);
-	printf("td.SampleDesc = %d\n", td.SampleDesc);
-	printf("td.BindFlags = %d\n", td.BindFlags);
-	printf("td.MiscFlags = %d\n", td.MiscFlags); // D3D11_RESOURCE_MISC_SHARED
-	*/
+	// ID3D11Texture2D * texturePointer = *ppSharedTexture;
+	// D3D11_TEXTURE2D_DESC td;
+	// texturePointer->GetDesc(&td);
+	// printf("td.Format = %d\n", td.Format); // 87
+	// printf("td.Width = %d\n", td.Width);
+	// printf("td.Height = %d\n", td.Height);
+	// printf("td.MipLevels = %d\n", td.MipLevels);
+	// printf("td.Usage = %d\n", td.Usage);
+	// printf("td.ArraySize = %d\n", td.ArraySize);
+	// printf("td.SampleDesc = %d\n", td.SampleDesc);
+	// printf("td.BindFlags = %d\n", td.BindFlags);
+	// printf("td.MiscFlags = %d\n", td.MiscFlags); // D3D11_RESOURCE_MISC_SHARED
 	
 
 	return true;
@@ -703,7 +702,8 @@ int spoutDirectX::GetAdapter()
 }
 
 
-// FOR DEBUGGING 
+// For purposes where NVIDIA hardware acceleration is used
+// e.g. FFmpeg 
 bool spoutDirectX::FindNVIDIA(int &nAdapter)
 {
 	IDXGIFactory1* _dxgi_factory1;
@@ -720,10 +720,10 @@ bool spoutDirectX::FindNVIDIA(int &nAdapter)
 		// printf("spoutDirectX::FindNVIDIA - Adapter(%d) : %S\n", i, desc.Description );
 		DXGI_OUTPUT_DESC desc_out;
 		IDXGIOutput* p_output = nullptr;
-		if(adapter1_ptr->EnumOutputs(0, &p_output ) == DXGI_ERROR_NOT_FOUND) {
+		// if(adapter1_ptr->EnumOutputs(0, &p_output ) == DXGI_ERROR_NOT_FOUND) {
 			// printf("  No outputs\n");
-			continue;
-		}
+			// continue;
+		// }
 
 		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
 			if (p_output) {

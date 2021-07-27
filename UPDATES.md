@@ -1,5 +1,41 @@
-14-06-21
-Update Master from Beta branch
+===================================\
+26-07-21\
+Update Master from Beta branch.\
+Version 2.007.003
+
+Spout.cpp
+- 22.06.21 - Move code for GetSenderCount and GetSender to SpoutSenderNames class
+- 03.07.21 - Use changed SpoutSenderNames "GetSender" function name.
+- 04.07.21 - Additional code comments concerning update in ReceiveTexture.
+
+SpoutCopy.cpp
+- 09.07.21 - memcpy_sse2 - return for null dst or src
+ 
+SpoutDirectX.cpp
+- 19.06.21 - Remove output check from FindNVIDIA	
+
+SpoutFrameCount.cpp
+- 21.07.21 - Remove debug comment
+ 
+SpoutGL.cpp
+- 26.07.21 - Remove memorysize check from GetMemoryBufferSize for receiver
+ 
+SpoutSenderNames.cpp
+- 22.06.21 - Restore 2.006 GetSenderNames function
+- 03.07.21 - Change GetSenderNames to GetSender to align with Spout class.\
+  Change existing GetSender to FindSenderName.\
+  Change duplicate FindSenderName to FindSender overload\
+  testing function
+  
+SpoutUtils.cpp
+- 26.07.21 - Update Version to "2.007.003"
+
+BUILD binaries updated
+- CMake build 32/64bit /MD - requires Visual Studio 2017 runtime to be installed
+
+===================================\
+14-06-21\
+Update Master from Beta branch\
 Version 2.007.002
 
 Spout.cpp

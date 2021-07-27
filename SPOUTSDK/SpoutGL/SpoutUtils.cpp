@@ -71,6 +71,9 @@
 				   Bring the main window to the top again
 		07.05.21 - Remove noisy warning from ReadPathFromRegistry
 		09.06.21 - Update Version to "2.007.002"
+		26.07.21 - Update Version to "2.007.003"
+
+
 
 */
 #include "SpoutUtils.h"
@@ -638,7 +641,7 @@ namespace spoututils {
 #ifdef USE_CHRONO
 		end = std::chrono::steady_clock::now();
 		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		// printf("    elapsed [%.4f] msec\n", elapsed / 1000.0);
+		printf("    elapsed [%.4f] msec\n", elapsed / 1000.0);
 		// printf("elapsed [%.3f] u/sec\n", elapsed);
 		return elapsed;
 #else

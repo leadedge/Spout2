@@ -52,6 +52,8 @@
 	26.10.20 - Add rgb2bgra with dest pitch
 	09.12.20 - Correct movsd line pitch in RemovePadding
 	13.03.21 - Change CopyPixels and FlipBuffer to accept GL_LUMINANCE
+	09.07.21 - memcpy_sse2 - return for null dst or src
+
 
 */
 #include "SpoutCopy.h"
@@ -191,6 +193,10 @@ void spoutCopy::RemovePadding(const unsigned char *source, unsigned char *dest,
 //
 void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t Size) const
 {
+
+	if (!dst || !src)
+		return;
+
 	auto pSrc = static_cast<const char *>(src); // Source buffer
 	auto pDst = static_cast<char *>(dst); // Destination buffer
 	unsigned int n = (unsigned int)Size >> 7; // Counter = size divided by 128 (8 * 128bit registers)
