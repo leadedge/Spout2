@@ -77,6 +77,7 @@
 			   Change existing GetSender to FindSenderName.
 			 - Change duplicate FindSenderName to FindSender overload
 			   testing function
+	31.07.21 - Add m_senders size check in UpdateSender
 
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -738,7 +739,7 @@ bool spoutSenderNames::UpdateSender(const char *sendername, unsigned int width, 
 {
 	std::string namestring = sendername;
 
-	if (m_senders->find(namestring) == m_senders->end()) { // New sender
+	if (m_senders->size() == 0 || (m_senders->find(namestring) == m_senders->end())) { // New sender
 
 		// Create or open a shared memory map for this sender - allocate enough for the texture info
 		SpoutSharedMemory *senderInfoMem = new SpoutSharedMemory();
