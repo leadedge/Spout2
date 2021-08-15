@@ -38,6 +38,7 @@
 //		07.04.21	- CloseFrameSync public for use by other classes
 //		17.04.21	- WaitFrameSync - close handle on error
 //		21.07.21	- Remove debug comment
+//		10.08.21	- Default m_bIsNewFrame, assume true to allow for apps without frame count
 //
 // ====================================================================================
 //
@@ -89,7 +90,7 @@ spoutFrameCount::spoutFrameCount()
 	m_FrameTimeNumber = 0.0;
 	m_lastFrame = 0.0;
 	m_FrameStart = 0.0;
-	m_bIsNewFrame = false;
+	m_bIsNewFrame = true; // Assume true for apps without frame count
 	m_SenderFps = GetRefreshRate(); // Default sender fps is system refresh rate
 	m_millisForFrame = 0.0;
 
