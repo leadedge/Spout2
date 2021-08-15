@@ -48,6 +48,9 @@
 //					  Revise and test data functions
 //					  All data functions return false if 2.006 memoryshare mode.
 //		26.07.21	- Remove memorysize check from GetMemoryBufferSize for receiver
+//		10.08.21	- Correct LoadGLextensions to set no PBO availabliity if FBO fails
+//					  WriteDX11texture - unmap staging texture if data read fails
+//					  ReadTextureData - allow for no FBO support for low end graphics
 //
 // ====================================================================================
 /*
@@ -1702,28 +1705,32 @@ bool spoutGL::WriteDX11texture(GLuint TextureID, GLuint TextureTarget,
 	if (SUCCEEDED(spoutdx.GetDX11Context()->Map(m_pStaging[0], 0, D3D11_MAP_WRITE, 0, &mappedSubResource))) {
 
 		// Staging texture width is multiples of 16 and pitch can be greater that width*4
-			// Copy OpenGL texture pixelsto the staging texture taking account of the destination row pitch
-			if (m_bPBOavailable) {
-				if(!UnloadTexturePixels(TextureID, TextureTarget,
-					width, height,
-					mappedSubResource.RowPitch,
-					(unsigned char *)mappedSubResource.pData,
-					GL_BGRA_EXT, bInvert, HostFBO))
-				return false;
-			}
-			else {
-				if (!ReadTextureData(TextureID, TextureTarget, // OpenGL source texture
-						width, height, // width and height of OpenGL texture
-						mappedSubResource.RowPitch, // bytes per line of staging texture
-						(unsigned char *)mappedSubResource.pData, // staging texture pixels
-						GL_BGRA_EXT, bInvert, HostFBO))
+		// Copy OpenGL texture pixelsto the staging texture taking account of the destination row pitch
+		if (m_bPBOavailable) {
+			if (!UnloadTexturePixels(TextureID, TextureTarget,
+				width, height,
+				mappedSubResource.RowPitch,
+				(unsigned char *)mappedSubResource.pData,
+				GL_BGRA_EXT, bInvert, HostFBO)) {
+					spoutdx.GetDX11Context()->Unmap(m_pStaging[0], 0);
 					return false;
 			}
-			spoutdx.GetDX11Context()->Unmap(m_pStaging[0], 0);
+		}
+		else {
+			if (!ReadTextureData(TextureID, TextureTarget, // OpenGL source texture
+				width, height, // width and height of OpenGL texture
+				mappedSubResource.RowPitch, // bytes per line of staging texture
+				(unsigned char *)mappedSubResource.pData, // staging texture pixels
+				GL_BGRA_EXT, bInvert, HostFBO)) {
+					spoutdx.GetDX11Context()->Unmap(m_pStaging[0], 0);
+					return false;
+			}
+		}
+		spoutdx.GetDX11Context()->Unmap(m_pStaging[0], 0);
 
-			// The staging texture is updated with the OpenGL texture data
-			// Write it to the sender's shared texture
-			return WriteTexture(&m_pStaging[0]);
+		// The staging texture is updated with the OpenGL texture data
+		// Write it to the sender's shared texture
+		return WriteTexture(&m_pStaging[0]);
 
 	}
 
@@ -2089,72 +2096,93 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 	unsigned int width, unsigned int height, unsigned int pitch,
 	unsigned char* dest, GLenum GLformat, bool bInvert, GLuint HostFBO)
 {
-	GLenum status;
-
-	if (!m_bFBOavailable)
-		return false;
-
-	// Create or resize a local OpenGL texture
-	CheckOpenGLTexture(m_TexID, GL_RGBA, width, height);
-
-	// Create a local fbo if not already
-	if (m_fbo == 0)	glGenFramebuffersEXT(1, &m_fbo);
-
-	// If texture ID is zero, assume the source texture is attached
-	// to the host fbo which is bound for read and write
-	if (SourceID == 0 && HostFBO > 0) {
-		// Bind our local fbo for draw only
-		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, m_fbo);
-		// Source texture is already attached to point 0 for read
-	}
-	else {
-		// bind the local fbo for read and write
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-		// Read from attachment point 0
-		glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
-		// Attach the Source texture to point 0 for read
-		glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
-	}
-
-	// Draw to attachment point 1
-	glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
-
-	// Attach the texture we write into (the local texture) to attachment point 1
-	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, m_TexID, 0);
-
-	// Check read/draw fbo for completeness
-	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-		if (bInvert && m_bBLITavailable) {
-			// copy the source texture (0) to the local texture (1) while flipping upside down 
-			glBlitFramebufferEXT(0, 0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-			// Bind local fbo for read
-			glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, m_fbo);
-			// Read from attachment point 1
-			glReadBuffer(GL_COLOR_ATTACHMENT1_EXT);
-			// Read pixels from it
-			glPixelStorei(GL_PACK_ROW_LENGTH, pitch / 4); // row length in pixels
-			glReadPixels(0, 0, width, height, GLformat, GL_UNSIGNED_BYTE, (GLvoid *)dest);
-			glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+	if (!m_bFBOavailable) {
+		// This is for completeness and will be rarely used for low end graphics
+		if (bInvert) {
+			// Copy to intermediate buffer
+			unsigned char* rgba = new unsigned char[width * height * 4];
+			glBindTexture(SourceTarget, SourceID);
+			glGetTexImage(SourceTarget, 0, GLformat, GL_UNSIGNED_BYTE, (void *)rgba);
+			glBindTexture(SourceTarget, 0);
+			// Flip the buffer
+			spoutcopy.FlipBuffer(rgba, dest, width, height, GL_RGBA);
+			delete rgba;
 		}
 		else {
-			// No invert or no fbo blit extension
-			// Read from the source texture attachment point 0
-			// This will be the local fbo if a texture ID was passed in
-			// Pitch is destination line length in bytes. Divide by 4 to get the width in rgba pixels.
-			glPixelStorei(GL_PACK_ROW_LENGTH, pitch / 4); // row length in pixels
-			glReadPixels(0, 0, width, height, GLformat, GL_UNSIGNED_BYTE, (GLvoid *)dest);
-			glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+			// dest must be RGBA width x height
+			glBindTexture(SourceTarget, SourceID);
+			glGetTexImage(SourceTarget, 0, GLformat, GL_UNSIGNED_BYTE, (void *)dest);
+			glBindTexture(SourceTarget, 0);
 		}
+		return true;
 	}
 	else {
-		PrintFBOstatus(status);
+
+		GLenum status = 0;
+
+		// Create or resize a local OpenGL texture
+		CheckOpenGLTexture(m_TexID, GL_RGBA, width, height);
+
+		// Create a local fbo if not already
+		if (m_fbo == 0)	glGenFramebuffersEXT(1, &m_fbo);
+
+		// If texture ID is zero, assume the source texture is attached
+		// to the host fbo which is bound for read and write
+		if (SourceID == 0 && HostFBO > 0) {
+			// Bind our local fbo for draw only
+			glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, m_fbo);
+			// Source texture is already attached to point 0 for read
+		}
+		else {
+			// bind the local fbo for read and write
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+			// Read from attachment point 0
+			glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
+			// Attach the Source texture to point 0 for read
+			glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
+		}
+
+		// Draw to attachment point 1
+		glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
+
+		// Attach the texture we write into (the local texture) to attachment point 1
+		glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, m_TexID, 0);
+
+		// Check read/draw fbo for completeness
+		status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+		if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+			if (bInvert && m_bBLITavailable) {
+				// copy the source texture (0) to the local texture (1) while flipping upside down 
+				glBlitFramebufferEXT(0, 0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+				// Bind local fbo for read
+				glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, m_fbo);
+				// Read from attachment point 1
+				glReadBuffer(GL_COLOR_ATTACHMENT1_EXT);
+				// Read pixels from it
+				glPixelStorei(GL_PACK_ROW_LENGTH, pitch / 4); // row length in pixels
+				glReadPixels(0, 0, width, height, GLformat, GL_UNSIGNED_BYTE, (GLvoid *)dest);
+				glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+			}
+			else {
+				// No invert or no fbo blit extension
+				// Read from the source texture attachment point 0
+				// This will be the local fbo if a texture ID was passed in
+				// Pitch is destination line length in bytes. Divide by 4 to get the width in rgba pixels.
+				glPixelStorei(GL_PACK_ROW_LENGTH, pitch / 4); // row length in pixels
+				glReadPixels(0, 0, width, height, GLformat, GL_UNSIGNED_BYTE, (GLvoid *)dest);
+				glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+			}
+		}
+		else {
+			PrintFBOstatus(status);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+			return false;
+		}
+
+		// restore the previous fbo - default is 0
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-		return false;
 	}
-	// restore the previous fbo - default is 0
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-	
+
 	return true;
 
 } // end ReadTextureData
@@ -2658,23 +2686,18 @@ bool spoutGL::LoadGLextensions()
 
 	if (m_caps == 0) {
 		SpoutLogError("spoutGL::LoadGLextensions failed");
+		m_bPBOavailable = false;
 		return false;
 	}
 
 	if (m_caps & GLEXT_SUPPORT_FBO) m_bFBOavailable = true;
+
 	// FBO not available is terminal
 	if (!m_bFBOavailable) {
 		SpoutLogError("spoutGL::LoadGLextensions - no FBO extensions available");
+		m_bPBOavailable = false; // No PBO support either - over-ride user selection
 		return false;
 	}
-
-	m_bFBOavailable = false;
-	m_bGLDXavailable = false;
-	m_bBLITavailable = false;
-	m_bSWAPavailable = false;
-	m_bBGRAavailable = false;
-	m_bCOPYavailable = false;
-	m_bCONTEXTavailable = false;
 
 	if (m_caps & GLEXT_SUPPORT_NVINTEROP) m_bGLDXavailable = true; // Interop needed for texture sharing
 	if (m_caps & GLEXT_SUPPORT_FBO_BLIT)  m_bBLITavailable = true;
@@ -2682,7 +2705,6 @@ bool spoutGL::LoadGLextensions()
 	if (m_caps & GLEXT_SUPPORT_BGRA)      m_bBGRAavailable = true;
 	if (m_caps & GLEXT_SUPPORT_COPY)      m_bCOPYavailable = true;
 	if (m_caps & GLEXT_SUPPORT_CONTEXT)   m_bCONTEXTavailable = true;
-	if (m_caps && GLEXT_SUPPORT_PBO)      m_bPBOavailable = true;
 
 	// Test PBO availability unless user has selected buffering off
 	// m_bPBOavailable also set by SetBufferMode()
