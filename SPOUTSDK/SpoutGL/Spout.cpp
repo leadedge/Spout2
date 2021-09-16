@@ -203,6 +203,8 @@
 //		22.06.21	- Move code for GetSenderCount and GetSender to SpoutSenderNames class
 //		03.07.21	- Use changed SpoutSenderNames "GetSender" function name.
 //		04.07.21	- Additional code comments concerning update in ReceiveTexture.
+//		12.08.21	- CreateReceiver - Revise CreateReceiver to avoid switch to active
+//					  if the selected sender closes.
 //
 // ====================================================================================
 /*
@@ -1304,16 +1306,7 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 	// Make sure OpenGL and DirectX are initialized
 	if (!OpenSpout())
 		return false;
-
-	// Use the active sender if the user wants it or the sender name is not set
-	if (bUseActive || sendername[0] == 0) {
-		m_SenderNameSetup[0] = 0;
-	}
-	else {
-		// Try to find the sender with the name sent
-		strcpy_s(m_SenderNameSetup, 256, sendername);
-	}
-
+	
 	if (ReceiveSenderData()) {
 		// The sender name, width, height, format, shared texture handle
 		// and shared texture pointer have been retrieved.
@@ -2028,9 +2021,7 @@ bool Spout::ReceiveSenderData()
 		// Connected and intialized
 		// Sender name, width, height, format, texture pointer and share handle have been retrieved
 
-		// LJ DEBUG
 		// printf("    m_dxShareHandle = 0x%7X : m_pSharedTexture = 0x%7X\n", PtrToUint(m_dxShareHandle), PtrToUint(m_pSharedTexture));
-
 		// ID3D11Texture2D * texturePointer = m_pSharedTexture;
 		// D3D11_TEXTURE2D_DESC td;
 		// texturePointer->GetDesc(&td);
