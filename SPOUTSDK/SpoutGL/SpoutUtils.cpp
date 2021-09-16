@@ -72,6 +72,7 @@
 		07.05.21 - Remove noisy warning from ReadPathFromRegistry
 		09.06.21 - Update Version to "2.007.002"
 		26.07.21 - Update Version to "2.007.003"
+		16.09.21 - Update Version to "2.007.004"
 
 
 
@@ -109,7 +110,7 @@ namespace spoututils {
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
 #endif
-	std::string SDKversion = "2.007.002"; // Spout SDK version number string
+	std::string SDKversion = "2.007.004"; // Spout SDK version number string
 
 	//
 	// Console management
