@@ -601,6 +601,12 @@ bool SpoutReceiver::SelectSenderPanel(const char *message)
 	return spout.SelectSenderPanel(message);
 }
 
+//---------------------------------------------------------
+bool SpoutReceiver::CheckSenderPanel(char *sendername, int maxchars)
+{
+	return spout.CheckSpoutPanel(sendername, maxchars);
+}
+
 
 // Legacy OpenGL Draw function
 #ifdef legacyOpenGL

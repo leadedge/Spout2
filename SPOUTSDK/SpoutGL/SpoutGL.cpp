@@ -51,6 +51,7 @@
 //		10.08.21	- Correct LoadGLextensions to set no PBO availabliity if FBO fails
 //					  WriteDX11texture - unmap staging texture if data read fails
 //					  ReadTextureData - allow for no FBO support for low end graphics
+//		29.09.21	- OpenSpout and LinkGLDXtextures - test for GL/DX extensions
 //
 // ====================================================================================
 /*
@@ -387,7 +388,10 @@ bool spoutGL::OpenSpout(bool bRetest)
 {
 	// Return if already initialized and not re-testing compatibility
 	// Look for DirectX to prevent repeat
-	if(spoutdx.GetDX11Device() > 0 && !bRetest)
+	if(spoutdx.GetDX11Device() > 0
+		&& m_hInteropDevice > 0
+		&& m_hInteropObject > 0
+		&& !bRetest)
 		return true;
 
 	printf("\n"); // This is the start, so make a new line in the log
@@ -964,6 +968,15 @@ HANDLE spoutGL::LinkGLDXtextures(void* pDXdevice,
 	BOOL bResult = 0;
 	DWORD dwError = 0;
 	char tmp[128];
+
+	// Are the GL/DX interop extensions loaded ?
+	if (!wglDXOpenDeviceNV
+		|| !wglDXSetResourceShareHandleNV
+		|| !wglDXRegisterObjectNV
+		|| !wglDXCloseDeviceNV) {
+		SpoutLogError("spoutGL::LinkGLDXtextures - no GL/DX extensions");
+		return nullptr;
+	}
 
 	// Prepare the DirectX device for interoperability with OpenGL
 	// The return value is a handle to a GL/DirectX interop device.
@@ -3366,4 +3379,64 @@ bool spoutGL::WriteTexture(ID3D11Texture2D** texture)
 	return bRet;
 }
 
+
+//---------------------------------------------------------
+bool spoutGL::WriteTextureReadback(ID3D11Texture2D** texture,
+	GLuint TextureID, GLuint TextureTarget,
+	unsigned int width, unsigned int height,
+	bool bInvert, GLuint HostFBO)
+{
+	// Only for DX11 mode
+	if (!texture || !spoutdx.GetDX11Context()) {
+		SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) failed");
+		if (!texture)
+			SpoutLogWarning("    ID3D11Texture2D** NULL");
+		if (!spoutdx.GetDX11Context())
+			SpoutLogVerbose("    pImmediateContext NULL");
+		return false;
+	}
+
+	if (!m_hInteropDevice || !m_hInteropObject) {
+		SpoutLogWarning("spoutGL::WriteTextureReadback() no GL/DX interop\n	m_hInteropObject = 0x%7.7X - m_hInteropDevice = 0x%7.7X", PtrToUint(m_hInteropDevice), PtrToUint(m_hInteropObject));
+		return false;
+	}
+
+	bool bRet = false;
+	D3D11_TEXTURE2D_DESC desc = { 0 };
+
+	(*texture)->GetDesc(&desc);
+	if (desc.Width != m_Width || desc.Height != m_Height) {
+		SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) sizes do not match");
+		SpoutLogWarning("    texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_Width, m_Height);
+		return false;
+	}
+
+	// Wait for access to the shared texture
+	if (frame.CheckTextureAccess(m_pSharedTexture)) {
+		bRet = true;
+		// Copy the DirectX texture to the shared texture
+		spoutdx.GetDX11Context()->CopyResource(m_pSharedTexture, *texture);
+		// Flush after update of the shared texture on this device
+		spoutdx.GetDX11Context()->Flush();
+		// Copy the linked OpenGL texture back to the user texture
+		if (width != m_Width || height != m_Height) {
+			SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) sizes do not match");
+			SpoutLogWarning("    OpenGL texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_Width, m_Height);
+			bRet = false;
+		}
+		else if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+			bRet = GetSharedTextureData(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+			if (!bRet)
+				SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) readback failed");
+		}
+
+		// Increment the sender frame counter
+		frame.SetNewFrame();
+		// Release mutex and allow access to the texture
+		frame.AllowTextureAccess(m_pSharedTexture);
+	}
+
+	return bRet;
+}
 

@@ -262,6 +262,9 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// Open dialog for the user to select a sender
 	//   Optional message argument
 	bool SelectSenderPanel(const char* message = nullptr);
+	// Receiver detect sender selection
+	bool CheckSenderPanel(char *sendername, int maxchars = 256);
+
 
 	// Legacy OpenGL Draw function
 	// See _SpoutCommon.h_ #define legacyOpenGL
