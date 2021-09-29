@@ -132,8 +132,8 @@ namespace spoututils {
 					SetConsoleTitleA("Spout Log");
 					bConsole = true;
 					// Disable close button
-					HMENU hmenu = GetSystemMenu(GetConsoleWindow(), FALSE);
-					EnableMenuItem(hmenu, SC_CLOSE, MF_GRAYED);
+					// HMENU hmenu = GetSystemMenu(GetConsoleWindow(), FALSE);
+					// EnableMenuItem(hmenu, SC_CLOSE, MF_GRAYED);
 					// Bring the main window to the top again
 					SetWindowPos(hwndFgnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 				}

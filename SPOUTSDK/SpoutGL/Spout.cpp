@@ -1491,6 +1491,7 @@ bool Spout::SelectSenderPanel(const char *message)
 
 	// First find if there has been a Spout installation >= 2.002 with an install path for SpoutPanel.exe
 	if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
+
 		// Path not registered so find the path of the host program
 		// where SpoutPanel should have been copied
 		module = GetModuleHandle(NULL);
@@ -1536,6 +1537,7 @@ bool Spout::SelectSenderPanel(const char *message)
 		// Then when the selection panel closes, sender name is tested
 		//
 		m_bSpoutPanelOpened = true;
+
 	}
 	else {
 		// The mutex exists, so another instance is already running.
@@ -1767,6 +1769,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 	   
 	// If not initialized, create a new sender
 	if (!m_bInitialized) {
+
 		// Make sure that Spout has been initialized and an OpenGL context is available
 		if (OpenSpout()) {
 
