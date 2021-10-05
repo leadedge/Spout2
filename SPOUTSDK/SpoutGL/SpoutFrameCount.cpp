@@ -39,6 +39,7 @@
 //		17.04.21	- WaitFrameSync - close handle on error
 //		21.07.21	- Remove debug comment
 //		10.08.21	- Default m_bIsNewFrame, assume true to allow for apps without frame count
+//		05.10.21	- HoldFps - correct start time
 //
 // ====================================================================================
 //
@@ -469,6 +470,7 @@ double spoutFrameCount::GetSenderFps()
 	return m_SenderFps;
 }
 
+
 // -----------------------------------------------
 long spoutFrameCount::GetSenderFrame()
 {
@@ -488,9 +490,9 @@ void spoutFrameCount::HoldFps(int fps)
 	// Return if incorrect fps entry
 	if (fps <= 0)
 		return;
-
-	double framerate = static_cast<double>(fps);
 	
+	double framerate = static_cast<double>(fps);
+
 #ifdef USE_CHRONO
 	// Initialize frame time at target rate
 	if (m_millisForFrame < 0.001) {
@@ -499,15 +501,21 @@ void spoutFrameCount::HoldFps(int fps)
 		SpoutLogNotice("spoutFrameCount::HoldFps(%.2f)", framerate);
 	}
 	else {
+
+		// Time now end point
 		*m_FrameEndPtr = std::chrono::steady_clock::now();
+
 		// milliseconds elapsed
 		double elapsedTime = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(*m_FrameEndPtr - *m_FrameStartPtr).count() / 1000.);
+		
 		// Sleep to reach the target frame time
 		if (elapsedTime < m_millisForFrame) {
 			std::this_thread::sleep_for(std::chrono::milliseconds((long)(m_millisForFrame - elapsedTime)));
 		}
+		
 		// Set start time for the next frame
-		*m_FrameStartPtr = std::chrono::steady_clock::now();
+		*m_FrameStartPtr = *m_FrameEndPtr;
+		
 	}
 #else
 	if (m_millisForFrame == 0) {
@@ -524,6 +532,7 @@ void spoutFrameCount::HoldFps(int fps)
 		m_FrameStart = GetCounter();
 	}
 #endif
+	
 
 }
 
