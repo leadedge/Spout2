@@ -105,6 +105,8 @@
 //					- Destructor : do not release receiver connected sender name.
 //		20.07.21	- Correct GetSender to include max size
 //					  Add SendBackBuffer
+//		22.07.21	- Add OpenDirectX check to SendBackBuffer
+//		12.10.21	- Add SendTexture for part of a DirectX11 texture
 //
 // ====================================================================================
 /*
@@ -384,25 +386,28 @@ void spoutDX::ReleaseSender()
 //---------------------------------------------------------
 // Function: SendBackbuffer
 // Get the swap chain's back buffer to a texture for sending.
-// Assumes a single render target view.
+// Retreives a single render target.
 // Refer to SendTexture for compatible formats.
 //
 bool spoutDX::SendBackBuffer()
 {
-	if (m_pImmediateContext) {
-		ID3D11RenderTargetView *rendertarget = nullptr;
-		m_pImmediateContext->OMGetRenderTargets(1, &rendertarget, nullptr);
-		if (rendertarget) {
-			ID3D11Resource* pBackBufferResource = nullptr;
-			rendertarget->GetResource(&pBackBufferResource);
-			if (pBackBufferResource) {
-				// SendTexture checks for DirectX initialization
-				// and handles sender creation and re-sizing.
-				SendTexture(reinterpret_cast<ID3D11Texture2D*>(pBackBufferResource));
-				return true;
-			}
+	// Make sure DirectX is initialized
+	if (!OpenDirectX11())
+		return false;
+
+	// Retrieve one render target
+	ID3D11RenderTargetView *rendertarget = nullptr;
+	m_pImmediateContext->OMGetRenderTargets(1, &rendertarget, nullptr);
+	if (rendertarget) {
+		ID3D11Resource* pBackBufferResource = nullptr;
+		rendertarget->GetResource(&pBackBufferResource);
+		if (pBackBufferResource) {
+			// SendTexture handles sender creation and re-sizing.
+			SendTexture(reinterpret_cast<ID3D11Texture2D*>(pBackBufferResource));
+			return true;
 		}
 	}
+
 	return false;
 }
 
@@ -464,6 +469,63 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
 
 	return true;
 }
+
+
+//---------------------------------------------------------
+// Function: SendTexture
+// Send part of a DirectX11 texture
+//
+// The region to be copied must be smaller than the texture
+// The sender must be initialized at the width and height of the region
+//
+bool spoutDX::SendTexture(ID3D11Texture2D* pTexture,
+	unsigned int xoffset, unsigned int yoffset,
+	unsigned int width, unsigned int height)
+{
+
+	// Quit if no data
+	if (!pTexture)
+		return false;
+
+	// Make sure DirectX is initialized
+	if (!OpenDirectX11())
+		return false;
+
+	// Check for empty texture and get format
+	D3D11_TEXTURE2D_DESC desc;
+	ZeroMemory(&desc, sizeof(desc));
+	pTexture->GetDesc(&desc);
+	if (desc.Width == 0 || desc.Height == 0)
+		return false;
+
+	// Create or update the sender
+	if (!CheckSender(width, height, (DWORD)desc.Format))
+		return false;
+
+	// Get the region to copy
+	D3D11_BOX sourceRegion;
+	sourceRegion.left = xoffset;
+	sourceRegion.right = xoffset+width;
+	sourceRegion.top = yoffset;
+	sourceRegion.bottom = yoffset+height;
+	sourceRegion.front = 0;
+	sourceRegion.back = 1;
+
+	// Check the sender mutex for access the shared texture
+	if (frame.CheckTextureAccess(m_pSharedTexture)) {
+		// Copy the texture region to the sender's shared texture
+		m_pImmediateContext->CopySubresourceRegion(m_pSharedTexture, 0, 0, 0, 0, pTexture, 0, &sourceRegion);
+		// Flush the command queue now because the shared texture has been updated on this device
+		m_pImmediateContext->Flush();
+		// Signal a new frame while the mutex is locked
+		frame.SetNewFrame();
+		// Allow access to the shared texture
+		frame.AllowTextureAccess(m_pSharedTexture);
+	}
+
+	return true;
+}
+
 
 //---------------------------------------------------------
 // Function: SendImage
@@ -2177,5 +2239,3 @@ bool spoutDX::CheckSpoutPanel(char *sendername, int maxchars)
 	return false;
 
 }
-
-

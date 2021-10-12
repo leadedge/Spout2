@@ -75,6 +75,10 @@ class SPOUT_DLLEXP spoutDX {
 	bool SendBackBuffer();
 	// Send a texture
 	bool SendTexture(ID3D11Texture2D* pTexture);
+	// Send part of a texture
+	bool SendTexture(ID3D11Texture2D* pTexture,
+		unsigned int xoffset, unsigned int yoffset,
+		unsigned int width, unsigned int height); 
 	// Send an image
 	bool SendImage(unsigned char * pData, unsigned int width, unsigned int height);
 	// Sender status
