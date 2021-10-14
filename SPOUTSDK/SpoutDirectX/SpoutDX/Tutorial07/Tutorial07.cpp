@@ -333,6 +333,7 @@ HRESULT InitDevice()
     UINT width  = rc.right - rc.left;
     UINT height = rc.bottom - rc.top;
 
+	// LJ DEBUG
 	//
 	// SPOUT
 	//
@@ -886,30 +887,101 @@ void Render()
     }
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//
 	// SPOUT
 	//
-	// Receive a sender texture
-	if (receiver.ReceiveTexture(&g_pReceivedTexture)) {
+	// A texture can be received to a local texture
+	// or to a texture withing the SpoutDX class.
+	//
+	// Change the receiving option here for testing
+	//   1 - receive to a local texture (g_pReceivedTexture)
+	//   2 - receive to a SpoutDX class texture
+	//
+	int option = 1;
 
+	if (option == 1) {
 		//
-		// Sender details can be retrieved with :
-		//		const char * GetSenderName();
-		//		unsigned int GetSenderWidth();
-		//		unsigned int GetSenderHeight();
-		//		DXGI_FORMAT GetSenderFormat();
-		//		HANDLE GetSenderHandle;
-		//		long GetSenderFrame();
-		//		double GetSenderFps();
+		// Option 1 : Receive from a sender to a local texture
 		//
+		if (receiver.ReceiveTexture(&g_pReceivedTexture)) {
+			// Create or re-create the receiving texture 
+			// for a new sender or if the sender size changed
+			if (receiver.IsUpdated()) {
 
-		// Create or re-create the receiving texture 
-		// for a new sender or if the sender size changed
-		if (receiver.IsUpdated()) {
-
-			if (receiver.GetAdapterAuto()) {
 				// The D3D11 device within the SpoutDX class could have changed
 				// if it has switched to use a different sender graphics adapter.
-				// Re-intialize to refresh the global device pointer.
+				// Re-intialize to refresh the application global device pointer.
+				if (receiver.GetAdapterAuto()) {
+					if (g_pd3dDevice != receiver.GetDX11Device()) {
+						ResetDevice();
+						// No more this round because the receiver has been released
+						// and there is no width or height to create a texture.
+						return;
+					}
+				}
+
+				// Update the receiving texture
+				if (g_pReceivedTexture)	g_pReceivedTexture->Release();
+				g_pReceivedTexture = nullptr;
+				receiver.CreateDX11texture(g_pd3dDevice,
+					receiver.GetSenderWidth(),
+					receiver.GetSenderHeight(),
+					receiver.GetSenderFormat(),
+					&g_pReceivedTexture);
+
+				// Any other action required by the receiver can be done here
+				// In this example, clear the shader resource view
+				if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+				g_pSpoutTextureRV = nullptr;
+			}
+
+			// A texture has been received
+
+			// In this example, a shader resource view is created if the frame is new
+			if (receiver.IsFrameNew()) {
+				if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+				g_pSpoutTextureRV = nullptr;
+				D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
+				ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
+				// Matching format with the sender is important
+				shaderResourceViewDesc.Format = receiver.GetSenderFormat();
+				shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+				shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
+				shaderResourceViewDesc.Texture2D.MipLevels = 1;
+				g_pd3dDevice->CreateShaderResourceView(g_pReceivedTexture, &shaderResourceViewDesc, &g_pSpoutTextureRV);
+			}
+		}
+		else {
+			// A sender was not found or the connected sender closed
+			// Release the receiving texture
+			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
+			g_pReceivedTexture = nullptr;
+			// Release the texture resource view so render uses the default
+			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+			g_pSpoutTextureRV = nullptr;
+		}
+
+	}
+	else if (option == 2) {
+		//
+		// Option 2 : Receive from a sender to a SpoutDX class texture
+		//
+		if (receiver.ReceiveTexture()) {
+			//
+			// Sender details can be retrieved with :
+			//		const char * GetSenderName();
+			//		unsigned int GetSenderWidth();
+			//		unsigned int GetSenderHeight();
+			//		DXGI_FORMAT GetSenderFormat();
+			//		HANDLE GetSenderHandle;
+			//		long GetSenderFrame();
+			//		double GetSenderFps();
+			//
+
+			// The D3D11 device within the SpoutDX class could have changed
+			// if it has switched to use a different sender graphics adapter.
+			// Re-intialize to refresh the application global device pointer.
+			if (receiver.GetAdapterAuto()) {
 				if (g_pd3dDevice != receiver.GetDX11Device()) {
 					ResetDevice();
 					// No more this round because the receiver has been released
@@ -918,45 +990,34 @@ void Render()
 				}
 			}
 
-			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
-			g_pReceivedTexture = nullptr;
-			receiver.CreateDX11texture(g_pd3dDevice,
-						receiver.GetSenderWidth(),
-						receiver.GetSenderHeight(),
-						receiver.GetSenderFormat(),
-						&g_pReceivedTexture);
+			// A class texture has been received
+			// The received texture can be retrieved with
+			//     ID3D11Texture2D* GetSenderTexture();
 
-			// Any other action required by the receiver can be done here
-			// In this example, clear the shader resource view
+			// In this example, a shader resource view is created if the frame is new
+			if (receiver.IsFrameNew()) {
+				if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+				g_pSpoutTextureRV = nullptr;
+				D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
+				ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
+				// Matching format with the sender is important
+				shaderResourceViewDesc.Format = receiver.GetSenderFormat();
+				shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+				shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
+				shaderResourceViewDesc.Texture2D.MipLevels = 1;
+				g_pd3dDevice->CreateShaderResourceView(receiver.GetSenderTexture(), &shaderResourceViewDesc, &g_pSpoutTextureRV);
+			}
+		}
+		else {
+			// A sender was not found or the connected sender closed
+			// Release the texture resource view so render uses the default
 			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 			g_pSpoutTextureRV = nullptr;
 		}
-
-		// A texture has been received
-		
-		// In this example, a shader resource view is created if the frame is new
-		if (receiver.IsFrameNew()) {
-			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
-			g_pSpoutTextureRV = nullptr;
-			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-			ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
-			// Matching format with the sender is important
-			shaderResourceViewDesc.Format = receiver.GetSenderFormat();
-			shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-			shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
-			shaderResourceViewDesc.Texture2D.MipLevels = 1;
-			g_pd3dDevice->CreateShaderResourceView(g_pReceivedTexture, &shaderResourceViewDesc, &g_pSpoutTextureRV);
-		}
-
 	}
-	else { 	// A sender was not found or the connected sender closed
-		// Release the receiving texture
-		if (g_pReceivedTexture)	g_pReceivedTexture->Release();
-		g_pReceivedTexture = nullptr;
-		// Release the texture resource view so render uses the default
-		if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
-		g_pSpoutTextureRV = nullptr;
-	}
+	// End receive texture
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 
 	// Rotate cube around the origin
 	// g_World = XMMatrixRotationY(t);
