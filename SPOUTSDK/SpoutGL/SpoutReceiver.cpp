@@ -66,6 +66,7 @@
 //					- Add data function ReadMemoryBuffer
 //		24.04.21	- Add OpenGL shared texture access functions
 //		03.06.21	- Add GetMemoryBufferSize
+//		15.10.21	- Allow no argument for SetReceiverName
 //
 // ====================================================================================
 //

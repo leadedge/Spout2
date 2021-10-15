@@ -73,12 +73,11 @@
 		09.06.21 - Update Version to "2.007.002"
 		26.07.21 - Update Version to "2.007.003"
 		16.09.21 - Update Version to "2.007.004"
-
-
+		04.10.21 - Remove shlobj.h include due to redifinition conflict with ShObjIdl.h
+				   Replace code using environment variable "APPDATA"
 
 */
 #include "SpoutUtils.h"
-
 
 //
 // Namespace: spoututils
@@ -199,6 +198,7 @@ namespace spoututils {
 				logPath += "\\SpoutLog.log";
 			}
 			else if (PathIsFileSpecA(fname)) {
+
 				// Filename without a path
 				// Add an extension if none supplied
 				if (!PathFindExtensionA(fname)[0])
@@ -206,6 +206,7 @@ namespace spoututils {
 				logPath = _getLogPath();
 				logPath += "\\";
 				logPath += fname;
+
 			}
 			else if (PathFindFileNameA(fname)) {
 				// Full path with a filename
@@ -723,33 +724,35 @@ namespace spoututils {
 		// Get the default log file path
 		std::string _getLogPath()
 		{
-			wchar_t wpath[MAX_PATH];
-			LPWSTR appdatapath = NULL;
 			char logpath[MAX_PATH];
 			logpath[0] = 0;
 
-			// Try the User "AppData > Roaming > Spout" folder first
-			HRESULT hr = SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_DEFAULT_PATH, NULL, &appdatapath);
-			if (SUCCEEDED(hr) && appdatapath) {
-				wcscpy_s(wpath, MAX_PATH, appdatapath);
-				wcscat_s(wpath, MAX_PATH, L"\\Spout");
-				wcstombs_s(NULL, logpath, wpath, MAX_PATH);
+			// Retrieve user %appdata% environment variable
+			char *appdatapath = nullptr;
+			size_t len;
+			bool bSuccess = true;
+			errno_t err = _dupenv_s(&appdatapath, &len, "APPDATA");
+			if (err == 0 && appdatapath) {
+				strcpy_s(logpath, MAX_PATH, appdatapath);
+				strcat_s(logpath, MAX_PATH, "\\Spout");
 				if (_access(logpath, 0) == -1) {
 					if (!CreateDirectoryA(logpath, NULL)) {
-						hr = S_FALSE;
+						bSuccess = false;
 					}
 				}
 			}
+			else {
+				bSuccess = false;
+			}
 
-			if (hr == S_FALSE) {
-				// CreateDirectory failed
+			if (!bSuccess) {
+				// _dupenv_s or CreateDirectory failed
 				// Find the path of the executable
 				GetModuleFileNameA(NULL, (LPSTR)logpath, sizeof(logpath));
 				PathRemoveFileSpecA((LPSTR)logpath);
 			}
 
 			return logpath;
-
 		}
 
 		// Get the name for the current log level
@@ -939,7 +942,5 @@ namespace spoututils {
 			return bRet;
 		}
 	} // end private namespace
-
-
 
 } // end namespace spoututils

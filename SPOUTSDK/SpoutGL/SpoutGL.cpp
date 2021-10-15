@@ -52,6 +52,7 @@
 //					  WriteDX11texture - unmap staging texture if data read fails
 //					  ReadTextureData - allow for no FBO support for low end graphics
 //		29.09.21	- OpenSpout and LinkGLDXtextures - test for GL/DX extensions
+//		15.10.21	- Remove interop object test for repeat from OpenSpout
 //
 // ====================================================================================
 /*
@@ -387,10 +388,9 @@ bool spoutGL::IsGLDXready()
 bool spoutGL::OpenSpout(bool bRetest)
 {
 	// Return if already initialized and not re-testing compatibility
-	// Look for DirectX to prevent repeat
+	// Look for DirectX device to prevent repeat
 	if(spoutdx.GetDX11Device() > 0
 		&& m_hInteropDevice > 0
-		&& m_hInteropObject > 0
 		&& !bRetest)
 		return true;
 
@@ -917,7 +917,7 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 	// (the shared texture) (m_hInteropObject)
 	// When a sender size changes, the new texture has to be re-registered
 	if (m_hInteropDevice &&  m_hInteropObject) {
-		SpoutLogNotice("    Unregistering interop");
+		SpoutLogNotice("    Re-registering interop");
 		wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
 		m_hInteropObject = nullptr;
 	}
