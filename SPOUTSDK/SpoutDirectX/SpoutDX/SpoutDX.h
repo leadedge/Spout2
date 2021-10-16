@@ -99,7 +99,7 @@ class SPOUT_DLLEXP spoutDX {
 	//
 
 	// Set the sender to connect to
-	void SetReceiverName(const char * sendername);
+	void SetReceiverName(const char * sendername = nullptr);
 	// Close receiver and free resources
 	void ReleaseReceiver();
 	// Receive from a sender

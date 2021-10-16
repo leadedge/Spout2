@@ -635,8 +635,14 @@ long spoutDX::GetFrame()
 void spoutDX::SetReceiverName(const char * SenderName)
 {
 	if (SenderName && SenderName[0]) {
+		// Connect to the specified sender
 		strcpy_s(m_SenderNameSetup, 256, SenderName);
 		strcpy_s(m_SenderName, 256, SenderName);
+	}
+	else {
+		// Connect to the active sender
+		m_SenderNameSetup[0] = 0;
+		m_SenderName[0] = 0;
 	}
 }
 
@@ -957,14 +963,21 @@ ID3D11Texture2D* spoutDX::GetSenderTexture()
 		return nullptr;
 
 	if (!m_pTexture) {
+
 		// Create the class texture
-		CheckTexture(GetSenderWidth(), GetSenderHeight(), GetSenderFormat());
+		if (!CheckTexture(GetSenderWidth(), GetSenderHeight(), GetSenderFormat()))
+			return nullptr;
+		
+		if (!m_pTexture)
+			return nullptr;
+
 		// Copy the shared texture to it
 		if (frame.CheckTextureAccess(m_pSharedTexture)) {
 			m_pImmediateContext->CopyResource(m_pTexture, m_pSharedTexture);
 			m_pImmediateContext->Flush();
 		}
 		frame.AllowTextureAccess(m_pSharedTexture);
+
 	}
 	return m_pTexture;
 }
@@ -2149,9 +2162,8 @@ bool spoutDX::CreateDX11StagingTexture(unsigned int width, unsigned int height,	
 // Create new class texture if changed size or does not exist yet
 bool spoutDX::CheckTexture(unsigned int width, unsigned int height, DWORD dwFormat)
 {
-	if (!m_pd3dDevice) {
+	if (!m_pd3dDevice)
 		return false;
-	}
 
 	if (m_pTexture) {
 		D3D11_TEXTURE2D_DESC desc = { 0 };
