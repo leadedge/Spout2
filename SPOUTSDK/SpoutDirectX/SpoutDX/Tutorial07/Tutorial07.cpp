@@ -116,8 +116,12 @@ ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view o
 void ResetDevice();
 void SelectAdapter();
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 bool g_bAutoAdapt = false; // Auto switch to the same adapter as the sender (menu option)
+
+// Statics for dialog box
+static char sendername[256];
 static std::string adaptername[10];
 static int adaptercount = 0;
 static int currentadapter = 0;
@@ -144,9 +148,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// Set the name of the sender to receive from.
 	// The receiver will only connect to that sender.
-	// The user can over-ride this by selecting another.
+	// The user can over-ride this by selecting another (receiver.SelectSender())
+	// It can be cleared with a null sender name (receiver.SetReceiverName())
 	// receiver.SetReceiverName("Spout Demo Sender");
-
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
 
@@ -802,6 +806,12 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 		// Parse the menu selections:
 		switch (LOWORD(wParam))
 		{
+			// Select sender
+			case IDM_SENDER:
+				// Sender selection dialog box 
+				sendername[0] = 0; // Clear static name for dialog
+				DialogBox(g_hInst, MAKEINTRESOURCE(IDD_SENDERBOX), g_hWnd, (DLGPROC)SenderProc);
+				break;
 			// Select graphics adapter
 			case IDM_ADAPTER:
 				SelectAdapter();
@@ -1148,6 +1158,80 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	}
+	return (INT_PTR)FALSE;
+}
+
+
+// Message handler for selecting sender
+INT_PTR  CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam); // suppress warning
+
+	switch (message) {
+
+	case WM_INITDIALOG:
+		// Sender combo selection
+		{
+			// Create an sender name list for the combo box
+			HWND hwndList = GetDlgItem(hDlg, IDC_SENDERS);
+
+			// Active sender name for initial item
+			char activename[256];
+			receiver.GetActiveSender(activename);
+			int activeindex = 0;
+
+			// Sender count
+			int count = receiver.GetSenderCount();
+
+			// Populate the combo box
+			char name[128];
+			for (int i = 0; i < count; i++) {
+				receiver.GetSender(i, name, 128);
+				// Active sender index for the initial combo box item
+				if (strcmp(name, activename) == 0)
+					activeindex = i;
+				SendMessageA(hwndList, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)name);
+			}
+
+			// Show the active sender as the initial item
+			SendMessageA(hwndList, CB_SETCURSEL, (WPARAM)activeindex, (LPARAM)0);
+		}
+		return TRUE;
+
+	case WM_COMMAND:
+
+		// Combo box selection
+		if (HIWORD(wParam) == CBN_SELCHANGE) {
+			// Get the selected sender name
+			int index = (int)SendMessageA((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+			SendMessageA((HWND)lParam, (UINT)CB_GETLBTEXT, (WPARAM)index, (LPARAM)sendername);
+		}
+		// Drop through
+
+		switch (LOWORD(wParam)) {
+
+		case IDOK:
+			// Selected sender
+			if (sendername[0]) {
+				// Make the sender active
+				receiver.SetActiveSender(sendername);
+				// Reset the receiving name
+				// A new sender is detected on the first ReceiveTexture call
+				receiver.SetReceiverName();
+			}
+			EndDialog(hDlg, 1);
+			break;
+
+		case IDCANCEL:
+			// User pressed cancel.
+			EndDialog(hDlg, 0);
+			return (INT_PTR)TRUE;
+
+		default:
+			return (INT_PTR)FALSE;
+		}
+	}
+
 	return (INT_PTR)FALSE;
 }
 
