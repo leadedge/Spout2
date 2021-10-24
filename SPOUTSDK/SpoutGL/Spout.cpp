@@ -205,6 +205,7 @@
 //		04.07.21	- Additional code comments concerning update in ReceiveTexture.
 //		12.08.21	- CreateReceiver - Revise CreateReceiver to avoid switch to active
 //					  if the selected sender closes.
+//		15.10.21	- Allow no argument for SetReceiverName
 //
 // ====================================================================================
 /*
@@ -627,14 +628,20 @@ bool Spout::GetGLDX()
 // Function: SetReceiverName
 // Specify sender for connection
 //
-//   The application will not connect to any other unless the user selects one
-//   If that sender closes, the application will wait for the nominated sender to open 
+//   The if a name is specified, the receiver will not connect to any other unless the user selects one
+//   If that sender closes, the receiver will wait for the nominated sender to open 
 //   If no name is specified, the receiver will connect to the active sender
 void Spout::SetReceiverName(const char * SenderName)
 {
 	if (SenderName && SenderName[0]) {
+		// Connect to the specified sender
 		strcpy_s(m_SenderNameSetup, 256, SenderName);
 		strcpy_s(m_SenderName, 256, SenderName);
+	}
+	else {
+		// Connect to the active sender
+		m_SenderNameSetup[0] = 0;
+		m_SenderName[0] = 0;
 	}
 }
 
@@ -723,7 +730,7 @@ bool Spout::ReceiveTexture()
 //		- UnBindSharedTexture();
 //		- GetSharedTextureID();
 //
-//   As for SendTexture, the host fbo argument is optional (default 0)
+//   As with SendTexture, the host fbo argument is optional (default 0)
 //   but an fbo ID is necessary if it is currently bound, then that binding
 //   is restored. Otherwise the binding is lost.
 //
@@ -816,7 +823,7 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 //    NOTE : images with padding on each line are not supported.
 //    Also the width should be a multiple of 4
 //
-//    As for ReceiveTexture, the ID of a currently bound fbo should be passed in.
+//    As with ReceiveTexture, the ID of a currently bound fbo should be passed in.
 //
 bool Spout::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height,
 	unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFBO)
@@ -835,8 +842,8 @@ bool Spout::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &he
 // Query whether the sender has changed.
 //
 //   Must be checked at every cycle before receiving data. 
-//
 //   If this is not done, the receiving functions fail.
+//
 bool Spout::IsUpdated()
 {
 	bool bRet = m_bUpdated;
@@ -850,6 +857,7 @@ bool Spout::IsUpdated()
 //
 //   If the sender closes, receiving functions return false,  
 //   but connection can be tested at any time.
+//
 bool Spout::IsConnected()
 {
 	return m_bConnected;
@@ -1141,7 +1149,13 @@ bool Spout::GetAdapterInfo(char *renderdescription, char *displaydescription, in
 // Group: 2.006 compatibility
 //
 // These functions are not necessary for Version 2.007
-// but are retained for compatibility with existing 2.006 code.
+// and should not be used for a new application.
+// They are retained for compatibility with existing 2.006 code
+// and may be removed in future release.
+// For full compatibility with exsiting 2.006 code, the original
+// 2.006 SDK is preserved in a separate branch :
+//
+// https://github.com/leadedge/Spout2/tree/2.006
 //
 
 //---------------------------------------------------------
@@ -1303,7 +1317,8 @@ bool Spout::UpdateSender(const char* name, unsigned int width, unsigned int heig
 // Create receiver connection
 bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height, bool bUseActive)
 {
-	// Make sure OpenGL and DirectX are initialized
+	UNREFERENCED_PARAMETER(bUseActive); // no longer used
+
 	if (!OpenSpout())
 		return false;
 	
@@ -1910,8 +1925,22 @@ bool Spout::ReceiveSenderData()
 
 	// Initialization is recorded in this class for sender or receiver
 	// m_Width or m_Height are established when the receiver connects to a sender
+
+	// LJ DEBUG
+	// printf("[%s\n", m_SenderName);
+
 	char sendername[256];
 	strcpy_s(sendername, 256, m_SenderName);
+
+	/*
+	// Check to see if the sender is still active
+	char activename[256];
+	if (GetActiveSender(activename)) {
+		if (strcmp(sendername, activename) != 0) {
+			strcpy_s(sendername, 256, activename);
+		}
+	}
+	*/
 
 	// Check again to see if the sender exists
 	if (sendername[0] == 0) {

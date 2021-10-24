@@ -56,10 +56,14 @@ unsigned int g_SenderWidth = 0;        // Received sender width
 unsigned int g_SenderHeight = 0;       // Received sender height
 DWORD g_SenderFormat = 0;              // Received sender format
 
+// Static for sender selection dialog box
+static char sendername[256];
+
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK    SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 // SPOUT
@@ -273,9 +277,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
 			case IDM_OPEN:
+				// Sender selection dialog box 
+				sendername[0] = 0; // Clear static name for dialog
+				DialogBox(hInst, MAKEINTRESOURCE(IDD_SENDERBOX), hWnd, (DLGPROC)SenderProc);
 				// Open select a sender
-				receiver.SelectSender();
+				// receiver.SelectSender();
 				break;
+
 			case IDM_EXIT:
                 DestroyWindow(hWnd);
                 break;
@@ -450,5 +458,80 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return (INT_PTR)FALSE;
 }
+
+// SPOUT : added for this example
+// Message handler for selecting sender
+INT_PTR  CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam); // suppress warning
+
+	switch (message) {
+
+	case WM_INITDIALOG:
+		// Sender combo selection
+	{
+		// Create an sender name list for the combo box
+		HWND hwndList = GetDlgItem(hDlg, IDC_SENDERS);
+
+		// Active sender name for initial item
+		char activename[256];
+		receiver.GetActiveSender(activename);
+		int activeindex = 0;
+
+		// Sender count
+		int count = receiver.GetSenderCount();
+
+		// Populate the combo box
+		char name[128];
+		for (int i = 0; i < count; i++) {
+			receiver.GetSender(i, name, 128);
+			// Active sender index for the initial combo box item
+			if (strcmp(name, activename) == 0)
+				activeindex = i;
+			SendMessageA(hwndList, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)name);
+		}
+
+		// Show the active sender as the initial item
+		SendMessageA(hwndList, CB_SETCURSEL, (WPARAM)activeindex, (LPARAM)0);
+	}
+	return TRUE;
+
+	case WM_COMMAND:
+
+		// Combo box selection
+		if (HIWORD(wParam) == CBN_SELCHANGE) {
+			// Get the selected sender name
+			int index = (int)SendMessageA((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+			SendMessageA((HWND)lParam, (UINT)CB_GETLBTEXT, (WPARAM)index, (LPARAM)sendername);
+		}
+		// Drop through
+
+		switch (LOWORD(wParam)) {
+
+		case IDOK:
+			// Selected sender
+			if (sendername[0]) {
+				// Make the sender active
+				receiver.SetActiveSender(sendername);
+				// Reset the receiving name
+				// A new sender is detected on the first ReceiveTexture call
+				receiver.SetReceiverName();
+			}
+			EndDialog(hDlg, 1);
+			break;
+
+		case IDCANCEL:
+			// User pressed cancel.
+			EndDialog(hDlg, 0);
+			return (INT_PTR)TRUE;
+
+		default:
+			return (INT_PTR)FALSE;
+		}
+	}
+
+	return (INT_PTR)FALSE;
+}
+
 
 // That's all..

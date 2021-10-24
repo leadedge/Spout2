@@ -112,10 +112,10 @@ struct SPOUTLIBRARY
 	//
 
 	// Specify sender for connection
-	//   The application will not connect to any other  unless the user selects one
-	//   If that sender closes, the application will wait for the nominated sender to open 
+	//   If a name is specified, the receiver will not connect to any other unless the user selects one
+	//   If that sender closes, the receiver will wait for the nominated sender to open 
 	//   If no name is specified, the receiver will connect to the active sender
-	virtual void SetReceiverName(const char* SenderName) = 0;
+	virtual void SetReceiverName(const char* SenderName = nullptr) = 0;
 	// Close receiver and release resources ready to connect to another sender
 	virtual void ReleaseReceiver() = 0;
 	// Receive texture

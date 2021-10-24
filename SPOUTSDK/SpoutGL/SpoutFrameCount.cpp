@@ -38,7 +38,12 @@
 //		07.04.21	- CloseFrameSync public for use by other classes
 //		17.04.21	- WaitFrameSync - close handle on error
 //		21.07.21	- Remove debug comment
-//		10.08.21	- Default m_bIsNewFrame, assume true to allow for apps without frame count
+//		10.08.21	- Default m_bIsNewFrame true to allow for apps without frame count
+//		05.10.21	- HoldFps - correct start time
+//		24.10.21	- If registry frame count key is not present or disabled,
+//					  set the new frame flag m_bIsNewFrame true.
+//					- Set default new frame true in GetNewFrame(),
+//					  false only if the frame number equals the last.
 //
 // ====================================================================================
 //
@@ -90,7 +95,7 @@ spoutFrameCount::spoutFrameCount()
 	m_FrameTimeNumber = 0.0;
 	m_lastFrame = 0.0;
 	m_FrameStart = 0.0;
-	m_bIsNewFrame = true; // Assume true for apps without frame count
+	m_bIsNewFrame = true; // Default true for apps without frame count
 	m_SenderFps = GetRefreshRate(); // Default sender fps is system refresh rate
 	m_millisForFrame = 0.0;
 
@@ -100,8 +105,15 @@ spoutFrameCount::spoutFrameCount()
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Framecount", &dwFrame)) {
 		m_bFrameCount = (dwFrame == 1);
 	}
-	m_bDisabled = false; // frame counting not application disabled
-	
+
+	// If frame counting is disabled, set the new frame flag true
+	if (!m_bFrameCount)
+		m_bIsNewFrame = true;
+
+	// Frame counting not disabled specifically for this application.
+	// This can be set by the application if required.
+	m_bDisabled = false;
+
 #ifdef USE_CHRONO
 	// Start std::chrono microsec counting
 	m_FrameStartPtr = new std::chrono::steady_clock::time_point;
@@ -389,13 +401,16 @@ bool spoutFrameCount::GetNewFrame()
 	// Update the global frame count
 	m_FrameCount = framecount;
 
+	// Set a new frame by default, but test below and set false if this frame and the last are the same.
+	m_bIsNewFrame = true;
+
 	// Count will still be zero for apps that do not set a frame count
 	if (framecount == 0)
 		return true;
 
 	// If this count and the last are the same, the sender has not
 	// produced a new frame and incremented the counter.
-	// Only return false if this frame and the last are the same.
+	// Return false if this frame and the last are the same.
 	if (framecount == m_LastFrameCount) {
 		m_bIsNewFrame = false;
 		return false;
@@ -408,9 +423,6 @@ bool spoutFrameCount::GetNewFrame()
 
 	// Reset the comparator
 	m_LastFrameCount = framecount;
-
-	// Signal a new frame
-	m_bIsNewFrame = true;
 
 	return true;
 }
@@ -469,6 +481,7 @@ double spoutFrameCount::GetSenderFps()
 	return m_SenderFps;
 }
 
+
 // -----------------------------------------------
 long spoutFrameCount::GetSenderFrame()
 {
@@ -488,9 +501,9 @@ void spoutFrameCount::HoldFps(int fps)
 	// Return if incorrect fps entry
 	if (fps <= 0)
 		return;
-
-	double framerate = static_cast<double>(fps);
 	
+	double framerate = static_cast<double>(fps);
+
 #ifdef USE_CHRONO
 	// Initialize frame time at target rate
 	if (m_millisForFrame < 0.001) {
@@ -499,15 +512,21 @@ void spoutFrameCount::HoldFps(int fps)
 		SpoutLogNotice("spoutFrameCount::HoldFps(%.2f)", framerate);
 	}
 	else {
+
+		// Time now end point
 		*m_FrameEndPtr = std::chrono::steady_clock::now();
+
 		// milliseconds elapsed
 		double elapsedTime = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(*m_FrameEndPtr - *m_FrameStartPtr).count() / 1000.);
+		
 		// Sleep to reach the target frame time
 		if (elapsedTime < m_millisForFrame) {
 			std::this_thread::sleep_for(std::chrono::milliseconds((long)(m_millisForFrame - elapsedTime)));
 		}
+		
 		// Set start time for the next frame
-		*m_FrameStartPtr = std::chrono::steady_clock::now();
+		*m_FrameStartPtr = *m_FrameEndPtr;
+		
 	}
 #else
 	if (m_millisForFrame == 0) {
@@ -524,6 +543,7 @@ void spoutFrameCount::HoldFps(int fps)
 		m_FrameStart = GetCounter();
 	}
 #endif
+	
 
 }
 
