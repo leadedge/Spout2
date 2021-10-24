@@ -75,6 +75,7 @@
 		16.09.21 - Update Version to "2.007.004"
 		04.10.21 - Remove shlobj.h include due to redifinition conflict with ShObjIdl.h
 				   Replace code using environment variable "APPDATA"
+		24.10.21 - Update Version to "2.007.005"
 
 */
 #include "SpoutUtils.h"
