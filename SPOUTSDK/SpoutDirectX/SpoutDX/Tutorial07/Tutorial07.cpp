@@ -116,8 +116,12 @@ ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view o
 void ResetDevice();
 void SelectAdapter();
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 bool g_bAutoAdapt = false; // Auto switch to the same adapter as the sender (menu option)
+
+// Statics for dialog box
+static char sendername[256];
 static std::string adaptername[10];
 static int adaptercount = 0;
 static int currentadapter = 0;
@@ -144,9 +148,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// Set the name of the sender to receive from.
 	// The receiver will only connect to that sender.
-	// The user can over-ride this by selecting another.
+	// The user can over-ride this by selecting another (receiver.SelectSender())
+	// It can be cleared with a null sender name (receiver.SetReceiverName())
 	// receiver.SetReceiverName("Spout Demo Sender");
-
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
 
@@ -333,6 +337,7 @@ HRESULT InitDevice()
     UINT width  = rc.right - rc.left;
     UINT height = rc.bottom - rc.top;
 
+	// LJ DEBUG
 	//
 	// SPOUT
 	//
@@ -801,6 +806,12 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 		// Parse the menu selections:
 		switch (LOWORD(wParam))
 		{
+			// Select sender
+			case IDM_SENDER:
+				// Sender selection dialog box 
+				sendername[0] = 0; // Clear static name for dialog
+				DialogBox(g_hInst, MAKEINTRESOURCE(IDD_SENDERBOX), g_hWnd, (DLGPROC)SenderProc);
+				break;
 			// Select graphics adapter
 			case IDM_ADAPTER:
 				SelectAdapter();
@@ -886,30 +897,101 @@ void Render()
     }
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//
 	// SPOUT
 	//
-	// Receive a sender texture
-	if (receiver.ReceiveTexture(&g_pReceivedTexture)) {
+	// A texture can be received to a local texture
+	// or to a texture withing the SpoutDX class.
+	//
+	// Change the receiving option here for testing
+	//   1 - receive to a local texture (g_pReceivedTexture)
+	//   2 - receive to a SpoutDX class texture
+	//
+	int option = 1;
 
+	if (option == 1) {
 		//
-		// Sender details can be retrieved with :
-		//		const char * GetSenderName();
-		//		unsigned int GetSenderWidth();
-		//		unsigned int GetSenderHeight();
-		//		DXGI_FORMAT GetSenderFormat();
-		//		HANDLE GetSenderHandle;
-		//		long GetSenderFrame();
-		//		double GetSenderFps();
+		// Option 1 : Receive from a sender to a local texture
 		//
+		if (receiver.ReceiveTexture(&g_pReceivedTexture)) {
+			// Create or re-create the receiving texture 
+			// for a new sender or if the sender size changed
+			if (receiver.IsUpdated()) {
 
-		// Create or re-create the receiving texture 
-		// for a new sender or if the sender size changed
-		if (receiver.IsUpdated()) {
-
-			if (receiver.GetAdapterAuto()) {
 				// The D3D11 device within the SpoutDX class could have changed
 				// if it has switched to use a different sender graphics adapter.
-				// Re-intialize to refresh the global device pointer.
+				// Re-intialize to refresh the application global device pointer.
+				if (receiver.GetAdapterAuto()) {
+					if (g_pd3dDevice != receiver.GetDX11Device()) {
+						ResetDevice();
+						// No more this round because the receiver has been released
+						// and there is no width or height to create a texture.
+						return;
+					}
+				}
+
+				// Update the receiving texture
+				if (g_pReceivedTexture)	g_pReceivedTexture->Release();
+				g_pReceivedTexture = nullptr;
+				receiver.CreateDX11texture(g_pd3dDevice,
+					receiver.GetSenderWidth(),
+					receiver.GetSenderHeight(),
+					receiver.GetSenderFormat(),
+					&g_pReceivedTexture);
+
+				// Any other action required by the receiver can be done here
+				// In this example, clear the shader resource view
+				if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+				g_pSpoutTextureRV = nullptr;
+			}
+
+			// A texture has been received
+
+			// In this example, a shader resource view is created if the frame is new
+			if (receiver.IsFrameNew()) {
+				if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+				g_pSpoutTextureRV = nullptr;
+				D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
+				ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
+				// Matching format with the sender is important
+				shaderResourceViewDesc.Format = receiver.GetSenderFormat();
+				shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+				shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
+				shaderResourceViewDesc.Texture2D.MipLevels = 1;
+				g_pd3dDevice->CreateShaderResourceView(g_pReceivedTexture, &shaderResourceViewDesc, &g_pSpoutTextureRV);
+			}
+		}
+		else {
+			// A sender was not found or the connected sender closed
+			// Release the receiving texture
+			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
+			g_pReceivedTexture = nullptr;
+			// Release the texture resource view so render uses the default
+			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+			g_pSpoutTextureRV = nullptr;
+		}
+
+	}
+	else if (option == 2) {
+		//
+		// Option 2 : Receive from a sender to a SpoutDX class texture
+		//
+		if (receiver.ReceiveTexture()) {
+			//
+			// Sender details can be retrieved with :
+			//		const char * GetSenderName();
+			//		unsigned int GetSenderWidth();
+			//		unsigned int GetSenderHeight();
+			//		DXGI_FORMAT GetSenderFormat();
+			//		HANDLE GetSenderHandle;
+			//		long GetSenderFrame();
+			//		double GetSenderFps();
+			//
+
+			// The D3D11 device within the SpoutDX class could have changed
+			// if it has switched to use a different sender graphics adapter.
+			// Re-intialize to refresh the application global device pointer.
+			if (receiver.GetAdapterAuto()) {
 				if (g_pd3dDevice != receiver.GetDX11Device()) {
 					ResetDevice();
 					// No more this round because the receiver has been released
@@ -918,45 +1000,34 @@ void Render()
 				}
 			}
 
-			if (g_pReceivedTexture)	g_pReceivedTexture->Release();
-			g_pReceivedTexture = nullptr;
-			receiver.CreateDX11texture(g_pd3dDevice,
-						receiver.GetSenderWidth(),
-						receiver.GetSenderHeight(),
-						receiver.GetSenderFormat(),
-						&g_pReceivedTexture);
+			// A class texture has been received
+			// The received texture can be retrieved with
+			//     ID3D11Texture2D* GetSenderTexture();
 
-			// Any other action required by the receiver can be done here
-			// In this example, clear the shader resource view
+			// In this example, a shader resource view is created if the frame is new
+			if (receiver.IsFrameNew()) {
+				if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
+				g_pSpoutTextureRV = nullptr;
+				D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
+				ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
+				// Matching format with the sender is important
+				shaderResourceViewDesc.Format = receiver.GetSenderFormat();
+				shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+				shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
+				shaderResourceViewDesc.Texture2D.MipLevels = 1;
+				g_pd3dDevice->CreateShaderResourceView(receiver.GetSenderTexture(), &shaderResourceViewDesc, &g_pSpoutTextureRV);
+			}
+		}
+		else {
+			// A sender was not found or the connected sender closed
+			// Release the texture resource view so render uses the default
 			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 			g_pSpoutTextureRV = nullptr;
 		}
-
-		// A texture has been received
-		
-		// In this example, a shader resource view is created if the frame is new
-		if (receiver.IsFrameNew()) {
-			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
-			g_pSpoutTextureRV = nullptr;
-			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-			ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
-			// Matching format with the sender is important
-			shaderResourceViewDesc.Format = receiver.GetSenderFormat();
-			shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-			shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
-			shaderResourceViewDesc.Texture2D.MipLevels = 1;
-			g_pd3dDevice->CreateShaderResourceView(g_pReceivedTexture, &shaderResourceViewDesc, &g_pSpoutTextureRV);
-		}
-
 	}
-	else { 	// A sender was not found or the connected sender closed
-		// Release the receiving texture
-		if (g_pReceivedTexture)	g_pReceivedTexture->Release();
-		g_pReceivedTexture = nullptr;
-		// Release the texture resource view so render uses the default
-		if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
-		g_pSpoutTextureRV = nullptr;
-	}
+	// End receive texture
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 
 	// Rotate cube around the origin
 	// g_World = XMMatrixRotationY(t);
@@ -1087,6 +1158,80 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	}
+	return (INT_PTR)FALSE;
+}
+
+
+// Message handler for selecting sender
+INT_PTR  CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam); // suppress warning
+
+	switch (message) {
+
+	case WM_INITDIALOG:
+		// Sender combo selection
+		{
+			// Create an sender name list for the combo box
+			HWND hwndList = GetDlgItem(hDlg, IDC_SENDERS);
+
+			// Active sender name for initial item
+			char activename[256];
+			receiver.GetActiveSender(activename);
+			int activeindex = 0;
+
+			// Sender count
+			int count = receiver.GetSenderCount();
+
+			// Populate the combo box
+			char name[128];
+			for (int i = 0; i < count; i++) {
+				receiver.GetSender(i, name, 128);
+				// Active sender index for the initial combo box item
+				if (strcmp(name, activename) == 0)
+					activeindex = i;
+				SendMessageA(hwndList, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)name);
+			}
+
+			// Show the active sender as the initial item
+			SendMessageA(hwndList, CB_SETCURSEL, (WPARAM)activeindex, (LPARAM)0);
+		}
+		return TRUE;
+
+	case WM_COMMAND:
+
+		// Combo box selection
+		if (HIWORD(wParam) == CBN_SELCHANGE) {
+			// Get the selected sender name
+			int index = (int)SendMessageA((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+			SendMessageA((HWND)lParam, (UINT)CB_GETLBTEXT, (WPARAM)index, (LPARAM)sendername);
+		}
+		// Drop through
+
+		switch (LOWORD(wParam)) {
+
+		case IDOK:
+			// Selected sender
+			if (sendername[0]) {
+				// Make the sender active
+				receiver.SetActiveSender(sendername);
+				// Reset the receiving name
+				// A new sender is detected on the first ReceiveTexture call
+				receiver.SetReceiverName();
+			}
+			EndDialog(hDlg, 1);
+			break;
+
+		case IDCANCEL:
+			// User pressed cancel.
+			EndDialog(hDlg, 0);
+			return (INT_PTR)TRUE;
+
+		default:
+			return (INT_PTR)FALSE;
+		}
+	}
+
 	return (INT_PTR)FALSE;
 }
 

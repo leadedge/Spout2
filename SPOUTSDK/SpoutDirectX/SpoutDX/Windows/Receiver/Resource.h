@@ -8,6 +8,7 @@
 #define IDD_WINSPOUTDX_DIALOG	102
 #define IDD_ABOUTBOX			103
 #define IDM_ABOUT				104
+#define IDD_SENDERBOX			104
 #define IDM_OPEN				105
 #define IDM_EXIT				106
 #define IDI_WINSPOUTDX			107
@@ -15,6 +16,7 @@
 #define IDC_WINSPOUTDX			109
 #define IDC_ABOUT_TEXT          201
 #define IDC_SPOUT_URL           202
+#define IDC_SENDERS             203
 #define IDC_MYICON				2
 #ifndef IDC_STATIC
 #define IDC_STATIC				-1

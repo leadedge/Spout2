@@ -43,7 +43,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	//   The application will not connect to any other  unless the user selects one
 	//   If that sender closes, the application will wait for the nominated sender to open 
 	//   If no name is specified, the receiver will connect to the active sender
-	void SetReceiverName(const char * sendername);
+	void SetReceiverName(const char * sendername = nullptr);
 	// Close receiver and release resources ready to connect to another sender
 	void ReleaseReceiver();
 	// Receive shared texture

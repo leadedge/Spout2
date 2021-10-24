@@ -75,6 +75,10 @@ class SPOUT_DLLEXP spoutDX {
 	bool SendBackBuffer();
 	// Send a texture
 	bool SendTexture(ID3D11Texture2D* pTexture);
+	// Send part of a texture
+	bool SendTexture(ID3D11Texture2D* pTexture,
+		unsigned int xoffset, unsigned int yoffset,
+		unsigned int width, unsigned int height); 
 	// Send an image
 	bool SendImage(unsigned char * pData, unsigned int width, unsigned int height);
 	// Sender status
@@ -95,11 +99,13 @@ class SPOUT_DLLEXP spoutDX {
 	//
 
 	// Set the sender to connect to
-	void SetReceiverName(const char * sendername);
+	void SetReceiverName(const char * sendername = nullptr);
 	// Close receiver and free resources
 	void ReleaseReceiver();
+	// Receive from a sender
+	bool ReceiveTexture();
 	// Receive a texture from a sender
-	bool ReceiveTexture(ID3D11Texture2D** ppTexture = nullptr);
+	bool ReceiveTexture(ID3D11Texture2D** ppTexture);
 	// Receive an image
 	bool ReceiveImage(unsigned char * pixels, unsigned int width, unsigned int height, bool bRGB = false, bool bInvert = false);
 	// Open sender selection dialog
@@ -110,6 +116,8 @@ class SPOUT_DLLEXP spoutDX {
 	bool IsConnected();
 	// Received frame is new
 	bool IsFrameNew();
+	// Received texture
+	ID3D11Texture2D* GetSenderTexture();
 	// Received sender share handle
 	HANDLE GetSenderHandle();
 	// Received sender texture format
@@ -240,6 +248,7 @@ protected :
 	ID3D11Device* m_pd3dDevice;
 	ID3D11DeviceContext* m_pImmediateContext;
 	ID3D11Texture2D* m_pSharedTexture;
+	ID3D11Texture2D* m_pTexture;
 	ID3D11Texture2D* m_pStaging[2];
 	int m_Index;
 	int m_NextIndex;
@@ -277,6 +286,9 @@ protected :
 	// Create staging textures
 	bool CheckStagingTextures(unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
 	bool CreateDX11StagingTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
+
+	// Create or update class texture
+	bool CheckTexture(unsigned int width, unsigned int height, DWORD dwFormat);
 
 	void SelectSenderPanel();
 	bool CheckSpoutPanel(char *sendername, int maxchars = 256);

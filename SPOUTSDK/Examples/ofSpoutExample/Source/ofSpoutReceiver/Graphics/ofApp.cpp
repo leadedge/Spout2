@@ -209,11 +209,57 @@ void ofApp::exit() {
 }
 
 //--------------------------------------------------------------
+// RH mouse click to open SpoutPanel for sender selection
 void ofApp::mousePressed(int x, int y, int button){
-	if(button == 2) { // rh button
-		// Open the sender selection panel
-		// Spout must have been installed
+	
+	// RH button for "SpoutPanel" sender selection dialog
+	// Spout must have been installed and SpoutPanel
+	// or SpoutSettings run at least once
+	if(button == 2) {
 		receiver.SelectSender();
 	}
+
+	// LH button to show a sender list in the console
+	// This could be used to construct a dialog list for user selection
+	if (button == 0) {
+		// Show the user the current sender list
+		int nSenders = receiver.GetSenderCount();
+		if (nSenders > 0) {
+			printf("\n");
+			char SenderName[256];
+			for (int i = 0; i < nSenders; i++) {
+				receiver.GetSender(i, SenderName);
+				printf("(%d) [%s]\n", i, SenderName);
+			}
+		}
+		printf("Press number to detect\n");
+	}
+
 }
+
+//--------------------------------------------------------------
+// Keypress for sender selection from a list
+void ofApp::keyPressed(int key) {
+
+	// Convert ASCII to number
+	int index = key - 48;
+	// Single key selection (0-9)
+	if (index >= 0 && index <= 9) {
+		char SenderName[256];
+		// Check if the sender exists
+		if (receiver.GetSender(index, SenderName)) {
+			printf("\n");
+			// Set as active
+			receiver.SetActiveSender(SenderName);
+			// Change to the active sender
+			receiver.SetReceiverName();
+			// Change to it and lock to that sender
+			// receiver.SetReceiverName(SenderName);
+		}
+		else {
+			printf("sender index [%d] not found\n", index);
+		}
+	}
+}
+
 
