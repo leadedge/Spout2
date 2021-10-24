@@ -628,8 +628,8 @@ bool Spout::GetGLDX()
 // Function: SetReceiverName
 // Specify sender for connection
 //
-//   The application will not connect to any other unless the user selects one
-//   If that sender closes, the application will wait for the nominated sender to open 
+//   The if a name is specified, the receiver will not connect to any other unless the user selects one
+//   If that sender closes, the receiver will wait for the nominated sender to open 
 //   If no name is specified, the receiver will connect to the active sender
 void Spout::SetReceiverName(const char * SenderName)
 {
@@ -1317,7 +1317,8 @@ bool Spout::UpdateSender(const char* name, unsigned int width, unsigned int heig
 // Create receiver connection
 bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height, bool bUseActive)
 {
-	// Make sure OpenGL and DirectX are initialized
+	UNREFERENCED_PARAMETER(bUseActive); // no longer used
+
 	if (!OpenSpout())
 		return false;
 	
