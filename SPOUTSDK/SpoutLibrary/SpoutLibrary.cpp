@@ -65,6 +65,7 @@
 //		20.07.21 - Change generic local log level definition to avoid
 //				   conflict with other libraries and applications.
 //		25.07.21   Re-build 32/64 bit - VS2017 / Multi-threaded DLL (/MD)
+//		24.10.21 - Rebuild with updated SpoutGL files 32/64 bit /MD
 //
 /*
 		Copyright (c) 2016-2021, Lynn Jarvis. All rights reserved.
@@ -310,9 +311,9 @@ private: // Spout SDK functions
 	// Function: SetReceiverName
 	// Specify sender for connection
 	//
-	//   If a name is specified, the receiver will not connect to any other unless the user selects one
-	//   If that sender closes, the receiver will wait for the nominated sender to open 
-	//   If no name is specified, the receiver will connect to the active sender
+	//   - If a name is specified, the receiver will not connect to any other unless the user selects one.
+	//   - If that sender closes, the receiver will wait for the nominated sender to open. 
+	//   - If no name is specified, the receiver will connect to the active sender.
 	void SetReceiverName(const char * SenderName = nullptr);
 
 	// Function: ReleaseReceiver
