@@ -629,9 +629,10 @@ long spoutDX::GetFrame()
 // Function: SetReceiverName
 // Specify sender for connection
 //
-//   The application will not connect to any other unless the user selects one
-//   If that sender closes, the application will wait for the nominated sender to open 
-//   If no name is specified, the receiver will connect to the active sender
+//   - If a name is specified, the receiver will not connect to any other unless the user selects one.
+//   - If that sender closes, the receiver will wait for the nominated sender to open.
+//   - If no name is specified, the receiver will connect to the active sender.
+//
 void spoutDX::SetReceiverName(const char * SenderName)
 {
 	if (SenderName && SenderName[0]) {
