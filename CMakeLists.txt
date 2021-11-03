@@ -56,4 +56,85 @@ if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
 add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX)
 endif()
 
+include(GNUInstallDirs)
 
+if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
+	set(Spout2InstallTargets Spout Spout_static)
+
+	if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
+		list(APPEND Spout2InstallTargets SpoutDX)
+	endif()
+
+	if(SPOUT_BUILD_LIBRARY)
+		list(APPEND Spout2InstallTargets SpoutLibrary)
+	endif()
+
+	install(
+		TARGETS
+			${Spout2InstallTargets}
+		EXPORT
+			spout2-targets
+		LIBRARY
+			DESTINATION ${CMAKE_INSTALL_LIBDIR}
+		ARCHIVE
+			DESTINATION ${CMAKE_INSTALL_LIBDIR}
+		RUNTIME
+			DESTINATION ${CMAKE_INSTALL_BINDIR}
+		INCLUDES
+			DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+	)
+
+	install(
+		EXPORT
+			spout2-targets
+		DESTINATION
+			${CMAKE_INSTALL_LIBDIR}/cmake/spout2
+		NAMESPACE
+			Spout2::
+	)
+
+	install(
+		FILES
+			${CMAKE_CURRENT_SOURCE_DIR}/spout2-config.cmake
+		DESTINATION
+			${CMAKE_INSTALL_LIBDIR}/cmake/spout2
+	)
+endif()
+
+if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
+	install(
+		FILES
+			SPOUTSDK/SpoutGL/Spout.h
+			SPOUTSDK/SpoutGL/SpoutCommon.h
+			SPOUTSDK/SpoutGL/SpoutCopy.h
+			SPOUTSDK/SpoutGL/SpoutDirectX.h
+			SPOUTSDK/SpoutGL/SpoutFrameCount.h
+			SPOUTSDK/SpoutGL/SpoutGL.h
+			SPOUTSDK/SpoutGL/SpoutGLextensions.h
+			SPOUTSDK/SpoutGL/SpoutReceiver.h
+			SPOUTSDK/SpoutGL/SpoutSender.h
+			SPOUTSDK/SpoutGL/SpoutSenderNames.h
+			SPOUTSDK/SpoutGL/SpoutSharedMemory.h
+			SPOUTSDK/SpoutGL/SpoutUtils.h
+		DESTINATION
+			${CMAKE_INSTALL_PREFIX}/include/Spout2
+	)
+
+	if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
+		install(
+			FILES
+				SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX.h
+			DESTINATION
+				${CMAKE_INSTALL_PREFIX}/include/Spout2/SpoutDX
+		)
+	endif()
+
+	if(SPOUT_BUILD_LIBRARY)
+		install(
+			FILES
+				SPOUTSDK/SpoutLibrary/SpoutLibrary.h
+			DESTINATION
+				${CMAKE_INSTALL_PREFIX}/include/Spout2/SpoutLibrary
+		)
+	endif()
+endif()
