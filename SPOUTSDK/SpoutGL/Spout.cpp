@@ -776,7 +776,7 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 		// Was the sender's shared texture handle null
 		// or has the user set 2.006 memoryshare mode?
 		if (!m_dxShareHandle || m_bMemoryShare) {
-			// Possible existence of 2.006 memoryshare sender
+			// Possible existence of 2.006 memoryshare sender (no texture handle)
 			// (ReadMemoryTexture currently only works if texture share compatible)
 			if (m_bTextureShare) {
 				if (ReadMemoryTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo))

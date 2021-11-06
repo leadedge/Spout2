@@ -348,6 +348,7 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 //	PBO extensions
 //----------------
 #ifdef USE_PBO_EXTENSIONS
+#define GL_ARRAY_BUFFER					0x8892
 #define GL_PIXEL_PACK_BUFFER			0x88EB
 #define GL_PIXEL_UNPACK_BUFFER			0x88EC
 #define GL_PIXEL_PACK_BUFFER_BINDING	0x88ED
@@ -357,6 +358,46 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 #define GL_READ_ONLY					0x88B8
 #define GL_WRITE_ONLY					0x88B9
 #define GL_BUFFER_SIZE_EXT				0x8764
+//
+// https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMapBufferRange.xhtml
+//
+// indicates that the returned pointer may be used to read buffer object data. 
+#ifndef GL_MAP_READ_BIT
+#define GL_MAP_READ_BIT					0x0001
+#endif
+// indicates that the returned pointer may be used to modify buffer object data.
+#ifndef GL_MAP_WRITE_BIT
+#define GL_MAP_WRITE_BIT				0x0002
+#endif
+// indicates that the mapping is to be made in a persistent fashion and that the client
+// intends to hold and use the returned pointer during subsequent GL operation.
+#ifndef GL_MAP_PERSISTENT_BIT
+#define GL_MAP_PERSISTENT_BIT			0x0040
+#endif
+// indicates that a persistent mapping is also to be coherent.
+#ifndef GL_MAP_COHERENT_BIT
+#define GL_MAP_COHERENT_BIT				0x0080 
+#endif
+//
+// Optional flag bits
+//
+// indicates that the previous contents of the specified range may be discarded.
+#ifndef GL_MAP_INVALIDATE_RANGE_BIT
+#define GL_MAP_INVALIDATE_RANGE_BIT		0x0004
+#endif
+// Indicates that the previous contents of the specified range may be discarded (only for write)
+#ifndef GL_MAP_INVALIDATE_BUFFER_BIT
+#define GL_MAP_INVALIDATE_BUFFER_BIT	0x0008
+#endif
+// indicates that one or more discrete subranges of the mapping may be modified.
+#ifndef GL_MAP_FLUSH_EXPLICIT_BIT
+#define GL_MAP_FLUSH_EXPLICIT_BIT		0x0010
+#endif
+// indicates that the GL should not attempt to synchronize pending operations on the buffer
+// prior to returning from glMapBufferRange or glMapNamedBufferRange.
+#ifndef GL_MAP_UNSYNCHRONIZED_BIT
+#define GL_MAP_UNSYNCHRONIZED_BIT		0x0020
+#endif
 
 
 // PBO functions
@@ -366,6 +407,8 @@ typedef void   (APIENTRY *glDeleteBuffersPROC) (GLsizei n, const GLuint* buffers
 typedef void   (APIENTRY *glBindBufferPROC) (GLenum target, const GLuint buffer);
 typedef void   (APIENTRY *glBufferDataPROC) (GLenum target,  GLsizeiptr size,  const GLvoid * data,  GLenum usage);
 typedef void * (APIENTRY *glMapBufferPROC) (GLenum target,  GLenum access);
+typedef ptrdiff_t GLintptr;
+typedef void * (APIENTRY *glMapBufferRangePROC) (GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
 typedef void   (APIENTRY *glUnmapBufferPROC) (GLenum target);
 typedef void   (APIENTRY *glGetBufferParameterivPROC) (GLenum target, GLenum value,	GLint * data);
 
@@ -374,6 +417,7 @@ extern glDeleteBuffersPROC	glDeleteBuffersEXT;
 extern glBindBufferPROC		glBindBufferEXT;
 extern glBufferDataPROC		glBufferDataEXT;
 extern glMapBufferPROC		glMapBufferEXT;
+extern glMapBufferRangePROC	glMapBufferRangeEXT;
 extern glUnmapBufferPROC	glUnmapBufferEXT;
 extern glGetBufferParameterivPROC	glGetBufferParameterivEXT;
 

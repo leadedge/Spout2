@@ -98,6 +98,7 @@ glDeleteBuffersPROC						glDeleteBuffersEXT				= NULL;
 glBindBufferPROC						glBindBufferEXT					= NULL;
 glBufferDataPROC						glBufferDataEXT					= NULL;
 glMapBufferPROC							glMapBufferEXT					= NULL;
+glMapBufferRangePROC					glMapBufferRangeEXT				= NULL;
 glUnmapBufferPROC						glUnmapBufferEXT				= NULL;
 glGetBufferParameterivPROC				glGetBufferParameterivEXT		= NULL;
 #endif
@@ -284,18 +285,19 @@ bool loadPBOextensions()
 	else
 		return false;
 	#else
-	glGenBuffersEXT	   = (glGenBuffersPROC)wglGetProcAddress("glGenBuffers");
-	glDeleteBuffersEXT = (glDeleteBuffersPROC)wglGetProcAddress("glDeleteBuffers");
-	glBindBufferEXT	   = (glBindBufferPROC)wglGetProcAddress("glBindBuffer");
-	glBufferDataEXT	   = (glBufferDataPROC)wglGetProcAddress("glBufferData");
-	glMapBufferEXT     = (glMapBufferPROC)wglGetProcAddress("glMapBuffer");
-	glUnmapBufferEXT   = (glUnmapBufferPROC)wglGetProcAddress("glUnmapBuffer");
+	glGenBuffersEXT	    = (glGenBuffersPROC)wglGetProcAddress("glGenBuffers");
+	glDeleteBuffersEXT  = (glDeleteBuffersPROC)wglGetProcAddress("glDeleteBuffers");
+	glBindBufferEXT	    = (glBindBufferPROC)wglGetProcAddress("glBindBuffer");
+	glBufferDataEXT	    = (glBufferDataPROC)wglGetProcAddress("glBufferData");
+	glMapBufferEXT      = (glMapBufferPROC)wglGetProcAddress("glMapBuffer");
+	glMapBufferRangeEXT = (glMapBufferRangePROC)wglGetProcAddress("glMapBufferRange");
+	glUnmapBufferEXT    = (glUnmapBufferPROC)wglGetProcAddress("glUnmapBuffer");
 	glGetBufferParameterivEXT = (glGetBufferParameterivPROC)wglGetProcAddress("glGetBufferParameteriv");
 
-	if(glGenBuffersEXT != NULL && glDeleteBuffersEXT != NULL
-	&& glBindBufferEXT != NULL && glBufferDataEXT    != NULL
-	&& glMapBufferEXT  != NULL && glUnmapBufferEXT   != NULL
-	&& glGetBufferParameterivEXT != NULL) {
+	if(glGenBuffersEXT  != NULL && glDeleteBuffersEXT  != NULL
+	&& glBindBufferEXT  != NULL && glBufferDataEXT     != NULL
+	&& glMapBufferEXT   != NULL && glMapBufferRangeEXT != NULL
+	&& glUnmapBufferEXT != NULL	&& glGetBufferParameterivEXT != NULL) {
 		return true;
 	}
 	else {

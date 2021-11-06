@@ -71,7 +71,7 @@ class SPOUT_DLLEXP spoutFrameCount {
 	// Received frame count
 	long GetSenderFrame();
 	// Frame rate control
-	void HoldFps(int fps);
+	void HoldFps(int fps = 0);
 
 	//
 	// Used by other classes

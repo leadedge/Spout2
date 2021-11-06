@@ -44,6 +44,8 @@
 //					  set the new frame flag m_bIsNewFrame true.
 //					- Set default new frame true in GetNewFrame(),
 //					  false only if the frame number equals the last.
+//		25.10.21	- HoldFps change from int to double.
+//					  Use monitor refresh rate if no argument is specified.
 //
 // ====================================================================================
 //
@@ -496,41 +498,48 @@ long spoutFrameCount::GetSenderFrame()
 //    The sender will then signal a new frame at the target rate.
 //    Not necessary if the application already has frame rate control.
 //    Uses std::chrono if supported by the compiler VS2015 or greater.
+//    Typically, monitor refresh rate is required and the fps argument can be omitted.
+//
 void spoutFrameCount::HoldFps(int fps)
 {
-	// Return if incorrect fps entry
-	if (fps <= 0)
+	// Unlikely but return anyway
+	if (fps < 0)
 		return;
-	
-	double framerate = static_cast<double>(fps);
 
 #ifdef USE_CHRONO
 	// Initialize frame time at target rate
 	if (m_millisForFrame < 0.001) {
-		m_millisForFrame = 1000.0 / framerate; // msec per frame
+		// Frame time, in milliseconds, is derived from frames per second
+		// e.g. 60fps = 1000.0/60.0 = 16.667
+		// If fps is not specified, use the monitor refresh rate
+		if (fps > 0)
+			m_millisForFrame = 1000.0 / static_cast<double>(fps); // msec per frame
+		else
+			m_millisForFrame = 1000.0 / GetRefreshRate();
 		*m_FrameStartPtr = std::chrono::steady_clock::now();
-		SpoutLogNotice("spoutFrameCount::HoldFps(%.2f)", framerate);
+		SpoutLogNotice("spoutFrameCount::HoldFps(%d)", fps);
 	}
 	else {
 
 		// Time now end point
 		*m_FrameEndPtr = std::chrono::steady_clock::now();
 
-		// milliseconds elapsed
-		double elapsedTime = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(*m_FrameEndPtr - *m_FrameStartPtr).count() / 1000.);
-		
+		// Milliseconds elapsed
+		double elapsedTime = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(*m_FrameEndPtr - *m_FrameStartPtr).count());
+
 		// Sleep to reach the target frame time
-		if (elapsedTime < m_millisForFrame) {
-			std::this_thread::sleep_for(std::chrono::milliseconds((long)(m_millisForFrame - elapsedTime)));
-		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(m_millisForFrame - elapsedTime)));
 		
 		// Set start time for the next frame
-		*m_FrameStartPtr = *m_FrameEndPtr;
+		*m_FrameStartPtr = std::chrono::steady_clock::now();
 		
 	}
 #else
 	if (m_millisForFrame == 0) {
-		m_millisForFrame = 1000.0 / framerate;
+		if (fps > 0)
+			m_millisForFrame = 1000.0 / static_cast<double>(fps); // msec per frame
+		else
+			m_millisForFrame = 1000.0 / GetRefreshRate();
 		m_FrameStart = GetCounter();
 		SpoutLogNotice("spoutFrameCount::HoldFps(%d)", fps);
 	}

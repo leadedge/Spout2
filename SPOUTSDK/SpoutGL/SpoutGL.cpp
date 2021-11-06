@@ -1646,9 +1646,9 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, m_pbo[PboIndex]);
 
 	// Check it's size
-	GLint size = 0;
-	glGetBufferParameterivEXT(GL_PIXEL_PACK_BUFFER, GL_BUFFER_SIZE_EXT, &size);
-	if (size > 0 && size != (int)(pitch * height) ) {
+	GLint buffersize = 0;
+	glGetBufferParameterivEXT(GL_PIXEL_PACK_BUFFER, GL_BUFFER_SIZE_EXT, &buffersize);
+	if (buffersize > 0 && buffersize != (int)(pitch * height) ) {
 		// All PBOs must be re-created
 		glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
@@ -1670,7 +1670,43 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, m_pbo[NextPboIndex]);
 
 	// Map the PBO to process its data by CPU
-	pboMemory = glMapBufferEXT(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+	// Map the entire data store into the client's address space
+	// GL_READ_ONLY indicates that the returned pointer may be used to read buffer object data.
+	// pboMemory = glMapBufferEXT(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+
+	// The orginal adaptation, from Song Ho Ann, used glMapBuffer.
+	// There may be improved performance using glMapBufferRange as detailed in the references below.
+	pboMemory = glMapBufferRangeEXT(GL_PIXEL_PACK_BUFFER, 0, buffersize, GL_MAP_READ_BIT);
+	
+	//
+	// https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMapBufferRange.xhtml
+	//
+	//  void *glMapBufferRange(GLenum target​, GLintptr offset​, GLsizeiptr length​, GLbitfield access​);
+	//
+	// https://www.seas.upenn.edu/~pcozzi/OpenGLInsights/OpenGLInsights-AsynchronousBufferTransfers.pdf
+	// (glMapBuffer or glMapBufferRange / glFlushMappedBufferRange or glUnmapBuffer)
+	//
+	// glMapBufferRange and glFlushMappedBufferRange are similar to glMapBuffer,
+	// but they have additional parameters which can be used to improve the transfer
+	// performance and efficiency.
+	//
+	// glMapBufferRange can, as its name suggests, map only specific subsets of
+	// the buffer. If only a portion of the buffer changes, there is no need to reupload
+	// it completely.
+	//
+	// There are differences in the behavior of glMapBuffer and glMapBufferRange:
+	// glMapBuffer tries to guess the destination memory from the buffer-object usage,
+	// whereas glMapBufferRange always respects the hint and logs a debug message
+	// if our usage of the buffer object doesn’t respect the hint.
+	//
+	// There are also differences in transfer rates between these functions;
+	// it seems that using glMapBufferRange for all transfers ensures the best performance.
+	//
+	// In the general case, we recommend using a standard worker thread and multiple
+	// buffers with the GL MAP UNSYNCHRONIZED BIT flag. This might not be possible
+	// because of dependencies in the data, but this will usually be a simple yet effective
+	// way to improve the performance of an existing application.
+	//
 
 	// glMapBuffer can return NULL when called the first time
 	// when the next pbo has not been filled with data yet
