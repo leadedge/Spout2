@@ -7,6 +7,7 @@
 # 29/12/20 - Specify Spout Version 2.007                                       #
 # 31/12/20 - Add /MT build option                                              #
 #          - Add DirectX library build option                                  #
+# 06/11/22 - Add Install option by Joakim Kilby                                #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -55,19 +56,19 @@ if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
 add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX)
 endif()
 
-# LJ
+# Install option check boxes
 OPTION(SKIP_INSTALL_ALL "Install headers and libraries" ON) # LJ - default skip all install
 OPTION(SKIP_INSTALL_HEADERS "Install headers" OFF)
 OPTION(SKIP_INSTALL_LIBRARIES "Install libraries" OFF)
 
 include(GNUInstallDirs)
 
-# LJ
+# Install default output folder
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 	set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/INSTALL CACHE PATH "..." FORCE)
 endif()
 
-# LJ
+# Install options
 if(NOT SKIP_INSTALL_ALL)
 
 	if(NOT SKIP_INSTALL_LIBRARIES) # LJ
@@ -132,8 +133,7 @@ if(NOT SKIP_INSTALL_ALL)
 				SPOUTSDK/SpoutGL/SpoutSharedMemory.h
 				SPOUTSDK/SpoutGL/SpoutUtils.h
 			DESTINATION
-				# ${CMAKE_INSTALL_PREFIX}/include/Spout2
-				${CMAKE_INSTALL_PREFIX}/include/SpoutGL # LJ
+				${CMAKE_INSTALL_PREFIX}/include/SpoutGL
 		)
 
 		if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
@@ -141,8 +141,7 @@ if(NOT SKIP_INSTALL_ALL)
 				FILES
 					SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX.h
 				DESTINATION
-					# ${CMAKE_INSTALL_PREFIX}/include/Spout2/SpoutDX
-					${CMAKE_INSTALL_PREFIX}/include/SpoutDX # LJ
+					${CMAKE_INSTALL_PREFIX}/include/SpoutDX
 			)
 		endif()	
 
@@ -151,8 +150,7 @@ if(NOT SKIP_INSTALL_ALL)
 				FILES
 					SPOUTSDK/SpoutLibrary/SpoutLibrary.h
 				DESTINATION
-					# ${CMAKE_INSTALL_PREFIX}/include/Spout2/SpoutLibrary
-					${CMAKE_INSTALL_PREFIX}/include/SpoutLibrary # LJ
+					${CMAKE_INSTALL_PREFIX}/include/SpoutLibrary
 			)
 		endif()
 
