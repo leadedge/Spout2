@@ -402,10 +402,13 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 
 // PBO functions
 typedef ptrdiff_t GLsizeiptr;
-typedef void   (APIENTRY *glGenBuffersPROC) (GLsizei n, const GLuint* buffers);
+typedef void   (APIENTRY *glGenBuffersPROC)    (GLsizei n, const GLuint* buffers);
 typedef void   (APIENTRY *glDeleteBuffersPROC) (GLsizei n, const GLuint* buffers);
-typedef void   (APIENTRY *glBindBufferPROC) (GLenum target, const GLuint buffer);
-typedef void   (APIENTRY *glBufferDataPROC) (GLenum target,  GLsizeiptr size,  const GLvoid * data,  GLenum usage);
+typedef void   (APIENTRY *glBindBufferPROC)    (GLenum target, const GLuint buffer);
+typedef void   (APIENTRY *glBufferDataPROC)    (GLenum target,  GLsizeiptr size,  const GLvoid * data,  GLenum usage);
+// https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glBufferStorage.xhtml
+typedef void   (APIENTRY *glBufferStoragePROC) (GLenum target, GLsizeiptr size, const void * data, GLbitfield flags);
+
 typedef void * (APIENTRY *glMapBufferPROC) (GLenum target,  GLenum access);
 typedef ptrdiff_t GLintptr;
 typedef void * (APIENTRY *glMapBufferRangePROC) (GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
@@ -416,6 +419,7 @@ extern glGenBuffersPROC		glGenBuffersEXT;
 extern glDeleteBuffersPROC	glDeleteBuffersEXT;
 extern glBindBufferPROC		glBindBufferEXT;
 extern glBufferDataPROC		glBufferDataEXT;
+extern glBufferStoragePROC	glBufferStorageEXT;
 extern glMapBufferPROC		glMapBufferEXT;
 extern glMapBufferRangePROC	glMapBufferRangeEXT;
 extern glUnmapBufferPROC	glUnmapBufferEXT;

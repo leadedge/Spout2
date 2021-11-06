@@ -1658,9 +1658,20 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	}
 
 	// Null existing PBO data to avoid a stall
+	// glBufferData creates a new data store for a buffer object.
 	// This allocates memory for the PBO pitch*height wide
-	glBufferDataEXT(GL_PIXEL_PACK_BUFFER, pitch*height, 0, GL_STREAM_READ);
-	
+	// glBufferDataEXT(GL_PIXEL_PACK_BUFFER, pitch*height, 0, GL_STREAM_READ);
+
+	// With glBufferData, you can call that command multiple times on the same object
+	// and it will orphan the old memory and allocate new storage.
+	// With glBufferStorage, the buffer's size is set for the lifetime of the object 
+	// (immutable) and it is an error (GL_INVALID_OPERATION) to call glBufferStorage (...)
+	// again once it has been allocated immutably.
+	if (buffersize == 0) {
+		// printf("pbo (%d) storage (%d bytes)\n", PboIndex, pitch*height);
+		glBufferStorageEXT(GL_PIXEL_PACK_BUFFER, pitch*height, 0, GL_MAP_READ_BIT);
+	}
+
 	// Read pixels from framebuffer to PBO - glReadPixels() should return immediately.
 	glPixelStorei(GL_PACK_ROW_LENGTH, pitch/channels); // row length in pixels
 	glReadPixels(0, 0, width, height, glFormat, GL_UNSIGNED_BYTE, (GLvoid *)0);
@@ -1710,7 +1721,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 	// glMapBuffer can return NULL when called the first time
 	// when the next pbo has not been filled with data yet
-	glGetError(); // remove the last error
+	// glGetError(); // remove the last error
 
 	if (pboMemory && data) {
 		// Update data directly from the mapped buffer (TODO: RGB)
@@ -3001,9 +3012,10 @@ bool spoutGL::GLerror() {
 	bool bError = false;
 	while ((err = glGetError()) != GL_NO_ERROR) {
 		// SpoutLogError("    GLerror - OpenGL error = %u (0x%.7X)", err, err);
-		// printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
+		printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
 		bError = true;
-		// gluErrorString needs glu32.lib
+
+		// gluErrorString needs Glu.h and glu32.lib (or glew)
 		// printf("GL error = %d (0x%.7X) %s\n", err, err, gluErrorString(err));
 	}
 

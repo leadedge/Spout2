@@ -97,6 +97,7 @@ glGenBuffersPROC						glGenBuffersEXT					= NULL;
 glDeleteBuffersPROC						glDeleteBuffersEXT				= NULL;
 glBindBufferPROC						glBindBufferEXT					= NULL;
 glBufferDataPROC						glBufferDataEXT					= NULL;
+glBufferStoragePROC						glBufferStorageEXT				= NULL;
 glMapBufferPROC							glMapBufferEXT					= NULL;
 glMapBufferRangePROC					glMapBufferRangeEXT				= NULL;
 glUnmapBufferPROC						glUnmapBufferEXT				= NULL;
@@ -289,6 +290,7 @@ bool loadPBOextensions()
 	glDeleteBuffersEXT  = (glDeleteBuffersPROC)wglGetProcAddress("glDeleteBuffers");
 	glBindBufferEXT	    = (glBindBufferPROC)wglGetProcAddress("glBindBuffer");
 	glBufferDataEXT	    = (glBufferDataPROC)wglGetProcAddress("glBufferData");
+	glBufferStorageEXT	= (glBufferStoragePROC)wglGetProcAddress("glBufferStorage");
 	glMapBufferEXT      = (glMapBufferPROC)wglGetProcAddress("glMapBuffer");
 	glMapBufferRangeEXT = (glMapBufferRangePROC)wglGetProcAddress("glMapBufferRange");
 	glUnmapBufferEXT    = (glUnmapBufferPROC)wglGetProcAddress("glUnmapBuffer");
@@ -296,6 +298,7 @@ bool loadPBOextensions()
 
 	if(glGenBuffersEXT  != NULL && glDeleteBuffersEXT  != NULL
 	&& glBindBufferEXT  != NULL && glBufferDataEXT     != NULL
+	&& glBufferStorageEXT != NULL
 	&& glMapBufferEXT   != NULL && glMapBufferRangeEXT != NULL
 	&& glUnmapBufferEXT != NULL	&& glGetBufferParameterivEXT != NULL) {
 		return true;
