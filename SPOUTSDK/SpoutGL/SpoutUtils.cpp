@@ -76,6 +76,7 @@
 		04.10.21 - Remove shlobj.h include due to redifinition conflict with ShObjIdl.h
 				   Replace code using environment variable "APPDATA"
 		24.10.21 - Update Version to "2.007.005"
+		08.11.21 - Change to high_resolution_clock for timer
 
 */
 #include "SpoutUtils.h"
@@ -107,8 +108,10 @@ namespace spoututils {
 	std::string LastSpoutLog = "";
 	bool bConsole = false;
 #ifdef USE_CHRONO
-	std::chrono::steady_clock::time_point start;
-	std::chrono::steady_clock::time_point end;
+	// std::chrono::steady_clock::time_point start;
+	// std::chrono::steady_clock::time_point end;
+	std::chrono::high_resolution_clock::time_point start;
+	std::chrono::high_resolution_clock::time_point end;
 #endif
 	std::string SDKversion = "2.007.004"; // Spout SDK version number string
 
@@ -636,15 +639,18 @@ namespace spoututils {
 	// Timing utility functions
 	void StartTiming() {
 #ifdef USE_CHRONO
-		start = std::chrono::steady_clock::now();
+		// start = std::chrono::steady_clock::now();
+		start = std::chrono::high_resolution_clock::now();
 #endif
 	}
 
 	double EndTiming() {
 #ifdef USE_CHRONO
-		end = std::chrono::steady_clock::now();
+		// end = std::chrono::steady_clock::now();
+		// double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
+		end = std::chrono::high_resolution_clock::now();
 		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		// printf("    elapsed [%.4f] msec\n", elapsed / 1000.0);
+		printf("    elapsed [%.4f] msec\n", elapsed / 1000.0);
 		// printf("elapsed [%.3f] u/sec\n", elapsed);
 		return elapsed;
 #else

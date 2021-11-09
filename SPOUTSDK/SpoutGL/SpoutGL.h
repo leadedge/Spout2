@@ -293,6 +293,7 @@ protected :
 	GLuint m_pbo[4];
 	int PboIndex;
 	int NextPboIndex;
+
 	int m_nBuffers;
 	bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 		unsigned int width, unsigned int height, unsigned int pitch,

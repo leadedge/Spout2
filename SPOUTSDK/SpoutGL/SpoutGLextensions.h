@@ -335,7 +335,7 @@ typedef void   (APIENTRY *glBlitFramebufferEXTPROC) (GLint srcX0, GLint srcY0, G
 extern glBlitFramebufferEXTPROC glBlitFramebufferEXT;
 
 // ------------------------------
-// OpenGL sync control extensions
+// OpenGL vsync control extensions
 // ------------------------------
 #ifdef USE_FBO_EXTENSIONS
 typedef BOOL (WINAPI * PFNWGLSWAPINTERVALEXTPROC) (int interval);
@@ -358,49 +358,74 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 #define GL_READ_ONLY					0x88B8
 #define GL_WRITE_ONLY					0x88B9
 #define GL_BUFFER_SIZE_EXT				0x8764
-//
-// https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMapBufferRange.xhtml
-//
-// indicates that the returned pointer may be used to read buffer object data. 
 #ifndef GL_MAP_READ_BIT
 #define GL_MAP_READ_BIT					0x0001
 #endif
-// indicates that the returned pointer may be used to modify buffer object data.
 #ifndef GL_MAP_WRITE_BIT
 #define GL_MAP_WRITE_BIT				0x0002
 #endif
-// indicates that the mapping is to be made in a persistent fashion and that the client
-// intends to hold and use the returned pointer during subsequent GL operation.
 #ifndef GL_MAP_PERSISTENT_BIT
 #define GL_MAP_PERSISTENT_BIT			0x0040
 #endif
-// indicates that a persistent mapping is also to be coherent.
 #ifndef GL_MAP_COHERENT_BIT
 #define GL_MAP_COHERENT_BIT				0x0080 
 #endif
 //
 // Optional flag bits
 //
-// indicates that the previous contents of the specified range may be discarded.
 #ifndef GL_MAP_INVALIDATE_RANGE_BIT
 #define GL_MAP_INVALIDATE_RANGE_BIT		0x0004
 #endif
-// Indicates that the previous contents of the specified range may be discarded (only for write)
 #ifndef GL_MAP_INVALIDATE_BUFFER_BIT
 #define GL_MAP_INVALIDATE_BUFFER_BIT	0x0008
 #endif
-// indicates that one or more discrete subranges of the mapping may be modified.
 #ifndef GL_MAP_FLUSH_EXPLICIT_BIT
 #define GL_MAP_FLUSH_EXPLICIT_BIT		0x0010
 #endif
-// indicates that the GL should not attempt to synchronize pending operations on the buffer
-// prior to returning from glMapBufferRange or glMapNamedBufferRange.
 #ifndef GL_MAP_UNSYNCHRONIZED_BIT
 #define GL_MAP_UNSYNCHRONIZED_BIT		0x0020
 #endif
 
+//
+// Sync
+//
+#ifndef GL_SYNC_CONDITION
+#define GL_SYNC_CONDITION                 0x9113
+#endif
+#ifndef GL_SYNC_STATUS
+#define GL_SYNC_STATUS                    0x9114
+#endif
+#ifndef GL_SYNC_FLAGS
+#define GL_SYNC_FLAGS                     0x9115
+#endif
+#ifndef GL_SYNC_FENCE
+#define GL_SYNC_FENCE                     0x9116
+#endif
+#ifndef GL_SYNC_GPU_COMMANDS_COMPLETE
+#define GL_SYNC_GPU_COMMANDS_COMPLETE     0x9117
+#endif
+#ifndef GL_UNSIGNALED
+#define GL_UNSIGNALED                     0x9118
+#endif
+#ifndef GL_SIGNALED
+#define GL_SIGNALED                       0x9119
+#endif
+#ifndef GL_ALREADY_SIGNALED
+#define GL_ALREADY_SIGNALED               0x911A
+#endif
+#ifndef GL_TIMEOUT_EXPIRED
+#define GL_TIMEOUT_EXPIRED                0x911B
+#endif
+#ifndef GL_CONDITION_SATISFIED
+#define GL_CONDITION_SATISFIED            0x911C
+#endif
+#ifndef GL_WAIT_FAILED
+#define GL_WAIT_FAILED                    0x911D
+#endif
 
-// PBO functions
+// ------------------------------
+// PBO extensions
+// ------------------------------
 typedef ptrdiff_t GLsizeiptr;
 typedef void   (APIENTRY *glGenBuffersPROC)    (GLsizei n, const GLuint* buffers);
 typedef void   (APIENTRY *glDeleteBuffersPROC) (GLsizei n, const GLuint* buffers);
@@ -408,7 +433,6 @@ typedef void   (APIENTRY *glBindBufferPROC)    (GLenum target, const GLuint buff
 typedef void   (APIENTRY *glBufferDataPROC)    (GLenum target,  GLsizeiptr size,  const GLvoid * data,  GLenum usage);
 // https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glBufferStorage.xhtml
 typedef void   (APIENTRY *glBufferStoragePROC) (GLenum target, GLsizeiptr size, const void * data, GLbitfield flags);
-
 typedef void * (APIENTRY *glMapBufferPROC) (GLenum target,  GLenum access);
 typedef ptrdiff_t GLintptr;
 typedef void * (APIENTRY *glMapBufferRangePROC) (GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
@@ -423,7 +447,21 @@ extern glBufferStoragePROC	glBufferStorageEXT;
 extern glMapBufferPROC		glMapBufferEXT;
 extern glMapBufferRangePROC	glMapBufferRangeEXT;
 extern glUnmapBufferPROC	glUnmapBufferEXT;
-extern glGetBufferParameterivPROC	glGetBufferParameterivEXT;
+extern glGetBufferParameterivPROC glGetBufferParameterivEXT;
+
+// ------------------------------
+// SYNC objects
+// https://www.khronos.org/opengl/wiki/Sync_Object
+// ------------------------------
+typedef struct __GLsync *GLsync;
+typedef uint64_t GLuint64;
+typedef GLenum(APIENTRY *glClientWaitSyncPROC) (GLsync sync, GLbitfield flags, GLuint64 timeout);
+typedef void   (APIENTRY *glDeleteSyncPROC) (GLsync sync);
+typedef GLsync(APIENTRY *glFenceSyncPROC) (GLenum condition, GLbitfield flags);
+
+extern glClientWaitSyncPROC glClientWaitSyncEXT;
+extern glDeleteSyncPROC     glDeleteSyncEXT;
+extern glFenceSyncPROC      glFenceSyncEXT;
 
 #endif // USE_PBO_EXTENSIONS
 

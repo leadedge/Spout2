@@ -53,6 +53,7 @@
 //					  ReadTextureData - allow for no FBO support for low end graphics
 //		29.09.21	- OpenSpout and LinkGLDXtextures - test for GL/DX extensions
 //		15.10.21	- Remove interop object test for repeat from OpenSpout
+//		09.11.21	- Revise UnloadTexturePixels
 //
 // ====================================================================================
 /*
@@ -150,9 +151,9 @@ spoutGL::spoutGL()
 	// PBO support
 	PboIndex = 0;
 	NextPboIndex = 0;
-	m_nBuffers = 2; // number of buffers used
 	m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
-
+	m_nBuffers = 2; // default number of buffers used
+	
 	// Check the user selected Auto share mode
 	DWORD dwValue = 0;
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Auto", &dwValue))
@@ -413,6 +414,7 @@ bool spoutGL::OpenSpout(bool bRetest)
 
 	// DirectX is OK
 	// OpenGL device context is needed to go on
+
 	HDC hdc = wglGetCurrentDC();
 	if (hdc) {
 		// Get a window handle
@@ -449,6 +451,7 @@ bool spoutGL::OpenSpout(bool bRetest)
 	//   Neither method  - do not process at all
 	//
 	
+	// 8 msec
 	if (GLDXready())
 		// GL/DX compatible.
 		SpoutLogNotice("spoutGL::OpenSpout - GL/DX interop compatible");
@@ -1514,6 +1517,7 @@ bool spoutGL::WriteGLDXpixels(const unsigned char* pixels,
 
 	// Use a GL texture so that WriteTexture can be used
 	GLenum glformat = glFormat;
+	bool bRet = true;
 
 	// Create or resize a local OpenGL texture
 	CheckOpenGLTexture(m_TexID, glFormat, width, height);
@@ -1528,7 +1532,7 @@ bool spoutGL::WriteGLDXpixels(const unsigned char* pixels,
 	// Write the local texture to the shared texture and invert if necessary
 	WriteGLDXtexture(m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
 
-	return true;
+	return bRet;
 
 } // end WriteGLDXpixels
 
@@ -1540,13 +1544,14 @@ bool spoutGL::ReadGLDXpixels(unsigned char* pixels,
 	unsigned int width, unsigned int height,
 	GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
-	if (!m_hInteropDevice || !m_hInteropObject)
+	if (!m_hInteropDevice || !m_hInteropObject) {
 		return false;
+	}
 
-	if (width != m_Width || height != m_Height)
+	if (width != m_Width || height != m_Height) {
 		return false;
+	}
 
-	// GLenum glformat = glFormat;
 	bool bRet = true; // Error only if pixel read fails
 
 	// retrieve opengl texture data directly to image pixels
@@ -1567,10 +1572,12 @@ bool spoutGL::ReadGLDXpixels(unsigned char* pixels,
 				// Extract the pixels from the local texture - changing to the user passed format
 				// Use PBO method for maximum speed, otherwise use DirectX staging texture method
 				// ReadTextureData using glReadPixels is half the speed of using DX11 texture directly
-				if (m_bPBOavailable)
+				if (m_bPBOavailable) {
 					bRet = UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
-				else
+				}
+				else {
 					bRet = ReadTextureData(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
+				}
 				// default alignment
 				glPixelStorei(GL_PACK_ALIGNMENT, 4);
 			} // interop lock failed
@@ -1589,7 +1596,10 @@ bool spoutGL::ReadGLDXpixels(unsigned char* pixels,
 //
 // Asynchronous Read-back from an OpenGL texture
 //
+// Used by a receiver to read pixels from a shared texture (ReceiveImage)
+//
 // Adapted from : http://www.songho.ca/opengl/gl_pbo.html
+// Also see : https://www.seas.upenn.edu/~pcozzi/OpenGLInsights/OpenGLInsights-AsynchronousBufferTransfers.pdf
 //
 bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, unsigned int rowpitch,
@@ -1610,7 +1620,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	unsigned int pitch = rowpitch; // row pitch passed in
 	if (rowpitch == 0)
 		pitch = width * channels; // RGB or RGBA
-	
+
 	if (m_fbo == 0) {
 		SpoutLogNotice("spoutGL::UnloadTexturePixels - creating FBO");
 		glGenFramebuffersEXT(1, &m_fbo);
@@ -1618,7 +1628,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 	// Create pbos if not already
 	if (m_pbo[0] == 0) {
-		SpoutLogNotice("spoutGL::UnloadTexturePixels - creating PBO");
+		SpoutLogNotice("spoutGL::UnloadTexturePixels - creating %d PBOs", m_nBuffers);
 		glGenBuffersEXT(m_nBuffers, m_pbo);
 		PboIndex = 0;
 		NextPboIndex = 0;
@@ -1626,9 +1636,9 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 	PboIndex = (PboIndex + 1) % m_nBuffers;
 	NextPboIndex = (PboIndex + 1) % m_nBuffers;
-	
+
 	// If Texture ID is zero, the texture is already attached to the Host Fbo
-	// and we do nothing. If not we need to create an fbo and attach the user texture
+	// and we do nothing. If not we need to create an fbo and attach the user texture.
 	if (TextureID > 0) {
 		// Attach the texture to point 0
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
@@ -1638,7 +1648,6 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	}
 	else if (HostFBO == 0) {
 		// If no texture ID, a Host FBO must be provided
-		// testing only - error log will repeat
 		return false;
 	}
 
@@ -1648,8 +1657,8 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	// Check it's size
 	GLint buffersize = 0;
 	glGetBufferParameterivEXT(GL_PIXEL_PACK_BUFFER, GL_BUFFER_SIZE_EXT, &buffersize);
-	if (buffersize > 0 && buffersize != (int)(pitch * height) ) {
-		// All PBOs must be re-created
+	if (buffersize > 0 && buffersize != (int)(pitch * height)) {
+		// For a sender size change, all PBOs must be re-created.
 		glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 		glDeleteBuffersEXT(m_nBuffers, m_pbo);
@@ -1657,78 +1666,40 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 		return false;
 	}
 
-	// Null existing PBO data to avoid a stall
-	// glBufferData creates a new data store for a buffer object.
-	// This allocates memory for the PBO pitch*height wide
-	// glBufferDataEXT(GL_PIXEL_PACK_BUFFER, pitch*height, 0, GL_STREAM_READ);
-
-	// With glBufferData, you can call that command multiple times on the same object
-	// and it will orphan the old memory and allocate new storage.
-	// With glBufferStorage, the buffer's size is set for the lifetime of the object 
-	// (immutable) and it is an error (GL_INVALID_OPERATION) to call glBufferStorage (...)
-	// again once it has been allocated immutably.
+	// Allocate pbo data buffer with glBufferStorage.
+	// The buffer is immutable and size is set for the lifetime of the object.
 	if (buffersize == 0) {
-		// printf("pbo (%d) storage (%d bytes)\n", PboIndex, pitch*height);
 		glBufferStorageEXT(GL_PIXEL_PACK_BUFFER, pitch*height, 0, GL_MAP_READ_BIT);
+		glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+		return false; // No more for this round
 	}
 
 	// Read pixels from framebuffer to PBO - glReadPixels() should return immediately.
-	glPixelStorei(GL_PACK_ROW_LENGTH, pitch/channels); // row length in pixels
+	glPixelStorei(GL_PACK_ROW_LENGTH, pitch / channels); // row length in pixels
 	glReadPixels(0, 0, width, height, glFormat, GL_UNSIGNED_BYTE, (GLvoid *)0);
 	glPixelStorei(GL_PACK_ROW_LENGTH, 0);
 
-	// If there is data in the next pbo from the previous call, read it back
+	// If there is data in the next pbo from the previous call, read it back.
 	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, m_pbo[NextPboIndex]);
 
-	// Map the PBO to process its data by CPU
-	// Map the entire data store into the client's address space
-	// GL_READ_ONLY indicates that the returned pointer may be used to read buffer object data.
-	// pboMemory = glMapBufferEXT(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-
-	// The orginal adaptation, from Song Ho Ann, used glMapBuffer.
-	// There may be improved performance using glMapBufferRange as detailed in the references below.
+	// Map the PBO to process its data by CPU.
+	// Map the entire data store into the client's address space.
+	// glMapBufferRange may give improved performance over glMapBuffer.
+	// GL_MAP_READ_BIT indicates that the returned pointer may be used to read buffer object data.
 	pboMemory = glMapBufferRangeEXT(GL_PIXEL_PACK_BUFFER, 0, buffersize, GL_MAP_READ_BIT);
-	
-	//
-	// https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMapBufferRange.xhtml
-	//
-	//  void *glMapBufferRange(GLenum target​, GLintptr offset​, GLsizeiptr length​, GLbitfield access​);
-	//
-	// https://www.seas.upenn.edu/~pcozzi/OpenGLInsights/OpenGLInsights-AsynchronousBufferTransfers.pdf
-	// (glMapBuffer or glMapBufferRange / glFlushMappedBufferRange or glUnmapBuffer)
-	//
-	// glMapBufferRange and glFlushMappedBufferRange are similar to glMapBuffer,
-	// but they have additional parameters which can be used to improve the transfer
-	// performance and efficiency.
-	//
-	// glMapBufferRange can, as its name suggests, map only specific subsets of
-	// the buffer. If only a portion of the buffer changes, there is no need to reupload
-	// it completely.
-	//
-	// There are differences in the behavior of glMapBuffer and glMapBufferRange:
-	// glMapBuffer tries to guess the destination memory from the buffer-object usage,
-	// whereas glMapBufferRange always respects the hint and logs a debug message
-	// if our usage of the buffer object doesn’t respect the hint.
-	//
-	// There are also differences in transfer rates between these functions;
-	// it seems that using glMapBufferRange for all transfers ensures the best performance.
-	//
-	// In the general case, we recommend using a standard worker thread and multiple
-	// buffers with the GL MAP UNSYNCHRONIZED BIT flag. This might not be possible
-	// because of dependencies in the data, but this will usually be a simple yet effective
-	// way to improve the performance of an existing application.
-	//
 
 	// glMapBuffer can return NULL when called the first time
-	// when the next pbo has not been filled with data yet
-	// glGetError(); // remove the last error
+	// when the next pbo has not been filled with data yet.
+	// Remove the last error
+	glGetError();
 
-	if (pboMemory && data) {
-		// Update data directly from the mapped buffer (TODO: RGB)
-		spoutcopy.CopyPixels((const unsigned char*)pboMemory, (unsigned char*)data, pitch/channels, height, glFormat, bInvert);
+	// Update data directly from the mapped buffer.
+	// If no pbo data, skip the copy rather than return false.
+	if (pboMemory) {
+		spoutcopy.CopyPixels((const unsigned char*)pboMemory, (unsigned char*)data, pitch / channels, height, glFormat, bInvert);
 		glUnmapBufferEXT(GL_PIXEL_PACK_BUFFER);
 	}
-	// skip the copy rather than return false.
 
 	// Back to conventional pixel operation
 	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
@@ -1739,6 +1710,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	return true;
 
 }
+
 
 //
 // Copy OpenGL to DirectX 11 texture via CPU where the GL/DX interop is not available
@@ -1767,10 +1739,8 @@ bool spoutGL::WriteDX11texture(GLuint TextureID, GLuint TextureTarget,
 		// Staging texture width is multiples of 16 and pitch can be greater that width*4
 		// Copy OpenGL texture pixelsto the staging texture taking account of the destination row pitch
 		if (m_bPBOavailable) {
-			if (!UnloadTexturePixels(TextureID, TextureTarget,
-				width, height,
-				mappedSubResource.RowPitch,
-				(unsigned char *)mappedSubResource.pData,
+			if (!UnloadTexturePixels(TextureID, TextureTarget, width, height,
+				mappedSubResource.RowPitch, (unsigned char *)mappedSubResource.pData,
 				GL_BGRA_EXT, bInvert, HostFBO)) {
 					spoutdx.GetDX11Context()->Unmap(m_pStaging[0], 0);
 					return false;
@@ -2734,6 +2704,8 @@ bool spoutGL::LoadGLextensions()
 	if (m_caps > 0)
 		return true;
 
+	SpoutLogNotice("spoutGL::LoadGLextensions");
+
 	m_bFBOavailable = false;
 	m_bGLDXavailable = false;
 	m_bBLITavailable = false;
@@ -3014,7 +2986,6 @@ bool spoutGL::GLerror() {
 		// SpoutLogError("    GLerror - OpenGL error = %u (0x%.7X)", err, err);
 		printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
 		bError = true;
-
 		// gluErrorString needs Glu.h and glu32.lib (or glew)
 		// printf("GL error = %d (0x%.7X) %s\n", err, err, gluErrorString(err));
 	}
