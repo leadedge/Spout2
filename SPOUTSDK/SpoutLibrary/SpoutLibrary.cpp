@@ -1536,7 +1536,7 @@ extern "C" SPOUTAPI SPOUTHANDLE APIENTRY GetSpout()
 	// The Spout class implementation
 	SPOUTImpl * pSpout = new SPOUTImpl;
 
-	// Create a new spout sender pointer for this class
+	// Create a new spout pointer for this class
 	pSpout->spout = new Spout;
 
 	return pSpout;
