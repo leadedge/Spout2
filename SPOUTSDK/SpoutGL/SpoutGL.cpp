@@ -54,6 +54,7 @@
 //		29.09.21	- OpenSpout and LinkGLDXtextures - test for GL/DX extensions
 //		15.10.21	- Remove interop object test for repeat from OpenSpout
 //		09.11.21	- Revise UnloadTexturePixels
+//		12.11.21	- Add OpenGL context check in destructor
 //
 // ====================================================================================
 /*
@@ -193,34 +194,43 @@ spoutGL::~spoutGL()
 		frame.CloseAccessMutex();
 	}
 
-	if (m_fbo > 0) {
-		// Delete the fbo before the texture
-		// so that any texture attachment is released
-		glDeleteFramebuffersEXT(1, &m_fbo);
-		m_fbo = 0;
-	}
-
-	if (m_glTexture > 0)
-		glDeleteTextures(1, &m_glTexture);
-
-	if (m_TexID > 0)
-		glDeleteTextures(1, &m_TexID);
-
-	if (m_pbo[0] > 0) {
-		glDeleteBuffersEXT(m_nBuffers, m_pbo);
-		m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
-	}
-
-	if (m_pSharedTexture)
-		m_pSharedTexture->Release();
-
-	CleanupInterop();
-	CloseDirectX();
-
 	// Close 2.006 or buffer shared memory if used
 	memoryshare.Close();
+
 	// Release event if used
 	frame.CloseFrameSync();
+
+	// Release OpenGL resources if there is a context
+	if (wglGetCurrentContext()) {
+
+		if (m_fbo > 0) {
+			// Delete the fbo before the texture
+			// so that any texture attachment is released
+			glDeleteFramebuffersEXT(1, &m_fbo);
+			m_fbo = 0;
+		}
+
+		if (m_glTexture > 0)
+			glDeleteTextures(1, &m_glTexture);
+
+		if (m_TexID > 0)
+			glDeleteTextures(1, &m_TexID);
+
+		if (m_pbo[0] > 0) {
+			glDeleteBuffersEXT(m_nBuffers, m_pbo);
+			m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
+		}
+
+		if (m_pSharedTexture)
+			m_pSharedTexture->Release();
+
+		CleanupInterop();
+
+		GLerror(); // to trace problems
+	}
+
+	// Release DirectX resources and device
+	CleanupDX11();
 
 }
 
@@ -1231,6 +1241,7 @@ void spoutGL::CleanupInterop()
 //---------------------------------------------------------
 void spoutGL::CleanupGL()
 {
+
 	if (m_fbo > 0) {
 		// Delete the fbo before the texture so that any texture attachment 
 		// is released even though it should have been
