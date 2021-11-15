@@ -55,6 +55,10 @@
 //		15.10.21	- Remove interop object test for repeat from OpenSpout
 //		09.11.21	- Revise UnloadTexturePixels
 //		12.11.21	- Add OpenGL context check in destructor
+//		13.11.21	- Remove code redundancy in destructor
+//					  CleanupGL, CleanupInterop - add warning logs if no context
+//					  CleanupDX11 - add warning log if no device
+//		14.11.21	- Correct ReadTextureData for RGB source
 //
 // ====================================================================================
 /*
@@ -186,6 +190,15 @@ spoutGL::spoutGL()
 	   
 }
 
+//---------------------------------------------------------
+// Function: ~spoutGL()
+// Destructor
+// Note that an OpenGL context is necessary for release of
+// OpenGL objects in CleanupGL and CleanupInterop.
+// Similarly, a DirectX device is necessary in CleanupDX11.
+// If the context or device is lost, release of memory allocated
+// to these objects is handled by the driver.
+//
 spoutGL::~spoutGL()
 {
 	if (m_bInitialized) {
@@ -200,34 +213,11 @@ spoutGL::~spoutGL()
 	// Release event if used
 	frame.CloseFrameSync();
 
-	// Release OpenGL resources if there is a context
-	if (wglGetCurrentContext()) {
+	// Release OpenGL resources and interop
+	CleanupGL();
 
-		if (m_fbo > 0) {
-			// Delete the fbo before the texture
-			// so that any texture attachment is released
-			glDeleteFramebuffersEXT(1, &m_fbo);
-			m_fbo = 0;
-		}
-
-		if (m_glTexture > 0)
-			glDeleteTextures(1, &m_glTexture);
-
-		if (m_TexID > 0)
-			glDeleteTextures(1, &m_TexID);
-
-		if (m_pbo[0] > 0) {
-			glDeleteBuffersEXT(m_nBuffers, m_pbo);
-			m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
-		}
-
-		if (m_pSharedTexture)
-			m_pSharedTexture->Release();
-
-		CleanupInterop();
-
-		GLerror(); // to trace problems
-	}
+	// To trace OpenGL problems
+	GLerror();
 
 	// Release DirectX resources and device
 	CleanupDX11();
@@ -435,6 +425,8 @@ bool spoutGL::OpenSpout(bool bRetest)
 			// For a re-test, create a new interop device in GLDXReady()
 			if (bRetest)
 				CleanupInterop();
+			SpoutLogNotice("spoutGL::OpenSpout - GL extensions loaded sucessfully");
+
 		}
 		else {
 			SpoutLogWarning("spoutGL::OpenSpout - Could not load GL extensions");
@@ -1236,30 +1228,40 @@ void spoutGL::CleanupInterop()
 			m_hInteropDevice = nullptr;
 		}
 	}
+	else {
+		SpoutLogWarning("spoutGL::CleanupInterop() - no context");
+	}
 }
 
 //---------------------------------------------------------
 void spoutGL::CleanupGL()
 {
+	// Release OpenGL resources if there is a context
+	if (wglGetCurrentContext()) {
 
-	if (m_fbo > 0) {
-		// Delete the fbo before the texture so that any texture attachment 
-		// is released even though it should have been
-		glDeleteFramebuffersEXT(1, &m_fbo);
-		m_fbo = 0;
+		if (m_fbo > 0) {
+			// Delete the fbo before the texture so that any texture attachment 
+			// is released even though it should have been
+			glDeleteFramebuffersEXT(1, &m_fbo);
+			m_fbo = 0;
+		}
+
+		if (m_glTexture > 0)
+			glDeleteTextures(1, &m_glTexture);
+
+		if (m_TexID > 0)
+			glDeleteTextures(1, &m_TexID);
+
+		if (m_pbo[0] > 0) {
+			glDeleteBuffersEXT(m_nBuffers, m_pbo);
+			m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
+		}
+	}
+	else {
+		SpoutLogWarning("spoutGL::CleanupGL() - no context");
 	}
 
-	if (m_glTexture > 0)
-		glDeleteTextures(1, &m_glTexture);
-
-	if (m_TexID > 0)
-		glDeleteTextures(1, &m_TexID);
-
-	if (m_pbo[0] > 0) {
-		glDeleteBuffersEXT(m_nBuffers, m_pbo);
-		m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
-	}
-
+	// Release DirectX shared texture
 	if (m_pSharedTexture)
 		m_pSharedTexture->Release();
 
@@ -1277,7 +1279,7 @@ void spoutGL::CleanupGL()
 
 	CleanupInterop();
 
-	// do not close DirectX
+	// OpenGL only - do not close DirectX
 
 }
 
@@ -1581,14 +1583,17 @@ bool spoutGL::ReadGLDXpixels(unsigned char* pixels,
 				// Copy the shared texture to the local texture, inverting if necessary
 				CopyTexture(m_glTexture, GL_TEXTURE_2D, m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
 				// Extract the pixels from the local texture - changing to the user passed format
-				// Use PBO method for maximum speed, otherwise use DirectX staging texture method
-				// ReadTextureData using glReadPixels is half the speed of using DX11 texture directly
+				// Use PBO method for maximum speed. ReadTextureData using glReadPixels is half the
+				// speed of using DX11 texture directly (ReadDX11pixels). Note that ReadDX11pixels
+				// has texture access and new frame checks and cannot be used if those checks
+				// have already nbeen made.
 				if (m_bPBOavailable) {
 					bRet = UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
 				}
 				else {
 					bRet = ReadTextureData(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
 				}
+
 				// default alignment
 				glPixelStorei(GL_PACK_ALIGNMENT, 4);
 			} // interop lock failed
@@ -2137,20 +2142,23 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 	unsigned int width, unsigned int height, unsigned int pitch,
 	unsigned char* dest, GLenum GLformat, bool bInvert, GLuint HostFBO)
 {
-	if (!m_bFBOavailable) {
-		// This is for completeness and will be rarely used for low end graphics
+	if (!m_bFBOavailable || GLformat == GL_RGB || GLformat == GL_BGR_EXT) {
 		if (bInvert) {
 			// Copy to intermediate buffer
-			unsigned char* rgba = new unsigned char[width * height * 4];
+			unsigned char* src = nullptr;
+			if(GLformat == GL_RGB || GLformat == GL_BGR_EXT)
+				src = new unsigned char[width * height * 3];
+			else
+				src = new unsigned char[width * height * 4];
 			glBindTexture(SourceTarget, SourceID);
-			glGetTexImage(SourceTarget, 0, GLformat, GL_UNSIGNED_BYTE, (void *)rgba);
+			glGetTexImage(SourceTarget, 0, GLformat, GL_UNSIGNED_BYTE, (void *)src);
 			glBindTexture(SourceTarget, 0);
 			// Flip the buffer
-			spoutcopy.FlipBuffer(rgba, dest, width, height, GL_RGBA);
-			delete rgba;
+			spoutcopy.FlipBuffer(src, dest, width, height, GLformat);
+			delete src;
 		}
 		else {
-			// dest must be RGBA width x height
+			// dest must be RGBA or RGB width x height
 			glBindTexture(SourceTarget, SourceID);
 			glGetTexImage(SourceTarget, 0, GLformat, GL_UNSIGNED_BYTE, (void *)dest);
 			glBindTexture(SourceTarget, 0);
@@ -2158,6 +2166,10 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 		return true;
 	}
 	else {
+		
+		//
+		// RGBA only
+		//
 
 		GLenum status = 0;
 
@@ -2203,6 +2215,7 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 				glPixelStorei(GL_PACK_ROW_LENGTH, pitch / 4); // row length in pixels
 				glReadPixels(0, 0, width, height, GLformat, GL_UNSIGNED_BYTE, (GLvoid *)dest);
 				glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+
 			}
 			else {
 				// No invert or no fbo blit extension
@@ -2278,18 +2291,22 @@ bool spoutGL::WriteDX11pixels(const unsigned char* pixels,
 // A new shared texture pointer (m_pSharedTexture) is retrieved if the sender changed
 bool spoutGL::ReadDX11pixels(unsigned char * pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
 {
-	if (!CheckStagingTextures(width, height, 2))
+	if (!CheckStagingTextures(width, height, 2)) {
 		return false;
+	}
 
 	// Access the sender shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
+
 		// Check if the sender has produced a new frame.
 		if (frame.GetNewFrame()) {
+
 			// Read from the sender GPU texture to CPU pixels via two staging textures
 			m_Index = (m_Index + 1) % 2;
 			m_NextIndex = (m_Index + 1) % 2;
 			// Copy from the sender's shared texture to the first staging texture
 			spoutdx.GetDX11Context()->CopyResource(m_pStaging[m_Index], m_pSharedTexture);
+			
 			// Map and read from the second while the first is occupied
 			ReadPixelData(m_pStaging[m_NextIndex], pixels, m_Width, m_Height, glFormat, bInvert);
 		}
@@ -2700,6 +2717,9 @@ void spoutGL::CleanupDX11()
 		// Releases immediate context and device in the SpoutDirectX class
 		// spoutdx.GetDX11Context() and spoutdx.GetDX11Device() are copies of these
 		spoutdx.CloseDirectX11();
+	}
+	else {
+		SpoutLogWarning("spoutGL::CleanupDX11() - no device");
 	}
 
 }
