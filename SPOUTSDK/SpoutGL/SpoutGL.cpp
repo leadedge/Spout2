@@ -59,6 +59,7 @@
 //					  CleanupGL, CleanupInterop - add warning logs if no context
 //					  CleanupDX11 - add warning log if no device
 //		14.11.21	- Correct ReadTextureData for RGB source
+//		16.11.21	- Remove GLerror from destructor
 //
 // ====================================================================================
 /*
@@ -215,9 +216,6 @@ spoutGL::~spoutGL()
 
 	// Release OpenGL resources and interop
 	CleanupGL();
-
-	// To trace OpenGL problems
-	GLerror();
 
 	// Release DirectX resources and device
 	CleanupDX11();
@@ -1256,6 +1254,7 @@ void spoutGL::CleanupGL()
 			glDeleteBuffersEXT(m_nBuffers, m_pbo);
 			m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
 		}
+
 	}
 	else {
 		SpoutLogWarning("spoutGL::CleanupGL() - no context");
@@ -1277,6 +1276,7 @@ void spoutGL::CleanupGL()
 	m_SenderName[0] = 0;
 	m_bInitialized = false;
 
+	// Release interop objects
 	CleanupInterop();
 
 	// OpenGL only - do not close DirectX
