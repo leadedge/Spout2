@@ -60,6 +60,7 @@
 //					  CleanupDX11 - add warning log if no device
 //		14.11.21	- Correct ReadTextureData for RGB source
 //		16.11.21	- Remove GLerror from destructor
+//		18.11.21	- InitTexture - restore current texture binding
 //
 // ====================================================================================
 /*
@@ -188,7 +189,7 @@ spoutGL::spoutGL()
 	// Only set if 2.006 SpoutSettings has been used
 	// Removed by 2.007 SpoutSettings
 	m_bMemoryShare = GetMemoryShareMode();
-	   
+
 }
 
 //---------------------------------------------------------
@@ -927,6 +928,7 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 
 	// Create or re-create the class OpenGL texture
 	InitTexture(m_glTexture, GL_RGBA, width, height);
+
 	m_Width = width;
 	m_Height = height;
 
@@ -1299,8 +1301,13 @@ void spoutGL::CheckOpenGLTexture(GLuint &texID, GLenum GLformat, unsigned int wi
 // Initialize OpenGL texture
 void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height)
 {
+
 	if (texID != 0) glDeleteTextures(1, &texID);
 	glGenTextures(1, &texID);
+
+	// Get current texture binding
+	GLint texturebinding;
+	glGetIntegerv(GL_TEXTURE_BINDING_2D, &texturebinding);
 
 	glBindTexture(GL_TEXTURE_2D, texID);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GLformat, GL_UNSIGNED_BYTE, NULL);
@@ -1308,7 +1315,7 @@ void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, un
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_2D, texturebinding);
 
 }
 
