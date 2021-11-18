@@ -6,6 +6,8 @@
 
 		2021 Lynn Jarvis https://spout.zeal.co/
 
+		Revised 18.11.21
+
 */
 
 #include "cinder/app/App.h"
@@ -118,11 +120,13 @@ void FboBasicApp::renderSceneToFbo()
 	gl::drawColorCube( vec3( 0 ), vec3( 2.2f ) );
 	gl::color( Color::white() );
 
-	// Option :
-	// Send fbo
+	//
+	// SPOUT - Send fbo
+	//
+
 	//   Send the fbo used to texture the cube while it is bound for read.
-	//   The default framebuffer can also be used to send the whole screen.
-	//   See Draw().
+	//   The default "screen" framebuffer can also be used to send the whole screen.
+	//   See Update().
 	// sender.SendFbo(mFbo->getId(), mFbo->getWidth(), mFbo->getHeight());
 
 }
@@ -139,10 +143,49 @@ void FboBasicApp::update()
 		spoutTexture = gl::Texture2d::create(receiver.GetSenderWidth(), receiver.GetSenderHeight());
 	}
 #else
+	
 	// Rotate the torus by .06 radians around an arbitrary axis
 	mRotation *= rotate(0.06f, normalize(vec3(0.16666f, 0.333333f, 0.666666f)));
+
 	// render into our FBO
 	renderSceneToFbo();
+
+	//
+	// SPOUT
+	//
+
+	//
+	// Send the "screen" FBO
+	//
+	// The default framebuffer can be used to send the whole screen.
+	// Call this in "update" rather than "draw" to prevent multiple sender
+	// updates when the window is stretched by the user and re-sized.
+	// Update() is not called during this process, but Draw() is.
+	//
+
+	sender.SendFbo(0, getWindowWidth(), getWindowHeight());
+
+	// On-screen text for what it's sending (see Draw) is not done
+	// in this case or it would be included in the sending frame.
+
+	// An fbo can also be used for send while it is bound.
+	// See renderSceneToFbo().
+
+	//
+	// Send texture
+	//
+
+	// Send the texture attached to the fbo used for the cube
+	// Include the ID of the active framebuffer if one is currently bound.
+	// sender.SendTexture(mFbo->getColorTexture()->getId(),
+		// mFbo->getColorTexture()->getTarget(),
+		// mFbo->getColorTexture()->getWidth(),
+		// mFbo->getColorTexture()->getHeight());
+	// Option : show on-screen sender details (see showInfo() in Draw)
+
+	// Note that only one fbo or texture can be used at the same time.
+
+
 #endif
 
 }
@@ -161,10 +204,8 @@ void FboBasicApp::draw()
 	
 	// Draw the texture and fill the screen if connected to a sender
 	if (receiver.IsConnected()) {
-
 		gl::color(Color::white());
 		gl::draw(spoutTexture, getWindowBounds());
-
 	}
 
 	// Show what it is receiving
@@ -193,32 +234,11 @@ void FboBasicApp::draw()
 	// and draw the depth texture adjacent
 	// gl::draw(mFbo->getDepthTexture(), Rectf(128, 0, 256, 128));
 	
-
 	//
-	// SPOUT : Sending options
+	// SPOUT
 	//
-	// All sending functions check the sender name and dimensions
-	// and create or update the sender as necessary
-	//
-
-	// Send fbo
-	//   Here we use the default framebuffer to send the whole screen.
-	//   The cube texture fbo can also be used while it is bound.
-	//   See "renderSceneToFbo()"
-	sender.SendFbo(0, getWindowWidth(), getWindowHeight());
-
-	/*
-	// Send texture
-	// Send the texture attached to the fbo used for the cube
-	// Include the ID of the active framebuffer if one is currently bound.
-	sender.SendTexture(mFbo->getColorTexture()->getId(),
-		mFbo->getColorTexture()->getTarget(),
-		mFbo->getColorTexture()->getWidth(),
-		mFbo->getColorTexture()->getHeight());
-	*/
-	
-	// Show what it is sending
-	showInfo();
+	// Show sender details unless sending the screen fbo
+	// showInfo();
 
 
 #endif
