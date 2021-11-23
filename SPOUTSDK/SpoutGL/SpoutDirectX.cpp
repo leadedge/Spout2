@@ -91,6 +91,11 @@
 //		27.12.20	- Change all hex printf to 0x%.7X with PtrToUint helper
 //		20.02.21	- Add zero width/height check to CreateDX11Texture
 //		19.06.21	- Remove output check from FindNVIDIA
+//		20.11.21	- Correctly release pOutput in GetNumAdapters()
+//		21.11.21	- Remove CloseDirectX11 from destructor
+//					  Clean up adapter functions
+//		23.11.21	- Remove GetImmediateContext after device create
+//					  Allow use of external device or class device
 //
 // ====================================================================================
 /*
@@ -134,6 +139,7 @@ spoutDirectX::spoutDirectX() {
 	// DX11
 	m_pd3dDevice        = nullptr;
 	m_pImmediateContext = nullptr;
+	m_bClassDevice		= false;
 	m_driverType		= D3D_DRIVER_TYPE_NULL;
 	m_featureLevel		= D3D_FEATURE_LEVEL_11_0;
 
@@ -144,48 +150,85 @@ spoutDirectX::spoutDirectX() {
 }
 
 spoutDirectX::~spoutDirectX() {
-	if (m_pd3dDevice)
-		CloseDirectX11();
+
 }
 
+// Function: OpenDirectX11
+// Initialize and prepare Directx 11
+// Retain a class device and context
 bool spoutDirectX::OpenDirectX11()
 {
-	SpoutLogNotice("spoutDirectX::OpenDirectX11()");
-
 	// Quit if already initialized
+	// Can be set externally (SetDX11device)
 	if (m_pd3dDevice) {
-		SpoutLogNotice("    Device already initialized 0x%.7X", PtrToUint(m_pd3dDevice) );
+		if(m_bClassDevice)
+			SpoutLogNotice("spoutDirectX::OpenDirectX11(0x%.7X) - Device already initialized", PtrToUint(m_pd3dDevice));
+		else
+			SpoutLogNotice("spoutDirectX::OpenDirectX11(0x%.7X) - External device already set", PtrToUint(m_pd3dDevice));
 		return true;
 	}
 
 	// Create a DirectX 11 device
+	SpoutLogNotice("spoutDirectX::OpenDirectX11");
 	m_pd3dDevice = CreateDX11device();
-	if (!m_pd3dDevice)
+	if (!m_pd3dDevice) {
+		SpoutLogNotice("    Could not create device\n");
 		return false;
+	}
 
-	// Retrieve the context pointer
-	m_pd3dDevice->GetImmediateContext(&m_pImmediateContext);
+	// m_pImmediateContext is created in CreateDX11device()
+	m_bClassDevice = true; // Device was created within this class
+	SpoutLogNotice("    Device (0x%.7X) - Context (0x%.7X)", PtrToUint(m_pd3dDevice), PtrToUint(m_pImmediateContext));
 
 	return true;
+
 }
 
 void spoutDirectX::CloseDirectX11()
 {
-	SpoutLogNotice("spoutDirectX::CloseDirectX11()");
-
-	// Quit if already initialized
+	// Quit if already released
 	if (!m_pd3dDevice) {
-		SpoutLogNotice("    Device already released");
+		SpoutLogNotice("spoutDirectX::CloseDirectX11() - device already released");
 		return;
 	}
 
-	if (m_pImmediateContext)
-		m_pImmediateContext->Release();
-	m_pd3dDevice->Release();
+	if (m_bClassDevice) {
+		// A device was created within this class (CreateDX11device)
+		SpoutLogNotice("spoutDirectX::CloseDirectX11(0x%.7X)", PtrToUint(m_pd3dDevice));
+		// Release both device and context
+		ReleaseDX11Device(m_pd3dDevice);
+		m_pd3dDevice = nullptr;
+		m_pImmediateContext = nullptr;
+		m_bClassDevice = false; // Device is closed, do not release again
+	}
+	else {
+		// An application device was used (SetDX11Device). Do not release it.
+		SpoutLogNotice("spoutDirectX::CloseDirectX11 - external device used (0x%.7X)", PtrToUint(m_pd3dDevice));
+		// Release independently created m_pImmediateContext
+		if (m_pImmediateContext)
+			m_pImmediateContext->Release();
+		m_pImmediateContext = nullptr;
+	}
 
-	m_pd3dDevice = nullptr;
-	m_pImmediateContext = nullptr;
+}
 
+// Set the class device
+bool spoutDirectX::SetDX11Device(ID3D11Device* pDevice)
+{
+	// Quit if already initialized
+	if (m_pd3dDevice) {
+		SpoutLogNotice("spoutDirectX::SetDX11Device(0x%.7X) - Device already initialized", PtrToUint(m_pd3dDevice));
+		return false;
+	}
+
+	SpoutLogNotice("spoutDirectX::SetDX11Device(0x%.7X)", PtrToUint(pDevice));
+	// Set to use the application device
+	m_pd3dDevice = pDevice;
+	// Retrieve the context pointer independently.
+	// For a class device it is created in CreateDX11device().
+	m_pd3dDevice->GetImmediateContext(&m_pImmediateContext);
+
+	return true;
 }
 
 
@@ -208,7 +251,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	IDXGIAdapter* pAdapterDX11 = m_pAdapterDX11;
 
 	SpoutLogNotice("spoutDirectX::CreateDX11device - pAdapterDX11 (0x%.7X)", PtrToUint(m_pAdapterDX11) );
-
+	
 	//
 	// If the project is in a debug build, enable debugging via SDK Layers with this flag.
 	// https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_create_device_flag
@@ -220,9 +263,9 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	// See also : void spoutDirectX::DebugLog
 	//
 
-// #if defined(_DEBUG)
-	// createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-// #endif
+#if defined(_DEBUG)
+	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
 
 	// GL/DX interop Spec
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
@@ -307,6 +350,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	}
 
 	// All OK - return the device pointer to the caller
+	// m_pImmediateContext has also been created
 	SpoutLogNotice("    device (0x%.7X)", PtrToUint(pd3dDevice) );
 
 	return pd3dDevice;
@@ -330,7 +374,6 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 		SpoutLogWarning("spoutDirectX::CreateSharedDX11Texture NULL ppSharedTexture");
 		return false;
 	}
-	// SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
 
 	//
 	// Create a new shared DX11 texture
@@ -577,7 +620,7 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 		SpoutLogError("spoutDirectX::OpenDX11shareHandle - null sources");
 		return false;
 	}
-	
+
 	// To share a resource between a Direct3D 9 device and a Direct3D 11 device 
 	// the texture must have been created using the pSharedHandle argument of CreateTexture.
 	// The shared Direct3D 9 handle is then passed to OpenSharedResource in the hResource argument.
@@ -675,7 +718,7 @@ bool spoutDirectX::SetAdapter(int index)
 	// For >= 2.007 only DX11 test is supported
 	SpoutLogNotice("    creating test device");
 
-	// Try to create a DirectX 11 device
+	// Try to create a DirectX 11 device for this adapter
 	ID3D11Device* pd3dDevice = CreateDX11device();
 	if(!pd3dDevice) {
 		SpoutLogError("spoutDirectX::SetAdapter - could not create DX11 device for adapter %d", index);
@@ -687,6 +730,7 @@ bool spoutDirectX::SetAdapter(int index)
 	// Close the device because this is just a test
 	// See : https://github.com/leadedge/Spout2/issues/17
 	ReleaseDX11Device(pd3dDevice);
+	pd3dDevice = nullptr;
 
 	// Selected adapter OK
 	SpoutLogNotice("    successfully set adapter %d [%s]", m_AdapterIndex, adaptername);
@@ -773,9 +817,9 @@ bool spoutDirectX::FindNVIDIA(int &nAdapter)
 // Get the number of graphics adapters in the system
 int spoutDirectX::GetNumAdapters()
 {
-	IDXGIFactory1* _dxgi_factory1;
+	IDXGIFactory1* _dxgi_factory1 = nullptr;
 	IDXGIAdapter* adapter1_ptr = nullptr;
-	UINT32 i;
+	UINT32 i = 0;
 
 	// Enum Adapters first : multiple video cards
 	if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&_dxgi_factory1))) {
@@ -793,17 +837,19 @@ int spoutDirectX::GetNumAdapters()
 		// printf("  Dedicated Video Memory : %.0f MiB\n", (float)desc.DedicatedVideoMemory / (1024.f * 1024.f) );
 		// printf("  Shared System Memory : %.0f MiB\n", (float)desc.SharedSystemMemory / (1024.f * 1024.f) );
 
+		// Look for outputs
 		IDXGIOutput* p_output = nullptr;
-		// 24-10-18 change from error to warning
-		// 
-		if(adapter1_ptr->EnumOutputs(0, &p_output ) == DXGI_ERROR_NOT_FOUND) {
-			// SpoutLogWarning("spoutDirectX::GetNumAdapters Adapter(%d) :  No outputs", i);
+		// Is there a first first output on this adapter ?
+		if (adapter1_ptr->EnumOutputs(0, &p_output) == DXGI_ERROR_NOT_FOUND) {
+			// Warning only
+			SpoutLogWarning("spoutDirectX::GetNumAdapters Adapter(%d) :  No outputs", i);
 		}
-
-		DXGI_OUTPUT_DESC desc_out;
-		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
-			if (p_output) {
-				p_output->GetDesc(&desc_out);
+		else {
+			p_output->Release();
+			// Here we can list all the outputs of the adapter
+			// DXGI_OUTPUT_DESC desc_out;
+			// for (UINT32 j = 0; adapter1_ptr->EnumOutputs(j, &p_output) != DXGI_ERROR_NOT_FOUND; j++) {
+				// p_output->GetDesc(&desc_out);
 				// printf("  Output : %d\n", j );
 				// printf("    Name %S\n", desc_out.DeviceName );
 				// printf("    Attached to desktop : (%d) %s\n", desc_out.AttachedToDesktop, desc_out.AttachedToDesktop ? "yes" : "no" );
@@ -812,8 +858,8 @@ int spoutDirectX::GetNumAdapters()
 				// printf("    Top      : %d\n", desc_out.DesktopCoordinates.top );
 				// printf("    Right    : %d\n", desc_out.DesktopCoordinates.right );
 				// printf("    Bottom   : %d\n", desc_out.DesktopCoordinates.bottom );
-				p_output->Release();
-			}
+				// p_output->Release();
+			// }
 		}
 		adapter1_ptr->Release();
 	}
@@ -839,6 +885,8 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 	}
 	
 	for (UINT32 i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ ) {
+		// Break if the requested index is found
+		// Return the adapter name.
 		if((int)i == index) {
 			DXGI_ADAPTER_DESC desc;
 			adapter1_ptr->GetDesc( &desc );
@@ -881,7 +929,6 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 	for ( UINT32 i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
 		if (adapterindex == (int)i ) {
 			// Break when the requested index is found
-			
 			/*
 			// Removed pending testing
 			// Now we have the requested adapter (17-03-18) test for an output on the adapter
@@ -892,8 +939,8 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 				_dxgi_factory1->Release();
 				return nullptr;
 			}
+			p_output->Release();
 			*/
-
 			_dxgi_factory1->Release();
 			return adapter1_ptr;
 		}
@@ -906,9 +953,9 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 
 bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 {
-	IDXGIFactory1* _dxgi_factory1;
+	IDXGIFactory1* _dxgi_factory1 = nullptr;
 	IDXGIAdapter* adapter1_ptr = nullptr;
-	UINT32 i;
+	UINT32 i = 0;
 	size_t charsConverted = 0;
 	size_t maxBytes = static_cast<size_t>(maxchars);
 
@@ -921,8 +968,9 @@ bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 	DXGI_ADAPTER_DESC desc;
 	for ( i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
 		adapter1_ptr->GetDesc( &desc );
-		// Return the current adapter - max of 2 assumed
+		// Current adapter name
 		wcstombs_s(&charsConverted, adapter, maxBytes, desc.Description, maxBytes-1);
+		// Find the desktop output
 		IDXGIOutput* p_output = nullptr;
 		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
 			DXGI_OUTPUT_DESC desc_out;
@@ -956,12 +1004,14 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 
 	SpoutLogNotice("spoutDirectX::ReleaseDX11Texture (0x%.7X)", PtrToUint(pd3dDevice) );
 
+	// Flush to put the release at the top of the queue
+	if (m_pImmediateContext) {
+		m_pImmediateContext->ClearState();
+		m_pImmediateContext->Flush();
+	}
+
 	unsigned long refcount = pTexture->Release();
 	pTexture = nullptr;
-
-	// Flush to put the release at the top of the queue
-	if(m_pImmediateContext)
-		m_pImmediateContext->Flush();
 
 	// The device will be live, so warn if refcount > 1
 	if (refcount > 1) {
@@ -976,13 +1026,16 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 	return refcount;
 }
 
-
 unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 {
 	if (!pd3dDevice)
 		return 0;
 
-	SpoutLogNotice("spoutDirectX::ReleaseDX11Device (0x%.7X)", PtrToUint(pd3dDevice));
+	// Release adapter pointer if there is one
+	if (m_pAdapterDX11) {
+		m_pAdapterDX11->Release();
+		m_pAdapterDX11 = nullptr;
+	}
 
 	// Release the global context or there is an outstanding ref count
 	// when the device is released
@@ -998,17 +1051,27 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 		// ID3D11DeviceContext::ClearState, and then call Flush.
 		m_pImmediateContext->ClearState();
 		m_pImmediateContext->Flush();
+		// LJ DEBUG
+		// FlushWait(m_pd3dDevice, m_pImmediateContext);
 		m_pImmediateContext->Release();
 		m_pImmediateContext = nullptr;
 	}
-
-	// TODO : Release adapter pointer if there is one ?
-	// if (m_pAdapterDX11)
-		// m_pAdapterDX11->Release();
-
+	
 	unsigned long refcount = pd3dDevice->Release();
-	pd3dDevice = nullptr;
-
+	
+	// Use this for debugging if you have D3D11_1SDKLayers.dll installed.
+	// See CreateDX11device.
+/*
+#ifdef _DEBUG
+	OutputDebugStringA(tmp);
+	ID3D11Debug* DebugDevice = nullptr;
+	if (m_pd3dDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&DebugDevice) == S_OK) {
+		DebugDevice->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+		DebugDevice->Release();
+	}
+#endif
+*/
+	// The device should have been released. Warn if refcount > 0.
 	if (refcount > 0) {
 		SpoutLogWarning("spoutDirectX::ReleaseDX11Device - refcount = %lu", refcount);
 		DebugLog(pd3dDevice, "spoutDirectX::ReleaseDX11Device - refcount = %lu\n", refcount);
@@ -1073,6 +1136,7 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 	vsprintf_s(dlog, 128, format, args);
 	va_end(args);
 
+	// New line
 	OutputDebugStringA("\n");
 	OutputDebugStringA(dlog);
 
@@ -1081,8 +1145,6 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 	// Manually remove the comment block below if you have D3D11_1SDKLayers.dll installed.
 	// See comments in : ID3D11Device* spoutDirectX::CreateDX11device()
 	//
-
-/*
 #ifdef _DEBUG
 	
 	if (!pd3dDevice)
@@ -1113,11 +1175,8 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 		DebugDevice->Release();
 	}
 #endif
-*/
-
 
 	UNREFERENCED_PARAMETER(pd3dDevice);
 
-// #endif
 
 }

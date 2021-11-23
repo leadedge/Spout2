@@ -33,6 +33,7 @@
 
 #include "SpoutCommon.h"
 #include <d3d11.h>
+
 #pragma comment (lib, "d3d11.lib")// the Direct3D 11 Library file
 #pragma comment (lib, "DXGI.lib") // for CreateDXGIFactory1
 
@@ -44,11 +45,13 @@ class SPOUT_DLLEXP spoutDirectX {
 
 		spoutDirectX();
 		~spoutDirectX();
-
+		
 		// Initialize and prepare DirectX 11
 		bool OpenDirectX11();
 		// Release DirectX 11 device and context
 		void CloseDirectX11();
+		// Set the DirectX11 device
+		bool SetDX11Device(ID3D11Device* pDevice);
 		// Create a DirectX11 device
 		ID3D11Device* CreateDX11device();
 		// Create a DirectX11 shared texture
@@ -105,6 +108,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		IDXGIAdapter*			m_pAdapterDX11; // Adapter pointer
 		ID3D11Device*           m_pd3dDevice;   // DX11 device
 		ID3D11DeviceContext*	m_pImmediateContext;
+		bool					m_bClassDevice;
 		D3D_DRIVER_TYPE			m_driverType;
 		D3D_FEATURE_LEVEL		m_featureLevel;
 
