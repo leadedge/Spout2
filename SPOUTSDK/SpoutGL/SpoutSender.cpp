@@ -69,6 +69,7 @@
 //		10.04.21	- Add GetCPU and GetGLDX
 //		24.04.21	- Add OpenGL shared texture access functions
 //		03.06.21	- Add CreateMemoryBuffer, DeleteMemoryBuffer, GetMemoryBufferSize
+//		22.11.21	- Remove ReleaseSender() from destructor
 //
 // ====================================================================================
 /*
@@ -130,7 +131,7 @@ SpoutSender::SpoutSender()
 //---------------------------------------------------------
 SpoutSender::~SpoutSender()
 {
-	ReleaseSender();
+
 }
 
 //---------------------------------------------------------

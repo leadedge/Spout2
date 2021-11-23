@@ -126,9 +126,8 @@ SpoutReceiver::SpoutReceiver()
 //---------------------------------------------------------
 SpoutReceiver::~SpoutReceiver()
 {
-	spout.ReleaseReceiver();
-}
 
+}
 
 //---------------------------------------------------------
 void SpoutReceiver::SetReceiverName(const char * SenderName)
