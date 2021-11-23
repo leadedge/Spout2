@@ -61,6 +61,9 @@
 //		14.11.21	- Correct ReadTextureData for RGB source
 //		16.11.21	- Remove GLerror from destructor
 //		18.11.21	- InitTexture - restore current texture binding
+//		19.11.21	- LoadGLextensions in constructor as well as OpenSpout
+//		22.11.21	- OpenSpout new line for start changed from printf to SpoutLog
+//		23.11.21	- Use SpoutDirectX ReleaseDX11Texture to release shared texture																	   
 //
 // ====================================================================================
 /*
@@ -106,8 +109,7 @@ spoutGL::spoutGL()
 	m_bCPU = false;
 	m_bUseGLDX = true;
 	m_bTextureShare = true;
-	m_bCPUshare = false;
-	// Texture share assumed by default
+	m_bCPUshare = false; // Texture share assumed by default
 	m_bSenderCPU = false;
 	m_bSenderGLDX = true;
 	
@@ -190,6 +192,9 @@ spoutGL::spoutGL()
 	// Removed by 2.007 SpoutSettings
 	m_bMemoryShare = GetMemoryShareMode();
 
+	// Extensions are loaded in OpenSpout() if a context is not available here
+	LoadGLextensions();
+
 }
 
 //---------------------------------------------------------
@@ -218,7 +223,7 @@ spoutGL::~spoutGL()
 	// Release OpenGL resources and interop
 	CleanupGL();
 
-	// Release DirectX resources and device
+	// Finally release DirectX resources and device
 	CleanupDX11();
 
 }
@@ -394,7 +399,8 @@ bool spoutGL::OpenSpout(bool bRetest)
 		&& !bRetest)
 		return true;
 
-	printf("\n"); // This is the start, so make a new line in the log
+	 // This is the start, so make a new line in the log
+	 SpoutLog("");
 #ifdef _M_X64
 	SpoutLogNotice("spoutGL::OpenSpout - 64bit 2.007 - this 0x%.7X", PtrToUint(this));
 #else
@@ -534,7 +540,7 @@ void spoutGL::CloseDirectX()
 	SpoutLogNotice("spoutGL::CloseDirectX()");
 
 	if (m_pSharedTexture)
-		m_pSharedTexture->Release();
+		spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pSharedTexture);
 	m_pSharedTexture = nullptr;
 	spoutdx.CloseDirectX11();
 
@@ -556,15 +562,14 @@ void spoutGL::CloseDirectX()
 //
 bool spoutGL::CreateOpenGL()
 {
-	m_hdc = nullptr;
-	m_hwndButton = nullptr;
-	m_hRc = nullptr;
-
 	SpoutLogNotice("spoutGL::CreateOpenGL()");
-
+	
 	HGLRC glContext = wglGetCurrentContext();
 
 	if (!glContext) {
+		m_hdc = nullptr;
+		m_hwndButton = nullptr;
+		m_hRc = nullptr;
 
 		// We only need an OpenGL context with no render window because we don't draw to it
 		// so create an invisible dummy button window. This is then independent from the host
@@ -649,7 +654,7 @@ bool spoutGL::CreateOpenGL()
 bool spoutGL::CloseOpenGL()
 {
 
-	SpoutLogNotice("spoutGL::CloseOpenGL()");
+	SpoutLogNotice("spoutGL::CloseOpenGL() - m_hRc = 0x%.7X : m_hdc = 0x%.7X", PtrToUint(m_hRc), PtrToUint(m_hdc) );
 
 	// Properly kill the OpenGL window
 	if (m_hRc) {
@@ -676,7 +681,7 @@ bool spoutGL::CloseOpenGL()
 		return false;
 	}
 
-	SpoutLogNotice("    closed the OpenGL window OK");
+	SpoutLogNotice("    Closed OpenGL window OK");
 
 	return true;
 }
@@ -1264,7 +1269,7 @@ void spoutGL::CleanupGL()
 
 	// Release DirectX shared texture
 	if (m_pSharedTexture)
-		m_pSharedTexture->Release();
+		spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pSharedTexture);
 
 	m_pStaging[0] = nullptr;
 	m_pStaging[1] = nullptr;
@@ -1595,7 +1600,9 @@ bool spoutGL::ReadGLDXpixels(unsigned char* pixels,
 				// has texture access and new frame checks and cannot be used if those checks
 				// have already nbeen made.
 				if (m_bPBOavailable) {
-					bRet = UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
+					// LJ DEBUG : TODO
+					// bRet = UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
+					bRet = UnloadTexturePixels2(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
 				}
 				else {
 					bRet = ReadTextureData(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
@@ -2738,10 +2745,17 @@ void spoutGL::CleanupDX11()
 //---------------------------------------------------------
 bool spoutGL::LoadGLextensions()
 {
-	// Return silently if already loaded
-	if (m_caps > 0)
+// Return if already loaded
+	if (m_caps > 0) {
+		SpoutLogNotice("spoutGL::LoadGLextensions - already loaded");
 		return true;
+	}
 
+	// Needs an OpenGL context
+	if (!wglGetCurrentContext()) {
+		SpoutLogWarning("spoutGL::LoadGLextensions - no OpenGL context");
+		return false;
+	}
 	SpoutLogNotice("spoutGL::LoadGLextensions");
 
 	m_bFBOavailable = false;
@@ -2760,7 +2774,8 @@ bool spoutGL::LoadGLextensions()
 		return false;
 	}
 
-	if (m_caps & GLEXT_SUPPORT_FBO) m_bFBOavailable = true;
+	if (m_caps & GLEXT_SUPPORT_FBO)
+		m_bFBOavailable = true;
 
 	// FBO not available is terminal
 	if (!m_bFBOavailable) {
@@ -2778,9 +2793,10 @@ bool spoutGL::LoadGLextensions()
 
 	// Test PBO availability unless user has selected buffering off
 	// m_bPBOavailable also set by SetBufferMode()
-	if (m_bPBOavailable)
-		if (!(m_caps && GLEXT_SUPPORT_PBO)) m_bPBOavailable = false;
-
+	if (m_bPBOavailable) {
+		if (!(m_caps && GLEXT_SUPPORT_PBO))
+			m_bPBOavailable = false;
+	}
 	if (!m_bGLDXavailable)
 		SpoutLogWarning("spoutGL::LoadGLextensions - interop extensions not available");
 	if (!m_bBLITavailable)
@@ -3264,6 +3280,7 @@ bool spoutGL::SetVerticalSync(bool bSync)
 			return true;
 		}
 	}
+
 	return false;
 }
 

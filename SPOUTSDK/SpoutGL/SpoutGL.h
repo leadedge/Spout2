@@ -53,7 +53,7 @@ class SPOUT_DLLEXP spoutGL {
 	public:
 
 	spoutGL();
-    ~spoutGL();
+    virtual ~spoutGL();
 
 	//
 	// OpenGL shared texture access
@@ -299,7 +299,7 @@ protected :
 		unsigned int width, unsigned int height, unsigned int pitch,
 		unsigned char* data, GLenum glFormat = GL_RGBA,
 		bool bInvert = false, GLuint HostFBO = 0);
-
+	
 	// OpenGL <-> DX11
 	// WriteDX11texture - public
 	// ReadDX11texture  - public
