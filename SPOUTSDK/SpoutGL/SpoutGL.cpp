@@ -1600,9 +1600,7 @@ bool spoutGL::ReadGLDXpixels(unsigned char* pixels,
 				// has texture access and new frame checks and cannot be used if those checks
 				// have already nbeen made.
 				if (m_bPBOavailable) {
-					// LJ DEBUG : TODO
-					// bRet = UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
-					bRet = UnloadTexturePixels2(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
+					bRet = UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
 				}
 				else {
 					bRet = ReadTextureData(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
