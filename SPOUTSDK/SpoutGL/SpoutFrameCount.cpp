@@ -46,6 +46,8 @@
 //					  false only if the frame number equals the last.
 //		25.10.21	- HoldFps change from int to double.
 //					  Use monitor refresh rate if no argument is specified.
+//		13.11.21	- Revise UpdateSenderFps
+//					  Zero frame counter variables on reset and init
 //
 // ====================================================================================
 //
@@ -91,15 +93,17 @@ spoutFrameCount::spoutFrameCount()
 	m_hSyncEvent = NULL;
 	m_SenderName[0] = 0;
 	m_CountSemaphoreName[0] = 0;
+	
 	m_FrameCount = 0L;
 	m_LastFrameCount = 0L;
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
 	m_lastFrame = 0.0;
 	m_FrameStart = 0.0;
-	m_bIsNewFrame = true; // Default true for apps without frame count
 	m_SenderFps = GetRefreshRate(); // Default sender fps is system refresh rate
-	m_millisForFrame = 0.0;
+	m_millisForFrame = 1000.0 / m_SenderFps;
+
+	m_bIsNewFrame = true; // Default true for apps without frame count
 
 	// Check the registry setting for frame counting between sender and receiver
 	m_bFrameCount = false; // default not set
@@ -125,7 +129,6 @@ spoutFrameCount::spoutFrameCount()
 	// Reset the counts
 	*m_FrameStartPtr = *m_FrameEndPtr = std::chrono::steady_clock::now();
 	*m_FpsStartPtr = *m_FpsEndPtr = std::chrono::steady_clock::now();
-
 #else
 	// Initialize PC msec frequency counter
 	PCFreq = 0.0;
@@ -223,8 +226,8 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	m_LastFrameCount = 0L;
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
-	m_SenderFps = GetRefreshRate();
-	m_millisForFrame = 0.0;
+	m_SenderFps = GetRefreshRate(); // Default sender fps is system refresh rate
+	m_millisForFrame = 1000.0 / m_SenderFps;
 
 	// Reset timers
 #ifdef USE_CHRONO
@@ -427,6 +430,7 @@ bool spoutFrameCount::GetNewFrame()
 	m_LastFrameCount = framecount;
 
 	return true;
+
 }
 
 
@@ -454,8 +458,8 @@ void spoutFrameCount::CleanupFrameCount()
 	m_LastFrameCount = 0L;
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
-	m_SenderFps = GetRefreshRate();
-	m_millisForFrame = 0.0;
+	m_SenderFps = GetRefreshRate(); // Default sender fps is system refresh rate
+	m_millisForFrame = 1000.0 / m_SenderFps;
 
 }
 
@@ -500,6 +504,8 @@ long spoutFrameCount::GetSenderFrame()
 //    Uses std::chrono if supported by the compiler VS2015 or greater.
 //    Typically, monitor refresh rate is required and the fps argument can be omitted.
 //
+// TODO : profile
+//
 void spoutFrameCount::HoldFps(int fps)
 {
 	// Unlikely but return anyway
@@ -535,7 +541,7 @@ void spoutFrameCount::HoldFps(int fps)
 		
 	}
 #else
-	if (m_millisForFrame == 0) {
+	if (m_millisForFrame < 0.001) {
 		if (fps > 0)
 			m_millisForFrame = 1000.0 / static_cast<double>(fps); // msec per frame
 		else
@@ -877,31 +883,41 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 		// End time since last call
 		double thisFrame = GetCounter();
 		// Msecs between this frame and the last
-		double frametime = thisFrame-m_lastFrame;
+		double frametime = thisFrame - m_lastFrame;
 #endif
+
+		// Calculate frames per second (default fps is system refresh rate)
+		frametime = frametime / 1000.0; // frame time in seconds
+
 		// Accumulate totals
 		m_FrameTimeTotal = m_FrameTimeTotal + frametime;
+
 		// Could have been more than one frame
 		m_FrameTimeNumber += (double)framecount;
+
 		// Calculate the average frame time every 16 frames
 		if (m_FrameTimeNumber > 16) {
-			frametime = m_FrameTimeTotal / m_FrameTimeNumber;
-			m_FrameTimeTotal = 0.0;
-			m_FrameTimeNumber = 0.0;
 			// Calculate frames per second (default fps is system refresh rate)
-			frametime = frametime / 1000.0; // frame time in seconds
 			if (frametime > 0.0001) {
 				double fps = (1.0 / frametime); // Fps
 				m_SenderFps = 0.85*m_SenderFps + 0.15*fps; // damping
 			}
+			m_FrameTimeTotal = 0.0;
+			m_FrameTimeNumber = 0.0;
 		}
+
+// Set the start time for the next frame
 #ifdef USE_CHRONO
-		// Set the start time for the next frame
 		*m_FpsStartPtr = std::chrono::steady_clock::now();
 #else
-		// Set the start time for the next frame
 		m_lastFrame = thisFrame;
 #endif
+
+	}
+	else {
+		// If framecount is zero, the sender has not produced a new frame yet
+		*m_FpsStartPtr = std::chrono::steady_clock::now();
+		*m_FpsEndPtr = std::chrono::steady_clock::now();
 	}
 
 }

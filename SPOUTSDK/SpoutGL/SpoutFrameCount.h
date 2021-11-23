@@ -144,6 +144,7 @@ protected:
 	// Sender frame timing
 	double m_SenderFps;
 	void UpdateSenderFps(long framecount = 0);
+
 	double GetRefreshRate();
 
 	// Fps control
