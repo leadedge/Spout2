@@ -29,6 +29,7 @@
 //						  without dependence on Spout source files.
 //						- Add "legacyOpenGL" define in SpoutGLextensions.h for standalone.
 //			14.11.21	- Add ExtLog for Spout error logs including printf for standalone.
+//			23.11.21	- Add debugging console print to loadPBOextensions
 //						  
 //
 
@@ -287,9 +288,7 @@ bool loadSwapExtensions()
 	if(wglSwapIntervalEXT == NULL || wglGetSwapIntervalEXT == NULL) {
 		return false;
 	}
-
 	return true;
-
 }
 
 
@@ -328,6 +327,7 @@ bool loadPBOextensions()
 		return true;
 	}
 	else {
+		ExtLog(LOG_WARNING, "loadPBOextensions() fail");
 		return false;
 	}
 	#endif
