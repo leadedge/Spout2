@@ -167,7 +167,7 @@ class SPOUT_DLLEXP spoutGL {
 	//     o Optionally re-test compatibility even if already initialized
 	bool OpenSpout(bool bRetest = false);
 	// Initialize DirectX
-	bool OpenDirectX();
+	bool OpenDirectX(ID3D11Device* pDevice = nullptr);
 	// Set sender DX11 shared texture format
 	void SetDX11format(DXGI_FORMAT textureformat);
 	// Close DirectX and free resources
@@ -192,7 +192,7 @@ class SPOUT_DLLEXP spoutGL {
 	// 2.006 compatibility
 	//
 
-	bool OpenDirectX11();
+	bool OpenDirectX11(ID3D11Device* pDevice = nullptr);
 	ID3D11Device* GetDX11Device();
 	ID3D11DeviceContext* GetDX11Context();
 	void CleanupDirectX();

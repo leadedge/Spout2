@@ -68,6 +68,7 @@
 //				      Change CleanupInterop from void to bool
 //				      CleanupDX11() - test CleanupInterop before releasing textures
 //					  CleanupGL() - release interop objects before releasing shared texture
+//					  OpenDirectX and OpenDirectX11 optional device argument
 //
 // ====================================================================================
 /*
@@ -506,13 +507,15 @@ bool spoutGL::OpenSpout(bool bRetest)
 
 //---------------------------------------------------------
 // Function: OpenDirectX
-// Initialize DirectX
-bool spoutGL::OpenDirectX()
+// Initialize DirectX (D3D11 only)
+bool spoutGL::OpenDirectX(ID3D11Device* pDevice)
 {
-	SpoutLogNotice("spoutGL::OpenDirectX");
-	return spoutdx.OpenDirectX11();
+	if (pDevice)
+		SpoutLogNotice("spoutGL::OpenDirectX(0X%.7x)", PtrToUint(pDevice));
+	else
+		SpoutLogNotice("spoutGL::OpenDirectX");
+	return spoutdx.OpenDirectX11(pDevice);
 }
-
 //---------------------------------------------------------
 // Function: SetDX11format
 //   Set sender DX11 shared texture format
@@ -2676,10 +2679,10 @@ bool spoutGL::WriteMemoryPixels(const char *sendername, const unsigned char* pix
 //
 
 //---------------------------------------------------------
-bool spoutGL::OpenDirectX11()
+bool spoutGL::OpenDirectX11(ID3D11Device* pDevice)
 {
 	SpoutLogNotice("spoutGL::OpenDirectX11");
-	return spoutdx.OpenDirectX11();
+	return spoutdx.OpenDirectX11(pDevice);
 }
 
 //---------------------------------------------------------
