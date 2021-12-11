@@ -47,7 +47,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		~spoutDirectX();
 		
 		// Initialize and prepare DirectX 11
-		bool OpenDirectX11();
+		bool OpenDirectX11(ID3D11Device* pDevice);
 		// Release DirectX 11 device and context
 		void CloseDirectX11();
 		// Set the DirectX11 device
@@ -88,6 +88,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		// DirectX11 utiities
 		//
 
+		// Release a texture resource created with a class device1`
+		unsigned long ReleaseDX11Texture(ID3D11Texture2D* pTexture);
 		// Release a texture resource
 		unsigned long ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture);
 		// Release a device

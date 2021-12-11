@@ -96,6 +96,9 @@
 //					  Clean up adapter functions
 //		23.11.21	- Remove GetImmediateContext after device create
 //					  Allow use of external device or class device
+//		11.12.21	- Add ReleaseDX11Texture overload to use class device
+//					  Allow use of external device in OpenDirectX11
+//					  Revise CloseDirectX11() for external device
 //
 // ====================================================================================
 /*
@@ -156,28 +159,45 @@ spoutDirectX::~spoutDirectX() {
 // Function: OpenDirectX11
 // Initialize and prepare Directx 11
 // Retain a class device and context
-bool spoutDirectX::OpenDirectX11()
+bool spoutDirectX::OpenDirectX11(ID3D11Device* pDevice)
 {
 	// Quit if already initialized
-	// Can be set externally (SetDX11device)
+	// Can be set externally (See also - SetDX11device)
 	if (m_pd3dDevice) {
-		if(m_bClassDevice)
-			SpoutLogNotice("spoutDirectX::OpenDirectX11(0x%.7X) - Device already initialized", PtrToUint(m_pd3dDevice));
-		else
-			SpoutLogNotice("spoutDirectX::OpenDirectX11(0x%.7X) - External device already set", PtrToUint(m_pd3dDevice));
+		if (m_bClassDevice) {
+			SpoutLogNotice("spoutDirectX::OpenDirectX11(0x%.7X) - Class device initialized", PtrToUint(m_pd3dDevice));
+		}
+		else {
+			SpoutLogNotice("spoutDirectX::OpenDirectX11(0x%.7X) - External device", PtrToUint(m_pd3dDevice));
+		}
 		return true;
 	}
 
 	// Create a DirectX 11 device
 	SpoutLogNotice("spoutDirectX::OpenDirectX11");
-	m_pd3dDevice = CreateDX11device();
+	
+	// Used the external device if one was passed in
+	if (pDevice) {
+		m_pd3dDevice = pDevice;
+		// Device was created outside this class
+		m_bClassDevice = false;
+		// Retrieve the context pointer independently.
+		// For a class device it is created in CreateDX11device().
+		m_pd3dDevice->GetImmediateContext(&m_pImmediateContext);
+	}
+	else {
+		// Create a class device if none was passed in
+		// (m_pImmediateContext is created in CreateDX11device())
+		m_pd3dDevice = CreateDX11device();
+		// Device was created within this class
+		m_bClassDevice = true;
+	}
+
 	if (!m_pd3dDevice) {
 		SpoutLogNotice("    Could not create device\n");
 		return false;
 	}
 
-	// m_pImmediateContext is created in CreateDX11device()
-	m_bClassDevice = true; // Device was created within this class
 	SpoutLogNotice("    Device (0x%.7X) - Context (0x%.7X)", PtrToUint(m_pd3dDevice), PtrToUint(m_pImmediateContext));
 
 	return true;
@@ -195,7 +215,7 @@ void spoutDirectX::CloseDirectX11()
 	if (m_bClassDevice) {
 		// A device was created within this class (CreateDX11device)
 		SpoutLogNotice("spoutDirectX::CloseDirectX11(0x%.7X)", PtrToUint(m_pd3dDevice));
-		// Release both device and context
+		// Release class device, context and adapter pointer
 		ReleaseDX11Device(m_pd3dDevice);
 		m_pd3dDevice = nullptr;
 		m_pImmediateContext = nullptr;
@@ -204,9 +224,16 @@ void spoutDirectX::CloseDirectX11()
 	else {
 		// An application device was used (SetDX11Device). Do not release it.
 		SpoutLogNotice("spoutDirectX::CloseDirectX11 - external device used (0x%.7X)", PtrToUint(m_pd3dDevice));
+		// Release adapter pointer if specified by SetAdapter
+		if (m_pAdapterDX11)
+			m_pAdapterDX11->Release();
+		m_pAdapterDX11 = nullptr;
 		// Release independently created m_pImmediateContext
-		if (m_pImmediateContext)
+		if (m_pImmediateContext) {
+			m_pImmediateContext->ClearState();
+			m_pImmediateContext->Flush();
 			m_pImmediateContext->Release();
+		}
 		m_pImmediateContext = nullptr;
 	}
 
@@ -991,6 +1018,11 @@ void spoutDirectX::SetAdapterPointer(IDXGIAdapter* pAdapter)
 	m_pAdapterDX11 = pAdapter;
 }
 
+unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Texture2D* pTexture)
+{
+	return ReleaseDX11Texture(m_pd3dDevice, pTexture);
+}
+
 unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture)
 {
 
@@ -1031,7 +1063,7 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 	if (!pd3dDevice)
 		return 0;
 
-	// Release adapter pointer if there is one
+	// Release adapter pointer if specified by SetAdapter
 	if (m_pAdapterDX11) {
 		m_pAdapterDX11->Release();
 		m_pAdapterDX11 = nullptr;
@@ -1051,8 +1083,6 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 		// ID3D11DeviceContext::ClearState, and then call Flush.
 		m_pImmediateContext->ClearState();
 		m_pImmediateContext->Flush();
-		// LJ DEBUG
-		// FlushWait(m_pd3dDevice, m_pImmediateContext);
 		m_pImmediateContext->Release();
 		m_pImmediateContext = nullptr;
 	}
