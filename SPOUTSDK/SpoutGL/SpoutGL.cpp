@@ -63,7 +63,11 @@
 //		18.11.21	- InitTexture - restore current texture binding
 //		19.11.21	- LoadGLextensions in constructor as well as OpenSpout
 //		22.11.21	- OpenSpout new line for start changed from printf to SpoutLog
-//		23.11.21	- Use SpoutDirectX ReleaseDX11Texture to release shared texture																	   
+//		23.11.21	- Use SpoutDirectX ReleaseDX11Texture to release shared texture
+//		11.12.21	- OpenSpout - return false for no OpenGL context or GL extensions
+//				      Change CleanupInterop from void to bool
+//				      CleanupDX11() - test CleanupInterop before releasing textures
+//					  CleanupGL() - release interop objects before releasing shared texture
 //
 // ====================================================================================
 /*
@@ -434,12 +438,14 @@ bool spoutGL::OpenSpout(bool bRetest)
 
 		}
 		else {
-			SpoutLogWarning("spoutGL::OpenSpout - Could not load GL extensions");
+			SpoutLogFatal("spoutGL::OpenSpout - Could not load GL extensions");
+			return false;
 		}
 	}
 	else {
-		SpoutLogWarning("spoutGL::OpenSpout - Cannot get GL device context");
-		// There might still be a chance with DirectX shared textures
+		SpoutLogFatal("spoutGL::OpenSpout - Cannot get GL device context");
+		// This is OpenGL, but DirectX shared textures might still work OK (see SpoutDX)
+		return false;
 	}
 
 	//
@@ -1210,11 +1216,11 @@ HRESULT spoutGL::UnlockInteropObject(HANDLE hDevice, HANDLE *hObject)
 
 
 // Clean up the gldx interop
-void spoutGL::CleanupInterop()
+bool spoutGL::CleanupInterop()
 {
 	// Release OpenGL objects etc. even if DirectX has been released
 	if (!m_hInteropDevice && !m_hInteropObject)
-		return;
+		return false;
 
 	// These things need an opengl context so check
 	if (wglGetCurrentContext()) {
@@ -1236,11 +1242,17 @@ void spoutGL::CleanupInterop()
 	else {
 		SpoutLogWarning("spoutGL::CleanupInterop() - no context");
 	}
+	return true;
+
 }
 
 //---------------------------------------------------------
 void spoutGL::CleanupGL()
 {
+	// Release interop objects before releasing shared texture
+	// (OpenGL context is tested)
+	CleanupInterop();
+
 	// Release OpenGL resources if there is a context
 	if (wglGetCurrentContext()) {
 
@@ -1282,9 +1294,6 @@ void spoutGL::CleanupGL()
 	m_Height = 0;
 	m_SenderName[0] = 0;
 	m_bInitialized = false;
-
-	// Release interop objects
-	CleanupInterop();
 
 	// OpenGL only - do not close DirectX
 
@@ -2704,8 +2713,12 @@ void spoutGL::CleanupDX11()
 		if (m_pSharedTexture) {
 			SpoutLogNotice("    Releasing shared texture");
 			// Release interop link before releasing the texture
-			if (m_hInteropDevice && m_hInteropObject)
-				wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
+			// Requires openGL context
+			if (m_hInteropDevice && m_hInteropObject) {
+				if (!CleanupInterop()) {
+					SpoutLogWarning("    GL/DX Interop could not be released");
+				}
+			}
 			spoutdx.ReleaseDX11Texture(spoutdx.GetDX11Device(), m_pSharedTexture);
 		}
 

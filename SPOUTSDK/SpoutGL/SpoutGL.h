@@ -197,7 +197,7 @@ class SPOUT_DLLEXP spoutGL {
 	ID3D11DeviceContext* GetDX11Context();
 	void CleanupDirectX();
 	void CleanupDX11();
-	void CleanupInterop();
+	bool CleanupInterop();
 
 	//
 	// OpenGL extensions
