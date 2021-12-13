@@ -69,6 +69,7 @@
 //				      CleanupDX11() - test CleanupInterop before releasing textures
 //					  CleanupGL() - release interop objects before releasing shared texture
 //					  OpenDirectX and OpenDirectX11 optional device argument
+//		14.12.21	- Remove gl texture delete from GLDXready test.
 //
 // ====================================================================================
 /*
@@ -761,7 +762,6 @@ bool spoutGL::GLDXready()
 		SpoutLogError("spoutGL::GLDXready - glGenTextures failed");
 		return false;
 	}
-	glDeleteTextures(1, &glTexture);
 
 	//
 	// Create a directX texture and link using the NVIDIA GLDX interop functions
