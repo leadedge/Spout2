@@ -53,6 +53,7 @@
 //					  ReadTextureData - allow for no FBO support for low end graphics
 //		29.09.21	- OpenSpout and LinkGLDXtextures - test for GL/DX extensions
 //		15.10.21	- Remove interop object test for repeat from OpenSpout
+//		15.12.21	- Remove gl texture delete from GLDXready test.
 //
 // ====================================================================================
 /*
@@ -743,7 +744,6 @@ bool spoutGL::GLDXready()
 		SpoutLogError("spoutGL::GLDXready - glGenTextures failed");
 		return false;
 	}
-	glDeleteTextures(1, &glTexture);
 
 	//
 	// Create a directX texture and link using the NVIDIA GLDX interop functions
