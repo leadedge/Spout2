@@ -2,7 +2,7 @@
 
 	Spout OpenFrameworks Webcam Sender example
 
-	Copyright (C) 2021 Lynn Jarvis.
+	Copyright (C) 2022 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -21,13 +21,14 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\SpoutGL\Spout.h" // Spout SDK
+#include "..\..\..\SpoutGL\SpoutSender.h" // Spout SDK
 
 class ofApp : public ofBaseApp {
 	public:
 		void setup();
 		void update();
 		void draw();
+		void keyPressed(int key);
 		void exit();
 	
 		SpoutSender spoutsender; // A sender object

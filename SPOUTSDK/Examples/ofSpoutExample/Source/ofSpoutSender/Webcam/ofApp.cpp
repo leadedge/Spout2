@@ -4,7 +4,7 @@
 
     With modifications for SpoutCam
 
-	Copyright (C) 2021 Lynn Jarvis.
+	Copyright (C) 2022 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -113,15 +113,42 @@ void ofApp::draw() {
 		}
 
 		// Show the webcam it is receiving from
-		sprintf(str, "Receiving  : [%s]", camdevices[camindex].deviceName.c_str());
+		sprintf_s(str, 256, "Receiving  : [%s]", camdevices[camindex].deviceName.c_str());
 		ofDrawBitmapString(str, 20, 20);
 
 		// Show what it is sending
-		sprintf(str, "Sending as : [%s]", sendername);
+		sprintf_s(str, 256, "Sending as : [%s]", sendername);
 		ofDrawBitmapString(str, 20, 35);
 
 	}
 }
+
+//--------------------------------------------------------------
+void ofApp::keyPressed(int key) {
+
+	int i = key - 48;
+	if(i >= 0 && i < (int)camdevices.size()) {
+		camindex = i;
+		vidGrabber.close();
+		vidGrabber.setDeviceID(camindex);
+		vidGrabber.setDesiredFrameRate(30);
+		vidGrabber.setUseTexture(true);
+		if (vidGrabber.setup(640, 360)) {
+			ofSetWindowShape(vidGrabber.getWidth(), vidGrabber.getHeight());
+				cout << "Initialized webcam [" << camdevices[camindex].deviceName << "] (" << vidGrabber.getWidth() << " x " << vidGrabber.getHeight() << ")" << endl;
+		}
+		else {
+			printf("Webcam setup error. Try a different one.\n");
+		}
+
+
+	}
+
+	
+	// Release the sender on exit
+	spoutsender.ReleaseSender();
+}
+
 
 //--------------------------------------------------------------
 void ofApp::exit() {
