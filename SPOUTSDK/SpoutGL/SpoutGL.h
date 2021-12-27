@@ -5,7 +5,7 @@
 	Base class for OpenGL SpoutSDK
 	See also Sender and Receiver wrapper classes.
 
-	Copyright (c) 2021, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2021-2022, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -45,6 +45,10 @@
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
+
+// LJ DEBUG
+#include <stdio.h>
+#include <iostream>
 
 using namespace spoututils;
 
@@ -167,7 +171,7 @@ class SPOUT_DLLEXP spoutGL {
 	//     o Optionally re-test compatibility even if already initialized
 	bool OpenSpout(bool bRetest = false);
 	// Initialize DirectX
-	bool OpenDirectX(ID3D11Device* pDevice = nullptr);
+	bool OpenDirectX();
 	// Set sender DX11 shared texture format
 	void SetDX11format(DXGI_FORMAT textureformat);
 	// Close DirectX and free resources
@@ -227,7 +231,7 @@ class SPOUT_DLLEXP spoutGL {
 	//
 
 	// Link a shared DirectX texture to an OpenGL texture
-	HANDLE LinkGLDXtextures(void* pDXdevice, void* pSharedTexture, HANDLE dxShareHandle, GLuint glTextureID);
+	HANDLE LinkGLDXtextures(void* pDXdevice, void* pSharedTexture, GLuint glTextureID);
 	// Return a handle to the the DX/GL interop device
 	HANDLE GetInteropDevice();
 	// Copy OpenGL to shared DirectX 11 texture via CPU

@@ -12,7 +12,7 @@
 		Thanks and credit to Malcolm Bechard, the author of this file
 		https://github.com/mbechard
 
-		Copyright (c) 2014-2021, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:

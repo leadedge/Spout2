@@ -4,7 +4,7 @@
 
 	Functions to manage DirectX 11 texture sharing
 
-	Copyright (c) 2014 - 2021, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014 - 2022, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -47,7 +47,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		~spoutDirectX();
 		
 		// Initialize and prepare DirectX 11
-		bool OpenDirectX11(ID3D11Device* pDevice);
+		bool OpenDirectX11(ID3D11Device* pDevice = nullptr);
 		// Release DirectX 11 device and context
 		void CloseDirectX11();
 		// Set the DirectX11 device
@@ -96,7 +96,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		unsigned long ReleaseDX11Device(ID3D11Device* pd3dDevice);
 		// Return the class device
 		ID3D11Device* GetDX11Device();
-		// Return the class immediate context
+
+		// Return the device immediate context
 		ID3D11DeviceContext* GetDX11Context();
 		// Flush immediate context command queue and wait for copleteion
 		void FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext);

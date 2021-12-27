@@ -9,7 +9,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2017-2021, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2017-2022, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -77,6 +77,10 @@
 				   Replace code using environment variable "APPDATA"
 		24.10.21 - Update Version to "2.007.005"
 		08.11.21 - Change to high_resolution_clock for timer
+		15.12.21 - Change back to steady clock
+				   Use .clear() instead of "" to clear strings
+		20.12.21 - Change from string to to char array for last log
+				   Update Version to "2.007.006"
 
 */
 #include "SpoutUtils.h"
@@ -103,17 +107,17 @@ namespace spoututils {
 	SpoutLogLevel CurrentLogLevel = SPOUT_LOG_NOTICE;
 	FILE* pCout = NULL; // for log to console
 	std::ofstream logFile; // for log to file
-	std::string logPath = ""; // path for the logfile
-	std::string logFileName = ""; // file name for the logfile
-	std::string LastSpoutLog = "";
+	std::string logPath; // path for the logfile
+	std::string logFileName; // file name for the logfile
+	char logChars[512]; // The current log string
 	bool bConsole = false;
 #ifdef USE_CHRONO
-	// std::chrono::steady_clock::time_point start;
-	// std::chrono::steady_clock::time_point end;
-	std::chrono::high_resolution_clock::time_point start;
-	std::chrono::high_resolution_clock::time_point end;
+	std::chrono::steady_clock::time_point start;
+	std::chrono::steady_clock::time_point end;
+	// std::chrono::high_resolution_clock::time_point start;
+	// std::chrono::high_resolution_clock::time_point end;
 #endif
-	std::string SDKversion = "2.007.004"; // Spout SDK version number string
+	std::string SDKversion = "2.007.006"; // Spout SDK version number string
 
 	//
 	// Console management
@@ -176,6 +180,9 @@ namespace spoututils {
 		if(!bConsole)
 			OpenSpoutConsole();
 
+		// Initialize log string
+		logChars[0] = 0;
+
 	}
 
 	// Enable log to a user file with optional append
@@ -185,8 +192,10 @@ namespace spoututils {
 		if (!logPath.empty()) {
 			if (logFile.is_open())
 				logFile.close();
-			logPath = "";
+			logPath.clear();
 		}
+
+		logChars[0] = 0;
 
 		// Set the log file name or path
 		if (filename[0]) {
@@ -229,7 +238,7 @@ namespace spoututils {
 		if (!logPath.empty()) {
 			if (logFile.is_open())
 				logFile.close();
-			logPath = "";
+			logPath.clear();
 		}
 	}
 
@@ -240,7 +249,7 @@ namespace spoututils {
 		if (!logPath.empty()) {
 			if (logFile.is_open())
 				logFile.close();
-			logPath = "";
+			logPath.clear();
 		}
 		bEnableLog = false;
 		bEnableLogFile = false;
@@ -256,10 +265,10 @@ namespace spoututils {
 		bDoLogs = true;
 	}
 	
-	// Return the Spout log file as a string
+	// Return the Spout log file as a single string
 	std::string GetSpoutLog()
 	{
-		std::string logString = "";
+		std::string logstr;
 
 		if (!logPath.empty()) {
 			logFile.open(logPath);
@@ -270,15 +279,15 @@ namespace spoututils {
 					// Source file loaded OK ?
 					if (logstream.is_open()) {
 						// Get the file text as a single string
-						logString.assign((std::istreambuf_iterator< char >(logstream)), std::istreambuf_iterator< char >());
-						logString += ""; // ensure a NULL terminator
+						logstr.assign((std::istreambuf_iterator< char >(logstream)), std::istreambuf_iterator< char >());
+						logstr += ""; // ensure a NULL terminator
 						logstream.close();
 					}
 				}
 			}
 		}
 
-		return logString;
+		return logstr;
 	}
 	
 	// Show the Spout log file folder in Windows Explorer
@@ -639,18 +648,18 @@ namespace spoututils {
 	// Timing utility functions
 	void StartTiming() {
 #ifdef USE_CHRONO
-		// start = std::chrono::steady_clock::now();
-		start = std::chrono::high_resolution_clock::now();
+		start = std::chrono::steady_clock::now();
+		// start = std::chrono::high_resolution_clock::now();
 #endif
 	}
 
 	double EndTiming() {
 #ifdef USE_CHRONO
-		// end = std::chrono::steady_clock::now();
-		// double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		end = std::chrono::high_resolution_clock::now();
+		end = std::chrono::steady_clock::now();
 		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		printf("    elapsed [%.4f] msec\n", elapsed / 1000.0);
+		// end = std::chrono::high_resolution_clock::now();
+		// double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
+		// printf("    elapsed [%.4f] msec\n", elapsed / 1000.0);
 		// printf("elapsed [%.3f] u/sec\n", elapsed);
 		return elapsed;
 #else
@@ -668,7 +677,6 @@ namespace spoututils {
 	void _doLog(SpoutLogLevel level, const char* format, va_list args)
 	{
 		char currentLog[512]; // allow more than the name length
-		std::string logString;
 
 		// Return if logging is paused
 		if (!bDoLogs)
@@ -680,21 +688,19 @@ namespace spoututils {
 			&& format != nullptr) {
 
 			// Construct the current log
-			// Problem with vsprintf_s here
-			// does not seem to use the maximum buffer length
 			vsprintf_s(currentLog, 512, format, args);
-			logString = currentLog;
 
 			// Prevent multiple logs by comparing with the last
-			if (logString == LastSpoutLog)
+			if (strcmp(currentLog, logChars) == 0)
 				return;
 
-			LastSpoutLog = logString; // update the last log
+			// Save the current log
+			strcpy_s(logChars, 512, currentLog);
 
 			// Console logging
 			if (bEnableLog && bConsole) {
 
-				// For console output, allow multiple warnings
+				// For console output
 				FILE* out = stdout;
 				if (level != SPOUT_LOG_NONE && level != SPOUT_LOG_VERBOSE) {
 					fprintf(out, "[%s] ", _levelName(level).c_str());
@@ -835,7 +841,7 @@ namespace spoututils {
 			}
 			else {
 				// disable file writes and use a console instead
-				logPath = "";
+				logPath.clear();
 			}
 		}
 
