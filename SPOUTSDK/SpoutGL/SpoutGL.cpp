@@ -79,6 +79,7 @@
 //		18.12.21	- Restore default draw for all fbo functions
 //					  Release interop objects after LinkGLDXtextures in GLDXready
 //					  Create registry entry for GLDXready function to avoid repeats
+//		27.12.21	- Restore default fbo in SetSharedTextureData if texture ID is zero
 //
 // ====================================================================================
 /*
@@ -967,7 +968,7 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 	}
 
 	// Create or re-create the class OpenGL texture
-	// InitTexture(m_glTexture, GL_RGBA, width, height);
+	// The texture has body after it is linked to the shared DirectX texture
 	glGenTextures(1, &m_glTexture);
 
 	m_Width = width;
@@ -1481,6 +1482,8 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 			PrintFBOstatus(status);
 			bRet = false;
 		}
+		// restore default fbo
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
 	else if (TextureID > 0) {
 		// There is a valid texture passed in.
