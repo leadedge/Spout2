@@ -390,9 +390,8 @@ bool spoutGL::OpenSpout(bool bRetest)
 {
 	// Return if already initialized and not re-testing compatibility
 	// Look for DirectX device to prevent repeat
-	if(spoutdx.GetDX11Device() > 0
-		&& m_hInteropDevice > 0
-		&& !bRetest)
+	if(spoutdx.GetDX11Device() != nullptr && m_hInteropDevice != nullptr
+            && !bRetest)
 		return true;
 
 	printf("\n"); // This is the start, so make a new line in the log
