@@ -66,7 +66,11 @@
 //				   conflict with other libraries and applications.
 //		25.07.21   Re-build 32/64 bit - VS2017 / Multi-threaded DLL (/MD)
 //		24.10.21 - Rebuild with updated SpoutGL files 32/64 bit /MD
+//		06.02.22 - Rebuild with updated SpoutGL files from Master branch
+//				   32/64 bit /MD to resolve linking problem
+//				   (https://spout.discourse.group/t/gl-dx-linking-error/361)
 //
+
 /*
 		Copyright (c) 2016-2021, Lynn Jarvis. All rights reserved.
 
