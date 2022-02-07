@@ -1,9 +1,10 @@
 /*
 
-	Spout OpenFrameworks Sender example
-	using 2.007 SpoutLibrary
+	Spout - Sender example
 
-	Copyright (C) 2021 Lynn Jarvis.
+    Visual Studio 2012 using the Spout SDK
+
+	Copyright (C) 2015-2022 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -22,7 +23,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "SpoutLibrary.h" // for the SpoutLibrary dll
+#include "SpoutLibrary.h" // for Spout SDK library
 
 class ofApp : public ofBaseApp{
 	public:
@@ -31,14 +32,13 @@ class ofApp : public ofBaseApp{
 		void draw();
 		void exit();
 		void windowResized(int w, int h);
-
-		SPOUTLIBRARY * sender; // A sender object pointer
-		char sendername[256]; // Sender name
-		unsigned int senderwidth; // Dimensions of sender and fbo can be
-		unsigned int senderheight; // independent of the application window
-		ofImage myBoxImage; // Image for the 3D demo
-		ofFbo myFbo; // For texture sharing
-		ofPixels myPixels; // For pixel sharing
-		float rotX, rotY;
 	
+		SPOUTLIBRARY *spoutsender; // A sender object
+		char sendername[256];      // Sender name
+		GLuint sendertexture;      // Local OpenGL texture used for sharing
+		bool bInitialized;         // Initialization result
+		ofImage myTextureImage;    // Texture image for the 3D demo
+		float rotX, rotY;
+		bool InitGLtexture(GLuint &texID, unsigned int width, unsigned int height);
+
 };

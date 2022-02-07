@@ -4,7 +4,7 @@
 //	Spout SDK dll compatible with any C++ compiler
 //
 /*
-		Copyright (c) 2016-2021, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2022, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -47,9 +47,9 @@
 #define SPOUTAPI __declspec(dllimport)
 #endif
 
-// Local log level definitions
-// SpoutLogLevel conflicts with previous definition
-// LogLevel is too generic
+// Local log level definitions for SetSpoutLogLevel.
+// "SpoutLogLevel"enum conflicts with previous definition
+// in SpoutUtils if it is used in the applicataion
 enum LibLogLevel {
 	SPOUT_LOG_SILENT,
 	SPOUT_LOG_VERBOSE,
@@ -260,6 +260,12 @@ struct SPOUTLIBRARY
 	// Find subkey
 	virtual bool FindSubKey(HKEY hKey, const char *subkey) = 0;
 
+	//
+	// Timing utilities
+	//
+	virtual void StartTiming() = 0;
+	virtual double EndTiming() = 0;
+
 	// -----------------------------------------
 
 	// Initialization status
@@ -336,6 +342,8 @@ struct SPOUTLIBRARY
 	// Set user share mode
 	//  0 - texture, 1 - memory, 2 - CPU
 	virtual void SetShareMode(int mode) = 0;
+	// Open sender selection dialog
+	virtual void SelectSenderPanel() = 0;
 
 	//
 	// Information
@@ -392,6 +400,23 @@ struct SPOUTLIBRARY
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0) = 0;
+
+	//
+	// DirectX utilities
+	//
+
+	virtual bool OpenDirectX() = 0;
+	virtual void CloseDirectX() = 0;
+
+	// Initialize and prepare DirectX 11
+	virtual bool OpenDirectX11(void * pDevice = nullptr) = 0;
+	virtual void CloseDirectX11() = 0;
+
+	// Return the class device
+	virtual void* GetDX11Device() = 0;
+
+	// Return the class context
+	virtual void* GetDX11Context() = 0;
 	
 	// Library release function
     virtual void Release() = 0;

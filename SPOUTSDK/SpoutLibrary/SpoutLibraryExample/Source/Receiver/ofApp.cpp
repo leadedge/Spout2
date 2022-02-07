@@ -36,7 +36,7 @@
 	OpenFrameworks 10
 	Visual Studio 2017
 
-	Copyright (C) 2021 Lynn Jarvis.
+	Copyright (C) 2015-2022 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -83,6 +83,7 @@ void ofApp::setup(){
 	// Logging (see sender example)
 	// receiver->OpenSpoutConsole(); // for debugging when a console is not availlable
 	receiver->EnableSpoutLog(); // Spout logging to console
+	receiver->SetSpoutLogLevel(SPOUT_LOG_WARNING); // Show only warnings
 
 	// Optionally specify the sender to connect to.
 	// The application will not connect to any other unless the user selects one.
@@ -147,7 +148,7 @@ void ofApp::draw() {
 	*/
 
 	// Option 3 : Receive an OpenGL shared texture to access directly
-	// Only if compatible for GL/DX interop, or BindSharedTexture fails
+	// Only if compatible for GL/DX interop or else BindSharedTexture fails
 	/*
 	if (receiver->ReceiveTexture()) {
 		// Bind to get access to the shared texture
