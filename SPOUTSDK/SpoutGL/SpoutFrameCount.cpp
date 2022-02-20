@@ -798,7 +798,7 @@ bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 		IDXGIKeyedMutex* pDXGIKeyedMutex = nullptr;
 
 		// Check the keyed mutex
-		pTexture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
+		pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
 		if (pDXGIKeyedMutex) {
 			HRESULT hr = pDXGIKeyedMutex->AcquireSync(0, 67); // TODO - link with SPOUT_WAIT_TIMEOUT
 			switch (hr) {
@@ -828,7 +828,7 @@ void spoutFrameCount::AllowKeyedAccess(ID3D11Texture2D* pTexture)
 	// 22-24 microseconds
 	if (pTexture) {
 		IDXGIKeyedMutex* pDXGIKeyedMutex;
-		pTexture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
+		pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
 		if (pDXGIKeyedMutex) {
 			pDXGIKeyedMutex->ReleaseSync(0);
 			pDXGIKeyedMutex->Release();

@@ -1026,8 +1026,8 @@ void spoutCopy::rgba2rgbaResample(const void* source, void* dest,
 	unsigned int pixel, nearestMatch;
 	for (i = 0; i < destHeight; i++) {
 		for (j = 0; j < destWidth; j++) {
-			px = floor((float)j*x_ratio);
-			py = floor((float)i*y_ratio);
+			px = std::floor((float)j*x_ratio);
+			py = std::floor((float)i*y_ratio);
 			if (bInvert)
 				pixel = (destHeight - i - 1)*destWidth * 4 + j * 4; // flip vertically
 			else
@@ -1063,8 +1063,8 @@ void spoutCopy::rgba2rgbResample(const void* source, void* dest,
 	unsigned int pixel, nearestMatch;
 	for (i = 0; i < destHeight; i++) {
 		for (j = 0; j < destWidth; j++) {
-			px = floor((float)j*x_ratio);
-			py = floor((float)i*y_ratio);
+			px = std::floor((float)j*x_ratio);
+			py = std::floor((float)i*y_ratio);
 
 			if (bMirror) {
 				if (bInvert)
@@ -1102,8 +1102,8 @@ void spoutCopy::rgba2bgrResample(const void* source, void* dest,
 	unsigned int pixel, nearestMatch;
 	for (i = 0; i < destHeight; i++) {
 		for (j = 0; j < destWidth; j++) {
-			px = floor((float)j*x_ratio);
-			py = floor((float)i*y_ratio);
+			px = std::floor((float)j*x_ratio);
+			py = std::floor((float)i*y_ratio);
 			if (bInvert)
 				pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
 			else
