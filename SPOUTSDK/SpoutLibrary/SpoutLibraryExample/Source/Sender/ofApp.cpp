@@ -101,13 +101,23 @@ void ofApp::draw() {
 
         if(ofGetWidth() > 0 && ofGetHeight() > 0) { // protect against user minimize
 
- 			// Grab the screen into the local spout texture
+			/*
+			//
+ 			// Option 1
+			//
+			// Grab the screen into the local spout texture
             glBindTexture(GL_TEXTURE_2D, sendertexture);
             glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, ofGetWidth(), ofGetHeight());
             glBindTexture(GL_TEXTURE_2D, 0);
-
             // Send the texture out for all receivers to use
             spoutsender->SendTexture(sendertexture, GL_TEXTURE_2D, ofGetWidth(), ofGetHeight());
+			*/
+
+			//
+			// Option 2
+			//
+			// Send the default fbo
+			spoutsender->SendFbo(0, ofGetWidth(), ofGetHeight());
 
             // Show what it is sending
             ofSetColor(255);

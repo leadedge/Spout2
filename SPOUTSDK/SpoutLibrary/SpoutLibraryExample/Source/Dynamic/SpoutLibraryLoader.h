@@ -9,7 +9,7 @@
 //
 
 /*
-		Copyright (c) 2021, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2021-2022, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -98,20 +98,26 @@ public:
 
 		// Now we have the full path of the dll file.
 		// Does the file exist ?
-		if (_access(filepath, 0) == -1)
+		if (_access(filepath, 0) == -1) {
+			printf("SpoutLibraryLoader - could not find SpoutLibrary.dll\n");
 			return nullptr;
+		}
 
 		// Get a handle to the dll module
 		hSpoutLib = LoadLibraryA(filepath);
-		if (hSpoutLib == NULL)
+		if (hSpoutLib == NULL) {
+			printf("SpoutLibraryLoader - could not load SpoutLibrary.dll\n");
 			return nullptr;
+		}
 
 		// Try to get the address of the function that creates an instance of SpoutLibrary.
 		// Credit to Newtek NDI (https://www.ndi.tv/) dynamic load example for this code.
 		SPOUTLIBRARY * (*GetSpout)(void) = nullptr;
 		*((FARPROC*)&GetSpout) = GetProcAddress(hSpoutLib, "GetSpout");
-		if (GetSpout == NULL)
+		if (GetSpout == NULL) {
+			printf("SpoutLibraryLoader - could not get SpoutLibrary instance\n");
 			return nullptr;
+		}
 
 		// Now we can create an instance of the library and access all the functions in it.
 		// The dll LoadLibrary handle (hSpoutLib) must be freed on exit using FreeSpoutLibrary()

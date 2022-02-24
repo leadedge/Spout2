@@ -8,7 +8,7 @@
 	OpenFrameworks 11
 	Visual Studio 2017
 
-	Copyright (C) 2021 Lynn Jarvis.
+	Copyright (C) 2015-2022 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -43,6 +43,7 @@ void ofApp::setup(){
 
 	// Now use the library functions as usual
 	sender->EnableSpoutLog();
+	// sender->SetSpoutLogLevel(SPOUT_LOG_WARNING); // For only warning messages
 
 	// Give the sender a name
 	sender->SetSenderName("OF Spout Dynamic Load Sender");

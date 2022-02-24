@@ -1,6 +1,6 @@
 /*
 
-	Spout OpenFrameworks Sender example
+	Spout OpenFrameworks Receiver example
 	using 2.007 SpoutLibrary
 
 	Copyright (C) 2015-2022 Lynn Jarvis.
