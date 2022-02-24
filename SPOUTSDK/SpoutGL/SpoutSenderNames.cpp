@@ -471,7 +471,6 @@ void spoutSenderNames::SetMaxSenders(int maxSenders)
 	m_MaxSenders = maxSenders;
 	// Set to the registry so that other applications will read the new maximum size
 	WriteDwordToRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "MaxSenders", (DWORD)maxSenders);
-
 }
 
 int spoutSenderNames::GetMaxSenders()

@@ -216,6 +216,7 @@
 //		17.12.21	- Remove adapter gets from Sender/Receiver init
 //					  Adapter index and name are retrieved with Get functions
 //		20.12.21	- Restore log notice for ReleaseSender
+//		24.02.22	- Restore GetSenderAdpater for testing
 //
 // ====================================================================================
 /*
@@ -303,6 +304,8 @@ Spout::Spout()
 	// Initialize adapter name global
 	// Adapter index and name are retrieved with create sender or receiver
 	m_AdapterName[0] = 0;
+	m_bAdapt = false; // Receiver adapt to the sender adapter
+
 }
 
 Spout::~Spout()
@@ -1144,6 +1147,73 @@ bool Spout::SetAdapter(int index)
 
 	return true;
 }
+
+//---------------------------------------------------------
+// Function: GetSenderAdapter
+// Get sender adapter index and name for a given sender
+//
+// Testing only.
+// Note that OpenDX11shareHandle fails and can crash if the share handle 
+// has been created using a different graphics adapter (see spoutDirectX)
+// Try/Catch can catch the exception but not recommended for general use.
+int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxchars)
+{
+	if (!sendername || !sendername[0])
+		return -1;
+
+	int senderadapter = -1;
+	ID3D11Texture2D* pSharedTexture = nullptr;
+	ID3D11Device* pDummyDevice = nullptr;
+	ID3D11DeviceContext* pContext = nullptr;
+	IDXGIAdapter* pAdapter = nullptr;
+
+	// Get the current device adapter pointer (could be null default)
+	IDXGIAdapter* pCurrentAdapter = spoutdx.GetAdapterPointer();
+
+	SpoutLogNotice("Spout::GetSenderAdapter - testing for sender adapter (%s)", sendername);
+
+	SharedTextureInfo info;
+	if (sendernames.getSharedInfo(sendername, &info)) {
+		int nAdapters = spoutdx.GetNumAdapters();
+		for (int i = 0; i < nAdapters; i++) {
+			pAdapter = spoutdx.GetAdapterPointer(i);
+			if (pAdapter) {
+				SpoutLogNotice("   testing adapter %d", i);
+				// Set the adapter pointer for CreateDX11device to use temporarily
+				spoutdx.SetAdapterPointer(pAdapter);
+				// Create a dummy device using this adapter
+				pDummyDevice = spoutdx.CreateDX11device();
+				if (pDummyDevice) {
+					// Try to open the share handle with the device created from the adapter
+					if (spoutdx.OpenDX11shareHandle(pDummyDevice, &pSharedTexture, LongToHandle((long)info.shareHandle))) {
+						// break as soon as it succeeds
+						SpoutLogNotice("    found sender adapter %d (0x%.7X)", i, PtrToUint(pAdapter));
+						senderadapter = i;
+						// Return the adapter name
+						if (adaptername)
+							spoutdx.GetAdapterName(i, adaptername, maxchars);
+						pDummyDevice->GetImmediateContext(&pContext);
+						if (pContext) pContext->Flush();
+						pDummyDevice->Release();
+						pAdapter->Release();
+						break;
+					}
+					pDummyDevice->GetImmediateContext(&pContext);
+					if (pContext) pContext->Flush();
+					pDummyDevice->Release();
+				}
+				pAdapter->Release();
+			}
+		}
+	}
+
+	// Set the SpoutDirectX class adapter pointer back to what it was
+	spoutdx.SetAdapterPointer(pCurrentAdapter);
+
+	return senderadapter;
+
+}
+
 
 //---------------------------------------------------------
 // Function: GetAdapterInfo
@@ -2011,13 +2081,15 @@ bool Spout::ReceiveSenderData()
 
 				// Get a new shared texture pointer (m_pSharedTexture)
 				if (!spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &m_pSharedTexture, dxShareHandle)) {
+					
 					// If this fails, something is wrong.
-					// The sender graphics adapter might be different or some other reason.
-					// Error log is generated in OpenDX11shareHandle.
-					// SpoutLogWarning("Spout::ReceiveSenderData - could not retrieve sender texture from share handle");
+					// The sender graphics adapter might be different.
+					// Warning not required here -Error log is generated in OpenDX11shareHandle.
+
 					// Retain the share handle so we don't query the same sender again.
 					// m_pSharedTexture is null but will not be used.
-					// Return true and wait until another sender is selected.
+					// Wait until another sender is selected or the shared texture handle is valid.
+
 					return true;
 				}
 			}
@@ -2061,6 +2133,7 @@ bool Spout::ReceiveSenderData()
 	return false;
 
 }
+
 
 //---------------------------------------------------------
 // Check whether SpoutPanel opened and return the new sender name

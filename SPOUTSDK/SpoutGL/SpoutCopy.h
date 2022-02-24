@@ -40,6 +40,7 @@
 #include <intrin.h> // for cpuid to test for SSE2
 #include <emmintrin.h> // for SSE2
 #include <tmmintrin.h> // for SSSE3
+#include <cmath> // For compatibility with Clang. PR#81
 
 
 class SPOUT_DLLEXP spoutCopy {

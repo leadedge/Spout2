@@ -46,10 +46,6 @@
 #include <TlHelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
 
-// LJ DEBUG
-#include <stdio.h>
-#include <iostream>
-
 using namespace spoututils;
 
 class SPOUT_DLLEXP spoutGL {
@@ -102,7 +98,7 @@ class SPOUT_DLLEXP spoutGL {
 	int GetMaxSenders();
 	// Set user Maximum senders allowed
 	void SetMaxSenders(int maxSenders);
-
+	
 	//
 	// 2.006 compatibility
 	//
@@ -373,6 +369,7 @@ protected :
 	bool m_bInitialized;
 	bool m_bMirror;  // Mirror image (used for SpoutCam)
 	bool m_bSwapRB;  // RGB <> BGR (used for SpoutCam)
+	bool m_bGLDXdone; // Compatibility test done
 
 	// Sharing modes
 	bool m_bAuto;         // Auto share mode - user set

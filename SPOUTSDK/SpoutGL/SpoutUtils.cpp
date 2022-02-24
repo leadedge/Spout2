@@ -81,6 +81,7 @@
 				   Use .clear() instead of "" to clear strings
 		20.12.21 - Change from string to to char array for last log
 				   Update Version to "2.007.006"
+		29.01.21 - Change return logic of RemovePathFromRegistry
 
 */
 #include "SpoutUtils.h"
@@ -514,9 +515,11 @@ namespace spoututils {
 			// Read the key Filepath value
 			regres = RegQueryValueExA(hRegKey, valuename, NULL, &dwKey, (BYTE*)filepath, &dwSize);
 			RegCloseKey(hRegKey);
-			if (regres == ERROR_SUCCESS)
+			if (regres == ERROR_SUCCESS) {
 				return true;
+			}
 		}
+
 		// Quit if the key does not exist
 		return false;
 	}
@@ -595,8 +598,8 @@ namespace spoututils {
 
 	bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename)
 	{
-		HKEY  hRegKey = NULL;
-		LONG  regres = 0;
+		HKEY hRegKey = NULL;
+		LONG regres = 0;
 
 		// 01.01.18
 		if (!subkey[0]) {
@@ -608,8 +611,10 @@ namespace spoututils {
 		if (regres == ERROR_SUCCESS) {
 			regres = RegDeleteValueA(hRegKey, valuename);
 			RegCloseKey(hRegKey);
-			return true;
 		}
+
+		if (regres == ERROR_SUCCESS)
+			return true;
 
 		// Quit if the key does not exist
 		SpoutLogWarning("RemovePathFromRegistry - could not open key [%s]", subkey);
