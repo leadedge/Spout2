@@ -64,15 +64,15 @@ void ofApp::draw() {
 		// Re-allocate the receiving texture
 		if (receiver1.IsUpdated())
 			myTexture1.allocate(receiver1.GetSenderWidth(), receiver1.GetSenderHeight(), GL_RGBA);
-		myTexture1.draw(0, 0, ofGetWidth() / 2, ofGetHeight());
+		myTexture1.draw(0, 0, ofGetWidth()/2, ofGetHeight());
 	}
 
 	// Connect to and receive from the active sender
 	// (For the SetReceiverName option, "Spout Demo Sender_1")
 	if (receiver2.ReceiveTexture(myTexture2.getTextureData().textureID, myTexture2.getTextureData().textureTarget)) {
 		if (receiver2.IsUpdated())
-			myTexture2.allocate(receiver1.GetSenderWidth(), receiver2.GetSenderHeight(), GL_RGBA);
-		myTexture2.draw(ofGetWidth() / 2, 0, ofGetWidth() / 2, ofGetHeight());
+			myTexture2.allocate(receiver2.GetSenderWidth(), receiver2.GetSenderHeight(), GL_RGBA);
+		myTexture2.draw(ofGetWidth()/2, 0, ofGetWidth()/2, ofGetHeight());
 	}
 
 	// On-screen display
