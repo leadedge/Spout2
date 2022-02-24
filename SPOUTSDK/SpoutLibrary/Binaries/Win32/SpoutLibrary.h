@@ -36,8 +36,6 @@
 #include <windows.h>
 #include <string>
 #include <GL/GL.h>
-#include <d3d9.h>
-
 
 #define SPOUTLIBRARY_EXPORTS // defined for this DLL. The application imports rather than exports
 

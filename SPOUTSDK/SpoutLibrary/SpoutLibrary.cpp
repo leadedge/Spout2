@@ -69,6 +69,8 @@
 //		24.11.21 - Add SelectSenderPanel for 2.006 compatibility
 //		17.12.21 - Add timing utility functions
 //		27.12.21 - Rebuild 32/64 bit /MD for update 2.007.006
+//		28.01.22 - Remove <d3d9.h> from SpoutLibrary.h (Issue #77)
+//		24.02.22 - Rebuild 32/64 bit /MD Version 2.007.007
 //
 /*
 		Copyright (c) 2016-2022, Lynn Jarvis. All rights reserved.
