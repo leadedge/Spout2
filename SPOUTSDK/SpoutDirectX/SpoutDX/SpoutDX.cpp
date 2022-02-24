@@ -115,7 +115,7 @@
 //
 // ====================================================================================
 /*
-	Copyright (c) 2014-2021, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -629,21 +629,14 @@ long spoutDX::GetFrame()
 // Function: SetReceiverName
 // Specify sender for connection
 //
-//   - If a name is specified, the receiver will not connect to any other unless the user selects one.
-//   - If that sender closes, the receiver will wait for the nominated sender to open.
-//   - If no name is specified, the receiver will connect to the active sender.
-//
+//   The application will not connect to any other unless the user selects one
+//   If that sender closes, the application will wait for the nominated sender to open 
+//   If no name is specified, the receiver will connect to the active sender
 void spoutDX::SetReceiverName(const char * SenderName)
 {
 	if (SenderName && SenderName[0]) {
-		// Connect to the specified sender
 		strcpy_s(m_SenderNameSetup, 256, SenderName);
 		strcpy_s(m_SenderName, 256, SenderName);
-	}
-	else {
-		// Connect to the active sender
-		m_SenderNameSetup[0] = 0;
-		m_SenderName[0] = 0;
 	}
 }
 

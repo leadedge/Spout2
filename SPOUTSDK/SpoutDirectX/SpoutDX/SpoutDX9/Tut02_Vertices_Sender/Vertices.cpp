@@ -216,7 +216,10 @@ VOID Cleanup()
 VOID Render()
 {
     // Clear the backbuffer to black
-    g_pd3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB( 0, 0, 0 ), 1.0f, 0 );
+    // LJ DEBUG 
+	g_pd3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB( 0, 0, 0 ), 1.0f, 0 );
+	// D3DFMT_A8R8G8B8
+	// g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_RGBA(0, 0, 0, 0xff), 1.0f, 0);
 
 	// Use the sender's texture for rendering
 	if (g_pTexture) {

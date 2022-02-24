@@ -736,16 +736,8 @@ void Render()
     //
     // Present our back buffer to our front buffer
     //
-    g_pSwapChain->Present( 0, 0 );
+	// g_pSwapChain->Present( 0, 0 );
+	g_pSwapChain->Present(1, 0); // Cap at monitor refresh rate
 
-	//
-	// SPOUT - fps control
-	//
-	// Hold a target frame rate - e.g. 60 or 30fps
-	// This is not necessary if the application already has
-	// fps control but in this example rendering is done
-	// during idle time and render rate can be extremely high.
-	// If frame count is enabled, receivers will detect the sender fps
-	frame .HoldFps(60);
 
 }

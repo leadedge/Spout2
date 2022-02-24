@@ -121,8 +121,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	//
 
 	// Optionally enable logging to catch Spout warnings and errors
-	OpenSpoutConsole(); // Console only for debugging
-	// EnableSpoutLog(); // Log to console
+	// OpenSpoutConsole(); // Console only for debugging
+	EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("Tutorial04.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
@@ -660,9 +660,15 @@ void CleanupDevice()
     if( g_pSwapChain1 ) g_pSwapChain1->Release();
     if( g_pSwapChain ) g_pSwapChain->Release();
     if( g_pImmediateContext1 ) g_pImmediateContext1->Release();
-    if( g_pImmediateContext ) g_pImmediateContext->Release();
-    if( g_pd3dDevice1 ) g_pd3dDevice1->Release();
-    if( g_pd3dDevice ) g_pd3dDevice->Release();
+	if (g_pd3dDevice1) g_pd3dDevice1->Release();
+
+	// SPOUT
+	// If the device and context have been created in SpoutDX
+	// do not release them here
+	if (!sender.IsClassDevice()) {
+		if (g_pImmediateContext) g_pImmediateContext->Release();
+		if (g_pd3dDevice) g_pd3dDevice->Release();
+	}
 
 }
 
@@ -670,6 +676,7 @@ void CleanupDevice()
 // Re-initialize for size changes
 void ResetDevice()
 {
+	// LJ DEBUG
 	// Release everything
 	sender.ReleaseSender();
 	sender.CloseDirectX11();
@@ -678,6 +685,7 @@ void ResetDevice()
 	InitDevice();
 	// SpoutDX will now use the new device
 	sender.OpenDirectX11(g_pd3dDevice);
+
 }
 
 
@@ -799,17 +807,19 @@ void Render()
 	// Send the swap chain's back buffer.
 	// A single render target view is assumed.
 	// Sending functions handle sender creation and resizing.
-	// sender.SendBackBuffer();
+	sender.SendBackBuffer();
 
+	/*
 	// Option 2
 	// Send a texture.
-	// In this example, we get the back buffer but the texture can be independent.
+	// In this example, we get the back buffer but the texture can also be independent.
 	ID3D11Texture2D* pBackBuffer = nullptr;
 	HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer));
 	if (SUCCEEDED(hr)) {
 		sender.SendTexture(pBackBuffer);
 	}
-	
+	*/
+
     //
     // Present our back buffer to our front buffer
 	//
@@ -817,8 +827,8 @@ void Render()
 	//
 	// Here the frame rate can be extremely high.
 	// To avoid exessive processing, hold a target frame rate
-	// using a different sync interval for the Present method
-	// to synchronize with vertical blank, typically 60 fps.
+	// using a sync interval for the Present method to 
+	// synchronize with vertical blank, typically 60 fps.
     // g_pSwapChain->Present( 0, 0 );
 	g_pSwapChain->Present(1, 0);
 
@@ -928,7 +938,16 @@ void SelectAdapter()
 				currentadapter = selectedadapter;
 			}
 			// Reset everything to create a new device with the selected adapter
-			ResetDevice();
+			// LJ DEBUG ResetDevice();
+
+			// Release everything
+			sender.ReleaseSender();
+			sender.CloseDirectX11();
+			CleanupDevice();
+			// Create device and objects
+			InitDevice();
+			// SpoutDX will now use the new device
+			sender.OpenDirectX11(g_pd3dDevice);
 		}
 	}
 }

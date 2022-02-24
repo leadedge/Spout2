@@ -4,7 +4,7 @@
 		Based on the FboBasic example
 		Search on SPOUT for details.
 
-		2021 Lynn Jarvis https://spout.zeal.co/
+		2021-2022 Lynn Jarvis https://spout.zeal.co/
 
 		Revised 18.11.21
 
