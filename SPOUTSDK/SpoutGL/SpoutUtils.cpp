@@ -82,7 +82,7 @@
 		20.12.21 - Change from string to to char array for last log
 				   Update Version to "2.007.006"
 		29.01.21 - Change return logic of RemovePathFromRegistry
-
+		24.02.22 - Update Version to "2.007.007"
 */
 #include "SpoutUtils.h"
 
