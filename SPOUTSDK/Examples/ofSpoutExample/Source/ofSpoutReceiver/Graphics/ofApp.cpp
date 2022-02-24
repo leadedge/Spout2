@@ -4,7 +4,7 @@
 
     Visual Studio using the Spout SDK
 
-	Copyright (C) 2021 Lynn Jarvis.
+	Copyright (C) 2015-2022 Lynn Jarvis.
 
 	Spout 2.007
 	OpenFrameworks 10
@@ -63,7 +63,13 @@ void ofApp::setup(){
 	// it can also be RGBA, BGRA or BGR
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
 
-	
+	// If Wait For Vertical Sync is applied by the driver, 
+	// Performance can be improved if disabled here.
+	ofSetVerticalSync(false);
+
+	// Limit frame rate using timing instead
+	ofSetFrameRate(60);
+
 } // end setup
 
 
@@ -107,7 +113,7 @@ void ofApp::draw() {
 	// Specify RGB for this example. Default is RGBA.
 	/*
 	if (receiver.ReceiveImage(myImage.getPixels().getData(), GL_RGB)) {
-		// ofImage update is necessary because the pixels have been changed externally
+		// ofImage update is necessary because the pixels have been changed
 		myImage.update();
 		myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
@@ -115,7 +121,7 @@ void ofApp::draw() {
 	
 	/*
 	// Option 3 : Receive an OpenGL shared texture to access directly
-	// Only if compatible for GL/DX interop, or BindSharedTexture fails
+	// Only if compatible for GL/DX interop or else BindSharedTexture fails
 	if(receiver.ReceiveTexture()) {
 		// Bind to get access to the shared texture
 		if (receiver.BindSharedTexture()) {
