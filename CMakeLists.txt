@@ -7,7 +7,7 @@
 # 29/12/20 - Specify Spout Version 2.007                                       #
 # 31/12/20 - Add /MT build option                                              #
 #          - Add DirectX library build option                                  #
-# 28/04/20 - /MT build option default OFF
+# 06/11/22 - Add Install option by Joakim Kilby                                #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -28,7 +28,7 @@ if(NOT WIN32)
   return()
 endif()
 
-OPTION(SPOUT_BUILD_CMT "For Visual Studio - build /MT to link runtime libraries" OFF)
+OPTION(SPOUT_BUILD_CMT "For Visual Studio - build /MT to link runtime libraries" ON)
 if(SPOUT_BUILD_CMT)
 	# https://gitlab.kitware.com/cmake/cmake/-/issues/18390
 	if(MSVC)
@@ -56,4 +56,105 @@ if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
 add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX)
 endif()
 
+# Install option check boxes
+OPTION(SKIP_INSTALL_ALL "Install headers and libraries" ON) # LJ - default skip all install
+OPTION(SKIP_INSTALL_HEADERS "Install headers" OFF)
+OPTION(SKIP_INSTALL_LIBRARIES "Install libraries" OFF)
+
+include(GNUInstallDirs)
+
+# Install default output folder
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+	set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/INSTALL CACHE PATH "..." FORCE)
+endif()
+
+# Install options
+if(NOT SKIP_INSTALL_ALL)
+
+	if(NOT SKIP_INSTALL_LIBRARIES) # LJ
+
+		set(Spout2InstallTargets Spout Spout_static)
+
+		if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
+			list(APPEND Spout2InstallTargets SpoutDX)
+		endif()
+
+		if(SPOUT_BUILD_LIBRARY)
+			list(APPEND Spout2InstallTargets SpoutLibrary)
+		endif()
+
+		install(
+			TARGETS
+				${Spout2InstallTargets}
+			EXPORT
+				spout2-targets
+			LIBRARY
+				DESTINATION ${CMAKE_INSTALL_LIBDIR}
+			ARCHIVE
+				DESTINATION ${CMAKE_INSTALL_LIBDIR}
+			RUNTIME
+				DESTINATION ${CMAKE_INSTALL_BINDIR}
+			INCLUDES
+				DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+		)
+
+		install(
+			EXPORT
+				spout2-targets
+			DESTINATION
+				${CMAKE_INSTALL_LIBDIR}/cmake/spout2
+			NAMESPACE
+				Spout2::
+		)
+
+		install(
+			FILES
+				${CMAKE_CURRENT_SOURCE_DIR}/spout2-config.cmake
+			DESTINATION
+				${CMAKE_INSTALL_LIBDIR}/cmake/spout2
+		)
+		
+	endif()
+
+
+	if(NOT SKIP_INSTALL_HEADERS)# LJ
+		install(
+			FILES
+				SPOUTSDK/SpoutGL/Spout.h
+				SPOUTSDK/SpoutGL/SpoutCommon.h
+				SPOUTSDK/SpoutGL/SpoutCopy.h
+				SPOUTSDK/SpoutGL/SpoutDirectX.h
+				SPOUTSDK/SpoutGL/SpoutFrameCount.h
+				SPOUTSDK/SpoutGL/SpoutGL.h
+				SPOUTSDK/SpoutGL/SpoutGLextensions.h
+				SPOUTSDK/SpoutGL/SpoutReceiver.h
+				SPOUTSDK/SpoutGL/SpoutSender.h
+				SPOUTSDK/SpoutGL/SpoutSenderNames.h
+				SPOUTSDK/SpoutGL/SpoutSharedMemory.h
+				SPOUTSDK/SpoutGL/SpoutUtils.h
+			DESTINATION
+				${CMAKE_INSTALL_PREFIX}/include/SpoutGL
+		)
+
+		if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
+			install(
+				FILES
+					SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX.h
+				DESTINATION
+					${CMAKE_INSTALL_PREFIX}/include/SpoutDX
+			)
+		endif()	
+
+		if(SPOUT_BUILD_LIBRARY)
+			install(
+				FILES
+					SPOUTSDK/SpoutLibrary/SpoutLibrary.h
+				DESTINATION
+					${CMAKE_INSTALL_PREFIX}/include/SpoutLibrary
+			)
+		endif()
+
+	endif()
+
+endif()
 

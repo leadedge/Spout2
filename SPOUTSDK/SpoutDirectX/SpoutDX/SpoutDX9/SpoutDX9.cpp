@@ -13,6 +13,7 @@
 //		01.03.21	- Vertices sener and receiver completed
 //		07.03.21	- Change HoldFps to allow numerator and denominator
 //		11.06.21	- Add documentation
+//		27.10.21	- ReceiveSenderData - use LongToHandle before cast
 //
 // ====================================================================================
 /*
@@ -918,8 +919,8 @@ bool spoutDX9::ReceiveSenderData()
 
 		width = info.width;
 		height = info.height;
-		// dxShareHandle = (HANDLE)(LongToHandle((long)info.shareHandle));
-		dxShareHandle = (HANDLE)info.shareHandle;
+		// For 64 bit
+		dxShareHandle = (HANDLE)(LongToHandle((long)info.shareHandle));
 		dwFormat = info.format;
 		// printf("Found sender (%dx%d) format = %d, handle = 0x%.7X\n", width, height, dwFormat, PtrToUint(dxShareHandle) );
 

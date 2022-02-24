@@ -44,11 +44,17 @@
 //					  set the new frame flag m_bIsNewFrame true.
 //					- Set default new frame true in GetNewFrame(),
 //					  false only if the frame number equals the last.
+//		25.10.21	- HoldFps change from int to double.
+//					  Use monitor refresh rate if no argument is specified.
+//		13.11.21	- Revise UpdateSenderFps
+//					  Zero frame counter variables on reset and init
+//		25.01.22	- Clean up logs in CreateAccessMutex and EnableFrameCount
+//		21.02.22	- Change "_uuidof" to "__uuidof" in CheckKeyedAccess. PR#81
 //
 // ====================================================================================
 //
 /*
-	Copyright (c) 2019-2021. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2019-2022. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -89,15 +95,17 @@ spoutFrameCount::spoutFrameCount()
 	m_hSyncEvent = NULL;
 	m_SenderName[0] = 0;
 	m_CountSemaphoreName[0] = 0;
+	
 	m_FrameCount = 0L;
 	m_LastFrameCount = 0L;
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
 	m_lastFrame = 0.0;
 	m_FrameStart = 0.0;
-	m_bIsNewFrame = true; // Default true for apps without frame count
 	m_SenderFps = GetRefreshRate(); // Default sender fps is system refresh rate
-	m_millisForFrame = 0.0;
+	m_millisForFrame = 1000.0 / m_SenderFps;
+
+	m_bIsNewFrame = true; // Default true for apps without frame count
 
 	// Check the registry setting for frame counting between sender and receiver
 	m_bFrameCount = false; // default not set
@@ -123,7 +131,6 @@ spoutFrameCount::spoutFrameCount()
 	// Reset the counts
 	*m_FrameStartPtr = *m_FrameEndPtr = std::chrono::steady_clock::now();
 	*m_FpsStartPtr = *m_FpsEndPtr = std::chrono::steady_clock::now();
-
 #else
 	// Initialize PC msec frequency counter
 	PCFreq = 0.0;
@@ -221,8 +228,8 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	m_LastFrameCount = 0L;
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
-	m_SenderFps = GetRefreshRate();
-	m_millisForFrame = 0.0;
+	m_SenderFps = GetRefreshRate(); // Default sender fps is system refresh rate
+	m_millisForFrame = 1000.0 / m_SenderFps;
 
 	// Reset timers
 #ifdef USE_CHRONO
@@ -237,25 +244,21 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 #endif
 
 	// Return if already enabled for this sender
-	if (m_hCountSemaphore && strcmp(SenderName, m_SenderName) == 0) {
-		SpoutLogNotice("SpoutFrameCount::EnableFrameCount already enabled [%s]", SenderName);
+	// The sender name can be the same if the adapter has changed
+	if (m_hCountSemaphore) {
+		SpoutLogNotice("SpoutFrameCount::EnableFrameCount (%s) frame count semaphore already enabled [0x%.7X] ", SenderName, m_hCountSemaphore);
 		return;
 	}
 
-	SpoutLogNotice("SpoutFrameCount::EnableFrameCount : sender name [%s]", SenderName);
-
-	// Close any existing semaphore
-	if (m_hCountSemaphore) {
-		CloseHandle(m_hCountSemaphore);
-		m_hCountSemaphore = NULL;
-		m_CountSemaphoreName[0] = 0;
-	}
+	// Frame count semaphore (m_hCountSemaphore) has not been created yet
 
 	// Set the new name for subsequent checks
 	strcpy_s(m_SenderName, 256, SenderName);
 
-	// Create or open a semaphore with this sender name
+	// Create a name for the frame count semaphore using the sender name
 	sprintf_s(m_CountSemaphoreName, 256, "%s_Count_Semaphore", SenderName);
+
+	// Create or open a named frame count semaphore with this name
 	HANDLE hSemaphore = CreateSemaphoreA(
 		NULL, // default security attributes
 		1, // initial count
@@ -268,17 +271,22 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 		return;
 	}
 	if (dwError == ERROR_ALREADY_EXISTS) {
-		SpoutLogNotice("    Semaphore already exists");
-		// OK if it already exists - the sender or receiver can create it
+		SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] exists", m_CountSemaphoreName);
+		SpoutLogNotice("    Handle for access [0x%7.7X]", LOWORD(hSemaphore));
+		// OK if it already exists - either the sender or receiver can create it
 	}
+	else {
+		SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] created", m_CountSemaphoreName);
+		SpoutLogNotice("    Handle [0x%7.7X]", LOWORD(hSemaphore));
+	}
+
 	if (hSemaphore == NULL) {
 		SpoutLogError("    Unknown error");
 		return;
 	}
 
+	// Save the handle for access
 	m_hCountSemaphore = hSemaphore;
-
-	SpoutLogNotice("    Semaphore handle [0x%.7X]", LOWORD(m_hCountSemaphore) );
 
 }
 
@@ -425,6 +433,7 @@ bool spoutFrameCount::GetNewFrame()
 	m_LastFrameCount = framecount;
 
 	return true;
+
 }
 
 
@@ -452,8 +461,8 @@ void spoutFrameCount::CleanupFrameCount()
 	m_LastFrameCount = 0L;
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
-	m_SenderFps = GetRefreshRate();
-	m_millisForFrame = 0.0;
+	m_SenderFps = GetRefreshRate(); // Default sender fps is system refresh rate
+	m_millisForFrame = 1000.0 / m_SenderFps;
 
 }
 
@@ -496,41 +505,50 @@ long spoutFrameCount::GetSenderFrame()
 //    The sender will then signal a new frame at the target rate.
 //    Not necessary if the application already has frame rate control.
 //    Uses std::chrono if supported by the compiler VS2015 or greater.
+//    Typically, monitor refresh rate is required and the fps argument can be omitted.
+//
+// TODO : profile
+//
 void spoutFrameCount::HoldFps(int fps)
 {
-	// Return if incorrect fps entry
-	if (fps <= 0)
+	// Unlikely but return anyway
+	if (fps < 0)
 		return;
-	
-	double framerate = static_cast<double>(fps);
 
 #ifdef USE_CHRONO
 	// Initialize frame time at target rate
 	if (m_millisForFrame < 0.001) {
-		m_millisForFrame = 1000.0 / framerate; // msec per frame
+		// Frame time, in milliseconds, is derived from frames per second
+		// e.g. 60fps = 1000.0/60.0 = 16.667
+		// If fps is not specified, use the monitor refresh rate
+		if (fps > 0)
+			m_millisForFrame = 1000.0 / static_cast<double>(fps); // msec per frame
+		else
+			m_millisForFrame = 1000.0 / GetRefreshRate();
 		*m_FrameStartPtr = std::chrono::steady_clock::now();
-		SpoutLogNotice("spoutFrameCount::HoldFps(%.2f)", framerate);
+		SpoutLogNotice("spoutFrameCount::HoldFps(%d)", fps);
 	}
 	else {
 
 		// Time now end point
 		*m_FrameEndPtr = std::chrono::steady_clock::now();
 
-		// milliseconds elapsed
-		double elapsedTime = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(*m_FrameEndPtr - *m_FrameStartPtr).count() / 1000.);
-		
+		// Milliseconds elapsed
+		double elapsedTime = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(*m_FrameEndPtr - *m_FrameStartPtr).count());
+
 		// Sleep to reach the target frame time
-		if (elapsedTime < m_millisForFrame) {
-			std::this_thread::sleep_for(std::chrono::milliseconds((long)(m_millisForFrame - elapsedTime)));
-		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(m_millisForFrame - elapsedTime)));
 		
 		// Set start time for the next frame
-		*m_FrameStartPtr = *m_FrameEndPtr;
+		*m_FrameStartPtr = std::chrono::steady_clock::now();
 		
 	}
 #else
-	if (m_millisForFrame == 0) {
-		m_millisForFrame = 1000.0 / framerate;
+	if (m_millisForFrame < 0.001) {
+		if (fps > 0)
+			m_millisForFrame = 1000.0 / static_cast<double>(fps); // msec per frame
+		else
+			m_millisForFrame = 1000.0 / GetRefreshRate();
 		m_FrameStart = GetCounter();
 		SpoutLogNotice("spoutFrameCount::HoldFps(%d)", fps);
 	}
@@ -606,13 +624,16 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 		}
 		// Here we can find if the mutex already exists
 		else if (errnum == ERROR_ALREADY_EXISTS) {
-			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s] already exists", szMutexName);
+			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] exists", szMutexName);
+			SpoutLogNotice("    Handle for access [0x%.7X]", hMutex);
 		}
 		else {
-			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s] created - 0x%.7X", szMutexName, PtrToUint(hMutex) );
+			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] created ", szMutexName);
+			SpoutLogNotice("    Handle [0x%.7X]", hMutex);
 		}
 	}
 
+	// Save the handle for access
 	m_hAccessMutex = hMutex;
 
 	return true;
@@ -798,7 +819,7 @@ bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 		IDXGIKeyedMutex* pDXGIKeyedMutex = nullptr;
 
 		// Check the keyed mutex
-		pTexture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
+		pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex); // PR#81
 		if (pDXGIKeyedMutex) {
 			HRESULT hr = pDXGIKeyedMutex->AcquireSync(0, 67); // TODO - link with SPOUT_WAIT_TIMEOUT
 			switch (hr) {
@@ -868,31 +889,41 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 		// End time since last call
 		double thisFrame = GetCounter();
 		// Msecs between this frame and the last
-		double frametime = thisFrame-m_lastFrame;
+		double frametime = thisFrame - m_lastFrame;
 #endif
+
+		// Calculate frames per second (default fps is system refresh rate)
+		frametime = frametime / 1000.0; // frame time in seconds
+
 		// Accumulate totals
 		m_FrameTimeTotal = m_FrameTimeTotal + frametime;
+
 		// Could have been more than one frame
 		m_FrameTimeNumber += (double)framecount;
+
 		// Calculate the average frame time every 16 frames
 		if (m_FrameTimeNumber > 16) {
-			frametime = m_FrameTimeTotal / m_FrameTimeNumber;
-			m_FrameTimeTotal = 0.0;
-			m_FrameTimeNumber = 0.0;
 			// Calculate frames per second (default fps is system refresh rate)
-			frametime = frametime / 1000.0; // frame time in seconds
 			if (frametime > 0.0001) {
 				double fps = (1.0 / frametime); // Fps
 				m_SenderFps = 0.85*m_SenderFps + 0.15*fps; // damping
 			}
+			m_FrameTimeTotal = 0.0;
+			m_FrameTimeNumber = 0.0;
 		}
+
+// Set the start time for the next frame
 #ifdef USE_CHRONO
-		// Set the start time for the next frame
 		*m_FpsStartPtr = std::chrono::steady_clock::now();
 #else
-		// Set the start time for the next frame
 		m_lastFrame = thisFrame;
 #endif
+
+	}
+	else {
+		// If framecount is zero, the sender has not produced a new frame yet
+		*m_FpsStartPtr = std::chrono::steady_clock::now();
+		*m_FpsEndPtr = std::chrono::steady_clock::now();
 	}
 
 }

@@ -6,7 +6,7 @@
 	OpenFrameworks 11
 	Visual Studio 2017
 
-	Copyright (C) 2021 Lynn Jarvis.
+	Copyright (C) 2015-2022 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -41,6 +41,8 @@ void ofApp::setup(){
 	// Enable Spout logging to detect warnings and errors
 	// (Logging functions are in the "spoututils" namespace so they can be called directly.)
 	EnableSpoutLog(); // Output is to a console window.
+	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // For only warnings
+
 	//
 	// You can set the level above which the logs are shown
 	// SPOUT_LOG_SILENT  : SPOUT_LOG_VERBOSE : SPOUT_LOG_NOTICE (default)
@@ -109,7 +111,7 @@ void ofApp::setup(){
 	// bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
 	//
 	// Set a specific adapter from it's index :
-	// sender.SetAdapter(1); // Example - use the second in the list (0, 1, 2 etc.)
+	// sender.SetAdapter(1); // use the second in the list (0, 1, 2 etc.)
 
 	// Frame counting is enabled by default.
 	// Status can be queried with IsFrameCountEnabled();
@@ -145,6 +147,7 @@ void ofApp::setup(){
 	// Give the sender a name
 	// If no name is specified, the executable name is used.
 	sender.SetSenderName(sendername);
+
 	// Update caption in case of multiples of the same sender
 	ofSetWindowTitle(sender.GetName());
 
@@ -162,9 +165,6 @@ void ofApp::draw() {
 	// All sending functions check the sender name and dimensions
 	// and create or update the sender as necessary
 
-	// In this Openframeworks example, the fbo texture is already inverted
-	// so the invert option is false for all sending functions
-	
 	// For all sending functions other than SendFbo, include the ID of
 	// the active framebuffer if one is currently bound.
 
@@ -187,31 +187,30 @@ void ofApp::draw() {
 	rotX += 0.6;
 	rotY += 0.6;
 	
-	// Send fbo
+	// Option 1 : Send fbo
 	//   The fbo must be bound for read.
-	//   The invert option is false because the fbo is already flipped in y.
-	//   The fbo size can be different to the application window for a fixed sender size.
-	//   Disable the code in WindowResized() if you want this.
-	sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
+	//   The invert option is false because the texture attached
+	//   to the fbo is already flipped in y.
+	// sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
 
-	// Show the result sized to the application window
-	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
-
-	// Send the application window (default framebuffer).
-	// The window width and height must be used if myFbo size is different.
-	// sender.SendFbo(0, ofGetWidth(), ofGetHeight(), false);
-
-	// Send texture
+	// Option 2 : Send texture
 	// sender.SendTexture(myFbo.getTexture().getTextureData().textureID,
 		// myFbo.getTexture().getTextureData().textureTarget,
 		// senderwidth, senderheight, false);
 
-	// Send image pixels
+	// Option 3 : Send image pixels
 	// myFbo.readToPixels(myPixels); // readToPixels is slow - but this is just an example
 	// sender.SendImage(myPixels.getData(),senderwidth, senderheight, GL_RGBA, false);
+
+	// Show the result sized to the application window
+	myFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
+
+	// Option 4 : Send default framebuffer
+	// The invert option is default true in this case
+	sender.SendFbo(0, senderwidth, senderheight);
 
 	// Show what it is sending
 	ofSetColor(255);

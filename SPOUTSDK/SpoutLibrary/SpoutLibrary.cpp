@@ -66,13 +66,14 @@
 //				   conflict with other libraries and applications.
 //		25.07.21   Re-build 32/64 bit - VS2017 / Multi-threaded DLL (/MD)
 //		24.10.21 - Rebuild with updated SpoutGL files 32/64 bit /MD
-//		06.02.22 - Rebuild with updated SpoutGL files from Master branch
-//				   32/64 bit /MD to resolve linking problem
-//				   (https://spout.discourse.group/t/gl-dx-linking-error/361)
+//		24.11.21 - Add SelectSenderPanel for 2.006 compatibility
+//		17.12.21 - Add timing utility functions
+//		27.12.21 - Rebuild 32/64 bit /MD for update 2.007.006
+//		28.01.22 - Remove <d3d9.h> from SpoutLibrary.h (Issue #77)
+//		24.02.22 - Rebuild 32/64 bit /MD Version 2.007.007
 //
-
 /*
-		Copyright (c) 2016-2021, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2022, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -99,7 +100,8 @@
 #include "SpoutLibrary.h"
 #include "..\SpoutGL\Spout.h"
 
-using namespace spoututils;
+#include <d3d11.h>
+#pragma comment (lib, "d3d11.lib")// the Direct3D 11 Library file
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -573,6 +575,10 @@ private: // Spout SDK functions
 	// Disable logging to console and file
 	void DisableSpoutLog();
 
+	// Function: FreeSpoutLog
+	// Clear log strings
+	void FreeSpoutLogs();
+
 	// Function: SetSpoutLogLevel
 	// Set the current log level
 	void SetSpoutLogLevel(LibLogLevel level);
@@ -647,6 +653,18 @@ private: // Spout SDK functions
 	// Find subkey
 	bool FindSubKey(HKEY hKey, const char *subkey);
 
+	//
+	// Group: Timing utilities
+	//
+
+	// Function: StartTiming
+	// Start timing interval
+	void StartTiming();
+
+	// Function: EndTiming
+	// Return timing interval
+	double EndTiming();
+	
 	//
 	// Group: OpenGL shared texture
 	//
@@ -725,6 +743,7 @@ private: // Spout SDK functions
 	// Function: SetMaxSenders
 	// Set user Maximum senders allowed
 	void SetMaxSenders(int maxSenders);
+
 	
 	//
 	// Group: 2.006 compatibility
@@ -782,6 +801,11 @@ private: // Spout SDK functions
 	// Set user share mode
 	//  0 - texture, 1 - memory, 2 - CPU
 	void SetShareMode(int mode);
+
+	// Function: SelectSender
+	// Open sender selection dialog
+	//  2.006 compatibility only. Use SelectSender()
+	void SelectSenderPanel();
 
 	//
 	// Group: Information
@@ -868,6 +892,27 @@ private: // Spout SDK functions
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0);
+
+
+	//
+	// Group: DirectX utilities
+	//
+
+	bool OpenDirectX();
+	void CloseDirectX();
+	
+	// Function: OpenDirectX11
+	// Initialize and prepare DirectX 11
+	bool OpenDirectX11(void * pDevice = nullptr);
+	void CloseDirectX11();
+
+	// Function: GetDX11Device
+	// Return the class device
+	void * GetDX11Device();
+
+	// Function: GetDX11Context
+	// Return the class context
+	void * GetDX11Context();
 
 	//
 	// Group: Class release
@@ -1119,12 +1164,12 @@ int SPOUTImpl::GetMemoryBufferSize(const char *name)
 
 void SPOUTImpl::OpenSpoutConsole()
 {
-	spoututils::OpenSpoutConsole();
+	OpenSpoutConsole();
 }
 
 void SPOUTImpl::CloseSpoutConsole(bool bWarning)
 {
-	spoututils::CloseSpoutConsole(bWarning);
+	CloseSpoutConsole(bWarning);
 }
 
 void SPOUTImpl::EnableSpoutLog()
@@ -1250,6 +1295,16 @@ bool SPOUTImpl::RemoveSubKey(HKEY hKey, const char *subkey)
 bool SPOUTImpl::FindSubKey(HKEY hKey, const char *subkey)
 {
 	return spoututils::FindSubKey(hKey, subkey);
+}
+
+void SPOUTImpl::StartTiming()
+{
+	spoututils::StartTiming();
+}
+
+double SPOUTImpl::EndTiming()
+{
+	return spoututils::EndTiming();
 }
 
 bool SPOUTImpl::IsInitialized()
@@ -1407,6 +1462,12 @@ void SPOUTImpl::SetShareMode(int mode)
 	spout->SetShareMode(mode);
 }
 
+void SPOUTImpl::SelectSenderPanel()
+{
+	spout->SelectSender();
+}
+
+
 //
 // Information
 //
@@ -1504,15 +1565,49 @@ bool SPOUTImpl::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 }
 
 //
+// DirectX utilities
+//
+
+bool SPOUTImpl::OpenDirectX()
+{
+	return spout->OpenDirectX();
+}
+
+void SPOUTImpl::CloseDirectX()
+{
+	spout->CloseDirectX();
+}
+
+bool SPOUTImpl::OpenDirectX11(void * pDevice)
+{
+	return spout->OpenDirectX11(reinterpret_cast<ID3D11Device*>(pDevice));
+}
+
+void SPOUTImpl::CloseDirectX11()
+{
+	spout->spoutdx.CloseDirectX11();
+}
+
+void * SPOUTImpl::GetDX11Device()
+{
+	return reinterpret_cast<void*>(spout->GetDX11Device());
+}
+
+void * SPOUTImpl::GetDX11Context()
+{
+	return reinterpret_cast<void *>(spout->GetDX11Device());
+}
+
+
+//
 // Class function
 //
 
 void SPOUTImpl::Release()
 {
-	// Delete Spout object
+	// Delete the spout object instance
 	delete(spout);
 	spout = nullptr;
-
 	// Delete this class instance
 	delete this;
 }
@@ -1540,7 +1635,7 @@ extern "C" SPOUTAPI SPOUTHANDLE APIENTRY GetSpout()
 	// The Spout class implementation
 	SPOUTImpl * pSpout = new SPOUTImpl;
 
-	// Create a new spout sender pointer for this class
+	// Create a new spout pointer for this class
 	pSpout->spout = new Spout;
 
 	return pSpout;

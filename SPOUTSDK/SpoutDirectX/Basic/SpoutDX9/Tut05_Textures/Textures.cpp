@@ -526,6 +526,7 @@ VOID Render()
 
     // Present the backbuffer contents to the display
     g_pd3dDevice->Present( NULL, NULL, NULL, NULL );
+
 }
 
 
@@ -649,8 +650,9 @@ INT WINAPI wWinMain( HINSTANCE hInst, HINSTANCE, LPWSTR, INT )
                     TranslateMessage( &msg );
                     DispatchMessage( &msg );
                 }
-                else
-                    Render();
+				else {
+					Render();
+				}
             }
         }
     }

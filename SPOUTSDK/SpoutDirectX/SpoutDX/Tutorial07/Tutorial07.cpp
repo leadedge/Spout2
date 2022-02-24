@@ -142,7 +142,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	//
 
 	// OpenSpoutConsole(); // Console only for debugging
-	// EnableSpoutLog(); // Enable Spout logging to console
+	EnableSpoutLog(); // Enable Spout logging to console
 	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
@@ -337,7 +337,6 @@ HRESULT InitDevice()
     UINT width  = rc.right - rc.left;
     UINT height = rc.bottom - rc.top;
 
-	// LJ DEBUG
 	//
 	// SPOUT
 	//
@@ -411,7 +410,6 @@ HRESULT InitDevice()
 		return FALSE;
 	// ===============================================================
 	*/
-
 
     // Obtain DXGI factory from device (since we used nullptr for pAdapter above)
     IDXGIFactory1* dxgiFactory = nullptr;
@@ -770,9 +768,16 @@ void CleanupDevice()
     if( g_pSwapChain1 ) g_pSwapChain1->Release();
     if( g_pSwapChain ) g_pSwapChain->Release();
     if( g_pImmediateContext1 ) g_pImmediateContext1->Release();
-    if( g_pImmediateContext ) g_pImmediateContext->Release();
-    if( g_pd3dDevice1 ) g_pd3dDevice1->Release();
-    if( g_pd3dDevice ) g_pd3dDevice->Release();
+	if (g_pd3dDevice1) g_pd3dDevice1->Release();
+
+	// SPOUT
+	// If the device and context have been created in SpoutDX
+	// do not release them here
+	if (!receiver.IsClassDevice()) {
+		if (g_pImmediateContext) g_pImmediateContext->Release();
+		if (g_pd3dDevice) g_pd3dDevice->Release();
+	}
+
 
 }
 
@@ -1089,8 +1094,8 @@ void Render()
 	//
 	// Here the frame rate can be extremely high.
 	// To avoid exessive processing, hold a target frame rate
-	// using a different sync interval for the Present method
-	// to synchronize with vertical blank, typically 60 fps.
+	// using sync interval for the Present method to synchronize
+	// with vertical blank, typically 60 fps.
 	// g_pSwapChain->Present( 0, 0 );
 	g_pSwapChain->Present(1, 0);
 
@@ -1217,7 +1222,8 @@ INT_PTR  CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 				receiver.SetActiveSender(sendername);
 				// Reset the receiving name
 				// A new sender is detected on the first ReceiveTexture call
-				receiver.SetReceiverName();
+				// LJ DEBUG
+				// receiver.SetReceiverName();
 			}
 			EndDialog(hDlg, 1);
 			break;

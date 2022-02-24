@@ -17,7 +17,7 @@
 	Compare with a more extensive example sending video frames.
     Compare also with the DirectX 11 Tutorial04 sender example using SendTexture.
 
-                 Copyright(C) 2021 Lynn Jarvis.
+                 Copyright(C) 2020-2022 Lynn Jarvis.
 
     This program is free software : you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -185,7 +185,7 @@ void Render()
 	// This is not necessary if the application already has
 	// fps control. But in this example rendering is done
 	// during idle time and render rate can be extremely high.
-	sender.HoldFps(30);
+	sender.HoldFps(60);
 
 }
 
