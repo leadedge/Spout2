@@ -106,6 +106,7 @@
 //					  Clean up DebugLog function
 //		25.01.22	- Correct log notice in ReleaseDX11Texture to show texture instead of device
 //					  Move adapter pointer release from release device to destructor
+//		16.03.22	- Remove unused OutputDebugString from ReleaseDX11Device
 //
 // ====================================================================================
 /*
@@ -1096,7 +1097,7 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 	// See CreateDX11device.
 /*
 #ifdef _DEBUG
-	OutputDebugStringA(tmp);
+	// OutputDebugStringA(tmp);
 	ID3D11Debug* DebugDevice = nullptr;
 	if (m_pd3dDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&DebugDevice) == S_OK) {
 		DebugDevice->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
@@ -1212,6 +1213,7 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 	}
 #endif
 */
+
 
 
 }
