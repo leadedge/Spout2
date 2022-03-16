@@ -87,7 +87,8 @@
 //					  Clean up logs in LoadGLextensions
 //		21.02.22	- Restore glBufferData method for in UnloadTexturePixels
 //					  Pending implementation of glFencSync for glMapBufferRange method
-//
+//		16.03.22	- Use m_hInteropObject in LinkGLDXtextures so that CleanupInterp releases the imterop object
+//					- Allow for success test in GLDXReady();
 // ====================================================================================
 /*
 	Copyright (c) 2021-2022, Lynn Jarvis. All rights reserved.
@@ -745,6 +746,14 @@ bool spoutGL::GLDXready()
 	// m_bTextureShare = false;
 	// m_bCPUshare = true;
 	// return false;
+
+	// === Simulate success to skip test for debugging ===
+	// SpoutLogNotice("spoutGL::GLDXready - simulated compatibility success");
+	// m_bUseGLDX = true;
+	// m_bTextureShare = true;
+	// m_bCPUshare = false;
+	// return true;
+
 	
 	// Return if the test has already been done
 	if (m_bGLDXdone) {
@@ -762,7 +771,7 @@ bool spoutGL::GLDXready()
 	//
 	ID3D11Texture2D* pTexture = nullptr; // the DX11 texture for the test link
 	HANDLE dxShareHandle = nullptr; // Shared texture handle
-	HANDLE hInteropObject = nullptr; // handle to the DX/GL interop object
+	// HANDLE hInteropObject = nullptr; // handle to the DX/GL interop object
 	GLuint glTexture = 0; // the OpenGL texture linked to the shared DX texture
 
 	SpoutLogNotice("spoutGL::GLDXready - testing for GL/DX interop compatibility");
@@ -799,12 +808,13 @@ bool spoutGL::GLDXready()
 		SpoutLogError("spoutGL::GLDXready - CreateSharedDX11Texture failed");
 		return false;
 	}
-	
+
 	SpoutLogNotice("    Linking test - OpenGL texture (0x%.7X) DX11 texture (0x%.7X)", glTexture, PtrToUint(pTexture));
 
 	// Link the shared DirectX texture to the OpenGL texture
-	hInteropObject = LinkGLDXtextures(spoutdx.GetDX11Device(), pTexture, glTexture);
-	if (!hInteropObject) {
+	// USe the global m_hInteropObject so that CleanupInterop works
+	m_hInteropObject = LinkGLDXtextures(spoutdx.GetDX11Device(), pTexture, glTexture);
+	if (!m_hInteropObject) {
 		spoutdx.ReleaseDX11Texture(spoutdx.GetDX11Device(), pTexture);
 		glDeleteTextures(1, &glTexture);
 		glTexture = 0;
@@ -1251,15 +1261,22 @@ bool spoutGL::CleanupInterop()
 
 	// These things need an opengl context so check
 	if (wglGetCurrentContext()) {
-		SpoutLogNotice("spoutGL::CleanupInterop");
+		SpoutLogNotice("spoutGL::CleanupInterop - interop device = 0x%7.7X, interop object = 0x%7.7X", PtrToUint(m_hInteropDevice), PtrToUint(m_hInteropObject));
 		if (m_hInteropDevice && m_hInteropObject) {
+			SpoutLogNotice("    wglDXUnregisterObjectNV");
 			if (!wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject)) {
 				SpoutLogWarning("spoutGL::CleanupInterop - could not un-register interop");
 			}
 			m_hInteropObject = nullptr;
 		}
-
+		else {
+			if (!m_hInteropDevice)
+				SpoutLogWarning("spoutGL::CleanupInterop - null interop device");
+			if (!m_hInteropObject)
+				SpoutLogWarning("spoutGL::CleanupInterop - null interop object");
+		}
 		if (m_hInteropDevice) {
+			SpoutLogNotice("    wglDXCloseDeviceNV");
 			if (!wglDXCloseDeviceNV(m_hInteropDevice)) {
 				SpoutLogWarning("spoutGL::CleanupInterop - could not close interop");
 			}
@@ -2178,7 +2195,7 @@ int spoutGL::ReadMemoryBuffer(const char* name, char* data, int maxlength)
 //    Create a memory map and retain the handle.
 //    This function should be called before any buffer write
 //    if the length of the data to send will vary.
-//    The map is closed when the sender is released.
+//    The map is closed when the sender is released (see Spout.cpp ReleaseReceiver).
 bool spoutGL::CreateMemoryBuffer(const char *name, int length)
 {
 	// Quit if 2.006 memoryshare mode
@@ -2258,15 +2275,18 @@ bool spoutGL::DeleteMemoryBuffer()
 //
 int spoutGL::GetMemoryBufferSize(const char *name)
 {
-	// A writer has created the map and recorded the data length in the first 16 bytes.
+	// A writer has created the map (Create) and set the map size.
+	// The data length is recorded in the first 16 bytes.
 	// Another 16 bytes is added to allow for a terminating NULL. (See CreateMemoryBuffer)
 	// The remaining length is the number of bytes available for data transfer.
 	if (memoryshare.Size() > 32) {
 		return memoryshare.Size()-32;
 	}
 
-	// A reader must read the map to get the size
-	// Open a shared memory map for the buffer if it not already
+	// A reader must read the map to get the size.
+	// The size is not set in the SpoutSharedMemory class.
+	// Open a shared memory map for the buffer if it not already.
+	// (after a map is opened, the name is saved in the SpoutSharedMemory class).
 	if (!memoryshare.Name()) {
 		// Create a name for the map
 		std::string namestring = name;
@@ -2279,6 +2299,7 @@ int spoutGL::GetMemoryBufferSize(const char *name)
 		SpoutLogNotice("spoutGL::GetMemoryBufferSize - opened sender memory map [%s]", memoryshare.Name());
 	}
 
+	// The map is open and a name for it has been recorded
 	char* pBuffer = memoryshare.Lock();
 	if (!pBuffer) {
 		SpoutLogError("spoutGL::GetMemoryBufferSize - no buffer lock");
