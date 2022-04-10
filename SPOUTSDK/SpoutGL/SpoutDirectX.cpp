@@ -107,6 +107,9 @@
 //		25.01.22	- Correct log notice in ReleaseDX11Texture to show texture instead of device
 //					  Move adapter pointer release from release device to destructor
 //		16.03.22	- Remove unused OutputDebugString from ReleaseDX11Device
+// 		29.03.22	- CreateDX11Texture, CreateSharedDX11Texture, CreateDX11StagingTexture
+//					  Switch on HRESULT instead of LOWORD so that DXGI cases are recognised 
+//		07.04.22	- CreateDX11Texture - cast to int the LOWORD from hresult for error report
 //
 // ====================================================================================
 /*
@@ -480,7 +483,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 		char tmp[256];
 		// TODO : check for compiler warning with "l" prefix
 		sprintf_s(tmp, 256, "spoutDirectX::CreateSharedDX11Texture ERROR - [0x%.X] : ", LOWORD(res) );
-		switch (LOWORD(res) ) {
+		switch (res) {
 			case DXGI_ERROR_INVALID_CALL:
 				strcat_s(tmp, 256, "DXGI_ERROR_INVALID_CALL");
 				break;
@@ -570,8 +573,9 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 
 	if (FAILED(res)) {
 		char tmp[256];
-		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11Texture ERROR - %d (0x%.X) : ", LOWORD(res), LOWORD(res));
-		switch (LOWORD(res)) {
+		int error = int(LOWORD(res));
+		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11Texture ERROR - %d (0x%.X) : ", error, error);
+		switch (res) {
 		case DXGI_ERROR_INVALID_CALL:
 			strcat_s(tmp, 256, "DXGI_ERROR_INVALID_CALL");
 			break;
@@ -626,7 +630,7 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
 		char tmp[256];
 		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11StagingTexture ERROR : [0x%.X] : ", LOWORD(res) );
-		switch (LOWORD(res) ) {
+		switch (res) {
 		case DXGI_ERROR_INVALID_CALL:
 			strcat_s(tmp, 256, "DXGI_ERROR_INVALID_CALL");
 			break;
