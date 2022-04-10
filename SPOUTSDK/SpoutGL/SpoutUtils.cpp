@@ -83,7 +83,11 @@
 				   Update Version to "2.007.006"
 		29.01.21 - Change return logic of RemovePathFromRegistry
 		24.02.22 - Update Version to "2.007.007"
+		25.02.22 - OpenSpoutConsole - check AllocConsole error for existing console
+				   Fix for Processing.
+
 */
+
 #include "SpoutUtils.h"
 
 //
@@ -150,6 +154,14 @@ namespace spoututils {
 					bConsole = false;
 				}
 			}
+			else {
+				// If the calling process is already attached to a console,
+				// the error code returned is ERROR_ACCESS_DENIED(5).
+				if (GetLastError() == 5) {
+					bConsole = true;
+				}
+			}
+
 		}
 	}
 	
@@ -713,7 +725,6 @@ namespace spoututils {
 
 				vfprintf(out, format, args);
 				fprintf(out, "\n");
-
 			}
 
 			// File logging
@@ -932,7 +943,7 @@ namespace spoututils {
 			si.cb = sizeof(STARTUPINFO);
 			si.dwFlags = STARTF_USESHOWWINDOW;
 			si.wShowWindow = SW_HIDE;
-			PROCESS_INFORMATION pi;
+			PROCESS_INFORMATION pi{};
 			SetCursor(LoadCursor(NULL, IDC_WAIT));
 			if (CreateProcessA(NULL, (LPSTR)path, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
 				hProcess = pi.hProcess;
@@ -950,6 +961,8 @@ namespace spoututils {
 					hProcess = NULL;
 					bRet = true;
 				}
+				if (pi.hProcess) CloseHandle(pi.hProcess);
+				if (pi.hThread) CloseHandle(pi.hThread);
 			}
 			else {
 				SpoutLogError("Spout::ExecuteProcess - CreateProcess failed\n    %s", path);
