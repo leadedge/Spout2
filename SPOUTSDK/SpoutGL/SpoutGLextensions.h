@@ -141,7 +141,7 @@ using namespace spoututils;
 //
 // Spout compatible Log levels
 //
-enum ExtLogLevel {
+enum class ExtLogLevel {
 	LOG_SILENT,
 	LOG_VERBOSE,
 	LOG_NOTICE,
