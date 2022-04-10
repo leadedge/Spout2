@@ -30,6 +30,8 @@
 //						- Add "legacyOpenGL" define in SpoutGLextensions.h for standalone.
 //			14.11.21	- Add ExtLog for Spout error logs including printf for standalone.
 //			23.11.21	- Add debugging console print to loadPBOextensions
+//			18.03.22	- Change LogLevel to ExtLoglevel to make unique for ExtLog function
+//						  Change to C++11 enum class for ExtLogLevel to isolate the definitions
 //						  
 //
 
@@ -150,43 +152,43 @@ bool loadInteropExtensions() {
 
 	wglDXOpenDeviceNV = (PFNWGLDXOPENDEVICENVPROC)wglGetProcAddress("wglDXOpenDeviceNV");
 	if(!wglDXOpenDeviceNV) {
-		ExtLog(LOG_WARNING, "loadInteropExtensions : wglDXOpenDeviceNV NULL");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXOpenDeviceNV NULL");
 		return false;
 	}
 
 	wglDXRegisterObjectNV = (PFNWGLDXREGISTEROBJECTNVPROC)wglGetProcAddress("wglDXRegisterObjectNV");
 	if(!wglDXRegisterObjectNV) {
-		ExtLog(LOG_WARNING, "loadInteropExtensions : wglDXRegisterObjectNV NULL");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXRegisterObjectNV NULL");
 		return false;
 	}
 
 	wglDXUnregisterObjectNV = (PFNWGLDXUNREGISTEROBJECTNVPROC)wglGetProcAddress("wglDXUnregisterObjectNV");
 	if(!wglDXUnregisterObjectNV) {
-		ExtLog(LOG_WARNING, "loadInteropExtensions : wglDXUnregisterObjectNV NULL");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXUnregisterObjectNV NULL");
 		return false;
 	}
 
 	wglDXSetResourceShareHandleNV = (PFNWGLDXSETRESOURCESHAREHANDLENVPROC)wglGetProcAddress("wglDXSetResourceShareHandleNV");
 	if(!wglDXSetResourceShareHandleNV) {
-		ExtLog(LOG_WARNING, "loadInteropExtensions : wglDXSetResourceShareHandleNV NULL");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXSetResourceShareHandleNV NULL");
 		return false;
 	}
 
 	wglDXLockObjectsNV = (PFNWGLDXLOCKOBJECTSNVPROC)wglGetProcAddress("wglDXLockObjectsNV");
 	if(!wglDXLockObjectsNV)	{
-		ExtLog(LOG_WARNING, "loadInteropExtensions : wglDXLockObjectsNV NULL");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXLockObjectsNV NULL");
 		return false;
 	}
 
 	wglDXUnlockObjectsNV = (PFNWGLDXUNLOCKOBJECTSNVPROC)wglGetProcAddress("wglDXUnlockObjectsNV");
 	if(!wglDXUnlockObjectsNV) {
-		ExtLog(LOG_WARNING, "loadInteropExtensions : wglDXUnlockObjectsNV NULL");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXUnlockObjectsNV NULL");
 		return false;
 	}
 
 	wglDXCloseDeviceNV = (PFNWGLDXCLOSEDEVICENVPROC)wglGetProcAddress("wglDXCloseDeviceNV");
 	if(!wglDXCloseDeviceNV) {
-		ExtLog(LOG_WARNING, "loadInteropExtensions : wglDXCloseDeviceNV NULL");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXCloseDeviceNV NULL");
 		return false;
 	}
 
@@ -327,7 +329,7 @@ bool loadPBOextensions()
 		return true;
 	}
 	else {
-		ExtLog(LOG_WARNING, "loadPBOextensions() fail");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadPBOextensions() fail");
 		return false;
 	}
 	#endif
@@ -455,7 +457,7 @@ unsigned int loadGLextensions() {
 	// wglGetProcAddress requires an OpenGL rendering context
 	HGLRC glContext = wglGetCurrentContext();
 	if (glContext == NULL) {
-		ExtLog(LOG_ERROR, "loadGLextensions : no OpenGL context");
+		ExtLog(ExtLogLevel::LOG_ERROR, "loadGLextensions : no OpenGL context");
 		return 0;
 	}
 
@@ -468,7 +470,7 @@ unsigned int loadGLextensions() {
 		caps |= GLEXT_SUPPORT_FBO;
 	}
 	else {
-		ExtLog(LOG_ERROR, "loadGLextensions : loadFBOextensions fail");
+		ExtLog(ExtLogLevel::LOG_ERROR, "loadGLextensions : loadFBOextensions fail");
 		return 0;
 	}
 
@@ -477,35 +479,35 @@ unsigned int loadGLextensions() {
 		caps |= GLEXT_SUPPORT_FBO_BLIT;
 	}
 	else {
-		ExtLog(LOG_WARNING, "loadGLextensions : loadBLITextensions fail");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadBLITextensions fail");
 	}
 
 	if(loadSwapExtensions()) {
 		caps |= GLEXT_SUPPORT_SWAP;
 	}
 	else {
-		ExtLog(LOG_WARNING, "loadGLextensions : loadSwapExtensions fail");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadSwapExtensions fail");
 	}
 
 	if(loadPBOextensions()) {
 		caps |= GLEXT_SUPPORT_PBO;
 	}
 	else {
-		ExtLog(LOG_WARNING, "loadGLextensions : loadPBOextensions fail");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadPBOextensions fail");
 	}
 
 	if (loadCopyExtensions()) {
 		caps |= GLEXT_SUPPORT_COPY;
 	}
 	else {
-		ExtLog(LOG_WARNING, "loadGLextensions : loadCopyExtensions fail");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadCopyExtensions fail");
 	}
 
 	if (loadContextExtension()) {
 		caps |= GLEXT_SUPPORT_CONTEXT;
 	}
 	else {
-		ExtLog(LOG_WARNING, "loadGLextensions : loadContextExtension fail");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadContextExtension fail");
 	}
 
 	// Load wgl interop extensions
@@ -513,7 +515,7 @@ unsigned int loadGLextensions() {
 		caps |= GLEXT_SUPPORT_NVINTEROP;
 	}
 	else {
-		ExtLog(LOG_WARNING, "loadGLextensions : loadInteropExtensions fail");
+		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadInteropExtensions fail");
 	}
 
 	// Find out whether bgra extensions are supported at compile and runtime
@@ -584,25 +586,25 @@ bool isExtensionSupported(const char *extension)
 			if(exc && i < n) {
 				return true;
 			}
-			ExtLog(LOG_WARNING, "isExtensionSupported : extension [%s] not found", extension);
+			ExtLog(ExtLogLevel::LOG_WARNING, "isExtensionSupported : extension [%s] not found", extension);
 			return false;
 		}
 		else {
-			ExtLog(LOG_WARNING, "isExtensionSupported : glGetIntegerv(GL_NUM_EXTENSIONS) did not return a value");
+			ExtLog(ExtLogLevel::LOG_WARNING, "isExtensionSupported : glGetIntegerv(GL_NUM_EXTENSIONS) did not return a value");
 		}
 	}
 	else {
-		ExtLog(LOG_WARNING, "isExtensionSupported : glGetStringi not found");
+		ExtLog(ExtLogLevel::LOG_WARNING, "isExtensionSupported : glGetStringi not found");
 	}
 #endif
 
-	ExtLog(LOG_WARNING, "isExtensionSupported : unable to find extension [%s]", extension);
+	ExtLog(ExtLogLevel::LOG_WARNING, "isExtensionSupported : unable to find extension [%s]", extension);
 	
 	return false;
 
 }
 
-void ExtLog(LogLevel level, const char* format, ...)
+void ExtLog(ExtLogLevel level, const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);

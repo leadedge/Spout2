@@ -141,7 +141,7 @@ using namespace spoututils;
 //
 // Spout compatible Log levels
 //
-enum LogLevel {
+enum ExtLogLevel {
 	LOG_SILENT,
 	LOG_VERBOSE,
 	LOG_NOTICE,
@@ -572,6 +572,6 @@ bool loadPBOextensions();
 bool loadCopyExtensions();
 bool loadContextExtension();
 bool isExtensionSupported(const char *extension);
-void ExtLog(LogLevel level, const char* format, ...);
+void ExtLog(ExtLogLevel level, const char* format, ...);
 
 #endif // end __spoutGLextensions__
