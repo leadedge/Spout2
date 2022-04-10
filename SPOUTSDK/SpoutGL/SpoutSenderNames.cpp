@@ -79,7 +79,7 @@
 			   testing function
 	31.07.21 - Add m_senders size check in UpdateSender
 	15.12.21 - Remove noisy SpoutLogNotice from SetSenderID
-
+	29.03.22 - change int len to size_t len in setActiveSenderName
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
@@ -1026,8 +1026,9 @@ bool spoutSenderNames::GetSenderSet(std::set<std::string>& SenderNames) {
 // that clients can use to retrieve the current active Sender
 bool spoutSenderNames::setActiveSenderName(const char* SenderName) 
 {
-	int len = (int)strlen(SenderName);
-	if(len  == 0 || len + 1 > SpoutMaxSenderNameLen)	return false;
+	size_t len = strlen(SenderName);
+	if(len  == 0 || len + 1 > SpoutMaxSenderNameLen)
+		return false;
 
 	m_activeSender.Create("ActiveSenderName", SpoutMaxSenderNameLen);
 
@@ -1038,7 +1039,7 @@ bool spoutSenderNames::setActiveSenderName(const char* SenderName)
 	}
 
 	// Fill it with the Sender name string
-	memcpy( (void *)pBuf, (void *)SenderName, (size_t)(len+1) ); // write the Sender name string to the shared memory
+	memcpy( (void *)pBuf, (void *)SenderName, len+1 ); // write the Sender name string to the shared memory
 	
 	m_activeSender.Unlock();
 
