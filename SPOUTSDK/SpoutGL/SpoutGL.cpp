@@ -87,33 +87,39 @@
 //					  Clean up logs in LoadGLextensions
 //		21.02.22	- Restore glBufferData method for in UnloadTexturePixels
 //					  Pending implementation of glFencSync for glMapBufferRange method
-//		16.03.22	- Use m_hInteropObject in LinkGLDXtextures so that CleanupInterp releases the imterop object
+//		16.03.22	- Use m_hInteropObject in LinkGLDXtextures rather than local variable
+//					  so that CleanupInterp releases the interop object
 //					- Allow for success test in GLDXReady();
+//		21.03.22	- LoadGLextensions - correct  && to & for (m_caps & GLEXT_SUPPORT_PBO)
+//					  UnloadTexturePixels - casting pitch*width for size compare avoids warning C26451
+//		29.03.22	- OpenDeviceKey - correct dwSize from MAX_PATH to 256 in RegOpenKeyExA
+//					  ReadTextureData - create unsigned long variables for temp src char array
+//					  ReadTextureData - Delete temporary "src" char array created with "new"
+//
 // ====================================================================================
-/*
-	Copyright (c) 2021-2022, Lynn Jarvis. All rights reserved.
-
-	Redistribution and use in source and binary forms, with or without modification, 
-	are permitted provided that the following conditions are met:
-
-		1. Redistributions of source code must retain the above copyright notice, 
-		   this list of conditions and the following disclaimer.
-
-		2. Redistributions in binary form must reproduce the above copyright notice, 
-		   this list of conditions and the following disclaimer in the documentation 
-		   and/or other materials provided with the distribution.
-
-	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"	AND ANY 
-	EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
-	OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE	ARE DISCLAIMED. 
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
-	INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-	PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-	LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-*/
+//
+//	Copyright (c) 2021-2022, Lynn Jarvis. All rights reserved.
+//
+//	Redistribution and use in source and binary forms, with or without modification, 
+//	are permitted provided that the following conditions are met:
+//
+//		1. Redistributions of source code must retain the above copyright notice, 
+//		   this list of conditions and the following disclaimer.
+//
+//		2. Redistributions in binary form must reproduce the above copyright notice, 
+//		   this list of conditions and the following disclaimer in the documentation 
+//		   and/or other materials provided with the distribution.
+//
+//	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"	AND ANY 
+//	EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
+//	OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE	ARE DISCLAIMED. 
+//	IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
+//	INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+//	PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+//	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+//	LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+//	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
 
 #include "SpoutGL.h"
 
@@ -1700,9 +1706,12 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 		channels = 3;
 	}
 
-	unsigned int pitch = rowpitch; // row pitch passed in
+	// Casting first avoids warning C26451: Arithmetic overflow - with VS2022 code review
+	// https://docs.microsoft.com/en-us/visualstudio/code-quality/c26451
+	uint64_t pitch = rowpitch; // row pitch passed in
+	uint64_t uw = static_cast<uint64_t>(width);
 	if (rowpitch == 0)
-		pitch = width * channels; // RGB or RGBA
+		pitch = uw * channels; // RGB or RGBA
 
 	if (m_fbo == 0) {
 		SpoutLogNotice("spoutGL::UnloadTexturePixels - creating FBO");
@@ -1752,10 +1761,12 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 	// Null existing PBO data to avoid a stall
 	// This allocates memory for the PBO pitch*height wide
-	glBufferDataEXT(GL_PIXEL_PACK_BUFFER, pitch*height, 0, GL_STREAM_READ);
+	GLsizeiptr buffersize = static_cast<GLsizeiptr>(pitch * height);
+	glBufferDataEXT(GL_PIXEL_PACK_BUFFER, buffersize, 0, GL_STREAM_READ);
 
 	// Read pixels from framebuffer to PBO - glReadPixels() should return immediately.
-	glPixelStorei(GL_PACK_ROW_LENGTH, pitch / channels); // row length in pixels
+	GLint rowbytes = static_cast<int>(pitch) / channels; // row length in pixels
+	glPixelStorei(GL_PACK_ROW_LENGTH, rowbytes); // row length in pixels
 	glReadPixels(0, 0, width, height, glFormat, GL_UNSIGNED_BYTE, (GLvoid *)0);
 	glPixelStorei(GL_PACK_ROW_LENGTH, 0);
 
@@ -1771,7 +1782,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 	if (pboMemory && data) {
 		// Update data directly from the mapped buffer (TODO: RGB)
-		spoutcopy.CopyPixels((const unsigned char*)pboMemory, (unsigned char*)data, pitch / channels, height, glFormat, bInvert);
+		spoutcopy.CopyPixels((const unsigned char*)pboMemory, (unsigned char*)data, rowbytes, height, glFormat, bInvert);
 		glUnmapBufferEXT(GL_PIXEL_PACK_BUFFER);
 	}
 	// skip the copy rather than return false.
@@ -2220,7 +2231,7 @@ bool spoutGL::CreateMemoryBuffer(const char *name, int length)
 	// for data transfer. Make the map 16 bytes larger to compensate. 
 	// Add another 16 bytes to allow for a null terminator.
 	// (Use multiples of 16 for alignment to allow for SSE copy : TODO).
-	if (!memoryshare.Create(namestring.c_str(), length + 32)) {
+	if(memoryshare.Create(namestring.c_str(), length + 32) != SPOUT_CREATE_FAILED) {
 		SpoutLogError("spoutGL::CreateMemoryBuffer - could not create shared memory");
 		return false;
 	}
@@ -2327,16 +2338,23 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 		if (bInvert) {
 			// Copy to intermediate buffer
 			unsigned char* src = nullptr;
+
+			// ReadTextureData - create unsigned long variables for temp src char array
+			unsigned long WxHx3 = unsigned long(width*height*3);
+			unsigned long WxHx4 = unsigned long(width*height*4);
+
 			if(GLformat == GL_RGB || GLformat == GL_BGR_EXT)
-				src = new unsigned char[width * height * 3];
+				src = new unsigned char[WxHx3];
 			else
-				src = new unsigned char[width * height * 4];
+				src = new unsigned char[WxHx4];
+
 			glBindTexture(SourceTarget, SourceID);
 			glGetTexImage(SourceTarget, 0, GLformat, GL_UNSIGNED_BYTE, (void *)src);
 			glBindTexture(SourceTarget, 0);
 			// Flip the buffer
 			spoutcopy.FlipBuffer(src, dest, width, height, GLformat);
-			delete src;
+
+			delete[](src);
 		}
 		else {
 			// dest must be RGBA or RGB width x height
@@ -2813,7 +2831,7 @@ bool spoutGL::WriteMemoryPixels(const char *sendername, const unsigned char* pix
 		// Create a name for the map from the sender name
 		std::string namestring = sendername;
 		namestring += "_map";
-		if (!memoryshare.Create(sendername, width*4*height)) {
+		if (memoryshare.Create(sendername, width*4*height) != SPOUT_CREATE_FAILED) {
 			SpoutLogError("SpoutSharedMemory::WriteMemoryPixels - could not create shared memory");
 			return false;
 		}
@@ -2962,16 +2980,16 @@ bool spoutGL::LoadGLextensions()
 	if (m_caps & GLEXT_SUPPORT_COPY)      m_bCOPYavailable = true;
 	if (m_caps & GLEXT_SUPPORT_CONTEXT)   m_bCONTEXTavailable = true;
 
-	// Test PBO availability unless user has selected buffering off
-	// m_bPBOavailable also set by SetBufferMode()
-	if (m_bPBOavailable) {
-		if (!(m_caps && GLEXT_SUPPORT_PBO))
+	// Test PBO availability unless user has checked buffering OFF (sets m_bPBOavailable false)
+	// m_bPBOavailable can also be set by the application with SetBufferMode()
+	if (m_bPBOavailable) { // User selected buffering
+		if (!(m_caps & GLEXT_SUPPORT_PBO))
 			m_bPBOavailable = false;
 	}
 
 	// Show status
-	if (!m_bPBOavailable) {
-		if (!(m_caps && GLEXT_SUPPORT_PBO))
+	if (!m_bPBOavailable) { // User did not select buffering
+		if (!(m_caps & GLEXT_SUPPORT_PBO))
 			SpoutLogWarning("spoutGL::LoadGLextensions - pbo extensions not available");
 		else
 			SpoutLogWarning("spoutGL::LoadGLextensions - pbo functions disabled by settings");
@@ -3155,7 +3173,8 @@ bool spoutGL::OpenDeviceKey(const char* key, int maxsize, char* description, cha
 
 	// Open the key to find the adapter details
 	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, SubKey.c_str(), NULL, KEY_READ, &hRegKey) == 0) {
-		dwSize = MAX_PATH;
+
+		dwSize = 256;
 		// Adapter name
 		if (RegQueryValueExA(hRegKey, "DriverDesc", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
 			strcpy_s(description, (rsize_t)maxsize, output);
@@ -3180,7 +3199,10 @@ void spoutGL::trim(char* s) {
 	while (isspace(p[l - 1])) p[--l] = 0;
 	while (*p && isspace(*p)) ++p, --l;
 
-	memmove(s, p, (size_t)(l + 1));
+	// Casting first avoids warning C26451: Arithmetic overflow with VS2022 code review
+	// https://docs.microsoft.com/en-us/visualstudio/code-quality/c26451
+	size_t l1 = (size_t)l + 1;
+	memmove(s, p, l1);
 }
 
 //
