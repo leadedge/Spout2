@@ -216,7 +216,8 @@
 //		17.12.21	- Remove adapter gets from Sender/Receiver init
 //					  Adapter index and name are retrieved with Get functions
 //		20.12.21	- Restore log notice for ReleaseSender
-//		24.02.22	- Restore GetSenderAdpater for testing
+//		24.02.22	- Restore GetSenderAdapter for testing
+//		10.04.22	- ReceiveSenderData() - correct duplication of DX9 formats
 //
 // ====================================================================================
 /*
@@ -2060,7 +2061,7 @@ bool Spout::ReceiveSenderData()
 		// Compatible DX9 formats
 		// 21 =	D3DFMT_A8R8G8B8
 		// 22 = D3DFMT_X8R8G8B8
-		if (dwFormat == 21 || dwFormat == 21) {
+		if (dwFormat == 21 || dwFormat == 22) {
 			// Create a DX11 receiving texture with compatible format
 			dwFormat = (DWORD)DXGI_FORMAT_B8G8R8A8_UNORM;
 		}
