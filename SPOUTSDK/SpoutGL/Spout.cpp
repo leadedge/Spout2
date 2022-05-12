@@ -218,6 +218,11 @@
 //		20.12.21	- Restore log notice for ReleaseSender
 //		24.02.22	- Restore GetSenderAdapter for testing
 //		10.04.22	- ReceiveSenderData() - correct duplication of DX9 formats
+//		16.04.22	- Add more log notices to GetSenderAdapter
+//		18.04.22	- Change default invert from true to false for fbo sending functions
+//		28.04.22	- SelectSenderPanel - if SpoutPanel is not found,
+//					  show a MessageBox and direct to the Spout home page
+//		05.05.22	- SendFbo - mods for default framebuffer
 //
 // ====================================================================================
 /*
@@ -406,27 +411,36 @@ void Spout::ReleaseSender()
 
 //---------------------------------------------------------
 // Function: SendFbo
-// Send a framebuffer
+// Send texture attached to fbo
 //
 //   The fbo must be bound for read. 
 //
 //   The fbo can be larger than the size that the sender is set up for.  
 //   For example, if the application is using only a portion of the allocated texture space,  
 //   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture).
-//   The function can also be used with the OpenGL default framebuffer by
-//   specifying "0" for the fbo ID.
-//
-bool Spout::SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert)
+//   To send the OpenGL default framebuffer, specify "0" for the fbo ID, width and height.
+bool Spout::SendFbo(GLuint FboID, unsigned int fbowidth, unsigned int fboheight, bool bInvert)
 {
 	// For texture sharing, the size of the texture attached to the
 	// fbo must be equal to or larger than the shared texture
-	if (width == 0 || height == 0) {
-		return false;
-	}
+	// Establish local width and height in case the viewport size is used
+	unsigned int width = fbowidth;
+	unsigned int height = fboheight;
 
-	// Default framebuffer fails if iconic
-	if (FboID == 0 && IsIconic(m_hWnd))
-		return false;
+	// Default framebuffer
+	if (FboID == 0) {
+		// Default framebuffer fails if iconic
+		if (IsIconic(m_hWnd))
+			return false;
+		// Check the default framebuffer for binding and read completeness
+		if (glCheckNamedFramebufferStatusEXT(0, GL_READ_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+			return false;
+		// Get the viewport size
+		GLint vpdims[4] = { 0 };
+		glGetIntegerv(GL_VIEWPORT, vpdims);
+		width = (unsigned int)vpdims[2];
+		height = (unsigned int)vpdims[3];
+	}
 
 	// Create or update the sender
 	if (!CheckSender(width, height)) {
@@ -474,7 +488,6 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 	// Quit if no data
 	if (TextureID <= 0 || width == 0 || height == 0)
 		return false;
-
 
 	// Create or update the sender
 	// < 0.001 msec 
@@ -530,6 +543,7 @@ bool Spout::SendImage(const unsigned char* pixels, unsigned int width, unsigned 
 	// Create or update the sender
 	if (!CheckSender(width, height))
 		return false;
+
 	//
 	// Write pixel data to the rgba shared texture according to pixel format
 	//
@@ -820,12 +834,10 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 
 	} // endif sender exists
 	else {
-		
 		// ReceiveSenderData fails if there is no sender or the connected sender closed.
 		ReleaseReceiver();
 		// Let the application know.
 		m_bConnected = false;
-		
 	}
 
 	return m_bConnected;
@@ -1176,10 +1188,11 @@ int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxch
 	SharedTextureInfo info;
 	if (sendernames.getSharedInfo(sendername, &info)) {
 		int nAdapters = spoutdx.GetNumAdapters();
+		// SpoutLogNotice("   Found %d graphics adapters", nAdapters);
 		for (int i = 0; i < nAdapters; i++) {
 			pAdapter = spoutdx.GetAdapterPointer(i);
 			if (pAdapter) {
-				SpoutLogNotice("   testing adapter %d", i);
+				// SpoutLogNotice("   testing adapter %d (%7.7X)", i, PtrToUint(pAdapter));
 				// Set the adapter pointer for CreateDX11device to use temporarily
 				spoutdx.SetAdapterPointer(pAdapter);
 				// Create a dummy device using this adapter
@@ -1199,10 +1212,12 @@ int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxch
 						pAdapter->Release();
 						break;
 					}
+					SpoutLogNotice("    Could not open sender shared texture share handle for adapter %d", i);
 					pDummyDevice->GetImmediateContext(&pContext);
 					if (pContext) pContext->Flush();
 					pDummyDevice->Release();
 				}
+				SpoutLogNotice("    Could not create DX11 device for test");
 				pAdapter->Release();
 			}
 		}
@@ -1251,8 +1266,10 @@ bool Spout::FindNVIDIA(int &nAdapter)
 // Get detailed information for the current graphics adapter
 // Must be called after DirectX initialization, not before
 //
-// NOTES : On a “normal” system EnumDisplayDevices and IDXGIAdapter::GetDesc always concur
-// i.e. the device that owns the head will be the device that performs the rendering. 
+// NOTES : On a “normal” system the Windows function EnumDisplayDevices and the DirectX function
+// IDXGIAdapter::GetDesc always concur. i.e. the device that owns the head will be the device that
+// performs the rendering. 
+//
 // On an Optimus system IDXGIAdapter::GetDesc will return whichever device has been selected for rendering.
 // So on an Optimus system it is possible that IDXGIAdapter::GetDesc will return the dGPU whereas 
 // EnumDisplayDevices will return the iGPU.
@@ -1264,6 +1281,7 @@ bool Spout::FindNVIDIA(int &nAdapter)
 //	- 0x163C Intel
 //	- 0x8086 Intel
 //	- 0x8087 Intel
+//
 // See also the DirectX only version :
 // bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 //
@@ -1316,8 +1334,10 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 
 	strcpy_s(renderdescription, (rsize_t)maxsize, renderadapter);
 
+	//
 	// Use Windows functions to look for Intel graphics to see if it is
 	// the same render adapter that was detected with DirectX
+	//
 	char driverdescription[256];
 	char driverversion[256];
 	char regkey[256];
@@ -1600,6 +1620,9 @@ bool Spout::SelectSenderPanel(const char *message)
 				// Does SpoutPanel exist here?
 				if (!PathFileExistsA(path)) {
 					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
+					// Show a MessageBox and direct to the Spout home page
+					MessageBoxA(NULL, "The sender selection dialog 'SpoutPanel' was not found\nDownload the latest Spout release and run either\n'SpoutSettings' or 'SpoutPanel' once to establish the path.", "Warning", MB_OK);
+					ShellExecuteA(NULL, "open", "http://spout.zeal.co/", NULL, NULL, SW_SHOWNORMAL);
 					return false;
 				}
 			}
@@ -1730,15 +1753,15 @@ bool Spout::DrawSharedTexture(float max_x, float max_y, float aspect, bool bInve
 			glBegin(GL_QUADS);
 			if (bInvert) {
 				glTexCoord2f(0.0, max_y);	glVertex2f(-aspect, -1.0); // lower left
-				glTexCoord2f(0.0, 0.0);	glVertex2f(-aspect, 1.0); // upper left
-				glTexCoord2f(max_x, 0.0);	glVertex2f(aspect, 1.0); // upper right
-				glTexCoord2f(max_x, max_y);	glVertex2f(aspect, -1.0); // lower right
+				glTexCoord2f(0.0, 0.0);		glVertex2f(-aspect,  1.0); // upper left
+				glTexCoord2f(max_x, 0.0);	glVertex2f( aspect,  1.0); // upper right
+				glTexCoord2f(max_x, max_y);	glVertex2f( aspect, -1.0); // lower right
 			}
 			else {
-				glTexCoord2f(0.0, 0.0);	glVertex2f(-aspect, -1.0); // lower left
-				glTexCoord2f(0.0, max_y);	glVertex2f(-aspect, 1.0); // upper left
-				glTexCoord2f(max_x, max_y);	glVertex2f(aspect, 1.0); // upper right
-				glTexCoord2f(max_x, 0.0);	glVertex2f(aspect, -1.0); // lower right
+				glTexCoord2f(0.0, 0.0);		glVertex2f(-aspect, -1.0); // lower left
+				glTexCoord2f(0.0, max_y);	glVertex2f(-aspect,  1.0); // upper left
+				glTexCoord2f(max_x, max_y);	glVertex2f( aspect,  1.0); // upper right
+				glTexCoord2f(max_x, 0.0);	glVertex2f( aspect, -1.0); // lower right
 			}
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, 0);
@@ -1886,6 +1909,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 
 			// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
 			if (sendernames.CreateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
+
 				m_Width = width;
 				m_Height = height;
 				//

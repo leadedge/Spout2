@@ -66,6 +66,17 @@
 // #define legacyOpenGL
 //
 
+//
+// Option : disable warning C26812 (unscoped enums) for Visual Studio.
+//
+// Use of C++11 scoped (class) enums are not compatible with early compilers (< VS2012 and others).
+// However, for Visual Studio this warning is designated "Prefer" and "C" standard unscoped enums 
+// are acceptable and compatible, and are retained for compatibility.
+// The warning can be enabled or disabled here.
+//
+#pragma warning(disable:26812)
+//
+
 // Common utility functions namespace
 #include "SpoutUtils.h"
 

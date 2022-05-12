@@ -33,6 +33,7 @@
 #ifndef __spoutUtils__ // standard way as well
 #define __spoutUtils__
 
+#include "SpoutCommon.h"
 #include <windows.h>
 #include <stdio.h> // for console
 #include <iostream> // std::cout, std::end
@@ -66,6 +67,7 @@
 #pragma comment(lib, "Advapi32.lib") // for registry functions
 #pragma comment(lib, "Version.lib") // for version resources where necessary
 
+
 // SpoutUtils
 namespace spoututils {
 
@@ -89,7 +91,7 @@ namespace spoututils {
 		// Show only fatal errors
 		SPOUT_LOG_FATAL,
 		// Ignore log levels
-		SPOUT_LOG_NONE,
+		SPOUT_LOG_NONE
 	};
 
 	//
@@ -238,7 +240,6 @@ namespace spoututils {
 		bool SetNVIDIAmode(const char *command, int mode);
 		bool ExecuteProcess(char *path);
 	}
-
 
 }
 

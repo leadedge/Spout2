@@ -47,8 +47,8 @@
 //
 // Refer to source code for documentation.
 //
-
-
+//	14.04.22 - Add option in SpoutCommon.h to disable warning 26812 (unscoped enums).
+//
 SpoutSharedMemory::SpoutSharedMemory()
 {
 	m_pBuffer = NULL;

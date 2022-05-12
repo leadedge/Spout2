@@ -46,19 +46,20 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	//
 
 	// Set name for sender creation
-	//   If no name is specified, the executable name is used.  
+	//   If no name is specified, the executable name is used  
 	void SetSenderName(const char* sendername = nullptr);
 	// Set the sender DX11 shared texture format
 	void SetSenderFormat(DWORD dwFormat);
 	// Close sender and free resources
 	//   A sender is created or updated by all sending functions
 	void ReleaseSender();
-	// Send texture attached to fbo.
-	//   The fbo must be currently bound.  
-	//   The sending texture can be larger than the size that the sender is set up for.  
+	// Send texture attached to fbo
+	//   The fbo must be currently bound
+	//   The sending texture can be larger than the size that the sender is set up for
 	//   For example, if the application is using only a portion of the allocated texture space,  
-	//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture).
-	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
+	//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture)
+	//   To send the OpenGL default framebuffer, specify "0" for the fbo ID, width and height.
+	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = false);
 	// Send OpenGL texture
 	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
 	// Send image pixels
@@ -100,7 +101,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Receive OpenGL texture
 	// 	 Connect to a sender and inform the application to update
 	//   the receiving texture if it has changed dimensions
-	//   For no change, copy the sender shared texture to the application texture.
+	//   For no change, copy the sender shared texture to the application texture
 	//   The texture must be RGBA of dimension (width * height) 
 	bool ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert = false, GLuint HostFbo = 0);
 	// Receive image pixels
@@ -113,7 +114,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	//   Checked at every cycle before receiving data
 	bool IsUpdated();
 	// Query sender connection
-	//   If the sender closes, receiving functions return false,  
+	//   If the sender closes, receiving functions return false  
 	bool IsConnected();
 	// Query received frame status
 	//   The receiving texture or pixel buffer is only refreshed if the sender has produced a new frame  

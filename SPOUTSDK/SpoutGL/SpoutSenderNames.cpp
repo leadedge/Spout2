@@ -80,6 +80,10 @@
 	31.07.21 - Add m_senders size check in UpdateSender
 	15.12.21 - Remove noisy SpoutLogNotice from SetSenderID
 	29.03.22 - change int len to size_t len in setActiveSenderName
+	25.04.22 - Add create memory check and warning logs to setActiveSenderName
+			   Remove duplicate shared memory creation in RegisterSenderName
+			   GetActiveSender - rename temp name string to be more clear
+	09.05.22 - Include SPOUT_ALREADY_CREATED for setActiveSenderName create shared memory success
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
@@ -155,7 +159,9 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 	std::set<std::string> SenderNames; // set of names
 
 	// Create the shared memory for the sender name set if it does not exist
-	if(!CreateSenderSet()) return false;
+	if (!CreateSenderSet()) {
+		return false;
+	}
 
 	char *pBuf = m_senderNames.Lock();
 	if (!pBuf) return false;
@@ -166,7 +172,7 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 	// Check whether the sender registration will exceed the maximum number of senders
 	// If this fails, just skip the registration
 	if ((int)SenderNames.size() == m_MaxSenders) {
-		SpoutLogWarning("spoutSenderNames::RegisterSenderName - Sender exceeds max senders (%d)", m_MaxSenders);
+		SpoutLogWarning("spoutSenderNames::RegisterSenderName - Sender exceeds max senders (%d)\n", m_MaxSenders);
 		m_senderNames.Unlock();
 		return true;
 	}
@@ -187,7 +193,6 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 		writeBufferFromSenderSet(SenderNames, pBuf, m_MaxSenders);
 		// Set as the active Sender if it is the first one registered
 		// Thereafter the user can select an active Sender using SpoutPanel or SpoutSenders
-		m_activeSender.Create("ActiveSenderName", SpoutMaxSenderNameLen);
 		// The active sender is the one selected by the user
 		// or the last one opened by the user, so don't limit to the first sender
 		// Set the current sender name as active
@@ -646,13 +651,13 @@ bool spoutSenderNames::SetActiveSender(const char *Sendername)
 // Retrieve the current active Sender name
 bool spoutSenderNames::GetActiveSender(char Sendername[SpoutMaxSenderNameLen])
 {
-	char ActiveSender[SpoutMaxSenderNameLen];
+	char ActiveName[SpoutMaxSenderNameLen];
 	SharedTextureInfo info;
 
-	if(getActiveSenderName(ActiveSender)) {
+	if(getActiveSenderName(ActiveName)) {
 		// Does it still exist ?
-		if(getSharedInfo(ActiveSender, &info)) {
-			strcpy_s(Sendername, SpoutMaxSenderNameLen, ActiveSender);
+		if(getSharedInfo(ActiveName, &info)) {
+			strcpy_s(Sendername, SpoutMaxSenderNameLen, ActiveName);
 			return true;
 		}
 		else {
@@ -660,7 +665,7 @@ bool spoutSenderNames::GetActiveSender(char Sendername[SpoutMaxSenderNameLen])
 			m_activeSender.Close();
 		}
 	}
-	
+
 	return false;
 
 } // end GetActiveSender
@@ -1030,20 +1035,23 @@ bool spoutSenderNames::setActiveSenderName(const char* SenderName)
 	if(len  == 0 || len + 1 > SpoutMaxSenderNameLen)
 		return false;
 
-	m_activeSender.Create("ActiveSenderName", SpoutMaxSenderNameLen);
+	SpoutCreateResult spoutres = m_activeSender.Create("ActiveSenderName", SpoutMaxSenderNameLen);
+	if (spoutres == SPOUT_CREATE_SUCCESS || spoutres == SPOUT_ALREADY_CREATED) {
+		char* pBuf = m_activeSender.Lock();
+		if (!pBuf) {
+			SpoutLogWarning("spoutSenderNames::setActiveSenderName - could not lock buffer");
+			return false;
+		}
 
-	char *pBuf = m_activeSender.Lock();
-
-	if(!pBuf) {
-		return false;
+		// Fill it with the Sender name string
+		memcpy((void*)pBuf, (void*)SenderName, len + 1); // write the Sender name string to the shared memory
+		m_activeSender.Unlock();
+		return true;
 	}
 
-	// Fill it with the Sender name string
-	memcpy( (void *)pBuf, (void *)SenderName, len+1 ); // write the Sender name string to the shared memory
-	
-	m_activeSender.Unlock();
+	SpoutLogWarning("spoutSenderNames::setActiveSenderName - could not create memory");
 
-	return true;
+	return false;
 
 } // end setActiveSenderName
 
@@ -1086,6 +1094,7 @@ bool spoutSenderNames::getSharedInfo(const char* sharedMemoryName, SharedTexture
 			return true;
 		}
 	}
+
 	return false;
 
 } // end getSharedInfo

@@ -95,6 +95,7 @@
 //		29.03.22	- OpenDeviceKey - correct dwSize from MAX_PATH to 256 in RegOpenKeyExA
 //					  ReadTextureData - create unsigned long variables for temp src char array
 //					  ReadTextureData - Delete temporary "src" char array created with "new"
+//		19.04.22	- Restore host fbo in SetSharedTextureData instead of default 0
 //
 // ====================================================================================
 //
@@ -122,6 +123,9 @@
 //
 
 #include "SpoutGL.h"
+
+// ================================================
+
 
 // Class: spoutGL
 // Base class for OpenGL texture sharing using the NVIDIA GL/DX interop extensions.
@@ -1005,6 +1009,7 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 	SpoutLogNotice("    m_hInteropObject = 0x%.7X", LOWORD(m_hInteropObject));
 
 	// Create an fbo if not already
+	// A utility texture (m_TexID) will be created later if needed
 	if (m_fbo == 0)
 		glGenFramebuffersEXT(1, &m_fbo);
 
@@ -1357,7 +1362,10 @@ void spoutGL::CleanupGL()
 // Typically used for texture copy and invert
 void spoutGL::CheckOpenGLTexture(GLuint &texID, GLenum GLformat, unsigned int width,  unsigned int height)
 {
-	if (texID == 0 || texID != m_TexID || GLformat != m_TexFormat || width != m_TexWidth || height != m_TexHeight) {
+	if (texID == 0 || texID != m_TexID 
+			|| GLformat != m_TexFormat 
+			|| width    != m_TexWidth 
+			|| height   != m_TexHeight) {
 		InitTexture(texID, GLformat, width, height);
 		m_TexID = texID;
 		m_TexWidth  = width;
@@ -1383,6 +1391,7 @@ void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, un
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
 	glBindTexture(GL_TEXTURE_2D, texturebinding);
 
 }
@@ -1410,7 +1419,6 @@ bool spoutGL::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 	if (m_fbo == 0)
 		glGenFramebuffersEXT(1, &m_fbo);
 
-
 	// Wait for access to the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		// lock dx interop object
@@ -1426,6 +1434,7 @@ bool spoutGL::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 		// Release mutex and allow access to the texture
 		frame.AllowTextureAccess(m_pSharedTexture);
 	}
+
 
 	return true;
 
@@ -1469,6 +1478,7 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 } // end ReadGLDXTexture
 
 
+// Interop must be locked for this function to access the shared texture
 bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
 	GLenum status = 0;
@@ -1480,48 +1490,52 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 	// Because two fbos are used, the input texture can be larger than the shared texture
 	// Width and height are the used portion and only the used part is copied
 
-	if (TextureID == 0 && HostFBO >= 0 && glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
-
-		// The input texture is attached to attachment point 0 of the fbo passed in
-
-		// Bind our local fbo for draw
-		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, m_fbo);
-		// Draw to the first attachment point
-		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-		// Attach the texture we write into (the shared texture)
-		glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
-		// Check draw fbo for completeness
-		status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-		if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-			if (m_bBLITavailable) {
-				if (bInvert) {
-					// copy from one framebuffer to the other while flipping upside down 
-					glBlitFramebufferEXT(0, 0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	if (TextureID == 0 && HostFBO >= 0) {
+		if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) {
+			// The input texture is attached to attachment point 0 of the fbo passed in
+			// Bind our local fbo for draw
+			glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, m_fbo);
+			// Draw to the first attachment point
+			glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
+			// Attach the texture we write into (the shared texture)
+			glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
+			// Check draw fbo for completeness
+			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+			if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+				if (m_bBLITavailable) {
+					if (bInvert) {
+						// copy from one framebuffer to the other while flipping upside down 
+						glBlitFramebufferEXT(0, 0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+					}
+					else {
+						// Do not flip during blit
+						glBlitFramebufferEXT(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+					}
 				}
 				else {
-					// Do not flip during blit
-					glBlitFramebufferEXT(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+					// No fbo blit extension
+					// Copy from the host fbo (input texture attached) to the shared texture
+					glBindTexture(GL_TEXTURE_2D, m_glTexture);
+					glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+					glBindTexture(GL_TEXTURE_2D, 0);
 				}
+				bRet = true;
 			}
 			else {
-				// No fbo blit extension
-				// Copy from the host fbo (input texture attached) to the shared texture
-				glBindTexture(GL_TEXTURE_2D, m_glTexture);
-				glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-				glBindTexture(GL_TEXTURE_2D, 0);
+				PrintFBOstatus(status);
+				bRet = false;
 			}
-			bRet = true;
 		}
 		else {
 			PrintFBOstatus(status);
 			bRet = false;
 		}
-		// restore default fbo
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		// restore host fbo
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 	}
 	else if (TextureID > 0) {
 		// There is a valid texture passed in.
-		// Copy the input texture to the destination texture.
+		// Copy the input texture to the destination shared texture.
 		// Both textures must be the same size.
 		bRet = CopyTexture(TextureID, TextureTarget, m_glTexture, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
 	}
@@ -1591,7 +1605,6 @@ bool spoutGL::GetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 
 }
 
-
 //
 // COPY IMAGE PIXELS TO THE OPENGL SHARED TEXTURE
 //
@@ -1614,6 +1627,7 @@ bool spoutGL::WriteGLDXpixels(const unsigned char* pixels,
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, glformat, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
 
 	// Write the local texture to the shared texture and invert if necessary
 	WriteGLDXtexture(m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
@@ -3232,15 +3246,16 @@ void spoutGL::PrintFBOstatus(GLenum status)
 	else
 		strcat_s(tmp, 256, "Unknown Code");
 	SpoutLogError("%s", tmp);
-	GLerror();
+	// printf("  PrintFBOstatus(%d) - %s\n",status, tmp);
+	// GLerror();
 }
 
 bool spoutGL::GLerror() {
 	GLenum err = GL_NO_ERROR;
 	bool bError = false;
 	while ((err = glGetError()) != GL_NO_ERROR) {
-		// SpoutLogError("    GLerror - OpenGL error = %u (0x%.7X)", err, err);
-		printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
+		SpoutLogError("    GLerror - OpenGL error = %u (0x%.7X)", err, err);
+		// printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
 		bError = true;
 		// gluErrorString needs Glu.h and glu32.lib (or glew)
 		// printf("GL error = %d (0x%.7X) %s\n", err, err, gluErrorString(err));
@@ -3529,7 +3544,6 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 
 	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-
 		if (m_bBLITavailable) {
 			if (bInvert) {
 				// Blit method with checks - 0.75 - 0.85 msec

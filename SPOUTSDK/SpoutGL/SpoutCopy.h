@@ -42,7 +42,6 @@
 #include <tmmintrin.h> // for SSSE3
 #include <cmath> // For compatibility with Clang. PR#81
 
-
 class SPOUT_DLLEXP spoutCopy {
 
 	public:

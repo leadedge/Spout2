@@ -85,6 +85,7 @@
 		24.02.22 - Update Version to "2.007.007"
 		25.02.22 - OpenSpoutConsole - check AllocConsole error for existing console
 				   Fix for Processing.
+		14.04.22 - Add option in SpoutCommon.h to disable warning 26812 (unscoped enums)
 
 */
 
@@ -119,8 +120,6 @@ namespace spoututils {
 #ifdef USE_CHRONO
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
-	// std::chrono::high_resolution_clock::time_point start;
-	// std::chrono::high_resolution_clock::time_point end;
 #endif
 	std::string SDKversion = "2.007.006"; // Spout SDK version number string
 
@@ -786,22 +785,33 @@ namespace spoututils {
 
 		// Get the name for the current log level
 		std::string _levelName(SpoutLogLevel level) {
+
+			std::string name = "";
+
 			switch (level) {
-			case SPOUT_LOG_SILENT:
-				return "silent";
-			case SPOUT_LOG_VERBOSE:
-				return "verbose";
-			case SPOUT_LOG_NOTICE:
-				return "notice";
-			case SPOUT_LOG_WARNING:
-				return "warning";
-			case SPOUT_LOG_ERROR:
-				return "error";
-			case SPOUT_LOG_FATAL:
-				return "fatal";
-			default:
-				return "";
+				case SPOUT_LOG_SILENT:
+					name = "silent";
+					break;
+				case SPOUT_LOG_VERBOSE:
+					name = "verbose";
+					break;
+				case SPOUT_LOG_NOTICE:
+					name = "notice";
+					break;
+				case SPOUT_LOG_WARNING:
+					name = "warning";
+					break;
+				case SPOUT_LOG_ERROR:
+					name = "error";
+					break;
+				case SPOUT_LOG_FATAL:
+					name = "fatal";
+					break;
+				default:
+					break;
 			}
+
+			return name;
 		}
 
 		// Log to file with optional append 
@@ -943,7 +953,7 @@ namespace spoututils {
 			si.cb = sizeof(STARTUPINFO);
 			si.dwFlags = STARTF_USESHOWWINDOW;
 			si.wShowWindow = SW_HIDE;
-			PROCESS_INFORMATION pi{};
+			PROCESS_INFORMATION pi;
 			SetCursor(LoadCursor(NULL, IDC_WAIT));
 			if (CreateProcessA(NULL, (LPSTR)path, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
 				hProcess = pi.hProcess;

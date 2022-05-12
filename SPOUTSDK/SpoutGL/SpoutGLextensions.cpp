@@ -32,7 +32,10 @@
 //			23.11.21	- Add debugging console print to loadPBOextensions
 //			18.03.22	- Change LogLevel to ExtLoglevel to make unique for ExtLog function
 //						  Change to C++11 enum class for ExtLogLevel to isolate the definitions
-//						  
+//			14.04.22	- Change back to C enums for compatibility with earlier compilers.
+//						  Rename ExtLoglevel enum names to be more strongly unique.
+//						  Add option in SpoutCommon.h to disable warning 26812 (unscoped enums).
+//			18.04.22	- Add glCheckNamedFramebufferStatus
 //
 
 	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
@@ -76,6 +79,7 @@ PFNWGLDXUNREGISTEROBJECTNVPROC			wglDXUnregisterObjectNV			= NULL;
 glBindFramebufferEXTPROC				glBindFramebufferEXT			= NULL;
 glBindRenderbufferEXTPROC				glBindRenderbufferEXT			= NULL;
 glCheckFramebufferStatusEXTPROC			glCheckFramebufferStatusEXT		= NULL;
+glCheckNamedFramebufferStatusEXTPROC	glCheckNamedFramebufferStatusEXT = NULL;
 glDeleteFramebuffersEXTPROC				glDeleteFramebuffersEXT			= NULL;
 glDeleteRenderBuffersEXTPROC			glDeleteRenderBuffersEXT		= NULL;
 glFramebufferRenderbufferEXTPROC		glFramebufferRenderbufferEXT	= NULL;
@@ -152,43 +156,43 @@ bool loadInteropExtensions() {
 
 	wglDXOpenDeviceNV = (PFNWGLDXOPENDEVICENVPROC)wglGetProcAddress("wglDXOpenDeviceNV");
 	if(!wglDXOpenDeviceNV) {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXOpenDeviceNV NULL");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadInteropExtensions : wglDXOpenDeviceNV NULL");
 		return false;
 	}
 
 	wglDXRegisterObjectNV = (PFNWGLDXREGISTEROBJECTNVPROC)wglGetProcAddress("wglDXRegisterObjectNV");
 	if(!wglDXRegisterObjectNV) {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXRegisterObjectNV NULL");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadInteropExtensions : wglDXRegisterObjectNV NULL");
 		return false;
 	}
 
 	wglDXUnregisterObjectNV = (PFNWGLDXUNREGISTEROBJECTNVPROC)wglGetProcAddress("wglDXUnregisterObjectNV");
 	if(!wglDXUnregisterObjectNV) {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXUnregisterObjectNV NULL");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadInteropExtensions : wglDXUnregisterObjectNV NULL");
 		return false;
 	}
 
 	wglDXSetResourceShareHandleNV = (PFNWGLDXSETRESOURCESHAREHANDLENVPROC)wglGetProcAddress("wglDXSetResourceShareHandleNV");
 	if(!wglDXSetResourceShareHandleNV) {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXSetResourceShareHandleNV NULL");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadInteropExtensions : wglDXSetResourceShareHandleNV NULL");
 		return false;
 	}
 
 	wglDXLockObjectsNV = (PFNWGLDXLOCKOBJECTSNVPROC)wglGetProcAddress("wglDXLockObjectsNV");
 	if(!wglDXLockObjectsNV)	{
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXLockObjectsNV NULL");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadInteropExtensions : wglDXLockObjectsNV NULL");
 		return false;
 	}
 
 	wglDXUnlockObjectsNV = (PFNWGLDXUNLOCKOBJECTSNVPROC)wglGetProcAddress("wglDXUnlockObjectsNV");
 	if(!wglDXUnlockObjectsNV) {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXUnlockObjectsNV NULL");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadInteropExtensions : wglDXUnlockObjectsNV NULL");
 		return false;
 	}
 
 	wglDXCloseDeviceNV = (PFNWGLDXCLOSEDEVICENVPROC)wglGetProcAddress("wglDXCloseDeviceNV");
 	if(!wglDXCloseDeviceNV) {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadInteropExtensions : wglDXCloseDeviceNV NULL");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadInteropExtensions : wglDXCloseDeviceNV NULL");
 		return false;
 	}
 
@@ -224,6 +228,7 @@ bool loadFBOextensions() {
 	glBindFramebufferEXT                     = (glBindFramebufferEXTPROC)wglGetProcAddress("glBindFramebuffer" FBO_EXTENSION_POSTFIX);
 	glBindRenderbufferEXT                    = (glBindRenderbufferEXTPROC)wglGetProcAddress("glBindRenderbuffer" FBO_EXTENSION_POSTFIX);
 	glCheckFramebufferStatusEXT              = (glCheckFramebufferStatusEXTPROC)wglGetProcAddress("glCheckFramebufferStatus" FBO_EXTENSION_POSTFIX);
+	glCheckNamedFramebufferStatusEXT         = (glCheckNamedFramebufferStatusEXTPROC)wglGetProcAddress("glCheckNamedFramebufferStatus" FBO_EXTENSION_POSTFIX);
 	glDeleteFramebuffersEXT                  = (glDeleteFramebuffersEXTPROC)wglGetProcAddress("glDeleteFramebuffers" FBO_EXTENSION_POSTFIX);
 	glDeleteRenderBuffersEXT                 = (glDeleteRenderBuffersEXTPROC)wglGetProcAddress("glDeleteRenderbuffers" FBO_EXTENSION_POSTFIX);
 	glFramebufferRenderbufferEXT             = (glFramebufferRenderbufferEXTPROC)wglGetProcAddress("glFramebufferRenderbuffer" FBO_EXTENSION_POSTFIX);
@@ -242,6 +247,7 @@ bool loadFBOextensions() {
 	if	  ( glBindFramebufferEXT						!= NULL && 
 			glBindRenderbufferEXT						!= NULL && 
 			glCheckFramebufferStatusEXT					!= NULL && 
+			glCheckNamedFramebufferStatusEXT            != NULL &&
 			glDeleteFramebuffersEXT						!= NULL && 
 			glDeleteRenderBuffersEXT					!= NULL &&
 			glFramebufferRenderbufferEXT				!= NULL && 
@@ -329,7 +335,7 @@ bool loadPBOextensions()
 		return true;
 	}
 	else {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadPBOextensions() fail");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadPBOextensions() fail");
 		return false;
 	}
 	#endif
@@ -457,7 +463,7 @@ unsigned int loadGLextensions() {
 	// wglGetProcAddress requires an OpenGL rendering context
 	HGLRC glContext = wglGetCurrentContext();
 	if (glContext == NULL) {
-		ExtLog(ExtLogLevel::LOG_ERROR, "loadGLextensions : no OpenGL context");
+		ExtLog(SPOUT_EXT_LOG_ERROR, "loadGLextensions : no OpenGL context");
 		return 0;
 	}
 
@@ -470,7 +476,7 @@ unsigned int loadGLextensions() {
 		caps |= GLEXT_SUPPORT_FBO;
 	}
 	else {
-		ExtLog(ExtLogLevel::LOG_ERROR, "loadGLextensions : loadFBOextensions fail");
+		ExtLog(SPOUT_EXT_LOG_ERROR, "loadGLextensions : loadFBOextensions fail");
 		return 0;
 	}
 
@@ -479,35 +485,35 @@ unsigned int loadGLextensions() {
 		caps |= GLEXT_SUPPORT_FBO_BLIT;
 	}
 	else {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadBLITextensions fail");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadGLextensions : loadBLITextensions fail");
 	}
 
 	if(loadSwapExtensions()) {
 		caps |= GLEXT_SUPPORT_SWAP;
 	}
 	else {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadSwapExtensions fail");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadGLextensions : loadSwapExtensions fail");
 	}
 
 	if(loadPBOextensions()) {
 		caps |= GLEXT_SUPPORT_PBO;
 	}
 	else {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadPBOextensions fail");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadGLextensions : loadPBOextensions fail");
 	}
 
 	if (loadCopyExtensions()) {
 		caps |= GLEXT_SUPPORT_COPY;
 	}
 	else {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadCopyExtensions fail");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadGLextensions : loadCopyExtensions fail");
 	}
 
 	if (loadContextExtension()) {
 		caps |= GLEXT_SUPPORT_CONTEXT;
 	}
 	else {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadContextExtension fail");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadGLextensions : loadContextExtension fail");
 	}
 
 	// Load wgl interop extensions
@@ -515,7 +521,7 @@ unsigned int loadGLextensions() {
 		caps |= GLEXT_SUPPORT_NVINTEROP;
 	}
 	else {
-		ExtLog(ExtLogLevel::LOG_WARNING, "loadGLextensions : loadInteropExtensions fail");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadGLextensions : loadInteropExtensions fail");
 	}
 
 	// Find out whether bgra extensions are supported at compile and runtime
@@ -556,7 +562,7 @@ bool isExtensionSupported(const char *extension)
 		if (found != std::string::npos) {
 			return true;
 		}
-		ExtLog(LOG_WARNING, "isExtensionSupported : extension [%s] not found", extension);
+		ExtLog(SPOUT_EXT_LOG_WARNING, "isExtensionSupported : extension [%s] not found", extension);
 		return false;
 	}
 #else
@@ -586,19 +592,19 @@ bool isExtensionSupported(const char *extension)
 			if(exc && i < n) {
 				return true;
 			}
-			ExtLog(ExtLogLevel::LOG_WARNING, "isExtensionSupported : extension [%s] not found", extension);
+			ExtLog(SPOUT_EXT_LOG_WARNING, "isExtensionSupported : extension [%s] not found", extension);
 			return false;
 		}
 		else {
-			ExtLog(ExtLogLevel::LOG_WARNING, "isExtensionSupported : glGetIntegerv(GL_NUM_EXTENSIONS) did not return a value");
+			ExtLog(SPOUT_EXT_LOG_WARNING, "isExtensionSupported : glGetIntegerv(GL_NUM_EXTENSIONS) did not return a value");
 		}
 	}
 	else {
-		ExtLog(ExtLogLevel::LOG_WARNING, "isExtensionSupported : glGetStringi not found");
+		ExtLog(SPOUT_EXT_LOG_WARNING, "isExtensionSupported : glGetStringi not found");
 	}
 #endif
 
-	ExtLog(ExtLogLevel::LOG_WARNING, "isExtensionSupported : unable to find extension [%s]", extension);
+	ExtLog(SPOUT_EXT_LOG_WARNING, "isExtensionSupported : unable to find extension [%s]", extension);
 	
 	return false;
 

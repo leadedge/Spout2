@@ -340,12 +340,14 @@ protected :
 	unsigned int m_Width;
 	unsigned int m_Height;
 
-	// General
-	GLuint m_fbo; // Fbo used for OpenGL functions
+	// Utility
+	GLuint m_fbo; //  Fbo used for OpenGL functions
 	GLuint m_TexID; // Class texture used for invert copy
 	unsigned int m_TexWidth;
 	unsigned int m_TexHeight;
 	DWORD m_TexFormat;
+
+	// Shared texture
 	GLuint m_glTexture; // OpenGL shared texture
 	ID3D11Texture2D* m_pSharedTexture; // DirectX shared texture
 	HANDLE m_dxShareHandle; // DirectX shared texture handle

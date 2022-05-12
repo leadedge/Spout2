@@ -50,8 +50,6 @@
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
 
-using namespace spoututils;
-
 // 100 msec wait for events
 #define SPOUT_WAIT_TIMEOUT 100
 
@@ -202,7 +200,7 @@ protected:
 		// same spoutSenderNames class
 		// Make this a pointer to avoid size differences between compilers
 		// if the .dll is compiled with something different
-		std::unordered_map<std::string, SpoutSharedMemory*>*	m_senders;
+		std::unordered_map<std::string, SpoutSharedMemory*>* m_senders;
 		int m_MaxSenders; // maximum number of senders via registry
 
 };

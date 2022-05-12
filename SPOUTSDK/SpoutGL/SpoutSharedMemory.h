@@ -43,9 +43,10 @@
 
 using namespace spoututils;
 
+//
 // Result of memory segment creation
-enum SpoutCreateResult
-{
+//
+enum SpoutCreateResult {
 	SPOUT_CREATE_FAILED = 0,
 	SPOUT_CREATE_SUCCESS,
 	SPOUT_ALREADY_EXISTS,
