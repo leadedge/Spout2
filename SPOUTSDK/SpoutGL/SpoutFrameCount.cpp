@@ -849,7 +849,7 @@ void spoutFrameCount::AllowKeyedAccess(ID3D11Texture2D* pTexture)
 	// 22-24 microseconds
 	if (pTexture) {
 		IDXGIKeyedMutex* pDXGIKeyedMutex;
-		pTexture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
+		pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
 		if (pDXGIKeyedMutex) {
 			pDXGIKeyedMutex->ReleaseSync(0);
 			pDXGIKeyedMutex->Release();
