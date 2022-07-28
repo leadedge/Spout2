@@ -50,6 +50,8 @@
 //					  Zero frame counter variables on reset and init
 //		25.01.22	- Clean up logs in CreateAccessMutex and EnableFrameCount
 //		21.02.22	- Change "_uuidof" to "__uuidof" in CheckKeyedAccess. PR#81
+//		15.05.22	- CheckKeyedAccess - change WAIT_OBJECT_0 to S_OK
+//		27.07.22	- Change "_uuidof" to "__uuidof" in AllowKeyedAccess. PR#84
 //
 // ====================================================================================
 //
@@ -823,8 +825,8 @@ bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 		if (pDXGIKeyedMutex) {
 			HRESULT hr = pDXGIKeyedMutex->AcquireSync(0, 67); // TODO - link with SPOUT_WAIT_TIMEOUT
 			switch (hr) {
-				case WAIT_OBJECT_0:
-					// The state of the object is signalled.
+				case case S_OK:
+					// Sync is acquired
 					pDXGIKeyedMutex->Release();
 					return true;
 				case WAIT_ABANDONED:
@@ -849,7 +851,7 @@ void spoutFrameCount::AllowKeyedAccess(ID3D11Texture2D* pTexture)
 	// 22-24 microseconds
 	if (pTexture) {
 		IDXGIKeyedMutex* pDXGIKeyedMutex;
-		pTexture->QueryInterface(_uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
+		pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
 		if (pDXGIKeyedMutex) {
 			pDXGIKeyedMutex->ReleaseSync(0);
 			pDXGIKeyedMutex->Release();
