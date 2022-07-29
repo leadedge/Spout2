@@ -438,7 +438,7 @@ bool spoutGL::OpenSpout(bool bRetest)
 
 	m_bUseGLDX = false;
 	m_bTextureShare = false;
-	m_bCPUshare = false;
+	m_bCPUshare = true;
 
 	// DirectX capability is the minimum
 	if (!OpenDirectX()) {
