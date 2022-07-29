@@ -52,6 +52,8 @@
 //		21.02.22	- Change "_uuidof" to "__uuidof" in CheckKeyedAccess. PR#81
 //		15.05.22	- CheckKeyedAccess - change WAIT_OBJECT_0 to S_OK
 //		27.07.22	- Change "_uuidof" to "__uuidof" in AllowKeyedAccess. PR#84
+//		29.07.22	- Correct "case case" typo in CheckKeyedAccess
+//					  Add case E_FAIL
 //
 // ====================================================================================
 //
@@ -824,16 +826,23 @@ bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 		pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex); // PR#81
 		if (pDXGIKeyedMutex) {
 			HRESULT hr = pDXGIKeyedMutex->AcquireSync(0, 67); // TODO - link with SPOUT_WAIT_TIMEOUT
+			// Return S_OK if successful.
 			switch (hr) {
-				case case S_OK:
+				case S_OK:
 					// Sync is acquired
 					pDXGIKeyedMutex->Release();
 					return true;
 				case WAIT_ABANDONED:
 					SpoutLogError("spoutDirectX::CheckKeyedAccess : WAIT_ABANDONED");
 					break;
-				case WAIT_TIMEOUT: // The time-out interval elapsed, and the object's state is non-signalled.
+				case WAIT_TIMEOUT:
+					// The time-out interval elapsed
 					SpoutLogError("spoutDirectX::CheckKeyedAccess : WAIT_TIMEOUT");
+					break;
+				case E_FAIL:
+					// If the owning device attempted to create another keyed mutex 
+					// on the same shared resource, AcquireSync returns E_FAIL.
+					SpoutLogError("spoutDirectX::CheckKeyedAccess : E_FAIL");
 					break;
 				default:
 					break;
