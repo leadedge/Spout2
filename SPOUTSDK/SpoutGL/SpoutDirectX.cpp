@@ -110,6 +110,7 @@
 // 		29.03.22	- CreateDX11Texture, CreateSharedDX11Texture, CreateDX11StagingTexture
 //					  Switch on HRESULT instead of LOWORD so that DXGI cases are recognised 
 //		07.04.22	- CreateDX11Texture - cast to int the LOWORD from hresult for error report
+//		15.05.22	- CreateSharedDX11Texture change Fatal logs to Warning
 //
 // ====================================================================================
 /*
@@ -417,7 +418,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 											HANDLE &dxShareHandle)
 {
 	if (!pd3dDevice) {
-		SpoutLogFatal("spoutDirectX::CreateSharedDX11Texture NULL device");
+		SpoutLogWarning("spoutDirectX::CreateSharedDX11Texture NULL device");
 		return false;
 	}
 
@@ -463,10 +464,11 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	desc.Width				= width;
 	desc.Height				= height;
 	desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-	desc.MiscFlags			= D3D11_RESOURCE_MISC_SHARED; // This texture will be shared
-	// desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+	// This texture will be shared
 	// Note that a DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not
-	// compatible with DirectX 9 so a general named mutex is used for all texture types
+	// compatible with DirectX 9. If compatibility is required, a general named mutex
+	// should be used for all texture types. This is the default.
+	desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
 	desc.CPUAccessFlags		= 0;	
 	desc.Format				= texformat;
 	desc.Usage				= D3D11_USAGE_DEFAULT;
@@ -497,7 +499,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 				strcat_s(tmp, 256, "Unlisted error");
 				break;
 		}
-		SpoutLogFatal("%s", tmp);
+		SpoutLogError("%s", tmp);
 		return false;
 	}
 
@@ -509,7 +511,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	ID3D11Texture2D* pTexture = *ppSharedTexture;
 	IDXGIResource* pOtherResource(NULL);
 	if (FAILED(pTexture->QueryInterface(__uuidof(IDXGIResource), (void**)&pOtherResource))) {
-		SpoutLogFatal("spoutDirectX::CreateSharedDX11Texture - QueryInterface error");
+		SpoutLogWarning("spoutDirectX::CreateSharedDX11Texture - QueryInterface error");
 		return false;
 	}
 
@@ -699,7 +701,6 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	// printf("td.SampleDesc = %d\n", td.SampleDesc);
 	// printf("td.BindFlags = %d\n", td.BindFlags);
 	// printf("td.MiscFlags = %d\n", td.MiscFlags); // D3D11_RESOURCE_MISC_SHARED
-	
 
 	return true;
 
@@ -1058,7 +1059,7 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 		return 0;
 	}
 
-	SpoutLogNotice("spoutDirectX::ReleaseDX11Texture (0x%.7X)", PtrToUint(pTexture) );
+	SpoutLogNotice("spoutDirectX::ReleaseDX11Texture (0x%.7X, 0x%.7X)", PtrToUint(pd3dDevice), PtrToUint(pTexture) );
 	unsigned long refcount = pTexture->Release();
 	pTexture = nullptr;
 

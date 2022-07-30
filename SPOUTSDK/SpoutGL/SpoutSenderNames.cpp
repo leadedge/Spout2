@@ -1,4 +1,4 @@
-/**
+/*
 
 	SpoutSenderNames.cpp
 
@@ -40,8 +40,8 @@
 			   the number of senders in the map passed
 			 - changed writeBufferFromSenderSet to use the global m_MaxSenders
 			 - Created SetMaxSenders to set m_MaxSenders
-	03.07-16 - Use helper functions for conversion of 64bit HANDLE to unsigned __int32
-			   and unsigned __int32 to 64bit HANDLE
+	03.07-16 - Use helper functions for conversion of 64bit HANDLE to uint32_t
+			   and uint32_t to 64bit HANDLE
 			   https://msdn.microsoft.com/en-us/library/aa384267%28VS.85%29.aspx
 	22.05.17 - Initialize unused variables in SetTextureInfo
 			 - __movsd for info shared memory access instead of memcpy
@@ -84,6 +84,7 @@
 			   Remove duplicate shared memory creation in RegisterSenderName
 			   GetActiveSender - rename temp name string to be more clear
 	09.05.22 - Include SPOUT_ALREADY_CREATED for setActiveSenderName create shared memory success
+	30.07.22 - Throughout - remove redundant code
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
@@ -196,9 +197,8 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 		// The active sender is the one selected by the user
 		// or the last one opened by the user, so don't limit to the first sender
 		// Set the current sender name as active
-		SetActiveSender(Sendername);  
+		SetActiveSender(Sendername);
 	}
-
 	m_senderNames.Unlock();
 
 	return ret.second;
@@ -223,11 +223,12 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 	char *pBuf = m_senderNames.Lock();
 	if (!pBuf) return false;
 
-	namestring = Sendername;
-	auto foundSender = m_senders->find(namestring);
+	auto foundSender = m_senders->find(Sendername);
+
 	if (foundSender != m_senders->end()) {
+		// This also deletes the sender shared memory
 		delete foundSender->second;
-		m_senders->erase(namestring);
+		m_senders->erase(Sendername);
 	}
 
 	// Read the buffer to a set to iterate through the names
@@ -256,6 +257,7 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 			}
 		}
 		m_senderNames.Unlock();
+
 		return true;
 	}
 	m_senderNames.Unlock();
@@ -264,27 +266,23 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 
 } // end ReleaseSenderName
 
+
 // Test to see if the Sender name exists in the sender set
 bool spoutSenderNames::FindSenderName(const char* Sendername)
 {
 	std::string namestring = "";
 	std::set<std::string> SenderNames;
 	std::set<std::string>::iterator iter;
-	
 	if(Sendername[0]) { // was a valid name passed
 		// Get the current list to update the passed list
 		if(GetSenderSet(SenderNames)) {
-			if (SenderNames.size() > 0) {
-				for (iter = SenderNames.begin(); iter != SenderNames.end(); iter++) {
-					namestring = *iter;
-				}
-			}
 			// Does the name exist
 			if (SenderNames.find(Sendername) != SenderNames.end()) {
 				return true;
 			}
 		}
 	}
+
 	return false;
 }
 
@@ -404,7 +402,6 @@ bool spoutSenderNames::GetSender(int index, char* sendername, int sendernameMaxS
 	std::set<std::string> SenderNameSet;
 	std::set<std::string>::iterator iter;
 	std::string namestring;
-	char name[256];
 	int i;
 
 	if (GetSenderNames(&SenderNameSet)) {
@@ -414,9 +411,8 @@ bool spoutSenderNames::GetSender(int index, char* sendername, int sendernameMaxS
 		i = 0;
 		for (iter = SenderNameSet.begin(); iter != SenderNameSet.end(); iter++) {
 			namestring = *iter; // the name string
-			strcpy_s(name, 256, namestring.c_str()); // the 256 byte name char array
 			if (i == index) {
-				strcpy_s(sendername, sendernameMaxSize, name); // the passed name char array
+				strcpy_s(sendername, sendernameMaxSize, namestring.c_str());
 				break;
 			}
 			i++;
@@ -434,7 +430,7 @@ bool spoutSenderNames::GetSender(int index, char* sendername, int sendernameMaxS
 // width, height, dxShareHandle - out
 bool spoutSenderNames::GetSenderNameInfo(int index, char* sendername, int sendernameMaxSize, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle)
 {
-	char name[SpoutMaxSenderNameLen];
+	// char name[SpoutMaxSenderNameLen];
 	std::set<std::string> SenderNameSet;
 	std::set<std::string>::iterator iter;
 	std::string namestring;
@@ -448,11 +444,19 @@ bool spoutSenderNames::GetSenderNameInfo(int index, char* sendername, int sender
 		i = 0;
 		for(iter = SenderNameSet.begin(); iter != SenderNameSet.end(); iter++) {
 			namestring = *iter; // the name string
-			strcpy_s(name, SpoutMaxSenderNameLen, namestring.c_str()); // the 256 byte name char array
+			// strcpy_s(name, SpoutMaxSenderNameLen, namestring.c_str()); // the 256 byte name char array
 			if(i == index) {
-				strcpy_s(sendername, (rsize_t)sendernameMaxSize, name); // the passed name char array
+				// strcpy_s(sendername, (rsize_t)sendernameMaxSize, name); // the passed name char array
+				strcpy_s(sendername, (rsize_t)sendernameMaxSize, namestring.c_str()); // return the name
 				break;
 			}
+			/*
+			if (i == index) {
+				std::string sname = StripGUID(namestring);
+				strcpy_s(sendername, SpoutMaxSenderNameLen, sname.c_str()); // the passed name char array
+				break;
+			}
+			*/
 			i++;
 		}
 		
@@ -512,32 +516,27 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 {
 	SharedTextureInfo info;
 
-	std::string nameString = sendername;
-	
-	auto foundSender = m_senders->find(nameString);
-
+	auto foundSender = m_senders->find(sendername);
 	if (foundSender == m_senders->end())
 	{
 		return false;
 	}
 
 	auto senderInfoMap = foundSender->second;
-
 	char *pBuf = senderInfoMap->Lock();
-
 	if (!pBuf)
 	{
 		return false;
 	}
 		
-	info.width       = (unsigned __int32)width;
-	info.height      = (unsigned __int32)height;
+	info.width       = (uint32_t)width;
+	info.height      = (uint32_t)height;
 #ifdef _M_X64
-	info.shareHandle = (unsigned __int32)(HandleToLong(dxShareHandle));
+	info.shareHandle = (uint32_t)(HandleToLong(dxShareHandle));
 #else
-	info.shareHandle = (unsigned __int32)dxShareHandle;
+	info.shareHandle = (uint32_t)dxShareHandle;
 #endif
-	info.format      = (unsigned __int32)dwFormat;
+	info.format      = (uint32_t)dwFormat;
 	
 	//
 	// Initialize unused variables
@@ -585,12 +584,10 @@ bool spoutSenderNames::SetSenderID(const char *sendername, bool bCPU, bool bGLDX
 	SharedTextureInfo info;
 
 	if (getSharedInfo(sendername, &info)) {
-
 		// Using CPU sharing methods - set top bit
 		// 1000 0000 0000 0000 0000 0000 0000 0000
 		// GL/DX compatible hardware - set next to top bit
 		// 0100 0000 0000 0000 0000 0000 0000 0000
-
 		info.partnerId = 0x00000000; // Default both bits clear
 		if (bCPU)
 			info.partnerId = 0x80000000;
@@ -687,7 +684,6 @@ bool spoutSenderNames::GetActiveSenderInfo(SharedTextureInfo* info)
 
 //
 // Retrieve the texture info of the active sender
-// - redundancy 
 bool spoutSenderNames::FindActiveSender(char sendername[SpoutMaxSenderNameLen], unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
 {
     SharedTextureInfo TextureInfo;
@@ -729,7 +725,7 @@ bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, 
 	RegisterSenderName(sendername);
 
 	// Save the texture info for this sender
-	if(!UpdateSender(sendername, width, height, hSharehandle, dwFormat))
+	if (!UpdateSender(sendername, width, height, hSharehandle, dwFormat))
 		return false;
 
 	return true;
@@ -740,24 +736,21 @@ bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, 
 //	Used when a sender's texture changes size
 bool spoutSenderNames::UpdateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
-	std::string namestring = sendername;
-
-	if (m_senders->size() == 0 || (m_senders->find(namestring) == m_senders->end())) { // New sender
+	if (m_senders->size() == 0 || (m_senders->find(sendername) == m_senders->end())) { // New sender
 
 		// Create or open a shared memory map for this sender - allocate enough for the texture info
 		SpoutSharedMemory *senderInfoMem = new SpoutSharedMemory();
 		SpoutCreateResult result = senderInfoMem->Create(sendername, sizeof(SharedTextureInfo));
-
 		if (result == SPOUT_CREATE_FAILED) {
 			delete senderInfoMem;
 			m_senderNames.Unlock();
 			return false;
 		}
-
-		(*m_senders)[namestring] = senderInfoMem;
-
+		// The sender's information remains until it closes
+		// and is saved in the m_senders set
+		(*m_senders)[sendername] = senderInfoMem;
 	}
-	
+
 	// Save the info for this sender in the sender shared memory map
 	return SetSenderInfo(sendername, width, height, hSharehandle, dwFormat);
 		
@@ -832,7 +825,7 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 
 	// Check the user entered Sender name to see if it exists
 	if (sendername[0] == 0) {
-		// Passed name was null, so find the active sender
+		// Passed name was empty, so find the active sender
 		if (!GetActiveSender(sendername))
 			return false;
 	}
@@ -896,7 +889,6 @@ void spoutSenderNames::CleanSenders()
 		for (iter = Senders.begin(); iter != Senders.end(); iter++) {
 			namestring = *iter; // the Sender name string
 			strcpy_s(name, namestring.c_str());
-
 			// we have the name already, so look for it's info
 			if (!getSharedInfo(name, &info)) {
 				// Sender does not exist any more so release from the name list
@@ -934,7 +926,6 @@ void spoutSenderNames::readSenderSetFromBuffer(const char* buffer, std::set<std:
 		strncpy_s(name, buf, SpoutMaxSenderNameLen);
 		if(name[0] > 0) {
 			// insert name into set
-			// seems OK with a char array instead of converting to a string first
 			SenderNames.insert(name);
 		}
 		// increment by 256 bytes for the next name
@@ -983,7 +974,6 @@ bool spoutSenderNames::CreateSenderSet()
 	// The map will be created using m_MaxSenders unless a map already exists
 	// in which case the map size will be the same as when it was created.
 	// If it was created by a 2.004 app this will have a maximum of 10 senders.
-
 	SpoutCreateResult result = m_senderNames.Create("SpoutSenderNames", m_MaxSenders*SpoutMaxSenderNameLen);
 	if(result == SPOUT_CREATE_FAILED) {
 		SpoutLogError("spoutSenderNames::CreateSenderSet() : SPOUT_CREATE_FAILED");
@@ -1042,7 +1032,6 @@ bool spoutSenderNames::setActiveSenderName(const char* SenderName)
 			SpoutLogWarning("spoutSenderNames::setActiveSenderName - could not lock buffer");
 			return false;
 		}
-
 		// Fill it with the Sender name string
 		memcpy((void*)pBuf, (void*)SenderName, len + 1); // write the Sender name string to the shared memory
 		m_activeSender.Unlock();
@@ -1059,8 +1048,9 @@ bool spoutSenderNames::setActiveSenderName(const char* SenderName)
 bool spoutSenderNames::getActiveSenderName(char SenderName[SpoutMaxSenderNameLen]) 
 {
 	bool result = m_activeSender.Open("ActiveSenderName");
-	if (!result)
+	if (!result) {
 		return false;
+	}
 
 	char *pBuf = m_activeSender.Lock();
 
@@ -1070,7 +1060,7 @@ bool spoutSenderNames::getActiveSenderName(char SenderName[SpoutMaxSenderNameLen
 	}
 
 	memcpy(SenderName, (void *)pBuf, SpoutMaxSenderNameLen ); // get the name string from shared memory
-	
+
 	m_activeSender.Unlock();
 
 	return true;
@@ -1084,8 +1074,7 @@ bool spoutSenderNames::getActiveSenderName(char SenderName[SpoutMaxSenderNameLen
 bool spoutSenderNames::getSharedInfo(const char* sharedMemoryName, SharedTextureInfo* info) 
 {
 	SpoutSharedMemory mem;
-
-	// Possibly faster because the function is called all the time
+	// Open is possibly faster than Create because the function is called all the time
 	if(mem.Open(sharedMemoryName)) {
 		char *pBuf = mem.Lock();
 		if(pBuf) {
@@ -1103,9 +1092,8 @@ bool spoutSenderNames::getSharedInfo(const char* sharedMemoryName, SharedTexture
 bool spoutSenderNames::setSharedInfo(const char* sharedMemoryName, SharedTextureInfo* info) 
 {
 	SpoutSharedMemory mem;
-	bool result = mem.Open(sharedMemoryName);
 
-	if (!result) {
+	if (!mem.Open(sharedMemoryName)) {
 		return false;
 	}
 
@@ -1121,7 +1109,7 @@ bool spoutSenderNames::setSharedInfo(const char* sharedMemoryName, SharedTexture
 	
 	return true;
 
-} // end getSharedInfo
+} // end setSharedInfo
 
 
 // Test for shared info memory map existence

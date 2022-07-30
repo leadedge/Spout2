@@ -187,21 +187,25 @@ bool SpoutSharedMemory::Open(const char* name)
 void SpoutSharedMemory::Close()
 {
 	if (m_pBuffer) {
+		// printf("SpoutSharedMemory::Close(%s) : UnmapViewOfFile\n", m_pName);
 		UnmapViewOfFile((LPCVOID)m_pBuffer);
 		m_pBuffer = NULL;
 	}
 
 	if (m_hMap) {
+		// printf("SpoutSharedMemory::Close(%s) : CloseHandle map\n", m_pName);
 		CloseHandle(m_hMap);
 		m_hMap = NULL;
 	}
 
 	if (m_hMutex) {
+		// printf("SpoutSharedMemory::Close(%s) : CloseHandle mutex\n", m_pName);
 		CloseHandle(m_hMutex);
 		m_hMutex = NULL;
 	}
 
 	if (m_pName) {
+		// printf("SpoutSharedMemory::Close(%s) : free name\n", m_pName);
 		free((void*)m_pName);
 		m_pName = NULL;
 	}

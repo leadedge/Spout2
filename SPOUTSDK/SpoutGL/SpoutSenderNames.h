@@ -58,25 +58,30 @@
 
 // The texture information structure that is saved to shared memory
 // and used for communication between senders and receivers
-// unsigned __int32 is used for compatibility between 32bit and 64bit
-// See : http://msdn.microsoft.com/en-us/library/windows/desktop/aa384203%28v=vs.85%29.aspx
-// This is also compatible with wyphon : 
+// uint32_t is used for compatibility between 32bit and 64bit
 // The structure is declared here so that this class is can be independent of opengl
 //
-// 03.07-16 - Use helper functions for conversion of 64bit HANDLE to unsigned __int32
-// and unsigned __int32 to 64bit HANDLE
+// Use helper functions for conversion between HANDLE and uint32_t
 // https://msdn.microsoft.com/en-us/library/aa384267%28VS.85%29.aspx
 // in SpoutGLDXinterop.cpp and SpoutSenderNames
 //
-struct SharedTextureInfo {			// 280 bytes total
-	unsigned __int32 shareHandle;	// 4 bytes : texture handle
-	unsigned __int32 width;			// 4 bytes : texture width
-	unsigned __int32 height;		// 4 bytes : texture height
-	DWORD format;					// 4 bytes : texture pixel format
-	DWORD usage;					// 4 bytes : not used
-	wchar_t description[128];		// 256 bytes : Wyphon compatible description (not used)
-	unsigned __int32 partnerId;		// 4 bytes : Wyphon id of partner that shared it with us (not used)
+struct SharedTextureInfo {		// 280 bytes total
+	uint32_t shareHandle;		// 4 bytes : texture handle
+	uint32_t width;				// 4 bytes : texture width
+	uint32_t height;			// 4 bytes : texture height
+	uint32_t format;			// 4 bytes : texture pixel format
+	uint32_t usage;				// 4 bytes : texture usage
+	uint8_t  description[256];	// 256 bytes : description
+	uint32_t partnerId;			// 4 bytes : ID
 };
+
+//
+// GUIDs for additional sender information maps
+//
+
+// Sender texture queue
+// {AB5C33D6-3654-43F9-85F6-F54872B0460B}
+static const char* GUID_queue = "AB5C33D6-3654-43F9-85F6-F54872B0460B";
 
 
 class SPOUT_DLLEXP spoutSenderNames {
@@ -173,7 +178,6 @@ class SPOUT_DLLEXP spoutSenderNames {
 		// Release orphaned senders
 		void CleanSenders();
 
-
 protected:
 
 		// Sender name set management
@@ -192,8 +196,8 @@ protected:
 		static void readSenderSetFromBuffer(const char* buffer, std::set<std::string>& SenderNames, int maxSenders);
 		static void	writeBufferFromSenderSet(const std::set<std::string>& SenderNames, char *buffer, int maxSenders);
 
-		SpoutSharedMemory	m_senderNames;
-		SpoutSharedMemory	m_activeSender;
+		SpoutSharedMemory m_senderNames;
+		SpoutSharedMemory m_activeSender;
 
 		// This should be a unordered_map of sender names ->SharedMemory
 		// to handle multiple inputs and outputs all going through the

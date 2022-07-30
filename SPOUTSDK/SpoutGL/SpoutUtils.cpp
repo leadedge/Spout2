@@ -86,6 +86,7 @@
 		25.02.22 - OpenSpoutConsole - check AllocConsole error for existing console
 				   Fix for Processing.
 		14.04.22 - Add option in SpoutCommon.h to disable warning 26812 (unscoped enums)
+		23.06.22 - Add ElapsedMicroseconds (usec since epoch)
 
 */
 
@@ -661,27 +662,30 @@ namespace spoututils {
 
 	}
 
+#ifdef USE_CHRONO
 	// Timing utility functions
 	void StartTiming() {
-#ifdef USE_CHRONO
 		start = std::chrono::steady_clock::now();
-		// start = std::chrono::high_resolution_clock::now();
-#endif
 	}
 
 	double EndTiming() {
-#ifdef USE_CHRONO
 		end = std::chrono::steady_clock::now();
 		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		// end = std::chrono::high_resolution_clock::now();
 		// double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
 		// printf("    elapsed [%.4f] msec\n", elapsed / 1000.0);
 		// printf("elapsed [%.3f] u/sec\n", elapsed);
 		return elapsed;
-#else
-		return 0.0;
-#endif
 	}
+
+	// Microseconds elapsed since epoch
+	double ElapsedMicroseconds()
+	{
+		std::chrono::system_clock::time_point timenow = std::chrono::system_clock::now();
+		std::chrono::system_clock::duration duration = timenow.time_since_epoch();
+		double timestamp = static_cast<double>(duration.count()); // nsec/100 - duration period is 100 nanoseconds
+		return timestamp / 10.0; // microseconds
+	}
+#endif
 
 	// Get SDK version number string e.g. "2.007.000"
 	std::string GetSDKversion()

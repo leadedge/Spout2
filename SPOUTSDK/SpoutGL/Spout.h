@@ -48,18 +48,21 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Set name for sender creation
 	//   If no name is specified, the executable name is used  
 	void SetSenderName(const char* sendername = nullptr);
+
 	// Set the sender DX11 shared texture format
 	void SetSenderFormat(DWORD dwFormat);
-	// Close sender and free resources
-	//   A sender is created or updated by all sending functions
+	
+	// Release sender and resources
 	void ReleaseSender();
-	// Send texture attached to fbo
-	//   The fbo must be currently bound
+
+	// Send OpenGL framebuffer
+	//   The fbo must be bound for read.
 	//   The sending texture can be larger than the size that the sender is set up for
 	//   For example, if the application is using only a portion of the allocated texture space,  
 	//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture)
-	//   To send the OpenGL default framebuffer, specify "0" for the fbo ID, width and height.
-	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = false);
+	//   To send the default OpenGL framebuffer, specify FboID = 0.
+	//   If width and height are also 0, the function determines the viewport size.
+	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
 	// Send OpenGL texture
 	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
 	// Send image pixels
@@ -192,7 +195,6 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Get the current adapter description
 	bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
 
-
 	//
 	// 2.006 compatibility
 	//
@@ -246,7 +248,7 @@ protected:
 	void InitReceiver(const char * sendername, unsigned int width, unsigned int height, DWORD dwFormat);
 	// Receiver find sender and retrieve information
 	bool ReceiveSenderData();
-	
+
 	//
 	// Class globals
 	//
@@ -254,7 +256,6 @@ protected:
 	// Graphics adapter name
 	char m_AdapterName[256];
 	bool m_bAdapt; // Receiver adapt to the sender adapter
-
 
 };
 

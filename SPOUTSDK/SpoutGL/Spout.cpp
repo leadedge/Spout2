@@ -223,6 +223,8 @@
 //		28.04.22	- SelectSenderPanel - if SpoutPanel is not found,
 //					  show a MessageBox and direct to the Spout home page
 //		05.05.22	- SendFbo - mods for default framebuffer
+//		30.07.22	- SendFbo - avoid using glGetIntegerv if width and height are passed in
+//				      Revert to default invert true after further testing with default framebuffer.
 //
 // ====================================================================================
 /*
@@ -339,6 +341,7 @@ Spout::~Spout()
 //    - Update the sender and class variables	
 //
 
+
 //---------------------------------------------------------
 // Function: SetSenderName
 // Set name for sender creation
@@ -368,6 +371,7 @@ void Spout::SetSenderName(const char* sendername)
 			i++;
 		} while (sendernames.FindSenderName(name));
 	}
+
 	// Re-set the global sender name
 	strcpy_s(m_SenderName, 256, name);
 
@@ -386,7 +390,7 @@ void Spout::SetSenderFormat(DWORD dwFormat)
 
 //---------------------------------------------------------
 // Function: ReleaseSender
-// Close receiver and release resources.
+// Close sender and release resources.
 //
 // A new sender is created or updated by all sending functions
 void Spout::ReleaseSender()
@@ -399,11 +403,14 @@ void Spout::ReleaseSender()
 		frame.CloseAccessMutex();
 	}
 
-	// Close shared memory and sync event if used
+	// Close 2.006 or buffer shared memory if used
 	memoryshare.Close();
+
+	// Release sync event if used
 	frame.CloseFrameSync();
 
-	// Release OpenGL resources
+	// Release OpenGL resources and interop
+	// (releases the DirectX shared texture and Staging textures for CPU share)
 	// OpenGL only - do not close DirectX
 	CleanupGL();
 
@@ -415,31 +422,36 @@ void Spout::ReleaseSender()
 //
 //   The fbo must be bound for read. 
 //
-//   The fbo can be larger than the size that the sender is set up for.  
+//   The sending texture can be larger than the size that the sender is set up for
 //   For example, if the application is using only a portion of the allocated texture space,  
-//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture).
-//   To send the OpenGL default framebuffer, specify "0" for the fbo ID, width and height.
+//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture)
+//
+//   To send the default OpenGL framebuffer, specify FboID = 0. 
+//   If width and height are also 0, the function determines the viewport size. 
+//
 bool Spout::SendFbo(GLuint FboID, unsigned int fbowidth, unsigned int fboheight, bool bInvert)
 {
 	// For texture sharing, the size of the texture attached to the
 	// fbo must be equal to or larger than the shared texture
 	// Establish local width and height in case the viewport size is used
-	unsigned int width = fbowidth;
+	unsigned int width  = fbowidth;
 	unsigned int height = fboheight;
 
-	// Default framebuffer
+	// For the default framebuffer, specify FboID = 0
 	if (FboID == 0) {
 		// Default framebuffer fails if iconic
 		if (IsIconic(m_hWnd))
 			return false;
-		// Check the default framebuffer for binding and read completeness
-		if (glCheckNamedFramebufferStatusEXT(0, GL_READ_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
-			return false;
-		// Get the viewport size
-		GLint vpdims[4] = { 0 };
-		glGetIntegerv(GL_VIEWPORT, vpdims);
-		width = (unsigned int)vpdims[2];
-		height = (unsigned int)vpdims[3];
+		// This additional test allows the application to get the viewport size 
+		// only when necessary to prevent repeated calls to glGetIntegerv if
+		// performance is affected.
+		if (width == 0 || height == 0) {
+			// Get the viewport size
+			GLint vpdims[4] ={0};
+			glGetIntegerv(GL_VIEWPORT, vpdims);
+			width  = (unsigned int)vpdims[2];
+			height = (unsigned int)vpdims[3];
+		}
 	}
 
 	// Create or update the sender
@@ -490,12 +502,16 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 		return false;
 
 	// Create or update the sender
-	// < 0.001 msec 
 	if (!CheckSender(width, height))
 		return false;
 
 	if (m_bTextureShare) {
-		// Send OpenGL texture if GL/DX interop compatible
+		
+		//
+		// if GL/DX interop compatible
+		//
+
+		// Send OpenGL texture 
 		// 3840-2160 - 60fps (0.45 msec per frame)
 		return WriteGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
 	}
@@ -663,6 +679,7 @@ bool Spout::GetGLDX()
 void Spout::SetReceiverName(const char * SenderName)
 {
 	if (SenderName && SenderName[0]) {
+
 		// Connect to the specified sender
 		strcpy_s(m_SenderNameSetup, 256, SenderName);
 		strcpy_s(m_SenderName, 256, SenderName);
@@ -765,6 +782,7 @@ bool Spout::ReceiveTexture()
 //
 bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
+
 	// Return if flagged for update and there is a texture to receive into.
 	// The update flag is reset when the receiving application calls IsUpdated().
 	if (m_bUpdated && TextureID != 0 && TextureTarget != 0) {
@@ -1912,6 +1930,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 
 				m_Width = width;
 				m_Height = height;
+
 				//
 				// SetSenderID writes to the sender shared texture memory
 				// to set sender CPU sharing mode and hardware GL/DX compatibility
@@ -1985,10 +2004,11 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 	return true;
 }
 
+
 //---------------------------------------------------------
 void Spout::InitReceiver(const char * SenderName, unsigned int width, unsigned int height, DWORD dwFormat)
 {
-	SpoutLogNotice("Spout::InitReceiver(%s, %d x %d)", SenderName, width, height);
+	SpoutLogNotice("Spout::InitReceiver(%s, %dx%d)", SenderName, width, height);
 
 	// Create a named sender mutex for access to the sender's shared texture
 	frame.CreateAccessMutex(SenderName);
@@ -1998,6 +2018,7 @@ void Spout::InitReceiver(const char * SenderName, unsigned int width, unsigned i
 
 	// Set class globals
 	strcpy_s(m_SenderName, 256, SenderName);
+
 	m_Width = width;
 	m_Height = height;
 	m_dwFormat = dwFormat;
@@ -2007,10 +2028,6 @@ void Spout::InitReceiver(const char * SenderName, unsigned int width, unsigned i
 }
 
 //---------------------------------------------------------
-//	o Connect to a sender and inform the application to update texture dimensions
-//	o Check for user sender selection
-//  o Receive texture details from the sender for write to the user texture
-//  o Retrieve width, height, format, share handle and texture pointer
 bool Spout::ReceiveSenderData()
 {
 	m_bUpdated = false;
@@ -2054,7 +2071,7 @@ bool Spout::ReceiveSenderData()
 		// GPU texture share and hardware GL/DX compatible by default
 		m_bSenderCPU  = false;
 		m_bSenderGLDX = true;
-		
+
 		//
 		// 32 bit partner ID field
 		//
@@ -2094,7 +2111,9 @@ bool Spout::ReceiveSenderData()
 		//   o for texture size or format change
 		//   o for a new sender
 		if (dxShareHandle != m_dxShareHandle || strcmp(sendername, m_SenderName) != 0) {
-		
+
+			// printf("    different share handle 0x%7X : m_dxShareHandle = 0x%7X\n", PtrToUint(qShareHandle), PtrToUint(m_dxShareHandle));
+
 			// Release everything and start again
 			ReleaseReceiver();
 
@@ -2106,7 +2125,7 @@ bool Spout::ReceiveSenderData()
 
 				// Get a new shared texture pointer (m_pSharedTexture)
 				if (!spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &m_pSharedTexture, dxShareHandle)) {
-					
+
 					// If this fails, something is wrong.
 					// The sender graphics adapter might be different.
 					// Warning not required here -Error log is generated in OpenDX11shareHandle.
@@ -2158,7 +2177,6 @@ bool Spout::ReceiveSenderData()
 	return false;
 
 }
-
 
 //---------------------------------------------------------
 // Check whether SpoutPanel opened and return the new sender name
@@ -2222,7 +2240,7 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 		return bRet;
 	} // SpoutPanel has not been opened
 
-
 	return false;
 
 }
+

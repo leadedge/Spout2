@@ -357,6 +357,8 @@ protected :
 	// GL/DX interop
 	HANDLE m_hInteropDevice; // Handle to the DX/GL interop device
 	HANDLE m_hInteropObject; // Handle to the DX/GL interop object (the shared texture)
+
+	// General
 	HWND m_hWnd; // OpenGL window
 	int m_SpoutVersion; // Spout version
 

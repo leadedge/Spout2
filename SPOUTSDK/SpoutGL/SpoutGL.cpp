@@ -96,6 +96,8 @@
 //					  ReadTextureData - create unsigned long variables for temp src char array
 //					  ReadTextureData - Delete temporary "src" char array created with "new"
 //		19.04.22	- Restore host fbo in SetSharedTextureData instead of default 0
+//		04.06.22	- SetSharedTextureData - corrected glCheckFramebufferStatus from != to == for textureID 0
+//		29.07.22	- OpenSpout - default CPU share until tested
 //
 // ====================================================================================
 //
@@ -163,7 +165,7 @@ spoutGL::spoutGL()
 	m_TexFormat = GL_RGBA;
 	m_fbo = 0;
 
-	m_dxShareHandle = nullptr; // Shared texture handle
+	m_dxShareHandle = NULL; // Shared texture handle
 	m_pSharedTexture = nullptr; // DX11 shared texture
 	m_DX11format = DXGI_FORMAT_B8G8R8A8_UNORM; // Default compatible with DX9
 	m_pStaging[0] = nullptr; // DX11 staging textures
@@ -171,8 +173,8 @@ spoutGL::spoutGL()
 	m_Index = 0;
 	m_NextIndex = 0;
 
-	m_hInteropDevice = nullptr;
-	m_hInteropObject = nullptr;
+	m_hInteropDevice = NULL;
+	m_hInteropObject = NULL;
 	m_hWnd = nullptr;
 
 	// For CreateOpenGL and CloseOpenGL
@@ -243,6 +245,7 @@ spoutGL::spoutGL()
 //
 spoutGL::~spoutGL()
 {
+	// Release sender
 	if (m_bInitialized) {
 		sendernames.ReleaseSenderName(m_SenderName);
 		frame.CleanupFrameCount();
@@ -252,15 +255,11 @@ spoutGL::~spoutGL()
 	// Close 2.006 or buffer shared memory if used
 	memoryshare.Close();
 
-	// Release event if used
-	frame.CloseFrameSync();
-
-	// Close shared memory and sync event if used
-	memoryshare.Close();
+	// Release sync event if used
 	frame.CloseFrameSync();
 
 	// Release OpenGL resources and interop
-	// Releases the DirectX shared texture and Staging textures for CPU share
+	// (releases the DirectX shared texture and Staging textures for CPU share)
 	CleanupGL();
 
 	// Finally release DirectX resources and device
@@ -455,6 +454,9 @@ bool spoutGL::OpenSpout(bool bRetest)
 		SpoutLogFatal("spoutGL::OpenSpout - Could not initialize DirectX 11");
 		return false;
 	}
+
+	// Default CPU share until tested
+	m_bCPUshare = true;
 
 	// DirectX is OK
 	// OpenGL device context is needed to go on
@@ -994,7 +996,7 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 	// Create or re-create the class OpenGL texture
 	// The texture has body after it is linked to the shared DirectX texture
 	glGenTextures(1, &m_glTexture);
-
+	
 	m_Width = width;
 	m_Height = height;
 
@@ -1272,7 +1274,7 @@ bool spoutGL::CleanupInterop()
 
 	// These things need an opengl context so check
 	if (wglGetCurrentContext()) {
-		SpoutLogNotice("spoutGL::CleanupInterop - interop device = 0x%7.7X, interop object = 0x%7.7X", PtrToUint(m_hInteropDevice), PtrToUint(m_hInteropObject));
+		SpoutLogNotice("spoutGL::CleanupInterop - interop device = 0x%7.7X, interop object = 0x%7.7X", PtrToUint(hInteropDevice), PtrToUint(hInteropObject));
 		if (m_hInteropDevice && m_hInteropObject) {
 			SpoutLogNotice("    wglDXUnregisterObjectNV");
 			if (!wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject)) {
@@ -1304,7 +1306,7 @@ bool spoutGL::CleanupInterop()
 //---------------------------------------------------------
 void spoutGL::CleanupGL()
 {
-	// Release interop objects before releasing shared texture
+	// Interop objects must be released before releasing shared texture
 	// (OpenGL context is tested)
 	CleanupInterop();
 
@@ -1351,6 +1353,8 @@ void spoutGL::CleanupGL()
 
 	m_Width = 0;
 	m_Height = 0;
+
+	// TODO : Trace - ReleaseSender done ???
 	m_SenderName[0] = 0;
 	m_bInitialized = false;
 
@@ -1435,7 +1439,6 @@ bool spoutGL::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 		frame.AllowTextureAccess(m_pSharedTexture);
 	}
 
-
 	return true;
 
 } // end WriteGLDXTexture
@@ -1489,9 +1492,8 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 	// width/height are the dimensions of the destination texture.
 	// Because two fbos are used, the input texture can be larger than the shared texture
 	// Width and height are the used portion and only the used part is copied
-
 	if (TextureID == 0 && HostFBO >= 0) {
-		if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) {
+		if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
 			// The input texture is attached to attachment point 0 of the fbo passed in
 			// Bind our local fbo for draw
 			glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, m_fbo);
@@ -2174,17 +2176,19 @@ int spoutGL::ReadMemoryBuffer(const char* name, char* data, int maxlength)
 		return 0;
 	}
 
-	// Open a shared memory map for read if not done already
+	// Create a name for the map
+	std::string namestring = name;
+	namestring += "_map";
+
+	// Create a shared memory map for read if not done already
 	if (!memoryshare.Name()) {
-		// Create a name for the map
-		std::string namestring = name;
-		namestring += "_map";
-		// Open the shared memory. This also creates a mutex
+		// Create or open the shared memory. This also creates a mutex
 		// for the reader to lock and unlock the map for reads.
-		if (!memoryshare.Open(namestring.c_str())) {
+		// if (!memoryshare.Open(namestring.c_str())) {
+		if (!memoryshare.Create(namestring.c_str(), maxlength)) {
+			SpoutLogWarning("spoutGL::ReadMemoryBuffer - could not create memory map [%s]", namestring.c_str());
 			return 0;
 		}
-		SpoutLogNotice("spoutGL::ReadMemoryBuffer - opened memory map [%s]", memoryshare.Name());
 	}
 
 	char* pBuffer = memoryshare.Lock();
@@ -2245,7 +2249,7 @@ bool spoutGL::CreateMemoryBuffer(const char *name, int length)
 	// for data transfer. Make the map 16 bytes larger to compensate. 
 	// Add another 16 bytes to allow for a null terminator.
 	// (Use multiples of 16 for alignment to allow for SSE copy : TODO).
-	if(memoryshare.Create(namestring.c_str(), length + 32) != SPOUT_CREATE_FAILED) {
+	if (!memoryshare.Create(namestring.c_str(), length + 32) == SPOUT_CREATE_FAILED) {
 		SpoutLogError("spoutGL::CreateMemoryBuffer - could not create shared memory");
 		return false;
 	}
@@ -3241,13 +3245,19 @@ void spoutGL::PrintFBOstatus(GLenum status)
 		strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT");
 	else if (status == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT)
 		strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT");
+	else if (status == GL_INVALID_ENUM)
+		strcat_s(tmp, 256, "GL_INVALID_ENUM");
+	// else if (status == GL_FRAMEBUFFER_UNDEFINED)
+	//	strcat_s(tmp, 256, "GL_FRAMEBUFFER_UNDEFINED");
 	// else if (status == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT)
 	// 	strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT\n");
 	else
-		strcat_s(tmp, 256, "Unknown Code");
+		strcat_s(tmp, 256, "Unknown status code");
+	// Additionally, if an error occurs, zero is returned.
 	SpoutLogError("%s", tmp);
 	// printf("  PrintFBOstatus(%d) - %s\n",status, tmp);
-	// GLerror();
+	GLerror();
+
 }
 
 bool spoutGL::GLerror() {
@@ -3452,7 +3462,7 @@ bool spoutGL::GetHostPath(const char* sendername, char* hostpath, int maxchars)
 
 	if (!sendernames.getSharedInfo(sendername, &info)) {
 		// Just quit if the key does not exist
-		SpoutLogWarning("spoutGL::GetHostPath - could not get sender info [%s]", sendername);
+		SpoutLogError("spoutGL::GetHostPath - could not get sender info [%s]", sendername);
 		return false;
 	}
 
