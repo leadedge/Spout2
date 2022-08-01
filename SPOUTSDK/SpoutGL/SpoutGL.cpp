@@ -1274,7 +1274,7 @@ bool spoutGL::CleanupInterop()
 
 	// These things need an opengl context so check
 	if (wglGetCurrentContext()) {
-		SpoutLogNotice("spoutGL::CleanupInterop - interop device = 0x%7.7X, interop object = 0x%7.7X", PtrToUint(hInteropDevice), PtrToUint(hInteropObject));
+		SpoutLogNotice("spoutGL::CleanupInterop - interop device = 0x%7.7X, interop object = 0x%7.7X", PtrToUint(m_hInteropDevice), PtrToUint(m_hInteropObject));
 		if (m_hInteropDevice && m_hInteropObject) {
 			SpoutLogNotice("    wglDXUnregisterObjectNV");
 			if (!wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject)) {
