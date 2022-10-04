@@ -98,6 +98,7 @@
 //		19.04.22	- Restore host fbo in SetSharedTextureData instead of default 0
 //		04.06.22	- SetSharedTextureData - corrected glCheckFramebufferStatus from != to == for textureID 0
 //		29.07.22	- OpenSpout - default CPU share until tested
+//		04.10.22	- Correct incorrect test for CreateMemoryBuffer memoryshare.Create
 //
 // ====================================================================================
 //
@@ -2249,7 +2250,7 @@ bool spoutGL::CreateMemoryBuffer(const char *name, int length)
 	// for data transfer. Make the map 16 bytes larger to compensate. 
 	// Add another 16 bytes to allow for a null terminator.
 	// (Use multiples of 16 for alignment to allow for SSE copy : TODO).
-	if (!memoryshare.Create(namestring.c_str(), length + 32) == SPOUT_CREATE_FAILED) {
+	if (memoryshare.Create(namestring.c_str(), length + 32) == SPOUT_CREATE_FAILED) {
 		SpoutLogError("spoutGL::CreateMemoryBuffer - could not create shared memory");
 		return false;
 	}
