@@ -112,6 +112,10 @@
 //					  Add ReceiveTexture() function to receive to a class texture
 //					  Add GetSenderTexture function to return class texture pointer
 //					  Add class texture and management
+//		01.11.22	- Add GetPerformancePreference, SetPerformancePreference,
+//					  GetPreferredAdapterName, SetPreferredAdapter
+//		08.11.22	- Add IsPreferenceAvailable, IsApplicationPath
+//		16.11.22	- HoldFps double fps argument instead of int
 //
 // ====================================================================================
 /*
@@ -1165,8 +1169,12 @@ void spoutDX::SetMaxSenders(int maxSenders)
 //
 // Group: Graphics adapter
 //
+// Return graphics adapter number and names.
+// Get and set adapter index for the DirectX device.
+//
 // Note that both the Sender and Receiver must use the same graphics adapter.
 //
+
 
 //---------------------------------------------------------
 // Function: GetNumAdapters
@@ -1252,7 +1260,18 @@ void spoutDX::SetAdapterAuto(bool bAdapt)
 
 //---------------------------------------------------------
 // Function: GetSenderAdapter
-// Get sender adapter index and name for a given sender
+// Get adapter index and name for a given sender
+//
+// OpenDX11shareHandle will fail if the share handle has been created 
+// using a different graphics adapter (see spoutDirectX).
+//
+// This function loops though all graphics adapters in the system
+// until OpenDX11shareHandle is successful and the same adapter
+// index as the sender is established. 
+//
+// This adapter can then be used by CreateDX11device when the Spout
+// DirectX device is created.
+//
 int spoutDX::GetSenderAdapter(const char* sendername, char* adaptername, int maxchars)
 {
 	if (!sendername || !sendername[0])
@@ -1307,9 +1326,158 @@ int spoutDX::GetSenderAdapter(const char* sendername, char* adaptername, int max
 	// Set the SpoutDirectX class adapter pointer back to what it was
 	spoutdx.SetAdapterPointer(pCurrentAdapter);
 
+	// Return the sender adapter index
 	return senderadapter;
 
 }
+
+//
+// Group: Graphics performance
+//
+// Windows Graphics performance preferences.
+//
+// Performance preferences are available from Windows 10
+// April 2018 update (Version 1803, build 17134) and later.
+//
+// To be effective, performance preference requires the system to have multiple graphics
+// processors which provide a choice between "Power saving" and "High perfformance". 
+// Typically this will be laptop systems with integrated and discrete graphics.
+// Desktop systems with multiple discrete graphics cards do not provide that choice, 
+// even though Windows still allows applications to be set for desired preference.
+//
+// Windows preferences take priority over any settings made by driver
+// programs such as the NVIDIA Control Panel or AMD Control Center for that application.
+// If there is no Windows preference for an application, the graphics driver <settings
+// at https://www.nvidia.com/content/Control-Panel-Help/vLatest/en-us/mergedProjects/nv3d/Setting_the_Preferred_Graphics_Processor.htm> take effect.
+//
+
+
+//---------------------------------------------------------
+// Function: GetPerformancePreference
+// Get the Windows graphics preference for an application
+//
+//	-1 - Not registered
+//
+//	 0 - DXGI_GPU_PREFERENCE_UNSPECIFIED
+//
+//	 1 - DXGI_GPU_PREFERENCE_MINIMUM_POWER
+//
+//	 2 - DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
+//
+// If no path is specified, use the current application path
+//
+int spoutDX::GetPerformancePreference(const char* path)
+{
+	return spoutdx.GetPerformancePreference(path);
+}
+
+//---------------------------------------------------------
+// Function: SetPerformancePreference
+// Set the Windows graphics preference for an application
+//
+//     -1 - No preference
+//
+//      0 - Default
+//
+//      1 - Power saving
+//
+//      2 - High performance
+//
+// If no path is specified, use the current application path
+//
+bool spoutDX::SetPerformancePreference(int preference, const char* path)
+{
+	return spoutdx.SetPerformancePreference(preference, path);
+}
+
+
+//
+// https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_6/nf-dxgi1_6-idxgifactory6-enumadapterbygpupreference
+//
+// When DXGI_GPU_PREFERENCE_UNSPECIFIED is specified for the GpuPreference parameter,
+// this method is equivalent to calling IDXGIFactory1::EnumAdapters1.
+//
+// When DXGI_GPU_PREFERENCE_MINIMUM_POWER is specified for the GpuPreference parameter,
+// the order of preference for the adapter returned in ppvAdapter will be:
+// 1. iGPUs (integrated GPUs)
+// 2. dGPUs (discrete GPUs)
+// 3. xGPUs (external GPUs)
+//
+// When DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE is specified for the GpuPreference parameter,
+// the order of preference for the adapter returned in ppvAdapter will be:
+// 1. xGPUs (external GPUs)
+// 2. dGPUs (discrete GPUs)
+// 3. iGPUs (integrated GPUs)
+//
+
+//---------------------------------------------------------
+// Function: GetPreferredAdapterName
+//
+// Get the graphics adapter name for a Windows preference.
+// This is the first adapter for the given preference :
+//
+//    DXGI_GPU_PREFERENCE_UNSPECIFIED - (0) Equivalent to EnumAdapters1
+//
+//    DXGI_GPU_PREFERENCE_MINIMUM_POWER - (1) Integrated GPU
+//
+//    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE - (2) External GPU / Discrete GPU
+//
+bool spoutDX::GetPreferredAdapterName(int preference, char* adaptername, int maxchars)
+{
+	return spoutdx.GetPreferredAdapterName(preference, adaptername, maxchars);
+}
+
+//---------------------------------------------------------
+// Function: SetPreferredAdapter
+//
+// Set graphics adapter index for a Windows preference
+//
+// Set the adapter index for a performance preference without registering the
+// preference with Windows. This index is used by CreateDX11device when DirectX
+// is intitialized. The function should be called before Spout is initialized.
+//
+//    DXGI_GPU_PREFERENCE_UNSPECIFIED - (0) Equivalent to EnumAdapters1
+//
+//    DXGI_GPU_PREFERENCE_MINIMUM_POWER - (1) Integrated GPU
+//
+//    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE - (2) External GPU / Discrete GPU
+//
+// The function achieves this result without user Windows preference by getting the name
+// of the preferred adapter using EnumAdapterByGpuPreference, finding the index of
+// that adapter in the current list of adapters, using EnumAdapters and finally 
+// retrieving a pointer to the adapter for CreateDX11device to use. To be effective,
+// this requires a system with multiple graphics processors which enable a choice 
+// between "Power saving" and "High performance".
+//
+bool spoutDX::SetPreferredAdapter(int preference)
+{
+	return spoutdx.SetPreferredAdapter(preference);
+}
+
+
+//---------------------------------------------------------
+// Function: IsPreferenceAvailable()
+// Availability of Windows graphics preference settings.
+//
+// Settings are available from Windows 10 April 2018 update 
+// (Version 1803, build 17134) and later.
+bool spoutDX::IsPreferenceAvailable()
+{
+	return spoutdx.IsPreferenceAvailable();
+}
+
+//---------------------------------------------------------
+// Function: IsApplicationPath
+//
+// Is the path a valid application
+//
+// A valid application path will have a drive letter and terminate with ".exe"
+bool spoutDX::IsApplicationPath(const char* path)
+{
+	return spoutdx.IsApplicationPath(path);
+}
+
+
 
 //
 // Group: Data sharing

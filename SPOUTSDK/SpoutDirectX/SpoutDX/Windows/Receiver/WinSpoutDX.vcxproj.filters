@@ -54,6 +54,9 @@
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutUtils.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\SpoutGL\SpoutCommon.h">
+      <Filter>SpoutSDK</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="WinSpoutDX.cpp">

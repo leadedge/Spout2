@@ -14,7 +14,8 @@
 // Compare with a stand-alone version using methods directly from the Spout SDK classes
 // Compare also with Windows examples using SendImage.
 //
-// Window resizing has been added to demonstrate handling of sender size changes
+// Window resizing has been added to the original sample to demonstrate
+// requirements for a Spout sender to handle size changes.
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
@@ -35,7 +36,6 @@
 #include <directxmath.h>
 #include <directxcolors.h>
 #include "resource.h"
-
 
 // SPOUT
 #include "..\..\SpoutDX\SpoutDX.h"
@@ -107,6 +107,10 @@ static int currentadapter = 0;
 static int selectedadapter = 0;
 static int senderadapter = 0;
 
+// Option to create a SpoutDX class device (see InitDevice)
+bool bClassdevice = false; 
+
+
 //--------------------------------------------------------------------------------------
 // Entry point to the program. Initializes everything and goes into a message processing 
 // loop. Idle time is used to render the scene.
@@ -122,14 +126,17 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// Optionally enable logging to catch Spout warnings and errors
 	// OpenSpoutConsole(); // Console only for debugging
-	EnableSpoutLog(); // Log to console
+	// EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("Tutorial04.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
 
+	//
 	// SPOUT
+	//
+
 	// See InitDevice for creating a Spout class device
     if( FAILED( InitDevice() ) )
     {
@@ -138,25 +145,19 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     }
 
 	//
-	// SPOUT
+	// Menu option for change of graphics adapter
 	//
-
-	// Initialize DirectX.
-	// The device pointer must be passed in if a DirectX 11.0 device is available.
-	// Otherwise a device is created in the SpoutDX class.
-	// The function does nothing if a class device was already created.
-	// See InitDevice for creating a class device
+	// Both sender and receiver must use the same graphics adapter.
+	// See more information in the Tutorial07 receiver code.
 	//
-	if (!sender.OpenDirectX11(g_pd3dDevice))
-		return FALSE;
-
-	// Graphics adapter selection requires the device to be created in the SpoutDX class.
-	// If a class device was not created, remove the menu option.
+	// Graphics adapter selection requires the device to be created
+	// in the SpoutDX class (see InitDevice). If a class device was
+	// not created, remove the menu option.
+	//
 	if (!sender.IsClassDevice()) {
 		HMENU hPopup = GetSubMenu(GetMenu(g_hWnd), 0);
 		RemoveMenu(hPopup, IDM_ADAPTER, MF_BYCOMMAND);
 	}
-
 	
 	// Option : give the sender a name
 	// If none is specified, the executable name is used
@@ -166,15 +167,14 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
     MSG msg = {0};
     while( WM_QUIT != msg.message )
     {
-        if( PeekMessage( &msg, nullptr, 0, 0, PM_REMOVE ) )
-        {
+		if( PeekMessage( &msg, nullptr, 0, 0, PM_REMOVE ) )
+	    {
             TranslateMessage( &msg );
             DispatchMessage( &msg );
         }
-        else
-        {
-            Render();
-        }
+		else {
+			Render();
+		}
     }
 
 	// SPOUT
@@ -292,101 +292,111 @@ HRESULT InitDevice()
     UINT width = rc.right - rc.left;
     UINT height = rc.bottom - rc.top;
 
+	// ===============================================================
 	//
 	// SPOUT
 	//
-
 	// Option: Create a device within the SpoutDX class.
-	// See below for device reaction code that has been commented out.
-	// IsClassDevice() will return the hr result whether this has been done or not.
-	// See also the option to use OpenDirectX11() after an application device has been created.
 	//
-	// Use the current graphics adapter index (currentadapter)
-	// This can then be selected by the user - see SelectAdapter()
+	// InitDevice() will return the hr result after swap chain creation
+	// iwhether a class device is ceated or an application device is created as usual. 
 	//
-	// Both sender and receiver must be using the same graphics adapter
+	// Use the current graphics adapter index (currentadapter). This can then
+	// be selected by the user to change the adapter (see SelectAdapter).
+	//
 	// Graphics adapter selection requires a class device.
-	// Don't forget to comment out the application device creation below
+	// Both sender and receiver must be using the same graphics adapter
+	//
+	// The alternative is to use OpenDirectX11() after an application device
+	// has been created. See the code following InitDevice() at program start.
+	//
 
-	
-	// ===============================================================
-	if (sender.OpenDirectX11()) {
-		// Set the application device and context to those created in the SpoutDX class
-		g_pd3dDevice = sender.GetDX11Device();
-		g_pImmediateContext = sender.GetDX11Context();
+	// Change the option when bClassdevice is initialized or here
+	bClassdevice = true;
+
+	if (bClassdevice) {
+		if (sender.OpenDirectX11()) {
+			// Set the application device and context to those created in the SpoutDX class
+			g_pd3dDevice = sender.GetDX11Device();
+			g_pImmediateContext = sender.GetDX11Context();
+		}
+		else {
+			return 0;
+		}
 	}
 	else {
-		return 0;
+
+		// Usual creation of an application device
+
+		// SPOUT note
+		// GL/DX interop Spec
+		// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
+
+		UINT createDeviceFlags = 0;
+#ifdef _DEBUG
+		createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+		D3D_DRIVER_TYPE driverTypes[] =
+		{
+			D3D_DRIVER_TYPE_HARDWARE,
+			D3D_DRIVER_TYPE_WARP,
+			D3D_DRIVER_TYPE_REFERENCE,
+		};
+		UINT numDriverTypes = ARRAYSIZE(driverTypes);
+
+		D3D_FEATURE_LEVEL featureLevels[] =
+		{
+			D3D_FEATURE_LEVEL_11_1,
+			D3D_FEATURE_LEVEL_11_0,
+			D3D_FEATURE_LEVEL_10_1,
+			D3D_FEATURE_LEVEL_10_0,
+		};
+		UINT numFeatureLevels = ARRAYSIZE(featureLevels);
+
+		for (UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++)
+		{
+			g_driverType = driverTypes[driverTypeIndex];
+			hr = D3D11CreateDevice(nullptr,
+				g_driverType,
+				nullptr,
+				createDeviceFlags,
+				featureLevels,
+				numFeatureLevels,
+				D3D11_SDK_VERSION,
+				&g_pd3dDevice,
+				&g_featureLevel,
+				&g_pImmediateContext);
+
+			if (hr == E_INVALIDARG)
+			{
+				// DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1 so we need to retry without it
+				hr = D3D11CreateDevice(nullptr,
+					g_driverType,
+					nullptr,
+					createDeviceFlags,
+					&featureLevels[1],
+					numFeatureLevels - 1,
+					D3D11_SDK_VERSION,
+					&g_pd3dDevice,
+					&g_featureLevel,
+					&g_pImmediateContext);
+
+			}
+			if (SUCCEEDED(hr))
+				break;
+		}
+		if (FAILED(hr))
+			return hr;
+
+		// Initialize the Spout DirectX device.
+		// If an application DirectX 11.0 device was created above,
+		// the device pointer must be passed in to the SpoutDX class.
+		// The function does nothing if a class device was already created.
+		if (!sender.OpenDirectX11(g_pd3dDevice))
+			return S_FALSE;
+
 	}
 	// ===============================================================
-	
-
-	/*
-	// ===============================================================
-
-	// SPOUT note
-	// GL/DX interop Spec
-	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
-
-	UINT createDeviceFlags = 0;
-#ifdef _DEBUG
-	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-    D3D_DRIVER_TYPE driverTypes[] =
-    {
-        D3D_DRIVER_TYPE_HARDWARE,
-        D3D_DRIVER_TYPE_WARP,
-        D3D_DRIVER_TYPE_REFERENCE,
-    };
-    UINT numDriverTypes = ARRAYSIZE( driverTypes );
-
-    D3D_FEATURE_LEVEL featureLevels[] =
-    {
-        D3D_FEATURE_LEVEL_11_1,
-        D3D_FEATURE_LEVEL_11_0,
-        D3D_FEATURE_LEVEL_10_1,
-        D3D_FEATURE_LEVEL_10_0,
-    };
-	UINT numFeatureLevels = ARRAYSIZE( featureLevels );
-
-    for( UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++ )
-    {
-        g_driverType = driverTypes[driverTypeIndex];
-        hr = D3D11CreateDevice( nullptr, 
-								g_driverType, 
-								nullptr, 
-								createDeviceFlags,
-								featureLevels,
-								numFeatureLevels,
-                                D3D11_SDK_VERSION,
-								&g_pd3dDevice,
-								&g_featureLevel,
-								&g_pImmediateContext );
-
-        if ( hr == E_INVALIDARG )
-        {
-            // DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1 so we need to retry without it
-            hr = D3D11CreateDevice(nullptr,
-									g_driverType,
-									nullptr,
-									createDeviceFlags,
-									&featureLevels[1],
-									numFeatureLevels - 1,
-                                    D3D11_SDK_VERSION,
-									&g_pd3dDevice,
-									&g_featureLevel,
-									&g_pImmediateContext );
-
-        }
-
-        if( SUCCEEDED( hr ) )
-            break;
-    }
-    if( FAILED( hr ) )
-        return hr;
-	// ===============================================================
-	*/
-
 
     // Obtain DXGI factory from device (since we used nullptr for pAdapter above)
     IDXGIFactory1* dxgiFactory = nullptr;
@@ -403,6 +413,7 @@ HRESULT InitDevice()
                 adapter->Release();
             }
             dxgiDevice->Release();
+
         }
     }
     if (FAILED(hr))
@@ -431,7 +442,7 @@ HRESULT InitDevice()
         sd.SampleDesc.Quality = 0;
         sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         sd.BufferCount = 1;
-
+		
         hr = dxgiFactory2->CreateSwapChainForHwnd( g_pd3dDevice, g_hWnd, &sd, nullptr, nullptr, &g_pSwapChain1 );
         if (SUCCEEDED(hr))
         {
@@ -676,7 +687,6 @@ void CleanupDevice()
 // Re-initialize for size changes
 void ResetDevice()
 {
-	// LJ DEBUG
 	// Release everything
 	sender.ReleaseSender();
 	sender.CloseDirectX11();
@@ -823,18 +833,22 @@ void Render()
     //
     // Present our back buffer to our front buffer
 	//
-	// SPOUT - fps control
-	//
-	// Here the frame rate can be extremely high.
-	// To avoid exessive processing, hold a target frame rate
-	// using a sync interval for the Present method to 
-	// synchronize with vertical blank, typically 60 fps.
-    // g_pSwapChain->Present( 0, 0 );
+	// Here the frame rate can be extremely high if "vertical sync"
+	// is disabled for the graphics driver.
+	// To avoid exessive processing, a sync interval for the Present
+	// method will synchronize with vertical blank, typically 60 fps.
 	g_pSwapChain->Present(1, 0);
 
+	//
+	// SPOUT - fps control
+	//
+	// The frame rate can be controlled further if necessary
+	// using thread sleep until the required frame time elapses.
+	// Note code comments for the function.
+	// For example :
+	// sender.HoldFps(30);
 
 }
-
 
 // Message handler for about box.
 // SPOUT : adapted for this example.
@@ -937,8 +951,6 @@ void SelectAdapter()
 				// This will take effect when the sender is re-created
 				currentadapter = selectedadapter;
 			}
-			// Reset everything to create a new device with the selected adapter
-			// LJ DEBUG ResetDevice();
 
 			// Release everything
 			sender.ReleaseSender();
@@ -1006,4 +1018,4 @@ INT_PTR  CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 	return (INT_PTR)FALSE;
 }
 
-// That's all..
+// That's all ..

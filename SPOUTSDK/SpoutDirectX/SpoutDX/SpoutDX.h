@@ -194,6 +194,33 @@ class SPOUT_DLLEXP spoutDX {
 	int GetSenderAdapter(const char* sendername, char* adaptername = nullptr, int maxchars = 256);
 
 	//
+	// Graphics preference
+	//
+
+	// Get the Windows graphics preference for an application
+	//     -1 - No preference
+	//      0 - Default
+	//      1 - Power saving
+	//      2 - High performance
+	// If no path is specified, use the current application path
+	int GetPerformancePreference(const char* path = nullptr);
+	// Set the Windows graphics preference for an application
+	//     -1 - No preference
+	//      0 - Default
+	//      1 - Power saving
+	//      2 - High performance
+	// If no path is specified, use the current application path
+	bool SetPerformancePreference(int preference, const char* path = nullptr);
+	// Get the graphics adapter name for a Windows preference
+	bool GetPreferredAdapterName(int preference, char* adaptername, int maxchars);
+	// Set graphics adapter index for a Windows preference
+	bool SetPreferredAdapter(int preference);
+	// Windows graphics preference availability
+	bool IsPreferenceAvailable();
+	// Is the path a valid application
+	bool IsApplicationPath(const char* path);
+
+	//
 	// Sharing modes (2.006 compatibility)
 	//
 
