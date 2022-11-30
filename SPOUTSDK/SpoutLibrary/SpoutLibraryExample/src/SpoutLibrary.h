@@ -36,8 +36,6 @@
 #include <windows.h>
 #include <string>
 #include <GL/GL.h>
-#include <d3d9.h>
-
 
 #define SPOUTLIBRARY_EXPORTS // defined for this DLL. The application imports rather than exports
 
@@ -48,9 +46,19 @@
 #endif
 
 // Local log level definitions for SetSpoutLogLevel.
-// "SpoutLogLevel"enum conflicts with previous definition
-// in SpoutUtils if it is used in the applicataion
-enum LibLogLevel {
+// "SpoutLogLevel" enum conflicts with previous definition
+// in SpoutUtils if it is used in the application.
+// Change enum name to "SpoutLibLogLevel".
+//
+// Option : disable warning C26812 (unscoped enums) for Visual Studio.
+//
+// Use of C++11 scoped (class) enums are not compatible with early compilers (< VS2012 and others).
+// For Visual Studio, this warning is designated "Prefer" and "C" standard unscoped enums are
+// therefore retained for compatibility. The warning can be enabled or disabled here.
+//
+#pragma warning(disable:26812)
+//
+enum SpoutLibLogLevel {
 	SPOUT_LOG_SILENT,
 	SPOUT_LOG_VERBOSE,
 	SPOUT_LOG_NOTICE,
@@ -80,11 +88,12 @@ struct SPOUTLIBRARY
 	// Close sender and free resources
 	//   A sender is created or updated by all sending functions
 	virtual void ReleaseSender(DWORD dwMsec = 0) = 0;
-	// Send texture attached to fbo.
-	//   The fbo must be currently bound.  
-	//   The sending texture can be larger than the size that the sender is set up for.  
+	// Send texture attached to fbo
+	//   The fbo must be currently bound
+	//   The sending texture can be larger than the size that the sender is set up for
 	//   For example, if the application is using only a portion of the allocated texture space,  
-	//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture).
+	//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture)
+	//   To send the OpenGL default framebuffer, specify "0" for the fbo ID, width and height.
 	virtual bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true) = 0;
 	// Send OpenGL texture
 	virtual bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0) = 0;
@@ -174,10 +183,13 @@ struct SPOUTLIBRARY
 	virtual bool IsFrameCountEnabled() = 0;
 	// Sender frame rate control
 	virtual void HoldFps(int fps) = 0;
+	// Get system refresh rate
+	virtual double GetRefreshRate() = 0;
 	// Signal sync event 
 	virtual void SetFrameSync(const char* SenderName) = 0;
 	// Wait or test for a sync event
 	virtual bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0) = 0;
+
 
 	//
 	// Data sharing
@@ -219,7 +231,7 @@ struct SPOUTLIBRARY
 	// SPOUT_LOG_WARNING - Something might go wrong
 	// SPOUT_LOG_ERROR   - Something did go wrong
 	// SPOUT_LOG_FATAL   - Something bad happened
-	virtual void SetSpoutLogLevel(LibLogLevel level) = 0;
+	virtual void SetSpoutLogLevel(SpoutLibLogLevel level) = 0;
 	// General purpose log
 	virtual void SpoutLog(const char* format, ...) = 0;
 	// Verbose - show log for SPOUT_LOG_VERBOSE or above
@@ -259,6 +271,12 @@ struct SPOUTLIBRARY
 	virtual bool RemoveSubKey(HKEY hKey, const char *subkey) = 0;
 	// Find subkey
 	virtual bool FindSubKey(HKEY hKey, const char *subkey) = 0;
+
+	//
+	// Computer information
+	//
+	virtual std::string GetSDKversion() = 0;
+	virtual bool IsLaptop() = 0;
 
 	//
 	// Timing utilities
@@ -383,6 +401,28 @@ struct SPOUTLIBRARY
 	virtual int GetAdapter() = 0;
 	// Set graphics adapter for output
 	virtual bool SetAdapter(int index = 0) = 0;
+
+	//
+	// Graphics preference
+	//
+
+	// Get the Windows graphics preference for an application
+	//	-1 - Not registered
+	//	 0 - Let Windows decide  DXGI_GPU_PREFERENCE_UNSPECIFIED
+	//	 1 - Power saving        DXGI_GPU_PREFERENCE_MINIMUM_POWER
+	//	 2 - High performance    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
+	virtual int GetPerformancePreference(const char* path) = 0;
+	// Set the Windows graphics preference for an application
+	virtual bool SetPerformancePreference(int preference, const char* path) = 0;
+	// Get the graphics adapter name for a Windows preference
+	virtual bool GetPreferredAdapterName(int preference, char* adaptername, int maxchars) = 0;
+	// Set graphics adapter index for a Windows preference
+	virtual bool SetPreferredAdapter(int preference) = 0;
+	// Availability of Windows graphics preference
+	virtual bool IsPreferenceAvailable() = 0;
+	// Is the path a valid application
+	virtual bool IsApplicationPath(const char* path) = 0;
+
 
 	//
 	// OpenGL utilities

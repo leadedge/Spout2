@@ -1,8 +1,6 @@
 /*
 
-	Spout - Sender example
-
-    Visual Studio 2012 using the Spout SDK
+	Spout OpenFrameworks Graphics Sender example
 
 	Copyright (C) 2015-2022 Lynn Jarvis.
 
@@ -25,6 +23,7 @@
 #include "ofMain.h"
 #include "SpoutLibrary.h" // for Spout SDK library
 
+
 class ofApp : public ofBaseApp{
 	public:
 		void setup();
@@ -32,13 +31,16 @@ class ofApp : public ofBaseApp{
 		void draw();
 		void exit();
 		void windowResized(int w, int h);
-	
-		SPOUTLIBRARY *spoutsender; // A sender object
-		char sendername[256];      // Sender name
-		GLuint sendertexture;      // Local OpenGL texture used for sharing
-		bool bInitialized;         // Initialization result
-		ofImage myTextureImage;    // Texture image for the 3D demo
+
+		SPOUTLIBRARY* sender; // A sender object
+
+		char sendername[256];  // Sender name
+		unsigned int senderwidth;  // Dimensions of the sender can be independent
+		unsigned int senderheight; // of the application window if using an fbo
+		double g_SenderFps = 0.0; // For fps display averaging
+		ofImage myBoxImage;    // Image for the 3D demo
+		ofFbo myFbo;           // For texture send example
+		ofPixels myPixels;     // For pixel send example
 		float rotX, rotY;
-		bool InitGLtexture(GLuint &texID, unsigned int width, unsigned int height);
 
 };

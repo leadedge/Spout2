@@ -6,7 +6,7 @@
 
 	Spout 2.007
 	OpenFrameworks 11
-	Visual Studio 2017
+	Visual Studio 2022
 
 	Copyright (C) 2015-2022 Lynn Jarvis.
 
@@ -42,7 +42,7 @@ void ofApp::setup(){
 	}
 
 	// Now use the library functions as usual
-	sender->EnableSpoutLog();
+	// sender->EnableSpoutLog();
 	// sender->SetSpoutLogLevel(SPOUT_LOG_WARNING); // For only warning messages
 
 	// Give the sender a name
@@ -95,7 +95,10 @@ void ofApp::draw() {
 	str += ofToString(sender->GetHeight()); str += ")";
 	if (sender->GetFrame() > 0) {
 		str += " fps ";
-		str += ofToString((int)roundf(sender->GetFps()));
+		// Average to stabilise fps display
+		g_SenderFps = 0.95*g_SenderFps + 0.05*sender->GetFps();
+		// Round first or integer cast will truncate to the whole part
+		str += ofToString((int)(round(g_SenderFps)));
 		str += " : frame  ";
 		str += ofToString(sender->GetFrame());
 	}
