@@ -131,7 +131,7 @@ class SPOUT_DLLEXP spoutGL {
 	// Vertical sync status
 	int GetVerticalSync();
 	// Lock to monitor vertical sync
-	bool SetVerticalSync(bool bSync = true);
+	bool SetVerticalSync(int interval = 1);
 	// Get Spout version
 	int GetSpoutVersion();
 

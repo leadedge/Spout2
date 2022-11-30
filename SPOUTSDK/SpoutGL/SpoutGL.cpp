@@ -98,7 +98,8 @@
 //		19.04.22	- Restore host fbo in SetSharedTextureData instead of default 0
 //		04.06.22	- SetSharedTextureData - corrected glCheckFramebufferStatus from != to == for textureID 0
 //		29.07.22	- OpenSpout - default CPU share until tested
-//		04.10.22	- Correct incorrect test for CreateMemoryBuffer memoryshare.Create
+//		28.10.22	- Documentation cleanup
+//		26.11.22	- Change SetVerticalSync argument to integer to allow adaptive vsync
 //
 // ====================================================================================
 //
@@ -219,11 +220,19 @@ spoutGL::spoutGL()
 	if(ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Buffers", &dwValue))
 		m_nBuffers = (int)dwValue;
 
-	// Find version number from the registry if Spout is installed (2005, 2006, etc.)
-	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Version", &dwValue))
-		m_SpoutVersion = (int)dwValue; // 0 for earlier than 2.005
-	else
-		m_SpoutVersion = -1; // Spout not installed
+	// Find version number from the registry
+	// Set by Spout Installer (2005, 2006, etc.) or by SpoutSettings for 2.007 and later
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Version", &dwValue)) {
+		m_SpoutVersion = (int)dwValue;
+	}
+	else {
+		// Get number string e.g. "2.007.009"
+		std::string str = GetSDKversion();
+		// Remove all "." chars
+		str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
+		m_SpoutVersion = std::stoi(str);
+	}
+
 
 	// 2.006 memoryshare mode
 	// Only set if 2.006 SpoutSettings has been used
@@ -557,19 +566,33 @@ bool spoutGL::OpenDirectX()
 //   Set sender DX11 shared texture format
 //
 //   Texture formats compatible with WGL_NV_DX_interop
+//
 //   https://www.khronos.org/registry/OpenGL/extensions/NV/WGL_NV_DX_interop.txt
+//
 //   https://www.khronos.org/registry/OpenGL/extensions/NV/WGL_NV_DX_interop2.txt
+//
 //   D3DFMT_A8R8G8B8                         = 21
+//
 //   D3DFMT_X8R8G8B8                         = 22
+//
 //   DXGI_FORMAT_R32G32B32A32_FLOAT          = 2
+//
 //   DXGI_FORMAT_R16G16B16A16_FLOAT          = 10
+//
 //   DXGI_FORMAT_R16G16B16A16_UNORM          = 11
+//
 //   DXGI_FORMAT_R16G16B16A16_SNORM          = 13
+//
 //   DXGI_FORMAT_R10G10B10A2_UNORM           = 24
+//
 //   DXGI_FORMAT_R8G8B8A8_UNORM              = 28
+//
 //   DXGI_FORMAT_R8G8B8A8_UNORM_SRGB         = 29
+//
 //   DXGI_FORMAT_R8G8B8A8_SNORM              = 31
+//
 //   DXGI_FORMAT_B8G8R8A8_UNORM              = 87 (default)
+//
 //   DXGI_FORMAT_B8G8R8X8_UNORM              = 88
 //
 void spoutGL::SetDX11format(DXGI_FORMAT textureformat)
@@ -597,12 +620,16 @@ void spoutGL::CloseDirectX()
 //---------------------------------------------------------
 // Function: CreateOpenGL
 // Create an OpenGL window and context for situations where there is none.
-//     Not necessary if an OpenGL context is already available.
-//     Always call CloseOpenGL() on application close.
+//
+// Not necessary if an OpenGL context is already available.
+// Always call CloseOpenGL() on application close.
 //
 // OpenGL support is required.
+//
 // Include in your application header file :
+//
 //     #include <gl/GL.h>
+//
 //     #pragma comment (lib, "opengl32.lib")
 //
 bool spoutGL::CreateOpenGL()
@@ -766,7 +793,6 @@ bool spoutGL::GLDXready()
 	// m_bTextureShare = true;
 	// m_bCPUshare = false;
 	// return true;
-
 	
 	// Return if the test has already been done
 	if (m_bGLDXdone) {
@@ -1067,7 +1093,7 @@ HANDLE spoutGL::LinkGLDXtextures(void* pDXdevice, void* pSharedTexture,  GLuint 
 	// Report the error if wglDXOpenDeviceNV failed
 	if (!m_hInteropDevice) {
 		dwError = GetLastError();
-		sprintf_s(tmp, 128, "spoutGL::LinkGLDXtextures : wglDXOpenDeviceNV(0x%.7X) - error %lu (0x%.X)\n",
+		sprintf_s(tmp, 128, "spoutGL::LinkGLDXtextures : wglDXOpenDeviceNV(0x%.7X) no Interop device - error %lu (0x%.X)\n",
 			LOWORD(pDXdevice), dwError, LOWORD(dwError));
 		// Other errors reported
 		// 1008, 0x3F0 - ERROR_NO_TOKEN
@@ -1730,6 +1756,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	if (rowpitch == 0)
 		pitch = uw * channels; // RGB or RGBA
 
+	// Create class fbo if not already
 	if (m_fbo == 0) {
 		SpoutLogNotice("spoutGL::UnloadTexturePixels - creating FBO");
 		glGenFramebuffersEXT(1, &m_fbo);
@@ -1746,8 +1773,8 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	PboIndex = (PboIndex + 1) % m_nBuffers;
 	NextPboIndex = (PboIndex + 1) % m_nBuffers;
 
-	// If Texture ID is zero, the texture is already attached to the Host Fbo
-	// and we do nothing. If not we need to create an fbo and attach the user texture
+	// If Texture ID is zero, the texture is already attached to the Host Fbo and we do nothing.
+	// If not, we need to attach the user texture to the class fbo we created.
 	if (TextureID > 0) {
 		// Attach the texture to point 0
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
@@ -1798,7 +1825,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	glGetError(); // remove the last error
 
 	if (pboMemory && data) {
-		// Update data directly from the mapped buffer (TODO: RGB)
+		// Update data directly from the mapped buffer.
 		spoutcopy.CopyPixels((const unsigned char*)pboMemory, (unsigned char*)data, rowbytes, height, glFormat, bInvert);
 		glUnmapBufferEXT(GL_PIXEL_PACK_BUFFER);
 	}
@@ -1958,11 +1985,13 @@ bool spoutGL::WriteDX11texture(GLuint TextureID, GLuint TextureTarget,
 	if (SUCCEEDED(spoutdx.GetDX11Context()->Map(m_pStaging[0], 0, D3D11_MAP_WRITE, 0, &mappedSubResource))) {
 
 		// Staging texture width is multiples of 16 and pitch can be greater that width*4
-		// Copy OpenGL texture pixelsto the staging texture taking account of the destination row pitch
+		// Copy OpenGL texture pixels to the staging texture taking account of the 
+		// destination staging texture row pitch.
 		if (m_bPBOavailable) {
 			if (!UnloadTexturePixels(TextureID, TextureTarget, width, height,
 				mappedSubResource.RowPitch, (unsigned char *)mappedSubResource.pData,
 				GL_BGRA_EXT, bInvert, HostFBO)) {
+					// OpenGL pixel unload failed, Unmap the DirectX texture and return.
 					spoutdx.GetDX11Context()->Unmap(m_pStaging[0], 0);
 					return false;
 			}
@@ -3491,21 +3520,36 @@ int spoutGL::GetVerticalSync()
 
 //---------------------------------------------------------
 // Function: SetVerticalSync
-// Lock to monitor vertical sync
-bool spoutGL::SetVerticalSync(bool bSync)
+// Specifies the minimum number of video frame periods per buffer swap
+//
+//   1 - wait for 1 cycle vertical refresh
+//
+//   0 - buffer swaps are not synchronized to a video frame
+//
+//  -1 - adaptive vsync
+//
+// "Adaptive" enables v-blank synchronisation when the frame rate
+// is higher than the sync rate to eliminate tearing, but disables
+// synchronisation when the frame rate drops below the sync rate
+// to minimize stuttering.
+//
+// Note that driver settings for Vertical sync "on", "off" or "adaptive"
+// over-ride this function and should be set to "Use application setting"
+// if application control is required.
+//
+// https://www.khronos.org/opengl/wiki/Swap_Interval#Adaptive_Vsync
+//
+bool spoutGL::SetVerticalSync(int interval)
 {
-	// wglSwapIntervalEXT specifies the minimum number
-	// of video frame periods per buffer swap
 	if (wglGetCurrentContext()) {
 		if (m_bSWAPavailable) {
-			if (bSync) {
-				wglSwapIntervalEXT(1); // lock to monitor vsync
+			if (wglSwapIntervalEXT(interval) == TRUE) {
+				return true;
 			}
 			else {
-				// buffer swaps are not synchronized to a video frame.
-				wglSwapIntervalEXT(0); // unlock from monitor vsync
+				DWORD dwError = GetLastError();
+				SpoutLogWarning("spoutGL::SetVerticalSync(%d) - Error %d\n", interval, dwError);
 			}
-			return true;
 		}
 	}
 
@@ -3515,12 +3559,18 @@ bool spoutGL::SetVerticalSync(bool bSync)
 //---------------------------------------------------------
 // Function: GetSpoutVersion
 // Get Spout version
+//
+// Version number is retrieved from the registry at class initialization
+// Integer number 2005, 2006, 2007 etc. 0 for earlier than 2.005.
+//
+// Set by the Spout installer for 2.005/2.006 or by SpoutSettings for 2.007 and later. For example :
+//
+//    2007 (2.007) or 2007009 (2.007.009)
+//
+// Now replaced by std::string GetSDKversion() in SpoutUtils 
+//
 int spoutGL::GetSpoutVersion()
 {
-	// Version number is retrieved from the registry at class initialization
-	// Integer number 2005, 2006, 2007 etc.
-	// 0 for earlier than 2.005
-	// Set by the Spout installer for 2.005/2.006, or by SpoutSettings
 	return m_SpoutVersion;
 }
 
