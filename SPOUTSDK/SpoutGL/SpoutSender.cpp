@@ -70,6 +70,11 @@
 //		24.04.21	- Add OpenGL shared texture access functions
 //		03.06.21	- Add CreateMemoryBuffer, DeleteMemoryBuffer, GetMemoryBufferSize
 //		22.11.21	- Remove ReleaseSender() from destructor
+//		31.10.22	- Add GetPerformancePreference, SetPerformancePreference, GetPreferredAdapterName
+//		01.11.22	- Add SetPreferredAdapter
+//		03.11.22	- Add IsPreferenceAvailable
+//		07.11.22	- Add IsApplicationPath
+//		26.11.22	- Change SetVerticalSync argument to integer to allow adaptive vsync
 //
 // ====================================================================================
 /*
@@ -420,9 +425,51 @@ bool SpoutSender::SetAdapter(int index)
 }
 
 //---------------------------------------------------------
-bool SpoutSender::GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars)
+bool SpoutSender::GetAdapterInfo(char* description, char* output, int maxchars)
 {
-	return spout.GetAdapterInfo(renderdescription, displaydescription, maxchars);
+	return spout.GetAdapterInfo(description, output, maxchars);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::GetAdapterInfo(int index, char* description, char* output, int maxchars)
+{
+	return spout.GetAdapterInfo(index, description, output, maxchars);
+}
+
+//---------------------------------------------------------
+int SpoutSender::GetPerformancePreference(const char* path)
+{
+	return spout.GetPerformancePreference(path);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::SetPerformancePreference(int preference, const char* path)
+{
+	return spout.SetPerformancePreference(preference, path);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::GetPreferredAdapterName(int preference, char* adaptername, int maxchars)
+{
+	return spout.GetPreferredAdapterName(preference, adaptername, maxchars);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::SetPreferredAdapter(int preference)
+{
+	return spout.SetPreferredAdapter(preference);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::IsPreferenceAvailable()
+{
+	return spout.IsPreferenceAvailable();
+}
+
+//---------------------------------------------------------
+bool SpoutSender::IsApplicationPath(const char* path)
+{
+	return spout.IsApplicationPath(path);
 }
 
 //
@@ -527,9 +574,9 @@ int SpoutSender::GetVerticalSync()
 }
 
 //---------------------------------------------------------
-bool SpoutSender::SetVerticalSync(bool bSync)
+bool SpoutSender::SetVerticalSync(int interval)
 {
-	return spout.SetVerticalSync(bSync);
+	return spout.SetVerticalSync(interval);
 }
 
 //---------------------------------------------------------

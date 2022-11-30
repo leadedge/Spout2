@@ -173,8 +173,22 @@ class SPOUT_DLLEXP SpoutReceiver {
 	int GetAdapter();
 	// Set graphics adapter for output
 	bool SetAdapter(int index = 0);
-	// Get the current adapter description
-	bool GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars);
+	// Get the description and output display name of the current adapter
+	bool GetAdapterInfo(char* description, char* output, int maxchars);
+	// Get the description and output display name for a given adapter
+	bool GetAdapterInfo(int index, char* description, char* output, int maxchars);
+	// Get the Windows graphics preference for an application
+	int GetPerformancePreference(const char* path = nullptr);
+	// Set the Windows graphics preference for an application
+	bool SetPerformancePreference(int preference, const char* path = nullptr);
+	// Get the graphics adapter name for a Windows preference
+	bool GetPreferredAdapterName(int preference, char* adaptername, int maxchars);
+	// Set graphics adapter index for a Windows preference
+	bool SetPreferredAdapter(int preference);
+	// Availability of Windows graphics preference
+	bool IsPreferenceAvailable();
+	// Is the path a valid application
+	bool IsApplicationPath(const char* path);
 
 	//
 	// User settings recorded by "SpoutSettings"
