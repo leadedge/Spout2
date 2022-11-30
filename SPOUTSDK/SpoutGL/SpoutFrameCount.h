@@ -33,12 +33,13 @@
 
 #include <string>
 #include <vector>
+
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
 
-
-#include <d3d11.h> // for keyed mutex texture access
-#pragma comment (lib, "d3d11.lib")
+#include <d3d11.h>
+#pragma comment (lib, "d3d11.lib") // for keyed mutex texture access
+#pragma comment (lib, "Winmm.lib") // for timer resolution functions 
 
 using namespace spoututils;
 
@@ -56,12 +57,18 @@ class SPOUT_DLLEXP spoutFrameCount {
 	spoutFrameCount();
     ~spoutFrameCount();
 
-	// Enable or disable frame counting globally
+	//
+	// Frame counting
+	//
+
+	// Enable or disable frame counting globally by registry setting
 	void SetFrameCount(bool bEnable);
 	// Enable frame counting for this sender
 	void EnableFrameCount(const char* SenderName);
 	// Disable frame counting
 	void DisableFrameCount();
+	// Pause frame counting
+	void PauseFrameCount(bool bPaused = true);
 	// Check status of frame counting
 	bool IsFrameCountEnabled();
 	// Is the received frame new
@@ -71,7 +78,7 @@ class SPOUT_DLLEXP spoutFrameCount {
 	// Received frame count
 	long GetSenderFrame();
 	// Frame rate control
-	void HoldFps(int fps = 0);
+	void HoldFps(int fps);
 
 	//
 	// Used by other classes
@@ -88,9 +95,9 @@ class SPOUT_DLLEXP spoutFrameCount {
 	// Mutex locks including DirectX 11 keyed mutex
 	//
 
-	// Test for texture access using a named sender or keyed texture mutex 
+	// Test for texture access using a named sender mutex or keyed texture mutex 
 	bool CheckTextureAccess(ID3D11Texture2D* D3D11texture = nullptr);
-	// Release mutex and allow textureaccess
+	// Release mutex and allow texture access
 	void AllowTextureAccess(ID3D11Texture2D* D3D11texture = nullptr);
 
 	//
@@ -99,7 +106,7 @@ class SPOUT_DLLEXP spoutFrameCount {
 
 	// Create named mutex for a sender
 	bool CreateAccessMutex(const char * SenderName);
-	// Release the mutex
+	// Close the texture access mutex.
 	void CloseAccessMutex();
 	// Test access using a named mutex
 	bool CheckAccess();
@@ -145,10 +152,10 @@ protected:
 	double m_SenderFps;
 	void UpdateSenderFps(long framecount = 0);
 
-	double GetRefreshRate();
-
-	// Fps control
-	double m_millisForFrame;
+	// Windows minimum time period
+	UINT m_PeriodMin;
+	void StartTimePeriod();
+	void EndTimePeriod();
 
 	// Sync event
 	HANDLE m_hSyncEvent;
@@ -162,13 +169,6 @@ protected:
 	std::chrono::steady_clock::time_point * m_FrameStartPtr;
 	std::chrono::steady_clock::time_point * m_FrameEndPtr;
 #endif
-
-	// PC timer
-	double PCFreq;
-	__int64 CounterStart;
-	double m_FrameStart;
-	void StartCounter();
-	double GetCounter();
 
 };
 
