@@ -40,14 +40,21 @@
 #include <assert.h>
 #include <string>
 
+// ====================================================================================
+//		Revisions :
+//
+//	14.04.22 - Add option in SpoutCommon.h to disable warning 26812 (unscoped enums).
+//	28.10.22 - Code documentation
+//
+// ====================================================================================
+
+
 //
 // Class: SpoutSharedMemory
 //
 // Functions to manage shared memory for senders and sender names.
 //
 // Refer to source code for documentation.
-//
-//	14.04.22 - Add option in SpoutCommon.h to disable warning 26812 (unscoped enums).
 //
 SpoutSharedMemory::SpoutSharedMemory()
 {
@@ -64,6 +71,8 @@ SpoutSharedMemory::~SpoutSharedMemory()
 	Close();
 }
 
+//---------------------------------------------------------
+// Function: Create
 // Create a new memory segment, or attach to an existing one
 SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 {
@@ -94,6 +103,9 @@ SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 									(LPCSTR)name);
 
 	if (m_hMap == NULL)	{
+		// LJ DEBUG
+		err = GetLastError();
+		SpoutLogError("SpoutSharedMemory::Create - Failed error = %lu (0x%4.4lX)", err, err);
 		return SPOUT_CREATE_FAILED;
 	}
 
@@ -142,7 +154,9 @@ SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 
 }
 
-
+//---------------------------------------------------------
+// Function: Open
+// Open an existing memory map
 bool SpoutSharedMemory::Open(const char* name)
 {
 	// Don't call open twice on the same object without a Close()
@@ -184,6 +198,9 @@ bool SpoutSharedMemory::Open(const char* name)
 
 }
 
+//---------------------------------------------------------
+// Function: Close
+// Close a map
 void SpoutSharedMemory::Close()
 {
 	if (m_pBuffer) {
@@ -214,7 +231,9 @@ void SpoutSharedMemory::Close()
 
 }
 
-
+//---------------------------------------------------------
+// Function: Lock
+// Lock an open map and return the buffer
 char* SpoutSharedMemory::Lock()
 {
 	assert(m_lockCount >= 0);
@@ -249,6 +268,9 @@ char* SpoutSharedMemory::Lock()
 	return m_pBuffer;
 }
 
+//---------------------------------------------------------
+// Function: Unlock
+// Unlock a map
 void SpoutSharedMemory::Unlock()
 {
 	assert(m_hMutex);
@@ -261,16 +283,25 @@ void SpoutSharedMemory::Unlock()
 	}
 }
 
+//---------------------------------------------------------
+// Function: Name
+// Return the name of an existing map
 const char* SpoutSharedMemory::Name()
 {
 	return m_pName;
 }
 
+//---------------------------------------------------------
+// Function: Size
+// Return the size of an existing map
 int SpoutSharedMemory::Size()
 {
 	return m_size;
 }
 
+//---------------------------------------------------------
+// Function: Debug
+// Print map information for debugging
 void SpoutSharedMemory::Debug()
 {
 	if (m_pName) {
