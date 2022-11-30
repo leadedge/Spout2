@@ -72,12 +72,6 @@
 // SpoutUtils
 namespace spoututils {
 
-	//
-	// Log level definitions.
-	// The level above which the logs are shown.  
-	// For example, to show only warnings and errors (you shouldn't see any):  
-	//    SetSpoutLogLevel(SPOUT_LOG_WARNING);
-	//
 	enum SpoutLogLevel {
 		// Disable all messages
 		SPOUT_LOG_SILENT,
@@ -94,6 +88,17 @@ namespace spoututils {
 		// Ignore log levels
 		SPOUT_LOG_NONE
 	};
+
+
+	//
+	// Information
+	//
+
+	// Get SDK version number string e.g. "2.007.000"
+	std::string GetSDKversion();
+
+	// Computer type
+	bool IsLaptop();
 
 	//
 	// Console management
@@ -162,6 +167,9 @@ namespace spoututils {
 	
 	// Fatal - always show log
 	void SpoutLogFatal(const char* format, ...);
+
+	// Logging function.
+	void _doLog(SpoutLogLevel level, const char* format, va_list args);
 	
 	//
 	// MessageBox dialog
@@ -209,30 +217,30 @@ namespace spoututils {
 	//
 	// Timing functions
 	//
-#ifdef USE_CHRONO
+
 	// Start timing period
 	void StartTiming();
+
 	// Stop timing and return microseconds elapsed.
 	// Code console output can be enabled for quick timing tests.
 	double EndTiming();
+
+	// Monitor refresh rate
+	double GetRefreshRate();
+
+#ifdef USE_CHRONO
 	// Microseconds elapsed since epoch
 	double ElapsedMicroseconds();
+#else
+	void StartCounter();
+	double GetCounter();
 #endif
-
-	// Get SDK version number string e.g. "2.007.000"
-	std::string GetSDKversion();
-
-	// Logging function.
-	// Used internally to perform logging.  
-	// The function code can be changed to produce logs as required
-	void _doLog(SpoutLogLevel level, const char* format, va_list args);
 
 	//
 	// Private functions
 	//
 	namespace
 	{
-
 		// Local functions
 		std::string _getLogPath();
 		std::string _levelName(SpoutLogLevel level);

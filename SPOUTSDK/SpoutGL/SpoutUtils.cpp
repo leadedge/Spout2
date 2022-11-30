@@ -87,6 +87,9 @@
 				   Fix for Processing.
 		14.04.22 - Add option in SpoutCommon.h to disable warning 26812 (unscoped enums)
 		23.06.22 - Add ElapsedMicroseconds (usec since epoch)
+		30.10.22 - Code cleanup and documentation
+		01.11.22 - Add IsLaptop(char* computername)
+		30.11.22 - Update Version to "2.007.009"
 
 */
 
@@ -97,10 +100,13 @@
 //
 // Namespace for utility functions.
 //
+// - Version
 // - Console
 // - Logs
 // - MessageBox dialog
 // - Registry utilities
+// - Computer information
+// - Timing utilities
 //
 // Refer to source code for documentation.
 //
@@ -121,13 +127,66 @@ namespace spoututils {
 #ifdef USE_CHRONO
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
+#else
+	// PC timer
+	double PCFreq = 0.0;
+	__int64 CounterStart = 0;
+	double start = 0.0;
+	double end = 0.0;
+	double m_FrameStart = 0.0;
 #endif
-	std::string SDKversion = "2.007.006"; // Spout SDK version number string
+
+	std::string SDKversion = "2.007.009"; // Spout SDK version number string
 
 	//
-	// Console management
+	// Group: Information
 	//
 
+	// ---------------------------------------------------------
+	// Function: GetSDKversion
+	//
+	// Get SDK version number string e.g. "2.007.000"
+	std::string GetSDKversion()
+	{
+		return SDKversion;
+	}
+
+	// ---------------------------------------------------------
+	// Function: IsLaptop
+	// Return whether the system is a laptop.
+	//
+	// Queries power status. Most likely a laptop if battery power is available. 
+	bool IsLaptop()
+	{
+		SYSTEM_POWER_STATUS status{};
+		if (GetSystemPowerStatus(&status)) {
+			// SpoutLog("    ACLineStatus         %d", status.ACLineStatus);
+			// SpoutLog("    BatteryFlag          %d", status.BatteryFlag);
+			// SpoutLog("    BatteryLifePercent   %d", status.BatteryLifePercent);
+			// SpoutLog("    SystemStatusFlag     %d", status.SystemStatusFlag);
+			// SpoutLog("    BatteryLifeTime      %d", status.BatteryLifeTime);
+			// SpoutLog("    BatteryFullLifeTime  %d", status.BatteryFullLifeTime);
+			// BatteryFlag, battery charge status (128 - No system battery)
+			// BatteryLifePercent,  % of full battery charge remaining (255 - Status unknown)
+			if (status.BatteryFlag != 128 && status.BatteryLifePercent != 255) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+
+	//
+	// Group: Console management
+	//
+
+	// ---------------------------------------------------------
+	// Function: OpenSpoutConsole
+	// Open console window.
+	//
+	// A console window opens without logs.
+	// Useful for debugging with console output.
+	//
 	void OpenSpoutConsole()
 	{
 		// AllocConsole fails if the process already has a console
@@ -165,6 +224,11 @@ namespace spoututils {
 		}
 	}
 	
+	// ---------------------------------------------------------
+	// Function: CloseSpoutConsole
+	// Close console window.
+	//
+	// The optional warning displays a MessageBox if user notification is required.
 	void CloseSpoutConsole(bool bWarning)
 	{
 		if(bWarning) {
@@ -181,10 +245,35 @@ namespace spoututils {
 	}
 		
 	//
-	// Logs
+	// Group: Logs
 	//
 
-	// Enable log to console
+	// See SpoutUtils.h
+
+	//
+	// Enum: Log level definitions
+	// The level above which the logs are shown.
+	// 
+	//   SPOUT_LOG_SILENT - Disable all messages.
+	//   SPOUT_LOG_VERBOSE - Show all messages.
+	//   SPOUT_LOG_NOTICE - Show information messages (default).
+	//   SPOUT_LOG_WARNING - Show warning, errors and fatal.
+	//   SPOUT_LOG_ERROR - Show errors and fatal.
+	//   SPOUT_LOG_FATAL - Show only fatal errors.
+	//   SPOUT_LOG_NONE - Ignore log levels.
+	// 
+	// For example, to show only warnings and errors (you shouldn't see any):
+	// 
+	// 	SetSpoutLogLevel(SPOUT_LOG_WARNING);
+	//
+
+	// ---------------------------------------------------------
+	// Function: EnableSpoutLog
+	// Enable logging to the console.
+	//
+	// Logs are displayed in a console window.  
+	// Useful for program development.
+	//
 	void EnableSpoutLog()
 	{
 		bEnableLog = true;
@@ -198,7 +287,27 @@ namespace spoututils {
 
 	}
 
-	// Enable log to a user file with optional append
+	// ---------------------------------------------------------
+	// Function: EnableSpoutLogFile
+	// Enable logging to a file with optional append.
+	//
+	// You can instead  (or additionally to a console window)
+	//
+	// specify output to a text file with the extension of your choice.
+	//
+	// Example : EnableSpoutLogFile("Sender.log");
+	//
+	// The log file is re-created every time the application starts
+	
+	// unless you specify to append to the existing one :  
+	//
+	// Example : EnableSpoutLogFile("Sender.log", true);
+	//
+	// The file is saved in the %AppData% folder unless you specify the full path :  
+	//
+	//    C:>Users>username>AppData>Roaming>Spout   
+	//
+	// You can find and examine the log file after the application has run.
 	void EnableSpoutLogFile(const char* filename, bool append)
 	{
 		bEnableLogFile = true;
@@ -246,6 +355,8 @@ namespace spoututils {
 		_logtofile(append);
 	}
 
+	// ---------------------------------------------------------
+	// Function: DisableSpoutLogFile
 	// Disable logging to file
 	void DisableSpoutLogFile() {
 		if (!logPath.empty()) {
@@ -255,6 +366,8 @@ namespace spoututils {
 		}
 	}
 
+	// ---------------------------------------------------------
+	// Function: DisableSpoutLog
 	// Disable logging to console and file
 	void DisableSpoutLog()
 	{
@@ -268,17 +381,23 @@ namespace spoututils {
 		bEnableLogFile = false;
 	}
 
+	// ---------------------------------------------------------
+	// Function: DisableLogs
 	// Disable logs
 	void DisableLogs() {
 		bDoLogs = false;
 	}
 
+	// ---------------------------------------------------------
+	// Function: EnableLogs
 	// Enable logs
 	void EnableLogs() {
 		bDoLogs = true;
 	}
 	
-	// Return the Spout log file as a single string
+	// ---------------------------------------------------------
+	// Function: GetSpoutLog 
+	// Return the Spout log file as a string
 	std::string GetSpoutLog()
 	{
 		std::string logstr;
@@ -303,6 +422,8 @@ namespace spoututils {
 		return logstr;
 	}
 	
+	// ---------------------------------------------------------
+	// Function: ShowSpoutLogs
 	// Show the Spout log file folder in Windows Explorer
 	void ShowSpoutLogs()
 	{
@@ -325,6 +446,8 @@ namespace spoututils {
 		ShellExecuteExA(&ShExecInfo);
 	}
 	
+	// ---------------------------------------------------------
+	// Function: SetSpoutLogLevel
 	// Set the current log level
 	void SetSpoutLogLevel(SpoutLogLevel level)
 	{
@@ -332,6 +455,9 @@ namespace spoututils {
 	}
 
 
+	// ---------------------------------------------------------
+	// Function: SpoutLog
+	// General purpose log
 	void SpoutLog(const char* format, ...)
 	{
 		va_list args;
@@ -340,6 +466,9 @@ namespace spoututils {
 		va_end(args);
 	}
 
+	// ---------------------------------------------------------
+	// Function: SpoutLogVerbose
+	// Verbose - show log for SPOUT_LOG_VERBOSE or above
 	void SpoutLogVerbose(const char* format, ...)
 	{
 		va_list args;
@@ -348,6 +477,9 @@ namespace spoututils {
 		va_end(args);
 	}
 
+	// ---------------------------------------------------------
+	// Function: SpoutLogNotice
+	// Notice - show log for SPOUT_LOG_NOTICE or above
 	void SpoutLogNotice(const char* format, ...)
 	{
 		va_list args;
@@ -356,6 +488,9 @@ namespace spoututils {
 		va_end(args);
 	}
 
+	// ---------------------------------------------------------
+	// Function: SpoutLogWarning
+	// Warning - show log for SPOUT_LOG_WARNING or above
 	void SpoutLogWarning(const char* format, ...)
 	{
 		va_list args;
@@ -364,6 +499,9 @@ namespace spoututils {
 		va_end(args);
 	}
 
+	// ---------------------------------------------------------
+	// Function: SpoutLogError
+	// Error - show log for SPOUT_LOG_ERROR or above
 	void SpoutLogError(const char* format, ...)
 	{
 		va_list args;
@@ -372,6 +510,9 @@ namespace spoututils {
 		va_end(args);
 	}
 
+	// ---------------------------------------------------------
+	// Function: SpoutLogFatal
+	// Fatal - always show log
 	void SpoutLogFatal(const char* format, ...)
 	{
 		va_list args;
@@ -379,321 +520,13 @@ namespace spoututils {
 		_doLog(SPOUT_LOG_FATAL, format, args);
 		va_end(args);
 	}
-	
-	//
-	// MessageBox
-	//
 
-	// SpoutPanel Messagebox with optional timeout
-	int SpoutMessageBox(const char * message, DWORD dwMilliseconds)
-	{
-		return SpoutMessageBox(NULL, message, "spout", MB_OK, dwMilliseconds);
-	}
-
-	// SpoutPanel Messagebox with standard arguments and optional timeout
-	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
-	{
-		int iRet = 0;
-		SHELLEXECUTEINFOA ShExecInfo;
-		char path[MAX_PATH];
-
-		std::string spoutmessage = message;
-
-		// Find if there has been a Spout installation with an install path for SpoutPanel.exe
-		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
-			// Does the file exist ?
-			if (_access(path, 0) != -1) {
-				// Open SpoutPanel text message
-				// If a timeout has been specified, add the timeout option and value
-				// SpoutPanel handles the timeout delay
-				if (dwMilliseconds > 0) {
-					spoutmessage += " /TIMEOUT ";
-					spoutmessage += std::to_string((unsigned long long)dwMilliseconds);
-				}
-
-				ZeroMemory(&ShExecInfo, sizeof(ShExecInfo));
-				ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-				ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-				ShExecInfo.hwnd = NULL;
-				ShExecInfo.lpVerb = NULL;
-				ShExecInfo.lpFile = (LPCSTR)path;
-				ShExecInfo.lpParameters = (LPCSTR)spoutmessage.c_str();
-				ShExecInfo.lpDirectory = NULL;
-				ShExecInfo.nShow = SW_SHOW;
-				ShExecInfo.hInstApp = NULL;
-				ShellExecuteExA(&ShExecInfo);
-				// Returns straight away here but multiple instances of SpoutPanel
-				// are prevented in it's WinMain procedure by the mutex.
-			}
-			else {
-				// Registry path OK but no SpoutPanel.exe
-				// Use a standard untimed topmost messagebox
-				iRet = MessageBoxA(hwnd, spoutmessage.c_str(), caption, (uType | MB_TOPMOST));
-			}
-		}
-		else {
-			// No SpoutPanel path registered
-			// Use a standard untimed topmost messagebox
-			iRet = MessageBoxA(hwnd, spoutmessage.c_str(), caption, (uType | MB_TOPMOST));
-		}
-
-		return iRet;
-	}
-
-	//
-	// Registry utilities
-	//
-
-	//
-	// New registry functions for 2.007 including hKey and changed argument order
-	//
-	bool ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue)
-	{
-		HKEY  hRegKey = NULL;
-		LONG  regres = 0;
-		DWORD dwKey = 0;
-		DWORD dwSize = MAX_PATH;
-
-		// 01.01.18
-		if (!subkey[0])	return false;
-
-		// Does the key exist
-		regres = RegOpenKeyExA(hKey, subkey, NULL, KEY_READ, &hRegKey);
-		if (regres == ERROR_SUCCESS) {
-			// Read the key DWORD value
-			regres = RegQueryValueExA(hRegKey, valuename, NULL, &dwKey, (BYTE*)pValue, &dwSize);
-			RegCloseKey(hRegKey);
-			if (regres == ERROR_SUCCESS)
-				return true;
-		}
-	
-		// Just quit if the key does not exist
-		return false;
-
-	}
-
-	bool WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue)
-	{
-		HKEY  hRegKey = NULL;
-		LONG  regres = 0;
-		char  mySubKey[512];
-
-		if (!subkey[0])
-			return false;
-
-		// The required key
-		strcpy_s(mySubKey, 512, subkey);
-
-		// Does the key already exist ?
-		regres = RegOpenKeyExA(hKey, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
-		if (regres != ERROR_SUCCESS) {
-			// Create a new key
-			regres = RegCreateKeyExA(hKey, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
-		}
-
-		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
-			// Write the DWORD value
-			regres = RegSetValueExA(hRegKey, valuename, 0, REG_DWORD, (BYTE*)&dwValue, 4);
-			// For immediate read after write - necessary here because the app might set the values 
-			// and read the registry straight away and it might not be available yet
-			// The key must have been opened with the KEY_QUERY_VALUE access right 
-			// (included in KEY_ALL_ACCESS)
-			RegFlushKey(hRegKey); // needs an open key
-			RegCloseKey(hRegKey); // Done with the key
-		}
-
-		if (regres != ERROR_SUCCESS) {
-			SpoutLogWarning("WriteDwordToRegistry - could not write to registry");
-			return false;
-		}
-
-		return true;
-
-	}
-
-	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath)
-	{
-		HKEY  hRegKey = NULL;
-		LONG  regres = 0;
-		DWORD dwKey = 0;
-		DWORD dwSize = MAX_PATH;
-
-		if (!subkey[0])
-			return false;
-
-		// Does the key exist
-		regres = RegOpenKeyExA(hKey, subkey, NULL, KEY_READ, &hRegKey);
-		if (regres == ERROR_SUCCESS) {
-			// Read the key Filepath value
-			regres = RegQueryValueExA(hRegKey, valuename, NULL, &dwKey, (BYTE*)filepath, &dwSize);
-			RegCloseKey(hRegKey);
-			if (regres == ERROR_SUCCESS) {
-				return true;
-			}
-		}
-
-		// Quit if the key does not exist
-		return false;
-	}
-	
-	bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath)
-	{
-		HKEY  hRegKey = NULL;
-		LONG  regres = 0;
-		char  mySubKey[512];
-
-		if (!subkey[0]) {
-			SpoutLogWarning("WritePathToRegistry - no subkey specified");
-			return false;
-		}
-
-		// The required key
-		strcpy_s(mySubKey, 512, subkey);
-
-		// Does the key already exist ?
-		regres = RegOpenKeyExA(hKey, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
-		if (regres != ERROR_SUCCESS) {
-			// Create a new key
-			regres = RegCreateKeyExA(hKey, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
-		}
-
-		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
-			// Write the path
-			regres = RegSetValueExA(hRegKey, valuename, 0, REG_SZ, (BYTE*)filepath, ((DWORD)strlen(filepath) + 1) * sizeof(unsigned char));
-			RegCloseKey(hRegKey);
-		}
-
-		if (regres != ERROR_SUCCESS) {
-			SpoutLogWarning("WritePathToRegistry - could not write to registry");
-			return false;
-		}
-
-		return true;
-
-	}
-
-	bool WriteBinaryToRegistry(HKEY hKey, const char *subkey, const char *valuename, const unsigned char *hexdata, DWORD nChars)
-	{
-		HKEY  hRegKey = NULL;
-		LONG  regres = 0;
-		char  mySubKey[512];
-
-		if (!subkey[0]) {
-			SpoutLogWarning("WriteBinaryToRegistry - no subkey specified");
-			return false;
-		}
-
-		// The required key
-		strcpy_s(mySubKey, 512, subkey);
-
-		// Does the key already exist ?
-		regres = RegOpenKeyExA(hKey, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
-		if (regres != ERROR_SUCCESS) {
-			// Create a new key
-			regres = RegCreateKeyExA(hKey, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
-		}
-
-		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
-			regres = RegSetValueExA(hRegKey, valuename, 0, REG_BINARY, (BYTE *)hexdata, nChars);
-			RegCloseKey(hRegKey);
-		}
-
-		if (regres != ERROR_SUCCESS) {
-			SpoutLogWarning("WriteBinaryToRegistry - could not write to registry");
-			return false;
-		}
-
-		return true;
-
-	}
-
-
-	bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename)
-	{
-		HKEY hRegKey = NULL;
-		LONG regres = 0;
-
-		// 01.01.18
-		if (!subkey[0]) {
-			SpoutLogWarning("RemovePathFromRegistry - no subkey specified");
-			return false;
-		}
-
-		regres = RegOpenKeyExA(hKey, subkey, NULL, KEY_ALL_ACCESS, &hRegKey);
-		if (regres == ERROR_SUCCESS) {
-			regres = RegDeleteValueA(hRegKey, valuename);
-			RegCloseKey(hRegKey);
-		}
-
-		if (regres == ERROR_SUCCESS)
-			return true;
-
-		// Quit if the key does not exist
-		SpoutLogWarning("RemovePathFromRegistry - could not open key [%s]", subkey);
-		return false;
-	}
-
-	// Delete a subkey and its values.
-	// Note that key names are not case sensitive.
-	// It must be a subkey of the key that hKey identifies, but it cannot have subkeys.
-	bool RemoveSubKey(HKEY hKey, const char *subkey)
-	{
-		LONG lStatus;
-
-		lStatus = RegDeleteKeyA(hKey, subkey);
-		if (lStatus == ERROR_SUCCESS)
-			return true;
-
-		SpoutLogWarning("RemoveSubkey - error #%ld", lStatus);
-		return false;
-	}
-
-	bool FindSubKey(HKEY hKey, const char *subkey)
-	{
-		HKEY hRegKey;
-		LONG lStatus = RegOpenKeyExA(hKey, subkey, NULL, KEY_READ, &hRegKey);
-		if(lStatus == ERROR_SUCCESS) {
-			RegCloseKey(hRegKey);
-			return true;
-		}
-
-		SpoutLogWarning("FindSubkey - error #%ld", lStatus);
-		return false;
-
-	}
-
-#ifdef USE_CHRONO
-	// Timing utility functions
-	void StartTiming() {
-		start = std::chrono::steady_clock::now();
-	}
-
-	double EndTiming() {
-		end = std::chrono::steady_clock::now();
-		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		// double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		// printf("    elapsed [%.4f] msec\n", elapsed / 1000.0);
-		// printf("elapsed [%.3f] u/sec\n", elapsed);
-		return elapsed;
-	}
-
-	// Microseconds elapsed since epoch
-	double ElapsedMicroseconds()
-	{
-		std::chrono::system_clock::time_point timenow = std::chrono::system_clock::now();
-		std::chrono::system_clock::duration duration = timenow.time_since_epoch();
-		double timestamp = static_cast<double>(duration.count()); // nsec/100 - duration period is 100 nanoseconds
-		return timestamp / 10.0; // microseconds
-	}
-#endif
-
-	// Get SDK version number string e.g. "2.007.000"
-	std::string GetSDKversion()
-	{
-		return SDKversion;
-	}
-
+	// ---------------------------------------------------------
+	// Function: _doLog
 	// Perform the log
+	//
+	// Used internally to perform logging. Can also be used externally.
+	// The function code can be changed to produce logs as required
 	void _doLog(SpoutLogLevel level, const char* format, va_list args)
 	{
 		char currentLog[512]; // allow more than the name length
@@ -747,12 +580,452 @@ namespace spoututils {
 		}
 	}
 
+	
+	//
+	// Group: MessageBox
+	//
+
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBox
+	// SpoutPanel MessageBox dialog with optional timeout.
+	//
+	// Used where a Windows MessageBox would interfere with the application GUI.
+	//
+	// The dialog closes itself if a timeout is specified.
+	int SpoutMessageBox(const char * message, DWORD dwMilliseconds)
+	{
+		return SpoutMessageBox(NULL, message, "spout", MB_OK, dwMilliseconds);
+	}
+
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBox
+	// SpoutPanel Messagebox with standard arguments and optional timeout
+	//
+	// Replaces an existing MessageBox call.
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
+	{
+		int iRet = 0;
+		SHELLEXECUTEINFOA ShExecInfo;
+		char path[MAX_PATH];
+
+		std::string spoutmessage = message;
+
+		// Find if there has been a Spout installation with an install path for SpoutPanel.exe
+		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
+			// Does the file exist ?
+			if (_access(path, 0) != -1) {
+				// Open SpoutPanel text message
+				// If a timeout has been specified, add the timeout option and value
+				// SpoutPanel handles the timeout delay
+				if (dwMilliseconds > 0) {
+					spoutmessage += " /TIMEOUT ";
+					spoutmessage += std::to_string((unsigned long long)dwMilliseconds);
+				}
+
+				ZeroMemory(&ShExecInfo, sizeof(ShExecInfo));
+				ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+				ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+				ShExecInfo.hwnd = NULL;
+				ShExecInfo.lpVerb = NULL;
+				ShExecInfo.lpFile = (LPCSTR)path;
+				ShExecInfo.lpParameters = (LPCSTR)spoutmessage.c_str();
+				ShExecInfo.lpDirectory = NULL;
+				ShExecInfo.nShow = SW_SHOW;
+				ShExecInfo.hInstApp = NULL;
+				ShellExecuteExA(&ShExecInfo);
+				// Returns straight away here but multiple instances of SpoutPanel
+				// are prevented in it's WinMain procedure by the mutex.
+			}
+			else {
+				// Registry path OK but no SpoutPanel.exe
+				// Use a standard untimed topmost messagebox
+				iRet = MessageBoxA(hwnd, spoutmessage.c_str(), caption, (uType | MB_TOPMOST));
+			}
+		}
+		else {
+			// No SpoutPanel path registered
+			// Use a standard untimed topmost messagebox
+			iRet = MessageBoxA(hwnd, spoutmessage.c_str(), caption, (uType | MB_TOPMOST));
+		}
+
+		return iRet;
+	}
+
+	//
+	// Group: Registry utilities
+	//
+
+	// Registry functions new for 2.007 including hKey and changed argument order
+
+	// ---------------------------------------------------------
+	// Function: ReadDwordFromRegistry
+	// Read subkey DWORD value
+	bool ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue)
+	{
+		HKEY  hRegKey = NULL;
+		LONG  regres = 0;
+		DWORD dwKey = 0;
+		DWORD dwSize = MAX_PATH;
+
+		// 01.01.18
+		if (!subkey[0])	return false;
+
+		// Does the key exist
+		regres = RegOpenKeyExA(hKey, subkey, NULL, KEY_READ, &hRegKey);
+		if (regres == ERROR_SUCCESS) {
+			// Read the key DWORD value
+			regres = RegQueryValueExA(hRegKey, valuename, NULL, &dwKey, (BYTE*)pValue, &dwSize);
+			RegCloseKey(hRegKey);
+			if (regres == ERROR_SUCCESS)
+				return true;
+		}
+	
+		// Just quit if the key does not exist
+		return false;
+
+	}
+
+	// ---------------------------------------------------------
+	// Function: WriteDwordToRegistry
+	// Write subkey DWORD value
+	bool WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue)
+	{
+		HKEY  hRegKey = NULL;
+		LONG  regres = 0;
+		char  mySubKey[512];
+
+		if (!subkey[0])
+			return false;
+
+		// The required key
+		strcpy_s(mySubKey, 512, subkey);
+
+		// Does the key already exist ?
+		regres = RegOpenKeyExA(hKey, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
+		if (regres != ERROR_SUCCESS) {
+			// Create a new key
+			regres = RegCreateKeyExA(hKey, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
+		}
+
+		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
+			// Write the DWORD value
+			regres = RegSetValueExA(hRegKey, valuename, 0, REG_DWORD, (BYTE*)&dwValue, 4);
+			// For immediate read after write - necessary here because the app might set the values 
+			// and read the registry straight away and it might not be available yet
+			// The key must have been opened with the KEY_QUERY_VALUE access right 
+			// (included in KEY_ALL_ACCESS)
+			RegFlushKey(hRegKey); // needs an open key
+			RegCloseKey(hRegKey); // Done with the key
+		}
+
+		if (regres != ERROR_SUCCESS) {
+			SpoutLogWarning("WriteDwordToRegistry - could not write to registry");
+			return false;
+		}
+
+		return true;
+
+	}
+
+	// ---------------------------------------------------------
+	// Function: ReadPathFromRegistry
+	// Read subkey character string
+	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath)
+	{
+		HKEY  hRegKey = NULL;
+		LONG  regres = 0;
+		DWORD dwKey = 0;
+		DWORD dwSize = MAX_PATH;
+
+		if (!subkey[0])
+			return false;
+
+		// Does the key exist
+		regres = RegOpenKeyExA(hKey, subkey, NULL, KEY_READ, &hRegKey);
+		if (regres == ERROR_SUCCESS) {
+			// Read the key Filepath value
+			regres = RegQueryValueExA(hRegKey, valuename, NULL, &dwKey, (BYTE*)filepath, &dwSize);
+			RegCloseKey(hRegKey);
+			if (regres == ERROR_SUCCESS) {
+				return true;
+			}
+		}
+
+		// Quit if the key does not exist
+		return false;
+	}
+	
+	// ---------------------------------------------------------
+	// Function: WritePathToRegistry
+	// Write subkey character string
+	bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath)
+	{
+		HKEY  hRegKey = NULL;
+		LONG  regres = 0;
+		char  mySubKey[512];
+
+		if (!subkey[0]) {
+			SpoutLogWarning("WritePathToRegistry - no subkey specified");
+			return false;
+		}
+
+		// The required key
+		strcpy_s(mySubKey, 512, subkey);
+
+		// Does the key already exist ?
+		regres = RegOpenKeyExA(hKey, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
+		if (regres != ERROR_SUCCESS) {
+			// Create a new key
+			regres = RegCreateKeyExA(hKey, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
+		}
+
+		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
+			// Write the path
+			regres = RegSetValueExA(hRegKey, valuename, 0, REG_SZ, (BYTE*)filepath, ((DWORD)strlen(filepath) + 1) * sizeof(unsigned char));
+			RegCloseKey(hRegKey);
+		}
+
+		if (regres != ERROR_SUCCESS) {
+			SpoutLogWarning("WritePathToRegistry - could not write to registry");
+			return false;
+		}
+
+		return true;
+
+	}
+
+	// ---------------------------------------------------------
+	// Function: WriteBinaryToRegistry
+	// Write subkey binary hex data string
+	bool WriteBinaryToRegistry(HKEY hKey, const char *subkey, const char *valuename, const unsigned char *hexdata, DWORD nChars)
+	{
+		HKEY  hRegKey = NULL;
+		LONG  regres = 0;
+		char  mySubKey[512];
+
+		if (!subkey[0]) {
+			SpoutLogWarning("WriteBinaryToRegistry - no subkey specified");
+			return false;
+		}
+
+		// The required key
+		strcpy_s(mySubKey, 512, subkey);
+
+		// Does the key already exist ?
+		regres = RegOpenKeyExA(hKey, mySubKey, NULL, KEY_ALL_ACCESS, &hRegKey);
+		if (regres != ERROR_SUCCESS) {
+			// Create a new key
+			regres = RegCreateKeyExA(hKey, mySubKey, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hRegKey, NULL);
+		}
+
+		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
+			regres = RegSetValueExA(hRegKey, valuename, 0, REG_BINARY, (BYTE *)hexdata, nChars);
+			RegCloseKey(hRegKey);
+		}
+
+		if (regres != ERROR_SUCCESS) {
+			SpoutLogWarning("WriteBinaryToRegistry - could not write to registry");
+			return false;
+		}
+
+		return true;
+
+	}
+
+
+	// ---------------------------------------------------------
+	// Function: RemovePathFromRegistry
+	// Remove subkey value name
+	bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename)
+	{
+		HKEY hRegKey = NULL;
+		LONG regres = 0;
+
+		// 01.01.18
+		if (!subkey[0]) {
+			SpoutLogWarning("RemovePathFromRegistry - no subkey specified");
+			return false;
+		}
+
+		regres = RegOpenKeyExA(hKey, subkey, NULL, KEY_ALL_ACCESS, &hRegKey);
+		if (regres == ERROR_SUCCESS) {
+			regres = RegDeleteValueA(hRegKey, valuename);
+			RegCloseKey(hRegKey);
+		}
+
+		if (regres == ERROR_SUCCESS)
+			return true;
+
+		// Quit if the key does not exist
+		SpoutLogWarning("RemovePathFromRegistry - could not open key [%s]", subkey);
+		return false;
+	}
+
+	// ---------------------------------------------------------
+	// Function: RemoveSubKey
+	// Delete a subkey and its values.
+	//
+	// The "subkey" argument must be a subkey of the key that hKey identifies,
+	// but it cannot have subkeys.
+	//
+	// Note that key names are not case sensitive.
+	//
+	bool RemoveSubKey(HKEY hKey, const char *subkey)
+	{
+		LONG lStatus;
+
+		lStatus = RegDeleteKeyA(hKey, subkey);
+		if (lStatus == ERROR_SUCCESS)
+			return true;
+
+		SpoutLogWarning("RemoveSubkey - error #%ld", lStatus);
+		return false;
+	}
+
+	// ---------------------------------------------------------
+	// Function: FindSubKey
+	// Find subkey
+	bool FindSubKey(HKEY hKey, const char *subkey)
+	{
+		HKEY hRegKey;
+		LONG lStatus = RegOpenKeyExA(hKey, subkey, NULL, KEY_READ, &hRegKey);
+		if(lStatus == ERROR_SUCCESS) {
+			RegCloseKey(hRegKey);
+			return true;
+		}
+
+		SpoutLogWarning("FindSubkey - error #%ld", lStatus);
+		return false;
+
+	}
+
+
+	//
+	// Group: Timing
+	//
+	// Compiler dependent
+	//
+	// #ifdef USE_CHRONO
+	//
+	// ( #if _MSC_VER >= 1900 || (defined(__clang__) && __cplusplus >= 201103L )
+	//
+
+	// ---------------------------------------------------------
+	// Function: 
+	// Start timing period
+	// void StartTiming() {
+
+	// ---------------------------------------------------------
+	// Function: 
+	// Stop timing and return microseconds elapsed.
+	//
+	// Code console output can be enabled for quick timing tests.
+	// double EndTiming() {
+
+	// ---------------------------------------------------------
+	// Function: ElapsedMicroseconds
+	// Microseconds elapsed since epoch
+	// Requires std::chrono
+	// double ElapsedMicroseconds()
+
+	// ---------------------------------------------------------
+	// Function: GetRefreshRate
+	// Get system refresh rate
+	double GetRefreshRate()
+	{
+		double frequency = 60.0; // default
+		DEVMODE DevMode;
+		BOOL bResult = true;
+		DWORD dwCurrentSettings = 0;
+		DevMode.dmSize = sizeof(DEVMODE);
+		// Test all the graphics modes
+		// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-enumdisplaysettingsa
+		while (bResult) {
+			bResult = EnumDisplaySettings(NULL, dwCurrentSettings, &DevMode);
+			if (bResult)
+				frequency = static_cast<double>(DevMode.dmDisplayFrequency);
+			dwCurrentSettings++;
+		}
+		return frequency;
+	}
+
+
+#ifdef USE_CHRONO
+
+	// Start timing period
+	void StartTiming() {
+		start = std::chrono::steady_clock::now();
+	}
+
+	// Stop timing and return microseconds elapsed.
+	// Code console output can be enabled for quick timing tests.
+	double EndTiming() {
+		end = std::chrono::steady_clock::now();
+		double elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()/1000.0);
+		return elapsed;
+	}
+
+	// Microseconds elapsed since epoch
+	double ElapsedMicroseconds()
+	{
+		std::chrono::system_clock::time_point timenow = std::chrono::system_clock::now();
+		std::chrono::system_clock::duration duration = timenow.time_since_epoch();
+		double timestamp = static_cast<double>(duration.count()); // nsec/100 - duration period is 100 nanoseconds
+		return timestamp / 10.0; // microseconds
+	}
+#else
+	// Start timing period
+	void StartTiming() {
+		start = GetCounter();
+	}
+
+	// Stop timing and return microseconds elapsed.
+	// Console output can be enabled for quick timing tests.
+	double EndTiming() {
+		end = GetCounter();
+		return (end-start);
+	}
+
+	// -----------------------------------------------
+	// Set counter start
+	// Used instead of std::chrono for Visual Studio before VS2015
+	//
+	// Information on using QueryPerformanceFrequency for timing
+	// https://docs.microsoft.com/en-us/windows/desktop/SysInfo/acquiring-high-resolution-time-stamps
+	//
+	void StartCounter()
+	{
+		LARGE_INTEGER li;
+		if (QueryPerformanceFrequency(&li)) {
+			// Find the PC frequency if not done yet
+			if (PCFreq < 0.0001)
+				PCFreq = static_cast<double>(li.QuadPart) / 1000.0;
+			// Get the counter start
+			QueryPerformanceCounter(&li);
+			CounterStart = li.QuadPart;
+		}
+	}
+
+	// -----------------------------------------------
+	// Return msec elapsed since counter start
+	double GetCounter()
+	{
+		LARGE_INTEGER li;
+		if (QueryPerformanceCounter(&li)) {
+			return static_cast<double>(li.QuadPart - CounterStart) / PCFreq;
+		}
+		else {
+			return 0.0;
+		}
+	}
+
+#endif
+
 	//
 	// Private functions
 	//
 	namespace
 	{
-			
 		// Get the default log file path
 		std::string _getLogPath()
 		{
