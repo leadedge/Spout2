@@ -2,7 +2,7 @@
 
 	Spout OpenFrameworks Graphics Sender example
 
-	Copyright (C) 2021 Lynn Jarvis.
+	Copyright (C) 2015-2022 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -23,23 +23,25 @@
 #include "ofMain.h"
 #include "..\..\..\SpoutGL\SpoutSender.h"
 
-
 class ofApp : public ofBaseApp{
+
 	public:
+
 		void setup();
 		void update();
 		void draw();
 		void exit();
 		void windowResized(int w, int h);
 
-		SpoutSender sender;    // Spout sender object
-
-		char sendername[256];  // Sender name
-		unsigned int senderwidth;  // Dimensions of the sender can be independent
-		unsigned int senderheight; // of the application window if using an fbo
-		ofImage myBoxImage;    // Image for the 3D demo
-		ofFbo myFbo;           // For texture send example
-		ofPixels myPixels;     // For pixel send example
-		float rotX, rotY;
+		SpoutSender sender;            // Spout sender object
+		char sendername[256]{};        // Sender name
+		unsigned int senderwidth = 0;  // Dimensions of the sender can be independent
+		unsigned int senderheight = 0; // of the application window if using an fbo
+		double g_SenderFps = 0.0;      // For fps display averaging
+		ofImage myBoxImage;            // Image for the 3D demo
+		ofFbo myFbo;                   // For texture send example
+		ofPixels myPixels;             // For pixel send example
+		float rotX = 0.0f;             // Box rotation
+		float rotY = 0.0f;
 
 };
