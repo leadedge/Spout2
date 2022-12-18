@@ -5,7 +5,7 @@
 	Base class for OpenGL SpoutSDK
 	See also Sender and Receiver wrapper classes.
 
-	Copyright (c) 2021-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2021-2023, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -45,6 +45,9 @@
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
+
+// 
+#pragma warning(disable : 26485)
 
 using namespace spoututils;
 
@@ -180,7 +183,6 @@ class SPOUT_DLLEXP spoutGL {
 	bool CloseOpenGL();
 	// Class initialization status
 	bool IsSpoutInitialized();
-
 	// Perform tests for GL/DX interop availability and compatibility
 	bool GLDXready();
 	// Set host path to sender shared memory

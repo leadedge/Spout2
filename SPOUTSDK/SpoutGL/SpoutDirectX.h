@@ -4,7 +4,7 @@
 
 	Functions to manage DirectX 11 texture sharing
 
-	Copyright (c) 2014 - 2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014 - 2023, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -84,7 +84,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Release a texture resource created with a class device
 		unsigned long ReleaseDX11Texture(ID3D11Texture2D* pTexture);
 		// Release a texture resource
-		unsigned long ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture);
+		unsigned long ReleaseDX11Texture(const ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture);
 		// Release a device
 		unsigned long ReleaseDX11Device(ID3D11Device* pd3dDevice);
 		// Flush immediate context command queue and wait for completion
@@ -107,9 +107,9 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Set graphics adapter for CreateDX11device from an index
 		bool SetAdapter(int index = -1); 
 		// Get the description and output display name of the current adapter
-		bool GetAdapterInfo(char* description, char* output, int maxchars);
+		bool GetAdapterInfo(char* adaptername, char* output, int maxchars);
 		// Get the description and output display name for a given adapter
-		bool GetAdapterInfo(int index, char* description, char* output, int maxchars);
+		bool GetAdapterInfo(int index, char* adaptername, char* output, int maxchars);
 		// Get adapter pointer for a given adapter (-1 means current)
 		IDXGIAdapter* GetAdapterPointer(int index = -1);
 		// Set required graphics adapter for CreateDX11device
@@ -136,7 +136,7 @@ class SPOUT_DLLEXP spoutDirectX {
 
 	protected:
 
-		void DebugLog(ID3D11Device* pd3dDevice, const char* format, ...);
+		void DebugLog(const ID3D11Device* pd3dDevice, const char* format, ...);
 		int						m_AdapterIndex; // Adapter index
 		IDXGIAdapter*			m_pAdapterDX11; // Adapter pointer
 		ID3D11Device*           m_pd3dDevice;   // DX11 device

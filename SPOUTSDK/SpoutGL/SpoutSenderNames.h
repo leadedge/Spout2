@@ -9,7 +9,7 @@
 	https://github.com/mbechard	
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -144,7 +144,7 @@ class SPOUT_DLLEXP spoutSenderNames {
 		// Generic sender map info read (returned in a shared texture information structure)
 		bool getSharedInfo (const char* sendername, SharedTextureInfo* info);
 		// Generic sender map info write
-		bool setSharedInfo (const char* sendername, SharedTextureInfo* info);
+		bool setSharedInfo (const char* sendername, const SharedTextureInfo* info);
 		// Test for shared info memory map existence
 		bool hasSharedInfo(const char* sendername);
 

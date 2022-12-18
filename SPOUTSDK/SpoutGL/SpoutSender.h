@@ -2,7 +2,7 @@
 
 					SpoutSender.h
 
-	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -164,8 +164,6 @@ class SPOUT_DLLEXP SpoutSender {
 	char * AdapterName();
 	// Get current adapter index
 	int GetAdapter();
-	// Set graphics adapter for output
-	bool SetAdapter(int index = 0);
 	// Get the description and output display name of the current adapter
 	bool GetAdapterInfo(char* description, char* output, int maxchars);
 	// Get the description and output display name for a given adapter

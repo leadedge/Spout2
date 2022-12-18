@@ -6,7 +6,7 @@
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-		Copyright (c) 2017-2022, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2017-2023, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -68,6 +68,12 @@
 #pragma comment(lib, "Advapi32.lib") // for registry functions
 #pragma comment(lib, "Version.lib") // for version resources where necessary
 
+// LJ DEBUG
+// Correcting the following warnings leads to more warnings that
+// cannot be resolved. All other warnings have been corrected.
+// #pragma warning(disable : 26826) // va_list etc.
+// #pragma warning(disable : 26493) // C-style casts
+// #pragma warning(disable : 26485) // Array as a single pointer
 
 // SpoutUtils
 namespace spoututils {
@@ -117,21 +123,26 @@ namespace spoututils {
 	// Logs are displayed in a console window.  
 	// Useful for program development.
 	void EnableSpoutLog();
-	
+
 	// Enable logging to a file with optional append.
-	// You can instead, or additionally to a console window,  
-	// specify output to a text file with the extension of your choice  
-	// Example : EnableSpoutLogFile("Sender.log");
-	// The log file is re-created every time the application starts unless you specify to append to the existing one :  
-	// Example : EnableSpoutLogFile("Sender.log", true);
+	// As well as a console window, you can output logs to a text file. 
+	// Default extension is ".log" unless the full path is used.
+	// For no file name or path the executable name is used.
+	//     Example : EnableSpoutLogFile("Sender.log");
+	// The log file is re-created every time the application starts
+	// unless you specify to append to the existing one.  
+	//    Example : EnableSpoutLogFile("Sender.log", true);
 	// The file is saved in the %AppData% folder unless you specify the full path :  
 	//    C:>Users>username>AppData>Roaming>Spout   
 	// You can find and examine the log file after the application has run.
-	void EnableSpoutLogFile(const char* filename, bool append = false);
+	void EnableSpoutLogFile(const char* filename = nullptr, bool bAppend = false);
 
 	// Disable logging to file
 	void DisableSpoutLogFile();
-	
+
+	// Remove a log file
+	void RemoveSpoutLogFile(const char* filename = nullptr);
+
 	// Disable logging to console and file
 	void DisableSpoutLog();
 
@@ -142,8 +153,8 @@ namespace spoututils {
 	void EnableLogs();
 
 	// Return the log file as a string
-	std::string GetSpoutLog();
-	
+	std::string GetSpoutLog(const char* filepath = nullptr);
+
 	// Show the log file folder in Windows Explorer
 	void ShowSpoutLogs();
 	
@@ -170,7 +181,7 @@ namespace spoututils {
 
 	// Logging function.
 	void _doLog(SpoutLogLevel level, const char* format, va_list args);
-	
+
 	//
 	// MessageBox dialog
 	//
@@ -195,7 +206,7 @@ namespace spoututils {
 	bool WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue);
 	
 	// Read subkey character string
-	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath);
+	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath, DWORD dwSize = MAX_PATH);
 	
 	// Write subkey character string
 	bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath);
@@ -242,14 +253,16 @@ namespace spoututils {
 	namespace
 	{
 		// Local functions
-		std::string _getLogPath();
-		std::string _levelName(SpoutLogLevel level);
 		void _logtofile(bool append = false);
+		std::string _getLogPath();
+		std::string _getLogFilePath(const char *filename);
+		std::string _levelName(SpoutLogLevel level);
 
 		// Used internally for NVIDIA profile functions
 		bool GetNVIDIAmode(const char *command, int * mode);
 		bool SetNVIDIAmode(const char *command, int mode);
 		bool ExecuteProcess(char *path);
+		HMODULE GetCurrentModule();
 	}
 
 }

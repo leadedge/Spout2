@@ -233,11 +233,17 @@
 //					  Update ReceiveSenderData code comments for Windows Graphics Preferences
 //		28.11.22	- SelectSenderPanel - correct warning if SpoutPanel is not found instead of the 
 //					  ShellExecute Windows error and allow user the option to open the Spout home page.
+//		05.12.22	- Add CleanSenders to SetSenderName
+//		07.12.22	- SelectSender return bool
+//		12.12.22	- SetSenderName - return if the same name
+//		13.12.22	- SetSenderName revise for null name passed
+//		14.12.22	- Remove SetAdapter. Requires OpenGL setup.
+//		18.12.22	- Change unused bDX9 argument to const with default
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -260,6 +266,11 @@
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
+
+// LJ DEBUG
+#pragma warning(disable : 26493) // c-style casts.
+#pragma warning(disable : 26481) // pass an array as a single pointer
+
 #include "Spout.h"
 
 // Class: Spout
@@ -354,34 +365,46 @@ Spout::~Spout()
 // Function: SetSenderName
 // Set name for sender creation
 //
-//     If no name is specified, the executable name is used. 
-//     Thereafter, all sending functions create and update a sender
-//     based on the size passed and the name that has been set
+// If no name is specified, the executable name is used. 
+// Thereafter, all sending functions create and update a sender
+// based on the size passed and the name that has been set.
 void Spout::SetSenderName(const char* sendername)
 {
+	char name[256]{};
 	if (!sendername) {
 		// Get executable name as default
-		GetModuleFileNameA(NULL, m_SenderName, 256);
-		PathStripPathA(m_SenderName);
-		PathRemoveExtensionA(m_SenderName);
+		GetModuleFileNameA(NULL, name, 256);
+		PathStripPathA(name);
+		PathRemoveExtensionA(name);
 	}
 	else {
-		strcpy_s(m_SenderName, 256, sendername);
+		strcpy_s(name, 256, sendername);
 	}
 
-	// If a sender with this name is already registered, create an incremented name
+	// Return if the same name
+	if (strcmp(name, m_SenderName) == 0)
+		return;
+
+	// New name
+	strcpy_s(m_SenderName, 256, name);
+
+	// Remove the sender from the names list if it's
+	// shared memory information does not exist.
+	// This can happen if the sender has crashed or if a
+	// console window was closed instead of the main program.
+	sendernames.CleanSenders();
+
+	// If a sender with this name is already registered
+	// create an incremented name by appending '-1' '_2' etc.
 	int i = 1;
-	char name[256];
-	strcpy_s(name, 256, m_SenderName);
 	if (sendernames.FindSenderName(name)) {
 		do {
 			sprintf_s(name, 256, "%s_%d", m_SenderName, i);
 			i++;
 		} while (sendernames.FindSenderName(name));
+		// Re-set the global sender name
+		strcpy_s(m_SenderName, 256, name);
 	}
-
-	// Re-set the global sender name
-	strcpy_s(m_SenderName, 256, name);
 
 }
 
@@ -686,17 +709,19 @@ bool Spout::GetGLDX()
 //   If no name is specified, the receiver will connect to the active sender
 void Spout::SetReceiverName(const char * SenderName)
 {
-	if (SenderName && SenderName[0]) {
+	if (SenderName) {
+		if (SenderName[0] != 0) {
+			// Connect to the specified sender
+			strcpy_s(m_SenderNameSetup, 256, SenderName);
+			strcpy_s(m_SenderName, 256, SenderName);
+			return;
+		}
+	}
 
-		// Connect to the specified sender
-		strcpy_s(m_SenderNameSetup, 256, SenderName);
-		strcpy_s(m_SenderName, 256, SenderName);
-	}
-	else {
-		// Connect to the active sender
-		m_SenderNameSetup[0] = 0;
-		m_SenderName[0] = 0;
-	}
+	// Connect to the active sender
+	m_SenderNameSetup[0] = 0;
+	m_SenderName[0] = 0;
+
 }
 
 //---------------------------------------------------------
@@ -904,7 +929,7 @@ bool Spout::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &he
 //
 bool Spout::IsUpdated()
 {
-	bool bRet = m_bUpdated;
+	const bool bRet = m_bUpdated;
 	m_bUpdated = false; // Reset the update flag
 	return bRet;
 }
@@ -1011,9 +1036,9 @@ bool Spout::GetSenderGLDX()
 //---------------------------------------------------------
 // Function: SelectSender
 // Open sender selection dialog
-void Spout::SelectSender()
+bool Spout::SelectSender()
 {
-	SelectSenderPanel();
+	return SelectSenderPanel();
 }
 
 //
@@ -1168,18 +1193,6 @@ int Spout::GetAdapter()
 }
 
 //---------------------------------------------------------
-// Function: SetAdapter
-// Set graphics adapter for output
-bool Spout::SetAdapter(int index)
-{
-	// Set the adapter as requested
-	// spoutdx.SetAdapter tests DirectX device creation
-	// GL/DX compatibility is tested in OpenSpout
-	return spoutdx.SetAdapter(index);
-
-}
-
-//---------------------------------------------------------
 // Function: GetSenderAdapter
 // Get adapter index and name for a given sender
 //
@@ -1215,7 +1228,7 @@ int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxch
 
 	SharedTextureInfo info;
 	if (sendernames.getSharedInfo(sendername, &info)) {
-		int nAdapters = spoutdx.GetNumAdapters();
+		const int nAdapters = spoutdx.GetNumAdapters();
 		// SpoutLogNotice("   Found %d graphics adapters", nAdapters);
 		for (int i = 0; i < nAdapters; i++) {
 			pAdapter = spoutdx.GetAdapterPointer(i);
@@ -1421,10 +1434,17 @@ bool Spout::FindNVIDIA(int &nAdapter)
 bool Spout::GetAdapterInfo(char* renderadapter,
 	char* renderdescription, char* renderversion,
 	char* displaydescription, char* displayversion,
-	int maxsize, bool &bDX9)
+	int maxsize, const bool bDX9)
 {
 	// DirectX9 not supported
 	UNREFERENCED_PARAMETER(bDX9);
+
+	if(!renderadapter
+	|| !renderdescription
+	|| !renderversion
+	|| !displaydescription
+	|| !displayversion)
+		return false;
 
 	IDXGIDevice * pDXGIDevice = nullptr;
 
@@ -1439,10 +1459,15 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	}
 
 	spoutdx.GetDX11Device()->QueryInterface(__uuidof(IDXGIDevice), (void **)&pDXGIDevice);
-	IDXGIAdapter * pDXGIAdapter;
+	if (!pDXGIDevice) return false;
+
+	IDXGIAdapter * pDXGIAdapter = nullptr;
 	pDXGIDevice->GetAdapter(&pDXGIAdapter);
-	DXGI_ADAPTER_DESC adapterinfo;
+	if (!pDXGIAdapter) return false;
+
+	DXGI_ADAPTER_DESC adapterinfo{};
 	pDXGIAdapter->GetDesc(&adapterinfo);
+
 	// WCHAR Description[ 128 ];
 	// UINT VendorId;
 	// UINT DeviceId;
@@ -1452,7 +1477,7 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	// SIZE_T DedicatedSystemMemory;
 	// SIZE_T SharedSystemMemory;
 	// LUID AdapterLuid;
-	char output[256];
+	char output[256]{};
 	size_t charsConverted = 0;
 	wcstombs_s(&charsConverted, output, 129, adapterinfo.Description, 128);
 	// printf("    Description = [%s]\n", output);
@@ -1461,9 +1486,7 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	// printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
 	// printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
 	strcpy_s(renderadapter, (rsize_t)maxsize, output);
-
-	if (!renderadapter[0])
-		return false;
+	if (!renderadapter[0]) return false;
 
 	strcpy_s(renderdescription, (rsize_t)maxsize, renderadapter);
 
@@ -1471,12 +1494,12 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	// Use Windows functions to look for Intel graphics to see if it is
 	// the same render adapter that was detected with DirectX
 	//
-	char driverdescription[256];
-	char driverversion[256];
-	char regkey[256];
+	char driverdescription[256]{};
+	char driverversion[256]{};
+	char regkey[256]{};
 
 	// Additional info
-	DISPLAY_DEVICE DisplayDevice;
+	DISPLAY_DEVICE DisplayDevice{};
 	DisplayDevice.cb = sizeof(DISPLAY_DEVICE);
 
 	// Detect the adapter attached to the desktop.
@@ -1492,11 +1515,17 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 			wcstombs_s(&charsConverted, regkey, 129, (const wchar_t *)DisplayDevice.DeviceKey, 128);
 			// This is the registry key with all the information about the adapter
 			OpenDeviceKey(regkey, 256, driverdescription, driverversion);
+			if (!driverdescription || !driverversion) {
+				pDXGIDevice->Release();
+				return false;
+			}
+
 			// Is it a render adapter ?
 			if (renderadapter && strcmp(driverdescription, renderadapter) == 0) {
 				strcpy_s(renderdescription, (rsize_t)maxsize, driverdescription);
 				strcpy_s(renderversion, (rsize_t)maxsize, driverversion);
 			}
+
 			// Is it a display adapter
 			if (DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
 				strcpy_s(displaydescription, 256, driverdescription);
@@ -1506,10 +1535,13 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 		} // endif EnumDisplayDevices
 	} // end search loop
 
-	// The render adapter description
-	if (renderdescription) trim(renderdescription);
+	pDXGIDevice->Release();
 
-	if (pDXGIDevice) pDXGIDevice->Release();
+	// The render adapter description
+	trim(renderdescription);
+
+	// The display adapter description
+	trim(renderdescription);
 
 	return true;
 }
@@ -1563,8 +1595,9 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 			// If the sender is new or changed, create or re-create interop
 			if (m_bTextureShare) {
 				// Flag "true" for receive
-				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true))
+				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 					return false;
+				}
 			}
 			// 2.006 receivers check for changed sender size
 			m_bUpdated = false;
@@ -1655,8 +1688,9 @@ bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, G
 			// The application detects the change with IsUpdated().
 			if (m_bTextureShare) {
 				// Flag "true" for receive
-				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true))
+				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 					return false;
+				}
 			}
 			return true;
 		}
@@ -1723,8 +1757,11 @@ bool Spout::SelectSenderPanel(const char* message)
 {
 	HANDLE hMutex1 = NULL;
 	HMODULE module = NULL;
-	char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
-	char UserMessage[512];
+	char path[MAX_PATH]{};
+	char drive[MAX_PATH]{};
+	char dir[MAX_PATH]{};
+	char fname[MAX_PATH]{};
+	char UserMessage[512]{};
 
 	if (message != NULL && message[0] != 0)
 		strcpy_s(UserMessage, 512, message); // could be an arg or a user message
@@ -1746,6 +1783,7 @@ bool Spout::SelectSenderPanel(const char* message)
 		_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
 		_makepath_s(path, MAX_PATH, drive, dir, "SpoutPanel", ".exe");
 	}
+
 	if (path[0]) {
 		// Does SpoutPanel.exe exist in this path ?
 		if (!PathFileExistsA(path)) {
@@ -1828,7 +1866,7 @@ bool Spout::SelectSenderPanel(const char* message)
 				else {
 					// Look through all processes
 					while (hRes && !done) {
-						int value = _tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
+						const int value = _tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
 						if (value == 0) {
 							HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, (DWORD)pEntry.th32ProcessID);
 							if (hProcess != NULL) {
@@ -2031,8 +2069,9 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 				// Create interop for GL/DX transfer
 				// Flag "false" for sender so that a new shared texture is created.
 				// For a receiver the shared texture is created from the sender share handle.
-				if (!CreateInterop(width, height, m_dwFormat, false))
+				if (!CreateInterop(width, height, m_dwFormat, false)) {
 					return false;
+				}
 			}
 			else {
 				// For CPU share with DirectX textures.
@@ -2090,8 +2129,9 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 		// Update the shared textures and interop
 		if (m_bTextureShare) {
 			// Flag "false" for sender to create a new shared texture
-			if (!CreateInterop(width, height, m_dwFormat, false))
+			if (!CreateInterop(width, height, m_dwFormat, false)) {
 				return false;
+			}
 		}
 		else {
 			// Re-create the class shared texture to the new size
@@ -2291,10 +2331,10 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 {
 	// If SpoutPanel has been activated, test if the user has clicked OK
 	if (m_bSpoutPanelOpened) { // User has activated spout panel
-		SharedTextureInfo TextureInfo;
+		SharedTextureInfo TextureInfo{};
 		HANDLE hMutex = NULL;
-		DWORD dwExitCode;
-		char newname[256];
+		DWORD dwExitCode = 0;
+		char newname[256]{};
 		bool bRet = false;
 
 		// Must find the mutex to signify that SpoutPanel has opened

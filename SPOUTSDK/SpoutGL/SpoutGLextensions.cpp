@@ -36,9 +36,10 @@
 //						  Rename ExtLoglevel enum names to be more strongly unique.
 //						  Add option in SpoutCommon.h to disable warning 26812 (unscoped enums).
 //			18.04.22	- Add glCheckNamedFramebufferStatus
+//			17.12.22	- Some cleanup for code analysis
 //
 
-	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -461,8 +462,7 @@ unsigned int loadGLextensions() {
 	unsigned int caps = 0; // as per elio glextensions
 
 	// wglGetProcAddress requires an OpenGL rendering context
-	HGLRC glContext = wglGetCurrentContext();
-	if (glContext == NULL) {
+	if (!wglGetCurrentContext()) {
 		ExtLog(SPOUT_EXT_LOG_ERROR, "loadGLextensions : no OpenGL context");
 		return 0;
 	}

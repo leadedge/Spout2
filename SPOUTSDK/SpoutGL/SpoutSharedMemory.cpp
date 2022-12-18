@@ -10,7 +10,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -45,6 +45,7 @@
 //
 //	14.04.22 - Add option in SpoutCommon.h to disable warning 26812 (unscoped enums).
 //	28.10.22 - Code documentation
+//  18.12.22 - Catch any exception from using Close in destructor
 //
 // ====================================================================================
 
@@ -68,7 +69,12 @@ SpoutSharedMemory::SpoutSharedMemory()
 
 SpoutSharedMemory::~SpoutSharedMemory()
 {
-	Close();
+	try {
+		Close();
+	}
+	catch (...) {
+		MessageBoxA(NULL, "Exception in SpoutSharedMemory destructor", NULL, MB_OK);
+	}
 }
 
 //---------------------------------------------------------
@@ -76,7 +82,7 @@ SpoutSharedMemory::~SpoutSharedMemory()
 // Create a new memory segment, or attach to an existing one
 SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 {
-	DWORD err;
+	DWORD err = 0;
 
 	// Don't call open twice on the same object without a Close()
 	assert(name);
@@ -103,7 +109,6 @@ SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 									(LPCSTR)name);
 
 	if (m_hMap == NULL)	{
-		// LJ DEBUG
 		err = GetLastError();
 		SpoutLogError("SpoutSharedMemory::Create - Failed error = %lu (0x%4.4lX)", err, err);
 		return SPOUT_CREATE_FAILED;
@@ -204,25 +209,21 @@ bool SpoutSharedMemory::Open(const char* name)
 void SpoutSharedMemory::Close()
 {
 	if (m_pBuffer) {
-		// printf("SpoutSharedMemory::Close(%s) : UnmapViewOfFile\n", m_pName);
 		UnmapViewOfFile((LPCVOID)m_pBuffer);
 		m_pBuffer = NULL;
 	}
 
 	if (m_hMap) {
-		// printf("SpoutSharedMemory::Close(%s) : CloseHandle map\n", m_pName);
 		CloseHandle(m_hMap);
 		m_hMap = NULL;
 	}
 
 	if (m_hMutex) {
-		// printf("SpoutSharedMemory::Close(%s) : CloseHandle mutex\n", m_pName);
 		CloseHandle(m_hMutex);
 		m_hMutex = NULL;
 	}
 
 	if (m_pName) {
-		// printf("SpoutSharedMemory::Close(%s) : free name\n", m_pName);
 		free((void*)m_pName);
 		m_pName = NULL;
 	}
@@ -257,9 +258,9 @@ char* SpoutSharedMemory::Lock()
 		return m_pBuffer;
 	}
 
-	DWORD waitResult = WaitForSingleObject(m_hMutex, 67);
+	const DWORD waitResult = WaitForSingleObject(m_hMutex, 67);
 	if (waitResult != WAIT_OBJECT_0) {
-		return NULL;
+		return nullptr;
 	}
 
 	m_lockCount++;

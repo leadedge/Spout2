@@ -4,7 +4,7 @@
 
 				Frame counting management
 
-	Copyright (c) 2019-2022. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2019-2023. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification,
 	are permitted provided that the following conditions are met:
@@ -162,12 +162,15 @@ protected:
 	void OpenFrameSync(const char* SenderName);
 
 #ifdef USE_CHRONO
+
 	// Avoid C4251 warnings in SpoutLibrary by using pointers
 	// USE_CHRONO is defined in SpoutUtils.h
-	std::chrono::steady_clock::time_point * m_FpsStartPtr;
-	std::chrono::steady_clock::time_point * m_FpsEndPtr;
-	std::chrono::steady_clock::time_point * m_FrameStartPtr;
-	std::chrono::steady_clock::time_point * m_FrameEndPtr;
+
+	std::unique_ptr<std::chrono::steady_clock::time_point> m_FpsStartPtr;
+	std::unique_ptr<std::chrono::steady_clock::time_point> m_FpsEndPtr;
+	std::unique_ptr<std::chrono::steady_clock::time_point> m_FrameStartPtr;
+	std::unique_ptr<std::chrono::steady_clock::time_point> m_FrameEndPtr;
+
 #endif
 
 };

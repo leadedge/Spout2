@@ -4,7 +4,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2016-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -58,8 +58,10 @@
 	07.10.22 - Corrected missing alpha from rgb2rba and rgb2bgra functions
 	24.10.22 - Add experimental rgb_to_bgrx_sse
 	28.10.22 - Cleanup / code documentation
+	11.12.22 - test for null args in conversion functions
 
 */
+
 #include "SpoutCopy.h"
 
 //
@@ -100,21 +102,22 @@ void spoutCopy::CopyPixels(const unsigned char *source, unsigned char *dest,
 		FlipBuffer(source, dest, width, height, glFormat);
 	}
 	else {
+		// Avoid warning C26474 and use implicit cast where possible
 		if (width < 320) { // Too small for assembler
-			memcpy(reinterpret_cast<void *>(dest),
-				reinterpret_cast<const void *>(source), Size);
+			// memcpy(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), Size);
+			memcpy(dest, source, Size);
 		}
 		else if ((Size % 16) == 0 && m_bSSE2) { // 16 byte aligned SSE assembler
-			memcpy_sse2(reinterpret_cast<void *>(dest),
-				reinterpret_cast<const void *>(source), Size);
+			// memcpy_sse2(reinterpret_cast<void *>(dest),	reinterpret_cast<const void *>(source), Size);
+			memcpy_sse2(dest, source, Size);
 		}
 		else if ((Size % 4) == 0) { // 4 byte aligned assembler
 			__movsd(reinterpret_cast<unsigned long *>(dest),
 				reinterpret_cast<const unsigned long *>(source), Size / 4);
 		}
 		else { // Default is standard memcpy
-			memcpy(reinterpret_cast<void *>(dest),
-				reinterpret_cast<const void *>(source), Size);
+			// memcpy(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), Size);
+			memcpy(dest, source, Size);
 		}
 	}
 }
@@ -138,19 +141,19 @@ void spoutCopy::FlipBuffer(const unsigned char *src,
 	unsigned int line_t = (height - 1)*pitch;
 
 	for (unsigned int y = 0; y<height; y++) {
+		// Avoid warning C26474 and use implicit cast where possible
 		if (width < 320 || height < 240) // too small for assembler
-			memcpy(reinterpret_cast<void *>(dst + line_t),
-				reinterpret_cast<const void *>(src + line_s), pitch);
+			memcpy((dst + line_t), (src + line_s), pitch);
+			// memcpy(reinterpret_cast<void *>(dst + line_t), reinterpret_cast<const void *>(src + line_s), pitch);
 		else if ((pitch % 16) == 0 && m_bSSE2) // use sse assembler function
-			memcpy_sse2(reinterpret_cast<void *>(dst + line_t),
-				reinterpret_cast<const void *>(src + line_s), pitch);
+			memcpy_sse2((dst + line_t), (src + line_s), pitch);
+			// memcpy_sse2(reinterpret_cast<void *>(dst + line_t),	reinterpret_cast<const void *>(src + line_s), pitch);
 		else if ((pitch % 4) == 0) // use 4 byte move assembler function
 			__movsd(reinterpret_cast<unsigned long *>(dst + line_t),
-				reinterpret_cast<const unsigned long *>(src + line_s),
-				pitch / 4);
+				reinterpret_cast<const unsigned long *>(src + line_s), pitch / 4);
 		else
-			memcpy(reinterpret_cast<void *>(dst + line_t),
-				reinterpret_cast<const void *>(src + line_s), pitch);
+			memcpy((dst + line_t), (src + line_s), pitch);
+			// memcpy(reinterpret_cast<void *>(dst + line_t), reinterpret_cast<const void *>(src + line_s), pitch);
 		line_s += pitch;
 		line_t -= pitch;
 	}
@@ -171,18 +174,21 @@ void spoutCopy::RemovePadding(const unsigned char *source, unsigned char *dest,
 
 	// Remove the padding (stride-pitch)
 	for (unsigned int y = 0; y < height; y++) {
-
+		// Avoid warning C26474 and use implicit cast where possible
 		if (pitch < 320 || stride < 320) { // too small for assembler
-			memcpy(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), pitch);
+			// memcpy(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), pitch);
+			memcpy(dest, source, pitch);
 		}
 		else if ((pitch % 16) == 0 && (stride % 16) == 0 && m_bSSE2) { // use sse
-			memcpy_sse2(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), pitch);
+			// memcpy_sse2(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), pitch);
+			memcpy_sse2(dest, source, pitch);
 		}
 		else if ((pitch % 4) == 0 && (stride % 4) == 0) { // 4 byte move
 			__movsd(reinterpret_cast<unsigned long *>(dest), reinterpret_cast<const unsigned long *>(source), pitch/4);
 		}
 		else {
-			memcpy(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), pitch);
+			// memcpy(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), pitch);
+			memcpy(dest, source, pitch);
 		}
 		source += stride;
 		dest   += pitch;
@@ -215,9 +221,16 @@ void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t Size) const
 
 	auto pSrc = static_cast<const char *>(src); // Source buffer
 	auto pDst = static_cast<char *>(dst); // Destination buffer
-	unsigned int n = (unsigned int)Size >> 7; // Counter = size divided by 128 (8 * 128bit registers)
+	const unsigned int n = (unsigned int)Size >> 7; // Counter = size divided by 128 (8 * 128bit registers)
 
-	__m128i Reg0, Reg1, Reg2, Reg3, Reg4, Reg5, Reg6, Reg7;
+	__m128i Reg0{};
+	__m128i Reg1{};
+	__m128i Reg2{};
+	__m128i Reg3{};
+	__m128i Reg4{};
+	__m128i Reg5{};
+	__m128i Reg6{};
+	__m128i Reg7{};
 	for (unsigned int Index = n; Index > 0; --Index) {
 
 		// SSE2 prefetch
@@ -269,17 +282,23 @@ void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t Size) const
 void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 	unsigned int width, unsigned int height, unsigned int sourcePitch, bool bInvert) const
 {
+	if (!rgba_source || !rgba_dest)
+		return;
+
 	for (unsigned int y = 0; y < height; y++) {
-		// Start of buffer
+
+		// Start of buffers
 		auto source = static_cast<const unsigned __int32*>(rgba_source); // unsigned int = 4 bytes
 		auto dest   = static_cast<unsigned __int32*>(rgba_dest);
+		if (!source || !dest)
+			return;
 
 		// first
 		// Casting first avoids warning C26451: Arithmetic overflow with VS2022 code review
 		// https://docs.microsoft.com/en-us/visualstudio/code-quality/c26451
 		unsigned long YxW   = (unsigned long)(y * width);
-		unsigned long YxSP4 = (unsigned long)sourcePitch / 4;
-		unsigned long InvYxSP4 = (unsigned long)((height - 1 - y) * sourcePitch / 4);
+		const unsigned long YxSP4 = (unsigned long)sourcePitch / 4;
+		const unsigned long InvYxSP4 = (unsigned long)((height - 1 - y) * sourcePitch / 4);
 
 		// Increment to current line
 		// pitch is line length in bytes. Divide by 4 to get the width in rgba pixels.
@@ -303,11 +322,18 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 	unsigned int width, unsigned int height,
 	unsigned int sourcePitch, unsigned int destPitch, bool bInvert) const
 {
+	if (!rgba_source || !rgba_dest)
+		return;
+
 	// For all rows
 	for (unsigned int y = 0; y < height; y++) {
+		
 		// Start of buffers
 		auto source = static_cast<const unsigned __int32*>(rgba_source); // unsigned int = 4 bytes
 		auto dest   = static_cast<unsigned __int32*>(rgba_dest);
+		if (!source || !dest)
+			return;
+
 		// Increment to current line
 		// Pitch is line length in bytes. Divide by 4 to get the width in rgba pixels.
 		if (bInvert) {
@@ -334,15 +360,20 @@ void spoutCopy::rgba2rgbaResample(const void* source, void* dest,
 	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 	unsigned int destWidth, unsigned int destHeight, bool bInvert) const
 {
-	unsigned char* srcBuffer = (unsigned char*)source; // bgra source
+	const unsigned char* srcBuffer = (unsigned char*)source; // bgra source
 	unsigned char* dstBuffer = (unsigned char*)dest; // bgr dest
+	if (!srcBuffer || !dstBuffer)
+		return;
 
 	// horizontal and vertical ratios between the original image and the to be scaled image
-	float x_ratio = (float)sourceWidth / (float)destWidth;
-	float y_ratio = (float)sourceHeight / (float)destHeight;
-	float px, py;
-	unsigned int i, j;
-	unsigned int pixel, nearestMatch;
+	const float x_ratio = (float)sourceWidth / (float)destWidth;
+	const float y_ratio = (float)sourceHeight / (float)destHeight;
+	float px = 0.0f;
+	float py = 0.0f;
+	unsigned int i =- 0;
+	unsigned int j = 0;
+	unsigned int pixel = 0;
+	int nearestMatch = 0;
 	for (i = 0; i < destHeight; i++) {
 		for (j = 0; j < destWidth; j++) {
 			px = floor((float)j*x_ratio);
@@ -351,7 +382,7 @@ void spoutCopy::rgba2rgbaResample(const void* source, void* dest,
 				pixel = (destHeight - i - 1)*destWidth * 4 + j * 4; // flip vertically
 			else
 				pixel = i * destWidth * 4 + j * 4;
-			nearestMatch = (unsigned int)(py*sourcePitch + px * 4);
+			nearestMatch = (int)(py*sourcePitch + px * 4);
 			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 0];
 			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
 			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 2];
@@ -370,6 +401,9 @@ void spoutCopy::rgba2rgbaResample(const void* source, void* dest,
 void spoutCopy::rgba2bgra(const void* rgba_source, void* bgra_dest,
 	unsigned int width, unsigned int height, bool bInvert) const
 {
+	if (!rgba_source || !bgra_dest)
+		return;
+
 	if ((width % 16) == 0) { // 16 byte aligned width
 		if (m_bSSE2 && m_bSSSE3) // SSE3 available
 			rgba_bgra_sse3(rgba_source, bgra_dest, width, height, bInvert);
@@ -387,10 +421,17 @@ void spoutCopy::rgba2bgra(const void* rgba_source, void* bgra_dest,
 void spoutCopy::rgba2bgra(const void *rgba_source, void *bgra_dest,
 	unsigned int width, unsigned int height, unsigned int sourcePitch, bool bInvert) const
 {
+	if (!rgba_source || !bgra_dest)
+		return;
+
 	for (unsigned int y = 0; y < height; y++) {
-		// Start of buffer
-		auto source = static_cast<const unsigned __int32 *>(rgba_source); // unsigned int = 4 bytes
-		auto dest = static_cast<unsigned __int32 *>(bgra_dest);
+
+		// Start of buffers
+		auto source = static_cast<const unsigned __int32*>(rgba_source); // unsigned int = 4 bytes
+		auto dest = static_cast<unsigned __int32*>(bgra_dest);
+		if (!source || !dest)
+			return;
+
 		// Casting first avoids warning C26451: Arithmetic overflow with VS2022 code review
 		// https://docs.microsoft.com/en-us/visualstudio/code-quality/c26451
 		unsigned long YxW = (unsigned long)(y * width);
@@ -426,10 +467,16 @@ void spoutCopy::rgba2bgra(const void* rgba_source, void* bgra_dest,
 	unsigned int width, unsigned int height,
 	unsigned int sourcePitch, unsigned int destPitch, bool bInvert) const
 {
+	if (!rgba_source || !bgra_dest)
+		return;
+
 	for (unsigned int y = 0; y < height; y++) {
-		// Start of buffer
-		auto source = static_cast<const unsigned __int32 *>(rgba_source); // unsigned int = 4 bytes
-		auto dest = static_cast<unsigned __int32 *>(bgra_dest);
+
+		// Start of buffers
+		auto source = static_cast<const unsigned __int32*>(rgba_source); // unsigned int = 4 bytes
+		auto dest = static_cast<unsigned __int32*>(bgra_dest);
+		if (!source || !dest)
+			return;
 
 		// Cast first to avoid warning C26451: Arithmetic overflow
 		unsigned long YxDP = (unsigned long)(y * destPitch / 4);
@@ -480,17 +527,20 @@ void spoutCopy::rgba2rgb(const void* rgba_source, void* rgb_dest,
 	unsigned int width, unsigned int height,
 	unsigned int rgba_pitch, bool bInvert, bool bMirror, bool bSwapRB) const
 {
+	// Start of buffers
+	auto rgba = static_cast<const unsigned char*>(rgba_source); // rgba/bgra
+	auto rgb = static_cast<unsigned char*>(rgb_dest); // rgb/bgr
+	if (!rgb || !rgba)
+		return;
+
 	// RGB dest does not have padding
 	uint64_t rgbsize = (uint64_t)width * (uint64_t)height * 3;
 	uint64_t rgbpitch = (uint64_t)width * 3;
-	uint64_t rgba_padding = (uint64_t)rgba_pitch-((uint64_t)width * 4);
+	const uint64_t rgba_padding = (uint64_t)rgba_pitch-((uint64_t)width * 4);
 
 	// RGBA source may have padding 
 	// Dest and source must be the same dimensions otherwise
 
-	// Start of buffers
-	auto rgba = static_cast<const unsigned char*>(rgba_source); // rgba/bgra
-	auto rgb = static_cast<unsigned char*>(rgb_dest); // rgb/bgr
 	if (bInvert) {
 		rgb += rgbsize; // end of rgb buffer
 		rgb -= rgbpitch; // beginning of the last rgb line
@@ -533,12 +583,14 @@ void spoutCopy::rgba2rgb(const void* rgba_source, void* rgb_dest,
 //
 void spoutCopy::rgb2rgba(const void *rgb_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
-	uint64_t rgbsize  = (uint64_t)width * (uint64_t)height * 3;
-	uint64_t rgbpitch = (uint64_t)width * 3;
-
 	// Start of buffers
-	auto rgb = static_cast<const unsigned char *>(rgb_source); // RGB
-	auto rgba = static_cast<unsigned char *>(rgba_dest); // RGBA
+	auto rgb = static_cast<const unsigned char*>(rgb_source); // RGB
+	auto rgba = static_cast<unsigned char*>(rgba_dest); // RGBA
+	if (!rgb || !rgba)
+		return;
+
+	const uint64_t rgbsize  = (uint64_t)width * (uint64_t)height * 3;
+	const uint64_t rgbpitch = (uint64_t)width * 3;
 
 	if (bInvert) {
 		rgb += rgbsize; // end of rgb buffer
@@ -568,17 +620,20 @@ void spoutCopy::rgb2rgba(const void *rgb_source, void *rgba_dest,
 	unsigned int width, unsigned int height,
 	unsigned int dest_pitch, bool bInvert) const
 {
+	// Start of buffers
+	auto rgb = static_cast<const unsigned char*>(rgb_source); // rgb/bgr
+	auto rgba = static_cast<unsigned char*>(rgba_dest); // rgba/bgra
+	if (!rgb || !rgba)
+		return;
+
 	// RGB source does not have padding
-	uint64_t rgbsize      = (uint64_t )width * (uint64_t)height * 3;
-	uint64_t rgbpitch     = (uint64_t)width * 3;
+	const uint64_t rgbsize      = (uint64_t )width * (uint64_t)height * 3;
+	const uint64_t rgbpitch     = (uint64_t)width * 3;
 	uint64_t rgba_padding = (uint64_t)dest_pitch - ((uint64_t)width * 4);
 
 	// RGBA dest may have padding 
 	// Dest and source must be the same dimensions otherwise
 
-	// Start of buffers
-	auto rgb = static_cast<const unsigned char *>(rgb_source); // rgb/bgr
-	auto rgba = static_cast<unsigned char *>(rgba_dest); // rgba/bgra
 	if (bInvert) {
 		rgb += rgbsize; // end of rgb buffer
 		rgb -= rgbpitch; // beginning of the last rgb line
@@ -606,13 +661,14 @@ void spoutCopy::rgb2rgba(const void *rgb_source, void *rgba_dest,
 //
 void spoutCopy::bgr2rgba(const void *bgr_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
-
-	uint64_t bgrsize = (uint64_t)width * (uint64_t)height * 3;
-	uint64_t bgrpitch = (uint64_t)width * 3;
-
 	// Start of buffers
-	auto bgr = static_cast<const unsigned char *>(bgr_source); // BGR
-	auto rgba = static_cast<unsigned char *>(rgba_dest); // RGBA
+	auto bgr = static_cast<const unsigned char*>(bgr_source); // BGR
+	auto rgba = static_cast<unsigned char*>(rgba_dest); // RGBA
+	if (!bgr || !rgba)
+		return;
+
+	const uint64_t bgrsize = (uint64_t)width * (uint64_t)height * 3;
+	const uint64_t bgrpitch = (uint64_t)width * 3;
 
 	if (bInvert) {
 		bgr += bgrsize; // end of rgb buffer
@@ -642,17 +698,20 @@ void spoutCopy::bgr2rgba(const void *bgr_source, void *rgba_dest,
 	unsigned int width, unsigned int height,
 	unsigned int dest_pitch, bool bInvert) const
 {
+	// Start of buffers
+	auto bgr = static_cast<const unsigned char*>(bgr_source); // rgb/bgr
+	auto rgba = static_cast<unsigned char*>(rgba_dest); // rgba/bgra
+	if (!bgr || !rgba)
+		return;
+
 	// BGR buffer dest does not have padding
-	uint64_t bgrsize = (uint64_t)width * (uint64_t)height * 3;
-	uint64_t bgrpitch = (uint64_t)width * 3;
-	uint64_t rgba_padding = (uint64_t)dest_pitch - ((uint64_t)width * 4);
+	const uint64_t bgrsize = (uint64_t)width * (uint64_t)height * 3;
+	const uint64_t bgrpitch = (uint64_t)width * 3;
+	const uint64_t rgba_padding = (uint64_t)dest_pitch - ((uint64_t)width * 4);
 
 	// RGBA dest may have padding 
 	// Dest and source must be the same dimensions otherwise
 
-	// Start of buffers
-	auto bgr = static_cast<const unsigned char *>(bgr_source); // rgb/bgr
-	auto rgba = static_cast<unsigned char *>(rgba_dest); // rgba/bgra
 	if (bInvert) {
 		bgr += bgrsize; // end of rgb buffer
 		bgr -= bgrpitch; // beginning of the last rgb line
@@ -680,12 +739,15 @@ void spoutCopy::bgr2rgba(const void *bgr_source, void *rgba_dest,
 //
 void spoutCopy::rgb2bgra(const void *rgb_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
-	uint64_t rgbsize = (uint64_t)width * (uint64_t)height * 3;
-	uint64_t rgbpitch = (uint64_t)width * 3;
-
 	// Start of buffers
-	auto rgb = static_cast<const unsigned char *>(rgb_source); // RGB
-	auto bgra = static_cast<unsigned char *>(bgra_dest); // BGRA
+	auto rgb = static_cast<const unsigned char*>(rgb_source); // RGB
+	auto bgra = static_cast<unsigned char*>(bgra_dest); // BGRA
+	if (!rgb || !bgra)
+		return;
+
+	const uint64_t rgbsize = (uint64_t)width * (uint64_t)height * 3;
+	const uint64_t rgbpitch = (uint64_t)width * 3;
+
 	if (bInvert) {
 		rgb += rgbsize; // end of rgb buffer
 		rgb -= rgbpitch; // beginning of the last rgb line
@@ -714,16 +776,19 @@ void spoutCopy::rgb2bgra(const void *rgb_source, void *bgra_dest,
 	unsigned int width, unsigned int height,
 	unsigned int dest_pitch, bool bInvert) const
 {
+	// Start of buffers
+	auto rgb = static_cast<const unsigned char*>(rgb_source); // rgb/bgr
+	auto bgra = static_cast<unsigned char*>(bgra_dest); // rgba/bgra
+	if (!rgb || !bgra)
+		return;
+
 	// RGB source does not have padding
-	uint64_t rgbsize = (uint64_t)width * (uint64_t)height * 3;
-	uint64_t rgbpitch = (uint64_t)width * 3;
+	const uint64_t rgbsize = (uint64_t)width * (uint64_t)height * 3;
+	const uint64_t rgbpitch = (uint64_t)width * 3;
 	// BGRA dest may have padding 
 	uint64_t bgra_padding = (uint64_t)dest_pitch - ((uint64_t)width * 4);
 	// Dest and source must be the same dimensions otherwise
 
-	// Start of buffers
-	auto rgb = static_cast<const unsigned char *>(rgb_source); // rgb/bgr
-	auto bgra = static_cast<unsigned char *>(bgra_dest); // rgba/bgra
 	if (bInvert) {
 		rgb += rgbsize; // end of rgb buffer
 		rgb -= rgbpitch; // beginning of the last rgb line
@@ -764,6 +829,9 @@ void spoutCopy::rgb_to_bgrx_sse(unsigned int w, const void* inpix, void* outpix)
 	const __m128i* in_vec = static_cast<const __m128i*>(inpix);
 	__m128i* out_vec = static_cast<__m128i*>(outpix);
 
+	if (!in_vec || !out_vec)
+		return;
+
 	w /= 16;
 
 	while (w-- > 0) {
@@ -773,8 +841,10 @@ void spoutCopy::rgb_to_bgrx_sse(unsigned int w, const void* inpix, void* outpix)
 		 * in_vec[1]   Gf Bf Rg Gg Bg Rh Gh Bh Ri Gi Bi Rj Gj Bj Rk Gk
 		 * in_vec[2]   Bk Rl Gl Bl Rm Gm Bm Rn Gn Bn Ro Go Bo Rp Gp Bp
 		 */
-		__m128i in1, in2, in3;
-		__m128i out;
+		__m128i in1{};
+		__m128i in2{};
+		__m128i in3{};
+		__m128i out{};
 
 		in1 = in_vec[0];
 
@@ -827,12 +897,15 @@ void spoutCopy::rgb_to_bgrx_sse(unsigned int w, const void* inpix, void* outpix)
 //
 void spoutCopy::bgr2bgra(const void *bgr_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
-	uint64_t bgrsize = (uint64_t)width * (uint64_t)height * 3;
-	uint64_t bgrpitch = (uint64_t)width * 3;
-
 	// Start of buffers
-	auto bgr = static_cast<const unsigned char *>(bgr_source); // BGR
-	auto bgra = static_cast<unsigned char *>(bgra_dest); // BGRA
+	auto bgr = static_cast<const unsigned char*>(bgr_source); // BGR
+	auto bgra = static_cast<unsigned char*>(bgra_dest); // BGRA
+	if (!bgr || !bgra)
+		return;
+
+	const uint64_t bgrsize = (uint64_t)width * (uint64_t)height * 3;
+	const uint64_t bgrpitch = (uint64_t)width * 3;
+
 	if (bInvert) {
 		bgr += bgrsize; // end of rgb buffer
 		bgr -= bgrpitch; // beginning of the last rgb line
@@ -859,12 +932,16 @@ void spoutCopy::bgr2bgra(const void *bgr_source, void *bgra_dest, unsigned int w
 //
 void spoutCopy::rgba2bgr(const void *rgba_source, void *bgr_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
+
+	// Start of buffers
+	auto rgba = static_cast<const unsigned char*>(rgba_source); // RGBA
+	auto bgr = static_cast<unsigned char*>(bgr_dest); // BGR
+	if (!rgba || !bgr)
+		return;
+
 	uint64_t bgrsize = (uint64_t)width * (uint64_t)height * 3;
 	uint64_t bgrpitch = (uint64_t)width * 3;
 
-	// Start of buffers
-	auto rgba = static_cast<const unsigned char *>(rgba_source); // RGBA
-	auto bgr = static_cast<unsigned char *>(bgr_dest); // BGR
 	if (bInvert) {
 		bgr += bgrsize; // end of rgb buffer
 		bgr -= bgrpitch; // beginning of the last bgr line
@@ -892,17 +969,19 @@ void spoutCopy::rgba2bgr(const void *rgba_source, void *bgr_dest,
 	unsigned int width, unsigned int height,
 	unsigned int rgba_pitch, bool bInvert) const
 {
+	// Start of buffers
+	auto rgba = static_cast<const unsigned char*>(rgba_source); // rgba/bgra
+	auto bgr = static_cast<unsigned char*>(bgr_dest); // rgb/bgr
+	if (!rgba || !bgr)
+		return;
+
 	// RGB dest does not have padding
 	uint64_t rgbsize = (uint64_t)width * (uint64_t)height * 3;
 	uint64_t rgbpitch = (uint64_t)width * 3;
-	uint64_t rgba_padding = (uint64_t)rgba_pitch - ((uint64_t)width * 4);
+	const uint64_t rgba_padding = (uint64_t)rgba_pitch - ((uint64_t)width * 4);
 
 	// RGBA source may have padding 
 	// Dest and source must be the same dimensions otherwise
-
-	// Start of buffers
-	auto rgba = static_cast<const unsigned char *>(rgba_source); // rgba/bgra
-	auto bgr = static_cast<unsigned char *>(bgr_dest); // rgb/bgr
 	if (bInvert) {
 		bgr += rgbsize; // end of rgb buffer
 		bgr -= rgbpitch; // beginning of the last rgb line
@@ -931,11 +1010,14 @@ void spoutCopy::rgba2rgbResample(const void* source, void* dest,
 	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 	unsigned int destWidth, unsigned int destHeight, bool bInvert, bool bMirror, bool bSwapRB) const
 {
-	unsigned char* srcBuffer = (unsigned char*)source; // bgra source
-	unsigned char* dstBuffer = (unsigned char*)dest; // bgr dest
 
-	float x_ratio = (float)sourceWidth / (float)destWidth;
-	float y_ratio = (float)sourceHeight / (float)destHeight;
+	const unsigned char* srcBuffer = (unsigned char*)source; // bgra source
+	unsigned char* dstBuffer = (unsigned char*)dest; // bgr dest
+	if (!srcBuffer || !dstBuffer)
+		return;
+
+	const float x_ratio = (float)sourceWidth / (float)destWidth;
+	const float y_ratio = (float)sourceHeight / (float)destHeight;
 
 	// Swap red and blue option
 	int ir = 0; int ig = 1; int ib = 2;
@@ -943,9 +1025,12 @@ void spoutCopy::rgba2rgbResample(const void* source, void* dest,
 		ir = 2; ib = 0;
 	}
 
-	float px, py;
-	unsigned int i, j;
-	unsigned int pixel, nearestMatch;
+	float px = 0.0f;
+	float py = 0.0f;
+	unsigned int i = 0;
+	unsigned int j = 0;
+	unsigned int pixel = 0;
+	int nearestMatch = 0;
 	for (i = 0; i < destHeight; i++) {
 		for (j = 0; j < destWidth; j++) {
 			px = floor((float)j*x_ratio);
@@ -964,8 +1049,7 @@ void spoutCopy::rgba2rgbResample(const void* source, void* dest,
 					pixel = i * destWidth * 3 + j * 3;
 			}
 
-			nearestMatch = (unsigned int)(py*sourcePitch + px * 4);
-
+			nearestMatch = (int)(py*sourcePitch + px * 4);
 			dstBuffer[pixel + ir] = srcBuffer[nearestMatch + 0];
 			dstBuffer[pixel + ig] = srcBuffer[nearestMatch + 1];
 			dstBuffer[pixel + ib] = srcBuffer[nearestMatch + 2];
@@ -980,14 +1064,19 @@ void spoutCopy::rgba2bgrResample(const void* source, void* dest,
 	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 	unsigned int destWidth, unsigned int destHeight, bool bInvert) const
 {
-	unsigned char* srcBuffer = (unsigned char*)source; // bgra source
+	const unsigned char* srcBuffer = (unsigned char*)source; // bgra source
 	unsigned char* dstBuffer = (unsigned char*)dest; // bgr dest
+	if (!srcBuffer || !dstBuffer)
+		return;
 
-	float x_ratio = (float)sourceWidth / (float)destWidth;
-	float y_ratio = (float)sourceHeight / (float)destHeight;
-	float px, py;
-	unsigned int i, j;
-	unsigned int pixel, nearestMatch;
+	const float x_ratio = (float)sourceWidth / (float)destWidth;
+	const float y_ratio = (float)sourceHeight / (float)destHeight;
+	float px = 0.0f;
+	float py = 0.0f;
+	unsigned int i = 0;
+	unsigned int j = 0;
+	unsigned int pixel = 0;
+	int nearestMatch = 0;
 	for (i = 0; i < destHeight; i++) {
 		for (j = 0; j < destWidth; j++) {
 			px = std::floor((float)j*x_ratio);
@@ -996,7 +1085,7 @@ void spoutCopy::rgba2bgrResample(const void* source, void* dest,
 				pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
 			else
 				pixel = i * destWidth * 3 + j * 3;
-			nearestMatch = (unsigned int)(py*sourcePitch + px * 4);
+			nearestMatch = (int)(py*sourcePitch + px * 4);
 			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 0];
 			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
 			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 2];
@@ -1009,12 +1098,16 @@ void spoutCopy::rgba2bgrResample(const void* source, void* dest,
 //
 void spoutCopy::bgra2rgb(const void *bgra_source, void *rgb_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
+
+	// Start of buffers
+	auto bgra = static_cast<const unsigned char*>(bgra_source); // BGRA
+	auto rgb = static_cast<unsigned char*>(rgb_dest); // RGB
+	if (!bgra || !rgb)
+		return;
+
 	uint64_t rgbsize = (uint64_t)width * (uint64_t)height * 3;
 	uint64_t rgbpitch = (uint64_t)width * 3;
 
-	// Start of buffers
-	auto bgra = static_cast<const unsigned char *>(bgra_source); // BGRA
-	auto rgb = static_cast<unsigned char *>(rgb_dest); // RGB
 	if (bInvert) {
 		rgb += rgbsize; // end of rgb buffer
 		rgb -= rgbpitch; // beginning of the last rgb line
@@ -1040,12 +1133,15 @@ void spoutCopy::bgra2rgb(const void *bgra_source, void *rgb_dest, unsigned int w
 //
 void spoutCopy::bgra2bgr(const void *bgra_source, void *bgr_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
+
+	// Start of buffers
+	auto bgra = static_cast<const unsigned char*>(bgra_source); // BGRA
+	auto bgr = static_cast<unsigned char*>(bgr_dest); // BGR
+	if (!bgra || !bgr) return;
+
 	uint64_t bgrsize = (uint64_t)width * (uint64_t)height * 3;
 	uint64_t bgrpitch = (uint64_t)width * 3;
 
-	// Start of buffers
-	auto bgra = static_cast<const unsigned char *>(bgra_source); // BGRA
-	auto bgr = static_cast<unsigned char *>(bgr_dest); // BGR
 	if (bInvert) {
 		bgr += bgrsize; // end of bgr buffer
 		bgr -= bgrpitch; // beginning of the last bgr line
@@ -1120,7 +1216,7 @@ void spoutCopy::CheckSSE()
 
 	//-- Get number of valid info ids
 	__cpuid(CPUInfo, 0);
-	int nIds = CPUInfo[0];
+	const int nIds = CPUInfo[0];
 
 	//-- Get info for id "1"
 	if (nIds >= 1) {
@@ -1143,14 +1239,21 @@ void spoutCopy::CheckSSE()
 void spoutCopy::rgba_bgra(const void* rgba_source, void* bgra_dest,
 	unsigned int width, unsigned int height, bool bInvert) const
 {
+
+	if (!rgba_source)
+		return;
+	if (!bgra_dest)
+		return;
+
 	for (unsigned int y = 0; y < height; y++) {
 
 		// Start of buffer
 		auto source = static_cast<const unsigned __int32*>(rgba_source);; // unsigned int = 4 bytes
 		auto dest = static_cast<unsigned __int32*>(bgra_dest);
+		if (!source || !dest) return;
 
 		// Cast first to avoid warning C26451: Arithmetic overflow
-		unsigned long H1YxW = (unsigned long)((height - 1 - y) * width);
+		const unsigned long H1YxW = (unsigned long)((height - 1 - y) * width);
 		unsigned long YxW = (unsigned long)(y * width);
 
 		// Increment to current line
@@ -1164,7 +1267,7 @@ void spoutCopy::rgba_bgra(const void* rgba_source, void* bgra_dest,
 		}
 
 		for (unsigned int x = 0; x < width; x++) {
-			auto rgbapix = source[x];
+			const auto rgbapix = source[x];
 			dest[x] = (_rotl(rgbapix, 16) & 0x00ff00ff) | (rgbapix & 0xff00ff00);
 		}
 
@@ -1185,6 +1288,12 @@ void spoutCopy::rgba_bgra(const void* rgba_source, void* bgra_dest,
 //
 void spoutCopy::rgba_bgra_sse2(const void* rgba_source, void* bgra_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
+
+	if (!rgba_source)
+		return;
+	if (!bgra_dest)
+		return;
+
 	const __m128i brMask = _mm_set1_epi32(0x00ff00ff); // argb
 
 	for (unsigned int y = 0; y < height; y++) {
@@ -1192,9 +1301,10 @@ void spoutCopy::rgba_bgra_sse2(const void* rgba_source, void* bgra_dest, unsigne
 		// Start of buffer
 		auto source = static_cast<const unsigned __int32*>(rgba_source); // unsigned int = 4 bytes
 		auto dest = static_cast<unsigned __int32*>(bgra_dest);
+		if (!source || !dest) return;
 
 		// Cast first to avoid warning C26451: Arithmetic overflow
-		unsigned long H1YxW = (unsigned long)((height - 1 - y) * width);
+		const unsigned long H1YxW = (unsigned long)((height - 1 - y) * width);
 		unsigned long YxW = (unsigned long)(y * width);
 
 		// Increment to current line
@@ -1208,7 +1318,7 @@ void spoutCopy::rgba_bgra_sse2(const void* rgba_source, void* bgra_dest, unsigne
 		// Make output writes aligned
 		unsigned int x;
 		for (x = 0; ((reinterpret_cast<intptr_t>(&dest[x]) & 15) != 0) && x < width; x++) {
-			auto rgbapix = source[x];
+			const auto rgbapix = source[x];
 			// rgbapix << 16		: a r g b > g b a r
 			//        & 0x00ff00ff  : r g b . > . b . r
 			// rgbapix & 0xff00ff00 : a r g b > a . g .
@@ -1217,20 +1327,20 @@ void spoutCopy::rgba_bgra_sse2(const void* rgba_source, void* bgra_dest, unsigne
 		}
 
 		for (; x + 3 < width; x += 4) {
-			__m128i sourceData = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&source[x]));
+			const __m128i sourceData = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&source[x]));
 			// Mask out g and a, which don't change
-			__m128i gaComponents = _mm_andnot_si128(brMask, sourceData);
+			const __m128i gaComponents = _mm_andnot_si128(brMask, sourceData);
 			// Mask out b and r
-			__m128i brComponents = _mm_and_si128(sourceData, brMask);
+			const __m128i brComponents = _mm_and_si128(sourceData, brMask);
 			// Swap b and r
-			__m128i brSwapped = _mm_shufflehi_epi16(_mm_shufflelo_epi16(brComponents, _MM_SHUFFLE(2, 3, 0, 1)), _MM_SHUFFLE(2, 3, 0, 1));
-			__m128i result = _mm_or_si128(gaComponents, brSwapped);
+			const __m128i brSwapped = _mm_shufflehi_epi16(_mm_shufflelo_epi16(brComponents, _MM_SHUFFLE(2, 3, 0, 1)), _MM_SHUFFLE(2, 3, 0, 1));
+			const __m128i result = _mm_or_si128(gaComponents, brSwapped);
 			_mm_store_si128(reinterpret_cast<__m128i*>(&dest[x]), result);
 		}
 
 		// Perform leftover writes
 		for (; x < width; x++) {
-			auto rgbapix = source[x];
+			const auto rgbapix = source[x];
 			dest[x] = (_rotl(rgbapix, 16) & 0x00ff00ff) | (rgbapix & 0xff00ff00);
 		}
 	}
@@ -1256,7 +1366,7 @@ void spoutCopy::rgba_bgra_sse3(const void* rgba_source, void* bgra_dest, unsigne
 		auto dest = static_cast<unsigned __int32*>(bgra_dest);
 
 		// Cast first to avoid warning C26451: Arithmetic overflow
-		unsigned long H1YxW = (unsigned long)((height - 1 - y) * width);
+		const unsigned long H1YxW = (unsigned long)((height - 1 - y) * width);
 		unsigned long YxW = (unsigned long)(y * width);
 
 		// Increment to current line

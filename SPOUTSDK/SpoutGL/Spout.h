@@ -4,7 +4,7 @@
 
 	Documentation - https://spoutgl-site.netlify.app/					
 
-	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -142,7 +142,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Received sender GL/DX hardware compatibility
 	bool GetSenderGLDX();
 	// Open sender selection dialog
-	void SelectSender();
+	bool SelectSender();
 
 	//
 	// Frame count
@@ -188,8 +188,6 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	char * AdapterName();
 	// Get current adapter index
 	int GetAdapter();
-	// Set graphics adapter for output
-	bool SetAdapter(int index = 0);
 	// Get sender adapter index and name for a given sender
 	int GetSenderAdapter(const char* sendername, char* adaptername = nullptr, int maxchars = 256);
 	// Get the description and output display name of the current adapter
@@ -220,7 +218,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	bool GetAdapterInfo(char* renderadapter,
 		char* renderdescription, char* renderversion,
 		char* displaydescription, char* displayversion,
-		int maxsize, bool &bUseDX9);
+		int maxsize, const bool bUseDX9 = false);
 
 	// Create a sender
 	bool CreateSender(const char *Sendername, unsigned int width = 0, unsigned int height = 0, DWORD dwFormat = 0);
