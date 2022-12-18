@@ -104,7 +104,7 @@
 		14.12.22 - Add RemoveSpoutLogFile
 		18.12.22 - Add buffer size argument to ReadPathFromRegistry
 				   Correct code review warnings where possible
-			 
+				   Add more documentation to Group: Logs
 
 */
 
@@ -263,10 +263,56 @@ namespace spoututils {
 	//
 	// Group: Logs
 	//
-
-	// See SpoutUtils.h
-
 	//
+	// Spout logs are used thoughout the SDK and are printed to a console
+	// with EnableLogs or saved to a file with EnableLogFIle.
+	//
+	// You can set the level above which the logs are shown
+	// SPOUT_LOG_SILENT  : SPOUT_LOG_VERBOSE : SPOUT_LOG_NOTICE (default)
+	// SPOUT_LOG_WARNING : SPOUT_LOG_ERROR   : SPOUT_LOG_FATAL
+	// For example, to show only warnings and errors (you shouldn't see any)
+	// or leave set to default Notice to see more information.
+	//
+	//    SetSpoutLogLevel(SPOUT_LOG_WARNING);
+	//
+	// You can instead, or additionally, output to a text log file
+	// with the name and extension of your choice.
+	//    EnableSpoutLogFile("OF Spout Graphics sender.log");
+	//
+	// The log file is re-created every time the application starts
+	// unless you specify to append to the existing one :
+	//    EnableSpoutLogFile("OF Spout Graphics sender.log", true);
+	//
+	// The file is saved in the %AppData% folder unless you specify the full path.
+	//    C:>Users>username>AppData>Roaming>Spout
+	//
+	// If there is no file specified, the executable or dll name is used.
+	// 
+	// After the application has run you can find and examine the log file
+	//
+	// This folder can also be shown in Windows Explorer directly from the application.
+	//    ShowSpoutLogs();
+	//
+	// Or the entire log file can be returned as a string
+	//    std::string logstring = GetSpoutLog();
+	//
+	// You can also create your own logs
+	// For example :
+	//    SpoutLog("SpoutLog test");
+	//
+	// Or specify the logging level :
+	// For example :
+	//    SpoutLogNotice("Important notice");
+	// or :
+	//    SpoutLogFatal("This should not happen");
+	// or :
+	//    SetSpoutLogLevel(SPOUT_LOG_VERBOSE);
+	//    SpoutLogVerbose("Message");
+	//
+	// See SpoutUtils.h for mre information
+	//
+
+	// ---------------------------------------------------------
 	// Enum: Log level definitions
 	// The level above which the logs are shown.
 	// 

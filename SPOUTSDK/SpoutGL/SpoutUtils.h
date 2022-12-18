@@ -68,13 +68,6 @@
 #pragma comment(lib, "Advapi32.lib") // for registry functions
 #pragma comment(lib, "Version.lib") // for version resources where necessary
 
-// LJ DEBUG
-// Correcting the following warnings leads to more warnings that
-// cannot be resolved. All other warnings have been corrected.
-// #pragma warning(disable : 26826) // va_list etc.
-// #pragma warning(disable : 26493) // C-style casts
-// #pragma warning(disable : 26485) // Array as a single pointer
-
 // SpoutUtils
 namespace spoututils {
 
