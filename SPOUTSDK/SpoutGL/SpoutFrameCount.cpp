@@ -64,6 +64,7 @@
 //					- Correct average frame rate in UpdateSenderFps
 //					- Correct GetNewFrame for receiver started.
 //		17.12.22	- Use smart pointers for m_FrameStartPtr etc to avoid using new/delete
+//		18.12.22	- Change back to new/delete due to incompatibility with SpoutLibrary
 //
 // ====================================================================================
 //
@@ -137,12 +138,12 @@ spoutFrameCount::spoutFrameCount()
 #ifdef USE_CHRONO
 
 	// For HoldFps
-	m_FrameStartPtr = std::make_unique<std::chrono::steady_clock::time_point>();
-	m_FrameEndPtr = std::make_unique<std::chrono::steady_clock::time_point>();
+	m_FrameStartPtr = new std::chrono::steady_clock::time_point;
+	m_FrameEndPtr = new std::chrono::steady_clock::time_point;
 
 	// Sender fps
-	m_FpsStartPtr = std::make_unique<std::chrono::steady_clock::time_point>();
-	m_FpsEndPtr = std::make_unique<std::chrono::steady_clock::time_point>();
+	m_FpsStartPtr = new std::chrono::steady_clock::time_point;
+	m_FpsEndPtr = new std::chrono::steady_clock::time_point;
 
 	// Reset both counts
 	*m_FrameStartPtr = *m_FrameEndPtr = std::chrono::steady_clock::now();
@@ -159,14 +160,12 @@ spoutFrameCount::spoutFrameCount()
 spoutFrameCount::~spoutFrameCount()
 {
 
-/*
 #ifdef USE_CHRONO
 	if(m_FrameStartPtr)	delete m_FrameStartPtr;
 	if(m_FrameEndPtr) delete m_FrameEndPtr;
 	if(m_FpsStartPtr) delete m_FpsStartPtr;
 	if(m_FpsEndPtr) delete m_FpsEndPtr;
 #endif
-*/
 
 	if (m_hCountSemaphore) CloseHandle(m_hCountSemaphore);
 	if (m_hAccessMutex) CloseHandle(m_hAccessMutex);

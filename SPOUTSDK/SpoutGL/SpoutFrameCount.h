@@ -165,11 +165,12 @@ protected:
 
 	// Avoid C4251 warnings in SpoutLibrary by using pointers
 	// USE_CHRONO is defined in SpoutUtils.h
-
-	std::unique_ptr<std::chrono::steady_clock::time_point> m_FpsStartPtr;
-	std::unique_ptr<std::chrono::steady_clock::time_point> m_FpsEndPtr;
-	std::unique_ptr<std::chrono::steady_clock::time_point> m_FrameStartPtr;
-	std::unique_ptr<std::chrono::steady_clock::time_point> m_FrameEndPtr;
+	// Use of std::unique_ptr to avoid warning C26409 using new/delete
+	// results in warning C4251 needs to have dll-interface
+	std::chrono::steady_clock::time_point* m_FpsStartPtr;
+	std::chrono::steady_clock::time_point* m_FpsEndPtr;
+	std::chrono::steady_clock::time_point* m_FrameStartPtr;
+	std::chrono::steady_clock::time_point* m_FrameEndPtr;
 
 #endif
 
