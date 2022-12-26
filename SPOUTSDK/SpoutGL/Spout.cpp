@@ -239,6 +239,9 @@
 //		13.12.22	- SetSenderName revise for null name passed
 //		14.12.22	- Remove SetAdapter. Requires OpenGL setup.
 //		18.12.22	- Change unused bDX9 argument to const with default
+//		20.12.22	- More checks for null arguments
+//		22.12.22	- Compiler compatibility check
+//				      Conditional compile of preference functions
 //
 // ====================================================================================
 /*
@@ -266,10 +269,6 @@
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
-
-// LJ DEBUG
-#pragma warning(disable : 26493) // c-style casts.
-#pragma warning(disable : 26481) // pass an array as a single pointer
 
 #include "Spout.h"
 
@@ -340,6 +339,8 @@ Spout::~Spout()
 	// ~spoutGL will release dependent objects
 }
 
+
+
 //
 // Group: Sender
 //
@@ -360,7 +361,6 @@ Spout::~Spout()
 //    - Update the sender and class variables	
 //
 
-
 //---------------------------------------------------------
 // Function: SetSenderName
 // Set name for sender creation
@@ -370,7 +370,7 @@ Spout::~Spout()
 // based on the size passed and the name that has been set.
 void Spout::SetSenderName(const char* sendername)
 {
-	char name[256]{};
+	char name[256]={};
 	if (!sendername) {
 		// Get executable name as default
 		GetModuleFileNameA(NULL, name, 256);
@@ -674,7 +674,7 @@ bool Spout::GetCPU()
 
 //---------------------------------------------------------
 // Function: GetGLDX
-//Sender sharing compatibility.
+// Sender sharing compatibility.
 //  Returns true if the sender graphics hardware is 
 //  compatible with NVIDIA NV_DX_interop2 extension
 bool Spout::GetGLDX()
@@ -710,7 +710,7 @@ bool Spout::GetGLDX()
 void Spout::SetReceiverName(const char * SenderName)
 {
 	if (SenderName) {
-		if (SenderName[0] != 0) {
+		if (*SenderName) {
 			// Connect to the specified sender
 			strcpy_s(m_SenderNameSetup, 256, SenderName);
 			strcpy_s(m_SenderName, 256, SenderName);
@@ -815,7 +815,6 @@ bool Spout::ReceiveTexture()
 //
 bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
-
 	// Return if flagged for update and there is a texture to receive into.
 	// The update flag is reset when the receiving application calls IsUpdated().
 	if (m_bUpdated && TextureID != 0 && TextureTarget != 0) {
@@ -911,6 +910,9 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 bool Spout::ReceiveImage(char* Sendername, unsigned int &width, unsigned int &height,
 	unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
+	if (!pixels || !Sendername)
+		return false;
+
 	if (ReceiveImage(pixels, glFormat, bInvert, HostFBO)) {
 		strcpy_s(Sendername, 256, m_SenderName);
 		width = m_Width;
@@ -1083,7 +1085,7 @@ void Spout::HoldFps(int fps)
 //   Create a named sync event and set for test
 void Spout::SetFrameSync(const char* SenderName)
 {
-	if (SenderName && SenderName[0] && m_bInitialized)
+	if (SenderName && *SenderName && m_bInitialized)
 		frame.SetFrameSync(SenderName);
 }
 
@@ -1098,7 +1100,7 @@ void Spout::SetFrameSync(const char* SenderName)
 // 
 bool Spout::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 {
-	if (!SenderName || !SenderName[0] || !m_bInitialized)
+	if (!SenderName || !m_bInitialized)
 		return false;
 	return frame.WaitFrameSync(SenderName, dwTimeout);
 }
@@ -1120,6 +1122,8 @@ int Spout::GetSenderCount()
 // Sender item name in the sender names set
 bool Spout::GetSender(int index, char* sendername, int MaxSize)
 {
+	if (!sendername)
+		return false;
 	return sendernames.GetSender(index, sendername, MaxSize);
 }
 
@@ -1128,6 +1132,8 @@ bool Spout::GetSender(int index, char* sendername, int MaxSize)
 // Sender information
 bool Spout::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
 {
+	if (!sendername)
+		return false;
 	return sendernames.GetSenderInfo(sendername, width, height, dxShareHandle, dwFormat);
 }
 
@@ -1136,6 +1142,8 @@ bool Spout::GetSenderInfo(const char* sendername, unsigned int &width, unsigned 
 // Current active sender name
 bool Spout::GetActiveSender(char* Sendername)
 {
+	if (!Sendername)
+		return false;
 	return sendernames.GetActiveSender(Sendername);
 }
 
@@ -1144,6 +1152,8 @@ bool Spout::GetActiveSender(char* Sendername)
 // Set sender as active
 bool Spout::SetActiveSender(const char* Sendername)
 {
+	if (!Sendername)
+		return false;
 	return sendernames.SetActiveSender(Sendername);
 }
 
@@ -1167,7 +1177,7 @@ int Spout::GetNumAdapters()
 // Get adapter item name
 bool Spout::GetAdapterName(int index, char *adaptername, int maxchars)
 {
-	char name[256];
+	char name[256]={};
 	if (spoutdx.GetAdapterName(index, name, 256)) {
 		strcpy_s(adaptername, maxchars, name);
 		return true;
@@ -1212,7 +1222,7 @@ int Spout::GetAdapter()
 //
 int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxchars)
 {
-	if (!sendername || !sendername[0])
+	if (!sendername)
 		return -1;
 
 	int senderadapter = -1;
@@ -1294,7 +1304,11 @@ bool Spout::GetAdapterInfo(int index, char* description, char* output, int maxch
 // Windows Graphics performance preferences.
 // Refer to the SpoutDirectX class for details.
 //
-
+// Performance prefrence settings are available from Windows 10
+// April 2018 update "Redstone 4" (Version 1803, build 17134) and later.
+// Windows 10 SDK required included in Visual Studio 2017 ver.15.7 
+//
+#ifdef NTDDI_WIN10_RS4
 
 //---------------------------------------------------------
 // Function: GetPerformancePreference
@@ -1327,6 +1341,9 @@ int Spout::GetPerformancePreference(const char* path)
 //
 bool Spout::SetPerformancePreference(int preference, const char* path)
 {
+	if (!path)
+		return false;
+
 	return spoutdx.SetPerformancePreference(preference, path);
 }
 
@@ -1369,8 +1386,6 @@ bool Spout::SetPreferredAdapter(int preference)
 // Function: IsPreferenceAvailable()
 // Availability of Windows graphics preference settings.
 //
-// Settings are available from Windows 10 April 2018 update 
-// (Version 1803, build 17134) and later.
 bool Spout::IsPreferenceAvailable()
 {
 	return spoutdx.IsPreferenceAvailable();
@@ -1384,9 +1399,12 @@ bool Spout::IsPreferenceAvailable()
 // A valid application path will have a drive letter and terminate with ".exe"
 bool Spout::IsApplicationPath(const char* path)
 {
+	if (!path)
+		return false;
+
 	return spoutdx.IsApplicationPath(path);
 }
-
+#endif
 
 //
 // Group: 2.006 compatibility
@@ -1454,7 +1472,7 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	displaydescription[0] = 0;
 	displayversion[0] = 0;
 	if (!spoutdx.GetDX11Device()) {
-		SpoutLogError("spoutGLDXinterop::GetAdapterInfo - no DX11 device");
+		SpoutLogError("Spout::GetAdapterInfo - no DX11 device");
 		return false;
 	}
 
@@ -1465,7 +1483,7 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	pDXGIDevice->GetAdapter(&pDXGIAdapter);
 	if (!pDXGIAdapter) return false;
 
-	DXGI_ADAPTER_DESC adapterinfo{};
+	DXGI_ADAPTER_DESC adapterinfo;
 	pDXGIAdapter->GetDesc(&adapterinfo);
 
 	// WCHAR Description[ 128 ];
@@ -1477,7 +1495,7 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	// SIZE_T DedicatedSystemMemory;
 	// SIZE_T SharedSystemMemory;
 	// LUID AdapterLuid;
-	char output[256]{};
+	char output[256]={};
 	size_t charsConverted = 0;
 	wcstombs_s(&charsConverted, output, 129, adapterinfo.Description, 128);
 	// printf("    Description = [%s]\n", output);
@@ -1494,12 +1512,12 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	// Use Windows functions to look for Intel graphics to see if it is
 	// the same render adapter that was detected with DirectX
 	//
-	char driverdescription[256]{};
-	char driverversion[256]{};
-	char regkey[256]{};
+	char driverdescription[256]={};
+	char driverversion[256]={};
+	char regkey[256]={};
 
 	// Additional info
-	DISPLAY_DEVICE DisplayDevice{};
+	DISPLAY_DEVICE DisplayDevice;
 	DisplayDevice.cb = sizeof(DISPLAY_DEVICE);
 
 	// Detect the adapter attached to the desktop.
@@ -1551,6 +1569,9 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 // Create a sender
 bool Spout::CreateSender(const char* name, unsigned int width, unsigned int height, DWORD dwFormat)
 {
+	if (!name)
+		return false;
+
 	// Pass on to CheckSender
 	SetSenderName(name);
 	if (dwFormat > 0)
@@ -1565,6 +1586,9 @@ bool Spout::CreateSender(const char* name, unsigned int width, unsigned int heig
 // Update a sender
 bool Spout::UpdateSender(const char* name, unsigned int width, unsigned int height)
 {
+	if (!name)
+		return false;
+
 	// No update unless already created
 	if (!IsInitialized()) {
 		return false;
@@ -1584,6 +1608,9 @@ bool Spout::UpdateSender(const char* name, unsigned int width, unsigned int heig
 bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height, bool bUseActive)
 {
 	UNREFERENCED_PARAMETER(bUseActive); // no longer used
+
+	if (!sendername)
+		return false;
 
 	if (!OpenSpout())
 		return false;
@@ -1618,6 +1645,9 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 // Check receiver connection
 bool Spout::CheckReceiver(char* name, unsigned int &width, unsigned int &height, bool &bConnected)
 {
+	if (!name)
+		return false;
+
 	if (ReceiveSenderData()) {
 		strcpy_s(name, 256, m_SenderName);
 		width = m_Width;
@@ -1634,6 +1664,9 @@ bool Spout::CheckReceiver(char* name, unsigned int &width, unsigned int &height,
 bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height,
 	GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFBO)
 {
+	if (!name)
+		return false;
+
 	if (ReceiveTexture(TextureID, TextureTarget, bInvert, HostFBO)) {
 
 		// 2.006 receivers have to restart for a new sender name
@@ -1656,6 +1689,9 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 // Receive image pixels
 bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
+	if (!pixels)
+		return false;
+
 	// Return if flagged for update
 	// The update flag is reset when the receiving application calls IsUpdated()
 	if (m_bUpdated) {
@@ -1757,11 +1793,11 @@ bool Spout::SelectSenderPanel(const char* message)
 {
 	HANDLE hMutex1 = NULL;
 	HMODULE module = NULL;
-	char path[MAX_PATH]{};
-	char drive[MAX_PATH]{};
-	char dir[MAX_PATH]{};
-	char fname[MAX_PATH]{};
-	char UserMessage[512]{};
+	char path[MAX_PATH]={};
+	char drive[MAX_PATH]={};
+	char dir[MAX_PATH]={};
+	char fname[MAX_PATH]={};
+	char UserMessage[512]={};
 
 	if (message != NULL && message[0] != 0)
 		strcpy_s(UserMessage, 512, message); // could be an arg or a user message
@@ -1894,7 +1930,6 @@ bool Spout::SelectSenderPanel(const char* message)
 	return true;
 
 } // end SelectSenderPanel
-
 
 //
 // Group: Legacy OpenGL Draw functions
@@ -2167,6 +2202,9 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 //---------------------------------------------------------
 void Spout::InitReceiver(const char * SenderName, unsigned int width, unsigned int height, DWORD dwFormat)
 {
+	if (!SenderName)
+		return;
+
 	SpoutLogNotice("Spout::InitReceiver(%s, %dx%d)", SenderName, width, height);
 
 	// Create a named sender mutex for access to the sender's shared texture
@@ -2194,7 +2232,7 @@ bool Spout::ReceiveSenderData()
 	// Initialization is recorded in this class for sender or receiver
 	// m_Width or m_Height are established when the receiver connects to a sender
 
-	char sendername[256];
+	char sendername[256]={};
 	strcpy_s(sendername, 256, m_SenderName);
 
 	// Check again to see if the sender exists
@@ -2324,17 +2362,19 @@ bool Spout::ReceiveSenderData()
 
 }
 
-
 //---------------------------------------------------------
 // Check whether SpoutPanel opened and return the new sender name
 bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 {
+	if (!sendername)
+		return false;
+
 	// If SpoutPanel has been activated, test if the user has clicked OK
 	if (m_bSpoutPanelOpened) { // User has activated spout panel
-		SharedTextureInfo TextureInfo{};
+		SharedTextureInfo TextureInfo = {};
 		HANDLE hMutex = NULL;
 		DWORD dwExitCode = 0;
-		char newname[256]{};
+		char newname[256]={};
 		bool bRet = false;
 
 		// Must find the mutex to signify that SpoutPanel has opened
@@ -2390,4 +2430,5 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 	return false;
 
 }
+
 

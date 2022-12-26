@@ -431,6 +431,9 @@ bool SpoutReceiver::GetAdapterInfo(int index, char* description, char* output, i
 	return spout.GetAdapterInfo(index, description, output, maxchars);
 }
 
+// Windows 10 Vers 1803, build 17134 or later
+#ifdef NTDDI_WIN10_RS4
+
 //---------------------------------------------------------
 int SpoutReceiver::GetPerformancePreference(const char* path)
 {
@@ -466,6 +469,7 @@ bool SpoutReceiver::IsApplicationPath(const char* path)
 {
 	return spout.IsApplicationPath(path);
 }
+#endif
 
 
 //

@@ -103,6 +103,10 @@
 //		18.12.22	- ReadTextureData - use std::unique_ptr to create intermediate invert buffer
 //					  OpenDeviceKey use std::string "at" instead of direct index
 //					  Catch any exception by using cleanup functions in destructor
+//		19.12.22	- Add DoDiagnostics to create a log file for CreateInterop failure
+//		22.12.22	- Compiler compatibility testing
+//					  Remove std::unique_ptr and go back to new/delete
+//					  Change all {} initializations to "={}"
 //
 // ====================================================================================
 //
@@ -698,7 +702,7 @@ bool spoutGL::CreateOpenGL()
 			const DWORD dwError = GetLastError();
 			// 2000 (0x7D0) The pixel format is invalid.
 			// Caused by repeated call of the SetPixelFormat function
-			char temp[128];
+			char temp[128]={};
 			sprintf_s(temp, "spoutGL::CreateOpenGL - SetPixelFormat Error %lu (0x%4.4lX)", dwError, dwError);
 			SpoutLogError("%s", temp);
 			CloseOpenGL();
@@ -924,12 +928,12 @@ bool spoutGL::GLDXready()
 //---------------------------------------------------------
 bool spoutGL::SetHostPath(const char *sendername)
 {
-	SharedTextureInfo info{};
+	SharedTextureInfo info;
 	if (!sendernames.getSharedInfo(sendername, &info)) {
 		SpoutLogWarning("spoutGL::SetHostPath(%s) - could not get sender info", sendername);
 		return false;
 	}
-	char exepath[256]{};
+	char exepath[256]={};
 	GetModuleFileNameA(NULL, exepath, sizeof(exepath));
 	// Description is defined as wide chars, but the path is stored as byte chars
 	strcpy_s((char*)info.description, 256, exepath);
@@ -1008,7 +1012,8 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 		if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
 			width, height, (DXGI_FORMAT)format, // default is DXGI_FORMAT_B8G8R8A8_UNORM
 			&m_pSharedTexture, m_dxShareHandle)) {
-			SpoutLogError("spoutGL::CreateInterop - CreateSharedDX11Texture failed");
+			// Write diagnostics to a log file
+			DoDiagnostics("spoutGL::CreateInterop - CreateSharedDX11Texture failed");
 			return false;
 		}
 	}
@@ -1037,7 +1042,8 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 	// Link the texture using the GL/DX interop
 	m_hInteropObject = LinkGLDXtextures((void *)spoutdx.GetDX11Device(), m_pSharedTexture, m_glTexture);
 	if (!m_hInteropObject) {
-		SpoutLogError("spoutGL::CreateInterop - LinkGLDXtextures failed");
+		// Write diagnostics to a log file
+		DoDiagnostics("spoutGL::CreateInterop - LinkGLDXtextures failed");
 		return false;
 	}
 
@@ -1074,7 +1080,7 @@ HANDLE spoutGL::LinkGLDXtextures(void* pDXdevice, void* pSharedTexture,  GLuint 
 {
 	HANDLE hInteropObject = nullptr;
 	DWORD dwError = 0;
-	char tmp[128]{};
+	char tmp[128]={};
 
 	// Are the GL/DX interop extensions loaded ?
 	if (!wglDXOpenDeviceNV
@@ -1972,7 +1978,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 bool spoutGL::WriteDX11texture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
-	D3D11_MAPPED_SUBRESOURCE mappedSubResource{};
+	D3D11_MAPPED_SUBRESOURCE mappedSubResource={};
 
 	// Only for DX11 mode
 	if (!spoutdx.GetDX11Context()) {
@@ -2028,7 +2034,7 @@ bool spoutGL::WriteDX11texture(GLuint TextureID, GLuint TextureTarget,
 bool spoutGL::ReadDX11texture(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
-	D3D11_MAPPED_SUBRESOURCE mappedSubResource{};
+	D3D11_MAPPED_SUBRESOURCE mappedSubResource={};
 
 	// Quit for zero texture
 	if (TextureID == 0 || TextureTarget == 0) {
@@ -2389,25 +2395,25 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 		if (bInvert) {
 
 			// For copy to intermediate invert buffer
-			std::unique_ptr<unsigned char[]>src;
+			unsigned char *src = nullptr;
 
 			// ReadTextureData - create unsigned long variables for temp src char array
 			const unsigned long WxHx3 = unsigned long(width*height*3);
 			const unsigned long WxHx4 = unsigned long(width*height*4);
 
 			if(GLformat == GL_RGB || GLformat == GL_BGR_EXT)
-				src = std::make_unique<unsigned char[]>(WxHx3);
+				src = new unsigned char[WxHx3];
 			else
-				src = std::make_unique<unsigned char[]>(WxHx4);
+				src = new unsigned char[WxHx4];
 
 			glBindTexture(SourceTarget, SourceID);
-			glGetTexImage(SourceTarget, 0, GLformat, GL_UNSIGNED_BYTE, (void *)src.get());
+			glGetTexImage(SourceTarget, 0, GLformat, GL_UNSIGNED_BYTE, (void *)src);
 			glBindTexture(SourceTarget, 0);
 
 			// Flip the buffer
-			spoutcopy.FlipBuffer(src.get(), dest, width, height, GLformat);
+			spoutcopy.FlipBuffer(src, dest, width, height, GLformat);
 
-			src.release();
+			delete[] src;
 		}
 		else {
 			// dest must be RGBA or RGB width x height
@@ -2588,7 +2594,7 @@ bool spoutGL::WritePixelData(const unsigned char* pixels, ID3D11Texture2D* pStag
 	// m_dwFormat = 87 BGRA staging textures
 
 	// Map the resource so we can access the pixels
-	D3D11_MAPPED_SUBRESOURCE mappedSubResource{};
+	D3D11_MAPPED_SUBRESOURCE mappedSubResource={};
 	// Make sure all commands are done before mapping the staging texture
 	spoutdx.GetDX11Context()->Flush();
 	// Map waits for GPU access
@@ -2662,7 +2668,7 @@ bool spoutGL::ReadPixelData(ID3D11Texture2D* pStagingTexture, unsigned char* pix
 	// m_dwFormat = 87 BGRA staging textures
 
 	// Map the resource so we can access the pixels
-	D3D11_MAPPED_SUBRESOURCE mappedSubResource{};
+	D3D11_MAPPED_SUBRESOURCE mappedSubResource={};
 	// Make sure all commands are done before mapping the staging texture
 	spoutdx.GetDX11Context()->Flush();
 	// Map waits for GPU access
@@ -3116,7 +3122,7 @@ bool spoutGL::IsCONTEXTavailable()
 //---------------------------------------------------------
 void spoutGL::SaveOpenGLstate(unsigned int width, unsigned int height, bool bFitWindow)
 {
-	float dim[4];
+	float dim[4]={};
 	float vpScaleX, vpScaleY, vpWidth, vpHeight;
 	int vpx, vpy;
 
@@ -3145,10 +3151,10 @@ void spoutGL::SaveOpenGLstate(unsigned int width, unsigned int height, bool bFit
 	else {
 		// Preserve aspect ratio of the sender
 		// and fit to the width or the height
-		vpWidth = dim[2];
+		vpWidth = dim[2]={};
 		vpHeight = ((float)height / (float)width)*vpWidth;
 		if (vpHeight > dim[3]) {
-			vpHeight = dim[3];
+			vpHeight = dim[3]={};
 			vpWidth = ((float)width / (float)height)*vpHeight;
 		}
 		vpx = (int)(dim[2] - vpWidth) / 2;;
@@ -3206,7 +3212,7 @@ bool spoutGL::OpenDeviceKey(const char* key, int maxsize, char* description, cha
 	DWORD dwSize = 0;
 	DWORD dwKey = 0;
 
-	char output[256]{};
+	char output[256]={};
 	strcpy_s(output, 256, key);
 	const char *found = strstr(output, "System");
 	if (!found)
@@ -3263,9 +3269,154 @@ void spoutGL::trim(char* s) {
 // Errors
 //
 
+// Perform diagnostics and write the results to a log file
+void spoutGL::DoDiagnostics(const char *error = nullptr)
+{
+	// Create a log file using the executable or dll name
+	// (See SpoutUtils GetCurrentModule)
+	char exepath[MAX_PATH]={};
+	char logname[MAX_PATH]={};
+	if (GetModuleFileNameA(GetCurrentModule(), exepath, MAX_PATH) > 0) {
+		strcpy_s(logname, MAX_PATH, exepath);
+		PathStripPathA(logname);
+		PathRemoveExtensionA(logname);
+		strcat_s(logname, MAX_PATH, "_diagnostics.log");
+	}
+	else {
+		strcat_s(logname, MAX_PATH, "_diagnostics.log");
+	}
+
+	// Show a line break for any existing log
+	SpoutLogNotice("\n");
+
+	// Create the diagnostic log file
+	EnableSpoutLogFile(logname);
+
+	// Show the error if provided
+	if(error)
+		SpoutLogNotice("spoutGL::DoDiagnostics %s", error);
+	else
+		SpoutLogNotice("spoutGL::DoDiagnostics");
+
+	// Get the Spout version as a single number
+	// For example : 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
+	const int spoutVersion = GetSpoutVersion();
+	if (spoutVersion > 0) {
+		if (spoutVersion <= 2007) {
+			SpoutLogNotice("Spout Version - 2.00%1d", (spoutVersion - 2000));
+		}
+		else {
+			SpoutLogNotice("Spout Version - %s", GetSDKversion().c_str());
+		}
+	}
+	else if (spoutVersion == 0) {
+		SpoutLogNotice("Spout Version - 2.004 or earlier");
+	}
+
+	// Check DirectX device
+	if (!GetDX11Device()) {
+		SpoutLogWarning("DirectX 11 device not available");
+	}
+	else {
+		SpoutLogNotice("DirectX 11 device available");
+	}
+
+	//
+	// Identify the computer and graphics systems
+	//
+
+	// Computer/laptop detection
+	char computername[16]={};
+	DWORD nchars = 16;
+	GetComputerNameA(computername, &nchars);
+	if (IsLaptop()) SpoutLogNotice("Laptop system (%s)", computername);
+	else SpoutLogNotice("Desktop system (%s)", computername);
+
+	// Check the vendor of the primary GPU currently in use
+	SpoutLogNotice("Graphics : %s", (char*)glGetString(GL_VENDOR));
+	// Find the primary adapter and display names
+	char adapter[256]={};
+	char display[256]={};
+	spoutdx.GetAdapterInfo(adapter, display, 256);
+	if (adapter && adapter[0]) {
+		trim(adapter);
+		SpoutLogNotice("%s", adapter);
+	}
+
+	// Secondary adapter
+	const int nadapters = spoutdx.GetNumAdapters();
+	if (nadapters > 1) {
+		spoutdx.GetAdapterName(1, adapter, 256);
+		SpoutLogNotice("Secondary : %s", adapter);
+	}
+
+	// The display output
+	if (display && display[0]) {
+		trim(display);
+		SpoutLogNotice("Display : %s", display);
+	}
+
+	// If DirectX is OK, check for availabilty of the GL/DX extensions.
+	// The NV_DX_interop extensions will fail if the graphics driver does not support them
+	if (GetDX11Device()) {
+		if (wglGetProcAddress("wglDXOpenDeviceNV")) { // extensions can be loaded
+			SpoutLogNotice("NV_DX_interop extensions available");
+			// Load the extensions (returns true if already loaded)
+			if (!LoadGLextensions()) {
+				SpoutLogWarning("OpenGL extensions failed to load");
+				SpoutLogWarning("    Graphics not texture share compatible");
+			}
+			else {
+				// It is possible that extensions load OK but that the GL/DX interop functions fail.
+				// This has been noted on dual graphics machines with the NVIDIA Optimus driver.
+				// Check OpenGL GL/DX extension functionsand create an interop device for success
+				if (GetDX11Device()) {
+					// Test compatibility
+					// Repeat the test if already done
+					m_bGLDXdone = false;
+					if (!GLDXready()) {
+						SpoutLogWarning("OpenGL/DX11 texture sharing failed");
+					}
+					else {
+						SpoutLogNotice("OpenGL/DX11 texture sharing succeeded");
+					}
+				}
+				else {
+					SpoutLogWarning("DX11 initialization failed");
+				}
+
+				// Show compatibility
+				if (IsGLDXready()) {
+					SpoutLogNotice("Compatible for OpenGL texture sharing");
+				}
+				else {
+					SpoutLogWarning("Not compatible for OpenGL texture sharing");
+					SpoutLogWarning("    CPU system memory used as backup");
+				}
+			} // loaded extensions OK
+		}
+		else {
+			// The extensions required for texture access are not available.
+			SpoutLogWarning("NV_DX_interop extensions not supported");
+			SpoutLogWarning("    Graphics not texture share compatible");
+		}
+	}
+
+	SpoutLogNotice("End Diagnostics");
+	if(!GetSpoutLogPath().empty())
+		SpoutLogNotice("%s\n", GetSpoutLogPath().c_str());
+
+	// Close the log file
+	// Console logging remains for testing
+	DisableSpoutLogFile();
+
+}
+
+
+
 void spoutGL::PrintFBOstatus(GLenum status)
 {
-	char tmp[256]{};
+	char tmp[256]={};
 	sprintf_s(tmp, 256, "FBO status error %u (0x%.7X) - ", status, status);
 	if (status == GL_FRAMEBUFFER_UNSUPPORTED_EXT)
 		strcat_s(tmp, 256, "GL_FRAMEBUFFER_UNSUPPORTED_EXT");
@@ -3493,7 +3644,7 @@ void spoutGL::SetShareMode(int mode)
 // Retrieved from the description string in the sender info memory map
 bool spoutGL::GetHostPath(const char* sendername, char* hostpath, int maxchars)
 {
-	SharedTextureInfo info{};
+	SharedTextureInfo info;
 
 	if (!sendernames.getSharedInfo(sendername, &info)) {
 		// Just quit if the key does not exist

@@ -41,6 +41,7 @@
 #include <emmintrin.h> // for SSE2
 #include <tmmintrin.h> // for SSSE3
 #include <cmath> // For compatibility with Clang. PR#81
+#include <stdint.h> // for _uint32 etc
 
 class SPOUT_DLLEXP spoutCopy {
 

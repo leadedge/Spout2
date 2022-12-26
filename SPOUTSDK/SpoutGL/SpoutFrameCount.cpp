@@ -65,6 +65,7 @@
 //					- Correct GetNewFrame for receiver started.
 //		17.12.22	- Use smart pointers for m_FrameStartPtr etc to avoid using new/delete
 //		18.12.22	- Change back to new/delete due to incompatibility with SpoutLibrary
+//		22.12.22	- Compiler compatibility check
 //
 // ====================================================================================
 //
@@ -218,7 +219,7 @@ void spoutFrameCount::SetFrameCount(bool bEnable)
 // Incremented by a sender, tested by a receiver to retrieve the count.
 void spoutFrameCount::EnableFrameCount(const char* SenderName)
 {
-	if (!SenderName || !*SenderName) {
+	if (!SenderName) {
 		SpoutLogWarning("SpoutFrameCount::EnableFrameCount - no sender name");
 		return;
 	}
@@ -603,7 +604,7 @@ void spoutFrameCount::CleanupFrameCount()
 		m_SenderFps = GetRefreshRate(); // Default sender fps is system refresh rate
 	}
 	catch (...) {
-		SpoutLogError("SpoutFrameCount::CleanupFrameCount cause an exception");
+		SpoutLogError("SpoutFrameCount::CleanupFrameCount caused an exception");
 	}
 
 }
@@ -620,8 +621,6 @@ void spoutFrameCount::CleanupFrameCount()
 // Function: CheckTextureAccess
 // Test for texture access using a named sender mutex or keyed texture mutex.
 //
-// Use a keyed mutex if the DX11 texture supports it
-// otherwise use the sender named mutex.
 // The DX11 texture pointer argument should always be null for DX9 mode.
 bool spoutFrameCount::CheckTextureAccess(ID3D11Texture2D* D3D11texture)
 {
@@ -631,6 +630,7 @@ bool spoutFrameCount::CheckTextureAccess(ID3D11Texture2D* D3D11texture)
 	// Checks do not block if no mutex for Spout1 apps
 	// or if called when the sender has closed.
 	if (IsKeyedMutex(D3D11texture)) {
+		// Use a keyed mutex if the DX11 texture supports it
 		return CheckKeyedAccess(D3D11texture);
 	}
 	else {
@@ -671,7 +671,7 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 		return false;
 
 	DWORD errnum = 0;
-	char szMutexName[512]{};
+	char szMutexName[512]={};
 	HANDLE hMutex = NULL;
 
 	// Create the mutex name to control access to the shared texture
@@ -797,7 +797,7 @@ void spoutFrameCount::AllowAccess()
 // Creates a named sync event and sets for test.
 void spoutFrameCount::SetFrameSync(const char *sendername)
 {
-	if (!sendername || !*sendername)
+	if (!sendername)
 		return;
 
 	// Create the sync event if not already
@@ -820,12 +820,12 @@ void spoutFrameCount::SetFrameSync(const char *sendername)
 // Wait until the sync event is signalled or the timeout elapses.
 bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 {
-	if (!sendername || !*sendername)
+	if (!sendername)
 		return false;
 
 	bool bSignal = false;
 
-	char SyncEventName[256];
+	char SyncEventName[256]={};
 	sprintf_s(SyncEventName, 256, "%s_Sync_Event", sendername);
 
 	HANDLE hSyncEvent = OpenEventA(
@@ -840,23 +840,22 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 
 	const DWORD dwWaitResult = WaitForSingleObject(hSyncEvent, dwTimeout);
 	switch (dwWaitResult) {
-	case WAIT_OBJECT_0:
-		// The state of the object is signalled.
-		bSignal = true;
-		break;
-		// return true;
-	case WAIT_ABANDONED:
-		SpoutLogError("spoutFrameCount::WaitFrameSync - WAIT_ABANDONED");
-		break;
-	case WAIT_TIMEOUT: // The time-out interval elapsed, and the object's state is non-signalled.
-		SpoutLogError("spoutFrameCount::WaitFrameSync - WAIT_TIMEOUT");
-		break;
-	case WAIT_FAILED: // Could use call GetLastError
-		SpoutLogError("spoutFrameCount::WaitFrameSync - WAIT_FAILED");
-		break;
-	default:
-		SpoutLogError("spoutFrameCount::WaitFrameSync - unknown error");
-		break;
+		case WAIT_OBJECT_0:
+			// The state of the object is signalled.
+			bSignal = true;
+			break;
+		case WAIT_ABANDONED:
+			SpoutLogError("spoutFrameCount::WaitFrameSync - WAIT_ABANDONED");
+			break;
+		case WAIT_TIMEOUT: // The time-out interval elapsed, and the object's state is non-signalled.
+			SpoutLogError("spoutFrameCount::WaitFrameSync - WAIT_TIMEOUT");
+			break;
+		case WAIT_FAILED: // Could use call GetLastError
+			SpoutLogError("spoutFrameCount::WaitFrameSync - WAIT_FAILED");
+			break;
+		default:
+			SpoutLogError("spoutFrameCount::WaitFrameSync - unknown error");
+			break;
 	}
 
 	CloseHandle(hSyncEvent);
@@ -883,17 +882,21 @@ void spoutFrameCount::CloseFrameSync()
 //                                Protected
 // ===============================================================================
 
-
+//
 // Keyed mutex check
 //
 // Microsoft docs :
-// When a surface is created using the D3D10_RESOURCE_MISC_SHARED_KEYEDMUTEX 
-// value of the D3D10_RESOURCE_MISC_FLAG enumeration, you must call the 
-// AcquireSync method before rendering to the surface. You must call the 
-// ReleaseSync method when you are done rendering to a surface.
+// https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgikeyedmutex-acquiresync
+// When a surface is created using the D3D10_RESOURCE_MISC_SHARED_KEYEDMUTEX value 
+// of the D3D10_RESOURCE_MISC_FLAG enumeration, you must call the AcquireSync method
+// before rendering to the surface. You must call the ReleaseSync method when you are
+// done rendering to a surface.
 //
-// Tests show that if a DX11 texture has been created with a keyed mutex it must
-// be used in place of the sender named mutex or CopyResource fails
+// Testing confirms that if a DX11 texture has been created with a keyed mutex,
+// AcquireSync/ReleaseSync must be used or CopyResource fails.
+//
+// These functions provide equivalent results to the general mutex functions
+// for applications that produce keyed mutex textures.
 //
 bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 {
@@ -905,9 +908,9 @@ bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 		// Check the keyed mutex
 		pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex); // PR#81
 		if (pDXGIKeyedMutex) {
-			const HRESULT hr = pDXGIKeyedMutex->AcquireSync(0, 67); // TODO - link with SPOUT_WAIT_TIMEOUT
+			const HRESULT hr = pDXGIKeyedMutex->AcquireSync(0, 67);
 			// Return S_OK if successful.
-			switch ((int)hr) {
+			switch ((DWORD)hr) {
 				case S_OK:
 					// Sync is acquired
 					pDXGIKeyedMutex->Release();
@@ -927,6 +930,7 @@ bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 				default:
 					break;
 			}
+			// Error
 			pDXGIKeyedMutex->ReleaseSync(0);
 			pDXGIKeyedMutex->Release();
 		}
@@ -939,7 +943,7 @@ void spoutFrameCount::AllowKeyedAccess(ID3D11Texture2D* pTexture)
 {
 	// 22-24 microseconds
 	if (pTexture) {
-		IDXGIKeyedMutex* pDXGIKeyedMutex;
+		IDXGIKeyedMutex* pDXGIKeyedMutex = nullptr;
 		pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex);
 		if (pDXGIKeyedMutex) {
 			pDXGIKeyedMutex->ReleaseSync(0);
@@ -952,7 +956,7 @@ bool spoutFrameCount::IsKeyedMutex(ID3D11Texture2D* D3D11texture)
 {
 	// Approximately 1.5 microseconds
 	if (D3D11texture) {
-		D3D11_TEXTURE2D_DESC desc;
+		D3D11_TEXTURE2D_DESC desc={};
 		D3D11texture->GetDesc(&desc);
 		if (desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX) {
 			return true;
@@ -1038,7 +1042,7 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 // supported by the system (usually 1 msec)
 void spoutFrameCount::StartTimePeriod()
 {
-	TIMECAPS tc{};
+	TIMECAPS tc={};
 	m_PeriodMin = 0; // To allow for errors
 	MMRESULT mres = timeGetDevCaps(&tc, sizeof(TIMECAPS));
 	if (mres == MMSYSERR_NOERROR) {
@@ -1098,7 +1102,7 @@ void spoutFrameCount::OpenFrameSync(const char* SenderName)
 	strcpy_s(m_SenderName, 256, SenderName);
 
 	// Create or open an event with this sender name
-	char SyncEventName[256];
+	char SyncEventName[256]={};
 	sprintf_s(SyncEventName, 256, "%s_Sync_Event", SenderName);
 	HANDLE hSyncEvent = CreateEventA(
 		NULL,  // Attributes

@@ -45,6 +45,7 @@
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
+#include <algorithm> // for string character remove
 
 // 
 #pragma warning(disable : 26485)
@@ -329,6 +330,7 @@ protected :
 	void trim(char* s);
 
 	// Errors
+	void DoDiagnostics(const char *error);
 	void PrintFBOstatus(GLenum status);
 	bool GLerror();
 
@@ -365,9 +367,9 @@ protected :
 	int m_SpoutVersion; // Spout version
 
 	// For CreateOpenGL and CloseOpenGL
-	HDC m_hdc = NULL;
-	HWND m_hwndButton = NULL;
-	HGLRC m_hRc = NULL;
+	HDC m_hdc;
+	HWND m_hwndButton;
+	HGLRC m_hRc;
 
 	// Status flags
 	bool m_bConnected;

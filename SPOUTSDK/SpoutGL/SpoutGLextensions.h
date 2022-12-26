@@ -93,6 +93,7 @@
 // For use together with Spout source files
 #include "SpoutCommon.h" // for legacyOpenGL define
 #include "SpoutUtils.h"
+#include <stdint.h> // for _uint32 etc
 
 using namespace spoututils;
 

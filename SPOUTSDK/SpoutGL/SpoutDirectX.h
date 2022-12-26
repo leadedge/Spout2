@@ -33,7 +33,12 @@
 
 #include "SpoutCommon.h"
 #include <d3d11.h>
-#include <dxgi1_6.h> // for adapter preference
+#include <ntverp.h>
+
+// Windows 10 Vers 1803, build 17134 or later
+#ifdef NTDDI_WIN10_RS4
+#include <dxgi1_6.h> // for adapter performance preference
+#endif
 
 #pragma comment (lib, "d3d11.lib")// the Direct3D 11 Library file
 #pragma comment (lib, "DXGI.lib") // for CreateDXGIFactory1
@@ -117,6 +122,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Find the index of the NVIDIA adapter in a multi-adapter system
 		bool FindNVIDIA(int &nAdapter);
 
+// Windows 10 Vers 1803, build 17134 or later
+#if WDK_NTDDI_VERSION >= NTDDI_WIN10_RS4
 		//
 		// Graphics preference
 		//
@@ -133,6 +140,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		bool IsPreferenceAvailable();
 		// Is the path a valid application
 		bool IsApplicationPath(const char* path);
+#endif
 
 	protected:
 

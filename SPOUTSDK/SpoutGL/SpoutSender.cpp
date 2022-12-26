@@ -395,7 +395,7 @@ bool SpoutSender::SetActiveSender(const char* Sendername)
 //
 
 //---------------------------------------------------------
-int SpoutSender::SpoutSender::GetNumAdapters()
+int SpoutSender::GetNumAdapters()
 {
 	return spout.GetNumAdapters();
 }
@@ -429,6 +429,9 @@ bool SpoutSender::GetAdapterInfo(int index, char* description, char* output, int
 {
 	return spout.GetAdapterInfo(index, description, output, maxchars);
 }
+
+// Windows 10 Vers 1803, build 17134 or later
+#ifdef NTDDI_WIN10_RS4
 
 //---------------------------------------------------------
 int SpoutSender::GetPerformancePreference(const char* path)
@@ -465,6 +468,7 @@ bool SpoutSender::IsApplicationPath(const char* path)
 {
 	return spout.IsApplicationPath(path);
 }
+#endif
 
 //
 // User settings recorded by "SpoutSettings"

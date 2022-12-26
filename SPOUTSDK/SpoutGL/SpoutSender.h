@@ -168,6 +168,8 @@ class SPOUT_DLLEXP SpoutSender {
 	bool GetAdapterInfo(char* description, char* output, int maxchars);
 	// Get the description and output display name for a given adapter
 	bool GetAdapterInfo(int index, char* description, char* output, int maxchars);
+// Windows 10 Vers 1803, build 17134 or later
+#ifdef NTDDI_WIN10_RS4
 	// Get the Windows graphics preference for an application
 	int GetPerformancePreference(const char* path = nullptr);
 	// Set the Windows graphics preference for an application
@@ -180,6 +182,7 @@ class SPOUT_DLLEXP SpoutSender {
 	bool IsPreferenceAvailable();
 	// Is the path a valid application
 	bool IsApplicationPath(const char* path);
+#endif
 
 	//
 	// User settings recorded in the registry by "SpoutSettings"

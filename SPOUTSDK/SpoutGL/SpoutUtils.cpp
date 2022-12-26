@@ -105,6 +105,11 @@
 		18.12.22 - Add buffer size argument to ReadPathFromRegistry
 				   Correct code review warnings where possible
 				   Add more documentation to Group: Logs
+		19.12.22 - Add GetCurrentModule / LogsEnabled / LogFileEnabled / GetSpoutLogPath
+		20.12.22 - Add SPOUT_DLLEXP to all header function declarations for dll export.
+				 - Code cleanup
+		22.12.22 - Compiler compatibility check
+				   Change all {} initializations to "={}"
 
 */
 
@@ -136,7 +141,7 @@ namespace spoututils {
 	FILE* pCout = NULL; // for log to console
 	std::ofstream logFile; // for log to file
 	std::string logPath; // folder path for the logfile
-	char logChars[512]{}; // The current log string
+	char logChars[512]={}; // The current log string
 	bool bConsole = false;
 #ifdef USE_CHRONO
 	std::chrono::steady_clock::time_point start;
@@ -174,7 +179,7 @@ namespace spoututils {
 	// Queries power status. Most likely a laptop if battery power is available. 
 	bool IsLaptop ()
 	{
-		SYSTEM_POWER_STATUS status{};
+		SYSTEM_POWER_STATUS status;
 		if (GetSystemPowerStatus(&status)) {
 			// SpoutLog("    ACLineStatus         %d", status.ACLineStatus);
 			// SpoutLog("    BatteryFlag          %d", status.BatteryFlag);
@@ -191,6 +196,22 @@ namespace spoututils {
 		return false;
 	}
 
+
+	// ---------------------------------------------------------
+	// Function: GetCurrentModule()
+	// Get the module handle of a process.
+	//
+	// This method is necessary if the process is a dll
+	//
+	// https://gist.github.com/davidruhmann/8008844
+	HMODULE GetCurrentModule()
+	{
+		const DWORD flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
+		HMODULE hModule = NULL;
+		// hModule is NULL if GetModuleHandleEx fails.
+		GetModuleHandleExA(flags, (LPCSTR)GetCurrentModule, &hModule);
+		return hModule;
+	}
 
 	//
 	// Group: Console management
@@ -251,7 +272,6 @@ namespace spoututils {
 			if(MessageBoxA(NULL, "Console close - are you sure?", "Spout", MB_YESNO) == IDNO)
 				return;
 		}
-
 		if (pCout) {
 			fclose(pCout);
 			FreeConsole();
@@ -446,6 +466,30 @@ namespace spoututils {
 	}
 
 	// ---------------------------------------------------------
+	// Function: LogsEnabled
+	// Are console logs enabled
+	bool LogsEnabled()
+	{
+		return bEnableLog;
+	}
+
+	// ---------------------------------------------------------
+	// Function: LogFileEnabled
+	// Is file logging enabled
+	bool LogFileEnabled()
+	{
+		return bEnableLogFile;
+	}
+
+	// ---------------------------------------------------------
+	// Function: GetSpoutLogPath
+	// Return the full log file path
+	std::string GetSpoutLogPath()
+	{
+		return logPath;
+	}
+
+	// ---------------------------------------------------------
 	// Function: GetSpoutLog
 	// Return the Spout log file as a string
 	// If a file path is not specified, return the current log file
@@ -478,13 +522,12 @@ namespace spoututils {
 		return logstr;
 	}
 
-
 	// ---------------------------------------------------------
 	// Function: ShowSpoutLogs
 	// Show the Spout log file folder in Windows Explorer
 	void ShowSpoutLogs()
 	{
-		char directory[MAX_PATH]{};
+		char directory[MAX_PATH]={};
 
 		if (logPath.empty() || _access(logPath.c_str(), 0) == -1) {
 			std::string logfilefolder = _getLogPath();
@@ -586,7 +629,10 @@ namespace spoututils {
 	// The function code can be changed to produce logs as required
 	void _doLog(SpoutLogLevel level, const char* format, va_list args)
 	{
-		char currentLog[512]{}; // allow more than the name length
+		if (!format)
+			return;
+
+		char currentLog[512]={}; // allow more than the name length
 
 		// Construct the current log
 		vsprintf_s(currentLog, 512, format, args);
@@ -660,6 +706,9 @@ namespace spoututils {
 	// The dialog closes itself if a timeout is specified.
 	int SpoutMessageBox(const char * message, DWORD dwMilliseconds)
 	{
+		if (!message)
+			return 0;
+
 		return SpoutMessageBox(NULL, message, "spout", MB_OK, dwMilliseconds);
 	}
 
@@ -671,7 +720,7 @@ namespace spoututils {
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
 	{
 		int iRet = 0;
-		char path[MAX_PATH]{};
+		char path[MAX_PATH]={};
 
 		std::string spoutmessage = message;
 
@@ -731,43 +780,6 @@ namespace spoututils {
 		if (!subkey || !valuename || !pValue)
 			return false;
 
-		if (!*subkey || !*valuename)
-			return false;
-		
-		printf("ReadDwordFromRegistry(%s, %s)\n", subkey, valuename);
-
-		/*
-		if (subkey[0] == 0)
-			return false;
-
-		HKEY  hRegKey = NULL;
-		LONG  regres = 0;
-		char  myKey[512]{};
-
-		// The required key
-		strcpy_s(myKey, 512, subkey);
-		// Does the key exist ?
-		regres = RegOpenKeyExA(hKey, myKey, NULL, KEY_ALL_ACCESS, &hRegKey);
-		if (regres == ERROR_SUCCESS && hRegKey != NULL) {
-			DWORD dwKey = 0;
-			DWORD dwSize = sizeof(DWORD);
-			LONG lStatus = RegGetValueA(hKey, subkey, valuename, RRF_RT_REG_DWORD, &dwKey, pValue, &dwSize);
-			if (lStatus == ERROR_SUCCESS) {
-				printf("read success (%d)\n", *pValue);
-				return true;
-			}
-
-			DWORD dwerr = GetLastError();
-			printf("read fail (%ld) err = %d, 0x%X\n", lStatus, dwerr, dwerr);
-
-			return false;
-
-
-			RegFlushKey(hRegKey); // needs an open key
-			RegCloseKey(hRegKey); // Done with the key
-		}
-		*/
-
 		DWORD dwKey = 0;
 		DWORD dwSize = sizeof(DWORD);
 		const LONG regres = RegGetValueA(hKey, subkey, valuename, RRF_RT_REG_DWORD, &dwKey, pValue, &dwSize);
@@ -789,40 +801,7 @@ namespace spoututils {
 		if (!subkey || !valuename)
 			return false;
 
-		if (!*subkey || !*valuename)
-			return false;
-		
-		// printf("WriteDwordToRegistry(%s, %s, %u)\n", subkey, valuename, dwValue);
-
-
-		/*
-		DWORD dwKey = 0;
-		DWORD dwSize = sizeof(DWORD);
-		char wholesubkey[MAX_PATH*2];
-		sprintf_s(wholesubkey, MAX_PATH*2, "%s%s", subkey, valuename);
-		LONG lStatus = RegSetValueA(hKey, wholesubkey, REG_DWORD, valuename, dwSize);
-		if(lStatus == ERROR_SUCCESS) {
-			printf("write success (%d)\n", dwValue);
-			return true;
-		}
-		DWORD dwerr = GetLastError();
-		printf("write fail (%ld) err = %d, 0x%X\n", lStatus, dwerr, dwerr);
-		return false;
-		*/
-
-		/*
-LSTATUS RegSetValueA(
-  [in]           HKEY   hKey,
-  [in, optional] LPCSTR lpSubKey,
-  [in]           DWORD  dwType,
-  [in]           LPCSTR lpData,
-  [in]           DWORD  cbData
-);
-
-		*/
-
 		HKEY hRegKey = NULL;
-
 		// Does the key already exist ?
 		LONG regres = RegOpenKeyExA(hKey, subkey, NULL, KEY_ALL_ACCESS, &hRegKey);
 		if (regres != ERROR_SUCCESS) {
@@ -854,14 +833,8 @@ LSTATUS RegSetValueA(
 	// Read subkey character string
 	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath, DWORD dwSize)
 	{
-		// Null arguments
 		if (!subkey || !valuename || !filepath)
 			return false;
-
-		// Empty arguments
-		if (!*subkey || !*valuename)
-			return false;
-
 
 		HKEY  hRegKey = NULL;
 		LONG  regres = 0;
@@ -895,12 +868,7 @@ LSTATUS RegSetValueA(
 	// Write subkey character string
 	bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath)
 	{
-		// Null arguments
 		if (!subkey || !valuename || !filepath)
-			return false;
-
-		// Empty arguments
-		if (!*subkey || !*valuename || !*filepath)
 			return false;
 
 		HKEY  hRegKey = NULL;
@@ -934,9 +902,6 @@ LSTATUS RegSetValueA(
 	bool WriteBinaryToRegistry(HKEY hKey, const char *subkey, const char *valuename, const unsigned char *hexdata, DWORD nChars)
 	{
 		if (!subkey || !valuename || !hexdata)
-			return false;
-
-		if (!*subkey || !*valuename || !*hexdata)
 			return false;
 
 		HKEY  hRegKey = NULL;
@@ -998,6 +963,9 @@ LSTATUS RegSetValueA(
 	//
 	bool RemoveSubKey(HKEY hKey, const char *subkey)
 	{
+		if (!subkey)
+			return false;
+
 		const LONG lStatus = RegDeleteKeyA(hKey, subkey);
 		if (lStatus == ERROR_SUCCESS)
 			return true;
@@ -1011,6 +979,9 @@ LSTATUS RegSetValueA(
 	// Find subkey
 	bool FindSubKey(HKEY hKey, const char *subkey)
 	{
+		if (!subkey)
+			return false;
+
 		HKEY hRegKey = NULL;
 		const LONG lStatus = RegOpenKeyExA(hKey, subkey, NULL, KEY_READ, &hRegKey);
 		if(lStatus == ERROR_SUCCESS) {
@@ -1028,10 +999,6 @@ LSTATUS RegSetValueA(
 	// Group: Timing
 	//
 	// Compiler dependent
-	//
-	// #ifdef USE_CHRONO
-	//
-	// ( #if _MSC_VER >= 1900 || (defined(__clang__) && __cplusplus >= 201103L )
 	//
 
 	// ---------------------------------------------------------
@@ -1058,7 +1025,7 @@ LSTATUS RegSetValueA(
 	double GetRefreshRate()
 	{
 		double frequency = 60.0; // default
-		DEVMODE DevMode{};
+		DEVMODE DevMode = {};
 		BOOL bResult = true;
 		DWORD dwCurrentSettings = 0;
 		DevMode.dmSize = sizeof(DEVMODE);
@@ -1072,7 +1039,6 @@ LSTATUS RegSetValueA(
 		}
 		return frequency;
 	}
-
 
 #ifdef USE_CHRONO
 
@@ -1147,6 +1113,7 @@ LSTATUS RegSetValueA(
 
 #endif
 
+
 	//
 	// Private functions
 	//
@@ -1179,9 +1146,9 @@ LSTATUS RegSetValueA(
 
 			if (logFile.is_open()) {
 				// Date and time to identify the log
-				char tmp[128]{};
-				time_t datime{};
-				struct tm tmbuff{};
+				char tmp[128]={};
+				time_t datime;
+				struct tm tmbuff;
 				time(&datime);
 				localtime_s(&tmbuff, &datime);
 				sprintf_s(tmp, 128, "%4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d",
@@ -1208,7 +1175,7 @@ LSTATUS RegSetValueA(
 		// Get the default log file path
 		std::string _getLogPath()
 		{
-			char logpath[MAX_PATH]{};
+			char logpath[MAX_PATH]={};
 			logpath[0] = 0;
 
 			// Retrieve user %appdata% environment variable
@@ -1248,7 +1215,7 @@ LSTATUS RegSetValueA(
 			std::string path;
 			if (!filename) {
 				// Use the executable name if no filename was passed in
-				char name[MAX_PATH]{};
+				char name[MAX_PATH]={};
 				if (GetModuleFileNameA(GetCurrentModule(), name, MAX_PATH) > 0) {
 					PathStripPathA(name);
 					PathRemoveExtensionA(name);
@@ -1264,7 +1231,7 @@ LSTATUS RegSetValueA(
 
 			if (!path.empty()) {
 
-				char fname[MAX_PATH]{};
+				char fname[MAX_PATH]={};
 				strcpy_s(fname, MAX_PATH, path.c_str());
 				PathRemoveBackslashA(fname);
 
@@ -1358,22 +1325,23 @@ LSTATUS RegSetValueA(
 		//
 		bool GetNVIDIAmode(const char *command, int * mode)
 		{
-			if (!mode) return false;
+			if (!mode || !command)
+				return false;
 
-			char exePath[MAX_PATH]{};
+			char exePath[MAX_PATH]={};
 			if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "SpoutSettings", exePath)) {
-				SpoutLogError("Spout::GetNVIDIAmode - SpoutSettings path not found");
+				SpoutLogError("spoututils::GetNVIDIAmode - SpoutSettings path not found");
 				return false;
 			}
 
 			if (!PathFileExistsA(exePath)) {
-				SpoutLogError("Spout::GetNVIDIAmode - SpoutSettings.exe not found");
+				SpoutLogError("spoututils::GetNVIDIAmode - SpoutSettings.exe not found");
 				return false;
 			}
 
 			// SpoutSettings -getCommand
 			// Returns mode in registry
-			char path[MAX_PATH]{};
+			char path[MAX_PATH]={};
 			sprintf_s(path, MAX_PATH, "%s -get%s", exePath, command);
 			if (ExecuteProcess(path)) {
 				DWORD dwMode = 0xffff;
@@ -1382,11 +1350,11 @@ LSTATUS RegSetValueA(
 					return true;
 				}
 				else {
-					SpoutLogError("Spout::GetNVIDIAmode -  could not read setting from registry");
+					SpoutLogError("spoututils::GetNVIDIAmode -  could not read setting from registry");
 				}
 			}
 			else {
-				SpoutLogError("Spout::GetNVIDIAmode -  could not start SpoutSettings");
+				SpoutLogError("spoututils::GetNVIDIAmode -  could not start SpoutSettings");
 			}
 			return false;
 		}
@@ -1396,21 +1364,24 @@ LSTATUS RegSetValueA(
 		// which writes the mode value to the Spout registry
 		bool SetNVIDIAmode(const char *command, int mode)
 		{
+			if (!command)
+				return false;
+
 			// Find SpoutSettings path
-			char exePath[MAX_PATH]{};
+			char exePath[MAX_PATH]={};
 			if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "SpoutSettings", exePath)) {
-				SpoutLogError("Spout::SetNVIDIAmode - SpoutSettings path not found");
+				SpoutLogError("spoututils::SetNVIDIAmode - SpoutSettings path not found");
 				return false;
 			}
 
 			if (!PathFileExistsA(exePath)) {
-				SpoutLogError("Spout::SetNVIDIAmode - SpoutSettings.exe not found");
+				SpoutLogError("spoututils::SetNVIDIAmode - SpoutSettings.exe not found");
 				return false;
 			}
 
 			// SpoutSettings -setCommand mode
 			// Sets the required mode and writes it to the registry
-			char path[MAX_PATH]{};
+			char path[MAX_PATH]={};
 			sprintf_s(path, MAX_PATH, "%s -set%s %d", exePath, command, mode);
 			if (ExecuteProcess(path))
 				return true;
@@ -1419,8 +1390,11 @@ LSTATUS RegSetValueA(
 		}
 
 		// Open process and wait for completion
-		bool ExecuteProcess(char *path)
+		bool ExecuteProcess(const char *path)
 		{
+			if (!path)
+				return false;
+
 			DWORD dwExitCode = 0; // Exit code when process terminates
 			STARTUPINFOA si = { sizeof(STARTUPINFO) };
 			bool bRet = false;
@@ -1429,7 +1403,7 @@ LSTATUS RegSetValueA(
 			si.cb = sizeof(STARTUPINFO);
 			si.dwFlags = STARTF_USESHOWWINDOW;
 			si.wShowWindow = SW_HIDE;
-			PROCESS_INFORMATION pi{};
+			PROCESS_INFORMATION pi;
 			SetCursor(LoadCursor(NULL, IDC_WAIT));
 			if (CreateProcessA(NULL, (LPSTR)path, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
 				// Wait for CreateProcess to finish
@@ -1449,27 +1423,14 @@ LSTATUS RegSetValueA(
 				if (pi.hThread) CloseHandle(pi.hThread);
 			}
 			else {
-				SpoutLogError("Spout::ExecuteProcess - CreateProcess failed\n    %s", path);
+				SpoutLogError("spoututils::ExecuteProcess - CreateProcess failed\n    %s", path);
 				bRet = false;
 			}
 			SetCursor(LoadCursor(NULL, IDC_ARROW));
 
 			return bRet;
 		}
-
-		// Get the module handle of a process.
-		// This method is needed if the process is a dll.
-		// https://gist.github.com/davidruhmann/8008844
-		HMODULE GetCurrentModule()
-		{
-			constexpr DWORD flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
-			HMODULE hModule = NULL;
-			// hModule is NULL if GetModuleHandleEx fails.
-			GetModuleHandleExA(flags,
-				(LPCSTR)GetCurrentModule, &hModule);
-			return hModule;
-		}
-
+		
 	} // end private namespace
 
 } // end namespace spoututils

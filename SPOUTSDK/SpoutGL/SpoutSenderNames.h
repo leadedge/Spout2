@@ -46,6 +46,7 @@
 #include <vector>
 #include <unordered_map>
 #include <intrin.h> // for __movsd
+#include <stdint.h> // for _uint32
 
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
@@ -78,7 +79,7 @@ struct SharedTextureInfo {		// 280 bytes total
 
 //
 // GUIDs for additional sender information maps
-// Used for develoment work
+// Used for development work
 
 // Example 
 // {AB5C33D6-3654-43F9-85F6-F54872B0460B}

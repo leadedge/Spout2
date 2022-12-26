@@ -89,6 +89,7 @@
 	31.10.22 - Include SPOUT_ALREADY_EXISTS for setActiveSenderName create shared memory success
 	13.12.22 - Add SpoutLogWarning to CleanSenders when an orphaned sender is removed
 	17.12.22 - Some cleanup for code analysis
+	22.12.22 - Compiler compatibility check
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -218,9 +219,9 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 {
 	std::set<std::string> SenderNames;
 	std::string namestring;
-	char name[SpoutMaxSenderNameLen]{};
+	char name[SpoutMaxSenderNameLen]={};
 
-	if (!Sendername || !*Sendername)
+	if (!Sendername)
 		return false;
 
 	// Create the shared memory for the sender name set if it does not exist
@@ -277,8 +278,7 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 // Test to see if a Sender name exists in the sender set
 bool spoutSenderNames::FindSenderName(const char* Sendername)
 {
-	// LJ DEBUG
-	if (!Sendername || !*Sendername)
+	if (!Sendername)
 		return false;
 
 	std::string namestring = "";
@@ -371,8 +371,8 @@ int spoutSenderNames::GetSenderCount() {
 	std::set<std::string> SenderSet;
 	std::set<std::string>::iterator iter;
 	std::string namestring;
-	char name[SpoutMaxSenderNameLen]{};
-	SharedTextureInfo info{};
+	char name[SpoutMaxSenderNameLen]={};
+	SharedTextureInfo info={};
 
 	// Create the shared memory for the sender name set if it does not exist
 	if(!CreateSenderSet()) {
@@ -461,7 +461,6 @@ bool spoutSenderNames::GetSender(int index, char* sendername, int sendernameMaxS
 //
 bool spoutSenderNames::GetSenderNameInfo(int index, char* sendername, int sendernameMaxSize, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle)
 {
-	// char name[SpoutMaxSenderNameLen];
 	std::set<std::string> SenderNameSet;
 	std::set<std::string>::iterator iter;
 	std::string namestring;
@@ -553,7 +552,7 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 {
 	// TODO - use pointer from initial map creation
 
-	SharedTextureInfo info{};
+	SharedTextureInfo info={};
 
 	const auto foundSender = m_senders->find(sendername);
 	if (foundSender == m_senders->end())
@@ -588,7 +587,7 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 	info.usage = 0;
 
 	// Description : Host path
-	char exepath[256]{};
+	char exepath[256]={};
 	GetModuleFileNameA(NULL, exepath, sizeof(exepath));
 
 	// Partner ID : Sender CPU sharing mode
@@ -672,7 +671,7 @@ bool spoutSenderNames::SetActiveSender(const char *Sendername)
 {
 	std::set<std::string> SenderNames;
 
-	if (!Sendername || !*Sendername)
+	if (!Sendername)
 		return false;
 
 	if (!CreateSenderSet())	{
@@ -705,8 +704,8 @@ bool spoutSenderNames::SetActiveSender(const char *Sendername)
 // Retrieve the current active Sender name
 bool spoutSenderNames::GetActiveSender(char Sendername[SpoutMaxSenderNameLen])
 {
-	char ActiveName[SpoutMaxSenderNameLen]{};
-	SharedTextureInfo info{};
+	char ActiveName[SpoutMaxSenderNameLen]={};
+	SharedTextureInfo info={};
 
 	if(getActiveSenderName(ActiveName)) {
 		// Does it still exist ?
@@ -729,7 +728,7 @@ bool spoutSenderNames::GetActiveSender(char Sendername[SpoutMaxSenderNameLen])
 // Get the shared info of the active Sender
 bool spoutSenderNames::GetActiveSenderInfo(SharedTextureInfo* info)
 {
-	char sendername[SpoutMaxSenderNameLen]{};
+	char sendername[SpoutMaxSenderNameLen]={};
 
 	// See if the shared memory of the active Sender exists
 	if(GetActiveSender(sendername)) {
@@ -746,8 +745,8 @@ bool spoutSenderNames::GetActiveSenderInfo(SharedTextureInfo* info)
 // Retrieve the texture info of the active sender
 bool spoutSenderNames::FindActiveSender(char sendername[SpoutMaxSenderNameLen], unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
 {
-	SharedTextureInfo TextureInfo{};
-	char sname[SpoutMaxSenderNameLen]{};
+	SharedTextureInfo TextureInfo={};
+	char sname[SpoutMaxSenderNameLen]={};
 
     if(GetActiveSender(sname)) { // there is an active sender
 		if(getSharedInfo(sname, &TextureInfo)) {
@@ -855,7 +854,7 @@ bool spoutSenderNames::UpdateSender(const char *sendername, unsigned int width, 
 
 bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidth, unsigned int &theHeight, HANDLE &hSharehandle, DWORD &dwFormat)
 {
-	SharedTextureInfo info{};
+	SharedTextureInfo info={};
 
 	// Is the given sender registered ?
 	if(FindSenderName(sendername)) {
@@ -896,7 +895,7 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 	if (!sendername)
 		return false;
 
-	SharedTextureInfo info{};
+	SharedTextureInfo info={};
 
 	// Check the user entered Sender name to see if it exists
 	if (!*sendername) {
@@ -952,11 +951,11 @@ bool spoutSenderNames::FindSender(const char* sendername)
 // in the sender list but the shared memory info does not
 void spoutSenderNames::CleanSenders()
 {
-	char name[512]{};
+	char name[512]={};
 	std::set<std::string> Senders;
 	std::set<std::string>::iterator iter;
 	std::string namestring;
-	SharedTextureInfo info{};
+	SharedTextureInfo info={};
 
 	// get the sender name list in shared memory into a local list
 	GetSenderNames(&Senders);
@@ -1003,7 +1002,7 @@ void spoutSenderNames::readSenderSetFromBuffer(const char* buffer, std::set<std:
 		SenderNames.erase (SenderNames.begin(), SenderNames.end() );
 	}
 
-	char name[SpoutMaxSenderNameLen]{};		// char array to test for nulls
+	char name[SpoutMaxSenderNameLen]={};		// char array to test for nulls
 	int i = 0;
 	do {
 		// the actual string retrieved from shared memory should terminate

@@ -37,6 +37,7 @@
 //						  Add option in SpoutCommon.h to disable warning 26812 (unscoped enums).
 //			18.04.22	- Add glCheckNamedFramebufferStatus
 //			17.12.22	- Some cleanup for code analysis
+//			22.12.22	- Compiler compatibility check
 //
 
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -616,7 +617,7 @@ void ExtLog(ExtLogLevel level, const char* format, ...)
 	va_start(args, format);
 
 #ifdef standalone
-	char currentLog[512];
+	char currentLog[512]={};
 	vsprintf_s(currentLog, 512, format, args);
 	std::string logstring;
 	logstring = "SpoutGLextensions : ";

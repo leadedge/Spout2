@@ -59,6 +59,8 @@
 	24.10.22 - Add experimental rgb_to_bgrx_sse
 	28.10.22 - Cleanup / code documentation
 	11.12.22 - test for null args in conversion functions
+	22.12.22 - Compiler compatibility check
+			   Change all {} initializations to "={}"
 
 */
 
@@ -223,14 +225,14 @@ void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t Size) const
 	auto pDst = static_cast<char *>(dst); // Destination buffer
 	const unsigned int n = (unsigned int)Size >> 7; // Counter = size divided by 128 (8 * 128bit registers)
 
-	__m128i Reg0{};
-	__m128i Reg1{};
-	__m128i Reg2{};
-	__m128i Reg3{};
-	__m128i Reg4{};
-	__m128i Reg5{};
-	__m128i Reg6{};
-	__m128i Reg7{};
+	__m128i Reg0={};
+	__m128i Reg1={};
+	__m128i Reg2={};
+	__m128i Reg3={};
+	__m128i Reg4={};
+	__m128i Reg5={};
+	__m128i Reg6={};
+	__m128i Reg7={};
 	for (unsigned int Index = n; Index > 0; --Index) {
 
 		// SSE2 prefetch
@@ -841,10 +843,10 @@ void spoutCopy::rgb_to_bgrx_sse(unsigned int w, const void* inpix, void* outpix)
 		 * in_vec[1]   Gf Bf Rg Gg Bg Rh Gh Bh Ri Gi Bi Rj Gj Bj Rk Gk
 		 * in_vec[2]   Bk Rl Gl Bl Rm Gm Bm Rn Gn Bn Ro Go Bo Rp Gp Bp
 		 */
-		__m128i in1{};
-		__m128i in2{};
-		__m128i in3{};
-		__m128i out{};
+		__m128i in1={};
+		__m128i in2={};
+		__m128i in3={};
+		__m128i out={};
 
 		in1 = in_vec[0];
 
