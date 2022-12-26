@@ -4,7 +4,7 @@
 
 			Sender and receiver for DirectX applications
 
-	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2023 Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -80,7 +80,7 @@ class SPOUT_DLLEXP spoutDX {
 		unsigned int xoffset, unsigned int yoffset,
 		unsigned int width, unsigned int height); 
 	// Send an image
-	bool SendImage(unsigned char * pData, unsigned int width, unsigned int height);
+	bool SendImage(const unsigned char * pData, unsigned int width, unsigned int height);
 	// Sender status
 	bool IsInitialized();
 	// Sender name
@@ -196,6 +196,8 @@ class SPOUT_DLLEXP spoutDX {
 	//
 	// Graphics preference
 	//
+// Windows 10 Vers 1803, build 17134 or later
+#ifdef NTDDI_WIN10_RS4
 
 	// Get the Windows graphics preference for an application
 	//     -1 - No preference
@@ -219,6 +221,7 @@ class SPOUT_DLLEXP spoutDX {
 	bool IsPreferenceAvailable();
 	// Is the path a valid application
 	bool IsApplicationPath(const char* path);
+#endif
 
 	//
 	// Sharing modes (2.006 compatibility)
