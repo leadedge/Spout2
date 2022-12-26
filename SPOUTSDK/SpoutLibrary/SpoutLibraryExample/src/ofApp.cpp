@@ -9,7 +9,7 @@
 
 	Search for SPOUT for additions to a typical Openframeworks application
 
-	Copyright (C) 2015-2022 Lynn Jarvis.
+	Copyright (C) 2015-2023 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -43,159 +43,22 @@ void ofApp::setup(){
 	strcpy_s(sendername, 256, "Spout Library Sender");	// Set the sender name
 	ofSetWindowTitle(sendername); // show it on the title bar
 
+	// ----------------------------------------------
 	//
 	// Options
 	//
-
-	// OpenSpoutConsole(); // Empty console for debugging
-	// Enable Spout logging to detect warnings and errors
-	sender->EnableSpoutLog(); // Output is to a console window.
-	// sender->SetSpoutLogLevel(SpoutLibLogLevel::SPOUT_LOG_WARNING); // For only warnings
-
+	// Logging functions
+	// Refer to the "SpoutUtils.cpp" source code for further details.
 	//
-	// You can set the level above which the logs are shown
-	// SPOUT_LOG_SILENT  : SPOUT_LOG_VERBOSE : SPOUT_LOG_NOTICE (default)
-	// SPOUT_LOG_WARNING : SPOUT_LOG_ERROR   : SPOUT_LOG_FATAL
-	// For example, to show only warnings and errors (you shouldn't see any)
-	// or leave set to default Notice to see more information.
-	//    sender->SetSpoutLogLevel(SpoutLibLogLevel::SPOUT_LOG_WARNING);
+	// sender->OpenSpoutConsole(); // Empty console for debugging
+	sender->EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
+	// The Spout SDK version number e.g. "2.007.000"
+	sender->SpoutLog("Spout version : %s", sender->GetSDKversion().c_str());
 	//
-	// You can instead, or additionally, specify output to a text file
-	// with the extension of your choice
-	//    sender->EnableSpoutLogFile("Spout Library Sender.log");
+	// Many other options are available but are not repeated in this example.
+	// Refer to the "ofApp.cpp" source code for the graphics sender example
+	// that uses the SpoutGL source files directly.
 	//
-	// The log file is re-created every time the application starts
-	// unless you specify to append to the existing one :
-	//    sender->EnableSpoutLogFile("Spout Library Sender.log", true);
-	//
-	// The file is saved in the %AppData% folder 
-	//    C:>Users>username>AppData>Roaming>Spout
-	// unless you specify the full path.
-	// After the application has run you can find and examine the log file
-	//
-	// This folder can also be shown in Windows Explorer directly from the application.
-	//    sender->ShowSpoutLogs();
-	//
-	// Or the entire log can be returned as a string
-	//    std::string logstring = sender->GetSpoutLog();
-	//
-	// You can also create your own logs
-	// For example :
-	//    sender->SpoutLog("SpoutLog test");
-	//
-	// Or specify the logging level :
-	// For example :
-	//    sender->SpoutLogNotice("Important notice");
-	// or :
-	//    sender->SpoutLogFatal("This should not happen");
-	// or :
-	//    sender->SetSpoutLogLevel(SpoutLibLogLevel::SPOUT_LOG_VERBOSE);
-	//    sender->SpoutLogVerbose("Message");
-	//
-
-
-	//
-	// Other options
-	//
-
-	// Find out whether the computer is a laptop or desktop system
-	char computername[16];
-	DWORD nchars = 16;
-	GetComputerNameA(computername, &nchars);
-	if (sender->IsLaptop())
-		sender->SpoutLog("Laptop system (%s)", computername);
-	else
-		sender->SpoutLog("Desktop system (%s)", computername);
-
-	//
-	// Sharing mode
-	//
-	// By default, graphics is tested for OpenGL/DirectX compatibility
-	// and, if not compatible, textures are shared using system memory
-	// This can be disabled if necessary as follows :
-	//     sender->SetAutoShare(false); // Disable auto sharing for this application
-
-	//
-	// Graphics adapter
-	//
-	// If there are multiple graphics cards in the system,
-	// you may wish to use a particular one for texture sharing
-	// Sender and Receiver must use the same adapter.
-	//
-	// The number of adapters available can be queried :
-	int nAdapters = sender->GetNumAdapters();
-	sender->SpoutLog("Number of adapters = %d", nAdapters);
-	//
-	// The names can be retrieved :
-	//     bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
-	char adaptername[256];
-	for (int i=0; i<nAdapters; i++) {
-		sender->GetAdapterName(i, adaptername, 256);
-		sender->SpoutLog("  %d - %s", i, adaptername);
-	}
-
-	//
-	// Set a specific adapter from it's index.
-	// The selected adapter must be connected to a monitor.
-	// For example :
-	//     sender->SetAdapter(1); // (0, 1, 2 etc.)
-
-	//
-	// Graphics preference
-	//
-	// Note that Windows Graphics performance preferences are only available 
-	// from Windows 10 April 2018 update (Version 1803, build 17134) and later.
-	//
-	// For a laptop with multiple graphics, you can set an application preference for
-	// Windows to use the most suitable adapter for battery life or high performance.
-	//
-	// Many power saving graphics adapters do not support texture sharing.
-	// The application should then be registered to prefer "High performance". 
-	//
-	// Sender and Receiver applications must have same preference to use the same adapter.
-	// Once set, the preference is retained by Windows and it can be checked at any time.
-	//
-	// Get or Set Windows graphics performance
-	//	     -1 - Not registered
-	//	      0 - Let Windows decide  DXGI_GPU_PREFERENCE_UNSPECIFIED
-	//	      1 - Power saving        DXGI_GPU_PREFERENCE_MINIMUM_POWER
-	//	      2 - High performance    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
-	//     int GetPerformancePreference(const char* path)
-	//     bool SetPerformancePreference(const char* path)
-	//
-	// For example, GetPerformancePreference for this executable (ofSpoutExample.exe)
-	// will report unregistered at first. Use SetPerformancePreference as required
-	// or register the executable using Windows graphics settings.
-	// "Settings > System > Display > Graphics settings" and observe the result.
-	//
-	// Get the graphics adapter name for a Windows preference. Useful for diagnostics.
-	//     bool GetPreferredAdapterName(int preference, char* adaptername, int maxchars)
-	//
-	// You can set the adapter index for a performance preference without registering the
-	// preference with Windows. This index is then used by CreateDX11device when DirectX
-	// is intitialized. The function should be called before Spout is initialized.
-	//     bool SetPreferredAdapter(int preference)
-	//
-	// For example :
-	//     sender->SetPreferredAdapter(DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE);
-	// Take note of the Spout log console. CreateDX11device reports a specified adapter.
-	//
-	// Note that Windows Graphics performance preferences are available from Windows
-	// Version 1803 (build 17134) and later.
-	//
-
-	//
-	// Frame counting
-	//
-	// Frame counting is enabled by default.
-	// Status can be queried with IsFrameCountEnabled();
-	// Frame counting can be independently disabled for this application
-	//     sender->DisableFrameCount();
-
-	// Set the frame rate of the application.
-	// In this example, the frame rate can be set with : ofSetFrameRate
-	// but applications without frame rate control can use "HoldFps" (see Draw())
-
 	// ----------------------------------------------
 
 	// 3D drawing setup for the demo 
@@ -268,7 +131,7 @@ void ofApp::draw() {
 	//   The fbo must be bound for read.
 	//   The invert option is false because the texture attached
 	//   to the fbo is already flipped in y.
-	// sender->SendFbo(myFbo.getId(), senderwidth, senderheight, false);
+	sender->SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
@@ -287,7 +150,7 @@ void ofApp::draw() {
 
 	// Option 4 : Send default framebuffer
 	// The invert option is default true in this case
-	sender->SendFbo(0, senderwidth, senderheight);
+	// sender->SendFbo(0, senderwidth, senderheight);
 
 	// Show what it is sending
 	ofSetColor(255);

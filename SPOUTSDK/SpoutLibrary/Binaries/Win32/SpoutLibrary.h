@@ -4,7 +4,7 @@
 //	Spout SDK dll compatible with any C++ compiler
 //
 /*
-		Copyright (c) 2016-2022, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -31,6 +31,9 @@
 
 #ifndef __SpoutLibrary__
 #define __SpoutLibrary__
+
+// LJ DEBUG
+#pragma warning(disable : 26433) // Function should be marked with 'override'
 
 // for definitions
 #include <windows.h>
@@ -64,7 +67,8 @@ enum SpoutLibLogLevel {
 	SPOUT_LOG_NOTICE,
 	SPOUT_LOG_WARNING,
 	SPOUT_LOG_ERROR,
-	SPOUT_LOG_FATAL
+	SPOUT_LOG_FATAL,
+	SPOUT_LOG_NONE
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,12 +403,13 @@ struct SPOUTLIBRARY
 	virtual char * AdapterName() = 0;
 	// Get adapter index 
 	virtual int GetAdapter() = 0;
-	// Set graphics adapter for output
-	virtual bool SetAdapter(int index = 0) = 0;
 
 	//
 	// Graphics preference
 	//
+	// Windows 10+ SDK required
+	//
+#if VER_PRODUCTBUILD > 9600
 
 	// Get the Windows graphics preference for an application
 	//	-1 - Not registered
@@ -422,6 +427,7 @@ struct SPOUTLIBRARY
 	virtual bool IsPreferenceAvailable() = 0;
 	// Is the path a valid application
 	virtual bool IsApplicationPath(const char* path) = 0;
+#endif
 
 
 	//

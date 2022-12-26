@@ -84,11 +84,14 @@
 //		25.22.33 - Revise SpoutSenderNmaes UpdateSenderFps / HoldFps
 //				   Add GetRefreshRate
 //		30.11.22 - Add IsApplicationPath
+//		22.12.22 - Compiler compatibility check
+//				   Conditional compile of preference functions
+//		26.12.22 - Add missing SPOUT_LOG_NONE to SpoutLibLogLevel
 //				   Rebuild release VS2022 - 32/64 bit /MD
 //				   Spout Version 2.007.009
 //
 /*
-		Copyright (c) 2016-2022, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -113,7 +116,7 @@
 
 #include <stdio.h>
 #include "SpoutLibrary.h"
-#include "..\..\apps\SpoutGL\Spout.h"
+#include "..\SpoutGL\Spout.h"
 
 #include <d3d11.h>
 #pragma comment (lib, "d3d11.lib")// the Direct3D 11 Library file
@@ -195,7 +198,7 @@ public:
 
 	// Spout SDK functions object for this class
 	// Initialize in GetSpout()
-	Spout * spout = nullptr;
+	Spout * spout;
 
 private: // Spout SDK functions
 
@@ -898,13 +901,12 @@ private: // Spout SDK functions
 	// Get adapter index
 	int GetAdapter();
 	
-	// Function: SetAdapter
-	// Set graphics adapter for output
-	bool SetAdapter(int index = 0);
-
 	//
 	// Group: Graphics preference
 	//
+	// Windows 10+ SDK required
+	//
+#if VER_PRODUCTBUILD > 9600
 
 	//---------------------------------------------------------
 	// Function: GetPerformancePreference
@@ -978,6 +980,7 @@ private: // Spout SDK functions
 	//
 	// A valid application path will have a drive letter and terminate with ".exe"
 	bool IsApplicationPath(const char* path);
+#endif
 
 	//
 	// Group: OpenGL utilities
@@ -1319,7 +1322,7 @@ void SPOUTImpl::SpoutLog(const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	spoututils::_doLog(spoututils::SpoutLogLevel::SPOUT_LOG_NONE, format, args);
+	spoututils::_doLog(spoututils::SPOUT_LOG_NONE, format, args);
 	va_end(args);
 }
 
@@ -1327,7 +1330,7 @@ void SPOUTImpl::SpoutLogVerbose(const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	spoututils::_doLog(spoututils::SpoutLogLevel::SPOUT_LOG_VERBOSE, format, args);
+	spoututils::_doLog(spoututils::SPOUT_LOG_VERBOSE, format, args);
 	va_end(args);
 }
 
@@ -1335,7 +1338,7 @@ void SPOUTImpl::SpoutLogNotice(const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	spoututils::_doLog(spoututils::SpoutLogLevel::SPOUT_LOG_NOTICE, format, args);
+	spoututils::_doLog(spoututils::SPOUT_LOG_NOTICE, format, args);
 	va_end(args);
 }
 
@@ -1343,7 +1346,7 @@ void SPOUTImpl::SpoutLogWarning(const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	spoututils::_doLog(spoututils::SpoutLogLevel::SPOUT_LOG_WARNING, format, args);
+	spoututils::_doLog(spoututils::SPOUT_LOG_WARNING, format, args);
 	va_end(args);
 }
 
@@ -1351,7 +1354,7 @@ void SPOUTImpl::SpoutLogError(const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	spoututils::_doLog(spoututils::SpoutLogLevel::SPOUT_LOG_ERROR, format, args);
+	spoututils::_doLog(spoututils::SPOUT_LOG_ERROR, format, args);
 	va_end(args);
 }
 
@@ -1359,7 +1362,7 @@ void SPOUTImpl::SpoutLogFatal(const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	spoututils::_doLog(spoututils::SpoutLogLevel::SPOUT_LOG_FATAL, format, args);
+	spoututils::_doLog(spoututils::SPOUT_LOG_FATAL, format, args);
 	va_end(args);
 }
 
@@ -1659,11 +1662,8 @@ int SPOUTImpl::GetAdapter()
 	return spout->GetAdapter();
 }
 
-bool SPOUTImpl::SetAdapter(int index)
-{
-	return spout->SetAdapter(index);
-}
-
+// Windows 10+ SDK required
+#if VER_PRODUCTBUILD > 9600
 int SPOUTImpl::GetPerformancePreference(const char* path)
 {
 	return spout->GetPerformancePreference(path);
@@ -1693,6 +1693,7 @@ bool SPOUTImpl::IsApplicationPath(const char* path)
 {
 	return spout->IsApplicationPath(path);
 }
+#endif
 
 
 //
@@ -1734,7 +1735,8 @@ void SPOUTImpl::CloseDirectX()
 
 bool SPOUTImpl::OpenDirectX11(void * pDevice)
 {
-	return spout->OpenDirectX11(reinterpret_cast<ID3D11Device*>(pDevice));
+	// A cast from void* can use static_cast
+	return spout->OpenDirectX11(static_cast<ID3D11Device*>(pDevice));
 }
 
 void SPOUTImpl::CloseDirectX11()
@@ -1744,12 +1746,14 @@ void SPOUTImpl::CloseDirectX11()
 
 void * SPOUTImpl::GetDX11Device()
 {
-	return reinterpret_cast<void*>(spout->GetDX11Device());
+	// void cast conversion can be implicit
+	return spout->GetDX11Device();
 }
 
 void * SPOUTImpl::GetDX11Context()
 {
-	return reinterpret_cast<void *>(spout->GetDX11Device());
+	// void cast conversion can be implicit
+	return spout->GetDX11Device();
 }
 
 
@@ -1765,6 +1769,7 @@ void SPOUTImpl::Release()
 	// Delete this class instance
 	delete this;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Factory function that creates instances if the SPOUT object.
