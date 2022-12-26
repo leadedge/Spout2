@@ -6,7 +6,7 @@
 	OpenFrameworks 11
 	Visual Studio 2022
 
-	Copyright (C) 2015-2022 Lynn Jarvis.
+	Copyright (C) 2015-2023 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -33,141 +33,75 @@ void ofApp::setup(){
  	strcpy_s(sendername, 256, "OF Spout Graphics Sender"); // The sender name
 	ofSetWindowTitle(sendername); // show it on the title bar
 
+	// ----------------------------------------------
+
 	//
 	// Options
 	//
 
+	//
+	// Logs
+	// Logging functions are in a namespace and can be called directly
+	// Refer to the "SpoutUtils.cpp" source code for further details.
+	//
 	// OpenSpoutConsole(); // Empty console for debugging
-	// Enable Spout logging to detect warnings and errors
-	// (Logging functions are in the "spoututils" namespace so they can be called directly.)
-	EnableSpoutLog(); // Output is to a console window.
+	EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
 
-	//
-	// You can set the level above which the logs are shown
-	// SPOUT_LOG_SILENT  : SPOUT_LOG_VERBOSE : SPOUT_LOG_NOTICE (default)
-	// SPOUT_LOG_WARNING : SPOUT_LOG_ERROR   : SPOUT_LOG_FATAL
-	// For example, to show only warnings and errors (you shouldn't see any)
-	// or leave set to default Notice to see more information.
-	//
-	//    SetSpoutLogLevel(SPOUT_LOG_WARNING);
-	//
-	// You can instead, or additionally, specify output to a text file
-	// with the extension of your choice
-	//    EnableSpoutLogFile("OF Spout Graphics sender.log");
-	//
-	// The log file is re-created every time the application starts
-	// unless you specify to append to the existing one :
-	//    EnableSpoutLogFile("OF Spout Graphics sender.log", true);
-	//
-	// The file is saved in the %AppData% folder 
-	//    C:>Users>username>AppData>Roaming>Spout
-	// unless you specify the full path.
-	// After the application has run you can find and examine the log file
-	//
-	// This folder can also be shown in Windows Explorer directly from the application.
-	//    ShowSpoutLogs();
-	//
-	// Or the entire log can be returned as a string
-	//    std::string logstring = GetSpoutLog();
-	//
-	// You can also create your own logs
-	// For example :
-	//    SpoutLog("SpoutLog test");
-	//
-	// Or specify the logging level :
-	// For example :
-	//    SpoutLogNotice("Important notice");
-	// or :
-	//    SpoutLogFatal("This should not happen");
-	// or :
-	//    SetSpoutLogLevel(SPOUT_LOG_VERBOSE);
-	//    SpoutLogVerbose("Message");
-	//
+	// The Spout SDK version number e.g. "2.007.000"
+	SpoutLog("Spout version : %s", GetSDKversion().c_str());
+
+	// Find out whether the computer is a laptop or desktop system
+	char computername[16]{};
+	DWORD nchars = 16;
+	GetComputerNameA(computername, &nchars);
+	if (IsLaptop()) SpoutLog("Laptop system (%s)", computername);
+	else SpoutLog("Desktop system (%s)", computername);
 
 	//
 	// Other options
-	//
-	
-	// Find out whether the computer is a laptop or desktop system
-	//    IsLaptop()
-	// For example :
-	char computername[16];
-	DWORD nchars = 16;
-	GetComputerNameA(computername, &nchars);
-	if (IsLaptop())
-		SpoutLog("Laptop system (%s)", computername);
-	else
-		SpoutLog("Desktop system (%s)", computername);
+	// Refer to the "SpoutUtils.cpp" source code for documentation.
+	//     Spout SDK version number
+	//     Console
+	//     Spout logs
+	//     SpoutMessageBox dialog
+	//     Registry utilities
+	//     Computer information
+	//     Timing utilities
 
 	//
 	// Sharing mode
 	//
-	// By default, graphics is tested for OpenGL/DirectX compatibility
-	// and, if not compatible, textures are shared using system memory
-	// This can be disabled if necessary as follows :
-	//     sender.SetAutoShare(false); // Disable auto sharing for this application
-
+	// Use of texture sharing by GPU or CPU depends on user settings (SpoutSettings)
+	// and compatibility with the OpenGL/DirectX interop functions, which is tested.
 	//
-	// Graphics adapter
+	// User settings can be retrieved
+	//     bool GetAutoShare();
+	//     bool GetCPUshare();
+	// As well as the mode being used by the application
+	//     bool GetGLDX();
+	//     bool GetCPU();
+	// Hardware compatibility can be retrieved
+	//     bool IsGLDXready();
+	// And also re-tested
+	//     bool GetGLDXready();
 	//
-	// If there are multiple graphics cards in the system,
-	// you may wish to use a particular one for texture sharing
-	// Sender and Receiver must use the same adapter.
-	//
-	// The number of adapters available can be queried :
-	//   int nAdapters = sender.GetNumAdapters();
-	//   SpoutLog("Number of adapters = %d", nAdapters);
-	//
-	// The names can be retrieved :
-	//    bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
-	//      char adaptername[256];
-	//      for (int i=0; i<nAdapters; i++) {
-	//			sender.GetAdapterName(i, adaptername, 256);
-	//			SpoutLog("  %d - %s", i, adaptername);
-	//      }
-	//
-	// Set a specific adapter from it's index.
-	// The selected adapter must be connected to a monitor.
-	// For example :
-	//     sender.SetAdapter(1); // (0, 1, 2 etc.)
+	// The auto detect and CPU share options set by the user are global
+	// but can be enabled or disabled for individual applications
+	// without affecting the global settings.
+	//     sender.SetAutoShare(true/false);
+	//     sender.SetCPU(true/false);
 
 	//
 	// Graphics preference
 	//
-	// For a laptop with multiple graphics, you can set an application preference for
-	// Windows to use the most suitable adapter for battery life or high performance.
-	// This preference over-rides any driver application profile.
-	//
-	// Many power saving graphics adapters do not support texture sharing.
-	// The application should then be registered to prefer "High performance". 
-	//
-	// Sender and Receiver applications must have same preference to use the same adapter.
-	// Once set, the preference is retained by Windows and it can be checked at any time.
-	//
-	// Get or Set Windows graphics performance
-	//	     -1 - Not registered
-	//	      0 - Let Windows decide  DXGI_GPU_PREFERENCE_UNSPECIFIED
-	//	      1 - Power saving        DXGI_GPU_PREFERENCE_MINIMUM_POWER
-	//	      2 - High performance    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
-	//     int GetPerformancePreference(const char* path)
-	//     bool SetPerformancePreference(const char* path)
-	// Or register the executable directly using Windows graphics settings.
-	// "Settings > System > Display > Graphics settings".
-	//
-	// Get the graphics adapter name for a Windows preference. Useful for diagnostics.
-	//     bool GetPreferredAdapterName(int preference, char* adaptername, int maxchars)
-	//
-	// You can also set the adapter index for a performance preference without registering
-	// the preference with Windows. The function should be called before Spout is initialized.
-	// This index is then used by CreateDX11device when DirectX is intitialized. 
-	//     bool SetPreferredAdapter(int preference)
-	//
-	// For example :
-	//     sender.SetPreferredAdapter(DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE);
-	// Take note of the Spout log console. CreateDX11device reports the specified adapter.
-	//
-	// Note that Windows Graphics performance preferences are available from Windows
+	// Windows Graphics performance preferences are available from Windows
 	// Version 1803 (build 17134) and later.
+	// "Settings > System > Display > Graphics settings".
+	// These settings apply laptops with multiple graphics that allow power saving.
+	// Spout texture sharing requires "High performance" peference.
+	// Both Sender and Receiver must be set to the same preference.
+	// Spout functions allow programmer control over the settings.
+	// Refer to "SpoutSettings" help or "Spout.cpp/.h" source code for further details.
 	//
 
 	//
@@ -177,10 +111,11 @@ void ofApp::setup(){
 	// Status can be queried with IsFrameCountEnabled();
 	// Frame counting can be independently disabled for this application
 	//     sender.DisableFrameCount();
-
+	//
 	// Set the frame rate of the application.
-	// In this example, the frame rate can be set with : ofSetFrameRate
-	// but applications without frame rate control can use "HoldFps" (see Draw())
+	// In this example, the frame rate can be set if necessary
+	// with ofSetFrameRate. Applications without such frame rate
+	// control can use Spout "HoldFps" (see Draw())
 
 	// ----------------------------------------------
 
@@ -211,7 +146,9 @@ void ofApp::setup(){
 	// Starting value for sender fps display
 	g_SenderFps = GetRefreshRate();
 
-	// Update caption in case of multiples of the same sender
+	// Update caption with the produced name
+	// in case of multiples of the same sender
+	// (see SetSenderName)
 	ofSetWindowTitle(sender.GetName());
 
 } // end setup
@@ -236,8 +173,8 @@ void ofApp::draw() {
 	// - - - - - - - - - - - - - - - - 
 	myFbo.begin();
 
-	// Clear to reset the background and depth buffer
-	// Clear background alpha to opaque for the receiver
+	// Clear the fbo to reset the background and depth buffer
+	// Background alpha should be opaque for the receiver
 	ofClear(10, 100, 140, 255);
 	ofPushMatrix();
 	ofTranslate(myFbo.getWidth() / 2.0f, myFbo.getHeight() / 2.0f, 0);
@@ -250,34 +187,48 @@ void ofApp::draw() {
 	rotX += 0.6f;
 	rotY += 0.6f;
 	
+	//
 	// Option 1 : Send fbo
+	//
 	//   The fbo must be bound for read.
-	//   The invert option is false because the texture attached
-	//   to the fbo is already flipped in y.
+	//   The invert option is false because in this case 
+	//   the texture attached to the fbo is already flipped in y.
 	//   See also Option 4 to send the default framebuffer.
 	sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
 
+	//
 	// Option 2 : Send texture
+	//
 	// sender.SendTexture(myFbo.getTexture().getTextureData().textureID,
 		// myFbo.getTexture().getTextureData().textureTarget,
 		// senderwidth, senderheight, false);
 
+	//
 	// Option 3 : Send image pixels
+	//
 	// myFbo.readToPixels(myPixels); // readToPixels is slow - but this is just an example
 	// sender.SendImage(myPixels.getData(), senderwidth, senderheight, GL_RGBA, false);
 
 	// Show the result sized to the application window
 	myFbo.draw(0.0f, 0.0f, (float)ofGetWidth(), (float)ofGetHeight());
 
+	//
 	// Option 4 : Send default OpenGL framebuffer
-	// If width and height are 0, the function determines the viewport size.
-	// Alternatively, if performance is affected by repeated calls to glGetIntegerv,
-	// the viewport size can be retrieved here only when necessary to manage size changes
-	// and width and height values passed in. See code comments in Spout.cpp.
+	//
+	// If width and height are 0, the viewport size is used.
+	//
 	// sender.SendFbo(0, 0, 0);
+	//
+	// If performance is affected by repeated calls to glGetIntegerv,
+	// the viewport size can be retrieved only when necessary to manage
+	// size changes (see "windowResized"). Then the width and height 
+	// values must be passed in. See also code comments in Spout.cpp.
+	//
+	// sender.SendFbo(0, senderwidth, senderheight);
+	//
 
 	// Show what it's sending
 	if (sender.IsInitialized()) {
@@ -320,8 +271,8 @@ void ofApp::draw() {
 	// Applications without frame rate control can call this
 	// function to introduce the required delay between frames.
 	//
-	// Note : If you change to a lower fps in this example,
-	// the cube will rotate more slowly (increase RotX and RotY).
+	// Note : For this example, if you change to a lower fps,
+	// the cube will rotate more slowly so increase RotX and RotY.
 	//
 	// sender.HoldFps(30);
 
@@ -329,6 +280,7 @@ void ofApp::draw() {
 
 //--------------------------------------------------------------
 void ofApp::exit() {
+
 	// Close the sender on exit
 	sender.ReleaseSender();
 }
