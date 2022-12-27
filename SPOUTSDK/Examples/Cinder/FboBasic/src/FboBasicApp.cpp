@@ -4,9 +4,11 @@
 		Based on the FboBasic example
 		Search on SPOUT for details.
 
-		2021-2022 Lynn Jarvis https://spout.zeal.co/
+		2021-2023 Lynn Jarvis https://spout.zeal.co/
 
-		Revised 18.11.21
+		Revisions - 18.11.21
+				  - 27.12.22 for updated SpoutGL
+
 
 */
 

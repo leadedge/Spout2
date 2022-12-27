@@ -3,6 +3,13 @@
 This is an example of using the Spout SDK source files with a Cinder OpenGL application.\
 The example has been created for Visual Studio 2017 and Cinder 0.9.3.
 
+Rebuild Cinder library for VS2017
+1) Copy the proj\vc2015 folder to a new one proj\vc2017
+2) Remove any existing build files
+3) Open Cinder.sln with VS2017 and Re-Target
+4) Build the library x64 or Win32
+
+Building the example project
 1) In your Cinder installation folder, create a "SpoutGL" folder.
 2) Copy all the source files of the Spout SDK to the "SpoutGL" folder.
 3) Find the Cinder example project "..\samples\_opengl\FboBasic
