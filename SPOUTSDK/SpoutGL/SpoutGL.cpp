@@ -107,6 +107,8 @@
 //		22.12.22	- Compiler compatibility testing
 //					  Remove std::unique_ptr and go back to new/delete
 //					  Change all {} initializations to "={}"
+//		30.12.22	- Check and confirm fix for issue #85 and PR #86
+//					  Check and confirm fix for issue #87
 //
 // ====================================================================================
 //
