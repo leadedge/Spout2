@@ -110,6 +110,7 @@
 				 - Code cleanup
 		22.12.22 - Compiler compatibility check
 				   Change all {} initializations to "={}"
+		31.12.22 - increase log char buffer from 512 to 1024
 
 */
 
@@ -141,7 +142,7 @@ namespace spoututils {
 	FILE* pCout = NULL; // for log to console
 	std::ofstream logFile; // for log to file
 	std::string logPath; // folder path for the logfile
-	char logChars[512]={}; // The current log string
+	char logChars[1024]={}; // The current log string
 	bool bConsole = false;
 #ifdef USE_CHRONO
 	std::chrono::steady_clock::time_point start;
@@ -632,10 +633,10 @@ namespace spoututils {
 		if (!format)
 			return;
 
-		char currentLog[512]={}; // allow more than the name length
+		char currentLog[1024]={}; // allow more than the name length
 
 		// Construct the current log
-		vsprintf_s(currentLog, 512, format, args);
+		vsprintf_s(currentLog, 1024, format, args);
 
 		// Return if logging is paused
 		if (!bDoLogs)
@@ -649,12 +650,12 @@ namespace spoututils {
 			// Prevent multiple logs by comparing with the last
 			if (strcmp(currentLog, logChars) == 0) {
 				// Save the current log as the last
-				strcpy_s(logChars, 512, currentLog);
+				strcpy_s(logChars, 1024, currentLog);
 				return;
 			}
 
 			// Save the current log as the last
-			strcpy_s(logChars, 512, currentLog);
+			strcpy_s(logChars, 1024, currentLog);
 
 			// Console logging
 			if (bEnableLog && bConsole) {
