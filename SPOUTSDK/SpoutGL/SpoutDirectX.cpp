@@ -127,6 +127,9 @@
 //					  Use std::string for error text in CreateDX11StagingTexture / CreateSharedDX11Texture
 //		22.12.22	- Compiler compatibility check
 //					  Change all {} initializations to "={}"
+//		31.12.22	- SpoutDirectX.h
+//					   Remove WDK_NTDDI_VERSION in case it's not defined
+//					   Add comments concerning use of dxgi_6 with older DirectX SDK.
 //
 // ====================================================================================
 /*
