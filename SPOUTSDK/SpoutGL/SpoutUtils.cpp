@@ -111,6 +111,9 @@
 		22.12.22 - Compiler compatibility check
 				   Change all {} initializations to "={}"
 		31.12.22 - increase log char buffer from 512 to 1024
+		01.12.22 - Registry functions
+				     check for empty subkey and valuename strings
+					 include valuename in warnings
 
 */
 
@@ -778,15 +781,16 @@ namespace spoututils {
 	// Read subkey DWORD value
 	bool ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue)
 	{
-		if (!subkey || !valuename || !pValue)
+		if (!subkey || !*subkey || !valuename || !*valuename || !pValue)
 			return false;
+		
 
 		DWORD dwKey = 0;
 		DWORD dwSize = sizeof(DWORD);
 		const LONG regres = RegGetValueA(hKey, subkey, valuename, RRF_RT_REG_DWORD, &dwKey, pValue, &dwSize);
 		
 		if (regres != ERROR_SUCCESS) {
-			SpoutLogWarning("ReadDwordFromRegistry - could not read from registry");
+			SpoutLogWarning("ReadDwordFromRegistry - could not read [%s] from registry", valuename);
 			return false;
 		}
 
@@ -799,7 +803,7 @@ namespace spoututils {
 	// Write subkey DWORD value
 	bool WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue)
 	{
-		if (!subkey || !valuename)
+		if (!subkey || !*subkey || !valuename || !*valuename)
 			return false;
 
 		HKEY hRegKey = NULL;
@@ -822,7 +826,7 @@ namespace spoututils {
 		}
 
 		if (regres != ERROR_SUCCESS) {
-			SpoutLogWarning("WriteDwordToRegistry - could not write to registry");
+			SpoutLogWarning("WriteDwordToRegistry - could not write [%s] to registry", valuename);
 			return false;
 		}
 
@@ -834,7 +838,7 @@ namespace spoututils {
 	// Read subkey character string
 	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath, DWORD dwSize)
 	{
-		if (!subkey || !valuename || !filepath)
+		if (!subkey || !*subkey || !valuename || !*valuename || !filepath)
 			return false;
 
 		HKEY  hRegKey = NULL;
@@ -855,7 +859,7 @@ namespace spoututils {
 				SpoutLogWarning("ReadPathFromRegistry -  buffer size (%d) not large enough (%d)", dwSize, dwSizePath);
 			}
 			else {
-				SpoutLogWarning("ReadPathFromRegistry - could not read from registry");
+				SpoutLogWarning("ReadPathFromRegistry - could not read [%s] from registry", valuename);
 			}
 		}
 
@@ -869,7 +873,7 @@ namespace spoututils {
 	// Write subkey character string
 	bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath)
 	{
-		if (!subkey || !valuename || !filepath)
+		if (!subkey || !*subkey || !valuename || !*valuename || !filepath)
 			return false;
 
 		HKEY  hRegKey = NULL;
@@ -889,7 +893,7 @@ namespace spoututils {
 		}
 
 		if (regres != ERROR_SUCCESS) {
-			SpoutLogWarning("WritePathToRegistry - could not write to registry");
+			SpoutLogWarning("WritePathToRegistry - could not write [%s] to registry", valuename);
 			return false;
 		}
 
@@ -902,7 +906,7 @@ namespace spoututils {
 	// Write subkey binary hex data string
 	bool WriteBinaryToRegistry(HKEY hKey, const char *subkey, const char *valuename, const unsigned char *hexdata, DWORD nChars)
 	{
-		if (!subkey || !valuename || !hexdata)
+		if (!subkey || !*subkey || !valuename || !*valuename || !hexdata)
 			return false;
 
 		HKEY  hRegKey = NULL;
@@ -933,7 +937,7 @@ namespace spoututils {
 	// Remove subkey value name
 	bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename)
 	{
-		if (!subkey || !valuename) {
+		if (!subkey || !*subkey || !valuename) {
 			SpoutLogWarning("RemovePathFromRegistry - no subkey specified");
 			return false;
 		}
@@ -964,7 +968,7 @@ namespace spoututils {
 	//
 	bool RemoveSubKey(HKEY hKey, const char *subkey)
 	{
-		if (!subkey)
+		if (!subkey || !*subkey)
 			return false;
 
 		const LONG lStatus = RegDeleteKeyA(hKey, subkey);
@@ -980,7 +984,7 @@ namespace spoututils {
 	// Find subkey
 	bool FindSubKey(HKEY hKey, const char *subkey)
 	{
-		if (!subkey)
+		if (!subkey || !*subkey)
 			return false;
 
 		HKEY hRegKey = NULL;
