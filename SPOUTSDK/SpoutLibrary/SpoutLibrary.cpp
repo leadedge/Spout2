@@ -71,9 +71,27 @@
 //		27.12.21 - Rebuild 32/64 bit /MD for update 2.007.006
 //		28.01.22 - Remove <d3d9.h> from SpoutLibrary.h (Issue #77)
 //		24.02.22 - Rebuild 32/64 bit /MD Version 2.007.007
+//		21.03.22 - Change local LogLevel enum to more unique SpoutLibLogLevel
+//				   Initialize Spout object pointer
+//		11.04.22 - Option disable warning C26812 (unscoped enums) for Visual Studio
+//		10.05.22 - Correct OpenSpoutConsole to use "spoututils::"
+//		12.05.22 - Rebuild VS2022 - 32/64 bit /MD
+//				   Spout Version 2.007.008
+//		31.10.22 - Add GetPerformancePreference, SetPerformancePreference, GetPreferredAdapterName
+//				   Corrected SpoutLog to use _dolog
+//		01.11.22 - Add SetPreferredAdapter, GetSDKversion, IsLaptop
+//		03.11.22 - Add IsPreferenceAvailable
+//		25.22.33 - Revise SpoutSenderNmaes UpdateSenderFps / HoldFps
+//				   Add GetRefreshRate
+//		30.11.22 - Add IsApplicationPath
+//		22.12.22 - Compiler compatibility check
+//				   Conditional compile of preference functions
+//		26.12.22 - Add missing SPOUT_LOG_NONE to SpoutLibLogLevel
+//				   Rebuild release VS2022 - 32/64 bit /MD
+//				   Spout Version 2.007.009
 //
 /*
-		Copyright (c) 2016-2022, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -178,7 +196,9 @@ class SPOUTImpl : public SPOUTLIBRARY
 
 public:
 
-	Spout * spout; // Spout SDK functions object for this class
+	// Spout SDK functions object for this class
+	// Initialize in GetSpout()
+	Spout * spout;
 
 private: // Spout SDK functions
 
@@ -202,7 +222,6 @@ private: // Spout SDK functions
 	//    - Update the sender and class variables	
 	//
 
-
 	// Function: SetSenderName
 	// Set name for sender creation
 	//
@@ -222,12 +241,12 @@ private: // Spout SDK functions
 	void ReleaseSender(DWORD dwMsec = 0);
 
 	// Function: SendFbo
-	// Send texture attached to fbo.
+	// Send texture attached to fbo
 	//
-	//   The fbo must be currently bound.  
-	//   The sending texture can be larger than the size that the sender is set up for.  
+	//   The fbo must be currently bound
+	//   The sending texture can be larger than the size that the sender is set up for
 	//   For example, if the application is using only a portion of the allocated texture space,  
-	//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture).
+	//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture)
 	//
 	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
 
@@ -448,6 +467,10 @@ private: // Spout SDK functions
 	// Function: HoldFps
 	// Frame rate control
 	void HoldFps(int fps);
+
+	// Function: GetRefreshRate
+	// Get system refresh rate
+	double GetRefreshRate();
 	
 	// Function: SetFrameSync
 	// Signal sync event 
@@ -575,13 +598,9 @@ private: // Spout SDK functions
 	// Disable logging to console and file
 	void DisableSpoutLog();
 
-	// Function: FreeSpoutLog
-	// Clear log strings
-	void FreeSpoutLogs();
-
 	// Function: SetSpoutLogLevel
 	// Set the current log level
-	void SetSpoutLogLevel(LibLogLevel level);
+	void SetSpoutLogLevel(SpoutLibLogLevel level);
 
 	// Function: SpoutLog
 	// General purpose log
@@ -652,6 +671,22 @@ private: // Spout SDK functions
 	// Function: FindSubKey
 	// Find subkey
 	bool FindSubKey(HKEY hKey, const char *subkey);
+
+	//
+	// Group: Information
+	//
+
+	// ---------------------------------------------------------
+	// Function: GetSDKversion
+	// Spout SDK version.
+	std::string GetSDKversion();
+
+	// ---------------------------------------------------------
+	// Function: IsLaptop
+	// Return whether the system is a laptop.
+	//
+	// Queries power status. Battery power most likely means laptop.
+	bool IsLaptop();
 
 	//
 	// Group: Timing utilities
@@ -748,8 +783,7 @@ private: // Spout SDK functions
 	//
 	// Group: 2.006 compatibility
 	//
-	// These functions are not necessary for Version 2.007.
-	// But are retained for compatibility with existing 2.006 code.
+	// These functions are retained for compatibility with existing 2.006 code.
 	//
 
 	// Function: CreateSender
@@ -867,9 +901,86 @@ private: // Spout SDK functions
 	// Get adapter index
 	int GetAdapter();
 	
-	// Function: SetAdapter
-	// Set graphics adapter for output
-	bool SetAdapter(int index = 0);
+	//
+	// Group: Graphics preference
+	//
+	// Windows 10+ SDK required
+	//
+#if VER_PRODUCTBUILD > 9600
+
+	//---------------------------------------------------------
+	// Function: GetPerformancePreference
+	// Get the Windows graphics preference for an application
+	//
+	//	-1 - Not registered
+	//
+	//	 0 - DXGI_GPU_PREFERENCE_UNSPECIFIED
+	//
+	//	 1 - DXGI_GPU_PREFERENCE_MINIMUM_POWER
+	//
+	//	 2 - DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
+	//
+	int GetPerformancePreference(const char* path);
+
+	//---------------------------------------------------------
+	// Function: SetPerformancePreference
+	// Set the Windows graphics preference for an application
+	//
+	//     -1 - No preference
+	//
+	//      0 - Default
+	//
+	//      1 - Power saving
+	//
+	//      2 - High performance
+	//
+	bool SetPerformancePreference(int preference, const char* path);
+
+	//---------------------------------------------------------
+	// Function: GetPreferredAdapterName
+	//
+	// Get the graphics adapter name for a Windows preference
+	// This is the first adapter for the given preference :
+	//
+	//    DXGI_GPU_PREFERENCE_UNSPECIFIED - (0) Equivalent to EnumAdapters1
+	//
+	//    DXGI_GPU_PREFERENCE_MINIMUM_POWER - (1) Integrated GPU
+	//
+	//    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE - (2) External GPU / Discrete GPU
+	//
+	bool GetPreferredAdapterName(int preference, char* adaptername, int maxchars);
+
+	//---------------------------------------------------------
+	// Function: SetPreferredAdapter
+	//
+	// Set graphics adapter index for a Windows preference
+	//
+	// This index is used by CreateDX11device when DirectX is intitialized
+	//
+	//    DXGI_GPU_PREFERENCE_UNSPECIFIED - (0) Equivalent to EnumAdapters1
+	//
+	//    DXGI_GPU_PREFERENCE_MINIMUM_POWER - (1) Integrated GPU
+	//
+	//    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE - (2) External GPU / Discrete GPU
+	//
+	bool SetPreferredAdapter(int preference);
+
+	//---------------------------------------------------------
+	// Function: IsPreferenceAvailable()
+	// Availability of Windows graphics preference settings.
+	//
+	// Settings are available from Windows 10 April 2018 update 
+	// (Version 1803, build 17134) and later.
+	bool IsPreferenceAvailable();
+
+	//---------------------------------------------------------
+	// Function: IsApplicationPath
+	//
+	// Is the path a valid application
+	//
+	// A valid application path will have a drive letter and terminate with ".exe"
+	bool IsApplicationPath(const char* path);
+#endif
 
 	//
 	// Group: OpenGL utilities
@@ -1118,6 +1229,11 @@ void SPOUTImpl::HoldFps(int fps)
 	return spout->HoldFps(fps);
 }
 
+double SPOUTImpl::GetRefreshRate()
+{
+	return spoututils::GetRefreshRate();
+}
+
 void SPOUTImpl::SetFrameSync(const char* SenderName)
 {
 	return spout->SetFrameSync(SenderName);
@@ -1164,12 +1280,12 @@ int SPOUTImpl::GetMemoryBufferSize(const char *name)
 
 void SPOUTImpl::OpenSpoutConsole()
 {
-	OpenSpoutConsole();
+	spoututils::OpenSpoutConsole();
 }
 
 void SPOUTImpl::CloseSpoutConsole(bool bWarning)
 {
-	CloseSpoutConsole(bWarning);
+	spoututils::CloseSpoutConsole(bWarning);
 }
 
 void SPOUTImpl::EnableSpoutLog()
@@ -1197,16 +1313,16 @@ void SPOUTImpl::DisableSpoutLog()
 	spoututils::DisableSpoutLog();
 }
 
-void SPOUTImpl::SetSpoutLogLevel(LibLogLevel level)
+void SPOUTImpl::SetSpoutLogLevel(SpoutLibLogLevel level)
 {
-	spoututils::SetSpoutLogLevel((SpoutLogLevel)level);
+	spoututils::SetSpoutLogLevel(static_cast<spoututils::SpoutLogLevel>(level));
 }
 
 void SPOUTImpl::SpoutLog(const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	spoututils::SpoutLog(format, args);
+	spoututils::_doLog(spoututils::SPOUT_LOG_NONE, format, args);
 	va_end(args);
 }
 
@@ -1295,6 +1411,16 @@ bool SPOUTImpl::RemoveSubKey(HKEY hKey, const char *subkey)
 bool SPOUTImpl::FindSubKey(HKEY hKey, const char *subkey)
 {
 	return spoututils::FindSubKey(hKey, subkey);
+}
+
+std::string SPOUTImpl::GetSDKversion()
+{
+	return spoututils::GetSDKversion();
+}
+
+bool SPOUTImpl::IsLaptop()
+{
+	return spoututils::IsLaptop();
 }
 
 void SPOUTImpl::StartTiming()
@@ -1536,10 +1662,39 @@ int SPOUTImpl::GetAdapter()
 	return spout->GetAdapter();
 }
 
-bool SPOUTImpl::SetAdapter(int index)
+// Windows 10+ SDK required
+#if VER_PRODUCTBUILD > 9600
+int SPOUTImpl::GetPerformancePreference(const char* path)
 {
-	return spout->SetAdapter(index);
+	return spout->GetPerformancePreference(path);
 }
+
+bool SPOUTImpl::SetPerformancePreference(int preference, const char* path)
+{
+	return spout->SetPerformancePreference(preference, path);
+}
+
+bool SPOUTImpl::GetPreferredAdapterName(int preference, char* adaptername, int maxchars)
+{
+	return spout->GetPreferredAdapterName(preference, adaptername, maxchars);
+}
+
+bool SPOUTImpl::SetPreferredAdapter(int preference)
+{
+	return spout->SetPreferredAdapter(preference);
+}
+
+bool SPOUTImpl::IsPreferenceAvailable()
+{
+	return spout->IsPreferenceAvailable();
+}
+
+bool SPOUTImpl::IsApplicationPath(const char* path)
+{
+	return spout->IsApplicationPath(path);
+}
+#endif
+
 
 //
 // OpenGL utilities
@@ -1580,7 +1735,8 @@ void SPOUTImpl::CloseDirectX()
 
 bool SPOUTImpl::OpenDirectX11(void * pDevice)
 {
-	return spout->OpenDirectX11(reinterpret_cast<ID3D11Device*>(pDevice));
+	// A cast from void* can use static_cast
+	return spout->OpenDirectX11(static_cast<ID3D11Device*>(pDevice));
 }
 
 void SPOUTImpl::CloseDirectX11()
@@ -1590,12 +1746,14 @@ void SPOUTImpl::CloseDirectX11()
 
 void * SPOUTImpl::GetDX11Device()
 {
-	return reinterpret_cast<void*>(spout->GetDX11Device());
+	// void cast conversion can be implicit
+	return spout->GetDX11Device();
 }
 
 void * SPOUTImpl::GetDX11Context()
 {
-	return reinterpret_cast<void *>(spout->GetDX11Device());
+	// void cast conversion can be implicit
+	return spout->GetDX11Device();
 }
 
 
@@ -1611,6 +1769,7 @@ void SPOUTImpl::Release()
 	// Delete this class instance
 	delete this;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Factory function that creates instances if the SPOUT object.

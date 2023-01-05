@@ -283,7 +283,6 @@ void D3D12HelloTexture::LoadAssets()
      		// SPOUT
 			// It's too small.
 			// Fill the screen so that a typical 16::9 sender is not distorted.
-			// We could draw a rectangle but this is just a sample.
 			{ {  0.0f,  1.0f, 0.0f }, { 0.5f, 0.0f } },
 			{ {  1.0f, -1.0f, 0.0f }, { 1.0f, 1.0f } },
 			{ { -1.0f, -1.0f, 0.0f }, { 0.0f, 1.0f } }

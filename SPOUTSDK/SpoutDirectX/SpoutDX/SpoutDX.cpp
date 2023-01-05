@@ -1,9 +1,10 @@
 ﻿//
-//		SpoutDX
+//			SpoutDX
 //
-//		Send a DirectX11 shared texture
-//		Receive from a Spout sender DirectX11 shared texture
-//		DirectX9 not supported
+//		Sender and receiver for DirectX applications
+//			Send a DirectX11 shared texture
+//			Receive from a Spout sender DirectX11 shared texture
+//			DirectX9 not supported
 //
 // ====================================================================================
 //		Revisions :
@@ -112,10 +113,16 @@
 //					  Add ReceiveTexture() function to receive to a class texture
 //					  Add GetSenderTexture function to return class texture pointer
 //					  Add class texture and management
+//		01.11.22	- Add GetPerformancePreference, SetPerformancePreference,
+//					  GetPreferredAdapterName, SetPreferredAdapter
+//		08.11.22	- Add IsPreferenceAvailable, IsApplicationPath
+//		16.11.22	- HoldFps double fps argument instead of int
+//		26/12/22	- Initialize all arrays and structures
+//					  Const arg for SendImage
 //
 // ====================================================================================
 /*
-	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -339,7 +346,7 @@ bool spoutDX::SetSenderName(const char* sendername)
 
 	// If a sender with this name is already registered, create an incremented name
 	int i = 1;
-	char name[256];
+	char name[256]={};
 	strcpy_s(name, 256, m_SenderName);
 	if (sendernames.FindSenderName(name)) {
 		do {
@@ -507,7 +514,7 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture,
 		return false;
 
 	// Get the region to copy
-	D3D11_BOX sourceRegion;
+	D3D11_BOX sourceRegion={};
 	sourceRegion.left = xoffset;
 	sourceRegion.right = xoffset+width;
 	sourceRegion.top = yoffset;
@@ -534,7 +541,7 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture,
 //---------------------------------------------------------
 // Function: SendImage
 // Send pixel image
-bool spoutDX::SendImage(unsigned char * pData, unsigned int width, unsigned int height)
+bool spoutDX::SendImage(const unsigned char * pData, unsigned int width, unsigned int height)
 {
 	// Quit if no data
 	if (!pData)
@@ -917,7 +924,7 @@ void spoutDX::SelectSender()
 bool spoutDX::IsUpdated()
 {
 	bool bRet = m_bUpdated;
-	m_bUpdated = false; // Reset the update flag
+	m_bUpdated = false; // Reset the update flag before return
 	return bRet;
 }
 
@@ -1165,8 +1172,12 @@ void spoutDX::SetMaxSenders(int maxSenders)
 //
 // Group: Graphics adapter
 //
+// Return graphics adapter number and names.
+// Get and set adapter index for the DirectX device.
+//
 // Note that both the Sender and Receiver must use the same graphics adapter.
 //
+
 
 //---------------------------------------------------------
 // Function: GetNumAdapters
@@ -1252,7 +1263,18 @@ void spoutDX::SetAdapterAuto(bool bAdapt)
 
 //---------------------------------------------------------
 // Function: GetSenderAdapter
-// Get sender adapter index and name for a given sender
+// Get adapter index and name for a given sender
+//
+// OpenDX11shareHandle will fail if the share handle has been created 
+// using a different graphics adapter (see spoutDirectX).
+//
+// This function loops though all graphics adapters in the system
+// until OpenDX11shareHandle is successful and the same adapter
+// index as the sender is established. 
+//
+// This adapter can then be used by CreateDX11device when the Spout
+// DirectX device is created.
+//
 int spoutDX::GetSenderAdapter(const char* sendername, char* adaptername, int maxchars)
 {
 	if (!sendername || !sendername[0])
@@ -1269,9 +1291,9 @@ int spoutDX::GetSenderAdapter(const char* sendername, char* adaptername, int max
 
 	SpoutLogNotice("spoutDX::GetSenderAdapter - testing for sender adapter (%s)", sendername);
 
-	SharedTextureInfo info;
+	SharedTextureInfo info={};
 	if (sendernames.getSharedInfo(sendername, &info)) {
-		int nAdapters = spoutdx.GetNumAdapters();
+		const int nAdapters = spoutdx.GetNumAdapters();
 		for (int i = 0; i < nAdapters; i++) {
 			pAdapter = spoutdx.GetAdapterPointer(i);
 			if (pAdapter) {
@@ -1307,9 +1329,159 @@ int spoutDX::GetSenderAdapter(const char* sendername, char* adaptername, int max
 	// Set the SpoutDirectX class adapter pointer back to what it was
 	spoutdx.SetAdapterPointer(pCurrentAdapter);
 
+	// Return the sender adapter index
 	return senderadapter;
 
 }
+
+//
+// Group: Graphics performance
+//
+// Windows Graphics performance preferences.
+//
+// To be effective, performance preference requires the system to have multiple graphics
+// processors which provide a choice between "Power saving" and "High perfformance". 
+// Typically this will be laptop systems with integrated and discrete graphics.
+// Desktop systems with multiple discrete graphics cards do not provide that choice, 
+// even though Windows still allows applications to be set for desired preference.
+//
+// Windows preferences take priority over any settings made by driver
+// programs such as the NVIDIA Control Panel or AMD Control Center for that application.
+// If there is no Windows preference for an application, the graphics driver <settings
+// at https://www.nvidia.com/content/Control-Panel-Help/vLatest/en-us/mergedProjects/nv3d/Setting_the_Preferred_Graphics_Processor.htm> take effect.
+//
+// Performance prefrence settings are available from Windows 10
+// April 2018 update "Redstone 4" (Version 1803, build 17134) and later.
+// Windows 10 SDK required included in Visual Studio 2017 ver.15.7 
+//
+#ifdef NTDDI_WIN10_RS4
+
+//---------------------------------------------------------
+// Function: GetPerformancePreference
+// Get the Windows graphics preference for an application
+//
+//	-1 - Not registered
+//
+//	 0 - DXGI_GPU_PREFERENCE_UNSPECIFIED
+//
+//	 1 - DXGI_GPU_PREFERENCE_MINIMUM_POWER
+//
+//	 2 - DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
+//
+// If no path is specified, use the current application path
+//
+int spoutDX::GetPerformancePreference(const char* path)
+{
+	return spoutdx.GetPerformancePreference(path);
+}
+
+//---------------------------------------------------------
+// Function: SetPerformancePreference
+// Set the Windows graphics preference for an application
+//
+//     -1 - No preference
+//
+//      0 - Default
+//
+//      1 - Power saving
+//
+//      2 - High performance
+//
+// If no path is specified, use the current application path
+//
+bool spoutDX::SetPerformancePreference(int preference, const char* path)
+{
+	return spoutdx.SetPerformancePreference(preference, path);
+}
+
+
+//
+// https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_6/nf-dxgi1_6-idxgifactory6-enumadapterbygpupreference
+//
+// When DXGI_GPU_PREFERENCE_UNSPECIFIED is specified for the GpuPreference parameter,
+// this method is equivalent to calling IDXGIFactory1::EnumAdapters1.
+//
+// When DXGI_GPU_PREFERENCE_MINIMUM_POWER is specified for the GpuPreference parameter,
+// the order of preference for the adapter returned in ppvAdapter will be:
+// 1. iGPUs (integrated GPUs)
+// 2. dGPUs (discrete GPUs)
+// 3. xGPUs (external GPUs)
+//
+// When DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE is specified for the GpuPreference parameter,
+// the order of preference for the adapter returned in ppvAdapter will be:
+// 1. xGPUs (external GPUs)
+// 2. dGPUs (discrete GPUs)
+// 3. iGPUs (integrated GPUs)
+//
+
+//---------------------------------------------------------
+// Function: GetPreferredAdapterName
+//
+// Get the graphics adapter name for a Windows preference.
+// This is the first adapter for the given preference :
+//
+//    DXGI_GPU_PREFERENCE_UNSPECIFIED - (0) Equivalent to EnumAdapters1
+//
+//    DXGI_GPU_PREFERENCE_MINIMUM_POWER - (1) Integrated GPU
+//
+//    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE - (2) External GPU / Discrete GPU
+//
+bool spoutDX::GetPreferredAdapterName(int preference, char* adaptername, int maxchars)
+{
+	return spoutdx.GetPreferredAdapterName(preference, adaptername, maxchars);
+}
+
+//---------------------------------------------------------
+// Function: SetPreferredAdapter
+//
+// Set graphics adapter index for a Windows preference
+//
+// Set the adapter index for a performance preference without registering the
+// preference with Windows. This index is used by CreateDX11device when DirectX
+// is intitialized. The function should be called before Spout is initialized.
+//
+//    DXGI_GPU_PREFERENCE_UNSPECIFIED - (0) Equivalent to EnumAdapters1
+//
+//    DXGI_GPU_PREFERENCE_MINIMUM_POWER - (1) Integrated GPU
+//
+//    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE - (2) External GPU / Discrete GPU
+//
+// The function achieves this result without user Windows preference by getting the name
+// of the preferred adapter using EnumAdapterByGpuPreference, finding the index of
+// that adapter in the current list of adapters, using EnumAdapters and finally 
+// retrieving a pointer to the adapter for CreateDX11device to use. To be effective,
+// this requires a system with multiple graphics processors which enable a choice 
+// between "Power saving" and "High performance".
+//
+bool spoutDX::SetPreferredAdapter(int preference)
+{
+	return spoutdx.SetPreferredAdapter(preference);
+}
+
+
+//---------------------------------------------------------
+// Function: IsPreferenceAvailable()
+// Availability of Windows graphics preference settings.
+//
+// Settings are available from Windows 10 April 2018 update 
+// (Version 1803, build 17134) and later.
+bool spoutDX::IsPreferenceAvailable()
+{
+	return spoutdx.IsPreferenceAvailable();
+}
+
+//---------------------------------------------------------
+// Function: IsApplicationPath
+//
+// Is the path a valid application
+//
+// A valid application path will have a drive letter and terminate with ".exe"
+bool spoutDX::IsApplicationPath(const char* path)
+{
+	return spoutdx.IsApplicationPath(path);
+}
+#endif
+
 
 //
 // Group: Data sharing
@@ -1653,7 +1825,7 @@ bool spoutDX::CreateDX11texture(ID3D11Device* pd3dDevice,
 // Also register the sender name if not already
 void spoutDX::CheckSenderFormat(const char * sendername)
 {
-	SharedTextureInfo info;
+	SharedTextureInfo info={};
 
 	// Correct for format 0 and un-registered
 	if (sendernames.getSharedInfo(sendername, &info)) {
@@ -1682,7 +1854,7 @@ void spoutDX::CheckSenderFormat(const char * sendername)
 		sendernames.RegisterSenderName(sendername);
 
 		// Make active if there is no active sender
-		char activename[256];
+		char activename[256]={};
 		if (!sendernames.GetActiveSender(activename))
 			sendernames.SetActiveSender(sendername);
 	}
@@ -1708,7 +1880,8 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 	// The sender needs a name
 	// Default is the executable name
 	if (!m_SenderName[0]) {
-		SetSenderName();
+		if (!SetSenderName())
+			return false;
 	}
 
 	if (!m_bSpoutInitialized) {
@@ -1733,12 +1906,12 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 		
 		// TODO
 		// This could be a separate function SetHostPath
-		SharedTextureInfo info;
+		SharedTextureInfo info={};
 		if (!sendernames.getSharedInfo(m_SenderName, &info)) {
 			SpoutLogWarning("spoutGL::SetHostPath(%s) - could not get sender info", m_SenderName);
 			return false;
 		}
-		char exepath[256];
+		char exepath[256]={};
 		GetModuleFileNameA(NULL, exepath, sizeof(exepath));
 		// Description is defined as wide chars, but the path is stored as byte chars
 		strcpy_s((char*)info.description, 256, exepath);
@@ -1842,7 +2015,7 @@ bool spoutDX::ReceiveSenderData()
 
 	// Initialization is recorded in this class for sender or receiver
 	// m_Width or m_Height are established when the receiver connects to a sender
-	char sendername[256];
+	char sendername[256]={};
 	strcpy_s(sendername, 256, m_SenderName);
 
 	// Check the entered Sender name to see if it exists
@@ -1868,7 +2041,7 @@ bool spoutDX::ReceiveSenderData()
 
 	// Try to get the sender information
 	// Retrieve width, height, sharehandle and format.
-	SharedTextureInfo info;
+	SharedTextureInfo info={};
 	if (sendernames.getSharedInfo(sendername, &info)) {
 
 		// Memory share mode not supported (no texture share handle)
@@ -2001,11 +2174,11 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 		return false;
 
 	// Map the staging texture resource so we can access the pixels
-	D3D11_MAPPED_SUBRESOURCE mappedSubResource;
+	D3D11_MAPPED_SUBRESOURCE mappedSubResource={};
 	// Make sure all commands are done before mapping the staging texture
 	m_pImmediateContext->Flush();
 	// Map waits for GPU access
-	HRESULT hr = m_pImmediateContext->Map(pStagingSource, 0, D3D11_MAP_READ, 0, &mappedSubResource);
+	const HRESULT hr = m_pImmediateContext->Map(pStagingSource, 0, D3D11_MAP_READ, 0, &mappedSubResource);
 	if (SUCCEEDED(hr)) {
 
 		// Copy the staging texture pixels to the user buffer
@@ -2100,7 +2273,7 @@ bool spoutDX::CheckStagingTextures(unsigned int width, unsigned int height, DWOR
 // Create a DirectX 11 staging texture for read and write
 bool spoutDX::CreateDX11StagingTexture(unsigned int width, unsigned int height,	DXGI_FORMAT format,	ID3D11Texture2D** pStagingTexture)
 {
-	if (!m_pd3dDevice)
+	if (!m_pd3dDevice || !pStagingTexture)
 		return false;
 
 	ID3D11Texture2D* pTexture = nullptr;
@@ -2123,11 +2296,11 @@ bool spoutDX::CreateDX11StagingTexture(unsigned int width, unsigned int height,	
 	desc.Usage = D3D11_USAGE_STAGING;
 	desc.BindFlags = 0;
 
-	HRESULT res = m_pd3dDevice->CreateTexture2D(&desc, NULL, &pTexture);
+	const HRESULT res = m_pd3dDevice->CreateTexture2D(&desc, NULL, &pTexture);
 
 	if (res != S_OK) {
 		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
-		char tmp[256];
+		char tmp[256]={};
 		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11StagingTexture ERROR : [0x%lx] : ", res);
 		switch (res) {
 		case D3DERR_INVALIDCALL:
@@ -2192,7 +2365,10 @@ void spoutDX::SelectSenderPanel()
 {
 	HANDLE hMutex1 = NULL;
 	HMODULE module = NULL;
-	char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
+	char path[MAX_PATH]={};
+	char drive[MAX_PATH]={};;
+	char dir[MAX_PATH]={};
+	char fname[MAX_PATH]={};
 
 	// The selected sender is then the "Active" sender and this receiver switches to it.
 	// If Spout is not installed, SpoutPanel.exe has to be in the same folder
@@ -2287,7 +2463,7 @@ void spoutDX::SelectSenderPanel()
 				else {
 					// Look through all processes
 					while (hRes && !done) {
-						int value = _tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
+						const int value = _tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
 						if (value == 0) {
 							HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, (DWORD)pEntry.th32ProcessID);
 							if (hProcess != NULL) {
@@ -2324,10 +2500,10 @@ bool spoutDX::CheckSpoutPanel(char *sendername, int maxchars)
 	// If SpoutPanel has been activated, test if the user has clicked OK
 	if (m_bSpoutPanelOpened) { // User has activated spout panel
 
-		SharedTextureInfo TextureInfo;
+		SharedTextureInfo TextureInfo={};
 		HANDLE hMutex = NULL;
-		DWORD dwExitCode;
-		char newname[256];
+		DWORD dwExitCode = 0;
+		char newname[256]={};
 		bool bRet = false;
 
 		// Must find the mutex to signify that SpoutPanel has opened

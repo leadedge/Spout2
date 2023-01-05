@@ -34,6 +34,10 @@ The mode of operation can be changed to enable the high performance NVIDIA graph
 This over-rides the NVIDIA control panel settings and can be useful where there is difficulty in adjusting them.
 This will not have any effect if the computer does not have Optimus graphics or is not NVIDIA.
 
+o Windows graphics settings
+
+Windows graphics performance settings for applicationb are available from Windows 10 version 1803 (build 17134) and apply for Laptops with multiple grahhics that allow the options of power saving or performance. "High Performance" is recommended for Spout applications.
+
 o Help
 
 Use the help button for each item for more information.

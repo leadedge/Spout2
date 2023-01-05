@@ -67,10 +67,16 @@
 //		24.04.21	- Add OpenGL shared texture access functions
 //		03.06.21	- Add GetMemoryBufferSize
 //		15.10.21	- Allow no argument for SetReceiverName
+//		18.04.22	- Change default invert from true to false for fbo sending functions
+//		31.10.22	- Add GetPerformancePreference, SetPerformancePreference, GetPreferredAdapterName
+//		01.11.22	- Add SetPreferredAdapter
+//		03.11.22	- Add IsPreferenceAvailable
+//		07.11.22	- Add IsApplicationPath
+//		14.12.23	- Remove SetAdapter. Requires OpenGL setup.
 //
 // ====================================================================================
 //
-//	Copyright (c) 2014-2022, Lynn Jarvis. All rights reserved.
+//	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without modification, 
 //	are permitted provided that the following conditions are met:
@@ -143,8 +149,6 @@ void SpoutReceiver::ReleaseReceiver()
 {
 	spout.ReleaseReceiver();
 }
-
-
 
 //---------------------------------------------------------
 bool SpoutReceiver::ReceiveTexture()
@@ -416,16 +420,57 @@ int SpoutReceiver::GetAdapter()
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::SetAdapter(int index)
+bool SpoutReceiver::GetAdapterInfo(char* description, char* output, int maxchars)
 {
-	return spout.SetAdapter(index);
+	return spout.GetAdapterInfo(description, output, maxchars);
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::GetAdapterInfo(char *renderdescription, char *displaydescription, int maxchars)
+bool SpoutReceiver::GetAdapterInfo(int index, char* description, char* output, int maxchars)
 {
-	return spout.GetAdapterInfo(renderdescription, displaydescription, maxchars);
+	return spout.GetAdapterInfo(index, description, output, maxchars);
 }
+
+// Windows 10 Vers 1803, build 17134 or later
+#ifdef NTDDI_WIN10_RS4
+
+//---------------------------------------------------------
+int SpoutReceiver::GetPerformancePreference(const char* path)
+{
+	return spout.GetPerformancePreference(path);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::SetPerformancePreference(int preference, const char* path)
+{
+	return spout.SetPerformancePreference(preference, path);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::GetPreferredAdapterName(int preference, char* adaptername, int maxchars)
+{
+	return spout.GetPreferredAdapterName(preference, adaptername, maxchars);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::SetPreferredAdapter(int preference)
+{
+	return spout.SetPreferredAdapter(preference);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::IsPreferenceAvailable()
+{
+	return spout.IsPreferenceAvailable();
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::IsApplicationPath(const char* path)
+{
+	return spout.IsApplicationPath(path);
+}
+#endif
+
 
 //
 // User settings recorded by "SpoutSettings"

@@ -1,10 +1,7 @@
 #\-------------------------------------- . -----------------------------------/#
-# Filename : CMakeList.txt               | SpoutDX Tutorial07 CMakeList        #
+# Filename : CMakeList.txt               | Spout Tutorial04 CMakeList          #
 # Author   : Alexandre Buge              |                                     #
 # Started  : 08/09/2020 12:00            |                                     #
-#/-------------------------------------- . -----------------------------------\#
-# Modifications : spout.zeal.co                                                #
-# 06/01/21 - DPI awareness needed for scaled displays                          #
 #/-------------------------------------- . -----------------------------------\#
 
 add_executable(Tutorial07 WIN32
@@ -17,12 +14,9 @@ add_executable(Tutorial07 WIN32
   #Tutorial07_VS.hlsl
 )
 
-# DPI awareness needed for scaled displays
-set_property(TARGET Tutorial07 PROPERTY VS_DPI_AWARE "PerMonitor")
-
 target_link_libraries(Tutorial07
   PRIVATE 
-    Spout_static
+    Spout
 )
 
 target_compile_definitions(Tutorial07
@@ -34,7 +28,7 @@ target_compile_definitions(Tutorial07
 
 target_link_libraries(Tutorial07
   PRIVATE
-    Spout_static
+    Spout
     SpoutDX
     d3d11
     d3dcompiler

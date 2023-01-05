@@ -173,8 +173,9 @@ void Render()
 
 	// Optionally hold a target frame rate - e.g. 60 or 30fps.
 	// This is not necessary if the application already has
-	// fps control. But in this example rendering is done
-	// during idle time and render rate can be extremely high.
+	// fps control. But in this example, rendering is done
+	// during idle time and render rate can be extremely high
+	// if graphics driver "wait for vertical refresh" is disabled.
 	receiver.HoldFps(60);
 
 }

@@ -34,8 +34,8 @@
 	Compare with the receiver example using the Spout SDK source files.
 
 	Spout 2.007
-	OpenFrameworks 10
-	Visual Studio 2017
+	OpenFrameworks 11
+	Visual Studio 2022
 
 	Copyright (C) 2015-2022 Lynn Jarvis.
 
@@ -62,12 +62,13 @@ void ofApp::setup(){
 	ofBackground(0, 0, 0);
 	ofSetWindowTitle("SpoutLibrary Multiple Receiver Example");
 
-	// Create an instance of the Spout library
+	// Create an instance of the Spout library for the first receiver
 	receiver1 = GetSpout();
 	if (!receiver1) {
 		MessageBoxA(NULL, "Spout library load failed", "Spout Multiple Receiver", MB_ICONERROR);
 		exit();
 	}
+	// Allocate a texture to receive from the first receiver
 	myTexture1.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 	// Option : Receive only from "Spout Demo Sender"
 	// Any other sender name can be specified.
@@ -79,6 +80,7 @@ void ofApp::setup(){
 		MessageBoxA(NULL, "Spout library load failed 2", "Spout Receiver", MB_ICONERROR);
 		exit();
 	}
+	// Second receiving texture
 	myTexture2.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 	// Option : Receive only from "Spout Demo Sender_1"
 	// (Open the demo sender again to create it)
@@ -160,7 +162,8 @@ void ofApp::showInfo() {
 //--------------------------------------------------------------
 void ofApp::exit() {
 
-	// Release the receivers and library
+	// Release the receivers
+	// Release the library for each object on exit
 	receiver1->ReleaseReceiver();
 	receiver1->Release();
 

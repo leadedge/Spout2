@@ -35,9 +35,12 @@ class ofApp : public ofBaseApp{
 		void exit();
 
 		SpoutLibraryLoader spoutloader; // SpoutLibrary dynamic loader
-		SPOUTLIBRARY * sender; // A sender object pointer
-		char sendername[256];  // Sender name
-		ofImage myBoxImage;    // Image for the 3D demo
-		float rotX, rotY;
+		SPOUTLIBRARY * sender = nullptr; // A sender object pointer
+		char sendername[256]{}; // Sender name
+		ofImage myBoxImage; // Image for the 3D demo
+		float rotX = 0; // Box rotation speed
+		float rotY = 0;
+		double g_SenderFps = 0.0; // Fps display averaging
+
 
 };
