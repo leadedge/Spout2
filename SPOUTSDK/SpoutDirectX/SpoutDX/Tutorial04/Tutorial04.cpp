@@ -844,7 +844,12 @@ void Render()
 	//
 	// The frame rate can be controlled further if necessary
 	// using thread sleep until the required frame time elapses.
-	// Note code comments for the function.
+	// Note code comments for the HoldFps function.
+	//
+	// In this example, the cube rotation speed will not change
+	// because it is calculated independently, but the render rate
+	// will be controlled.
+	// 
 	// For example :
 	// sender.HoldFps(30);
 
