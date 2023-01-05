@@ -1,4 +1,4 @@
-===================================\
+===================================
 05-01-23\
 Update Master from Beta branch.\
 - Version 2.007.009
@@ -226,6 +226,7 @@ User binaries updated
 	Diagnostics extended.
 - SpoutPanel
 	Show more information about the sender texture, computer type, graphics adapters present and the one used by the sender application.
+
 
 ===================================\
 26-07-21\
