@@ -109,6 +109,8 @@
 //					  Change all {} initializations to "={}"
 //		30.12.22	- Check and confirm fix for issue #85 and PR #86
 //					  Check and confirm fix for issue #87
+//		05-01-23	- ReadGLDXtexture - Test for no texture read or zero texture
+//					  moved to the beginning to avoid redundant texture lock.
 //
 // ====================================================================================
 //
@@ -1493,6 +1495,11 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 		return false;
 	}
 
+	// No texture read or zero texture (allowed for by ReceiveTexture)
+	// the shared texture can be accessed directly
+	if (TextureID == 0)
+		return true;
+
 	// width and height must be the same as the shared texture
 	// m_TextureInfo is established in CreateDX11interop
 	if (width != m_Width || height != m_Height) {
@@ -1506,12 +1513,9 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 		// Read the shared texture if the sender has produced a new frame
 		// GetNewFrame updates sender frame count and fps
 		if (frame.GetNewFrame()) {
-			// No texture read for zero texture - allowed for by ReceiveTexture
-			if (TextureID > 0 && TextureTarget > 0) {
-				if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
-					bRet = GetSharedTextureData(TextureID, TextureTarget, width, height, bInvert, HostFBO);
-					UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-				}
+			if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+				bRet = GetSharedTextureData(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+				UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 			}
 		}
 		// Release mutex and allow access to the texture
