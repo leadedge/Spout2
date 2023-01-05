@@ -4,7 +4,7 @@
 
     Visual Studio using the Spout SDK
 
-	Copyright (C) 2015-2022 Lynn Jarvis.
+	Copyright (C) 2015-2023 Lynn Jarvis.
 
 	Spout 2.007
 	OpenFrameworks 11
@@ -43,14 +43,6 @@ void ofApp::setup(){
 	// If that sender closes, the application will wait for the nominated sender to open.
 	// receiver.SetReceiverName("Spout Demo Sender");
 
-	// Disable CPU sharing backup
-	// If the graphics is not compatible for OpenGL/DirectX texture sharing,
-	// CPU backup methods with system memory and DirectX textures are used.
-	// In most cases it is satisfactory to leave auto-detection enabled,
-	// but sometimes it may be preferable to simply fail if incompatible
-	// so that it is clear whether high speed texture sharing is being used.
-	// receiver.SetAutoShare(false);
-
 	ofSetWindowTitle("OpenGL Receiver Example");
 
 	ofBackground(0, 0, 0);
@@ -62,12 +54,6 @@ void ofApp::setup(){
 	// Allocate an RGB image for this example
 	// it can also be RGBA, BGRA or BGR
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
-
-	// If Wait For Vertical Sync is applied by the driver, 
-	// performance can be improved if disabled here.
-	// ofSetVerticalSync(false);
-	// Limit frame rate using timing instead
-	// ofSetFrameRate(60);
 
 } // end setup
 
@@ -103,10 +89,12 @@ void ofApp::draw() {
 	//		bool IsConnected();
 	//
 
+	/*
 	// Option 1 : Receive texture
 	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
 		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
+	*/
 
 	// Option 2 : Receive pixel data
 	// Specify RGB for this example. Default is RGBA.
@@ -118,29 +106,28 @@ void ofApp::draw() {
 	}
 	*/
 	
-	/*
-	// Option 3 : Receive an OpenGL shared texture to access directly
-	// Only if compatible for GL/DX interop or else BindSharedTexture fails
-	if(receiver.ReceiveTexture()) {
+	// Option 3 : Receive an OpenGL shared texture to access directly.
+	// Only if compatible for GL/DX interop or else BindSharedTexture fails.
+	// For this example, copy from the shared texture. For other applications
+	// the texture binding may be used directly for rendering.
+	if (receiver.ReceiveTexture()) {
+		// Update the local texture if the received size has changed
+		if (receiver.IsUpdated()) {
+			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), GL_RGBA);
+		}
 		// Bind to get access to the shared texture
 		if (receiver.BindSharedTexture()) {
-			// Get the shared texture ID and do something with it
-			GLuint texID = receiver.GetSharedTextureID();
-			// For this example, copy from the shared texture 
-			// if the local texture has been updated in ofApp::update()
-			if ((int)myTexture.getWidth() == receiver.GetSenderWidth()
-				&& (int)myTexture.getHeight() == receiver.GetSenderHeight()) {
-				receiver.CopyTexture(texID, GL_TEXTURE_2D,
-					myTexture.getTextureData().textureID,
-					myTexture.getTextureData().textureTarget,
-					receiver.GetSenderWidth(), receiver.GetSenderHeight());
-			}
+			// Copy from the shared texture 
+			receiver.CopyTexture(receiver.GetSharedTextureID(), GL_TEXTURE_2D,
+				myTexture.getTextureData().textureID,
+				myTexture.getTextureData().textureTarget,
+				receiver.GetSenderWidth(), receiver.GetSenderHeight());
+			// Draw the Openframeworks texture
+			myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 			// Un-bind to release access to the shared texture
 			receiver.UnBindSharedTexture();
-			myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 		}
 	}
-	*/
 
 	// On-screen display
 	showInfo();
