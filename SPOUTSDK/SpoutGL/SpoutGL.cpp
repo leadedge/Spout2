@@ -111,6 +111,7 @@
 //					  Check and confirm fix for issue #87
 //		05-01-23	- ReadGLDXtexture - Test for no texture read or zero texture
 //					  moved to the beginning to avoid redundant texture lock.
+//		06-01-23	- ReadDX11pixels check pixels arg for null
 //
 // ====================================================================================
 //
@@ -2401,14 +2402,14 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 		if (bInvert) {
 
 			// For copy to intermediate invert buffer
-			unsigned char *src = nullptr;
+			const unsigned char *src = nullptr;
 
 			// ReadTextureData - create unsigned long variables for temp src char array
 			const unsigned long WxHx3 = unsigned long(width*height*3);
 			const unsigned long WxHx4 = unsigned long(width*height*4);
 
 			if(GLformat == GL_RGB || GLformat == GL_BGR_EXT)
-				src = new unsigned char[WxHx3];
+				src = new unsigned char[WxHx3] ;
 			else
 				src = new unsigned char[WxHx4];
 
@@ -2557,6 +2558,9 @@ bool spoutGL::WriteDX11pixels(const unsigned char* pixels,
 // A new shared texture pointer (m_pSharedTexture) is retrieved if the sender changed
 bool spoutGL::ReadDX11pixels(unsigned char * pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert)
 {
+	if (!pixels)
+		return false;
+
 	if (!CheckStagingTextures(width, height, 2)) {
 		return false;
 	}
@@ -2572,7 +2576,7 @@ bool spoutGL::ReadDX11pixels(unsigned char * pixels, unsigned int width, unsigne
 			// Copy from the sender's shared texture to the first staging texture
 			spoutdx.GetDX11Context()->CopyResource(m_pStaging[m_Index], m_pSharedTexture);
 			// Map and read from the second while the first is occupied
-			ReadPixelData(m_pStaging[m_NextIndex], pixels, m_Width, m_Height, glFormat, bInvert);
+			ReadPixelData(m_pStaging[m_NextIndex], &pixels[0], m_Width, m_Height, glFormat, bInvert);
 		}
 		// Allow access to the shared texture
 		frame.AllowTextureAccess(m_pSharedTexture);
