@@ -66,6 +66,10 @@
 //		17.12.22	- Use smart pointers for m_FrameStartPtr etc to avoid using new/delete
 //		18.12.22	- Change back to new/delete due to incompatibility with SpoutLibrary
 //		22.12.22	- Compiler compatibility check
+//		06.01.23	- CheckKeyedAccess - switch on hr to avoid narrowing cast to DWORD
+//					  Throughout use "&array[0]" instead of "array" directly to avoid bounds warning
+//					  Avoid c-style cast where possible
+//					  
 //
 // ====================================================================================
 //
@@ -266,17 +270,17 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	//
 
 	// Set the new name for subsequent checks
-	strcpy_s(m_SenderName, 256, SenderName);
+	strcpy_s(&m_SenderName[0], 256, &SenderName[0]);
 
 	// Create a name for the frame count semaphore using the sender name
-	sprintf_s(m_CountSemaphoreName, 256, "%s_Count_Semaphore", SenderName);
+	sprintf_s(&m_CountSemaphoreName[0], 256, "%s_Count_Semaphore", &SenderName[0]);
 
 	// Create or open a named frame count semaphore with this name
 	HANDLE hSemaphore = CreateSemaphoreA(
 		NULL, // default security attributes
 		1, // initial count
 		LONG_MAX, // maximum count - LONG_MAX (2147483647) at 60fps = 2071 days
-		(LPSTR)m_CountSemaphoreName);
+		&m_CountSemaphoreName[0]);
 
 	const DWORD dwError = GetLastError();
 	switch(dwError) {
@@ -286,13 +290,13 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 			break;
 
 		case ERROR_ALREADY_EXISTS:
-			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] exists", m_CountSemaphoreName);
+			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] exists", &m_CountSemaphoreName[0]);
 			SpoutLogNotice("    Handle for access [0x%7.7X]", LOWORD(hSemaphore));
 			// OK if it already exists - either the sender or receiver can create it
 			break;
 		
 		case ERROR_SUCCESS:
-			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] created", m_CountSemaphoreName);
+			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] created", &m_CountSemaphoreName[0]);
 			SpoutLogNotice("    Handle [0x%7.7X]", LOWORD(hSemaphore));
 			break;
 
@@ -402,7 +406,7 @@ void spoutFrameCount::HoldFps(int fps)
 	StartTimePeriod();
 
 	// Target frame time
-	const double target = (double)(1000000/fps)/1000.0; // msec
+	const double target = (1000000.0/static_cast<double>(fps))/1000.0; // msec
 
 #ifdef USE_CHRONO
 
@@ -675,10 +679,10 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 	HANDLE hMutex = NULL;
 
 	// Create the mutex name to control access to the shared texture
-	sprintf_s((char*)szMutexName, 512, "%s_SpoutAccessMutex", SenderName);
+	sprintf_s(&szMutexName[0], 512, "%s_SpoutAccessMutex", &SenderName[0]);
 
 	// Create or open existing mutex
-	hMutex = CreateMutexA(NULL, false, (LPCSTR)szMutexName);
+	hMutex = CreateMutexA(NULL, false, &szMutexName[0]);
 
 	if (hMutex == NULL) {
 		SpoutLogError("spoutFrameCount::CreateAccessMutex - NULL invalid handle");
@@ -687,16 +691,16 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 	else {
 		errnum = GetLastError();
 		if (errnum == ERROR_INVALID_HANDLE) {
-			SpoutLogError("spoutFrameCount::CreateAccessMutex - [%s] invalid handle", szMutexName);
+			SpoutLogError("spoutFrameCount::CreateAccessMutex - [%s] invalid handle", &szMutexName[0]);
 			return false;
 		}
 		// Here we can find if the mutex already exists
 		else if (errnum == ERROR_ALREADY_EXISTS) {
-			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] exists", szMutexName);
+			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] exists", &szMutexName[0]);
 			SpoutLogNotice("    Handle for access [0x%.7X]", PtrToUint(hMutex));
 		}
 		else {
-			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] created ", szMutexName);
+			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] created ", &szMutexName[0]);
 			SpoutLogNotice("    Handle [0x%.7X]", PtrToUint(hMutex));
 		}
 	}
@@ -826,12 +830,12 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 	bool bSignal = false;
 
 	char SyncEventName[256]={};
-	sprintf_s(SyncEventName, 256, "%s_Sync_Event", sendername);
+	sprintf_s(&SyncEventName[0], 256, "%s_Sync_Event", &sendername[0]);
 
 	HANDLE hSyncEvent = OpenEventA(
 		EVENT_ALL_ACCESS, // security attributes 
 		TRUE, // Inherit handle
-		(LPCSTR)SyncEventName);
+		&SyncEventName[0]);
 
 	if (!hSyncEvent) {
 		SpoutLogError("spoutFrameCount::WaitFrameSync - no event");
@@ -909,16 +913,15 @@ bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 		pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&pDXGIKeyedMutex); // PR#81
 		if (pDXGIKeyedMutex) {
 			const HRESULT hr = pDXGIKeyedMutex->AcquireSync(0, 67);
-			// Return S_OK if successful.
-			switch ((DWORD)hr) {
+			switch (hr) {
 				case S_OK:
 					// Sync is acquired
 					pDXGIKeyedMutex->Release();
 					return true;
-				case WAIT_ABANDONED:
+				case static_cast<HRESULT>(WAIT_ABANDONED):
 					SpoutLogError("spoutDirectX::CheckKeyedAccess : WAIT_ABANDONED");
 					break;
-				case WAIT_TIMEOUT:
+				case static_cast<HRESULT>(WAIT_TIMEOUT):
 					// The time-out interval elapsed
 					SpoutLogError("spoutDirectX::CheckKeyedAccess : WAIT_TIMEOUT");
 					break;
@@ -999,7 +1002,7 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 			m_FrameTimeTotal = m_FrameTimeTotal + frametime;
 
 			// Could have been more than one frame
-			m_FrameTimeNumber += (double)framecount;
+			m_FrameTimeNumber += static_cast<double>(framecount);
 
 			if (m_FrameTimeNumber > 8) {
 				// Calculate average frames per second and m_SenderFps
@@ -1087,7 +1090,7 @@ void spoutFrameCount::OpenFrameSync(const char* SenderName)
 	}
 
 	// Return if already enabled for this sender
-	if (m_hSyncEvent && strcmp(SenderName, m_SenderName) == 0) {
+	if (m_hSyncEvent && strcmp(SenderName, &m_SenderName[0]) == 0) {
 		SpoutLogNotice("spoutFrameCount::OpenFrameSync : already enabled [0x%.7X]", LOWORD(m_hSyncEvent));
 		return;
 	}
@@ -1099,17 +1102,17 @@ void spoutFrameCount::OpenFrameSync(const char* SenderName)
 	}
 
 	// Set the new name for subsequent checks
-	strcpy_s(m_SenderName, 256, SenderName);
+	strcpy_s(&m_SenderName[0], 256, &SenderName[0]);
 
 	// Create or open an event with this sender name
 	char SyncEventName[256]={};
-	sprintf_s(SyncEventName, 256, "%s_Sync_Event", SenderName);
+	sprintf_s(&SyncEventName[0], 256, "%s_Sync_Event", &SenderName[0]);
 	HANDLE hSyncEvent = CreateEventA(
 		NULL,  // Attributes
 		FALSE, // Auto reset
 		FALSE, // Initial state non-signalled
-		(LPCSTR)SyncEventName);
-	SpoutLogNotice("spoutFrameCount::OpenFrameSync [%s]", SyncEventName);
+		&SyncEventName[0]);
+	SpoutLogNotice("spoutFrameCount::OpenFrameSync [%s]", &SyncEventName[0]);
 
 	switch (GetLastError()) {
 		case ERROR_INVALID_HANDLE:
