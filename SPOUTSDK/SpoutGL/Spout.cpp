@@ -242,6 +242,10 @@
 //		20.12.22	- More checks for null arguments
 //		22.12.22	- Compiler compatibility check
 //				      Conditional compile of preference functions
+//		06.01.23	- UIntToPtr for cast of uint32_t to HANDLE
+//					  cast unsigned int array for glGetIntegerv instead of result
+//					  Avoid c-style cast where possible
+//					  Avoid using array[0], use *array instead
 //
 // ====================================================================================
 /*
@@ -416,7 +420,7 @@ void Spout::SetSenderFormat(DWORD dwFormat)
 {
 	m_dwFormat = dwFormat;
 	// Update SpoutGL class global texture format
-	SetDX11format((DXGI_FORMAT)dwFormat);
+	SetDX11format(static_cast<DXGI_FORMAT>(dwFormat));
 }
 
 //---------------------------------------------------------
@@ -478,10 +482,10 @@ bool Spout::SendFbo(GLuint FboID, unsigned int fbowidth, unsigned int fboheight,
 		// performance is affected.
 		if (width == 0 || height == 0) {
 			// Get the viewport size
-			GLint vpdims[4] ={0};
-			glGetIntegerv(GL_VIEWPORT, vpdims);
-			width  = (unsigned int)vpdims[2];
-			height = (unsigned int)vpdims[3];
+			unsigned int vpdims[4]={0};
+			glGetIntegerv(GL_VIEWPORT, (GLint*)vpdims);
+			width  = vpdims[2];
+			height = vpdims[3];
 		}
 	}
 
@@ -1236,7 +1240,8 @@ int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxch
 
 	SpoutLogNotice("Spout::GetSenderAdapter - testing for sender adapter (%s)", sendername);
 
-	SharedTextureInfo info;
+	SharedTextureInfo info={};
+	// HANDLE hdl ={};
 	if (sendernames.getSharedInfo(sendername, &info)) {
 		const int nAdapters = spoutdx.GetNumAdapters();
 		// SpoutLogNotice("   Found %d graphics adapters", nAdapters);
@@ -1250,7 +1255,7 @@ int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxch
 				pDummyDevice = spoutdx.CreateDX11device();
 				if (pDummyDevice) {
 					// Try to open the share handle with the device created from the adapter
-					if (spoutdx.OpenDX11shareHandle(pDummyDevice, &pSharedTexture, LongToHandle((long)info.shareHandle))) {
+					if (spoutdx.OpenDX11shareHandle(pDummyDevice, &pSharedTexture, UIntToPtr(info.shareHandle))) {
 						// break as soon as it succeeds
 						SpoutLogNotice("    found sender adapter %d (0x%.7X)", i, PtrToUint(pAdapter));
 						senderadapter = i;
@@ -1466,17 +1471,18 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 
 	IDXGIDevice * pDXGIDevice = nullptr;
 
-	renderadapter[0] = 0; // DirectX adapter
-	renderdescription[0] = 0;
-	renderversion[0] = 0;
-	displaydescription[0] = 0;
-	displayversion[0] = 0;
+	*renderadapter = 0; // DirectX adapter
+	*renderdescription = 0;
+	*renderversion = 0;
+	*displaydescription = 0;
+	*displayversion = 0;
+
 	if (!spoutdx.GetDX11Device()) {
 		SpoutLogError("Spout::GetAdapterInfo - no DX11 device");
 		return false;
 	}
 
-	spoutdx.GetDX11Device()->QueryInterface(__uuidof(IDXGIDevice), (void **)&pDXGIDevice);
+	spoutdx.GetDX11Device()->QueryInterface(__uuidof(IDXGIDevice), (void**)(&pDXGIDevice));
 	if (!pDXGIDevice) return false;
 
 	IDXGIAdapter * pDXGIAdapter = nullptr;
@@ -1503,10 +1509,10 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	// printf("SubSysId = [%d] [%x]\n", adapterinfo.SubSysId, adapterinfo.SubSysId);
 	// printf("DeviceId = [%d] [%x]\n", adapterinfo.DeviceId, adapterinfo.DeviceId);
 	// printf("Revision = [%d] [%x]\n", adapterinfo.Revision, adapterinfo.Revision);
-	strcpy_s(renderadapter, (rsize_t)maxsize, output);
-	if (!renderadapter[0]) return false;
+	strcpy_s(renderadapter, maxsize, output);
+	if (!*renderadapter) return false;
 
-	strcpy_s(renderdescription, (rsize_t)maxsize, renderadapter);
+	strcpy_s(renderdescription, maxsize, renderadapter);
 
 	//
 	// Use Windows functions to look for Intel graphics to see if it is
@@ -1525,8 +1531,8 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	// To select all display devices in the desktop, use only the display devices
 	// that have the DISPLAY_DEVICE_ATTACHED_TO_DESKTOP flag in the DISPLAY_DEVICE structure.
 	int nDevices = 0;
-	for (int i = 0; i < 10; i++) { // should be much less than 10 adapters
-		if (EnumDisplayDevices(NULL, (DWORD)i, &DisplayDevice, 0)) {
+	for (DWORD i = 0; i < 10; i++) { // should be much less than 10 adapters
+		if (EnumDisplayDevices(NULL, i, &DisplayDevice, 0)) {
 			// This will list all the devices
 			nDevices++;
 			// Get the registry key
@@ -1540,8 +1546,8 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 
 			// Is it a render adapter ?
 			if (renderadapter && strcmp(driverdescription, renderadapter) == 0) {
-				strcpy_s(renderdescription, (rsize_t)maxsize, driverdescription);
-				strcpy_s(renderversion, (rsize_t)maxsize, driverversion);
+				strcpy_s(renderdescription, maxsize, driverdescription);
+				strcpy_s(renderversion, maxsize, driverversion);
 			}
 
 			// Is it a display adapter
@@ -1799,7 +1805,7 @@ bool Spout::SelectSenderPanel(const char* message)
 	char fname[MAX_PATH]={};
 	char UserMessage[512]={};
 
-	if (message != NULL && message[0] != 0)
+	if (message && *message)
 		strcpy_s(UserMessage, 512, message); // could be an arg or a user message
 	else
 		UserMessage[0] = 0; // make sure SpoutPanel does not see an un-initialized string
@@ -1904,7 +1910,7 @@ bool Spout::SelectSenderPanel(const char* message)
 					while (hRes && !done) {
 						const int value = _tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
 						if (value == 0) {
-							HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, (DWORD)pEntry.th32ProcessID);
+							HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, pEntry.th32ProcessID);
 							if (hProcess != NULL) {
 								// Terminate SpoutPanel and it's mutex
 								TerminateProcess(hProcess, 9);
@@ -2261,7 +2267,7 @@ bool Spout::ReceiveSenderData()
 
 		width = info.width;
 		height = info.height;
-		dxShareHandle = (HANDLE)(LongToHandle((long)info.shareHandle));
+		dxShareHandle = UIntToPtr(info.shareHandle);
 		dwFormat = info.format;
 
 		// GPU texture share and hardware GL/DX compatible by default
@@ -2300,7 +2306,7 @@ bool Spout::ReceiveSenderData()
 		// 22 = D3DFMT_X8R8G8B8
 		if (dwFormat == 21 || dwFormat == 22) {
 			// Create a DX11 receiving texture with compatible format
-			dwFormat = (DWORD)DXGI_FORMAT_B8G8R8A8_UNORM;
+			dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
 		}
 
 		// The shared texture handle will be different
