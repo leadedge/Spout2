@@ -92,7 +92,8 @@
 	22.12.22 - Compiler compatibility check
 	06.01.23 - GetActiveSender, getActiveSenderName, FindActiveSender 
 			   Change from fixed sendername argument to maxlength (default SpoutMaxSenderNameLen)
-			   Throughout use "&array[0]" instead of "array" directly to avoid bounds warning
+	08.01.23 - FindActiveSender - test max length passed
+			   Code review - Use Microsoft Native Recommended rules
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -476,20 +477,11 @@ bool spoutSenderNames::GetSenderNameInfo(int index, char* sendername, int sender
 
 		i = 0;
 		for(iter = SenderNameSet.begin(); iter != SenderNameSet.end(); iter++) {
-			namestring = *iter; // the name string
-			// strcpy_s(name, SpoutMaxSenderNameLen, namestring.c_str()); // the 256 byte name char array
+			namestring = *iter; // he 256 byte name string
 			if(i == index) {
-				// strcpy_s(sendername, (rsize_t)sendernameMaxSize, name); // the passed name char array
 				strcpy_s(sendername, (rsize_t)sendernameMaxSize, namestring.c_str()); // return the name
 				break;
 			}
-			/*
-			if (i == index) {
-				std::string sname = StripGUID(namestring);
-				strcpy_s(sendername, SpoutMaxSenderNameLen, sname.c_str()); // the passed name char array
-				break;
-			}
-			*/
 			i++;
 		}
 		
@@ -665,7 +657,7 @@ bool spoutSenderNames::SetSenderID(const char *sendername, bool bCPU, bool bGLDX
 // has selected a required Sender from a dialog or executable.
 // The dialog or executable sets the info of the selected Sender
 // into the ActiveSender shared memory so the clients can picks it up.
-//  !!! The active Sender has to be a member of the Sender list !!!
+// !!! The active Sender has to be a member of the Sender list !!!
 
 //---------------------------------------------------------
 // Function: SetActiveSender
@@ -754,9 +746,11 @@ bool spoutSenderNames::FindActiveSender(char * sendername, unsigned int& theWidt
 {
 	SharedTextureInfo TextureInfo={};
 
-	// name will never be larger than this (default is 256)
-	char sname [2048]={};
+	// name will never be larger than 256
+	if (maxlength > 256)
+		return false;
 
+	char sname [512]={};
     if(GetActiveSender(&sname[0])) { // there is an active sender
 		if(getSharedInfo(&sname[0], &TextureInfo)) {
 			strcpy_s(sendername, maxlength, &sname[0]); // pass back sender name
@@ -767,7 +761,6 @@ bool spoutSenderNames::FindActiveSender(char * sendername, unsigned int& theWidt
 #else
 			hSharehandle = (HANDLE)TextureInfo.shareHandle;
 #endif
-			// hSharehandle	= (HANDLE)TextureInfo.shareHandle;
 			dwFormat        = (DWORD)TextureInfo.format;
 			return true;
 		}
