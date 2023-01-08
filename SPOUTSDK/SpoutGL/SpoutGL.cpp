@@ -112,6 +112,8 @@
 //		05-01-23	- ReadGLDXtexture - Test for no texture read or zero texture
 //					  moved to the beginning to avoid redundant texture lock.
 //		06-01-23	- ReadDX11pixels check pixels arg for null
+//		08.01.23	- Option for keyed shared texture for testing
+//					  Code review - Use Microsoft Native Recommended rules
 //
 // ====================================================================================
 //
@@ -154,6 +156,7 @@ spoutGL::spoutGL()
 	m_Width = 0;
 	m_Height = 0;
 	m_dwFormat = (DWORD)DXGI_FORMAT_B8G8R8A8_UNORM; // default sender format
+	m_bKeyed = false; // Keyed shared texture default false
 
 	m_bAuto = true;
 	m_bCPU = false;
@@ -213,9 +216,13 @@ spoutGL::spoutGL()
 	NextPboIndex = 0;
 	m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
 	m_nBuffers = 2; // default number of buffers used
+
+	// Keyed texture option
+	DWORD dwValue = 0;
+	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Keyed", &dwValue))
+		m_bKeyed = (dwValue == 1);
 	
 	// Check the user selected Auto share mode
-	DWORD dwValue = 0;
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Auto", &dwValue))
 		m_bAuto = (dwValue == 1);
 
@@ -1015,8 +1022,11 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 
 		// Create or re-create the linked DX11 texture
 		if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
-			width, height, (DXGI_FORMAT)format, // default is DXGI_FORMAT_B8G8R8A8_UNORM
-			&m_pSharedTexture, m_dxShareHandle)) {
+			width, height, 
+			(DXGI_FORMAT)format, // default format is DXGI_FORMAT_B8G8R8A8_UNORM
+			&m_pSharedTexture, 
+			m_dxShareHandle,
+			m_bKeyed)) { // Keyed shared texture - default false
 			// Write diagnostics to a log file
 			DoDiagnostics("spoutGL::CreateInterop - CreateSharedDX11Texture failed");
 			return false;
@@ -1491,6 +1501,7 @@ bool spoutGL::WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget,
 
 bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
+
 	// No interop, no copy
 	if (!m_hInteropDevice || !m_hInteropObject) {
 		return false;
@@ -2576,7 +2587,7 @@ bool spoutGL::ReadDX11pixels(unsigned char * pixels, unsigned int width, unsigne
 			// Copy from the sender's shared texture to the first staging texture
 			spoutdx.GetDX11Context()->CopyResource(m_pStaging[m_Index], m_pSharedTexture);
 			// Map and read from the second while the first is occupied
-			ReadPixelData(m_pStaging[m_NextIndex], &pixels[0], m_Width, m_Height, glFormat, bInvert);
+			ReadPixelData(m_pStaging[m_NextIndex], pixels, m_Width, m_Height, glFormat, bInvert);
 		}
 		// Allow access to the shared texture
 		frame.AllowTextureAccess(m_pSharedTexture);

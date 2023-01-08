@@ -316,6 +316,7 @@ protected :
 
 	// Staging textures for DX11 CPU copy
 	ID3D11Texture2D* m_pStaging[2];
+
 	int m_Index;
 	int m_NextIndex;
 	bool CheckStagingTextures(unsigned int width, unsigned int height, int nTextures);
@@ -357,6 +358,7 @@ protected :
 	HANDLE m_dxShareHandle; // DirectX shared texture handle
 	DWORD m_dwFormat; // DirectX shared texture format
 	DXGI_FORMAT m_DX11format; // DirectX 11 texture format
+	bool m_bKeyed; // Keyed shared texture
 
 	// GL/DX interop
 	HANDLE m_hInteropDevice; // Handle to the DX/GL interop device
