@@ -93,12 +93,14 @@ class SPOUT_DLLEXP spoutFrameCount {
 
 	//
 	// Mutex locks including DirectX 11 keyed mutex
+	// DX11 texture keyed mutex functions are private
+	// and called by the follwoing functions
 	//
 
 	// Test for texture access using a named sender mutex or keyed texture mutex 
 	bool CheckTextureAccess(ID3D11Texture2D* D3D11texture = nullptr);
 	// Release mutex and allow texture access
-	void AllowTextureAccess(ID3D11Texture2D* D3D11texture = nullptr);
+	bool AllowTextureAccess(ID3D11Texture2D* D3D11texture = nullptr);
 
 	//
 	// Named mutex for shared texture access
@@ -131,7 +133,7 @@ protected:
 
 	// DX11 texture keyed mutex checks
 	bool CheckKeyedAccess(ID3D11Texture2D* D3D11texture);
-	void AllowKeyedAccess(ID3D11Texture2D* D3D11texture);
+	bool AllowKeyedAccess(ID3D11Texture2D* D3D11texture);
 	bool IsKeyedMutex(ID3D11Texture2D* D3D11texture);
 
 	// Frame count semaphore
