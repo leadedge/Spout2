@@ -131,9 +131,7 @@
 //					   Remove WDK_NTDDI_VERSION in case it's not defined
 //					   Add comments concerning use of dxgi_6 with older DirectX SDK.
 //		06.01.23	- Correct IsPreferenceAvailable() to pass array length to registry function
-//					  Correct SetPreferredAdapter to avoid array pointer decay
-//					  Avoid c-style cast where possible
-//					  Throughout use "&array[0]" instead of "array" directly to avoid bounds warning 
+//		08.01.23	- CreateSharedDX11Texture - option for keyed shared texture
 //
 // ====================================================================================
 /*
@@ -326,6 +324,9 @@ bool spoutDirectX::SetDX11Device(ID3D11Device* pDevice)
 //---------------------------------------------------------
 // Function: CreateDX11Device
 // Create DX11 device
+//
+// https://github.com/walbourn/directx-sdk-samples/tree/main/Direct3D11Tutorials/Tutorial04
+//
 ID3D11Device* spoutDirectX::CreateDX11device()
 {
 	ID3D11Device* pd3dDevice = nullptr;
@@ -397,7 +398,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 									D3D_DRIVER_TYPE_UNKNOWN,
 									NULL,
 									createDeviceFlags,
-									&featureLevels[0],
+									featureLevels,
 									numFeatureLevels,
 									D3D11_SDK_VERSION,
 									&pd3dDevice,
@@ -423,7 +424,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 									m_driverType,
 									NULL,
 									createDeviceFlags,
-									&featureLevels[0],
+									featureLevels,
 									numFeatureLevels,
 									D3D11_SDK_VERSION, 
 									&pd3dDevice,
@@ -477,7 +478,8 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 											unsigned int height, 
 											DXGI_FORMAT format, 
 											ID3D11Texture2D** ppSharedTexture,
-											HANDLE &dxShareHandle)
+											HANDLE &dxShareHandle,
+											bool bKeyed)
 {
 	if (!pd3dDevice) {
 		SpoutLogWarning("spoutDirectX::CreateSharedDX11Texture NULL device");
@@ -530,7 +532,10 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	// Note that a DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not
 	// compatible with DirectX 9. If compatibility is required, a general named mutex
 	// should be used for all texture types. This is the default.
-	desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+	if(bKeyed)
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+	else
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
 	desc.CPUAccessFlags		= 0;	
 	desc.Format				= texformat;
 	desc.Usage				= D3D11_USAGE_DEFAULT;
@@ -646,22 +651,22 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 	if (FAILED(res)) {
 		char tmp[256]={};
 		const int error = static_cast<int>((LOWORD(res)));
-		sprintf_s(&tmp[0], 256, "spoutDirectX::CreateDX11Texture ERROR - %d (0x%.X) : ", error, error);
+		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11Texture ERROR - %d (0x%.X) : ", error, error);
 		switch (res) {
 		case DXGI_ERROR_INVALID_CALL:
-			strcat_s(&tmp[0], 256, "DXGI_ERROR_INVALID_CALL");
+			strcat_s(tmp, 256, "DXGI_ERROR_INVALID_CALL");
 			break;
 		case E_INVALIDARG:
-			strcat_s(&tmp[0], 256, "E_INVALIDARG");
+			strcat_s(tmp, 256, "E_INVALIDARG");
 			break;
 		case E_OUTOFMEMORY:
-			strcat_s(&tmp[0], 256, "E_OUTOFMEMORY");
+			strcat_s(tmp, 256, "E_OUTOFMEMORY");
 			break;
 		default:
-			strcat_s(&tmp[0], 256, "Unlisted error");
+			strcat_s(tmp, 256, "Unlisted error");
 			break;
 		}
-		SpoutLogFatal("%s", &tmp[0]);
+		SpoutLogFatal("%s", tmp);
 		return false;
 	}
 	
@@ -1015,8 +1020,6 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 	}
 	if(!_dxgi_factory1)	return false;
 	
-	// LJ DEBUG
-	// for (UINT32 i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ ) {
 	for (int i = 0; _dxgi_factory1->EnumAdapters(i, &adapter1_ptr) != DXGI_ERROR_NOT_FOUND; i++) {
 		if (!adapter1_ptr) break;
 		
@@ -1027,7 +1030,7 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 			adapter1_ptr->GetDesc( &desc );
 			size_t charsConverted = 0;
 			const size_t maxBytes = static_cast<size_t>(maxchars);
-			wcstombs_s(&charsConverted, &adaptername[0], maxBytes, &desc.Description[0], maxBytes - 1);
+			wcstombs_s(&charsConverted, adaptername, maxBytes, desc.Description, maxBytes - 1);
 			adapter1_ptr->Release();
 			_dxgi_factory1->Release();
 			return true;
@@ -1066,10 +1069,10 @@ int spoutDirectX::GetAdapterIndex(const char* adaptername)
 
 			adapter1_ptr->GetDesc(&desc);
 			// Convert wide char description for comparison with requested name
-			wcstombs_s(&charsConverted, &name[0], 256, &desc.Description[0], 256);
+			wcstombs_s(&charsConverted, name, 256, desc.Description, 256);
 			if (charsConverted > 0) {
 				// Break if the same name is found and return the adapter index
-				if (strcmp(&name[0], adaptername) == 0) {
+				if (strcmp(name, adaptername) == 0) {
 					adapter1_ptr->Release();
 					_dxgi_factory1->Release();
 					return i;
@@ -1112,12 +1115,12 @@ bool spoutDirectX::SetAdapter(int index)
 	}
 
 	// Must be able to get the name
-	if (!GetAdapterName(index, &adaptername[0], 128)) {
+	if (!GetAdapterName(index, adaptername, 128)) {
 		SpoutLogError("spoutDirectX::SetAdapter - could not get name for adapter %d", index);
 		return false;
 	}
 
-	SpoutLogNotice("spoutDirectX::SetAdapter(%d) [%s]", index, &adaptername[0]);
+	SpoutLogNotice("spoutDirectX::SetAdapter(%d) [%s]", index, adaptername);
 
 	// Get the adapter pointer for DX11 CreateDevice to use
 	if (m_pAdapterDX11) {
@@ -1160,7 +1163,7 @@ bool spoutDirectX::SetAdapter(int index)
 
 	// Selected adapter OK
 	SpoutLogNotice("    successfully set adapter %d (0x%7.7X) [%s]",
-		m_AdapterIndex, PtrToUint(m_pAdapterDX11), &adaptername[0]);
+		m_AdapterIndex, PtrToUint(m_pAdapterDX11), adaptername);
 
 	return true;
 
@@ -1202,14 +1205,14 @@ bool spoutDirectX::GetAdapterInfo(int index, char* adaptername, char* output, in
 			// Adapter name
 			DXGI_ADAPTER_DESC desc;
 			adapter1_ptr->GetDesc(&desc);
-			wcstombs_s(&charsConverted, adaptername, maxBytes, &desc.Description[0], maxBytes-1);
+			wcstombs_s(&charsConverted, adaptername, maxBytes, desc.Description, maxBytes-1);
 			// Find the first output (index 0) on which the desktop primary is displayed.
 			IDXGIOutput* p_output = nullptr;
 			if (adapter1_ptr->EnumOutputs(0, &p_output) != DXGI_ERROR_NOT_FOUND) {
 				if (p_output) {
 					DXGI_OUTPUT_DESC desc_out;
 					p_output->GetDesc(&desc_out);
-					wcstombs_s(&charsConverted, output, maxBytes, &desc_out.DeviceName[0], maxBytes - 1);
+					wcstombs_s(&charsConverted, output, maxBytes, desc_out.DeviceName, maxBytes - 1);
 					// TODO : if (desc_out.AttachedToDesktop)
 					p_output->Release();
 				}
@@ -1268,8 +1271,6 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 	if (!_dxgi_factory1) return 0;
 
 	IDXGIAdapter* adapter1_ptr = nullptr;
-	// LJ DEBUG
-	// for (UINT32 i = 0; _dxgi_factory1->EnumAdapters(i, &adapter1_ptr) != DXGI_ERROR_NOT_FOUND; i++) {
 	for (int i = 0; _dxgi_factory1->EnumAdapters(i, &adapter1_ptr) != DXGI_ERROR_NOT_FOUND; i++) {
 		if (!adapter1_ptr) break;
 		if (adapterindex == i) {
@@ -1349,7 +1350,7 @@ bool spoutDirectX::FindNVIDIA(int& nAdapter)
 		}
 		adapter1_ptr->Release();
 
-		if (wcsstr(&desc.Description[0], L"NVIDIA")) {
+		if (wcsstr(desc.Description, L"NVIDIA")) {
 			// printf("spoutDirectX::FindNVIDIA - Found NVIDIA adapter %d (%S)\n", i, desc.Description);
 			bFound = true;
 			break;
@@ -1425,21 +1426,21 @@ int spoutDirectX::GetPerformancePreference(const char* path)
 	char exepath[MAX_PATH]={};
 	// No path specified - get the current application path
 	if (!path) {
-		if (GetModuleFileNameA(NULL, &exepath[0], MAX_PATH) <= 0) {
+		if (GetModuleFileNameA(NULL, exepath, MAX_PATH) <= 0) {
 			SpoutLogWarning("spoutDirectX::GetPerformancePreference - Could not get application path");
 			return -1;
 		}
 	}
 	else {
-		strcpy_s(&exepath[0], MAX_PATH, path);
+		strcpy_s(exepath, MAX_PATH, path);
 	}
 
 	// A valid sender application path will have a drive letter and terminate with ".exe"
-	if(IsApplicationPath(&exepath[0])) {
+	if(IsApplicationPath(exepath)) {
 		char prefs[256]={};
 		int preference = 0;
-		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences", &exepath[0], &prefs[0])) {
-			std::string pr = &prefs[0];
+		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences", exepath, prefs, 256)) {
+			std::string pr = prefs;
 			pr = pr.substr(pr.find("=")+1, 1);
 			preference = atoi(pr.c_str());
 			// SpoutLogNotice("    Current preference = %d", preference);
@@ -1476,17 +1477,17 @@ bool spoutDirectX::SetPerformancePreference(int preference, const char* path)
 	char exepath[MAX_PATH]={};
 	// No path specified - get the current application path
 	if (!path) {
-		if (GetModuleFileNameA(NULL, &exepath[0], MAX_PATH) <= 0) {
+		if (GetModuleFileNameA(NULL, exepath, MAX_PATH) <= 0) {
 			SpoutLogWarning("    Could not get application path");
 			return false;
 		}
 	}
 	else {
-		strcpy_s(&exepath[0], MAX_PATH, path);
+		strcpy_s(exepath, MAX_PATH, path);
 	}
 
 	// A valid application path will have a drive letter and terminate with ".exe"
-	if (IsApplicationPath(&exepath[0])) {
+	if (IsApplicationPath(exepath)) {
 
 		if (preference == DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE)
 			SpoutLogNotice("spoutDirectX::SetPerformancePreference - high performance");
@@ -1501,7 +1502,7 @@ bool spoutDirectX::SetPerformancePreference(int preference, const char* path)
 		char prefs[256]={};
 		if (preference == -1) {
 			// Remove preference
-			if (RemovePathFromRegistry(HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences", &exepath[0])) {
+			if (RemovePathFromRegistry(HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences", exepath)) {
 				SpoutLog("    Removed preference");
 				return true;
 			}
@@ -1510,9 +1511,9 @@ bool spoutDirectX::SetPerformancePreference(int preference, const char* path)
 			// GpuPreference=0; // Default
 			// GpuPreference=1; // Power saving
 			// GpuPreference=2; // High performance
-			sprintf_s(&prefs[0], 256, "GpuPreference=%d;", preference);
-			if (WritePathToRegistry(HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences", &exepath[0], &prefs[0])) {
-				SpoutLog("    Set [%s]", &prefs[0]);
+			sprintf_s(prefs, 256, "GpuPreference=%d;", preference);
+			if (WritePathToRegistry(HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences", exepath, prefs)) {
+				SpoutLog("    Set [%s]", prefs);
 				return true;
 			}
 		}
@@ -1604,7 +1605,7 @@ bool spoutDirectX::GetPreferredAdapterName(int preference, char* adaptername, in
 			}
 			DXGI_ADAPTER_DESC1 desc;
 			pAdapter1->GetDesc1(&desc);
-			wcstombs_s(&charsConverted, adaptername, maxBytes, &desc.Description[0], maxBytes-1);
+			wcstombs_s(&charsConverted, adaptername, maxBytes, desc.Description, maxBytes-1);
 			pAdapter1->Release();
 			bRet = true;
 		}
@@ -1654,9 +1655,9 @@ bool spoutDirectX::SetPreferredAdapter(int preference)
 
 	// Get the name of the preferred adapter
 	char adaptername[256]={};
-	if (GetPreferredAdapterName(preference, &adaptername[0], 256)) {
+	if (GetPreferredAdapterName(preference, adaptername, 256)) {
 		// Find it's index in the list of adapters
-		const int index = GetAdapterIndex(&adaptername[0]);
+		const int index = GetAdapterIndex(adaptername);
 		if (index >= 0) {
 			// Set that index for CreateDX11device to use
 			return SetAdapter(index);
@@ -1674,8 +1675,8 @@ bool spoutDirectX::SetPreferredAdapter(int preference)
 bool spoutDirectX::IsPreferenceAvailable()
 {
 	char build[128]={};
-	if (ReadPathFromRegistry(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentBuildNumber", &build[0], 128)) {
-		if (atoi(&build[0]) >= 17134)
+	if (ReadPathFromRegistry(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentBuildNumber", build, 128)) {
+		if (atoi(build) >= 17134)
 			return true;
 	}
 	return false;
