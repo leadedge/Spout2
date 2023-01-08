@@ -245,7 +245,7 @@
 //		06.01.23	- UIntToPtr for cast of uint32_t to HANDLE
 //					  cast unsigned int array for glGetIntegerv instead of result
 //					  Avoid c-style cast where possible
-//					  Avoid using array[0], use *array instead
+//		08.01.23	- Code review - Use Microsoft Native Recommended rules
 //
 // ====================================================================================
 /*
@@ -819,6 +819,7 @@ bool Spout::ReceiveTexture()
 //
 bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
+
 	// Return if flagged for update and there is a texture to receive into.
 	// The update flag is reset when the receiving application calls IsUpdated().
 	if (m_bUpdated && TextureID != 0 && TextureTarget != 0) {
