@@ -239,7 +239,17 @@ class SPOUT_DLLEXP spoutDX {
 	bool CreateDX11texture(ID3D11Device* pd3dDevice,
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
-	
+
+	//
+	// SpoutUtils namespace functions
+	//
+	void OpenSpoutConsole();
+	void CloseSpoutConsole(bool bWarning = false);
+	void EnableSpoutLog();
+	void EnableSpoutLogFile(const char* filename, bool append = false);
+	void DisableSpoutLogFile();
+	void DisableSpoutLog();
+
 	//
 	// Data sharing
 	//

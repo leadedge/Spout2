@@ -117,8 +117,9 @@
 //					  GetPreferredAdapterName, SetPreferredAdapter
 //		08.11.22	- Add IsPreferenceAvailable, IsApplicationPath
 //		16.11.22	- HoldFps double fps argument instead of int
-//		26/12/22	- Initialize all arrays and structures
+//		26.12.22	- Initialize all arrays and structures
 //					  Const arg for SendImage
+//		08.01.23	- Add SpoutUtils functions
 //
 // ====================================================================================
 /*
@@ -1859,6 +1860,41 @@ void spoutDX::CheckSenderFormat(const char * sendername)
 			sendernames.SetActiveSender(sendername);
 	}
 }
+
+//
+// SpoutUtils namespace functions for dll access
+//
+
+void spoutDX::OpenSpoutConsole()
+{
+	spoututils::OpenSpoutConsole();
+}
+
+void spoutDX::CloseSpoutConsole(bool bWarning)
+{
+	spoututils::CloseSpoutConsole(bWarning);
+}
+
+void spoutDX::EnableSpoutLog()
+{
+	spoututils::EnableSpoutLog();
+}
+
+void spoutDX::EnableSpoutLogFile(const char* filename, bool append)
+{
+	spoututils::EnableSpoutLogFile(filename, append);
+}
+
+void spoutDX::DisableSpoutLogFile()
+{
+	spoututils::DisableSpoutLogFile();
+}
+
+void spoutDX::DisableSpoutLog()
+{
+	spoututils::DisableSpoutLog();
+}
+
 
 //
 // PRIVATE
