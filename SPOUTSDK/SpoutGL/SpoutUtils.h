@@ -88,7 +88,6 @@ namespace spoututils {
 		SPOUT_LOG_NONE
 	};
 
-
 	//
 	// Information
 	//

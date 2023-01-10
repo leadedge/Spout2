@@ -114,6 +114,7 @@
 		01.12.22 - Registry functions
 				     check for empty subkey and valuename strings
 					 include valuename in warnings
+		10.01.23 - OpenSpoutConsole - add warnings if using a dll
 
 */
 
@@ -233,9 +234,40 @@ namespace spoututils {
 		// AllocConsole fails if the process already has a console
 		// Is a console associated with the calling process?
 		if (GetConsoleWindow()) {
+			//
+			// Application console window found
+			//
+#if defined(SPOUT_BUILD_DLL)
+			// Warn if using a dll that with logging enabled,
+			// logs do not show in the application console.
+			if (bEnableLog) {
+				MessageBoxA(NULL, "The application already has a console.\n"
+					"Spout Logs will not show in the application console\n"
+					"Either do not use AllocConsole(), or :\n\n"
+					"  ShowWindow(GetConsoleWindow(), SW_HIDE);\n"
+					"  FreeConsole();\n",
+					"SpoutUtils", MB_OK);
+			}
+#endif
 			bConsole = true;
 		}
 		else {
+			//
+			// No application console window found
+			//
+			// Warn if using a dll that with logging enabled,
+			// standard output will not show
+#ifdef SPOUT_BUILD_DLL
+			if (!bEnableLog) {
+				MessageBoxA(NULL, "The application is using SpoutDX as a dll.\n"
+					"cout / printf will not show with the dll console window.\n"
+					"For standard output without logs, use :\n\n"
+					"  FILE* pCout = nullptr;\n"
+					"  if(AllocConsole())\n"
+					"     freopen_s(&pCout, ""CONOUT$"", ""w"", stdout);\n",
+					"SpoutUtils", MB_OK);
+			}
+#endif
 			// Get calling process window
 			HWND hwndFgnd = GetForegroundWindow();
 			if (AllocConsole()) {
