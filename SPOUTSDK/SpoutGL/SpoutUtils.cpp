@@ -114,7 +114,10 @@
 		01.12.22 - Registry functions
 				     check for empty subkey and valuename strings
 					 include valuename in warnings
-		10.01.23 - OpenSpoutConsole - add warnings if using a dll
+		14.01.23 - OpenSpoutConsole - add MessageBox warning if using a dll
+				   EnableSpoutLog - open console rather than call OpenSpoutConsole
+		15.01.23 - Use SpoutMessageBox so it doesn't freeze the application GUI
+		16.01.23 - Add 	SpoutMessageBox caption
 
 */
 
@@ -231,41 +234,27 @@ namespace spoututils {
 	//
 	void OpenSpoutConsole()
 	{
-		// AllocConsole fails if the process already has a console
-		// Is a console associated with the calling process?
-		if (GetConsoleWindow()) {
+		if (!GetConsoleWindow()) {
+	
 			//
-			// Application console window found
+			// Application console window mot found
 			//
-#if defined(SPOUT_BUILD_DLL)
-			// Warn if using a dll that with logging enabled,
-			// logs do not show in the application console.
-			if (bEnableLog) {
-				MessageBoxA(NULL, "The application already has a console.\n"
-					"Spout Logs will not show in the application console\n"
-					"Either do not use AllocConsole(), or :\n\n"
-					"  ShowWindow(GetConsoleWindow(), SW_HIDE);\n"
-					"  FreeConsole();\n",
-					"SpoutUtils", MB_OK);
-			}
-#endif
-			bConsole = true;
-		}
-		else {
-			//
-			// No application console window found
-			//
+
 			// Warn if using a dll that with logging enabled,
 			// standard output will not show
 #ifdef SPOUT_BUILD_DLL
 			if (!bEnableLog) {
-				MessageBoxA(NULL, "The application is using SpoutDX as a dll.\n"
-					"cout / printf will not show with the dll console window.\n"
-					"For standard output without logs, use :\n\n"
+				// Use SpoutMessageBox so it doesn't freeze the application GUI
+				SpoutMessageBox(NULL,
+					"The application is using a Spout dll.\n"
+					"Application stdout will not show in a dll console.\n"
+					"For standard output in the application, use :\n\n"
 					"  FILE* pCout = nullptr;\n"
 					"  if(AllocConsole())\n"
 					"     freopen_s(&pCout, ""CONOUT$"", ""w"", stdout);\n",
-					"SpoutUtils", MB_OK);
+					"OpenSpoutConsole", MB_OK);
+				bConsole = false;
+				return;
 			}
 #endif
 			// Get calling process window
@@ -397,7 +386,11 @@ namespace spoututils {
 		bEnableLog = true;
 
 		// Console output
-		if(!bConsole)
+		if (GetConsoleWindow()) {
+			SetConsoleTitleA("Spout Log");
+			bConsole = true;
+		}
+		else if(!bConsole)
 			OpenSpoutConsole();
 
 		// Initialize current log string
@@ -762,14 +755,24 @@ namespace spoututils {
 
 		// Find if there has been a Spout installation with an install path for SpoutPanel.exe
 		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
-			// Does the file exist ?
+			// Does SpoutPanel exist ?
 			if (_access(path, 0) != -1) {
-				// Open SpoutPanel text message
+
+				//
+				// Add optional arguments
+				//
+
 				// If a timeout has been specified, add the timeout option and value
 				// SpoutPanel handles the timeout delay
 				if (dwMilliseconds > 0) {
 					spoutmessage += " /TIMEOUT ";
 					spoutmessage += std::to_string((unsigned long long)dwMilliseconds);
+				}
+
+				// Text dialog caption
+				if (caption && *caption) {
+					spoutmessage += " /CAPTION ";
+					spoutmessage += caption;
 				}
 
 				SHELLEXECUTEINFOA ShExecInfo;

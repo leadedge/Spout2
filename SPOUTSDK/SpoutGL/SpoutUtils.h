@@ -108,6 +108,7 @@ namespace spoututils {
 	// Open console window.
 	// A console window opens without logs.
 	// Useful for debugging with console output.
+	// void SPOUT_DLLEXP OpenSpoutConsole();
 	void SPOUT_DLLEXP OpenSpoutConsole();
 	
 	// Close console window.
