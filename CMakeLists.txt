@@ -8,6 +8,8 @@
 # 31/12/20 - Add /MT build option                                              #
 #          - Add DirectX library build option                                  #
 # 06/11/22 - Add Install option by Joakim Kilby                                #
+# 13/01/23 - Default do not skip INSTALL project                               #
+#            Add necessary SpoutGL headers to SpoutDX includes                 #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -57,7 +59,7 @@ add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX)
 endif()
 
 # Install option check boxes
-OPTION(SKIP_INSTALL_ALL "Install headers and libraries" ON) # LJ - default skip all install
+OPTION(SKIP_INSTALL_ALL "Install headers and libraries" OFF) # Default do not skip all install
 OPTION(SKIP_INSTALL_HEADERS "Install headers" OFF)
 OPTION(SKIP_INSTALL_LIBRARIES "Install libraries" OFF)
 
@@ -71,12 +73,12 @@ endif()
 # Install options
 if(NOT SKIP_INSTALL_ALL)
 
-	if(NOT SKIP_INSTALL_LIBRARIES) # LJ
+	if(NOT SKIP_INSTALL_LIBRARIES)
 
 		set(Spout2InstallTargets Spout Spout_static)
 
 		if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
-			list(APPEND Spout2InstallTargets SpoutDX)
+			list(APPEND Spout2InstallTargets SpoutDX SpoutDX_static)
 		endif()
 
 		if(SPOUT_BUILD_LIBRARY)
@@ -117,7 +119,8 @@ if(NOT SKIP_INSTALL_ALL)
 	endif()
 
 
-	if(NOT SKIP_INSTALL_HEADERS)# LJ
+	if(NOT SKIP_INSTALL_HEADERS)
+	
 		install(
 			FILES
 				SPOUTSDK/SpoutGL/Spout.h
@@ -139,7 +142,14 @@ if(NOT SKIP_INSTALL_ALL)
 		if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
 			install(
 				FILES
-					SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX.h
+				SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX.h
+				SPOUTSDK/SpoutGL/SpoutCommon.h
+				SPOUTSDK/SpoutGL/SpoutCopy.h
+				SPOUTSDK/SpoutGL/SpoutDirectX.h
+				SPOUTSDK/SpoutGL/SpoutFrameCount.h
+				SPOUTSDK/SpoutGL/SpoutSenderNames.h
+				SPOUTSDK/SpoutGL/SpoutSharedMemory.h
+				SPOUTSDK/SpoutGL/SpoutUtils.h
 				DESTINATION
 					${CMAKE_INSTALL_PREFIX}/include/SpoutDX
 			)
