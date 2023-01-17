@@ -117,7 +117,10 @@
 		14.01.23 - OpenSpoutConsole - add MessageBox warning if using a dll
 				   EnableSpoutLog - open console rather than call OpenSpoutConsole
 		15.01.23 - Use SpoutMessageBox so it doesn't freeze the application GUI
-		16.01.23 - Add 	SpoutMessageBox caption
+		16.01.23 - Add SpoutMessageBox caption
+		17.01.23 - Add SpoutMessageBox with variable arguments
+				   Add ConPrint for SpoutUtils console (printf replacement)
+				   Remove dll build warning MessageBox.
 
 */
 
@@ -240,23 +243,6 @@ namespace spoututils {
 			// Application console window mot found
 			//
 
-			// Warn if using a dll that with logging enabled,
-			// standard output will not show
-#ifdef SPOUT_BUILD_DLL
-			if (!bEnableLog) {
-				// Use SpoutMessageBox so it doesn't freeze the application GUI
-				SpoutMessageBox(NULL,
-					"The application is using a Spout dll.\n"
-					"Application stdout will not show in a dll console.\n"
-					"For standard output in the application, use :\n\n"
-					"  FILE* pCout = nullptr;\n"
-					"  if(AllocConsole())\n"
-					"     freopen_s(&pCout, ""CONOUT$"", ""w"", stdout);\n",
-					"OpenSpoutConsole", MB_OK);
-				bConsole = false;
-				return;
-			}
-#endif
 			// Get calling process window
 			HWND hwndFgnd = GetForegroundWindow();
 			if (AllocConsole()) {
@@ -294,7 +280,7 @@ namespace spoututils {
 	void CloseSpoutConsole(bool bWarning)
 	{
 		if(bWarning) {
-			if(MessageBoxA(NULL, "Console close - are you sure?", "Spout", MB_YESNO) == IDNO)
+			if(MessageBoxA(NULL, "Console close - are you sure?", "CloseSpoutConsole", MB_YESNO) == IDNO)
 				return;
 		}
 		if (pCout) {
@@ -304,6 +290,23 @@ namespace spoututils {
 			bConsole = false;
 		}
 	}
+
+	// ---------------------------------------------------------
+	// Function: ConPrint
+	// Print to console - (printf replacement).  
+	//
+	void ConPrint(const char* format, ...)
+	{
+		// Construct the message
+		va_list args;
+		va_start(args, format);
+		vsprintf_s(logChars, 1024, format, args);
+		va_end(args);
+		// Write to the consle without line feed
+		std::cout << logChars;
+		logChars[0]=0;
+	}
+
 		
 	//
 	// Group: Logs
@@ -728,7 +731,7 @@ namespace spoututils {
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBox
-	// SpoutPanel MessageBox dialog with optional timeout.
+	// MessageBox dialog with optional timeout.
 	//
 	// Used where a Windows MessageBox would interfere with the application GUI.
 	//
@@ -737,13 +740,36 @@ namespace spoututils {
 	{
 		if (!message)
 			return 0;
-
-		return SpoutMessageBox(NULL, message, "spout", MB_OK, dwMilliseconds);
+		return SpoutMessageBox(NULL, message, "Message", MB_OK, dwMilliseconds);
 	}
+
+	// MessageBox with variable arguments
+	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, const char* format, ...)
+	{
+		std::string strmessage;
+		std::string strcaption;
+
+		// Construct the message
+		va_list args;
+		va_start(args, format);
+		vsprintf_s(logChars, 1024, format, args);
+		strmessage = logChars;
+		va_end(args);
+
+		if(caption && *caption)
+			strcaption = caption;
+		else
+			strcaption = "Message";
+
+		return SpoutMessageBox(NULL, strmessage.c_str(), strcaption.c_str(), MB_OK);
+
+	}
+
+
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBox
-	// SpoutPanel Messagebox with standard arguments and optional timeout
+	// Messagebox with standard arguments and optional timeout
 	//
 	// Replaces an existing MessageBox call.
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
@@ -762,17 +788,17 @@ namespace spoututils {
 				// Add optional arguments
 				//
 
+				// Text dialog caption
+				if (caption && *caption) {
+					spoutmessage += " /CAPTION ";
+					spoutmessage += caption;
+				}
+
 				// If a timeout has been specified, add the timeout option and value
 				// SpoutPanel handles the timeout delay
 				if (dwMilliseconds > 0) {
 					spoutmessage += " /TIMEOUT ";
 					spoutmessage += std::to_string((unsigned long long)dwMilliseconds);
-				}
-
-				// Text dialog caption
-				if (caption && *caption) {
-					spoutmessage += " /CAPTION ";
-					spoutmessage += caption;
 				}
 
 				SHELLEXECUTEINFOA ShExecInfo;

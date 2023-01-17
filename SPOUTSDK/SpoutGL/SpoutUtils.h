@@ -114,6 +114,9 @@ namespace spoututils {
 	// Close console window.
 	// The optional warning displays a MessageBox if user notification is required.
 	void SPOUT_DLLEXP CloseSpoutConsole(bool bWarning = false);
+
+	// Print to console (printf replacement)
+	void SPOUT_DLLEXP ConPrint(const char* format, ...);
 	
 	// Enable logging to the console.
 	// Logs are displayed in a console window.  
@@ -195,6 +198,9 @@ namespace spoututils {
 	// Used where a Windows MessageBox would interfere with the application GUI.  
 	// The dialog closes itself if a timeout is specified.
 	int SPOUT_DLLEXP SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0);
+
+	// MessageBox with variable arguments
+	int SPOUT_DLLEXP SpoutMessageBox(const char * caption, const char* format, ...);
 	
 	// MessageBox dialog with standard arguments.
 	// Replaces an existing MessageBox call.
