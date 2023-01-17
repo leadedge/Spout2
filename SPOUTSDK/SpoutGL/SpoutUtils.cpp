@@ -121,6 +121,7 @@
 		17.01.23 - Add SpoutMessageBox with variable arguments
 				   Add ConPrint for SpoutUtils console (printf replacement)
 				   Remove dll build warning MessageBox.
+				   Change "ConPrint" to "_conprint" and use Writefile instead of cout.
 
 */
 
@@ -268,7 +269,6 @@ namespace spoututils {
 					bConsole = true;
 				}
 			}
-
 		}
 	}
 	
@@ -291,23 +291,7 @@ namespace spoututils {
 		}
 	}
 
-	// ---------------------------------------------------------
-	// Function: ConPrint
-	// Print to console - (printf replacement).  
-	//
-	void ConPrint(const char* format, ...)
-	{
-		// Construct the message
-		va_list args;
-		va_start(args, format);
-		vsprintf_s(logChars, 1024, format, args);
-		va_end(args);
-		// Write to the consle without line feed
-		std::cout << logChars;
-		logChars[0]=0;
-	}
-
-		
+			
 	//
 	// Group: Logs
 	//
@@ -723,6 +707,33 @@ namespace spoututils {
 
 		}
 	}
+
+	// ---------------------------------------------------------
+	// Function: _conprint
+	// Print to console - (printf replacement).  
+	//
+	int _conprint(const char* format, ...)
+	{
+
+		// Construct the message
+		va_list args;
+		va_start(args, format);
+		vsprintf_s(logChars, 1024, format, args);
+		va_end(args);
+
+		//
+		// Write to the console without line feed
+		//
+		// cout and printf do not write if another console is opened by the application.
+		// WriteFile writes to either of them.
+		//
+		DWORD nBytesWritten = 0;
+		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), logChars, strlen(logChars), &nBytesWritten, NULL);
+		
+		logChars[0]=0;
+		return (int)nBytesWritten;
+	}
+
 
 	
 	//

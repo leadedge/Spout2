@@ -108,16 +108,12 @@ namespace spoututils {
 	// Open console window.
 	// A console window opens without logs.
 	// Useful for debugging with console output.
-	// void SPOUT_DLLEXP OpenSpoutConsole();
 	void SPOUT_DLLEXP OpenSpoutConsole();
 	
 	// Close console window.
 	// The optional warning displays a MessageBox if user notification is required.
 	void SPOUT_DLLEXP CloseSpoutConsole(bool bWarning = false);
 
-	// Print to console (printf replacement)
-	void SPOUT_DLLEXP ConPrint(const char* format, ...);
-	
 	// Enable logging to the console.
 	// Logs are displayed in a console window.  
 	// Useful for program development.
@@ -189,6 +185,9 @@ namespace spoututils {
 
 	// Logging function.
 	void SPOUT_DLLEXP _doLog(SpoutLogLevel level, const char* format, va_list args);
+
+	// Print to console (printf replacement)
+	int SPOUT_DLLEXP _conprint(const char* format, ...);
 
 	//
 	// MessageBox dialog
