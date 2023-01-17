@@ -1,28 +1,29 @@
-##Using the Spout SDK for sharing DirectX textures without using OpenGL.
-
-For all projects, the following source files of the Spout SDK are required :
-
-SpoutCommon.h\
-SpoutCopy.cpp\
-SpoutCopy.h\
-SpoutDirectX.cpp\
-SpoutDirectX.h\
-SpoutFrameCount.cpp\
-SpoutFrameCount.h\
-SpoutSenderNames.cpp\
-SpoutSenderNames.h\
-SpoutSharedMemory.cpp\
-SpoutSharedMemory.h\
-SpoutUtils.cpp\
-SpoutUtils.h  
-
-For projects using the SpoutDX class the following additional files are required :
-
-SpoutDX.h\
-SpoutDX.cpp
+### Using the Spout SDK for sharing DirectX textures without using OpenGL.
 
 
-##Examples
+To build using source files, the following files of the Spout SDK are required :
+
+    SpoutCommon.h
+    SpoutCopy.cpp
+    SpoutCopy.h
+    SpoutDirectX.cpp
+    SpoutDirectX.h
+    SpoutFrameCount.cpp
+    SpoutFrameCount.h
+    SpoutSenderNames.cpp
+    SpoutSenderNames.h
+    SpoutSharedMemory.cpp
+    SpoutSharedMemory.h
+    SpoutUtils.cpp
+    SpoutUtils.h  
+
+For the SpoutDX class, the following additional files are required :
+
+    SpoutDX.h
+    SpoutDX.cpp
+
+
+### Examples
 
 DirectX 11 examples are based on D3D11 tutorials by Chuck Walbourn.\
 https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
@@ -76,41 +77,45 @@ The example project files are created for Visual Studio 2017. To build them, ret
 Open each solution file, change to release and build. For all examples, search for "SPOUT" to see the changes made to the original code. Try them first from the Binaries folder that has pre-built executables. Refer to SpoutDX.pdf for further information.
 
 
-##Other projects
+### Other projects
 
-If you create your own project, all of the required files can be included in the project without the folder structure as above, by editing SpoutDX.h (or SpoutDX12.h or SpoutDX9.h) to refer to include files directly. For example for SpoutDX include the files listed above in the same folder and in SpoutDX.h, change the include paths to refer to the local files.
+If you create your own project, all of the required files can be included in the project without the folder structure as above, by editing SpoutDX.h (or SpoutDX12.h or SpoutDX9.h) to refer to include files directly.
 
-For example, in SpoutDX.h, change :
+For example, for SpoutDX :
+- include the files listed above in the same folder.
+- edit SpoutDX.h for include paths to refer to the local files.
 
-#include "..\..\SpoutGL\SpoutCommon.h"\
-#include "..\..\SpoutGL\SpoutSenderNames.h"\
-#include "..\..\SpoutGL\SpoutDirectX.h\
-#include "..\..\SpoutGL\SpoutFrameCount.h"\
-#include "..\..\SpoutGL\SpoutCopy.h"\
-#include "..\..\SpoutGL\SpoutUtils.h"
+Change :
+
+    #include "..\..\SpoutGL\SpoutCommon.h"
+    #include "..\..\SpoutGL\SpoutSenderNames.h"
+    #include "..\..\SpoutGL\SpoutDirectX.h"
+    #include "..\..\SpoutGL\SpoutFrameCount.h"
+    #include "..\..\SpoutGL\SpoutCopy.h"
+    #include "..\..\SpoutGL\SpoutUtils.h"
 
 To :
 
-#include "SpoutCommon.h"\
-#include "SpoutSenderNames.h"\
-#include "SpoutDirectX.h\
-#include "SpoutFrameCount.h"\
-#include "SpoutGL\SpoutCopy.h"\
-#include "SpoutGL\SpoutUtils.h"
+    #include "SpoutCommon.h"
+    #include "SpoutSenderNames.h"
+    #include "SpoutDirectX.h"
+    #include "SpoutFrameCount.h"
+    #include "SpoutGL\SpoutCopy.h"
+    #include "SpoutGL\SpoutUtils.h"
 
 
-##Using CMake
+### Using CMake
 
 Project files can be generated to build the SpoutDX support class as a dll or static library, and also the the examples, using different Visual Studio compilers, or compilers other than Visual Studio, by using CMake. Refer to "Building the libraries.pdf" document at the root of the repository.
 
 
-##Using SpoutDX as a dynamic link library or static library
+### Using SpoutDX as a dynamic link library or static library
 
 The most convenient way to generate the SpoutDX library is to use the CMake and build the INSTALL project. The required files can then be found in the INSTALL directory :
 
--bin > SpoutDX.dll (dynamic link library)
--lib > SpoutDX.lib (link library for the dll) SpoutDX_static.lib (static link library)
--include/SpoutDX > required header files
+- bin - SpoutDX.dll (dynamic link library)
+- lib - SpoutDX.lib (link library for the dll) SpoutDX_static.lib (static link library)
+- include/SpoutDX - required header files
 
 SpoutDX.h should be edited to change the include paths to refer to the local files as described above.
 
