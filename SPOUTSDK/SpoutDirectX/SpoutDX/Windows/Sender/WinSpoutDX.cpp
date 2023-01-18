@@ -14,10 +14,15 @@
 	The screen can be resized to demonstrate sender update.
 
     Search on "SPOUT" for additions.
-	Compare with a more extensive example sending video frames.
+
+	This project uses uses SpoutDX source files. Compare with a more extensive
+	example sending video frames for using SpoutDX as a dynamic link library.
+	
+	https://github.com/leadedge/SpoutDXvideo
+
     Compare also with the DirectX 11 Tutorial04 sender example using SendTexture.
 
-                 Copyright(C) 2020-2022 Lynn Jarvis.
+                 Copyright(C) 2020-2023 Lynn Jarvis.
 
     This program is free software : you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -53,7 +58,7 @@ HBITMAP g_hBitmap = NULL;               // Image bitmap for sending
 unsigned int g_BitmapWidth = 0;         // Image bitmap width
 unsigned int g_BitmapHeight = 0;        // Image bitmap height
 unsigned char *g_pixelBuffer = nullptr; // Sending pixel buffer
-unsigned char g_SenderName[256];        // Sender name
+unsigned char g_SenderName[256]{};      // Sender name
 unsigned int g_SenderWidth = 0;         // Sender width
 unsigned int g_SenderHeight = 0;        // Sender height
 
@@ -76,10 +81,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
  	// SPOUT
 	// Optionally enable Spout logging
-	// OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("WinSpoutDXsender.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
+
+	// Or open a console for debugging
+	// OpenSpoutConsole(); // Console only for debugging
+	// Note : if using SpoutDX as a dll, an application console is necessary
+	// FILE* pCout = nullptr;
+	// if (AllocConsole()) freopen_s(&pCout, "CONOUT$", "w", stdout);
+	// printf("WinSpoutDX\n");
 
 	// Load a bitmap from file
 	g_hBitmap = (HBITMAP)LoadImageA(NULL, "koala-on-tree.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
@@ -98,7 +109,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// It is resized as necessary - see WM_PAINT
 	g_SenderWidth = g_BitmapWidth;
 	g_SenderHeight = g_BitmapHeight;
-	g_pixelBuffer = new unsigned char[g_SenderWidth * g_SenderHeight * 4];
+	unsigned int buffersize = g_SenderWidth * g_SenderHeight * 4;
+	g_pixelBuffer = new unsigned char[buffersize];
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -142,7 +154,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// SPOUT
 	if(g_hBitmap) 
 		DeleteObject(g_hBitmap);
-	
+
+	if (g_pixelBuffer) 
+		delete[] g_pixelBuffer;
+
 	// Release the sender
 	sender.ReleaseSender();
 
@@ -343,8 +358,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				g_SenderWidth = rcWidth;
 				g_SenderHeight = rcHeight;
 				// Re-size the the sending buffer to match
-				if(g_pixelBuffer) delete g_pixelBuffer;
-				g_pixelBuffer = new unsigned char[g_SenderWidth*g_SenderHeight * 4];
+				if(g_pixelBuffer) delete[] g_pixelBuffer;
+				unsigned int buffersize = g_SenderWidth * g_SenderHeight * 4;
+				g_pixelBuffer = new unsigned char[buffersize];
 			}
 			// The sender is now the same size as the client area
 	
@@ -389,7 +405,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
  	UNREFERENCED_PARAMETER(lParam);
 	char tmp[MAX_PATH];
-	char about[1024];
+	char about[1024]{};
 	LPDRAWITEMSTRUCT lpdis;
 	HWND hwnd = NULL;
 	HCURSOR cursorHand = NULL;
