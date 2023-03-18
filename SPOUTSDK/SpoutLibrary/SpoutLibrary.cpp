@@ -89,6 +89,13 @@
 //		26.12.22 - Add missing SPOUT_LOG_NONE to SpoutLibLogLevel
 //				   Rebuild release VS2022 - 32/64 bit /MD
 //				   Spout Version 2.007.009
+//		17.03.23 - SpoutLibrary.h - add redefinitons to avoid include of GL.h 
+//				   Spout.cpp ReceiveSenderData - if there is a valid D3D11 format, use it.
+//		18.03.23 - For MingW compatibility
+//				     Remove old style include guard from header
+//				     Test for _MSC_VER for pragma warnings in header
+//				     Test for NTDDI_WIN10_RS4 define for graphics preferences
+//				   Rebuild release VS2022 - 32/64 bit /MD
 //
 /*
 		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
@@ -906,7 +913,11 @@ private: // Spout SDK functions
 	//
 	// Windows 10+ SDK required
 	//
-#if VER_PRODUCTBUILD > 9600
+	// Performance prefrence settings are available from Windows 10
+	// April 2018 update "Redstone 4" (Version 1803, build 17134) and later.
+	// Windows 10 SDK required included in Visual Studio 2017 ver.15.7 
+	//
+#ifdef NTDDI_WIN10_RS4
 
 	//---------------------------------------------------------
 	// Function: GetPerformancePreference
@@ -1663,7 +1674,8 @@ int SPOUTImpl::GetAdapter()
 }
 
 // Windows 10+ SDK required
-#if VER_PRODUCTBUILD > 9600
+#ifdef NTDDI_WIN10_RS4
+
 int SPOUTImpl::GetPerformancePreference(const char* path)
 {
 	return spout->GetPerformancePreference(path);
