@@ -175,7 +175,7 @@ bool SpoutSharedMemory::Open(const char* name)
 	}
 
 	m_hMap = OpenFileMappingA(FILE_MAP_ALL_ACCESS, false, (LPCSTR)name);
-	if (m_hMap == NULL)	{
+	if (m_hMap == NULL) {
 		return false;
 	}
 
