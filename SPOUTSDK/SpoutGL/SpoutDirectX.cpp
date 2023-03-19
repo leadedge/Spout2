@@ -132,6 +132,7 @@
 //					   Add comments concerning use of dxgi_6 with older DirectX SDK.
 //		06.01.23	- Correct IsPreferenceAvailable() to pass array length to registry function
 //		08.01.23	- CreateSharedDX11Texture - option for keyed shared texture
+//		18.03.23	- CreateDX11StagingTexture - use default DX11 format for zero or DX9 formats
 //
 // ====================================================================================
 /*
@@ -494,7 +495,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	//
 	// Create a new shared DX11 texture
 	//
-	
+
 	// Release the texture if it already exists
 	if (*ppSharedTexture) {
 		ReleaseDX11Texture(pd3dDevice, *ppSharedTexture);
@@ -594,7 +595,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	pOtherResource = nullptr;
 	pTexture = nullptr;
 
-	SpoutLogNotice("    pTexture = 0x%.7X : dxShareHandle = 0x%.7X", PtrToUint(*ppSharedTexture), LOWORD(dxShareHandle) );
+	SpoutLogNotice("    pTexture = [0x%8.8X] : dxShareHandle = [0x%8.8X]", PtrToUint(*ppSharedTexture), LOWORD(dxShareHandle) );
 
 	return true;
 
@@ -683,7 +684,8 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 	if (pd3dDevice == NULL || !ppStagingTexture)
 		return false;
 
-	SpoutLogNotice("spoutDirectX::CreateDX11StagingTexture");
+	SpoutLogNotice("spoutDirectX::CreateDX11StagingTexture(0x%.X, %d, %d, %d)",
+		PtrToUint(pd3dDevice), width, height, format);
 
 	// Release the texture if it already exists
 	if (*ppStagingTexture) {
@@ -692,13 +694,19 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 
 	ID3D11Texture2D* pTexture = nullptr; // The new texture pointer
 
+	// Use the format passed in
+	// If that is zero or DX9 format, use the default format
+	DXGI_FORMAT texformat = format;
+	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
+		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
+
 	D3D11_TEXTURE2D_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
 	desc.Width = width;
 	desc.Height = height;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
-	desc.Format = format;
+	desc.Format = texformat;
 	desc.SampleDesc.Count = 1;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
 	desc.Usage = D3D11_USAGE_STAGING;
@@ -904,6 +912,7 @@ void spoutDirectX::FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImm
 	// (Approx 550 microseconds 0.55 msec)
 	// Practical testing recommended
 	Wait(pd3dDevice, pImmediateContext);
+
 }
 
 //---------------------------------------------------------
