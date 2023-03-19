@@ -122,6 +122,7 @@
 				   Add ConPrint for SpoutUtils console (printf replacement)
 				   Remove dll build warning MessageBox.
 				   Change "ConPrint" to "_conprint" and use Writefile instead of cout.
+		18.01.23 - _conprint - cast WriteFile size argument to DWORD
 
 */
 
@@ -728,7 +729,7 @@ namespace spoututils {
 		// WriteFile writes to either of them.
 		//
 		DWORD nBytesWritten = 0;
-		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), logChars, strlen(logChars), &nBytesWritten, NULL);
+		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), logChars, (DWORD)strlen(logChars), &nBytesWritten, NULL);
 		
 		logChars[0]=0;
 		return (int)nBytesWritten;
