@@ -95,7 +95,7 @@
 //				     Remove old style include guard from header
 //				     Test for _MSC_VER for pragma warnings in header
 //				     Test for NTDDI_WIN10_RS4 define for graphics preferences
-//				   Rebuild release VS2022 - 32/64 bit /MD
+//		19.01.23   Rebuild with SDK version 2.007.010 - release VS2022 - 32/64 bit /MD
 //
 /*
 		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
