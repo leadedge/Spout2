@@ -97,10 +97,12 @@
 
 using namespace spoututils;
 
+// ===================== GLEW ======================
 // set this to use GLEW instead of dynamic load of extensions
 // #define USE_GLEW	
 // set this to use glew32s.lib instead of glew32.lib
 // #define GLEW_STATIC
+// ========================== ======================
 
 #endif
 
@@ -162,6 +164,17 @@ enum ExtLogLevel {
 #define GL_CLAMP_TO_EDGE 0x812F
 #endif
 
+// FRAMEBUFFER
+#ifndef GL_READ_FRAMEBUFFER
+#define GL_READ_FRAMEBUFFER 0x8CA8
+#endif
+
+#ifndef GL_DRAW_FRAMEBUFFER
+#define GL_DRAW_FRAMEBUFFER 0x8CA9
+#endif
+
+
+// FRAMEBUFFER EXT
 #ifndef GL_READ_FRAMEBUFFER_EXT
 #define GL_READ_FRAMEBUFFER_EXT 0x8CA8
 #endif
@@ -181,7 +194,6 @@ enum ExtLogLevel {
 #ifndef GL_INVALID_FRAMEBUFFER_OPERATION_EXT
 #define GL_INVALID_FRAMEBUFFER_OPERATION_EXT 0x0506
 #endif
-
 
 //------------------------
 // EXTENSION SUPPORT FLAGS
@@ -411,7 +423,9 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 #define GL_STREAM_READ					0x88E1
 #define GL_READ_ONLY					0x88B8
 #define GL_WRITE_ONLY					0x88B9
-#define GL_BUFFER_SIZE_EXT				0x8764
+
+// LJ DEBUG
+#define GL_BUFFER_SIZE					0x8764
 #ifndef GL_MAP_READ_BIT
 #define GL_MAP_READ_BIT					0x0001
 #endif
@@ -486,25 +500,25 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 // ------------------------------
 typedef ptrdiff_t GLsizeiptr;
 typedef ptrdiff_t GLintptr;
-typedef void   (APIENTRY *glGenBuffersPROC)    (GLsizei n, const GLuint* buffers);
+typedef void   (APIENTRY *glGenBuffersPROC)    (GLsizei n, GLuint* buffers);
 typedef void   (APIENTRY *glDeleteBuffersPROC) (GLsizei n, const GLuint* buffers);
 typedef void   (APIENTRY *glBindBufferPROC)    (GLenum target, const GLuint buffer);
 typedef void   (APIENTRY *glBufferDataPROC)    (GLenum target,  GLsizeiptr size,  const GLvoid * data,  GLenum usage);
 typedef void   (APIENTRY *glBufferStoragePROC) (GLenum target, GLsizeiptr size, const void * data, GLbitfield flags);
 typedef void * (APIENTRY *glMapBufferPROC) (GLenum target,  GLenum access);
 typedef void * (APIENTRY *glMapBufferRangePROC) (GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
-typedef void   (APIENTRY *glUnmapBufferPROC) (GLenum target);
+typedef GLboolean (APIENTRY *glUnmapBufferPROC) (GLenum target);
 typedef void   (APIENTRY *glGetBufferParameterivPROC) (GLenum target, GLenum value,	GLint * data);
 
-extern glGenBuffersPROC		glGenBuffersEXT;
-extern glDeleteBuffersPROC	glDeleteBuffersEXT;
-extern glBindBufferPROC		glBindBufferEXT;
-extern glBufferDataPROC		glBufferDataEXT;
-extern glBufferStoragePROC	glBufferStorageEXT;
-extern glMapBufferPROC		glMapBufferEXT;
-extern glMapBufferRangePROC	glMapBufferRangeEXT;
-extern glUnmapBufferPROC	glUnmapBufferEXT;
-extern glGetBufferParameterivPROC glGetBufferParameterivEXT;
+extern glGenBuffersPROC		glGenBuffers;
+extern glDeleteBuffersPROC	glDeleteBuffers;
+extern glBindBufferPROC		glBindBuffer;
+extern glBufferDataPROC		glBufferData;
+extern glBufferStoragePROC	glBufferStorage;
+extern glMapBufferPROC		glMapBuffer;
+extern glMapBufferRangePROC	glMapBufferRange;
+extern glUnmapBufferPROC	glUnmapBuffer;
+extern glGetBufferParameterivPROC glGetBufferParameteriv;
 
 // ------------------------------
 // SYNC objects
