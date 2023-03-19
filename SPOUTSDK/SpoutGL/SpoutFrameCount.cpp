@@ -71,6 +71,7 @@
 //		08.01.23	- CheckTextureAccess/AllowTextureAccess 
 //					  remove texture check for default null texture
 //					  Code review - Use Microsoft Native Recommended rules
+//		19.03.23	- WaitFrameSync - do not block if the sender has not created a sync event
 //
 // ====================================================================================
 //
@@ -520,6 +521,7 @@ bool spoutFrameCount::GetNewFrame()
 	}
 
 	// Access the frame count semaphore
+	// WaitForSingleObject decrements the semaphore's count by one.
 	const DWORD dwWaitResult = WaitForSingleObject(m_hCountSemaphore, 0);
 	switch (dwWaitResult) {
 		case WAIT_OBJECT_0:
@@ -841,8 +843,6 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 	if (!sendername)
 		return false;
 
-	bool bSignal = false;
-
 	char SyncEventName[256]={};
 	sprintf_s(SyncEventName, 256, "%s_Sync_Event", sendername);
 
@@ -853,9 +853,11 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 
 	if (!hSyncEvent) {
 		SpoutLogError("spoutFrameCount::WaitFrameSync - no event");
-		return false;
+		// Do not block if the sender has not created a sync event
+		return true;
 	}
 
+	bool bSignal = false;
 	const DWORD dwWaitResult = WaitForSingleObject(hSyncEvent, dwTimeout);
 	switch (dwWaitResult) {
 		case WAIT_OBJECT_0:
@@ -926,21 +928,30 @@ bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 		if (pDXGIKeyedMutex) {
 			const HRESULT hr = pDXGIKeyedMutex->AcquireSync(0, 67);
 			switch (hr) {
+
 				case S_OK:
+					// Sync was acquired
+					// Return to process the texture and call AllowAccess to release sync
 					pDXGIKeyedMutex->Release();
 					return true;
+
 				case static_cast<HRESULT>(WAIT_ABANDONED):
+					// The shared surface and keyed mutex are no longer in a consistent state.
 					SpoutLogError("spoutDirectX::CheckKeyedAccess : WAIT_ABANDONED");
 					break;
+
 				case static_cast<HRESULT>(WAIT_TIMEOUT):
-					// The time-out interval elapsed
+					// The time-out interval elapsed before the key was released.
+					// Can't access the shared texture right now, try again later
 					SpoutLogError("spoutDirectX::CheckKeyedAccess : WAIT_TIMEOUT");
 					break;
+
 				case E_FAIL:
 					// If the owning device attempted to create another keyed mutex 
 					// on the same shared resource, AcquireSync returns E_FAIL.
 					SpoutLogError("spoutDirectX::CheckKeyedAccess : E_FAIL");
 					break;
+
 				default:
 					break;
 			}
@@ -995,6 +1006,7 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 	// If framecount is zero, the sender has not produced a new frame yet
 	if (framecount > 0) {
 
+		
 #ifdef USE_CHRONO
 		// End time since last call
 		*m_FpsEndPtr = std::chrono::steady_clock::now();
@@ -1009,8 +1021,10 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 		
 		if (frametime > 1.0) { // > 1 msec
 
+			// printf("frametime = %f (%f) msec\n", frametime, 1000.0/m_SystemFps);
+
 			// Frame time in seconds 
-			frametime = frametime / 1000.0;
+			frametime = frametime/1000.0;
 
 			// Accumulate totals
 			m_FrameTimeTotal = m_FrameTimeTotal + frametime;
@@ -1023,9 +1037,9 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 				// (default fps is system refresh rate)
 				const double avgframetime = m_FrameTimeTotal/m_FrameTimeNumber;
 				if (avgframetime > 0.0001) {
-					const double fps = (1.0 / avgframetime);
+					const double fps2 = (1.0 / avgframetime);
 					// Damping to stabilise
-					m_SenderFps = 0.95*m_SenderFps + 0.05*fps;
+					m_SenderFps = 0.95*m_SenderFps + 0.05*fps2;
 				}
 				m_FrameTimeTotal = 0.0;
 				m_FrameTimeNumber = 0.0;
