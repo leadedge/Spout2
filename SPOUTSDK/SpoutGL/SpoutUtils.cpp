@@ -123,6 +123,7 @@
 				   Remove dll build warning MessageBox.
 				   Change "ConPrint" to "_conprint" and use Writefile instead of cout.
 		18.01.23 - _conprint - cast WriteFile size argument to DWORD
+		19.03.23 - Update SDKversion to 2.007.010
 
 */
 
@@ -170,7 +171,7 @@ namespace spoututils {
 
 	// Spout SDK version number string
 	// Major, minor, release
-	std::string SDKversion = "2.007.009";
+	std::string SDKversion = "2.007.010";
 
 	//
 	// Group: Information
