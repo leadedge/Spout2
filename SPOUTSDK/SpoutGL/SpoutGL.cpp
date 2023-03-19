@@ -114,6 +114,10 @@
 //		06-01-23	- ReadDX11pixels check pixels arg for null
 //		08.01.23	- Option for keyed shared texture for testing
 //					  Code review - Use Microsoft Native Recommended rules
+//		18.01.23	- Remove GetSharedTextureData and replace with CopyTexture
+//		20.01.23	- changes to gl definitions in SpoutGLextensions for compatibility with Glew
+//					  SpoutGL.h - include SpoutGLextensions first to prevent gl.h before Glew.h error
+//					  GLerror gluErrorString conditional on Glew define
 //
 // ====================================================================================
 //
@@ -1382,7 +1386,7 @@ void spoutGL::CleanupGL()
 			glDeleteTextures(1, &m_TexID);
 
 		if (m_pbo[0] > 0) {
-			glDeleteBuffersEXT(m_nBuffers, m_pbo);
+			glDeleteBuffers(m_nBuffers, m_pbo);
 			m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
 		}
 
@@ -1526,7 +1530,8 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 		// GetNewFrame updates sender frame count and fps
 		if (frame.GetNewFrame()) {
 			if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
-				bRet = GetSharedTextureData(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+				// Copy the linked OpenGL texture (m_glTexture) to the user texture
+				bRet = CopyTexture(m_glTexture, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert, HostFBO);
 				UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 			}
 		}
@@ -1594,72 +1599,11 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 	}
 	else if (TextureID > 0) {
-		// There is a valid texture passed in.
-		// Copy the input texture to the destination shared texture.
+		// There is a valid texture passed in, copy the input texture to the
+		// destination shared texture (m_glTexture), inverting as necessary.
 		// Both textures must be the same size.
 		bRet = CopyTexture(TextureID, TextureTarget, m_glTexture, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
 	}
-
-	return bRet;
-
-}
-
-// Copy shared texture via fbo blit
-bool spoutGL::GetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
-{
-	GLenum status = 0;
-	bool bRet = false;
-
-	// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-
-	// Attach the Input texture (the shared texture) to the color buffer in our frame buffer - note texturetarget 
-	glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_glTexture, 0);
-	glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
-
-	// Attach target texture (the one we write into and return) to second attachment point
-	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, TextureTarget, TextureID, 0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
-
-	// Check read/draw fbo for completeness
-	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-		if (m_bBLITavailable) {
-			// Flip if the user wants that
-			if (bInvert) {
-				// copy one texture buffer to the other while flipping upside down
-				glBlitFramebufferEXT(0, 0,	// srcX0, srcY0, 
-					width, height,	// srcX1, srcY1
-					0, height,		// dstX0, dstY0,
-					width, 0,		// dstX1, dstY1,
-					GL_COLOR_BUFFER_BIT, GL_LINEAR);
-			}
-			else {
-				// Do not flip during blit
-				glBlitFramebufferEXT(0, 0,	// srcX0, srcY0, 
-					width, height,	// srcX1, srcY1
-					0, 0,			// dstX0, dstY0,
-					width, height,	// dstX1, dstY1,
-					GL_COLOR_BUFFER_BIT, GL_LINEAR);
-			}
-		}
-		else {
-			// No fbo blit extension available
-			// Copy from the fbo (shared texture attached) to the dest texture
-			glBindTexture(TextureTarget, TextureID);
-			glCopyTexSubImage2D(TextureTarget, 0, 0, 0, 0, 0, width, height);
-			glBindTexture(TextureTarget, 0);
-		}
-		bRet = true;
-	}
-	else {
-		PrintFBOstatus(status);
-		bRet = false;
-	}
-
-	// restore the previous fbo - default is 0
-	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT); // 04.01.16
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 
 	return bRet;
 
@@ -1792,7 +1736,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	// Create pbos if not already
 	if (m_pbo[0] == 0) {
 		SpoutLogNotice("spoutGL::UnloadTexturePixels - creating PBO");
-		glGenBuffersEXT(m_nBuffers, m_pbo);
+		glGenBuffers(m_nBuffers, m_pbo);
 		PboIndex = 0;
 		NextPboIndex = 0;
 	}
@@ -1816,16 +1760,16 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	}
 
 	// Bind the PBO
-	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, m_pbo[PboIndex]);
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, m_pbo[PboIndex]);
 
 	// Check it's size
 	GLint size = 0;
-	glGetBufferParameterivEXT(GL_PIXEL_PACK_BUFFER, GL_BUFFER_SIZE_EXT, &size);
+	glGetBufferParameteriv(GL_PIXEL_PACK_BUFFER, GL_BUFFER_SIZE, &size);
 	if (size > 0 && size != (int)(pitch * height)) {
 		// All PBOs must be re-created
-		glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-		glDeleteBuffersEXT(m_nBuffers, m_pbo);
+		glDeleteBuffers(m_nBuffers, m_pbo);
 		m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
 		return false;
 	}
@@ -1833,7 +1777,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	// Null existing PBO data to avoid a stall
 	// This allocates memory for the PBO pitch*height wide
 	const GLsizeiptr buffersize = (GLsizeiptr)(pitch * height);
-	glBufferDataEXT(GL_PIXEL_PACK_BUFFER, buffersize, 0, GL_STREAM_READ);
+	glBufferData(GL_PIXEL_PACK_BUFFER, buffersize, 0, GL_STREAM_READ);
 
 	// Read pixels from framebuffer to PBO - glReadPixels() should return immediately.
 	const GLint rowbytes = (int)pitch / channels; // row length in pixels
@@ -1842,10 +1786,10 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	glPixelStorei(GL_PACK_ROW_LENGTH, 0);
 
 	// If there is data in the next pbo from the previous call, read it back
-	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, m_pbo[NextPboIndex]);
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, m_pbo[NextPboIndex]);
 
 	// Map the PBO to process its data by CPU
-	pboMemory = glMapBufferEXT(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+	pboMemory = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
 
 	// glMapBuffer can return NULL when called the first time
 	// when the next pbo has not been filled with data yet
@@ -1854,12 +1798,12 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	if (pboMemory && data) {
 		// Update data directly from the mapped buffer.
 		spoutcopy.CopyPixels((const unsigned char*)pboMemory, (unsigned char*)data, rowbytes, height, glFormat, bInvert);
-		glUnmapBufferEXT(GL_PIXEL_PACK_BUFFER);
+		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
 	}
 	// skip the copy rather than return false.
 
 	// Back to conventional pixel operation
-	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
 	// Restore the previous fbo binding
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
@@ -2468,14 +2412,14 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 			// Read from attachment point 0
 			glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
 			// Attach the Source texture to point 0 for read
-			glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
+			glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
 		}
 
 		// Draw to attachment point 1
 		glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
 
 		// Attach the texture we write into (the local texture) to attachment point 1
-		glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, m_TexID, 0);
+		glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, m_TexID, 0);
 
 		// Check read/draw fbo for completeness
 		status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -3475,8 +3419,10 @@ bool spoutGL::GLerror() {
 		SpoutLogError("    GLerror - OpenGL error = %u (0x%.7X)", err, err);
 		// printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
 		bError = true;
+#ifdef USE_GLEW
 		// gluErrorString needs Glu.h and glu32.lib (or glew)
-		// printf("GL error = %d (0x%.7X) %s\n", err, err, gluErrorString(err));
+		printf("GL error = %d (0x%.7X) %s\n", err, err, gluErrorString(err));
+#endif
 	}
 
 	return bError;
@@ -3770,11 +3716,11 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 
 	// Attach the Source texture to the color buffer in our frame buffer
-	glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
+	glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
 	glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
 
 	// Attach destination texture (the texture we write into) to second attachment point
-	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
+	glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
 
 	const GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -3942,10 +3888,12 @@ bool spoutGL::WriteTextureReadback(ID3D11Texture2D** texture,
 	// Wait for access to the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		bRet = true;
+		
 		// Copy the DirectX texture to the shared texture
 		spoutdx.GetDX11Context()->CopyResource(m_pSharedTexture, *texture);
 		// Flush after update of the shared texture on this device
 		spoutdx.GetDX11Context()->Flush();
+
 		// Copy the linked OpenGL texture back to the user texture
 		if (width != m_Width || height != m_Height) {
 			SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) sizes do not match");
@@ -3953,7 +3901,8 @@ bool spoutGL::WriteTextureReadback(ID3D11Texture2D** texture,
 			bRet = false;
 		}
 		else if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
-			bRet = GetSharedTextureData(TextureID, TextureTarget, width, height, bInvert, HostFBO);
+			// Copy the shared texture (m_glTexture) to the user texture via fbo blit
+			bRet = CopyTexture(m_glTexture, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert, HostFBO);
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 			if (!bRet)
 				SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) readback failed");

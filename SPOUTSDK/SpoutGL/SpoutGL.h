@@ -34,13 +34,13 @@
 #define __spoutGL__
 
 // Change the path as required
+#include "SpoutGLextensions.h" // include first so that gl.h is not included first if Glew is used
 #include "SpoutCommon.h" // for dll build and utilities
 #include "SpoutSenderNames.h" // for sender creation and update
 #include "SpoutDirectX.h" // for DX11 shared textures
 #include "SpoutFrameCount.h" // for mutex lock and new frame signal
 #include "SpoutCopy.h" // for pixel copy
 #include "SpoutUtils.h" // Registry utiities
-#include "SpoutGLextensions.h" // include last due to redefinition problems with OpenCL
 
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
@@ -142,7 +142,7 @@ class SPOUT_DLLEXP spoutGL {
 	//
 	// Utility
 	//
-
+	
 	// Copy OpenGL texture with optional invert
 	//   Textures must be the same size
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget, GLuint DestID, GLuint DestTarget,
@@ -286,7 +286,6 @@ protected :
 	bool WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
 	bool ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
 	bool SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
-	bool GetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	
 	// OpenGL pixel copy
 	bool WriteGLDXpixels(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
