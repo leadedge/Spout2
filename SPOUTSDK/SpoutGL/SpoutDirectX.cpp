@@ -628,8 +628,8 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 		ReleaseDX11Texture(pd3dDevice, *ppTexture);
 	
 	// Use the format passed in
-	// If that is zero or DX9 format, use the default format
 	DXGI_FORMAT texformat = format;
+	// If that is zero or DX9 format, use the default format
 	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
 		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
@@ -695,8 +695,8 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 	ID3D11Texture2D* pTexture = nullptr; // The new texture pointer
 
 	// Use the format passed in
-	// If that is zero or DX9 format, use the default format
 	DXGI_FORMAT texformat = format;
+	// If that is zero or DX9 format, use the default format
 	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
 		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
