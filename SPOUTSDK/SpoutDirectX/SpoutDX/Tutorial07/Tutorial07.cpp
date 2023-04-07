@@ -125,8 +125,8 @@ bool bClassdevice = false; // Create a SpoutDX class device (see InitDevice)
 
 
 // Statics for dialog box
-static char sendername[256];
-static std::string adaptername[10];
+static char sendername[256]{};
+static std::string adaptername[10]{};
 static int adaptercount = 0;
 static int currentadapter = 0;
 static int selectedadapter = 0;
@@ -146,8 +146,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	//
 
 	// OpenSpoutConsole(); // Console only for debugging
-	// EnableSpoutLog(); // Enable Spout logging to console
-	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
+	EnableSpoutLog(); // Enable Spout logging to console
+	EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
 	// Set the name of the sender to receive from.
@@ -155,6 +155,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// The user can over-ride this by selecting another (receiver.SelectSender())
 	// It can be cleared with a null sender name (receiver.SetReceiverName())
 	// receiver.SetReceiverName("Spout Demo Sender");
+
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
 
@@ -1118,9 +1119,9 @@ void Render()
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	UNREFERENCED_PARAMETER(lParam);
-	char tmp[MAX_PATH];
-	char about[1024];
-	LPDRAWITEMSTRUCT lpdis;
+	char tmp[MAX_PATH]{};
+	char about[1024]{};
+	LPDRAWITEMSTRUCT lpdis{};
 	HWND hwnd = NULL;
 	HCURSOR cursorHand = NULL;
 
@@ -1190,7 +1191,7 @@ INT_PTR  CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			HWND hwndList = GetDlgItem(hDlg, IDC_SENDERS);
 
 			// Active sender name for initial item
-			char activename[256];
+			char activename[256]{};
 			receiver.GetActiveSender(activename);
 			int activeindex = 0;
 
@@ -1198,7 +1199,7 @@ INT_PTR  CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			int count = receiver.GetSenderCount();
 
 			// Populate the combo box
-			char name[128];
+			char name[128]{};
 			for (int i = 0; i < count; i++) {
 				receiver.GetSender(i, name, 128);
 				// Active sender index for the initial combo box item
@@ -1229,10 +1230,7 @@ INT_PTR  CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			if (sendername[0]) {
 				// Make the sender active
 				receiver.SetActiveSender(sendername);
-				// Reset the receiving name
-				// A new sender is detected on the first ReceiveTexture call
-				// LJ DEBUG
-				// receiver.SetReceiverName();
+				// The new active sender is detected on the next ReceiveTexture call
 			}
 			EndDialog(hDlg, 1);
 			break;
@@ -1289,7 +1287,7 @@ void SelectAdapter()
 			}
 
 			// Reset everything to create a new device with the new adapter
-			// A new sender using the selected adapter is detected on the first ReceiveTexture call
+			// A new sender using the selected adapter is detected on the next ReceiveTexture call
 			ResetDevice();
 
 		}
