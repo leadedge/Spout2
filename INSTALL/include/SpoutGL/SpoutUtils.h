@@ -88,7 +88,6 @@ namespace spoututils {
 		SPOUT_LOG_NONE
 	};
 
-
 	//
 	// Information
 	//
@@ -114,7 +113,7 @@ namespace spoututils {
 	// Close console window.
 	// The optional warning displays a MessageBox if user notification is required.
 	void SPOUT_DLLEXP CloseSpoutConsole(bool bWarning = false);
-	
+
 	// Enable logging to the console.
 	// Logs are displayed in a console window.  
 	// Useful for program development.
@@ -154,11 +153,11 @@ namespace spoututils {
 	// Is file logging enabled
 	bool SPOUT_DLLEXP LogFileEnabled();
 
-	// Return the log file as a string
-	std::string SPOUT_DLLEXP GetSpoutLog(const char* filepath = nullptr);
-
 	// Return the full log file path
 	std::string SPOUT_DLLEXP GetSpoutLogPath();
+
+	// Return the log file as a string
+	std::string SPOUT_DLLEXP GetSpoutLog(const char* filepath = nullptr);
 
 	// Show the log file folder in Windows Explorer
 	void SPOUT_DLLEXP ShowSpoutLogs();
@@ -187,6 +186,9 @@ namespace spoututils {
 	// Logging function.
 	void SPOUT_DLLEXP _doLog(SpoutLogLevel level, const char* format, va_list args);
 
+	// Print to console (printf replacement)
+	int SPOUT_DLLEXP _conprint(const char* format, ...);
+
 	//
 	// MessageBox dialog
 	//
@@ -195,6 +197,9 @@ namespace spoututils {
 	// Used where a Windows MessageBox would interfere with the application GUI.  
 	// The dialog closes itself if a timeout is specified.
 	int SPOUT_DLLEXP SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0);
+
+	// MessageBox with variable arguments
+	int SPOUT_DLLEXP SpoutMessageBox(const char * caption, const char* format, ...);
 	
 	// MessageBox dialog with standard arguments.
 	// Replaces an existing MessageBox call.

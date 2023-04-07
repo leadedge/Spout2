@@ -13,11 +13,9 @@ Build the *INSTALL* project separately. An INSTALL folder is produced at the sam
   - SpoutGL
   - SpoutLibrary
 
-The INSTALL folder included with the repository contains libraries built with Visual Studio 2022
+The INSTALL folder included with the repository contains libraries built with Visual Studio 2022 /MD (without Visual Studio runtimes)
 
 x64 / Win32\
-/MD (without Visual Studio runtimes)\
-/MT (include Visual Studio runtimes)
 
 *Note that if building with the SpoutDX dynamic link library and the required header files are in the same folder, edit SpoutDX.h to refer to include files directly. See more information in SPOUTSDK/DirectX.*
 

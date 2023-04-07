@@ -90,7 +90,7 @@ private:
 	HANDLE m_hMap; // Map handle
 	HANDLE m_hMutex; // Mutex for map access
 	int m_lockCount; // Map access lock count
-	const char*	m_pName; // Map name
+	char* m_pName; // Map name
 	int m_size; // Map size
 
 };
