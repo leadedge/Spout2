@@ -17,7 +17,7 @@
 
 =========================================================================
 
-                 Copyright(C) 2020-2022 Lynn Jarvis.
+                 Copyright(C) 2020-2023 Lynn Jarvis.
 
 This program is free software : you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
@@ -34,30 +34,28 @@ along with this program.If not, see < http://www.gnu.org/licenses/>.
 ========================================================================
 
 */
-
-
 #include "framework.h"
 #include "WinSpoutDX.h"
 
 #define MAX_LOADSTRING 100
 
 // Global Variables:
-HINSTANCE hInst;                      // current instance
-WCHAR szTitle[MAX_LOADSTRING];        // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];  // the main window class name
+HINSTANCE hInst;                       // current instance
+WCHAR szTitle[MAX_LOADSTRING]{};       // The title bar text
+WCHAR szWindowClass[MAX_LOADSTRING]{}; // the main window class name
 
 // SPOUT
 spoutDX receiver;                      // Receiver object
 HWND g_hWnd = NULL;                    // Window handle
 unsigned char *pixelBuffer = nullptr;  // Receiving pixel buffer
 unsigned char *bgraBuffer = nullptr;   // Conversion buffer if required
-unsigned char g_SenderName[256];       // Received sender name
+unsigned char g_SenderName[256]{};     // Received sender name
 unsigned int g_SenderWidth = 0;        // Received sender width
 unsigned int g_SenderHeight = 0;       // Received sender height
 DWORD g_SenderFormat = 0;              // Received sender format
 
 // Static for sender selection dialog box
-static char sendername[256];
+static char sendername[256]{};
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -122,8 +120,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	}
 
 	// SPOUT
-	if (pixelBuffer) delete pixelBuffer;
-	if(bgraBuffer) delete bgraBuffer;
+	if (pixelBuffer) delete[] pixelBuffer;
+	if(bgraBuffer) delete[] bgraBuffer;
 
 	// Release the receiver
 	receiver.ReleaseReceiver();
@@ -155,12 +153,13 @@ void Render()
 			g_SenderFormat = receiver.GetSenderFormat();
 
 			// Update the receiving buffer
-			if(pixelBuffer)	delete pixelBuffer;
-			pixelBuffer = new unsigned char[g_SenderWidth * g_SenderHeight * 4];
+			if(pixelBuffer)	delete[] pixelBuffer;
+			unsigned int buffersize = g_SenderWidth * g_SenderHeight * 4;
+			pixelBuffer = new unsigned char[buffersize];
 
 			// Update the rgba > bgra conversion buffer
-			if (bgraBuffer) delete bgraBuffer;
-			bgraBuffer = new unsigned char[g_SenderWidth * g_SenderHeight * 4];
+			if (bgraBuffer) delete[] bgraBuffer;
+			bgraBuffer = new unsigned char[buffersize];
 
 			// Do anything else necessary for the application here
 
@@ -278,10 +277,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
 			case IDM_OPEN:
-				// Sender selection dialog box 
+				// Example application sender selection dialog box
 				sendername[0] = 0; // Clear static name for dialog
 				DialogBox(hInst, MAKEINTRESOURCE(IDD_SENDERBOX), hWnd, (DLGPROC)SenderProc);
-				// Open select a sender
+				// Instead of a dedicated dialog, select a sender using "SpoutPanel"
+				// User must have run SpoutSettings at least once
 				// receiver.SelectSender();
 				break;
 
@@ -403,9 +403,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
  	UNREFERENCED_PARAMETER(lParam);
-	char tmp[MAX_PATH];
-	char about[1024];
-	LPDRAWITEMSTRUCT lpdis;
+	char tmp[MAX_PATH]{};
+	char about[1024]{};
+	LPDRAWITEMSTRUCT lpdis{};
 	HWND hwnd = NULL;
 	HCURSOR cursorHand = NULL;
 
@@ -475,15 +475,15 @@ INT_PTR  CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		HWND hwndList = GetDlgItem(hDlg, IDC_SENDERS);
 
 		// Active sender name for initial item
-		char activename[256];
+		char activename[256]{};
 		receiver.GetActiveSender(activename);
 		int activeindex = 0;
 
 		// Sender count
-		int count = receiver.GetSenderCount();
+		const int count = receiver.GetSenderCount();
 
 		// Populate the combo box
-		char name[128];
+		char name[128]{};
 		for (int i = 0; i < count; i++) {
 			receiver.GetSender(i, name, 128);
 			// Active sender index for the initial combo box item
@@ -502,7 +502,7 @@ INT_PTR  CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		// Combo box selection
 		if (HIWORD(wParam) == CBN_SELCHANGE) {
 			// Get the selected sender name
-			int index = (int)SendMessageA((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+			const int index = (int)SendMessageA((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
 			SendMessageA((HWND)lParam, (UINT)CB_GETLBTEXT, (WPARAM)index, (LPARAM)sendername);
 		}
 		// Drop through

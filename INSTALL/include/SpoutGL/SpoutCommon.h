@@ -78,6 +78,9 @@
 
 // C++11 scoped (class) enums are not compatible with early compilers (< VS2012 and others).
 // The warning is designated "Prefer" and "C" standard unscoped enums are retained for compatibility.
+#if defined(_MSC_VER)
 #pragma warning(disable:26812) // unscoped enums
+#endif
+
 
 #endif

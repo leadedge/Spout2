@@ -60,6 +60,8 @@ class SPOUT_DLLEXP spoutDX {
 	ID3D11DeviceContext* GetDX11Context();
 	void CloseDirectX11();
 	bool IsClassDevice();
+	void SetKeyed(bool bKeyed = true);
+	bool GetKeyed();
 
 	//
 	// SENDER
@@ -239,7 +241,16 @@ class SPOUT_DLLEXP spoutDX {
 	bool CreateDX11texture(ID3D11Device* pd3dDevice,
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
-	
+
+	//
+	// SpoutUtils namespace functions for dll access
+	void OpenSpoutConsole();
+	void CloseSpoutConsole(bool bWarning = false);
+	void EnableSpoutLog();
+	void EnableSpoutLogFile(const char* filename, bool append = false);
+	void DisableSpoutLogFile();
+	void DisableSpoutLog();
+
 	//
 	// Data sharing
 	//
@@ -298,7 +309,8 @@ protected :
 	bool m_bClassDevice;
 	bool m_bAdapt;
 	bool m_bMemoryShare; // Using 2.006 memoryshare methods
-	SHELLEXECUTEINFOA m_ShExecInfo;
+	bool m_bKeyed; // Keyed shared texture
+	SHELLEXECUTEINFOA m_ShExecInfo; // For ShellExecute
 
 	// For WriteMemoryBuffer/ReadMemoryBuffer
 	SpoutSharedMemory memorybuffer;
@@ -313,9 +325,8 @@ protected :
 	bool ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* destpixels,
 		unsigned int width, unsigned int height, bool bRGB, bool bInvert, bool bSwap);
 	
-	// Create staging textures
+	// Create or update staging textures
 	bool CheckStagingTextures(unsigned int width, unsigned int height, DWORD dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM);
-	bool CreateDX11StagingTexture(unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
 
 	// Create or update class texture
 	bool CheckTexture(unsigned int width, unsigned int height, DWORD dwFormat);

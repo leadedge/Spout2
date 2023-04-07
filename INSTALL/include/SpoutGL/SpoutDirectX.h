@@ -35,7 +35,20 @@
 #include <d3d11.h>
 #include <ntverp.h>
 
-// Windows 10 Vers 1803, build 17134 or later
+//
+// Windows graphics preferences are available for Windows 10 Vers 1803
+// build 17134 or later, and use dxgi1_6.
+//
+// If existing Visual Studio projects use Microsoft DirectX SDK (June 2010),
+// this will conflict because the older SDK will be included first.
+// The include order in the project file should be changed to include the older SDK last.
+// Change :
+//    <IncludePath>$(DXSDK_DIR)Include$(IncludePath);</IncludePath>
+//    <LibraryPath>$(DXSDK_DIR)Lib\x86$(LibraryPath);</LibraryPath>
+// To :
+//    <IncludePath>$(IncludePath);$(DXSDK_DIR)Include</IncludePath>
+//    <LibraryPath>$(LibraryPath);$(DXSDK_DIR)Lib\x86</LibraryPath>
+//
 #ifdef NTDDI_WIN10_RS4
 #include <dxgi1_6.h> // for adapter performance preference
 #endif
@@ -74,8 +87,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		//
 
 		// Create a DirectX11 shared texture
-		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppSharedTexture, HANDLE &dxShareHandle);
-		// Create a DircetX texture which is not shared
+		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppSharedTexture, HANDLE &dxShareHandle, bool bKeyed = false);
+		// Create a DirectX texture which is not shared
 		bool CreateDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
 		// Create a DirectX 11 staging texture for read and write
 		bool CreateDX11StagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
@@ -123,7 +136,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		bool FindNVIDIA(int &nAdapter);
 
 // Windows 10 Vers 1803, build 17134 or later
-#if WDK_NTDDI_VERSION >= NTDDI_WIN10_RS4
+#ifdef NTDDI_WIN10_RS4
+
 		//
 		// Graphics preference
 		//

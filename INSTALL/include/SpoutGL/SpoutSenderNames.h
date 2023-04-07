@@ -154,13 +154,13 @@ class SPOUT_DLLEXP spoutSenderNames {
 		//
 
 		// Set the active sender - the first retrieved by a receiver
-		bool SetActiveSender     (const char* sendername);
+		bool SetActiveSender (const char* sendername);
 		// Get the current active sender
-		bool GetActiveSender     (char sendername[SpoutMaxSenderNameLen]);
+		bool GetActiveSender (char *sendername, const int maxlength = SpoutMaxSenderNameLen);
 		// Get active sender information
 		bool GetActiveSenderInfo (SharedTextureInfo* info);
 		// Return details of the current active sender
-		bool FindActiveSender    (char activename[SpoutMaxSenderNameLen], unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);
+		bool FindActiveSender (char *activename, unsigned int& width, unsigned int& height, HANDLE& hSharehandle, DWORD& dwFormat, const int maxlength = SpoutMaxSenderNameLen);
 
 		//
 		// Functions to Create, Find or Update a sender
@@ -188,7 +188,8 @@ protected:
 
 		// Active sender management
 		bool setActiveSenderName (const char* SenderName);
-		bool getActiveSenderName (char SenderName[SpoutMaxSenderNameLen]);
+		// bool getActiveSenderName (char SenderName[SpoutMaxSenderNameLen]);
+		bool getActiveSenderName (char *SenderName, const int maxlength = SpoutMaxSenderNameLen);
 
 		// Goes through the full list of sender names and cleans up
 		// any that shouldn't still be around
