@@ -130,6 +130,9 @@
 //		31.12.22	- SpoutDirectX.h
 //					   Remove WDK_NTDDI_VERSION in case it's not defined
 //					   Add comments concerning use of dxgi_6 with older DirectX SDK.
+//		06.01.23	- Correct IsPreferenceAvailable() to pass array length to registry function
+//		08.01.23	- CreateSharedDX11Texture - option for keyed shared texture
+//		18.03.23	- CreateDX11StagingTexture - use default DX11 format for zero or DX9 formats
 //
 // ====================================================================================
 /*
@@ -322,6 +325,9 @@ bool spoutDirectX::SetDX11Device(ID3D11Device* pDevice)
 //---------------------------------------------------------
 // Function: CreateDX11Device
 // Create DX11 device
+//
+// https://github.com/walbourn/directx-sdk-samples/tree/main/Direct3D11Tutorials/Tutorial04
+//
 ID3D11Device* spoutDirectX::CreateDX11device()
 {
 	ID3D11Device* pd3dDevice = nullptr;
@@ -473,7 +479,8 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 											unsigned int height, 
 											DXGI_FORMAT format, 
 											ID3D11Texture2D** ppSharedTexture,
-											HANDLE &dxShareHandle)
+											HANDLE &dxShareHandle,
+											bool bKeyed)
 {
 	if (!pd3dDevice) {
 		SpoutLogWarning("spoutDirectX::CreateSharedDX11Texture NULL device");
@@ -488,7 +495,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	//
 	// Create a new shared DX11 texture
 	//
-	
+
 	// Release the texture if it already exists
 	if (*ppSharedTexture) {
 		ReleaseDX11Texture(pd3dDevice, *ppSharedTexture);
@@ -526,7 +533,10 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	// Note that a DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not
 	// compatible with DirectX 9. If compatibility is required, a general named mutex
 	// should be used for all texture types. This is the default.
-	desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+	if(bKeyed)
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+	else
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
 	desc.CPUAccessFlags		= 0;	
 	desc.Format				= texformat;
 	desc.Usage				= D3D11_USAGE_DEFAULT;
@@ -539,7 +549,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 	const HRESULT res = pd3dDevice->CreateTexture2D(&desc, NULL, ppSharedTexture);
 	if (FAILED(res)) {
-		const long long lres = (long long)(LOWORD(res));
+		const long long lres = static_cast<long long>((LOWORD(res)));
 		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
 		std::string str = "spoutDirectX::CreateSharedDX11Texture ERROR -[";
 		str += std::to_string(lres); str += "] : ";
@@ -585,7 +595,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	pOtherResource = nullptr;
 	pTexture = nullptr;
 
-	SpoutLogNotice("    pTexture = 0x%.7X : dxShareHandle = 0x%.7X", PtrToUint(*ppSharedTexture), LOWORD(dxShareHandle) );
+	SpoutLogNotice("    pTexture = [0x%8.8X] : dxShareHandle = [0x%8.8X]", PtrToUint(*ppSharedTexture), LOWORD(dxShareHandle) );
 
 	return true;
 
@@ -618,8 +628,8 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 		ReleaseDX11Texture(pd3dDevice, *ppTexture);
 	
 	// Use the format passed in
-	// If that is zero or DX9 format, use the default format
 	DXGI_FORMAT texformat = format;
+	// If that is zero or DX9 format, use the default format
 	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
 		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
@@ -641,7 +651,7 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 
 	if (FAILED(res)) {
 		char tmp[256]={};
-		const int error = int(LOWORD(res));
+		const int error = static_cast<int>((LOWORD(res)));
 		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11Texture ERROR - %d (0x%.X) : ", error, error);
 		switch (res) {
 		case DXGI_ERROR_INVALID_CALL:
@@ -674,7 +684,8 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 	if (pd3dDevice == NULL || !ppStagingTexture)
 		return false;
 
-	SpoutLogNotice("spoutDirectX::CreateDX11StagingTexture");
+	SpoutLogNotice("spoutDirectX::CreateDX11StagingTexture(0x%.X, %d, %d, %d)",
+		PtrToUint(pd3dDevice), width, height, format);
 
 	// Release the texture if it already exists
 	if (*ppStagingTexture) {
@@ -683,13 +694,19 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 
 	ID3D11Texture2D* pTexture = nullptr; // The new texture pointer
 
+	// Use the format passed in
+	DXGI_FORMAT texformat = format;
+	// If that is zero or DX9 format, use the default format
+	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
+		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
+
 	D3D11_TEXTURE2D_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
 	desc.Width = width;
 	desc.Height = height;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
-	desc.Format = format;
+	desc.Format = texformat;
 	desc.SampleDesc.Count = 1;
 	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
 	desc.Usage = D3D11_USAGE_STAGING;
@@ -697,7 +714,7 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 
 	const HRESULT res = pd3dDevice->CreateTexture2D(&desc, NULL, &pTexture);
 	if (res != S_OK) {
-		const long long lres = (long long)(LOWORD(res));
+		const long long lres = static_cast<long long>((LOWORD(res)));
 		// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476174%28v=vs.85%29.aspx
 		std::string str = "spoutDirectX::CreateDX11StagingTexture ERROR -[";
 		str += std::to_string(lres); str += "] : ";
@@ -895,6 +912,7 @@ void spoutDirectX::FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImm
 	// (Approx 550 microseconds 0.55 msec)
 	// Practical testing recommended
 	Wait(pd3dDevice, pImmediateContext);
+
 }
 
 //---------------------------------------------------------
@@ -990,7 +1008,7 @@ int spoutDirectX::GetNumAdapters()
 
 	_dxgi_factory1->Release();
 
-	return (int)i;
+	return i;
 
 }
 
@@ -1011,12 +1029,12 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 	}
 	if(!_dxgi_factory1)	return false;
 	
-	for (UINT32 i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ ) {
+	for (int i = 0; _dxgi_factory1->EnumAdapters(i, &adapter1_ptr) != DXGI_ERROR_NOT_FOUND; i++) {
 		if (!adapter1_ptr) break;
 		
 		// Break if the requested index is found
 		// Return the adapter name.
-		if((int)i == index) {
+		if(i == index) {
 			DXGI_ADAPTER_DESC desc;
 			adapter1_ptr->GetDesc( &desc );
 			size_t charsConverted = 0;
@@ -1262,9 +1280,9 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 	if (!_dxgi_factory1) return 0;
 
 	IDXGIAdapter* adapter1_ptr = nullptr;
-	for (UINT32 i = 0; _dxgi_factory1->EnumAdapters(i, &adapter1_ptr) != DXGI_ERROR_NOT_FOUND; i++) {
+	for (int i = 0; _dxgi_factory1->EnumAdapters(i, &adapter1_ptr) != DXGI_ERROR_NOT_FOUND; i++) {
 		if (!adapter1_ptr) break;
-		if (adapterindex == (int)i) {
+		if (adapterindex == i) {
 			/*
 			// TODO : Removed pending testing
 			// Now we have the requested adapter (17-03-18) test for an output on the adapter
@@ -1417,7 +1435,7 @@ int spoutDirectX::GetPerformancePreference(const char* path)
 	char exepath[MAX_PATH]={};
 	// No path specified - get the current application path
 	if (!path) {
-		if (GetModuleFileNameA(NULL, (LPSTR)exepath, MAX_PATH) <= 0) {
+		if (GetModuleFileNameA(NULL, exepath, MAX_PATH) <= 0) {
 			SpoutLogWarning("spoutDirectX::GetPerformancePreference - Could not get application path");
 			return -1;
 		}
@@ -1430,7 +1448,7 @@ int spoutDirectX::GetPerformancePreference(const char* path)
 	if(IsApplicationPath(exepath)) {
 		char prefs[256]={};
 		int preference = 0;
-		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences", exepath, prefs)) {
+		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences", exepath, prefs, 256)) {
 			std::string pr = prefs;
 			pr = pr.substr(pr.find("=")+1, 1);
 			preference = atoi(pr.c_str());
@@ -1468,7 +1486,7 @@ bool spoutDirectX::SetPerformancePreference(int preference, const char* path)
 	char exepath[MAX_PATH]={};
 	// No path specified - get the current application path
 	if (!path) {
-		if (GetModuleFileNameA(NULL, (LPSTR)exepath, MAX_PATH) <= 0) {
+		if (GetModuleFileNameA(NULL, exepath, MAX_PATH) <= 0) {
 			SpoutLogWarning("    Could not get application path");
 			return false;
 		}
@@ -1666,7 +1684,7 @@ bool spoutDirectX::SetPreferredAdapter(int preference)
 bool spoutDirectX::IsPreferenceAvailable()
 {
 	char build[128]={};
-	if (ReadPathFromRegistry(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentBuildNumber", build)) {
+	if (ReadPathFromRegistry(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentBuildNumber", build, 128)) {
 		if (atoi(build) >= 17134)
 			return true;
 	}
@@ -1704,6 +1722,9 @@ void spoutDirectX::DebugLog(const ID3D11Device* pd3dDevice, const char* format, 
 	if (!pd3dDevice)
 		return;
 
+// Suppress warning 26826 to use vsprintf_s
+#pragma warning(disable:26485)
+
 	//
 	// Output for debug build
 	//
@@ -1716,8 +1737,11 @@ void spoutDirectX::DebugLog(const ID3D11Device* pd3dDevice, const char* format, 
 	char dlog[128]={};
 	va_list args;
 	va_start(args, format);
+	// An explicit cast to the decayed pointer type prevents the warning
 	vsprintf_s(dlog, 128, format, args);
 	va_end(args);
+
+#pragma warning(default:26485)
 	
 /*
 #ifdef _DEBUG

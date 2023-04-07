@@ -46,7 +46,7 @@
 //	14.04.22 - Add option in SpoutCommon.h to disable warning 26812 (unscoped enums).
 //	28.10.22 - Code documentation
 //  18.12.22 - Catch any exception from using Close in destructor
-//
+//	07.01.23 - Change m_pName from const char* to char* for strdup
 // ====================================================================================
 
 
@@ -153,6 +153,7 @@ SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 
 	// Set the name and size
 	m_pName = _strdup(name);
+
 	m_size = size;
 
 	return alreadyExists ? SPOUT_ALREADY_EXISTS : SPOUT_CREATE_SUCCESS;
@@ -174,7 +175,7 @@ bool SpoutSharedMemory::Open(const char* name)
 	}
 
 	m_hMap = OpenFileMappingA(FILE_MAP_ALL_ACCESS, false, (LPCSTR)name);
-	if (m_hMap == NULL)	{
+	if (m_hMap == NULL) {
 		return false;
 	}
 
@@ -195,6 +196,7 @@ bool SpoutSharedMemory::Open(const char* name)
 	}
 
 	m_pName = _strdup(name);
+
 	// OpenFileMapping/MapViewOfFile do not return the map size
 	// Only the process that creates the shared memory can save it's size.
 	m_size = 0;

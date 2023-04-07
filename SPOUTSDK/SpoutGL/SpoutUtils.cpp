@@ -114,6 +114,16 @@
 		01.12.22 - Registry functions
 				     check for empty subkey and valuename strings
 					 include valuename in warnings
+		14.01.23 - OpenSpoutConsole - add MessageBox warning if using a dll
+				   EnableSpoutLog - open console rather than call OpenSpoutConsole
+		15.01.23 - Use SpoutMessageBox so it doesn't freeze the application GUI
+		16.01.23 - Add SpoutMessageBox caption
+		17.01.23 - Add SpoutMessageBox with variable arguments
+				   Add ConPrint for SpoutUtils console (printf replacement)
+				   Remove dll build warning MessageBox.
+				   Change "ConPrint" to "_conprint" and use Writefile instead of cout.
+		18.01.23 - _conprint - cast WriteFile size argument to DWORD
+		19.03.23 - Update SDKversion to 2.007.010
 
 */
 
@@ -161,7 +171,7 @@ namespace spoututils {
 
 	// Spout SDK version number string
 	// Major, minor, release
-	std::string SDKversion = "2.007.009";
+	std::string SDKversion = "2.007.010";
 
 	//
 	// Group: Information
@@ -230,12 +240,12 @@ namespace spoututils {
 	//
 	void OpenSpoutConsole()
 	{
-		// AllocConsole fails if the process already has a console
-		// Is a console associated with the calling process?
-		if (GetConsoleWindow()) {
-			bConsole = true;
-		}
-		else {
+		if (!GetConsoleWindow()) {
+	
+			//
+			// Application console window mot found
+			//
+
 			// Get calling process window
 			HWND hwndFgnd = GetForegroundWindow();
 			if (AllocConsole()) {
@@ -261,7 +271,6 @@ namespace spoututils {
 					bConsole = true;
 				}
 			}
-
 		}
 	}
 	
@@ -273,7 +282,7 @@ namespace spoututils {
 	void CloseSpoutConsole(bool bWarning)
 	{
 		if(bWarning) {
-			if(MessageBoxA(NULL, "Console close - are you sure?", "Spout", MB_YESNO) == IDNO)
+			if(MessageBoxA(NULL, "Console close - are you sure?", "CloseSpoutConsole", MB_YESNO) == IDNO)
 				return;
 		}
 		if (pCout) {
@@ -283,7 +292,8 @@ namespace spoututils {
 			bConsole = false;
 		}
 	}
-		
+
+			
 	//
 	// Group: Logs
 	//
@@ -365,7 +375,11 @@ namespace spoututils {
 		bEnableLog = true;
 
 		// Console output
-		if(!bConsole)
+		if (GetConsoleWindow()) {
+			SetConsoleTitleA("Spout Log");
+			bConsole = true;
+		}
+		else if(!bConsole)
 			OpenSpoutConsole();
 
 		// Initialize current log string
@@ -696,6 +710,33 @@ namespace spoututils {
 		}
 	}
 
+	// ---------------------------------------------------------
+	// Function: _conprint
+	// Print to console - (printf replacement).  
+	//
+	int _conprint(const char* format, ...)
+	{
+
+		// Construct the message
+		va_list args;
+		va_start(args, format);
+		vsprintf_s(logChars, 1024, format, args);
+		va_end(args);
+
+		//
+		// Write to the console without line feed
+		//
+		// cout and printf do not write if another console is opened by the application.
+		// WriteFile writes to either of them.
+		//
+		DWORD nBytesWritten = 0;
+		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), logChars, (DWORD)strlen(logChars), &nBytesWritten, NULL);
+		
+		logChars[0]=0;
+		return (int)nBytesWritten;
+	}
+
+
 	
 	//
 	// Group: MessageBox
@@ -703,7 +744,7 @@ namespace spoututils {
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBox
-	// SpoutPanel MessageBox dialog with optional timeout.
+	// MessageBox dialog with optional timeout.
 	//
 	// Used where a Windows MessageBox would interfere with the application GUI.
 	//
@@ -712,13 +753,36 @@ namespace spoututils {
 	{
 		if (!message)
 			return 0;
-
-		return SpoutMessageBox(NULL, message, "spout", MB_OK, dwMilliseconds);
+		return SpoutMessageBox(NULL, message, "Message", MB_OK, dwMilliseconds);
 	}
+
+	// MessageBox with variable arguments
+	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, const char* format, ...)
+	{
+		std::string strmessage;
+		std::string strcaption;
+
+		// Construct the message
+		va_list args;
+		va_start(args, format);
+		vsprintf_s(logChars, 1024, format, args);
+		strmessage = logChars;
+		va_end(args);
+
+		if(caption && *caption)
+			strcaption = caption;
+		else
+			strcaption = "Message";
+
+		return SpoutMessageBox(NULL, strmessage.c_str(), strcaption.c_str(), MB_OK);
+
+	}
+
+
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBox
-	// SpoutPanel Messagebox with standard arguments and optional timeout
+	// Messagebox with standard arguments and optional timeout
 	//
 	// Replaces an existing MessageBox call.
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
@@ -730,9 +794,19 @@ namespace spoututils {
 
 		// Find if there has been a Spout installation with an install path for SpoutPanel.exe
 		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
-			// Does the file exist ?
+			// Does SpoutPanel exist ?
 			if (_access(path, 0) != -1) {
-				// Open SpoutPanel text message
+
+				//
+				// Add optional arguments
+				//
+
+				// Text dialog caption
+				if (caption && *caption) {
+					spoutmessage += " /CAPTION ";
+					spoutmessage += caption;
+				}
+
 				// If a timeout has been specified, add the timeout option and value
 				// SpoutPanel handles the timeout delay
 				if (dwMilliseconds > 0) {

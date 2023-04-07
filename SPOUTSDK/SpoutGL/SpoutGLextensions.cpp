@@ -38,6 +38,10 @@
 //			18.04.22	- Add glCheckNamedFramebufferStatus
 //			17.12.22	- Some cleanup for code analysis
 //			22.12.22	- Compiler compatibility check
+//			20.01.23	- Changes to gl definitions for compatibility with Glew
+//			15.02.23	- SpoutGLextensions.h
+//						  Correct glUnmapBufferPROC from void to GLboolean
+//						  Correct glGenBuffersPROC buffers arg from const
 //
 
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -109,19 +113,19 @@ PFNWGLGETSWAPINTERVALEXTPROC			wglGetSwapIntervalEXT			= NULL;
 
 // PBO extensions
 #ifdef USE_PBO_EXTENSIONS
-glGenBuffersPROC						glGenBuffersEXT					= NULL;
-glDeleteBuffersPROC						glDeleteBuffersEXT				= NULL;
-glBindBufferPROC						glBindBufferEXT					= NULL;
-glBufferDataPROC						glBufferDataEXT					= NULL;
-glBufferStoragePROC						glBufferStorageEXT				= NULL;
-glMapBufferPROC							glMapBufferEXT					= NULL;
+glGenBuffersPROC						glGenBuffers					= NULL;
+glDeleteBuffersPROC						glDeleteBuffers					= NULL;
+glBindBufferPROC						glBindBuffer					= NULL;
+glBufferDataPROC						glBufferData					= NULL;
+glBufferStoragePROC						glBufferStorage					= NULL;
+glMapBufferPROC							glMapBuffer						= NULL;
 // https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMapBufferRange.xhtml
-glMapBufferRangePROC					glMapBufferRangeEXT				= NULL;
-glUnmapBufferPROC						glUnmapBufferEXT				= NULL;
-glGetBufferParameterivPROC				glGetBufferParameterivEXT		= NULL;
-glClientWaitSyncPROC					glClientWaitSyncEXT				= NULL;
-glDeleteSyncPROC						glDeleteSyncEXT					= NULL;
-glFenceSyncPROC							glFenceSyncEXT					= NULL;
+glMapBufferRangePROC					glMapBufferRange				= NULL;
+glUnmapBufferPROC						glUnmapBuffer					= NULL;
+glGetBufferParameterivPROC				glGetBufferParameteriv			= NULL;
+glClientWaitSyncPROC					glClientWaitSync				= NULL;
+glDeleteSyncPROC						glDeleteSync					= NULL;
+glFenceSyncPROC							glFenceSync						= NULL;
 
 #endif
 
@@ -315,32 +319,32 @@ bool loadPBOextensions()
 	else
 		return false;
 	#else
-	glGenBuffersEXT	    = (glGenBuffersPROC)wglGetProcAddress("glGenBuffers");
-	glDeleteBuffersEXT  = (glDeleteBuffersPROC)wglGetProcAddress("glDeleteBuffers");
-	glBindBufferEXT	    = (glBindBufferPROC)wglGetProcAddress("glBindBuffer");
-	glBufferDataEXT	    = (glBufferDataPROC)wglGetProcAddress("glBufferData");
-	glBufferStorageEXT	= (glBufferStoragePROC)wglGetProcAddress("glBufferStorage");
-	glMapBufferEXT      = (glMapBufferPROC)wglGetProcAddress("glMapBuffer");
-	glMapBufferRangeEXT = (glMapBufferRangePROC)wglGetProcAddress("glMapBufferRange");
-	glUnmapBufferEXT    = (glUnmapBufferPROC)wglGetProcAddress("glUnmapBuffer");
-	glGetBufferParameterivEXT = (glGetBufferParameterivPROC)wglGetProcAddress("glGetBufferParameteriv");
-	glClientWaitSyncEXT = (glClientWaitSyncPROC)wglGetProcAddress("glClientWaitSync");
-	glDeleteSyncEXT     = (glDeleteSyncPROC)wglGetProcAddress("glDeleteSync");
-	glFenceSyncEXT      = (glFenceSyncPROC)wglGetProcAddress("glFenceSync");
+	glGenBuffers	    = (glGenBuffersPROC)wglGetProcAddress("glGenBuffers");
+	glDeleteBuffers		= (glDeleteBuffersPROC)wglGetProcAddress("glDeleteBuffers");
+	glBindBuffer	    = (glBindBufferPROC)wglGetProcAddress("glBindBuffer");
+	glBufferData	    = (glBufferDataPROC)wglGetProcAddress("glBufferData");
+	glBufferStorage		= (glBufferStoragePROC)wglGetProcAddress("glBufferStorage");
+	glMapBuffer			= (glMapBufferPROC)wglGetProcAddress("glMapBuffer");
+	glMapBufferRange	= (glMapBufferRangePROC)wglGetProcAddress("glMapBufferRange");
+	glUnmapBuffer		= (glUnmapBufferPROC)wglGetProcAddress("glUnmapBuffer");
+	glGetBufferParameteriv = (glGetBufferParameterivPROC)wglGetProcAddress("glGetBufferParameteriv");
+	glClientWaitSync	= (glClientWaitSyncPROC)wglGetProcAddress("glClientWaitSync");
+	glDeleteSync		= (glDeleteSyncPROC)wglGetProcAddress("glDeleteSync");
+	glFenceSync			= (glFenceSyncPROC)wglGetProcAddress("glFenceSync");
 
-	if(glGenBuffersEXT  != NULL && glDeleteBuffersEXT  != NULL
-	&& glBindBufferEXT  != NULL && glBufferDataEXT     != NULL
-	&& glBufferStorageEXT != NULL && glMapBufferEXT   != NULL
-	&& glMapBufferRangeEXT != NULL && glUnmapBufferEXT != NULL
-	&& glGetBufferParameterivEXT != NULL
-	&& glClientWaitSyncEXT != NULL && glDeleteSyncEXT != NULL && glFenceSyncEXT != NULL) {
+	if (glGenBuffers  != NULL && glDeleteBuffers  != NULL
+		&& glBindBuffer  != NULL && glBufferData     != NULL
+		&& glBufferStorage != NULL && glMapBuffer   != NULL
+		&& glMapBufferRange != NULL && glUnmapBuffer != NULL
+		&& glGetBufferParameteriv != NULL
+		&& glClientWaitSync != NULL && glDeleteSync != NULL && glFenceSync != NULL) {
 		return true;
 	}
 	else {
 		ExtLog(SPOUT_EXT_LOG_WARNING, "loadPBOextensions() fail");
 		return false;
 	}
-	#endif
+#endif
 
 #else
 	// PBO extensions defined elsewhere

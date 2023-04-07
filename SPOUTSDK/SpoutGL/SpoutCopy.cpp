@@ -61,6 +61,7 @@
 	11.12.22 - test for null args in conversion functions
 	22.12.22 - Compiler compatibility check
 			   Change all {} initializations to "={}"
+	02-04-23 - Corrected source pointer increment in rgba2rgba when not inverted
 
 */
 
@@ -298,8 +299,8 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 		// first
 		// Casting first avoids warning C26451: Arithmetic overflow with VS2022 code review
 		// https://docs.microsoft.com/en-us/visualstudio/code-quality/c26451
-		unsigned long YxW   = (unsigned long)(y * width);
-		const unsigned long YxSP4 = (unsigned long)sourcePitch / 4;
+		unsigned long YxW            = (unsigned long)(y * width);
+		const unsigned long YxSP4    = (unsigned long)(y * sourcePitch / 4);
 		const unsigned long InvYxSP4 = (unsigned long)((height - 1 - y) * sourcePitch / 4);
 
 		// Increment to current line
