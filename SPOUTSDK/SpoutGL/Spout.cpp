@@ -248,7 +248,8 @@
 //		08.01.23	- Code review - Use Microsoft Native Recommended rules
 //		08.03.23	- GetSenderAdapter use SetAdpater instead of SetAdapterPointer
 //		21.03.23	- ReceiveSenderData - use the format of the D3D11 texture generated
-//					  by OpenDX11shareHandle for incorrect sender information.//
+//					  by OpenDX11shareHandle for incorrect sender information.
+//
 // ====================================================================================
 /*
 

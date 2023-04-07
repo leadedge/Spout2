@@ -153,11 +153,11 @@ namespace spoututils {
 	// Is file logging enabled
 	bool SPOUT_DLLEXP LogFileEnabled();
 
-	// Return the log file as a string
-	std::string SPOUT_DLLEXP GetSpoutLog(const char* filepath = nullptr);
-
 	// Return the full log file path
 	std::string SPOUT_DLLEXP GetSpoutLogPath();
+
+	// Return the log file as a string
+	std::string SPOUT_DLLEXP GetSpoutLog(const char* filepath = nullptr);
 
 	// Show the log file folder in Windows Explorer
 	void SPOUT_DLLEXP ShowSpoutLogs();
