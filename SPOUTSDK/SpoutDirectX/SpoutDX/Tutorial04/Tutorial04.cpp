@@ -299,7 +299,7 @@ HRESULT InitDevice()
 	// Option: Create a device within the SpoutDX class.
 	//
 	// InitDevice() will return the hr result after swap chain creation
-	// iwhether a class device is ceated or an application device is created as usual. 
+	// whether a class device is ceated or an application device is created as usual. 
 	//
 	// Use the current graphics adapter index (currentadapter). This can then
 	// be selected by the user to change the adapter (see SelectAdapter).
@@ -308,11 +308,10 @@ HRESULT InitDevice()
 	// Both sender and receiver must be using the same graphics adapter
 	//
 	// The alternative is to use OpenDirectX11() after an application device
-	// has been created. See the code following InitDevice() at program start.
+	// has been created. See creation of an application device further below.
 	//
-
-	// Change the option when bClassdevice is initialized or here
 	bClassdevice = true;
+	// bClassdevice = false;
 
 	if (bClassdevice) {
 		if (sender.OpenDirectX11()) {
