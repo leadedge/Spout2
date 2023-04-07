@@ -880,7 +880,7 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 			// Create new staging textures if it is a different size
 			CheckStagingTextures(m_Width, m_Height, m_dwFormat);
 			// The application detects the change with IsUpdated()
-			// and the receiving buiffer is updated to match the sender.
+			// and the receiving buffer is updated to match the sender.
 			return true;
 		}
 
