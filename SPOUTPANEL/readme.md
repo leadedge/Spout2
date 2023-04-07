@@ -1,18 +1,13 @@
 SPOUTPANEL
 
-SpoutPanel is a utility program that will be activated by Spout receiver to select the sender to be received.
+SpoutPanel is a utility program that can be activated by Spout receiver to select the sender to receive from. The path for SpoutPanel.exe is established by using SpoutSettings or opening the application once. Receivers will then open that version.
 
-The path for SpoutPanel.exe is established by using SpoutSettings or opening the application once.
+"Select" - select the sender to receive from
+"Refresh" - refresh the list if snders have been aded or removed while SpoutPanel is open.
 
-The sender texture button brings up sender details and diagnostics.
+Option buttons
 
-Computer type (Laptop/Desktop) and name.\
-Sender program and sender name.\
-Windows Graphics performace preference if set and preferred graphics adapter\
-Graphics adapter used by the sender.\
-Share mode (Texture or CPU).\
-Texture details.\
-Sender information.\
-Sender application path.
+The sender texture description is a button that brings up sender details and diagnostics.
 
-Click "Copy" to save them.
+"Copy" - save to the clipboard.
+"Logs" - open the folder containing Spout application logs
