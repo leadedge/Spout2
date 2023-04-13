@@ -118,6 +118,7 @@
 //		20.01.23	- changes to gl definitions in SpoutGLextensions for compatibility with Glew
 //					  SpoutGL.h - include SpoutGLextensions first to prevent gl.h before Glew.h error
 //					  GLerror gluErrorString conditional on Glew define
+//		12.04.23	- Correct CreateMemoryBuffer null name check
 //
 // ====================================================================================
 //

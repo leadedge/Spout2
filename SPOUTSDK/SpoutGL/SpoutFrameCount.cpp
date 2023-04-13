@@ -72,6 +72,7 @@
 //					  remove texture check for default null texture
 //					  Code review - Use Microsoft Native Recommended rules
 //		19.03.23	- WaitFrameSync - do not block if the sender has not created a sync event
+//		11.04.23	- OpenFrameSync - correct test for null sender name
 //
 // ====================================================================================
 //
@@ -1112,7 +1113,7 @@ void spoutFrameCount::EndTimePeriod()
 void spoutFrameCount::OpenFrameSync(const char* SenderName)
 {
 	// A sender name is required
-	if (!SenderName || *SenderName) {
+	if (!SenderName || !*SenderName) {
 		SpoutLogWarning("spoutFrameCount::OpenFrameSync - no sender name");
 		return;
 	}
