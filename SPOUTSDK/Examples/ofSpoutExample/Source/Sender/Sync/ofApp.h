@@ -1,8 +1,8 @@
 /*
 
-	Spout OpenFrameworks Webcam Sender example
+	Spout OpenFrameworks Sender Sync example
 
-	Copyright (C) 2022-2023 Lynn Jarvis.
+	Copyright (C) 2023 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -21,22 +21,24 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\SpoutGL\SpoutSender.h" // Spout Sender
+#include "..\..\..\SpoutGL\SpoutSender.h"
 
-class ofApp : public ofBaseApp {
+class ofApp : public ofBaseApp{
 	public:
 		void setup();
 		void update();
 		void draw();
 		void exit();
-		void keyPressed(int key);
+		void windowResized(int w, int h);
 
-		ofVideoGrabber vidGrabber; // Webcam
-		std::vector <ofVideoDevice> camdevices; // Webcams available
-		SpoutSender camsender; // A Spout sender object
-		std::string camsendername; // Sender name
-		int camindex = 0; // Selected webcam in the device list
-		bool bSendCam = true; // Clear to send the webcam texture
+		SpoutSender sender;    // Spout sender object
+		char sendername[256];  // Sender name
 
+		ofImage myBoxImage;    // Image for the 3D demo
+		ofFbo myFbo;           // For texture send example
+		ofPixels myPixels;     // For pixel send example
+		float rotX, rotY;
+
+		void showInfo();
 
 };

@@ -8,7 +8,7 @@
 	OpenFrameworks 11
 	Visual Studio 2022
 
-	Copyright (C) 2022 Lynn Jarvis.
+	Copyright (C) 2022-2023 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -32,28 +32,23 @@ void ofApp::setup(){
 
 	ofBackground(10, 100, 140);
 
-	// Spout log console
+	// Optional Spout log console
 	// EnableSpoutLog();
 
- 	strcpy_s(sendername, 256, "OF Spout Data Sender"); // The sender name
+ 	strcpy_s(sendername, 256, "Spout Data Sender"); // The sender name
 	ofSetWindowTitle(sendername); // show it on the title bar
+
+	// Give the sender a name
+	sender.SetSenderName(sendername);
 	
 	// 3D drawing setup for the demo 
 	ofDisableArbTex(); // Needed for ofBox texturing
 	ofEnableDepthTest(); // enable depth comparisons for the cube
 	myBoxImage.load("SpoutBox1.png"); // image for the cube texture
- 	rotX = 0.0f;
-	rotY = 0.0f;
-
-	// Set the sender size
-	senderwidth = ofGetWidth();
-	senderheight = ofGetHeight();
+ 	rotX = rotY = 0.0f;
 
 	// Create an RGBA fbo for texture transfers
-	myFbo.allocate(senderwidth, senderheight, GL_RGBA);
-
-	// Give the sender a name
-	sender.SetSenderName(sendername);
+	myFbo.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 
 	// Mouse data to send to receiver
 	mousex = 0;
@@ -94,25 +89,6 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	//
-	// Option - frame synchronisation
-	//
-	// To avoid the receiver from missing frames, the sender can wait
-	// until the receiver signals that it is ready to read more data.
-	// Use a timeout greater than the expected delay. 
-	//
-	// Sync is necessary if the sending and receiving applications require
-	// frame accuracy and missed frames are not acceptable. 
-	//
-	// The sender will then run at the same framerate as the receiver.
-	// For example, if connected to the data receiver example, this will
-	// be 30fps instead of the 60fps established in Setup().
-	//
-	// Sync is not required for this simple example but is included to
-	// demonstrate the functions (Refer to the data receiver example).
-	//
-	sender.WaitFrameSync(sender.GetName(), 67);
-
 	// Draw 3D graphics into the fbo
 	myFbo.begin();
 	ofClear(10, 100, 140, 255);
@@ -128,7 +104,7 @@ void ofApp::draw() {
 	rotY += 0.6;
 	
 	// Send fbo
-	sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
+	sender.SendFbo(myFbo.getId(), ofGetWidth(), ofGetHeight(), false);
 
 	myFbo.end();
 
@@ -236,10 +212,6 @@ void ofApp::draw() {
 		str += " : frame  ";
 		str += ofToString(sender.GetFrame());
 	}
-	else {
-		// Openframeworks fps
-		str += " fps : " + ofToString((int)roundf(ofGetFrameRate()));
-	}
 	ofDrawBitmapString(str, 10, 20);
 
 }
@@ -255,9 +227,7 @@ void ofApp::windowResized(int w, int h)
 {
 	// The sending size matches the window size, update the fbo
 	if (w > 0 && h > 0) {
-		senderwidth = w;
-		senderheight = h;
-		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
+		myFbo.allocate(w, h, GL_RGBA);
 	}
 }
 
