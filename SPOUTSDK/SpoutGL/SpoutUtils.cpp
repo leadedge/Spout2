@@ -124,7 +124,7 @@
 				   Change "ConPrint" to "_conprint" and use Writefile instead of cout.
 		18.01.23 - _conprint - cast WriteFile size argument to DWORD
 		19.03.23 - Update SDKversion to 2.007.010
-
+		14.04.23 - Update SDKversion to 2.007.011
 */
 
 #include "SpoutUtils.h"
@@ -171,7 +171,7 @@ namespace spoututils {
 
 	// Spout SDK version number string
 	// Major, minor, release
-	std::string SDKversion = "2.007.010";
+	std::string SDKversion = "2.007.011";
 
 	//
 	// Group: Information
