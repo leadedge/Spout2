@@ -118,7 +118,7 @@
 //		20.01.23	- changes to gl definitions in SpoutGLextensions for compatibility with Glew
 //					  SpoutGL.h - include SpoutGLextensions first to prevent gl.h before Glew.h error
 //					  GLerror gluErrorString conditional on Glew define
-//		12.04.23	- Correct CreateMemoryBuffer null name check
+//		14.04.23	- Correct CreateMemoryBuffer null name check
 //
 // ====================================================================================
 //
@@ -2232,7 +2232,7 @@ bool spoutGL::CreateMemoryBuffer(const char *name, int length)
 	if (m_bMemoryShare)
 		return false;
 
-	if (!name || *name) {
+	if (!name || !*name) {
 		SpoutLogError("spoutGL::CreateMemoryBuffer - no name");
 		return false;
 	}
