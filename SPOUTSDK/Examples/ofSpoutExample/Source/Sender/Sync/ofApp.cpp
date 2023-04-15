@@ -35,8 +35,10 @@ void ofApp::setup(){
 
 	ofBackground(10, 100, 140);
 
-	// Optional Spout log console
+	// Optional logs
 	// EnableSpoutLog();
+	// Optional console for windowed application (see main.cpp)
+	// OpenSpoutConsole();
 
  	strcpy_s(sendername, 256, "Sender Sync Example"); // The sender name
 	ofSetWindowTitle(sendername); // show it on the title bar
@@ -67,12 +69,12 @@ void ofApp::draw() {
 	//
 	// Sender waits on the receiver
 	//
-	// If the sender cycle is faster, the receiver will miss frames.
-	// Before processing, the sender can wait until the receiver
+	// If the sender cycle is faster, thereceiver will miss frames.
+	// BEFORE processing, the sender can wait until the receiver
 	// signals that it is ready to receive a frame.
 	// Use a timeout greater than the expected delay. 
 	//
-	sender.WaitFrameSync(sender.GetName(), 67);
+	// sender.WaitFrameSync(sender.GetName(), 67);
 	//
 	// To demonstrate the effect of sync functions, reduce the receiver frame rate.
 	// (See the receiver sync example).
@@ -110,13 +112,13 @@ void ofApp::draw() {
 	// Receiver waits on the sender
 	//
 	// If the sender cycle is slower, the receiver will duplicate frames.
-	// After processing, the sender can signal that a new frame has been produced.
+	// AFTER processing, the sender can signal that a new frame has been produced.
 	//
-	// sender.SetFrameSync(sender.GetName());
+	sender.SetFrameSync(sender.GetName());
 	//
 	// To demonstrate the effect of sync functions, reduce the sender frame rate.
 	// The receiver will synchronize with the sender frame rate.
-	// sender.HoldFps(30);
+	sender.HoldFps(30);
 
 }
 

@@ -35,14 +35,4 @@ class ofApp : public ofBaseApp{
 		ofTexture myTexture; // Receiving texture
 		void showInfo();
 
-		// For sender data
-		int sendermousex;
-		int sendermousey;
-		int senderbutton;
-		int senderpressed;
-		int senderdragged;
-		std::vector<ofVec2f> senderpoints;
-		int senderbytes;
-		char senderdata[256];
-
 };

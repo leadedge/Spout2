@@ -38,6 +38,8 @@ void ofApp::setup(){
 
 	// Optional logs
 	// EnableSpoutLog();
+	// Optional console for windowed application (see main.cpp)
+	// OpenSpoutConsole();
 
 	// Allocate an RGBA texture to receive from the sender
 	// It is resized later to match the sender - see Update()
@@ -58,10 +60,10 @@ void ofApp::draw() {
 	// Receiver waits on the sender
 	//
 	// If the receiver cycles faster than the sender, there will be duplicated frames.
-	// Before processing, the receiver can wait until the sender signals
+	// BEFORE processing, the receiver can wait until the sender signals
 	// that it has sent a new frame. Use a timeout greater than the expected delay. 
 	//
-	// receiver.WaitFrameSync(receiver.GetSenderName(), 67);
+	receiver.WaitFrameSync(receiver.GetSenderName(), 67);
 	//
 	// To show the effect of sync functions, reduce the sender frame rate.
 	// (See the sender sync example).
@@ -78,20 +80,21 @@ void ofApp::draw() {
 		}
 		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
+
 	// On-screen display
 	showInfo();
 
 	//
 	// Sender waits on the receiver
 	//
-	// If the receiver cycles slower than the sender, there will be missed frames.
-	// After processing, the receiver can signal when it is ready to receive the next frame.
+	// If the receiver cycles slowerthan the sender, there will be missed frames.
+	// AFTER processing, the receiver can signal when it is ready to receive the next frame.
 	//
-	receiver.SetFrameSync(receiver.GetSenderName());
+	// receiver.SetFrameSync(receiver.GetSenderName());
 	//
 	// To demonstrate the effect of sync functions, reduce the receiver frame rate.
 	// The sender will synchronize with the receiver frame rate.
-	receiver.HoldFps(30);
+	// receiver.HoldFps(30);
 
 }
 
@@ -111,7 +114,7 @@ void ofApp::showInfo() {
 		str += ") ";
 		if (receiver.GetSenderFrame() > 0) {
 			str += " : fps ";
-			str += to_string((int)(roundf(ofGetFrameRate()))); // the received frame rate
+			str += to_string((int)(roundf(ofGetFrameRate()))); // the actual received frame rate
 			str += " : frame ";
 			str += to_string(receiver.GetSenderFrame()); // frame since the sender started
 		}
