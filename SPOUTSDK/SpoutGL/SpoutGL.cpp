@@ -119,6 +119,8 @@
 //					  SpoutGL.h - include SpoutGLextensions first to prevent gl.h before Glew.h error
 //					  GLerror gluErrorString conditional on Glew define
 //		14.04.23	- Correct CreateMemoryBuffer null name check
+//		15.03.23	- If no new sender frame, return true and do not block for all receiving functions
+//					  to avoid un-necessary Acquire/Release/Lock/Unlock
 //
 // ====================================================================================
 //
@@ -1523,18 +1525,20 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 		return false;
 	}
 
+	// No new frame, do not block
+	// GetNewFrame updates sender frame count and fps
+	if (!frame.GetNewFrame())
+		return true;
+
+	// Read the shared texture if the sender has produced a new frame
 	bool bRet = true; // Error only if texture read fails
 
 	// Wait for access to the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
-		// Read the shared texture if the sender has produced a new frame
-		// GetNewFrame updates sender frame count and fps
-		if (frame.GetNewFrame()) {
-			if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
-				// Copy the linked OpenGL texture (m_glTexture) to the user texture
-				bRet = CopyTexture(m_glTexture, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert, HostFBO);
-				UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-			}
+		if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+			// Copy the linked OpenGL texture (m_glTexture) to the user texture
+			bRet = CopyTexture(m_glTexture, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert, HostFBO);
+			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 		}
 		// Release mutex and allow access to the texture
 		frame.AllowTextureAccess(m_pSharedTexture);
@@ -1653,43 +1657,47 @@ bool spoutGL::ReadGLDXpixels(unsigned char* pixels,
 		return false;
 	}
 
+	// No new frame, do not block
+	if (!frame.GetNewFrame())
+		return true;
+
+	// Read texture pixels for a new frame
 	bool bRet = true; // Error only if pixel read fails
 
 	// retrieve opengl texture data directly to image pixels
 
 	// Wait for access to the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
-		// read texture for a new frame
-		if (frame.GetNewFrame()) {
-			// lock gl/dx interop object
-			if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
-				// Set single pixel alignment in case of rgb source
-				glPixelStorei(GL_PACK_ALIGNMENT, 1);
-				// Always allow for invert here - only consumes 0.1 msec
-				// Create or resize a local OpenGL texture
-				CheckOpenGLTexture(m_TexID, glFormat, width, height);
-				// Copy the shared texture to the local texture, inverting if necessary
-				CopyTexture(m_glTexture, GL_TEXTURE_2D, m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
-				// Extract the pixels from the local texture - changing to the user passed format
-				// Use PBO method for maximum speed. ReadTextureData using glReadPixels is half the
-				// speed of using DX11 texture directly (ReadDX11pixels). Note that ReadDX11pixels
-				// has texture access and new frame checks and cannot be used if those checks
-				// have already nbeen made.
-				if (m_bPBOavailable) {
-					bRet = UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
-				}
-				else {
-					bRet = ReadTextureData(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
-				}
+		// lock gl/dx interop object
+		if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+			// Set single pixel alignment in case of rgb source
+			glPixelStorei(GL_PACK_ALIGNMENT, 1);
+			// Always allow for invert here - only consumes 0.1 msec
+			// Create or resize a local OpenGL texture
+			CheckOpenGLTexture(m_TexID, glFormat, width, height);
+			// Copy the shared texture to the local texture, inverting if necessary
+			CopyTexture(m_glTexture, GL_TEXTURE_2D, m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
+			// Extract the pixels from the local texture - changing to the user passed format
+			// Use PBO method for maximum speed. ReadTextureData using glReadPixels is half the
+			// speed of using DX11 texture directly (ReadDX11pixels). Note that ReadDX11pixels
+			// has texture access and new frame checks and cannot be used if those checks
+			// have already been made.
+			if (m_bPBOavailable) {
+				bRet = UnloadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
+			}
+			else {
+				bRet = ReadTextureData(m_TexID, GL_TEXTURE_2D, width, height, 0, pixels, glFormat, false, HostFBO);
+			}
+			// default alignment
+			glPixelStorei(GL_PACK_ALIGNMENT, 4);
+		} // interop lock failed
 
-				// default alignment
-				glPixelStorei(GL_PACK_ALIGNMENT, 4);
-			} // interop lock failed
-			// Unlock interop object
-			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
-		} // no new frame
+		// Ensure interop object is unlocked
+		UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+
 		// Release mutex and allow access to the texture
 		frame.AllowTextureAccess(m_pSharedTexture);
+
 	} // mutex access failed
 
 	return bRet;
@@ -2074,27 +2082,11 @@ bool spoutGL::ReadDX11texture(GLuint TextureID, GLuint TextureTarget,
 //   Typical uses will be for data attached to the video frame,
 //   commonly referred to as "per frame Metadata".
 //
-//   Notes for synchronisation.
-//
-//   If used before sending and after receiving, the data will be 
-//   associated with the same video frame, but frames may be missed 
-//   if the receiver has a lower frame rate than the sender.
-//
 //   If strict synchronization is required, the data sharing functions
-//   should be used in combination with event signal functions. The sender
-//   frame rate will be matched exactly to that of the receiver and the 
-//   receiver will not miss any frames.
+//   should be used in combination with event signal functions.
 //
 //      - void SetFrameSync(const char* SenderName);
 //      - bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
-//
-//   WaitFrameSync
-//   A sender should use this before rendering or sending texture or data and
-//   wait for a signal from the receiver that it is ready to read another frame.
-//
-//   SetFrameSync
-//   After receiving a texture, rendering the result and reading data
-//   a receiver should signal that it is ready to read another. 
 //
 
 //---------------------------------------------------------
@@ -2521,19 +2513,21 @@ bool spoutGL::ReadDX11pixels(unsigned char * pixels, unsigned int width, unsigne
 		return false;
 	}
 
+	// No new frame, do not block
+	if (!frame.GetNewFrame())
+		return true;
+	
+	// If the sender has produced a new frame.
+	// Read from the sender GPU texture to CPU pixels via two staging textures
+
 	// Access the sender shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
-
-		// Check if the sender has produced a new frame.
-		if (frame.GetNewFrame()) {
-			// Read from the sender GPU texture to CPU pixels via two staging textures
-			m_Index = (m_Index + 1) % 2;
-			m_NextIndex = (m_Index + 1) % 2;
-			// Copy from the sender's shared texture to the first staging texture
-			spoutdx.GetDX11Context()->CopyResource(m_pStaging[m_Index], m_pSharedTexture);
-			// Map and read from the second while the first is occupied
-			ReadPixelData(m_pStaging[m_NextIndex], pixels, m_Width, m_Height, glFormat, bInvert);
-		}
+		m_Index = (m_Index + 1) % 2;
+		m_NextIndex = (m_Index + 1) % 2;
+		// Copy from the sender's shared texture to the first staging texture
+		spoutdx.GetDX11Context()->CopyResource(m_pStaging[m_Index], m_pSharedTexture);
+		// Map and read from the second while the first is occupied
+		ReadPixelData(m_pStaging[m_NextIndex], pixels, m_Width, m_Height, glFormat, bInvert);
 		// Allow access to the shared texture
 		frame.AllowTextureAccess(m_pSharedTexture);
 		return true;
@@ -2751,6 +2745,10 @@ bool spoutGL::CheckStagingTextures(unsigned int width, unsigned int height, int 
 bool spoutGL::ReadMemoryTexture(const char* sendername, GLuint TexID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
+	// No new frame, do not block
+	if (!frame.GetNewFrame())
+		return true;
+
 	// Open a shared memory map if it not already
 	if (!memoryshare.Name()) {
 		// Create a name for the map from the sender name
@@ -2772,24 +2770,22 @@ bool spoutGL::ReadMemoryTexture(const char* sendername, GLuint TexID, GLuint Tex
 	bool bRet = true; // Error only if pixel read fails
 
 	// Query a new frame and read pixels while the buffer is locked
-	if (frame.GetNewFrame()) {
-		if (bInvert) {
-			// Create or resize a local OpenGL texture
-			CheckOpenGLTexture(m_TexID, GL_RGBA, width, height);
-			// Read the memory pixels into it
-			glBindTexture(GL_TEXTURE_2D, m_TexID);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, (GLvoid *)pBuffer);
-			glBindTexture(GL_TEXTURE_2D, 0);
-			// Copy to the user texture, inverting at the same time
-			bRet = CopyTexture(m_TexID, GL_TEXTURE_2D, TexID, TextureTarget, width, height, true, HostFBO);
-		}
-		else {
-			// No invert - copy memory pixels directly to the user texture
-			glBindTexture(TextureTarget, TexID);
-			glTexSubImage2D(TextureTarget, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pBuffer);
-			glBindTexture(TextureTarget, 0);
-		}
-	} // No new frame
+	if (bInvert) {
+		// Create or resize a local OpenGL texture
+		CheckOpenGLTexture(m_TexID, GL_RGBA, width, height);
+		// Read the memory pixels into it
+		glBindTexture(GL_TEXTURE_2D, m_TexID);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, (GLvoid *)pBuffer);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		// Copy to the user texture, inverting at the same time
+		bRet = CopyTexture(m_TexID, GL_TEXTURE_2D, TexID, TextureTarget, width, height, true, HostFBO);
+	}
+	else {
+		// No invert - copy memory pixels directly to the user texture
+		glBindTexture(TextureTarget, TexID);
+		glTexSubImage2D(TextureTarget, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *)pBuffer);
+		glBindTexture(TextureTarget, 0);
+	}
 
 	memoryshare.Unlock();
 
@@ -2807,6 +2803,10 @@ bool spoutGL::ReadMemoryPixels(const char* sendername, unsigned char* pixels,
 		SpoutLogError("spoutGLDXinterop::ReadMemoryPixels - no data or incorrect format");
 		return false;
 	}
+
+	// No new frame, do not block
+	if (!frame.GetNewFrame())
+		return true;
 
 	// Open a shared memory map if it not already
 	if (!memoryshare.Name()) {
@@ -2827,10 +2827,8 @@ bool spoutGL::ReadMemoryPixels(const char* sendername, unsigned char* pixels,
 	}
 
 	// Query a new frame and read pixels while the buffer is locked
-	if (frame.GetNewFrame()) {
-		// Read pixels from shared memory
-		spoutcopy.CopyPixels((unsigned char*)pBuffer, pixels, width, height, glFormat, bInvert);
-	}
+	// Read pixels from shared memory
+	spoutcopy.CopyPixels((unsigned char*)pBuffer, pixels, width, height, glFormat, bInvert);
 
 	memoryshare.Unlock();
 
@@ -3801,11 +3799,14 @@ bool spoutGL::ReadTexture(ID3D11Texture2D** texture)
 	if (desc.Width != m_Width || desc.Height != m_Height) {
 		return false;
 	}
+
+	// No new frame, do not block
+	if (!frame.GetNewFrame())
+		return true;
+
+	// Copy the shared texture if the sender has produced a new frame
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
-		// Copy the shared texture if the sender has produced a new frame
-		if (frame.GetNewFrame()) {
-			spoutdx.GetDX11Context()->CopyResource(*texture, m_pSharedTexture);
-		}
+		spoutdx.GetDX11Context()->CopyResource(*texture, m_pSharedTexture);
 		// Release mutex and allow access to the texture
 		frame.AllowTextureAccess(m_pSharedTexture);
 	}
