@@ -62,6 +62,7 @@
 	22.12.22 - Compiler compatibility check
 			   Change all {} initializations to "={}"
 	02-04-23 - Corrected source pointer increment in rgba2rgba when not inverted
+	17.04.23 - Add rgba_to_rgb_sse and rgba_to_bgr_sse
 
 */
 
@@ -525,7 +526,8 @@ void spoutCopy::bgra2rgba(const void *bgra_source, void *rgba_dest, unsigned int
 
 //---------------------------------------------------------
 // Function: rgba2rgb
-// Copy RGBA to RGB allowing for source line pitch
+// Copy RGBA to RGB or BGR allowing for source line pitch using the fastest method
+//
 void spoutCopy::rgba2rgb(const void* rgba_source, void* rgb_dest,
 	unsigned int width, unsigned int height,
 	unsigned int rgba_pitch, bool bInvert, bool bMirror, bool bSwapRB) const
@@ -535,6 +537,36 @@ void spoutCopy::rgba2rgb(const void* rgba_source, void* rgb_dest,
 	auto rgb = static_cast<unsigned char*>(rgb_dest); // rgb/bgr
 	if (!rgb || !rgba)
 		return;
+
+	//
+	// SSE3 copy
+	// No mirror option, image size 16 bit byte aligned, SSE3 intrinsics support
+	//
+	// Timing tests show more than twice as fast
+	// Intel(R) Core(TM) i7-3770K CPU @ 3.50GHz
+	//
+	// SSE
+	//   1280x720    1.6 msec
+	//   1920x1080   3.7 msec
+	//   3840x2160  14.0 msec
+	// Byte copy
+	//   1280x720    4.0 msec
+	//   1920x1080   9.3 msec
+	//   3840x2160  35.9 msec
+	//
+	unsigned int pitch = rgba_pitch;
+	if(pitch == 0) pitch = width*4;
+	if (!bMirror && width >= 320 && (width % 16) == 0 && m_bSSE3) {
+		if (!bSwapRB) {
+			// RGBA to RGB
+			rgba_to_rgb_sse(rgba_source, rgb_dest, width, height, pitch, bInvert);
+		}
+		else {
+			// RGBA to BGR
+			rgba_to_bgr_sse(rgba_source, rgb_dest, width, height, pitch, bInvert);
+		}
+		return;
+	}
 
 	// RGB dest does not have padding
 	uint64_t rgbsize = (uint64_t)width * (uint64_t)height * 3;
@@ -580,6 +612,7 @@ void spoutCopy::rgba2rgb(const void* rgba_source, void* rgb_dest,
 	}
 
 } // end rgba2rgb
+
 
 //---------------------------------------------------------
 // Function: rgb2rgba
@@ -816,28 +849,24 @@ void spoutCopy::rgb2bgra(const void *rgb_source, void *bgra_dest,
 
 
 // Experimental
-//
-// Testing shows gains of 1 fps
-// TODO : exact frame timing
-//
 // https://exchangetuts.com/fast-vectorized-conversion-from-rgb-to-bgra-1640844423877396
-//
 // in and out must be 16-byte aligned
 
 //---------------------------------------------------------
 // Function: rgb_to_bgrx_sse
 // Experimental pending testing
-void spoutCopy::rgb_to_bgrx_sse(unsigned int w, const void* inpix, void* outpix) const
+// Single line function
+void spoutCopy::rgb_to_bgrx_sse(unsigned int npixels, const void* rgb_source, void* bgrx_dest) const
 {
-	const __m128i* in_vec = static_cast<const __m128i*>(inpix);
-	__m128i* out_vec = static_cast<__m128i*>(outpix);
+	const __m128i* in_vec = static_cast<const __m128i*>(rgb_source);
+	__m128i* out_vec = static_cast<__m128i*>(bgrx_dest);
 
 	if (!in_vec || !out_vec)
 		return;
 
-	w /= 16;
+	npixels /= 16;
 
-	while (w-- > 0) {
+	while (npixels-- > 0) {
 
 		/*             0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
 		 * in_vec[0]   Ra Ga Ba Rb Gb Bb Rc Gc Bc Rd Gd Bd Re Ge Be Rf
@@ -894,6 +923,264 @@ void spoutCopy::rgb_to_bgrx_sse(unsigned int w, const void* inpix, void* outpix)
 	}
 
 } // end rgb_to_bgrx_sse
+
+
+//---------------------------------------------------------
+// Function: rgba_to_rgb_sse
+//
+void spoutCopy::rgba_to_rgb_sse(const void* rgba_source, void* rgb_dest,
+	unsigned int width, unsigned int height, unsigned int rgba_pitch,
+	bool bInvert) const
+{
+	if (!rgba_source || !rgb_dest)
+		return;
+
+	// RGB dest does not have padding
+	unsigned int rgbsize = width*height*3;
+	unsigned int rgbpitch = width*3;
+
+	// RGBA source may have padding with source pitch passed in
+	// Dest and source must be the same dimensions otherwise
+	unsigned int rgba_padding = rgba_pitch-width*4; // byte line padding
+
+	// Invert option, move to the beginning of the last rgb line
+	auto rgb = static_cast<unsigned char*>(rgb_dest); // rgb
+	if (bInvert) {
+		rgb += rgbsize; // end of rgb buffer
+		rgb -= rgbpitch; // beginning of the last line
+	}
+
+	// 128 bit pointers
+	// _m128i* cast needs void pointers
+	auto rgbv = static_cast<void*>(rgb);
+	__m128i* out_vec = static_cast<__m128i*>(rgbv); // rgb
+	const __m128i* in_vec = static_cast<const __m128i*>(rgba_source); // rgba
+	// Double check
+	if (!out_vec || !in_vec)
+		return;
+
+	// Flip image option
+	if (bInvert) {
+		out_vec += rgbsize/16; // end of rgb buffer
+		out_vec -= rgbpitch/16; // beginning of the last rgb line
+	}
+
+	unsigned int w = width/16;
+	for (unsigned int y = 0; y < height; y++) {
+		while (w-- > 0) {
+
+			__m128i in0={};
+			__m128i in1={};
+			__m128i in2={};
+			__m128i in3={};
+
+			__m128i out0={};
+			__m128i out1={};
+
+			in0 = in_vec[0];   // First 128 bits RGBA
+			in1 = in_vec[1];   // Second 128 bits RGBA
+			in2 = in_vec[2];   // Third 128 bits RGBA
+			in3 = in_vec[3];   // Fourth 128 bits RGBA
+
+			//
+			// RGBA in 4x16 = 64 bytes (4 pixels at 4 bytes each = 16 bytes)
+			//               0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+			// in_vec[0]    Ra Ga Ba Xa Rb Gb Bb Xb Rc Gc Bc Xc Rd Gd Bd Xd
+			// in_vec[1]    Re Ge Be Xe Rf Gf Bf Xf Rg Gg Bg Xg Rh Gh Bh Xh
+			// in_vec[2]    Ri Gi Bi Xi Rj Gj Bj Xj Rk Gk Bk Xk Rl Gl Bl Xl
+			// in_vec[3]    Rm Gm Bm Xm Rn Gn Bn Xn Ro Go Bo Xo Rp Gp Bp Xp
+
+			//
+			// No blue-green swap (rgb > bgr)
+			//
+			// RGB out  3x16 = 48 bytes (4 pixels at 3 bytes each = 12 bytes)
+			//
+			// out_vec[0]    Rf Be Ge Re Bd Gd Rd Bc Gc Rc Bb Gb Rb Ba Ga Ra
+			//                4  2  1  0 14 13 12 10  9  8  6  5  4  2  1  0
+			//                 in_vec[1] |            in_vec[0]            |
+			// out_vec[1]    Gk Rk Bj Gj Rj Bi Gi Ri Bh Gh Rh Bg Gg Rg Bf Gf
+			//                9  8  6  5  4  2  1  0 14 13 12 10  9  8  6  5
+			//                        in_vec[2]       |     in_vec[1]
+			// out_vec[2]    Bp Gp Rp Bo Go Ro Bn Gn Rn Bm Gm Rm Bl Gl Rl Bk
+			//               14 13 12 10  9  8  6  5  4  2  1  0 14 13 12 10  
+			//                        in_vec[3]                   | in_vec[2]
+
+			// First 16 RGB bytes
+			// out_vec[0]    Rf Be Ge Re Bd Gd Rd Bc Gc Rc Bb Gb Rb Ba Ga Ra
+			//                4  2  1  0 14 13 12 10  9  8  6  5  4  2  1  0
+			//                 in_vec[1] |            in_vec[0]            |
+			out0 = _mm_shuffle_epi8(in0,
+				_mm_set_epi8('\xff', '\xff', '\xff', '\xff', 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0));
+			out1 = _mm_shuffle_epi8(in1,
+				_mm_set_epi8(4, 2, 1, 0, '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff'));
+			out_vec[0] = _mm_or_si128(out0, out1);
+
+			// Second 16 RGB bytes
+			// out_vec[1]    Gk Rk Bj Gj Rj Bi Gi Ri Bh Gh Rh Bg Gg Rg Bf Gf
+			//                9  8  6  5  4  2  1  0 14 13 12 10  9  8  6  5
+			//                        in_vec[2]       |     in_vec[1]
+			out0 = _mm_shuffle_epi8(in1,
+				_mm_set_epi8('\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', 14, 13, 12, 10, 9, 8, 6, 5));
+			out1 = _mm_shuffle_epi8(in2,
+				_mm_set_epi8(9, 8, 6, 5, 4, 2, 1, 0, '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff'));
+			out_vec[1] = _mm_or_si128(out0, out1);
+
+			// Third 16 RGB bytes
+			// out_vec[2]    Bp Gp Rp Bo Go Ro Bn Gn Rn Bm Gm Rm Bl Gl Rl Bk
+			//               14 13 12 10  9  8  6  5  4  2  1  0 14 13 12 10  
+			//                        in_vec[3]                   | in_vec[2]
+			out0 = _mm_shuffle_epi8(in2,
+				_mm_set_epi8('\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', 14, 13, 12, 10));
+			out1 = _mm_shuffle_epi8(in3,
+				_mm_set_epi8(14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0, '\xff', '\xff', '\xff', '\xff'));
+			out_vec[2] = _mm_or_si128(out0, out1);
+
+			in_vec  += 4; // RGBA 4x16
+			out_vec += 3; // RGB  3x16
+
+		} // done the line
+
+		// Reset width
+		w = width/16;
+		// Allow for padding at the end of the rgba source line
+		in_vec += rgba_padding/16;
+		// move up a line for invert
+		if (bInvert) {
+			out_vec -= w*3*2;
+		}
+
+	}
+
+} // end rgba_to_rgb_sse
+
+
+//---------------------------------------------------------
+// Function: rgba_to_bgr_sse
+//
+void spoutCopy::rgba_to_bgr_sse(const void* rgba_source, void* bgr_dest,
+	unsigned int width, unsigned int height, unsigned int rgba_pitch,
+	bool bInvert) const
+{
+	if (!rgba_source || !bgr_dest)
+		return;
+
+	// BGR dest does not have padding
+	unsigned int bgrsize = width*height*3;
+	unsigned int bgrpitch = width*3;
+
+	// RGBA source may have padding with source pitch passed in
+	// Dest and source must be the same dimensions otherwise
+	unsigned int rgba_padding = rgba_pitch-width*4; // byte line padding
+
+	// Invert option, move to the beginning of the last rgb line
+	auto bgr = static_cast<unsigned char*>(bgr_dest); // bgr
+	if (bInvert) {
+		bgr += bgrsize; // end of bgr buffer
+		bgr -= bgrpitch; // beginning of the last line
+	}
+
+	// 128 bit pointers
+	// _m128i* cast needs void pointers
+	auto bgrv = static_cast<void*>(bgr);
+	__m128i* out_vec = static_cast<__m128i*>(bgrv); // bgr out
+	const __m128i* in_vec = static_cast<const __m128i*>(rgba_source); // rgba in
+	// Double check
+	if (!out_vec || !in_vec)
+		return;
+
+	// Flip image option
+	if (bInvert) {
+		out_vec += bgrsize/16; // end of rgb buffer
+		out_vec -= bgrpitch/16; // beginning of the last line
+	}
+
+	unsigned int w = width/16;
+	for (unsigned int y = 0; y < height; y++) {
+		while (w-- > 0) {
+
+			__m128i in0={};
+			__m128i in1={};
+			__m128i in2={};
+			__m128i in3={};
+
+			__m128i out0={};
+			__m128i out1={};
+
+			in0 = in_vec[0];   // First 128 bits RGBA
+			in1 = in_vec[1];   // Second 128 bits RGBA
+			in2 = in_vec[2];   // Third 128 bits RGBA
+			in3 = in_vec[3];   // Fourth 128 bits RGBA
+
+			//
+			// RGBA in 4x16 = 64 bytes (4 pixels at 4 bytes each = 16 bytes)
+			//               0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+			// in_vec[0]    Ra Ga Ba Xa Rb Gb Bb Xb Rc Gc Bc Xc Rd Gd Bd Xd
+			// in_vec[1]    Re Ge Be Xe Rf Gf Bf Xf Rg Gg Bg Xg Rh Gh Bh Xh
+			// in_vec[2]    Ri Gi Bi Xi Rj Gj Bj Xj Rk Gk Bk Xk Rl Gl Bl Xl
+			// in_vec[3]    Rm Gm Bm Xm Rn Gn Bn Xn Ro Go Bo Xo Rp Gp Bp Xp
+
+			//
+			//
+			// BGR out  3x16 = 48 bytes (4 pixels at 3 bytes each = 12 bytes)
+			//
+			// out_vec[0]    Bf Re Ge Be Rd Gd Bd Rc Gc Bc Rb Gb Bb Ra Ga Ba
+			//                6  0  1  2 12 13 14  8  9 10  4  5  6  0  1  2
+			//                 in_vec[1] |            in_vec[0]            |
+			// out_vec[1]    Gk Bk Rj Gj Bj Ri Gi Bi Rh Gh Bh Rg Gg Bg Rf Gf
+			//                9 10  4  5  6  0  1  2 12 13 14  8  9 10  4  5
+			//                        in_vec[2]       |     in_vec[1]
+			// out_vec[2]    Rp Gp Bp Ro Go Bo Rn Gn Bn Rm Gm Bm Rl Gl Bl Rk
+			//               12 13 14  8  9 10  4  5  6  0  1  2 12 13 14  8  
+			//                        in_vec[3]                   | in_vec[2]
+
+			// First 16 BGR bytes
+			// out_vec[0]    Rf Be Ge Re Bd Gd Rd Bc Gc Rc Bb Gb Rb Ba Ga Ra
+			//                6  0  1  2 12 13 14  8  9 10  4  5  6  0  1  2
+			//                 in_vec[1] |            in_vec[0]            |
+			out0 = _mm_shuffle_epi8(in0,
+				_mm_set_epi8('\xff', '\xff', '\xff', '\xff', 12, 13, 14, 8, 9, 10, 4, 5, 6, 0, 1, 2));
+			out1 = _mm_shuffle_epi8(in1,
+				_mm_set_epi8(6, 0, 1, 2, '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff'));
+			out_vec[0] = _mm_or_si128(out0, out1);
+
+			// Second 16 BGR bytes
+			// out_vec[1]    Gk Rk Bj Gj Rj Bi Gi Ri Bh Gh Rh Bg Gg Rg Bf Gf
+			//                9 10  4  5  6  0  1  2 12 13 14  8  9 10  4  5
+			//                        in_vec[2]      |     in_vec[1]
+			out0 = _mm_shuffle_epi8(in1,
+				_mm_set_epi8('\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', 12, 13, 14, 8, 9, 10, 4, 5));
+			out1 = _mm_shuffle_epi8(in2,
+				_mm_set_epi8(9, 10, 4, 5, 6, 0, 1, 2, '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff'));
+			out_vec[1] = _mm_or_si128(out0, out1);
+
+			// Third 16 BGR bytes
+			// out_vec[2]    Bp Gp Rp Bo Go Ro Bn Gn Rn Bm Gm Rm Bl Gl Rl Bk
+			//               12 13 14  8  9 10  4  5  6  0  1  2 12 13 14  8  
+			//                        in_vec[3]                  | in_vec[2]
+			out0 = _mm_shuffle_epi8(in2,
+				_mm_set_epi8('\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', 12, 13, 14, 8));
+			out1 = _mm_shuffle_epi8(in3,
+				_mm_set_epi8(12, 13, 14, 8, 9, 10, 4, 5, 6, 0, 1, 2, '\xff', '\xff', '\xff', '\xff'));
+			out_vec[2] = _mm_or_si128(out0, out1);
+
+			in_vec  += 4; // RGBA 4x16
+			out_vec += 3; // BGR  3x16
+
+		} // done the line
+
+		// Reset width
+		w = width/16;
+		// Allow for padding at the end of the rgba source line
+		in_vec += rgba_padding/16;
+		// move up a line for invert
+		if (bInvert) {
+			out_vec -= w*3*2;
+		}
+
+	}
+
+} // end rgba_to_bgr_sse
+
 
 //---------------------------------------------------------
 // Function: bgr2bgra
@@ -1041,7 +1328,7 @@ void spoutCopy::rgba2rgbResample(const void* source, void* dest,
 
 			if (bMirror) {
 				if (bInvert)
-					pixel = (destHeight - i - 1)*destWidth * 3 + (destWidth - j - 1) * 3; // flip vertically
+					pixel = (destHeight - i - 1)*destWidth * 3 + (destWidth - j - 1) * 3; // flip horizontally
 				else
 					pixel = i * destWidth * 3 + (destWidth - j - 1) * 3;
 			}
