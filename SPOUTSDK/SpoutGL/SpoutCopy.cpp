@@ -932,7 +932,11 @@ void spoutCopy::rgba_to_rgb_sse(const void* rgba_source, void* rgb_dest,
 	unsigned int width, unsigned int height, unsigned int rgba_pitch,
 	bool bInvert) const
 {
-	if (!rgba_source || !rgb_dest)
+
+	const __m128i* in_vec = static_cast<const __m128i*>(rgba_source); // rgba
+	__m128i* out_vec = static_cast<__m128i*>(rgb_dest); // rgb
+
+	if (!out_vec || !in_vec)
 		return;
 
 	// RGB dest does not have padding
@@ -943,23 +947,7 @@ void spoutCopy::rgba_to_rgb_sse(const void* rgba_source, void* rgb_dest,
 	// Dest and source must be the same dimensions otherwise
 	unsigned int rgba_padding = rgba_pitch-width*4; // byte line padding
 
-	// Invert option, move to the beginning of the last rgb line
-	auto rgb = static_cast<unsigned char*>(rgb_dest); // rgb
-	if (bInvert) {
-		rgb += rgbsize; // end of rgb buffer
-		rgb -= rgbpitch; // beginning of the last line
-	}
-
-	// 128 bit pointers
-	// _m128i* cast needs void pointers
-	auto rgbv = static_cast<void*>(rgb);
-	__m128i* out_vec = static_cast<__m128i*>(rgbv); // rgb
-	const __m128i* in_vec = static_cast<const __m128i*>(rgba_source); // rgba
-	// Double check
-	if (!out_vec || !in_vec)
-		return;
-
-	// Flip image option
+	// Flip image option, move to the beginning of the last rgb line
 	if (bInvert) {
 		out_vec += rgbsize/16; // end of rgb buffer
 		out_vec -= rgbpitch/16; // beginning of the last rgb line
@@ -967,6 +955,7 @@ void spoutCopy::rgba_to_rgb_sse(const void* rgba_source, void* rgb_dest,
 
 	unsigned int w = width/16;
 	for (unsigned int y = 0; y < height; y++) {
+
 		while (w-- > 0) {
 
 			__m128i in0={};
@@ -1042,8 +1031,10 @@ void spoutCopy::rgba_to_rgb_sse(const void* rgba_source, void* rgb_dest,
 
 		// Reset width
 		w = width/16;
+		
 		// Allow for padding at the end of the rgba source line
 		in_vec += rgba_padding/16;
+
 		// move up a line for invert
 		if (bInvert) {
 			out_vec -= w*3*2;
@@ -1064,6 +1055,12 @@ void spoutCopy::rgba_to_bgr_sse(const void* rgba_source, void* bgr_dest,
 	if (!rgba_source || !bgr_dest)
 		return;
 
+	const __m128i* in_vec = static_cast<const __m128i*>(rgba_source); // rgba
+	__m128i* out_vec = static_cast<__m128i*>(bgr_dest); // bgr
+
+	if (!out_vec || !in_vec)
+		return;
+
 	// BGR dest does not have padding
 	unsigned int bgrsize = width*height*3;
 	unsigned int bgrpitch = width*3;
@@ -1072,23 +1069,7 @@ void spoutCopy::rgba_to_bgr_sse(const void* rgba_source, void* bgr_dest,
 	// Dest and source must be the same dimensions otherwise
 	unsigned int rgba_padding = rgba_pitch-width*4; // byte line padding
 
-	// Invert option, move to the beginning of the last rgb line
-	auto bgr = static_cast<unsigned char*>(bgr_dest); // bgr
-	if (bInvert) {
-		bgr += bgrsize; // end of bgr buffer
-		bgr -= bgrpitch; // beginning of the last line
-	}
-
-	// 128 bit pointers
-	// _m128i* cast needs void pointers
-	auto bgrv = static_cast<void*>(bgr);
-	__m128i* out_vec = static_cast<__m128i*>(bgrv); // bgr out
-	const __m128i* in_vec = static_cast<const __m128i*>(rgba_source); // rgba in
-	// Double check
-	if (!out_vec || !in_vec)
-		return;
-
-	// Flip image option
+	// Flip image option, move to the beginning of the last line
 	if (bInvert) {
 		out_vec += bgrsize/16; // end of rgb buffer
 		out_vec -= bgrpitch/16; // beginning of the last line
@@ -1170,8 +1151,10 @@ void spoutCopy::rgba_to_bgr_sse(const void* rgba_source, void* bgr_dest,
 
 		// Reset width
 		w = width/16;
+
 		// Allow for padding at the end of the rgba source line
 		in_vec += rgba_padding/16;
+
 		// move up a line for invert
 		if (bInvert) {
 			out_vec -= w*3*2;
