@@ -133,20 +133,15 @@ class SPOUT_DLLEXP spoutCopy {
 			unsigned int destWidth, unsigned int destHeight, bool bInvert = false) const;
 
 		//
-		// SSE functions
+		// SSE3 function
 		//
-
-		// RGBA to RGB with source line pitch 
-		void rgba_to_rgb_sse(const void* rgba_source, void* rgb_dest,
+		// RGBA to RGB/BGR with source line pitch 
+		//
+		void rgba_to_rgb_sse3(const void* rgba_source, void* rgb_dest,
 			unsigned int width, unsigned int height,
 			unsigned int rgba_pitch, // line byte pitch
-			bool bInvert = false) const;
-
-		// RGBA to BGR with source line pitch 
-		void rgba_to_bgr_sse(const void* rgba_source, void* rgb_dest,
-			unsigned int width, unsigned int height,
-			unsigned int rgba_pitch, // line byte pitch
-			bool bInvert = false) const;
+			bool bInvert = false, // Flip image
+			bool bSwapRB = false) const; // Swap RG (BGR)
 
 		//
 		// Byte functions
@@ -180,14 +175,17 @@ class SPOUT_DLLEXP spoutCopy {
 			unsigned int width, unsigned int height,
 			unsigned int dest_pitch, bool bInvert) const;
 
-		// Experimental SSE
-		// RGB to BGRX
+
+		// Experimental SSE RGB to BGRA
+		// Single line
 		void rgb_to_bgrx_sse(unsigned int npixels, const void* rgb_source, void* bgrx_out) const;
+		// Full height
+		void rgb_to_bgra_sse3(void* rgb_source, void* rgba_dest, unsigned int width, unsigned int height) const;
+
 
 		// Copy BGR to BGRA
 		void bgr2bgra (const void* bgr_source,  void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
-		
-
+	
 		// Copy RGBA to BGR
 		void rgba2bgr (const void* rgba_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 		
