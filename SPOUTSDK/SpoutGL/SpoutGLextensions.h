@@ -19,6 +19,7 @@
 //			02.01.15 - added GL_BGR for SpoutCam
 //			21.11.18 - added preprocessor define for Jitter externals
 //					   https://github.com/robtherich/Spout2
+//			19.04.23 - correct glGenBuffersPROC and glUnmapBufferPROC
 //
 //			All changes now documented in SpoutGLextensions.cpp
 //
@@ -424,7 +425,6 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 #define GL_READ_ONLY					0x88B8
 #define GL_WRITE_ONLY					0x88B9
 
-// LJ DEBUG
 #define GL_BUFFER_SIZE					0x8764
 #ifndef GL_MAP_READ_BIT
 #define GL_MAP_READ_BIT					0x0001
@@ -438,6 +438,7 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 #ifndef GL_MAP_COHERENT_BIT
 #define GL_MAP_COHERENT_BIT				0x0080 
 #endif
+
 //
 // Optional flag bits
 //
@@ -500,14 +501,16 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 // ------------------------------
 typedef ptrdiff_t GLsizeiptr;
 typedef ptrdiff_t GLintptr;
-typedef void   (APIENTRY *glGenBuffersPROC)    (GLsizei n, GLuint* buffers);
+typedef void   (APIENTRY* glGenBuffersPROC)    (GLsizei n, const GLuint* buffers);
+// typedef void   (APIENTRY *glGenBuffersPROC)    (GLsizei n, GLuint* buffers);
 typedef void   (APIENTRY *glDeleteBuffersPROC) (GLsizei n, const GLuint* buffers);
 typedef void   (APIENTRY *glBindBufferPROC)    (GLenum target, const GLuint buffer);
 typedef void   (APIENTRY *glBufferDataPROC)    (GLenum target,  GLsizeiptr size,  const GLvoid * data,  GLenum usage);
 typedef void   (APIENTRY *glBufferStoragePROC) (GLenum target, GLsizeiptr size, const void * data, GLbitfield flags);
 typedef void * (APIENTRY *glMapBufferPROC) (GLenum target,  GLenum access);
 typedef void * (APIENTRY *glMapBufferRangePROC) (GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
-typedef GLboolean (APIENTRY *glUnmapBufferPROC) (GLenum target);
+// typedef GLboolean (APIENTRY *glUnmapBufferPROC) (GLenum target);
+typedef void   (APIENTRY* glUnmapBufferPROC) (GLenum target);
 typedef void   (APIENTRY *glGetBufferParameterivPROC) (GLenum target, GLenum value,	GLint * data);
 
 extern glGenBuffersPROC		glGenBuffers;
