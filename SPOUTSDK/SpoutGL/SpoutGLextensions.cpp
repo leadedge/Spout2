@@ -42,6 +42,7 @@
 //			15.02.23	- SpoutGLextensions.h
 //						  Correct glUnmapBufferPROC from void to GLboolean
 //						  Correct glGenBuffersPROC buffers arg from const
+//			20.04.23	- Add compute shader extensions
 //
 
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -136,8 +137,30 @@ glFenceSyncPROC							glFenceSync						= NULL;
 #ifdef USE_COPY_EXTENSIONS
 PFNGLCOPYIMAGESUBDATAPROC glCopyImageSubData = NULL;
 glGetInternalFormativPROC glGetInternalFormativ = NULL;
-
 #endif
+
+//---------------------------
+// (for future use)
+// Compute shader extensions
+//---------------------------
+glCreateProgramPROC		 glCreateProgram    = NULL;
+glCreateShaderPROC       glCreateShader     = NULL;
+glShaderSourcePROC       glShaderSource     = NULL;
+glCompileShaderPROC      glCompileShader    = NULL;
+glAttachShaderPROC       glAttachShader     = NULL;
+glLinkProgramPROC        glLinkProgram      = NULL;
+glGetProgramivPROC       glGetProgramiv     = NULL;
+glDetachShaderPROC       glDetachShader     = NULL;
+glUseProgramPROC         glUseProgram       = NULL;
+glBindImageTexturePROC   glBindImageTexture = NULL;
+glDispatchComputePROC    glDispatchCompute  = NULL;
+glDeleteProgramPROC      glDeleteProgram    = NULL;
+glDeleteShaderPROC       glDeleteShader     = NULL;
+glActiveTexturePROC      glActiveTexture    = NULL;
+glUniform1iPROC          glUniform1i        = NULL;
+glGetUniformLocationPROC glGetUniformLocation = NULL;
+
+glTextureStorage2DPROC   glTextureStorage2D = NULL;
 
 //---------------------------
 // Context creation extension
@@ -368,9 +391,7 @@ bool loadCopyExtensions()
 
 	// Copy extensions
 	glCopyImageSubData = (PFNGLCOPYIMAGESUBDATAPROC)wglGetProcAddress("glCopyImageSubData");
-
 	glGetInternalFormativ = (glGetInternalFormativPROC)wglGetProcAddress("glGetInternalFormativ");
-
 	if (glCopyImageSubData != NULL) {
 		return true;
 	}
@@ -386,6 +407,65 @@ bool loadCopyExtensions()
 
 }
 
+
+bool loadComputeShaderExtensions()
+{
+
+#ifdef USE_COMPUTE_EXTENSIONS
+
+	// TODO - all shader extensions
+	// #ifdef USE_GLEW
+	// return false;
+	// #else
+
+	// Compute shader extensions
+	glCreateProgram    = (glCreateProgramPROC)wglGetProcAddress("glCreateProgram");
+	glCreateShader     = (glCreateShaderPROC)wglGetProcAddress("glCreateShader");
+	glShaderSource     = (glShaderSourcePROC)wglGetProcAddress("glShaderSource");
+	glCompileShader    = (glCompileShaderPROC)wglGetProcAddress("glCompileShader");
+	glAttachShader     = (glAttachShaderPROC)wglGetProcAddress("glAttachShader");
+	glLinkProgram      = (glLinkProgramPROC)wglGetProcAddress("glLinkProgram");
+	glGetProgramiv     = (glGetProgramivPROC)wglGetProcAddress("glGetProgramiv");
+	glDetachShader     = (glDetachShaderPROC)wglGetProcAddress("glDetachShader");
+	glUseProgram       = (glUseProgramPROC)wglGetProcAddress("glUseProgram");
+	glBindImageTexture = (glBindImageTexturePROC)wglGetProcAddress("glBindImageTexture");
+	glDispatchCompute  = (glDispatchComputePROC)wglGetProcAddress("glDispatchCompute");
+	glDeleteProgram    = (glDeleteProgramPROC)wglGetProcAddress("glDeleteProgram");
+	glDeleteShader     = (glDeleteShaderPROC)wglGetProcAddress("glDeleteShader");
+	glActiveTexture    = (glActiveTexturePROC)wglGetProcAddress("glActiveTexture");
+	glUniform1i        = (glUniform1iPROC)wglGetProcAddress("glUniform1i");
+	glGetUniformLocation = (glGetUniformLocationPROC)wglGetProcAddress("glGetUniformLocation");
+
+	glTextureStorage2D = (glTextureStorage2DPROC)wglGetProcAddress("glTextureStorage2D");
+
+	if(glCreateProgram != NULL
+		&& glCreateShader != NULL
+		&& glShaderSource != NULL
+		&& glCompileShader != NULL
+		&& glAttachShader != NULL
+		&& glLinkProgram != NULL
+		&& glGetProgramiv != NULL
+		&& glDetachShader != NULL
+		&& glUseProgram != NULL
+		&& glBindImageTexture != NULL
+		&& glDispatchCompute != NULL
+		&& glDeleteProgram != NULL
+		&& glActiveTexture != NULL
+		&& glUniform1i != NULL
+		&& glDeleteShader != NULL
+		&& glGetUniformLocation != NULL
+		&& glTextureStorage2D != NULL) {
+			return true;
+	}
+	else {
+		return false;
+	}
+#else
+	// Compute shader extensions defined elsewhere
+	return true;
+#endif
+
+}
 
 bool loadContextExtension()
 {
@@ -512,6 +592,13 @@ unsigned int loadGLextensions() {
 	}
 	else {
 		ExtLog(SPOUT_EXT_LOG_WARNING, "loadGLextensions : loadCopyExtensions fail");
+	}
+
+	if (loadComputeShaderExtensions()) {
+		caps |= GLEXT_SUPPORT_COMPUTE;
+	}
+	else {
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadGLextensions : loadComputeShaderExtensions fail");
 	}
 
 	if (loadContextExtension()) {

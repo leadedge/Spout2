@@ -121,6 +121,10 @@ using namespace spoututils;
 // Only used for testing
 #define USE_COPY_EXTENSIONS
 
+// Compute shader extensions
+// For future use
+#define USE_COMPUTE_EXTENSIONS
+
 // If load of context creation extension conflicts, disable it here
 // Only used for testing
 #define USE_CONTEXT_EXTENSION
@@ -207,7 +211,8 @@ enum ExtLogLevel {
 #define GLEXT_SUPPORT_SWAP			 16
 #define GLEXT_SUPPORT_BGRA			 32
 #define GLEXT_SUPPORT_COPY			 64
-#define GLEXT_SUPPORT_CONTEXT       128
+#define GLEXT_SUPPORT_COMPUTE		128
+#define GLEXT_SUPPORT_CONTEXT       256
 
 //-----------------------------------------------------
 // GL consts that are needed and aren't present in GL.h
@@ -425,6 +430,7 @@ extern PFNWGLGETSWAPINTERVALEXTPROC    wglGetSwapIntervalEXT;
 #define GL_STREAM_READ					0x88E1
 #define GL_READ_ONLY					0x88B8
 #define GL_WRITE_ONLY					0x88B9
+#define GL_READ_WRITE					0x88BA
 
 #define GL_BUFFER_SIZE					0x8764
 #ifndef GL_MAP_READ_BIT
@@ -547,8 +553,76 @@ extern PFNGLCOPYIMAGESUBDATAPROC glCopyImageSubData;
 
 typedef void(APIENTRY * glGetInternalFormativPROC)(GLenum target, GLenum internalfrmat, GLenum pname, GLsizei buffSize, GLint *params);
 extern glGetInternalFormativPROC glGetInternalFormativ;
-
 #endif // USE_COPY_EXTENSIONS
+
+//---------------------------
+// Compute shader extensions
+//---------------------------
+
+#ifndef GL_COMPUTE_SHADER
+#define GL_COMPUTE_SHADER 0x91B9
+#endif
+
+#ifndef GL_LINK_STATUS
+#define GL_LINK_STATUS 0x8B82
+#endif
+
+#ifndef GL_TEXTURE0
+#define GL_TEXTURE0 0x84C0
+#endif
+
+#ifndef GL_TEXTURE1
+#define GL_TEXTURE1 0x84C1
+#endif
+
+#ifndef GL_TEXTURE2
+#define GL_TEXTURE2 0x84C2
+#endif
+
+#ifndef GL_TEXTURE3
+#define GL_TEXTURE3 0x84C3
+#endif
+
+
+typedef GLuint (APIENTRY* glCreateProgramPROC) (void);
+typedef GLuint (APIENTRY* glCreateShaderPROC) (GLenum type);
+typedef void   (APIENTRY* glShaderSourcePROC) (GLuint shader, GLsizei count, const char* const* string, const GLint* length);
+typedef void   (APIENTRY* glCompileShaderPROC) (GLuint shader);
+typedef void   (APIENTRY* glAttachShaderPROC) (GLuint program, GLuint shader);
+typedef void   (APIENTRY* glLinkProgramPROC) (GLuint program);
+typedef void   (APIENTRY* glGetProgramivPROC) (GLuint program, GLenum pname, GLint* param);
+typedef void   (APIENTRY* glDetachShaderPROC) (GLuint program, GLuint shader);
+typedef void   (APIENTRY* glUseProgramPROC) (GLuint program);
+typedef void   (APIENTRY* glBindImageTexturePROC) (GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format);
+typedef void   (APIENTRY* glDispatchComputePROC) (GLuint num_groups_x, GLuint num_groups_y, GLuint num_groups_z);
+typedef void   (APIENTRY* glDeleteProgramPROC) (GLuint program);
+typedef void   (APIENTRY* glDeleteShaderPROC) (GLuint shader);
+
+extern glCreateProgramPROC		glCreateProgram;
+extern glCreateShaderPROC       glCreateShader;
+extern glShaderSourcePROC       glShaderSource;
+extern glCompileShaderPROC      glCompileShader;
+extern glAttachShaderPROC       glAttachShader;
+extern glLinkProgramPROC        glLinkProgram;
+extern glGetProgramivPROC       glGetProgramiv;
+extern glDetachShaderPROC       glDetachShader;
+extern glUseProgramPROC         glUseProgram;
+extern glBindImageTexturePROC   glBindImageTexture;
+extern glDispatchComputePROC    glDispatchCompute;
+extern glDeleteProgramPROC      glDeleteProgram;
+extern glDeleteShaderPROC       glDeleteShader;
+
+typedef void (APIENTRY* glActiveTexturePROC)(GLenum texture);
+extern glActiveTexturePROC      glActiveTexture;
+typedef void (APIENTRY* glUniform1iPROC) (GLint location, GLint v0);
+extern glUniform1iPROC          glUniform1i;
+typedef GLint (APIENTRY* glGetUniformLocationPROC) (GLuint program, const char* name);
+extern glGetUniformLocationPROC glGetUniformLocation;
+
+// Use instead of glTexture2D to create immutable texture
+typedef void (APIENTRY* glTextureStorage2DPROC) (GLuint texture, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height);
+extern glTextureStorage2DPROC   glTextureStorage2D;
+
 
 //---------------------------
 // Context creation extension
@@ -589,6 +663,7 @@ bool loadBLITextension();
 bool loadSwapExtensions();
 bool loadPBOextensions();
 bool loadCopyExtensions();
+bool loadComputeShaderExtensions();
 bool loadContextExtension();
 bool isExtensionSupported(const char *extension);
 void ExtLog(ExtLogLevel level, const char* format, ...);
