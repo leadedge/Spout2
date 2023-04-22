@@ -249,6 +249,7 @@
 //		08.03.23	- GetSenderAdapter use SetAdpater instead of SetAdapterPointer
 //		21.03.23	- ReceiveSenderData - use the format of the D3D11 texture generated
 //					  by OpenDX11shareHandle for incorrect sender information.
+//		22.04.23	- Minor code comments cleanup
 //
 // ====================================================================================
 /*
@@ -889,6 +890,7 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 			// 3840x2160 33 fps - 5-7 msec/frame
 			ReadDX11texture(TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
 		}
+		
 
 	} // endif sender exists
 	else {
@@ -1086,6 +1088,51 @@ void Spout::HoldFps(int fps)
 {
 	frame.HoldFps(fps);
 }
+
+//
+// Group: Frame synchronization
+//
+//
+//   Notes for synchronisation.
+//
+//
+// In cases where the receiver or the sender have different processing or cycle rates
+// it is often necessary to synchronize one with the other to avoid missed or duplicate frames
+// and possible visible hesitations.
+//
+// This can be achieved using event functions "SetFrameSync" and "WaitFrameSync".
+//
+//      - void SetFrameSync(const char* SenderName);
+//      - bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+//
+//   WaitFrameSync
+//   A sender or receiver should use this before rendering wait for a signal from
+//   the other process that it is ready to send or to read another frame.
+//
+//   SetFrameSync
+//   After processing, a sender or receiver should signal that it is ready to
+//   either send or read another frame. 
+//
+// EXAMPLES
+//
+// 1) If the sender is faster, the slower receiver will miss frames.
+//
+//    Sender
+//    Before processing, the sender waits for a signal from the receiver that it is ready to receive a new frame.
+//        WaitFrameSync(const char* sendername, DORD dwTimeout);'
+//    Receiver
+//    After processing, signals the sender to produce a new frame.
+//        SetFrameSync(const char* sendername);
+//
+// 2) If the sender is slower, the faster receiver will duplicate frames.
+//
+//    Receiver
+//    Before processing, the receiver waits for a signal from the sender that a new frame is ready.
+//        WaitFrameSync(const char* sendername, DORD dwTimeout);
+//    Sender
+//        After processing, signals the receiver that a new frame is ready.
+//        SetFrameSync(const char* sendername);
+//
 
 // -----------------------------------------------
 // Function: SetFrameSync
@@ -2171,11 +2218,9 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 		if (m_bTextureShare) {
 			//
 			// The linked textures cannot be re-sized so have to 
-			// be re-created. The interop object handle must then
-			// also be re-created from the new textures.
-			//
-			// It is just as fast to re-create the interop device as well.
-			// Flag "false" for sender to create a new shared texture
+			// be re-created. The interop object handle is then
+			// re-created from the linking of the new textures.
+			// Flag "false" for sender to create a new shared texture.
 			//
 			if (!CreateInterop(width, height, m_dwFormat, false)) {
 				return false;
