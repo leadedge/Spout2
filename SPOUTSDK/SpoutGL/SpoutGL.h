@@ -144,9 +144,10 @@ class SPOUT_DLLEXP spoutGL {
 	//
 	
 	// Copy OpenGL texture with optional invert
-	//   Textures must be the same size
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget, GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
+	// Compute shader for OpenGL texture copy
+	bool ComputeCopyTexture(GLuint SourceID, GLuint DestID,	unsigned int width, unsigned int height, bool bInvert = false);
 	// Correct for image stride
 	void RemovePadding(const unsigned char *source, unsigned char *dest,
 		unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
@@ -319,6 +320,12 @@ protected :
 	int m_Index;
 	int m_NextIndex;
 	bool CheckStagingTextures(unsigned int width, unsigned int height, int nTextures);
+
+	// Compute shader for OpenGL texture copy
+	GLuint m_ComputeCopyProgram = 0;
+	GLuint m_wgX = 32;
+	GLuint m_wgY = 32;
+	GLuint CreateComputeCopyShader(unsigned int width, unsigned int height);
 
 	// 2.006 shared memory
 	bool ReadMemoryTexture(const char* sendername, GLuint TexID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);

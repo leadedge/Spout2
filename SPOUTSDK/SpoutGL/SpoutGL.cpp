@@ -121,6 +121,8 @@
 //		14.04.23	- Correct CreateMemoryBuffer null name check
 //		15.03.23	- If no new sender frame, return true and do not block for all receiving functions
 //					  to avoid un-necessary Acquire/Release/Lock/Unlock
+//		22.04,23	- Add compute shader utility for OpenGL texture copy
+//					  CreateInterop - delete m_glTexture before creating new
 //
 // ====================================================================================
 //
@@ -881,7 +883,7 @@ bool spoutGL::GLDXready()
 	SpoutLogNotice("    Linking test - OpenGL texture (0x%.7X) DX11 texture (0x%.7X)", glTexture, PtrToUint(pTexture));
 
 	// Link the shared DirectX texture to the OpenGL texture
-	// USe the global m_hInteropObject so that CleanupInterop works
+	// Use the global m_hInteropObject so that CleanupInterop works
 	m_hInteropObject = LinkGLDXtextures(spoutdx.GetDX11Device(), pTexture, glTexture);
 	if (!m_hInteropObject) {
 		spoutdx.ReleaseDX11Texture(spoutdx.GetDX11Device(), pTexture);
@@ -1056,12 +1058,15 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 
 	// Create or re-create the class OpenGL texture
 	// The texture has body after it is linked to the shared DirectX texture
+	if (m_glTexture) glDeleteTextures(1, &m_glTexture);
 	glGenTextures(1, &m_glTexture);
-	
+
 	m_Width = width;
 	m_Height = height;
 
-	// Link the texture using the GL/DX interop
+	// Link the shared DirectX texture to the OpenGL texture
+	// to create an interop object that is used to manage the textures.
+	// This also creates the interop device if it does not exist yet.
 	m_hInteropObject = LinkGLDXtextures((void *)spoutdx.GetDX11Device(), m_pSharedTexture, m_glTexture);
 	if (!m_hInteropObject) {
 		// Write diagnostics to a log file
@@ -1457,7 +1462,6 @@ void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, un
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
 	glBindTexture(GL_TEXTURE_2D, texturebinding);
 
 }
@@ -3416,7 +3420,7 @@ bool spoutGL::GLerror() {
 	bool bError = false;
 	while ((err = glGetError()) != GL_NO_ERROR) {
 		SpoutLogError("    GLerror - OpenGL error = %u (0x%.7X)", err, err);
-		// printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
+		printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
 		bError = true;
 #ifdef USE_GLEW
 		// gluErrorString needs Glu.h and glu32.lib (or glew)
@@ -3702,7 +3706,7 @@ int spoutGL::GetSpoutVersion()
 //---------------------------------------------------------
 // Function: CopyTexture
 // Copy OpenGL texture with optional invert
-//   Textures must be the same size
+// Textures must be the same size
 bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	GLuint DestID, GLuint DestTarget, unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
@@ -3768,6 +3772,108 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 
 } // end CopyTexture
 
+
+//---------------------------------------------------------
+// Function: ComputeCopyTexture
+// OpenGL texture copy using compute shader
+// Approximately X2 faster than FBO blit
+//
+// Textures must have the same size and internal format GL_RGBA or GL_RGBA8
+// Texture targets can be different, GL_TEXTURE_2D or GL_TEXTURE_RECTANGLE_ARB
+// Cannot be used with GL/DX interop or glBindImageTexture fails
+// Confirmed after calling LinkGLDXtextures
+//
+bool spoutGL::ComputeCopyTexture(GLuint SourceID, GLuint DestID,
+	unsigned int width, unsigned int height, bool bInvert)
+{
+	if (SourceID == 0 || DestID == 0)
+		return false;
+
+	// Shader program name is global
+	if (!m_ComputeCopyProgram) {
+		m_ComputeCopyProgram = CreateComputeCopyShader(width, height);
+		if (!m_ComputeCopyProgram)
+			return false;
+	}
+
+	// Texture copy shader program
+	glUseProgram(m_ComputeCopyProgram);
+
+	// Update shader with new input texture
+	glBindImageTexture(0, SourceID, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA8);
+	glBindImageTexture(1, DestID,   0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+
+	// Flip output option
+	glUniform1i(0, bInvert);
+
+	// Use the shader with determined work group size (default 32x32)
+	glDispatchCompute(width/m_wgX, height/m_wgY, 1);
+
+	glUseProgram(0);
+
+	return true;
+
+}
+
+
+//---------------------------------------------------------
+// Function: CreateComputeCopyShader
+// Create compute shader for OpenGL texture copy
+GLuint spoutGL::CreateComputeCopyShader(unsigned int width, unsigned int height)
+{
+	// Workgroup x and y sizes should match image width and height
+	m_wgX = width/(unsigned int)ceil((float)width/32.0f); // Default is 32x32
+	m_wgY = height/(unsigned int)ceil((float)height/32.0f);
+
+	// Compute shader source
+	std::string shaderstr = "#version 440\n";
+	shaderstr += "layout(rgba8, binding=0) uniform readonly  image2D src;\n";
+	shaderstr += "layout(rgba8, binding=1) uniform writeonly image2D dst;\n";
+	shaderstr += "layout (location = 0) uniform bool flip;\n";
+	shaderstr += "layout(local_size_x = ";
+	shaderstr += std::to_string(m_wgX);
+	shaderstr += ", local_size_y = ";
+	shaderstr += std::to_string(m_wgY);
+	shaderstr += ", local_size_z = 1) in;\n";
+	shaderstr += "void main() {\n";
+	shaderstr += "    vec4 c = imageLoad(src, ivec2(gl_GlobalInvocationID.xy));\n";
+	shaderstr += "    uint ypos = gl_GlobalInvocationID.y;\n";
+	// Flip image option
+	shaderstr += "    if(flip) ypos = imageSize(src).y-ypos;\n";
+	// Texture copy with output alpha = 1
+	shaderstr += "    imageStore(dst, ivec2(gl_GlobalInvocationID.x, ypos), vec4(c.r,c.g,c.b,1.0));\n";
+	shaderstr += "}";
+
+	// Create the compute shader program
+	GLuint computeProgram = glCreateProgram();
+	if (computeProgram > 0) {
+		GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
+		if (computeShader > 0) {
+			// Compile and link shader
+			GLint status = 0;
+			const char* source = shaderstr.c_str();
+			glShaderSource(computeShader, 1, &source, NULL);
+			glCompileShader(computeShader);
+			glAttachShader(computeProgram, computeShader);
+			glLinkProgram(computeProgram);
+			glGetProgramiv(computeProgram, GL_LINK_STATUS, &status);
+			if (status == 0) {
+				// glGetProgramiv failed
+				glDetachShader(computeProgram, computeShader);
+				glDeleteProgram(computeShader);
+				glDeleteProgram(computeProgram);
+			}
+			else {
+				// After linking, the shader object is not needed
+				glDeleteShader(computeShader);
+				return computeProgram;
+			}
+		}
+	}
+	return 0;
+}
+
+
 //---------------------------------------------------------
 // Function: RemovePadding
 // Remove line padding from a source image and crerate a destination image without padding
@@ -3814,6 +3920,7 @@ bool spoutGL::ReadTexture(ID3D11Texture2D** texture)
 	return true;
 
 } // end ReadTexture
+
 
 //---------------------------------------------------------
 // Function: WriteTexture
