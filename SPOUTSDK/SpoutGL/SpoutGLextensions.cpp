@@ -43,6 +43,8 @@
 //						  Correct glUnmapBufferPROC from void to GLboolean
 //						  Correct glGenBuffersPROC buffers arg from const
 //			20.04.23	- Add compute shader extensions
+//			22.04.23	- Correct EXT_LOG prefixe for standalone in ExtLog function
+//			24.04.23	- Add glGetTexParameteriv and glTextureStorage2D
 //
 
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -160,7 +162,9 @@ glActiveTexturePROC      glActiveTexture    = NULL;
 glUniform1iPROC          glUniform1i        = NULL;
 glGetUniformLocationPROC glGetUniformLocation = NULL;
 
-glTextureStorage2DPROC   glTextureStorage2D = NULL;
+glTextureStorage2DPROC   glTextureStorage2D  = NULL;
+glCreateTexturesPROC     glCreateTextures    = NULL;
+// glGetTexParameterivPROC  glGetTexParameteriv = NULL;
 
 //---------------------------
 // Context creation extension
@@ -435,8 +439,8 @@ bool loadComputeShaderExtensions()
 	glActiveTexture    = (glActiveTexturePROC)wglGetProcAddress("glActiveTexture");
 	glUniform1i        = (glUniform1iPROC)wglGetProcAddress("glUniform1i");
 	glGetUniformLocation = (glGetUniformLocationPROC)wglGetProcAddress("glGetUniformLocation");
-
-	glTextureStorage2D = (glTextureStorage2DPROC)wglGetProcAddress("glTextureStorage2D");
+	glTextureStorage2D   = (glTextureStorage2DPROC)wglGetProcAddress("glTextureStorage2D");
+	glCreateTextures     = (glCreateTexturesPROC)wglGetProcAddress("glCreateTextures");
 
 	if(glCreateProgram != NULL
 		&& glCreateShader != NULL
@@ -454,10 +458,12 @@ bool loadComputeShaderExtensions()
 		&& glUniform1i != NULL
 		&& glDeleteShader != NULL
 		&& glGetUniformLocation != NULL
-		&& glTextureStorage2D != NULL) {
+		&& glTextureStorage2D != NULL
+		&& glCreateTextures != NULL) {
 			return true;
 	}
 	else {
+		printf("loadComputeShaderExtensions failed\n");
 		return false;
 	}
 #else
@@ -713,13 +719,13 @@ void ExtLog(ExtLogLevel level, const char* format, ...)
 	std::string logstring;
 	logstring = "SpoutGLextensions : ";
 	switch (level) {
-		case LOG_NOTICE:
+		case SPOUT_EXT_LOG_NOTICE:
 			logstring += "Notice - ";
 			break;
-		case LOG_WARNING:
+		case SPOUT_EXT_LOG_WARNING:
 			logstring += "Warning - ";
 			break;
-		case LOG_ERROR:
+		case SPOUT_EXT_LOG_ERROR:
 			logstring += "Error - ";
 			break;
 		default:

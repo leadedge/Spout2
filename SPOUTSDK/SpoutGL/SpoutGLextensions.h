@@ -201,6 +201,66 @@ enum ExtLogLevel {
 #define GL_INVALID_FRAMEBUFFER_OPERATION_EXT 0x0506
 #endif
 
+/*
+		GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX
+		GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX
+		GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX
+		GPU_MEMORY_INFO_EVICTION_COUNT_NVX
+		GPU_MEMORY_INFO_EVICTED_MEMORY_NVX
+*/
+
+// dedicated video memory, total size (in kb) of the GPU memory
+#ifndef GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX
+#define GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX 0x9047
+#endif
+
+#ifndef GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX
+#define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
+#endif
+
+#ifndef GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX
+#define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
+#endif
+
+#ifndef GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX
+#define GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
+#endif
+
+#ifndef GPU_MEMORY_INFO_EVICTION_COUNT_NVX
+#define GPU_MEMORY_INFO_EVICTION_COUNT_NVX 0x904A
+#endif
+
+#ifndef GPU_MEMORY_INFO_EVICTED_MEMORY_NVX
+#define GPU_MEMORY_INFO_EVICTED_MEMORY_NVX 0x904B
+#endif
+
+//
+// ATI
+// https://registry.khronos.org/OpenGL/extensions/ATI/ATI_meminfo.txt
+//
+// Information on the current memory resources available can be queried
+// by specifying VBO_FREE_MEMORY_ATI, TEXTURE_FREE_MEMORY_ATI, or
+// RENDERBUFFER_FREE_MEMORY_ATI as the value parameter to  GetIntergerv.
+// These return the memory status for pools of memory used for vertex
+// buffer objects, textures, and render buffers respectively.
+//
+// param[0] - total memory free in the pool
+// param[1] - largest available free block in the pool
+// param[2] - total auxiliary memory free
+// param[3] - largest auxiliary free block
+//
+#ifndef VBO_FREE_MEMORY_ATI
+#define VBO_FREE_MEMORY_ATI                     0x87FB
+#endif
+
+#ifndef TEXTURE_FREE_MEMORY_ATI
+#define TEXTURE_FREE_MEMORY_ATI                 0x87FC
+#endif
+
+#ifndef RENDERBUFFER_FREE_MEMORY_ATI
+#define RENDERBUFFER_FREE_MEMORY_ATI            0x87FD
+#endif
+
 //------------------------
 // EXTENSION SUPPORT FLAGS
 //------------------------
@@ -583,6 +643,10 @@ extern glGetInternalFormativPROC glGetInternalFormativ;
 #define GL_TEXTURE3 0x84C3
 #endif
 
+#ifndef GL_TEXTURE_IMMUTABLE_FORMAT
+#define GL_TEXTURE_IMMUTABLE_FORMAT 0x912F
+#endif
+
 
 typedef GLuint (APIENTRY* glCreateProgramPROC) (void);
 typedef GLuint (APIENTRY* glCreateShaderPROC) (GLenum type);
@@ -621,7 +685,10 @@ extern glGetUniformLocationPROC glGetUniformLocation;
 
 // Use instead of glTexture2D to create immutable texture
 typedef void (APIENTRY* glTextureStorage2DPROC) (GLuint texture, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height);
-extern glTextureStorage2DPROC   glTextureStorage2D;
+extern glTextureStorage2DPROC glTextureStorage2D;
+
+typedef void (APIENTRY * glCreateTexturesPROC) (GLenum target, GLsizei n, GLuint* textures);
+extern glCreateTexturesPROC glCreateTextures;
 
 
 //---------------------------
