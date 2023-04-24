@@ -861,6 +861,10 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 			if (TextureID != 0 && TextureTarget != 0) {
 				return true;
 			}
+
+			// m_bUpdated is reset to false on the next call to 
+			// ReceiveSenderData until the sender changes size again
+
 		}
 
 		// Was the sender's shared texture handle null
@@ -890,7 +894,6 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 			// 3840x2160 33 fps - 5-7 msec/frame
 			ReadDX11texture(TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
 		}
-		
 
 	} // endif sender exists
 	else {
@@ -2428,6 +2431,7 @@ bool Spout::ReceiveSenderData()
 					// The application can now access and copy the sender texture.
 					// Signal the application to update the receiving texture or image
 					m_bUpdated = true;
+
 				} // endif OpenDX11shareHandle succeeded
 
 			} // endif m_dxShareHandle valid
