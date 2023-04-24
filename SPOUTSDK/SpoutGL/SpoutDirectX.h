@@ -102,7 +102,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Release a texture resource created with a class device
 		unsigned long ReleaseDX11Texture(ID3D11Texture2D* pTexture);
 		// Release a texture resource
-		unsigned long ReleaseDX11Texture(const ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture);
+		unsigned long ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture);
 		// Release a device
 		unsigned long ReleaseDX11Device(ID3D11Device* pd3dDevice);
 		// Flush immediate context command queue and wait for completion
@@ -135,6 +135,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Find the index of the NVIDIA adapter in a multi-adapter system
 		bool FindNVIDIA(int &nAdapter);
 
+
 // Windows 10 Vers 1803, build 17134 or later
 #ifdef NTDDI_WIN10_RS4
 
@@ -158,7 +159,7 @@ class SPOUT_DLLEXP spoutDirectX {
 
 	protected:
 
-		void DebugLog(const ID3D11Device* pd3dDevice, const char* format, ...);
+		void DebugLog(ID3D11Device* pd3dDevice, const char* format, ...);
 		int						m_AdapterIndex; // Adapter index
 		IDXGIAdapter*			m_pAdapterDX11; // Adapter pointer
 		ID3D11Device*           m_pd3dDevice;   // DX11 device
