@@ -125,6 +125,8 @@
 		18.01.23 - _conprint - cast WriteFile size argument to DWORD
 		19.03.23 - Update SDKversion to 2.007.010
 		14.04.23 - Update SDKversion to 2.007.011
+		24.04.23 - GetTimer - independent start and end variables startcount/endcount
+
 */
 
 #include "SpoutUtils.h"
@@ -160,14 +162,13 @@ namespace spoututils {
 #ifdef USE_CHRONO
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
-#else
+#endif
 	// PC timer
 	double PCFreq = 0.0;
 	__int64 CounterStart = 0;
-	double start = 0.0;
-	double end = 0.0;
+	double startcount = 0.0;
+	double endcount = 0.0;
 	double m_FrameStart = 0.0;
-#endif
 
 	// Spout SDK version number string
 	// Major, minor, release
@@ -1147,15 +1148,17 @@ namespace spoututils {
 #else
 	// Start timing period
 	void StartTiming() {
-		start = GetCounter();
+		// startcount = GetCounter();
+		StartCounter();
 	}
 
 	// Stop timing and return microseconds elapsed.
 	// Console output can be enabled for quick timing tests.
 	double EndTiming() {
-		end = GetCounter();
-		return (end-start);
+		endcount = GetCounter();
+		return (endcount-startcount);
 	}
+#endif
 
 	// -----------------------------------------------
 	// Set counter start
@@ -1189,8 +1192,6 @@ namespace spoututils {
 			return 0.0;
 		}
 	}
-
-#endif
 
 
 	//
