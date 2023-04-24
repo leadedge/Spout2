@@ -851,6 +851,9 @@ void spoutCopy::rgb2bgra(const void *rgb_source, void *bgra_dest,
 // Experimental
 // https://exchangetuts.com/fast-vectorized-conversion-from-rgb-to-bgra-1640844423877396
 // in and out must be 16-byte aligned
+// See also SIMD library
+// https://github.com/ermig1979/Simd
+//
 
 //---------------------------------------------------------
 // Function: rgb_to_bgrx_sse
