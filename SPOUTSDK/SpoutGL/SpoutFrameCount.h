@@ -138,7 +138,7 @@ protected:
 
 	// Frame count semaphore
 	bool m_bFrameCount; // Registry setting of frame count
-	bool m_bDisabled; // application disable
+	bool m_bCountDisabled; // application disable
 	bool m_bIsNewFrame; // received frame is new
 
 	HANDLE m_hCountSemaphore; // semaphore handle
