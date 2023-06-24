@@ -69,6 +69,10 @@ target_compile_definitions(SpoutDX
 )
 #/-------------------------------------- . -----------------------------------\#
 
+if(NOT MSVC)
+  target_compile_options(SpoutDX_static PRIVATE -msse4)
+  target_compile_options(SpoutDX PRIVATE -msse4)
+endif()
 
 get_property(GeneratorisMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(GeneratorisMultiConfig)
@@ -77,42 +81,37 @@ endif()
 
 # Win32 or x64 build
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-
-	# Copy Win32 binaries to the BUILD/Binaries folder
-	add_custom_command(TARGET SpoutDX POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E 
-		copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}SpoutDX.lib ${CMAKE_BINARY_DIR}/Binaries/Win32/SpoutDX.lib
-	)
-	add_custom_command(TARGET SpoutDX POST_BUILD
-	    COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:SpoutDX> ${CMAKE_BINARY_DIR}/Binaries/Win32/SpoutDX.dll
-	)
-	
-	# Spout_static.lib
-	add_custom_command(TARGET SpoutDX_static POST_BUILD
-	    COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:SpoutDX_static> ${CMAKE_BINARY_DIR}/Binaries/Win32/SpoutDX_static.lib
-	)
-	
+  set(OUTPUT_ARCH_DEST "Win32")
 else()
-
-	# Copy x64 binaries to the BUILD/Binaries folder
-	add_custom_command(TARGET SpoutDX POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E 
-		copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}SpoutDX.lib ${CMAKE_BINARY_DIR}/Binaries/x64/SpoutDX.lib
-	)
-	add_custom_command(TARGET SpoutDX POST_BUILD
-	    COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:SpoutDX> ${CMAKE_BINARY_DIR}/Binaries/x64/SpoutDX.dll
-	)
-	
-	# Spout_static.lib
-	add_custom_command(TARGET SpoutDX_static POST_BUILD
-	    COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:SpoutDX_static> ${CMAKE_BINARY_DIR}/Binaries/x64/SpoutDX_static.lib
-	)
-
+  set(OUTPUT_ARCH_DEST "x64")
 endif()
+
+if(MINGW)
+  set(OUTPUT_STATIC_LIB "libSpoutDX_static.a")
+  set(OUTPUT_SHARED_LIB "libSpoutDX.dll")
+  set(OUTPUT_IMPORT_LIB "libSpoutDX.dll.a")
+else()
+  set(OUTPUT_STATIC_LIB "SpoutDX_static.lib")
+  set(OUTPUT_SHARED_LIB "SpoutDX.dll")
+  set(OUTPUT_IMPORT_LIB "SpoutDX.lib")
+endif()
+
+# Copy binaries to the BUILD/Binaries folder
+# SpoutDX
+add_custom_command(TARGET SpoutDX POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E 
+  copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}${OUTPUT_IMPORT_LIB} ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_IMPORT_LIB}
+)
+add_custom_command(TARGET SpoutDX POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E 
+  copy $<TARGET_FILE:SpoutDX> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_SHARED_LIB}
+)
+
+# SpoutDX_static
+add_custom_command(TARGET SpoutDX_static POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E 
+  copy $<TARGET_FILE:SpoutDX_static> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_STATIC_LIB}
+)
 
 
 # Examples
