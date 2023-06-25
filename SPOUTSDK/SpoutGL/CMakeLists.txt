@@ -59,6 +59,10 @@ set(SpoutLink
     Version
 )
 
+if(MINGW)
+  set(SpoutLink ${SpoutLink} winmm ucrt)
+endif()
+
 add_library(Spout_static STATIC ${SpoutSources} )
 target_link_libraries(Spout_static PRIVATE  ${SpoutLink} )
 target_compile_definitions(Spout_static PRIVATE SPOUT_BUILD_DLL)
@@ -79,41 +83,37 @@ endif()
 
 # Win32 or x64 build
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-
-	# Copy Win32 binaries to the BUILD/Binaries folder
-	add_custom_command(TARGET Spout_static POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:Spout_static> ${CMAKE_BINARY_DIR}/Binaries/Win32/Spout_static.lib
-	)
-	add_custom_command(TARGET Spout POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:Spout> ${CMAKE_BINARY_DIR}/Binaries/Win32/Spout.dll
-  )
-	add_custom_command(TARGET Spout POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E 
-		copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}Spout.lib ${CMAKE_BINARY_DIR}/Binaries/Win32/Spout.lib
-	)
-
+  set(OUTPUT_ARCH_DEST "Win32")
 else()
-
-	# Copy x64 binaries to the BUILD/Binaries folder
-	add_custom_command(TARGET Spout_static POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:Spout_static> ${CMAKE_BINARY_DIR}/Binaries/x64/Spout_static.lib
-	)
-	add_custom_command(TARGET Spout POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:Spout> ${CMAKE_BINARY_DIR}/Binaries/x64/Spout.dll
-	)
-	add_custom_command(TARGET Spout POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E 
-		copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}Spout.lib ${CMAKE_BINARY_DIR}/Binaries/x64/Spout.lib
-	)
-
+  set(OUTPUT_ARCH_DEST "x64")
 endif()
 
+if(MINGW)
+  set(OUTPUT_STATIC_LIB "libSpout_static.a")
+  set(OUTPUT_SHARED_LIB "libSpout.dll")
+  set(OUTPUT_IMPORT_LIB "libSpout.dll.a")
+else()
+  set(OUTPUT_STATIC_LIB "Spout_static.lib")
+  set(OUTPUT_SHARED_LIB "Spout.dll")
+  set(OUTPUT_IMPORT_LIB "Spout.lib")
+endif()
 
+# Copy binaries to the BUILD/Binaries folder
+# Spout
+add_custom_command(TARGET Spout POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E 
+  copy $<TARGET_FILE:Spout> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_SHARED_LIB}
+)
+add_custom_command(TARGET Spout POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E 
+  copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}${OUTPUT_IMPORT_LIB} ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_IMPORT_LIB}
+)
 
+# Spout_static
+add_custom_command(TARGET Spout_static POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E 
+  copy $<TARGET_FILE:Spout_static> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_STATIC_LIB}
+)
 
 
 
