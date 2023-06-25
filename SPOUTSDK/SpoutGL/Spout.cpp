@@ -280,6 +280,11 @@
 
 #include "Spout.h"
 
+#if !defined(_MSC_VER)
+#undef UNREFERENCED_PARAMETER
+#define UNREFERENCED_PARAMETER(x)
+#endif
+
 // Class: Spout
 //
 // <https://spout.zeal.co/>

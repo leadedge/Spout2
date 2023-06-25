@@ -2357,8 +2357,8 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 			const unsigned char *src = nullptr;
 
 			// ReadTextureData - create unsigned long variables for temp src char array
-			const unsigned long WxHx3 = unsigned long(width*height*3);
-			const unsigned long WxHx4 = unsigned long(width*height*4);
+			const unsigned long WxHx3 = static_cast<unsigned long>(width*height*3);
+			const unsigned long WxHx4 = static_cast<unsigned long>(width*height*4);
 
 			if(GLformat == GL_RGB || GLformat == GL_BGR_EXT)
 				src = new unsigned char[WxHx3] ;
