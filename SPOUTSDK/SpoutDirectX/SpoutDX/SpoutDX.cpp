@@ -193,6 +193,7 @@ spoutDX::spoutDX()
 	m_bSwapRB = false;
 	m_bAdapt = false; // Receiver switch to the sender's graphics adapter
 	m_bMemoryShare = GetMemoryShareMode(); // 2.006 memoryshare mode
+    m_bKeyed = false;
 
 	ZeroMemory(&m_SenderInfo, sizeof(SharedTextureInfo));
 	ZeroMemory(&m_ShExecInfo, sizeof(m_ShExecInfo));
