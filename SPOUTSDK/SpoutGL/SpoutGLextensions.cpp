@@ -45,6 +45,10 @@
 //			20.04.23	- Add compute shader extensions
 //			22.04.23	- Correct EXT_LOG prefixe for standalone in ExtLog function
 //			24.04.23	- Add glGetTexParameteriv and glTextureStorage2D
+//			04.05.23	- Define GL_BGRA in case it is used
+//			09.05.23	- Add memory object extensions
+//			16.06.23	- Add glTextureStorageMem2DEXT
+//			24.06.23	- Add glUniform1f
 //
 
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -75,6 +79,8 @@
 #ifndef USE_GLEW
 
 // GL/DX extensions
+// https://registry.khronos.org/OpenGL/extensions/NV/WGL_NV_DX_interop.txt
+// https://registry.khronos.org/OpenGL/extensions/NV/WGL_NV_DX_interop2.txt
 PFNWGLDXOPENDEVICENVPROC				wglDXOpenDeviceNV				= NULL;
 PFNWGLDXREGISTEROBJECTNVPROC			wglDXRegisterObjectNV			= NULL;
 PFNWGLDXSETRESOURCESHAREHANDLENVPROC	wglDXSetResourceShareHandleNV	= NULL;
@@ -160,11 +166,19 @@ glDeleteProgramPROC      glDeleteProgram    = NULL;
 glDeleteShaderPROC       glDeleteShader     = NULL;
 glActiveTexturePROC      glActiveTexture    = NULL;
 glUniform1iPROC          glUniform1i        = NULL;
+glUniform1fPROC          glUniform1f        = NULL;
 glGetUniformLocationPROC glGetUniformLocation = NULL;
 
 glTextureStorage2DPROC   glTextureStorage2D  = NULL;
 glCreateTexturesPROC     glCreateTextures    = NULL;
 // glGetTexParameterivPROC  glGetTexParameteriv = NULL;
+
+glCreateMemoryObjectsEXTPROC      glCreateMemoryObjectsEXT = NULL;
+glDeleteMemoryObjectsEXTPROC      glDeleteMemoryObjectsEXT = NULL;
+glTexStorageMem2DEXTPROC          glTexStorageMem2DEXT = NULL;
+glTextureStorageMem2DEXTPROC      glTextureStorageMem2DEXT = NULL;
+glImportMemoryWin32HandleEXTPROC  glImportMemoryWin32HandleEXT = NULL;
+
 
 //---------------------------
 // Context creation extension
@@ -417,10 +431,9 @@ bool loadComputeShaderExtensions()
 
 #ifdef USE_COMPUTE_EXTENSIONS
 
-	// TODO - all shader extensions
-	// #ifdef USE_GLEW
-	// return false;
-	// #else
+	#ifdef USE_GLEW
+	   return false;
+	#else
 
 	// Compute shader extensions
 	glCreateProgram    = (glCreateProgramPROC)wglGetProcAddress("glCreateProgram");
@@ -438,9 +451,17 @@ bool loadComputeShaderExtensions()
 	glDeleteShader     = (glDeleteShaderPROC)wglGetProcAddress("glDeleteShader");
 	glActiveTexture    = (glActiveTexturePROC)wglGetProcAddress("glActiveTexture");
 	glUniform1i        = (glUniform1iPROC)wglGetProcAddress("glUniform1i");
+	glUniform1f        = (glUniform1fPROC)wglGetProcAddress("glUniform1f");
 	glGetUniformLocation = (glGetUniformLocationPROC)wglGetProcAddress("glGetUniformLocation");
 	glTextureStorage2D   = (glTextureStorage2DPROC)wglGetProcAddress("glTextureStorage2D");
 	glCreateTextures     = (glCreateTexturesPROC)wglGetProcAddress("glCreateTextures");
+
+	// These could be separated
+	glCreateMemoryObjectsEXT     = (glCreateMemoryObjectsEXTPROC)wglGetProcAddress("glCreateMemoryObjectsEXT");
+	glDeleteMemoryObjectsEXT     = (glDeleteMemoryObjectsEXTPROC)wglGetProcAddress("glDeleteMemoryObjectsEXT");
+	glTexStorageMem2DEXT         = (glTexStorageMem2DEXTPROC)wglGetProcAddress("glTexStorageMem2DEXT");
+	glTextureStorageMem2DEXT     = (glTextureStorageMem2DEXTPROC)wglGetProcAddress("glTexStorageMem2DEXT");
+	glImportMemoryWin32HandleEXT = (glImportMemoryWin32HandleEXTPROC)wglGetProcAddress("glImportMemoryWin32HandleEXT");
 
 	if(glCreateProgram != NULL
 		&& glCreateShader != NULL
@@ -456,16 +477,25 @@ bool loadComputeShaderExtensions()
 		&& glDeleteProgram != NULL
 		&& glActiveTexture != NULL
 		&& glUniform1i != NULL
+		&& glUniform1f != NULL
 		&& glDeleteShader != NULL
 		&& glGetUniformLocation != NULL
 		&& glTextureStorage2D != NULL
-		&& glCreateTextures != NULL) {
+		&& glCreateTextures != NULL
+		// For testing - could be separated
+		&& glCreateMemoryObjectsEXT != NULL
+		&& glDeleteMemoryObjectsEXT != NULL
+		&& glTexStorageMem2DEXT != NULL
+		&& glTextureStorageMem2DEXT != NULL
+		&& glImportMemoryWin32HandleEXT != NULL) {
 			return true;
 	}
 	else {
 		printf("loadComputeShaderExtensions failed\n");
 		return false;
 	}
+#endif
+
 #else
 	// Compute shader extensions defined elsewhere
 	return true;
@@ -708,6 +738,7 @@ bool isExtensionSupported(const char *extension)
 
 }
 
+
 void ExtLog(ExtLogLevel level, const char* format, ...)
 {
 	va_list args;
@@ -735,7 +766,7 @@ void ExtLog(ExtLogLevel level, const char* format, ...)
 	printf("%s\n", currentLog);
 	// Note that this will not be recorded in a Spout log file.
 #else
-	_doLog(static_cast<SpoutLogLevel>(level), format, args); // SpoutUtils function
+	_doLog(static_cast<spoututils::SpoutLogLevel>(level), format, args); // SpoutUtils function
 #endif
 
 	va_end(args);

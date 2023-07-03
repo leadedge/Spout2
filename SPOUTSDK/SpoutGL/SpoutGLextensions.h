@@ -91,21 +91,15 @@
 // #define legacyOpenGL
 //
 #else
-
 // For use together with Spout source files
-#include "SpoutCommon.h" // for legacyOpenGL define
-#include "SpoutUtils.h"
+#include "SpoutCommon.h" // for legacyOpenGL define and Utils
 #include <stdint.h> // for _uint32 etc
-
-using namespace spoututils;
-
 // ===================== GLEW ======================
 // set this to use GLEW instead of dynamic load of extensions
 // #define USE_GLEW	
 // set this to use glew32s.lib instead of glew32.lib
 // #define GLEW_STATIC
-// ========================== ======================
-
+// =================================================
 #endif
 
 
@@ -259,6 +253,11 @@ enum ExtLogLevel {
 
 #ifndef RENDERBUFFER_FREE_MEMORY_ATI
 #define RENDERBUFFER_FREE_MEMORY_ATI            0x87FD
+#endif
+
+// Define GL_BGRA in case it is used
+#ifndef GL_BGRA
+#define GL_BGRA 0x80E1
 #endif
 
 //------------------------
@@ -680,6 +679,8 @@ typedef void (APIENTRY* glActiveTexturePROC)(GLenum texture);
 extern glActiveTexturePROC      glActiveTexture;
 typedef void (APIENTRY* glUniform1iPROC) (GLint location, GLint v0);
 extern glUniform1iPROC          glUniform1i;
+typedef void (APIENTRY* glUniform1fPROC) (GLint location, float v0);
+extern glUniform1fPROC          glUniform1f;
 typedef GLint (APIENTRY* glGetUniformLocationPROC) (GLuint program, const char* name);
 extern glGetUniformLocationPROC glGetUniformLocation;
 
@@ -690,9 +691,47 @@ extern glTextureStorage2DPROC glTextureStorage2D;
 typedef void (APIENTRY * glCreateTexturesPROC) (GLenum target, GLsizei n, GLuint* textures);
 extern glCreateTexturesPROC glCreateTextures;
 
+// https://registry.khronos.org/OpenGL/extensions/EXT/EXT_external_objects.txt
+// void CreateMemoryObjectsEXT(sizei n,	uint* memoryObjects);
+// void DeleteMemoryObjectsEXT(sizei n, const uint* memoryObjects);
+// void TexStorageMem2DEXT(enum target, sizei levels, enum internalFormat, sizei width,	sizei height, uint memory, uint64 offset);
+// https://registry.khronos.org/OpenGL/extensions/EXT/EXT_external_objects_win32.txt
+// void ImportMemoryWin32HandleEXT(uint memory, uint64 size, enum handleType, void* handle);
+// void ImportMemoryWin32NameEXT(uint memory, uint64 size, enum handleType,	const void* name);
+
+typedef void (APIENTRY* glCreateMemoryObjectsEXTPROC) (GLsizei n, GLuint* memoryObjects);
+extern glCreateMemoryObjectsEXTPROC glCreateMemoryObjectsEXT;
+
+typedef void (APIENTRY* glDeleteMemoryObjectsEXTPROC) (GLsizei n, const GLuint* memoryObjects);
+extern glDeleteMemoryObjectsEXTPROC glDeleteMemoryObjectsEXT;
+
+typedef void (APIENTRY* glTexStorageMem2DEXTPROC) (GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLuint memory, GLuint64 offset);
+extern glTexStorageMem2DEXTPROC glTexStorageMem2DEXT;
+
+typedef void (APIENTRY* glTextureStorageMem2DEXTPROC) (GLuint texture, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, GLuint memory, GLuint64 offset);
+extern glTextureStorageMem2DEXTPROC glTextureStorageMem2DEXT;
+
+typedef void (APIENTRY* glImportMemoryWin32HandleEXTPROC) (GLuint memory, GLuint64 size, GLenum handleType, void* handle);
+extern glImportMemoryWin32HandleEXTPROC glImportMemoryWin32HandleEXT;
+
+// Accepted by the <handleType> parameter of ImportMemoryWin32HandleEXT(), ImportMemoryWin32NameEXT()
+#ifndef GL_HANDLE_TYPE_OPAQUE_WIN32_EXT
+#define GL_HANDLE_TYPE_OPAQUE_WIN32_EXT               0x9587
+#endif
+#ifndef GL_HANDLE_TYPE_D3D12_TILEPOOL_EXT
+#define GL_HANDLE_TYPE_D3D12_TILEPOOL_EXT             0x9589
+#endif
+#ifndef GL_HANDLE_TYPE_D3D12_RESOURCE_EXT
+#define GL_HANDLE_TYPE_D3D12_RESOURCE_EXT             0x958A
+#endif
+#ifndef GL_HANDLE_TYPE_D3D11_IMAGE_EXT
+#define GL_HANDLE_TYPE_D3D11_IMAGE_EXT                0x958B
+#endif
+
 
 //---------------------------
 // Context creation extension
+// https://registry.khronos.org/OpenGL/extensions/ARB/WGL_ARB_create_context.txt
 //---------------------------
 typedef HGLRC (APIENTRY * PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC hDC, HGLRC hShareContext, const int *attribList);
 extern PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB;
