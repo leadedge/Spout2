@@ -126,6 +126,8 @@
 		19.03.23 - Update SDKversion to 2.007.010
 		14.04.23 - Update SDKversion to 2.007.011
 		24.04.23 - GetTimer - independent start and end variables startcount/endcount
+		09.05.23 - Yellow console text for warnings and errors
+		17.05.23 - Set console title to executable name
 
 */
 
@@ -252,7 +254,16 @@ namespace spoututils {
 			if (AllocConsole()) {
 				const errno_t err = freopen_s(&pCout, "CONOUT$", "w", stdout);
 				if (err == 0) {
-					SetConsoleTitleA("Spout Log");
+					char title[MAX_PATH]={};
+					if (GetModuleFileNameA(GetCurrentModule(), title, MAX_PATH) > 0) {
+						PathStripPathA(title);
+						PathRemoveExtensionA(title);
+						strcat_s(title, MAX_PATH, ".log"); // Executable name
+						SetConsoleTitleA(title);
+					}
+					else {
+						SetConsoleTitleA("Spout Log");
+					}
 					bConsole = true;
 					// Disable close button
 					// HMENU hmenu = GetSystemMenu(GetConsoleWindow(), FALSE);
@@ -377,7 +388,16 @@ namespace spoututils {
 
 		// Console output
 		if (GetConsoleWindow()) {
-			SetConsoleTitleA("Spout Log");
+			char title[MAX_PATH]={};
+			if (GetModuleFileNameA(GetCurrentModule(), title, MAX_PATH) > 0) {
+				PathStripPathA(title);
+				PathRemoveExtensionA(title);
+				strcat_s(title, MAX_PATH, ".log"); // Executable name
+				SetConsoleTitleA(title);
+			}
+			else {
+				SetConsoleTitleA("Spout Log");
+			}
 			bConsole = true;
 		}
 		else if(!bConsole)
@@ -614,7 +634,11 @@ namespace spoututils {
 	{
 		va_list args;
 		va_start(args, format);
+		// Show warning text bright yellow
+		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 		_doLog(SPOUT_LOG_WARNING, format, args);
+		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 		va_end(args);
 	}
 
@@ -678,6 +702,10 @@ namespace spoututils {
 			// Console logging
 			if (bEnableLog && bConsole) {
 				FILE* out = stdout; // Console output
+				// Yellow text for warnings and errors
+				HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+				if (level == SPOUT_LOG_WARNING || level == SPOUT_LOG_ERROR)
+				    SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 				if (level != SPOUT_LOG_NONE) {
 					// Show log level
 					fprintf(out, "[%s] ", _levelName(level).c_str());
@@ -686,7 +714,8 @@ namespace spoututils {
 				vfprintf(out, format, args);
 				// Newline
 				fprintf(out, "\n");
-
+				// Reset white text
+				SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 			} // end console log
 
 			// File logging
