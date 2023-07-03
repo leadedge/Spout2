@@ -33,6 +33,7 @@
 
 #include "SpoutCommon.h"
 #include <d3d11.h>
+#include <d3d11_1.h>
 #include <ntverp.h>
 
 //
@@ -81,13 +82,15 @@ class SPOUT_DLLEXP spoutDirectX {
 		ID3D11Device* GetDX11Device();
 		// Return the device immediate context
 		ID3D11DeviceContext* GetDX11Context();
+		// Return the device feature level
+		D3D_FEATURE_LEVEL GetDX11FeatureLevel();
 
 		//
 		// DirectX11 texture
 		//
 
 		// Create a DirectX11 shared texture
-		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppSharedTexture, HANDLE &dxShareHandle, bool bKeyed = false);
+		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppSharedTexture, HANDLE &dxShareHandle, bool bKeyed = false, bool bNThandle = false);
 		// Create a DirectX texture which is not shared
 		bool CreateDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
 		// Create a DirectX 11 staging texture for read and write
@@ -105,6 +108,8 @@ class SPOUT_DLLEXP spoutDirectX {
 		unsigned long ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture);
 		// Release a device
 		unsigned long ReleaseDX11Device(ID3D11Device* pd3dDevice);
+		// Flush immediate context command queue
+		void Flush();
 		// Flush immediate context command queue and wait for completion
 		void FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext);
 		// Wait for completion after flush
@@ -155,6 +160,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		bool IsPreferenceAvailable();
 		// Is the path a valid application
 		bool IsApplicationPath(const char* path);
+
 #endif
 
 	protected:
@@ -167,6 +173,9 @@ class SPOUT_DLLEXP spoutDirectX {
 		bool					m_bClassDevice;
 		D3D_DRIVER_TYPE			m_driverType;
 		D3D_FEATURE_LEVEL		m_featureLevel;
+		ID3D11Device1*          m_pd3dDevice1;
+		ID3D11DeviceContext1*   m_pImmediateContext1;
+
 
 };
 
