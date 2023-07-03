@@ -74,6 +74,7 @@
 //		19.03.23	- WaitFrameSync - do not block if the sender has not created a sync event
 //		11.04.23	- OpenFrameSync - correct test for null sender name
 //		24.04.23	- Replace m_bDisabled with m_bCountDisabled
+//		03.07.23	- EnableFrameCount, CreateAccessMutex - add detail to logs
 //
 // ====================================================================================
 //
@@ -290,18 +291,16 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	switch(dwError) {
 
 		case ERROR_INVALID_HANDLE:
-			SpoutLogError("    Invalid semaphore handle");
+			SpoutLogError("SpoutFrameCount::EnableFrameCount - invalid semaphore handle");
 			break;
 
 		case ERROR_ALREADY_EXISTS:
-			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] exists", m_CountSemaphoreName);
-			SpoutLogNotice("    Handle for access [0x%7.7X]", LOWORD(hSemaphore));
+			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] exists [0x%7.7X]", m_CountSemaphoreName, LOWORD(hSemaphore));
 			// OK if it already exists - either the sender or receiver can create it
 			break;
 		
 		case ERROR_SUCCESS:
-			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] created", m_CountSemaphoreName);
-			SpoutLogNotice("    Handle [0x%7.7X]", LOWORD(hSemaphore));
+			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] created [0x%7.7X]", m_CountSemaphoreName, LOWORD(hSemaphore));
 			break;
 
 		default :
@@ -714,12 +713,10 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 		}
 		// Here we can find if the mutex already exists
 		else if (errnum == ERROR_ALREADY_EXISTS) {
-			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] exists", szMutexName);
-			SpoutLogNotice("    Handle for access [0x%.7X]", PtrToUint(hMutex));
+			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] exists [0x%.7X]", szMutexName, PtrToUint(hMutex));
 		}
 		else {
-			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] created ", szMutexName);
-			SpoutLogNotice("    Handle [0x%.7X]", PtrToUint(hMutex));
+			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] created [0x%.7X]", szMutexName, PtrToUint(hMutex));
 		}
 	}
 
