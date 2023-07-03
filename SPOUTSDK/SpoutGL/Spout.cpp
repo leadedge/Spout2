@@ -279,11 +279,6 @@
 
 #include "Spout.h"
 
-#if !defined(_MSC_VER)
-#undef UNREFERENCED_PARAMETER
-#define UNREFERENCED_PARAMETER(x)
-#endif
-
 // Class: Spout
 //
 // <https://spout.zeal.co/>
@@ -1464,8 +1459,10 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	char* displaydescription, char* displayversion,
 	int maxsize, const bool bDX9)
 {
+#if defined(_MSC_VER)
 	// DirectX9 not supported
 	UNREFERENCED_PARAMETER(bDX9);
+#endif
 
 	if(!renderadapter
 	|| !renderdescription

@@ -34,8 +34,8 @@
 #define __spoutGL__
 
 // Change the path as required
-#include "SpoutGLextensions.h" // include first so that gl.h is not included first if Glew is used
 #include "SpoutCommon.h" // for dll build and utilities
+#include "SpoutGLextensions.h" // include first so that gl.h is not included first if Glew is used
 #include "SpoutSenderNames.h" // for sender creation and update
 #include "SpoutDirectX.h" // for DX11 shared textures
 #include "SpoutFrameCount.h" // for mutex lock and new frame signal
