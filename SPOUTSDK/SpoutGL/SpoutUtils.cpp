@@ -1262,7 +1262,11 @@ namespace spoututils {
 			size_t len = 0;
 			bool bSuccess = true;
 			errno_t err = 0;
+#if defined(_MSC_VER)
 			err = _dupenv_s(&appdatapath, &len, "APPDATA");
+#else
+			appdatapath = getenv("APPDATA");
+#endif
 			if (err == 0 && appdatapath) {
 				strcpy_s(logpath, MAX_PATH, appdatapath);
 				strcat_s(logpath, MAX_PATH, "\\Spout");

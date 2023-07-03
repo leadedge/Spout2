@@ -60,7 +60,7 @@ set(SpoutLink
 )
 
 if(MINGW)
-  set(SpoutLink ${SpoutLink} winmm ucrt)
+  set(SpoutLink ${SpoutLink} winmm)
 endif()
 
 add_library(Spout_static STATIC ${SpoutSources} )
