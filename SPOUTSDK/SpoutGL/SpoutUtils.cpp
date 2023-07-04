@@ -128,6 +128,7 @@
 		24.04.23 - GetTimer - independent start and end variables startcount/endcount
 		09.05.23 - Yellow console text for warnings and errors
 		17.05.23 - Set console title to executable name
+		04-07-23 - _getLogPath() - allow for getenv if not Microsoft compiler (PR #95)
 
 */
 
@@ -1292,7 +1293,11 @@ namespace spoututils {
 			size_t len = 0;
 			bool bSuccess = true;
 			errno_t err = 0;
-			err = _dupenv_s(&appdatapath, &len, "APPDATA");
+			#if defined(_MSC_VER)
+				err = _dupenv_s(&appdatapath, &len, "APPDATA");
+			#else
+				appdatapath = getenv("APPDATA");
+			#endif
 			if (err == 0 && appdatapath) {
 				strcpy_s(logpath, MAX_PATH, appdatapath);
 				strcat_s(logpath, MAX_PATH, "\\Spout");
