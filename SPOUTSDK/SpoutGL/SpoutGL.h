@@ -47,7 +47,6 @@
 #include <tchar.h> // for _tcsicmp
 #include <algorithm> // for string character remove
 
-// 
 #pragma warning(disable : 26485)
 
 using namespace spoututils;
@@ -234,6 +233,11 @@ class SPOUT_DLLEXP spoutGL {
 	HANDLE LinkGLDXtextures(void* pDXdevice, void* pSharedTexture, GLuint glTextureID);
 	// Return a handle to the the DX/GL interop device
 	HANDLE GetInteropDevice();
+	// Return a handle to the the DX/GL interop ojject
+	HANDLE GetInteropObject();
+	// Pointer to the shared DirectX texture
+	ID3D11Texture2D* GetDXsharedTexture();
+
 	// Copy OpenGL to shared DirectX 11 texture via CPU
 	bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	// Copy from shared DX11 texture to OpenGL via CPU
@@ -268,7 +272,6 @@ class SPOUT_DLLEXP spoutGL {
 	spoutFrameCount frame;
 
 protected :
-
 	
 	// For 2.006(receive only) / WriteMemoryBuffer / ReadMemoryBuffer
 	SpoutSharedMemory memoryshare;
