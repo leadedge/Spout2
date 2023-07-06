@@ -72,7 +72,8 @@
 //		01.11.22	- Add SetPreferredAdapter
 //		03.11.22	- Add IsPreferenceAvailable
 //		07.11.22	- Add IsApplicationPath
-//		14.12.23	- Remove SetAdapter. Requires OpenGL setup.
+//		14.12.22	- Remove SetAdapter. Requires OpenGL setup.
+//		06.07.23	- Remove bUseActive from 2.006 CreateReceiver
 //
 // ====================================================================================
 //
@@ -616,9 +617,9 @@ bool SpoutReceiver::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 //
 
 //---------------------------------------------------------
-bool SpoutReceiver::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height, bool bUseActive)
+bool SpoutReceiver::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height)
 {
-	return spout.CreateReceiver(sendername, width, height, bUseActive);
+	return spout.CreateReceiver(sendername, width, height);
 }
 
 //---------------------------------------------------------
