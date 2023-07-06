@@ -136,6 +136,7 @@
 //		22.06.23	- CreateComputeCopyShader adjust Y workgroup number for aspect ratio
 //		03.07.23	- CreateInterop - code cleanup
 //					  ReadTextureData - change cast (#PR93)
+//		06.07.23	- Code cleanup
 //
 // ====================================================================================
 //
@@ -206,7 +207,6 @@ spoutGL::spoutGL()
 
 	m_dxShareHandle = NULL; // Shared texture handle
 	m_pSharedTexture = nullptr; // DX11 shared texture
-	m_pReceiveTexture = nullptr; // Receive copy texture
 	m_DX11format = DXGI_FORMAT_B8G8R8A8_UNORM; // Default compatible with DX9
 	m_pStaging[0] = nullptr; // DX11 staging textures
 	m_pStaging[1] = nullptr;
@@ -661,11 +661,6 @@ void spoutGL::CloseDirectX()
 		spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pSharedTexture);
 	m_pSharedTexture = nullptr;
 	m_dxShareHandle = nullptr;
-
-	// Release received texture if used
-	if (m_pReceiveTexture)
-		spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pReceiveTexture);
-	m_pReceiveTexture = nullptr;
 
 	// Flush context to avoid deferred release
 	spoutdx.Flush();
@@ -3017,10 +3012,6 @@ void spoutGL::CleanupDX11()
 
 		// Re-set shared texture handle
 		m_dxShareHandle = nullptr;
-
-		// Release received texture if used
-		if (m_pReceiveTexture) spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pReceiveTexture);
-		m_pReceiveTexture = nullptr;
 
 		// Release staging texture if they have been used
 		if (m_pStaging[0]) spoutdx.ReleaseDX11Texture(spoutdx.GetDX11Device(), m_pStaging[0]);
