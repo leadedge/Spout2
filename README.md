@@ -1,28 +1,3 @@
 [Spout](https://spout.zeal.co/) is a video frame sharing system for Microsoft Windows, which allows applications to share OpenGL textures in a similar way to [Syphon](https://github.com/Syphon) for the Mac.
 
-Spout supports DirectX 9, DirectX 11, DirectX 12 and OpenGL textures and includes a developer SDK and sample applications. If you are interested in assisting with development, please contact using the email address indicated on the GitHub overview page.
-
-Documentation
-- [Spout SDK for OpenGL](https://spoutgl-site.netlify.app/)
-- [SpoutLibrary - C compatible library](https://spoutlibrary-site.netlify.app/)
-- [Spout for DirectX - DirectX support classes](https://spoutdx-site.netlify.app/)
-
-
-Further pdf documents and examples can be found in the relevant folders.
-
-For general questions please visit the [Spout Discourse group](https://spout.discourse.group)
-
-Your support will help the project to continue and develop.
-
-Become a [GitHub Sponsor](https://github.com/sponsors/leadedge) and show your support.
-
-Or make a donation :
-
-[![](https://www.paypalobjects.com/en_AU/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=P4P4QJZBT87PJ)  
-
-
-
-
-
-
-
+Beta branch is where changes are accumulated and are available for public use. Accumulated changes are transferred to the master branch when testing is completed and no issues are reported. Always submit pull requests to the beta branch so that the changes do not get out of sync. 
