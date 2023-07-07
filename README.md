@@ -7,17 +7,18 @@ Documentation
 - [SpoutLibrary - C compatible library](https://spoutlibrary-site.netlify.app/)
 - [Spout for DirectX - DirectX support classes](https://spoutdx-site.netlify.app/)
 
-
-Further pdf documents and examples can be found in the relevant folders.
-
+Further pdf documents and examples can be found in the relevant folders.\
 For general questions please visit the [Spout Discourse group](https://spout.discourse.group)
 
-Your support will help the project to continue and develop.
+Pull requests
 
-Become a [GitHub Sponsor](https://github.com/sponsors/leadedge) and show your support.
+Please make all pull requests from the beta branch.
 
-Or make a donation :
+Donations
 
+Your support will help the project to continue and develop.\
+Become a [GitHub Sponsor](https://github.com/sponsors/leadedge) and show your support.\
+Or make a donation :\
 [![](https://www.paypalobjects.com/en_AU/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=P4P4QJZBT87PJ)  
 
 
