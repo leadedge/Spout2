@@ -548,7 +548,7 @@ void spoutCopy::rgba2rgb(const void* rgba_source, void* rgb_dest,
 	// No mirror option, image size 16 bit byte aligned, SSE3 intrinsics support
 	//
 	// Timing tests show more than twice as fast
-	// Intel(R) Core(TM) i7-3770K CPU @ 3.50GHz
+	// (Intel(R) Core(TM) i7-3770K CPU @ 3.50GHz)
 	//
 	// SSE
 	//   1280x720    1.6 msec
@@ -565,6 +565,10 @@ void spoutCopy::rgba2rgb(const void* rgba_source, void* rgb_dest,
 		rgba_to_rgb_sse3(rgba_source, rgb_dest, width, height, pitch, bInvert, bSwapRB);
 		return;
 	}
+
+	//
+	// Byte pointer copy
+	//
 
 	// RGB dest does not have padding
 	uint64_t rgbsize = (uint64_t)width * (uint64_t)height * 3;
