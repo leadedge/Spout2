@@ -131,6 +131,8 @@
 //		24.04.23	- CheckSender clean up and add code comments.
 //					  SendBackBuffer - release temporary objects.
 //					  All object releases - flush context to avoid deferred destruction
+//		08.07.23	- Remove global keyed texture option and SetKeyed/GetKeyed.
+//					  Retain option in SpoutDirectX CreateSharedDX11Texture.
 //
 // ====================================================================================
 /*
@@ -323,21 +325,6 @@ bool spoutDX::IsClassDevice()
 	return m_bClassDevice;
 }
 
-// Function: SetKeyed
-// Sender : create a shared texture with a keyed mutex
-// Used for testing
-void spoutDX::SetKeyed(bool bKeyed)
-{
-	m_bKeyed = bKeyed;
-}
-
-// Function: GetKeyed
-// Get flag to create a shared texture with a keyed mutex
-bool spoutDX::GetKeyed()
-{
-	return m_bKeyed;
-}
-
 //---------------------------------------------------------
 // SENDER
 //
@@ -501,7 +488,7 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
 
 	// Check the sender mutex for access the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
-		// Copy the texture to the sender's shared texture
+		// Copy the application texture to the sender's shared texture
 		m_pImmediateContext->CopyResource(m_pSharedTexture, pTexture);
 		// Flush the command queue now because the shared texture has been updated on this device
 		m_pImmediateContext->Flush();
@@ -2296,6 +2283,8 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 				spoutcopy.rgba2rgbaResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
 			}
 			else {
+				// Copy rgba to bgra line by line allowing for source pitch using the fastest method
+				// Uses SSE3 copy function if line data is 16bit aligned (see SpoutCopy.cpp)
 				if(bSwap)
 					spoutcopy.rgba2bgra(mappedSubResource.pData, destpixels, width, height, mappedSubResource.RowPitch, bInvert);
 				else
@@ -2312,11 +2301,12 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 					spoutcopy.rgba2rgbResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
 			}
 			else {
+				// Copy RGBA to RGB or BGR allowing for source line pitch using the fastest method
+				// Uses SSE3 conversion functions if data is 16bit aligned (see SpoutCopy.cpp)
 				if (bSwap)
 					spoutcopy.rgba2rgb(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert, true);
 				else
 					spoutcopy.rgba2rgb(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert, false);
-					// spoutcopy.rgba2bgr(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert);
 			}
 		}
 		else {

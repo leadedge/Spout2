@@ -60,8 +60,6 @@ class SPOUT_DLLEXP spoutDX {
 	ID3D11DeviceContext* GetDX11Context();
 	void CloseDirectX11();
 	bool IsClassDevice();
-	void SetKeyed(bool bKeyed = true);
-	bool GetKeyed();
 
 	//
 	// SENDER
@@ -309,7 +307,6 @@ protected :
 	bool m_bClassDevice;
 	bool m_bAdapt;
 	bool m_bMemoryShare; // Using 2.006 memoryshare methods
-	bool m_bKeyed; // Keyed shared texture
 	SHELLEXECUTEINFOA m_ShExecInfo; // For ShellExecute
 
 	// For WriteMemoryBuffer/ReadMemoryBuffer
