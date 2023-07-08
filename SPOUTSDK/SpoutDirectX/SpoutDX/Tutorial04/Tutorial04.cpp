@@ -17,6 +17,8 @@
 // Window resizing has been added to the original sample to demonstrate
 // requirements for a Spout sender to handle size changes.
 //
+// 24.04.23 - remove redundant OpenDirectX11 from ResetDevice
+//
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
 // This application displays a 3D cube using Direct3D 11
@@ -126,7 +128,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	// Optionally enable logging to catch Spout warnings and errors
 	// OpenSpoutConsole(); // Console only for debugging
-	// EnableSpoutLog(); // Log to console
+	EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("Tutorial04.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 	
@@ -192,7 +194,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
 {
     // Register class
-    WNDCLASSEX wcex;
+	WNDCLASSEX wcex={};
     wcex.cbSize = sizeof( WNDCLASSEX );
     wcex.style = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc = WndProc;
@@ -494,7 +496,7 @@ HRESULT InitDevice()
     g_pImmediateContext->OMSetRenderTargets( 1, &g_pRenderTargetView, nullptr );
 
     // Setup the viewport
-    D3D11_VIEWPORT vp;
+	D3D11_VIEWPORT vp={};
     vp.Width = (FLOAT)width;
     vp.Height = (FLOAT)height;
     vp.MinDepth = 0.0f;
@@ -693,8 +695,6 @@ void ResetDevice()
 	// Create device and objects
 	InitDevice();
 	// SpoutDX will now use the new device
-	sender.OpenDirectX11(g_pd3dDevice);
-
 }
 
 
@@ -706,38 +706,36 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
     PAINTSTRUCT ps;
     HDC hdc;
 
-    switch( message )
-    {
+    switch( message )  {
 
-	case WM_COMMAND :
-		// Parse the menu selections:
-		switch (LOWORD(wParam))
-		{
-			case IDM_ADAPTER:
-				SelectAdapter();
-				break;
-			case IDM_ABOUT:
-				DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), g_hWnd, About);
-				break;
-			case IDM_EXIT:
-				DestroyWindow(hWnd);
-				break;
-			default:
-				break;
-		}
-		break;
+		case WM_COMMAND :
+			// Parse the menu selections:
+			switch (LOWORD(wParam))	{
+				case IDM_ADAPTER:
+					SelectAdapter();
+					break;
+				case IDM_ABOUT:
+					DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), g_hWnd, About);
+					break;
+				case IDM_EXIT:
+					DestroyWindow(hWnd);
+					break;
+				default:
+					break;
+			}
+			break;
 
-    case WM_PAINT:
-        hdc = BeginPaint( hWnd, &ps );
-        EndPaint( hWnd, &ps );
-        break;
+	    case WM_PAINT:
+		    hdc = BeginPaint( hWnd, &ps );
+			EndPaint( hWnd, &ps );
+			break;
 
-    case WM_DESTROY:
-        PostQuitMessage( 0 );
-        break;
+		case WM_DESTROY:
+			PostQuitMessage( 0 );
+			break;
 
-    default:
-        return DefWindowProc( hWnd, message, wParam, lParam );
+		default:
+			return DefWindowProc( hWnd, message, wParam, lParam );
     }
 
     return 0;
@@ -794,7 +792,7 @@ void Render()
     //
     // Update variables
     //
-    ConstantBuffer cb;
+	ConstantBuffer cb={};
 	cb.mWorld = XMMatrixTranspose( g_World );
 	cb.mView = XMMatrixTranspose( g_View );
 	cb.mProjection = XMMatrixTranspose( g_Projection );
