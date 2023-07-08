@@ -10,6 +10,8 @@
 # 15/01/21 - Rename SpoutSDK files to Spout                                    #
 #            Generate Spout.dll instead of SpoutSDK.dll                        #
 # 02/02/21 - Support single config generators (ninja, etc) by Joakim Kilby     #
+# 24/06/23 - Modifications for MINGW build (PR#93-vkedwardli)                  #
+# 08/07/23 - Remove MSVC Universal C Runtime dependency (PR#95-vkedwardli)     #
 #/-------------------------------------- . -----------------------------------\#
 
 set(SpoutSources
@@ -60,7 +62,7 @@ set(SpoutLink
 )
 
 if(MINGW)
-  set(SpoutLink ${SpoutLink} winmm ucrt)
+  set(SpoutLink ${SpoutLink} winmm)
 endif()
 
 add_library(Spout_static STATIC ${SpoutSources} )
