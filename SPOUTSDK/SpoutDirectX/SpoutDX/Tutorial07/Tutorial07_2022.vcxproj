@@ -403,6 +403,7 @@
     <ClCompile Include="..\..\..\SpoutGL\SpoutSenderNames.cpp" />
     <ClCompile Include="..\..\..\SpoutGL\SpoutSharedMemory.cpp" />
     <ClCompile Include="..\..\..\SpoutGL\SpoutUtils.cpp" />
+    <ClCompile Include="..\SpoutControls.cpp" />
     <ClCompile Include="..\SpoutDX.cpp" />
     <ClCompile Include="DDSTextureLoader.cpp" />
     <ClCompile Include="Tutorial07.cpp" />
@@ -414,6 +415,7 @@
     <ClInclude Include="..\..\..\SpoutGL\SpoutSenderNames.h" />
     <ClInclude Include="..\..\..\SpoutGL\SpoutSharedMemory.h" />
     <ClInclude Include="..\..\..\SpoutGL\SpoutUtils.h" />
+    <ClInclude Include="..\SpoutControls.h" />
     <ClInclude Include="..\SpoutDX.h" />
     <ClInclude Include="DDSTextureLoader.h" />
     <CLInclude Include="resource.h" />
