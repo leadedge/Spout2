@@ -6,7 +6,7 @@
 	OpenFrameworks 11
 	Visual Studio 2022
 
-	Copyright (C) 2015-2023 Lynn Jarvis.
+	Copyright (C) 2022-2023 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -30,7 +30,7 @@ void ofApp::setup(){
 
 	ofBackground(10, 100, 140);
 
- 	strcpy_s(sendername, 256, "OF Spout Graphics Sender"); // The sender name
+ 	strcpy_s(sendername, 256, "Spout Graphics Sender"); // The sender name
 	ofSetWindowTitle(sendername); // show it on the title bar
 
 	// ----------------------------------------------
@@ -45,7 +45,7 @@ void ofApp::setup(){
 	// Refer to the "SpoutUtils.cpp" source code for further details.
 	//
 	// OpenSpoutConsole(); // Empty console for debugging
-	EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
+	// EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
 
 	// The Spout SDK version number e.g. "2.007.000"
 	SpoutLog("Spout version : %s", GetSDKversion().c_str());
@@ -126,18 +126,15 @@ void ofApp::setup(){
  	rotX = 0.0f;
 	rotY = 0.0f;
 
-	// Set the sender size here 
-	// This example uses the window size to demonstrate sender re-sizing (see "windowResized").
-	// However, this application renders to an FBO, so the sender size can be independent 
-	// of the window if you wish.
-	senderwidth  = ofGetWidth();
-	senderheight = ofGetHeight();
+	// This example uses the window size to demonstrate sender re-sizing.
+	// If the application renders to an FBO, the sender size can be
+	// independent of the window and would need to be defined and managed.
 
 	// Create an RGBA fbo for texture transfers
-	myFbo.allocate(senderwidth, senderheight, GL_RGBA);
+	myFbo.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 
 	// Create an image for optional pixel transfer
-	myPixels.allocate(senderwidth, senderheight, OF_IMAGE_COLOR_ALPHA);
+	myPixels.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR_ALPHA);
 
 	// Give the sender a name
 	// If no name is specified, the executable name is used.
@@ -194,7 +191,7 @@ void ofApp::draw() {
 	//   The invert option is false because in this case 
 	//   the texture attached to the fbo is already flipped in y.
 	//   See also Option 4 to send the default framebuffer.
-	sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
+	sender.SendFbo(myFbo.getId(), ofGetWidth(), ofGetHeight(), false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
@@ -204,13 +201,13 @@ void ofApp::draw() {
 	//
 	// sender.SendTexture(myFbo.getTexture().getTextureData().textureID,
 		// myFbo.getTexture().getTextureData().textureTarget,
-		// senderwidth, senderheight, false);
+		// ofGetWidth(), ofGetHeight(), false);
 
 	//
 	// Option 3 : Send image pixels
 	//
 	// myFbo.readToPixels(myPixels); // readToPixels is slow - but this is just an example
-	// sender.SendImage(myPixels.getData(), senderwidth, senderheight, GL_RGBA, false);
+	// sender.SendImage(myPixels.getData(), ofGetWidth(), ofGetHeight(), GL_RGBA, false);
 
 	// Show the result sized to the application window
 	myFbo.draw(0.0f, 0.0f, (float)ofGetWidth(), (float)ofGetHeight());
@@ -227,7 +224,7 @@ void ofApp::draw() {
 	// size changes (see "windowResized"). Then the width and height 
 	// values must be passed in. See also code comments in Spout.cpp.
 	//
-	// sender.SendFbo(0, senderwidth, senderheight);
+	// sender.SendFbo(0, ofGetWidth(), ofGetHeight());
 	//
 
 	// Show what it's sending
@@ -237,7 +234,6 @@ void ofApp::draw() {
 		str += sender.GetName(); str += " (";
 		str += ofToString(sender.GetWidth()); str += "x";
 		str += ofToString(sender.GetHeight()); str += ")";
-
 		// Show sender fps and framecount if available
 		if (sender.GetFrame() > 0) {
 			str += " fps ";
@@ -247,10 +243,6 @@ void ofApp::draw() {
 			str += ofToString((int)(round(g_SenderFps)));
 			str += " : frame  ";
 			str += ofToString(sender.GetFrame());
-		}
-		else {
-			// Show Openframeworks fps
-			str += " fps : " + ofToString((int)roundf(ofGetFrameRate()));
 		}
 		ofDrawBitmapString(str, 10, 20);
 
@@ -291,10 +283,8 @@ void ofApp::windowResized(int w, int h)
 	// If the sending size matches the window size,
 	// the fbo, texture or image should be updated here.
 	if (w > 0 && h > 0) {
-		senderwidth = w;
-		senderheight = h;
-		myFbo.allocate(senderwidth, senderheight, GL_RGBA);
-		myPixels.allocate(senderwidth, senderheight, GL_RGBA);
+		myFbo.allocate(w, h, GL_RGBA);
+		myPixels.allocate(w, h, GL_RGBA);
 	}
 }
 

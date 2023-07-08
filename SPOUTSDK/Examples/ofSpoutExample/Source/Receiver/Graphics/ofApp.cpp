@@ -36,7 +36,7 @@ void ofApp::setup(){
 
 	// Logging (see sender example)
 	// OpenSpoutConsole(); // for debugging when a console is not availlable
-	EnableSpoutLog(); // Spout logging to console
+	// EnableSpoutLog(); // Spout logging to console
 
 	// Specify the sender to connect to.
 	// The application will not connect to any other unless the user selects one.

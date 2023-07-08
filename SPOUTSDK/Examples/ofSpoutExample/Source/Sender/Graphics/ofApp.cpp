@@ -45,7 +45,7 @@ void ofApp::setup(){
 	// Refer to the "SpoutUtils.cpp" source code for further details.
 	//
 	// OpenSpoutConsole(); // Empty console for debugging
-	EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
+	// EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
 
 	// The Spout SDK version number e.g. "2.007.000"
 	SpoutLog("Spout version : %s", GetSDKversion().c_str());
