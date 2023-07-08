@@ -37,11 +37,17 @@
 #include <windows.h>
 #include <string>
 
-// Re-define to avoid include of GL.h 
+// Define here to avoid include of GL.h 
 typedef unsigned int GLuint;
 typedef unsigned int GLenum;
 #ifndef GL_RGBA
 #define GL_RGBA 0x1908
+#endif
+#ifndef GL_BGRA
+#define GL_BGRA 0x80E1
+#endif
+#ifndef GL_BGRA_EXT
+#define GL_BGRA_EXT 0x80E1
 #endif
 
 #define SPOUTLIBRARY_EXPORTS // defined for this DLL. The application imports rather than exports
@@ -351,7 +357,7 @@ struct SPOUTLIBRARY
 	// Update a sender
 	virtual bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height) = 0;
 	// Create receiver connection
-	virtual bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false) = 0;
+	virtual bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height) = 0;
 	// Check receiver connection
 	virtual bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected) = 0;
 	// Get user DX9 mode
