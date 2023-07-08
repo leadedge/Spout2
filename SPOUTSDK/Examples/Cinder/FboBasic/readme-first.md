@@ -3,7 +3,10 @@
 This is an example of using the Spout SDK source files with a Cinder OpenGL application.\
 The example has been created for Visual Studio 2017 and Cinder 0.9.3.
 
-Rebuild Cinder library for VS2017
+Note that the project target is Visual Studio 2017 (V141).\
+and the Cinder library should also be re-targeted and rebuilt.
+
+To rebuild the Cinder library for VS2017
 1) Copy the proj\vc2015 folder to a new one proj\vc2017
 2) Remove any existing build files
 3) Open Cinder.sln with VS2017 and Re-Target
