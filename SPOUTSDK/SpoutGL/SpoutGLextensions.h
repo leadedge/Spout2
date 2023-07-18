@@ -661,6 +661,16 @@ typedef void   (APIENTRY* glDispatchComputePROC) (GLuint num_groups_x, GLuint nu
 typedef void   (APIENTRY* glDeleteProgramPROC) (GLuint program);
 typedef void   (APIENTRY* glDeleteShaderPROC) (GLuint shader);
 
+typedef void   (APIENTRY* glMemoryBarrierPROC) (GLbitfield barriers);
+
+#ifndef GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
+#define GL_SHADER_IMAGE_ACCESS_BARRIER_BIT 0x00000020
+#endif
+
+#ifndef GL_ALL_BARRIER_BITS
+#define GL_ALL_BARRIER_BITS 0xFFFFFFFF
+#endif
+
 extern glCreateProgramPROC		glCreateProgram;
 extern glCreateShaderPROC       glCreateShader;
 extern glShaderSourcePROC       glShaderSource;
@@ -674,6 +684,7 @@ extern glBindImageTexturePROC   glBindImageTexture;
 extern glDispatchComputePROC    glDispatchCompute;
 extern glDeleteProgramPROC      glDeleteProgram;
 extern glDeleteShaderPROC       glDeleteShader;
+extern glMemoryBarrierPROC      glMemoryBarrier;
 
 typedef void (APIENTRY* glActiveTexturePROC)(GLenum texture);
 extern glActiveTexturePROC      glActiveTexture;

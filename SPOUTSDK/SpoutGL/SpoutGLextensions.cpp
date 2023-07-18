@@ -49,6 +49,7 @@
 //			09.05.23	- Add memory object extensions
 //			16.06.23	- Add glTextureStorageMem2DEXT
 //			24.06.23	- Add glUniform1f
+//			14.07.23	- Add glMemoryBarrier
 //
 
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -164,6 +165,7 @@ glBindImageTexturePROC   glBindImageTexture = NULL;
 glDispatchComputePROC    glDispatchCompute  = NULL;
 glDeleteProgramPROC      glDeleteProgram    = NULL;
 glDeleteShaderPROC       glDeleteShader     = NULL;
+glMemoryBarrierPROC      glMemoryBarrier    = NULL;
 glActiveTexturePROC      glActiveTexture    = NULL;
 glUniform1iPROC          glUniform1i        = NULL;
 glUniform1fPROC          glUniform1f        = NULL;
@@ -449,6 +451,7 @@ bool loadComputeShaderExtensions()
 	glDispatchCompute  = (glDispatchComputePROC)wglGetProcAddress("glDispatchCompute");
 	glDeleteProgram    = (glDeleteProgramPROC)wglGetProcAddress("glDeleteProgram");
 	glDeleteShader     = (glDeleteShaderPROC)wglGetProcAddress("glDeleteShader");
+	glMemoryBarrier    = (glMemoryBarrierPROC)wglGetProcAddress("glMemoryBarrier");
 	glActiveTexture    = (glActiveTexturePROC)wglGetProcAddress("glActiveTexture");
 	glUniform1i        = (glUniform1iPROC)wglGetProcAddress("glUniform1i");
 	glUniform1f        = (glUniform1fPROC)wglGetProcAddress("glUniform1f");
@@ -479,6 +482,7 @@ bool loadComputeShaderExtensions()
 		&& glUniform1i != NULL
 		&& glUniform1f != NULL
 		&& glDeleteShader != NULL
+		&& glMemoryBarrier != NULL
 		&& glGetUniformLocation != NULL
 		&& glTextureStorage2D != NULL
 		&& glCreateTextures != NULL
