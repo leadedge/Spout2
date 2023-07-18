@@ -137,6 +137,9 @@
 //		03.07.23	- CreateInterop - code cleanup
 //					  ReadTextureData - change cast (#PR93)
 //		06.07.23	- Code cleanup
+//		13.07.23	- Make InitTexture public
+//		17.07.23	- CopyTexture - remove glCopyImageSubData due to format limitations
+//				      Add SwapRGB utility
 //
 // ====================================================================================
 //
@@ -3796,66 +3799,69 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	GLuint DestID, GLuint DestTarget, unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
 {
-	
-	// No texture invert or if blit extensions are not available
-	if (!bInvert || !m_bBLITavailable) {
-		//
-		// Direct copy
-		// 0.001 - 0.002 msec
-		//
-		glCopyImageSubData(SourceID, SourceTarget, 0, 0, 0, 0,
-			DestID, DestTarget, 0, 0, 0, 0,	width, height, 1);
+	//
+	// Fbo blit
+	//
 
-		if (glGetError() != GL_NO_ERROR)
-			return false;
-	}
-	else {
+	// Create an fbo if not already
+	if (m_fbo == 0)
+		glGenFramebuffersEXT(1, &m_fbo);
 
-		//
-		// fbo blit method for flip
-		// 0.05 - 0.25 msec
-		//
+	// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 
-		// Create an fbo if not already
-		if (m_fbo == 0)	glGenFramebuffersEXT(1, &m_fbo);
+	// Attach the Source texture to the color buffer in our frame buffer
+	glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
+	glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
 
-		// Bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-		// Attach the Source texture to the first attachment point of the color buffer in the frame buffer
-		glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
-		glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
-		// Attach destination texture (the texture we write into) to second attachment point
-		glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
-		glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
-		GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-		if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-			// Blit method with checks - 0.75 - 0.85 msec
-			// copy one texture buffer to the other while flipping upside down 
-			// (OpenGL and DirectX have different texture origins)
-			glBlitFramebufferEXT(0, 0, // srcX0, srcY0, 
-				width, height,         // srcX1, srcY1
-				0, height,             // dstX0, dstY0,
-				width, 0,              // dstX1, dstY1,
-				GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	// Attach destination texture (the texture we write into) to second attachment point
+	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
+
+	GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+		if (m_bBLITavailable) {
+			if (bInvert) {
+				// Blit method 1920x1080 - 0.05 - 0.20 msec
+				// copy one texture buffer to the other while flipping upside down
+				// (OpenGL and DirectX have different texture origins)
+				glBlitFramebufferEXT(0, 0, // srcX0, srcY0,
+					width, height,         // srcX1, srcY1
+					0, height,             // dstX0, dstY0,
+					width, 0,              // dstX1, dstY1,
+					GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			}
+			else {
+				// Do not flip during blit
+				glBlitFramebufferEXT(0, 0, // srcX0, srcY0,
+					width, height,         // srcX1, srcY1
+					0, 0,                  // dstX0, dstY0,
+					width, height,         // dstX1, dstY1,
+					GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			}
 		}
 		else {
-			PrintFBOstatus(status);
-			glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, 0, 0);
-			glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, 0, 0);
-			glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-			return false;
+			// No fbo blit extension
+			// Copy from the fbo (source texture attached) to the dest texture
+			glBindTexture(DestTarget, DestID);
+			glCopyTexSubImage2D(DestTarget, 0, 0, 0, 0, 0, width, height);
+			glBindTexture(DestTarget, 0);
 		}
-		// Detach textures
-		glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, 0, 0);
-		glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, 0, 0);
-		// Restore default draw
-		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-		// restore the previous fbo - default is 0
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-
 	}
-	
+	else {
+		PrintFBOstatus(status);
+		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+		return false;
+	}
+
+	// Restore default draw
+	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
+	// restore the previous fbo - default is 0
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+
+	// Show errors
+	GLerror();
 
 	return true;
 
@@ -3863,17 +3869,27 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 
 
 //---------------------------------------------------------
+// Function: SwapRGB
+// Swap texture red and blue (BRGA <> RGBA)
+bool spoutGL::SwapRGB(GLuint SourceID, unsigned int width, unsigned int height)
+{
+	return ComputeCopyTexture(SourceID, SourceID, width, height, false, true);
+}
+
+
+
+//---------------------------------------------------------
 // Function: ComputeCopyTexture
 // OpenGL texture copy using compute shader
+//    bInvert - flip image
+//    bSwap - swap red/blue (RGBA/BGRA)
 // Approximately X2 faster than FBO blit
-//
 // Textures must have the same size and internal format GL_RGBA or GL_RGBA8
 // Texture targets can be different, GL_TEXTURE_2D or GL_TEXTURE_RECTANGLE_ARB
 // Cannot be used with GL/DX interop or glBindImageTexture fails
-// Confirmed after calling LinkGLDXtextures
 //
 bool spoutGL::ComputeCopyTexture(GLuint SourceID, GLuint DestID,
-	unsigned int width, unsigned int height, bool bInvert)
+	unsigned int width, unsigned int height, bool bInvert, bool bSwap)
 {
 	if (SourceID == 0 || DestID == 0)
 		return false;
@@ -3895,8 +3911,14 @@ bool spoutGL::ComputeCopyTexture(GLuint SourceID, GLuint DestID,
 	// Flip output option
 	glUniform1i(0, bInvert);
 
+	// Swap red/blue option
+	glUniform1i(1, bSwap);
+
 	// Use the shader with determined work group size (default 32x32)
 	glDispatchCompute(width/m_wgX, height/m_wgY, 1);
+
+	// Wait for the program to finish
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
 	glUseProgram(0);
 
@@ -3919,6 +3941,7 @@ GLuint spoutGL::CreateComputeCopyShader(unsigned int width, unsigned int height)
 	shaderstr += "layout(rgba8, binding=0) uniform readonly  image2D src;\n";
 	shaderstr += "layout(rgba8, binding=1) uniform writeonly image2D dst;\n";
 	shaderstr += "layout (location = 0) uniform bool flip;\n";
+	shaderstr += "layout (location = 1) uniform bool swap;\n";
 	shaderstr += "layout(local_size_x = ";
 	shaderstr += std::to_string(m_wgX);
 	shaderstr += ", local_size_y = ";
@@ -3930,7 +3953,13 @@ GLuint spoutGL::CreateComputeCopyShader(unsigned int width, unsigned int height)
 	// Flip image option
 	shaderstr += "    if(flip) ypos = imageSize(src).y-ypos;\n";
 	// Texture copy with output alpha = 1
-	shaderstr += "    imageStore(dst, ivec2(gl_GlobalInvocationID.x, ypos), vec4(c.r,c.g,c.b,1.0));\n";
+	// Swap red-blue option option RGBA<>BGRA
+	shaderstr += "    if(swap) {\n";
+	shaderstr += "        imageStore(dst, ivec2(gl_GlobalInvocationID.x, ypos), vec4(c.b,c.g,c.r,1.0));\n";
+	shaderstr += "    }\n";
+	shaderstr += "    else {\n";
+	shaderstr += "        imageStore(dst, ivec2(gl_GlobalInvocationID.x, ypos), vec4(c.r,c.g,c.b,1.0));\n";
+	shaderstr += "    }\n";
 	shaderstr += "}";
 
 	// Create the compute shader program

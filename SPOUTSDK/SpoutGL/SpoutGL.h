@@ -145,8 +145,13 @@ class SPOUT_DLLEXP spoutGL {
 	// Copy OpenGL texture with optional invert
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget, GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
+
+	// Texture swap RGBA <> BGRA
+	bool SwapRGB(GLuint SourceID, unsigned int width, unsigned int height);
+
 	// Compute shader for OpenGL texture copy
-	bool ComputeCopyTexture(GLuint SourceID, GLuint DestID,	unsigned int width, unsigned int height, bool bInvert = false);
+	bool ComputeCopyTexture(GLuint SourceID, GLuint DestID,	unsigned int width, unsigned int height, bool bInvert = false, bool bSwap = false);
+	
 	// Correct for image stride
 	void RemovePadding(const unsigned char *source, unsigned char *dest,
 		unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
@@ -237,7 +242,8 @@ class SPOUT_DLLEXP spoutGL {
 	HANDLE GetInteropObject();
 	// Pointer to the shared DirectX texture
 	ID3D11Texture2D* GetDXsharedTexture();
-
+	// Create OpenGL texture
+	void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height);
 	// Copy OpenGL to shared DirectX 11 texture via CPU
 	bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	// Copy from shared DX11 texture to OpenGL via CPU
@@ -284,7 +290,6 @@ protected :
 
 	// OpenGL texture create
 	void CheckOpenGLTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
-	void InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
 
 	// OpenGL texture copy
 	bool WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
