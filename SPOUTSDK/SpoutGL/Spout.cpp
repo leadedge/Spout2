@@ -823,7 +823,6 @@ bool Spout::ReceiveTexture()
 //
 bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
-
 	// Return if flagged for update and there is a texture to receive into.
 	// The update flag is reset when the receiving application calls IsUpdated().
 	if (m_bUpdated && TextureID != 0 && TextureTarget != 0) {
