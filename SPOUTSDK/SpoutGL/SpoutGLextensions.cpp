@@ -50,6 +50,7 @@
 //			16.06.23	- Add glTextureStorageMem2DEXT
 //			24.06.23	- Add glUniform1f
 //			14.07.23	- Add glMemoryBarrier
+//			21.07.23	- Add glGetMemoryObjectParameterivEXT
 //
 
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -180,6 +181,8 @@ glDeleteMemoryObjectsEXTPROC      glDeleteMemoryObjectsEXT = NULL;
 glTexStorageMem2DEXTPROC          glTexStorageMem2DEXT = NULL;
 glTextureStorageMem2DEXTPROC      glTextureStorageMem2DEXT = NULL;
 glImportMemoryWin32HandleEXTPROC  glImportMemoryWin32HandleEXT = NULL;
+glBufferStorageMemEXTPROC         glBufferStorageMemEXT = NULL;
+glGetMemoryObjectParameterivEXTPROC glGetMemoryObjectParameterivEXT = NULL;
 
 
 //---------------------------
@@ -465,6 +468,9 @@ bool loadComputeShaderExtensions()
 	glTexStorageMem2DEXT         = (glTexStorageMem2DEXTPROC)wglGetProcAddress("glTexStorageMem2DEXT");
 	glTextureStorageMem2DEXT     = (glTextureStorageMem2DEXTPROC)wglGetProcAddress("glTexStorageMem2DEXT");
 	glImportMemoryWin32HandleEXT = (glImportMemoryWin32HandleEXTPROC)wglGetProcAddress("glImportMemoryWin32HandleEXT");
+	glBufferStorageMemEXT        = (glBufferStorageMemEXTPROC)wglGetProcAddress("glBufferStorageMemEXT");
+	glGetMemoryObjectParameterivEXT = (glGetMemoryObjectParameterivEXTPROC)wglGetProcAddress("glGetMemoryObjectParameterivEXT");
+
 
 	if(glCreateProgram != NULL
 		&& glCreateShader != NULL
@@ -491,7 +497,9 @@ bool loadComputeShaderExtensions()
 		&& glDeleteMemoryObjectsEXT != NULL
 		&& glTexStorageMem2DEXT != NULL
 		&& glTextureStorageMem2DEXT != NULL
-		&& glImportMemoryWin32HandleEXT != NULL) {
+		&& glImportMemoryWin32HandleEXT != NULL
+		&& glBufferStorageMemEXT != NULL
+		&& glGetMemoryObjectParameterivEXT != NULL) {
 			return true;
 	}
 	else {

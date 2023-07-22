@@ -725,6 +725,20 @@ extern glTextureStorageMem2DEXTPROC glTextureStorageMem2DEXT;
 typedef void (APIENTRY* glImportMemoryWin32HandleEXTPROC) (GLuint memory, GLuint64 size, GLenum handleType, void* handle);
 extern glImportMemoryWin32HandleEXTPROC glImportMemoryWin32HandleEXT;
 
+typedef void (APIENTRY* glBufferStorageMemEXTPROC) (GLenum target, GLsizeiptr size, GLuint memory, GLuint64 offset);
+extern glBufferStorageMemEXTPROC glBufferStorageMemEXT;
+
+typedef void (APIENTRY* glGetMemoryObjectParameterivEXTPROC) (GLuint memoryObject, GLenum pname, GLint* params);
+extern glGetMemoryObjectParameterivEXTPROC glGetMemoryObjectParameterivEXT;
+
+#ifndef GL_DEDICATED_MEMORY_OBJECT_EXT
+#define GL_DEDICATED_MEMORY_OBJECT_EXT                0x9581
+#endif
+
+#ifndef GL_PROTECTED_MEMORY_OBJECT_EXT                
+#define GL_PROTECTED_MEMORY_OBJECT_EXT                0x959B
+#endif
+
 // Accepted by the <handleType> parameter of ImportMemoryWin32HandleEXT(), ImportMemoryWin32NameEXT()
 #ifndef GL_HANDLE_TYPE_OPAQUE_WIN32_EXT
 #define GL_HANDLE_TYPE_OPAQUE_WIN32_EXT               0x9587
