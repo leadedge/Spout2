@@ -257,7 +257,8 @@
 //		28.06.23	- Remove bDX9 option from GetAdapterInfo
 //		03.07.23	- CreateReceiver - remove unused bUseActive flag
 //					  and UNREFERENCED_PARAMETER (#PR93  Fix MinGW error(beta branch)
-//
+//		22.07.23	- ReceiveSenderData -
+//					  ensure m_pSharedTexture is null if OpenSharedResource failed.
 //
 // ====================================================================================
 /*
@@ -2441,8 +2442,10 @@ bool Spout::ReceiveSenderData()
 					// query the same sender again.
 					//
 					// Return true and wait until another sender is selected or the shared texture handle is valid.
-					// m_pSharedTexture is then null but will not be used.
-					//
+					// m_pSharedTexture is then null but make sure so that it is not used.
+					if (m_pSharedTexture) 
+						spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pSharedTexture);
+					m_pSharedTexture = nullptr;
 
 				} // endif OpenDX11shareHandle fail
 

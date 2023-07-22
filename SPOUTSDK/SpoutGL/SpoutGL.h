@@ -156,6 +156,9 @@ class SPOUT_DLLEXP spoutGL {
 	void RemovePadding(const unsigned char *source, unsigned char *dest,
 		unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
 
+	// OpenGL error reprting
+	bool GLerror();
+
 	// DX11 texture read
 	//  o Copy from the shared DX11 texture to a DX11 texture
 	bool ReadTexture(ID3D11Texture2D** texture);
@@ -347,7 +350,6 @@ protected :
 	// Errors
 	void DoDiagnostics(const char *error);
 	void PrintFBOstatus(GLenum status);
-	bool GLerror();
 
 	//
 	// Class globals

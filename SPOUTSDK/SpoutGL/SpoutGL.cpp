@@ -140,6 +140,8 @@
 //		13.07.23	- Make InitTexture public
 //		17.07.23	- CopyTexture - remove glCopyImageSubData due to format limitations
 //				      Add SwapRGB utility
+//		18.07.23	- Make GLerror() public
+//		22.07.23	- Some extra checks for null m_pSharedTexture for a receiver
 //
 // ====================================================================================
 //
@@ -1059,10 +1061,11 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 	if (bReceive) {
 		// The receiver must have retrieved a handle from the sender
 		// A DirectX texture is opened from the sender share handle.
-		if (!m_dxShareHandle) {
+		if (!m_dxShareHandle || !m_pSharedTexture) {
 			SpoutLogError("spoutGL::CreateInterop - no receiver texture handle");
 			return false;
 		}
+
 		// Use the texture already created from the sender share handle for linking to OpenGL.
 		pLinkedTexture = m_pSharedTexture;
 	}
@@ -1577,6 +1580,10 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 	if (!m_hInteropDevice || !m_hInteropObject) {
 		return false;
 	}
+
+	// No shared DX11 texture, no copy
+	if (!m_pSharedTexture)
+		return false;
 
 	// No texture read or zero OpenGL texture (allowed for by ReceiveTexture)
 	// the shared texture can be accessed directly
