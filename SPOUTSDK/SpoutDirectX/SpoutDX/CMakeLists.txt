@@ -6,6 +6,7 @@
 # 29/04/21 - Add copy of build files to Binary folders                         #
 #          - Support single config generators (ninja, etc) by Joakim Kilby     #
 # 13/01/23 - Add SpoutDX static library                                        #
+# 24/06/23 - Modifications for MINGW build (PR#93-vkedwardli)                  #
 #/-------------------------------------- . -----------------------------------\#
 
 
