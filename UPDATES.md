@@ -1,69 +1,163 @@
-===================================
+===========================================\
+23.07.23\
+Update Master from Beta branch.
+
+    Version 2.007.011
+
+Spout.cpp
+- 22.04.23	- Minor code comments cleanup
+- 29.04.23	- ReceiveSenderData - test for incorrect sender dimensions
+- 07.05.23	- CheckSender - release interop device and object to re-create
+- 17.05.23	- ReleaseSender - add m_bInitialized = false and remove from SpoutGL::GleanupG
+- 18.05.23	- ReleaseSender - clear m_SenderName
+- 28.06.23	- Remove bDX9 option from GetAdapterInfo
+- 03.07.23	- CreateReceiver - remove unused bUseActive flag and UNREFERENCED_PARAMETER (#PR93  Fix MinGW error(beta branch)
+- 22.07.23	- ReceiveSenderData - ensure m_pSharedTexture is null if OpenSharedResource failed.
+
+SpoutCopy.cpp
+- 17.04.23 - Add rgba_to_rgb_sse and rgba_to_bgr_sse
+- 18.04.23 - Rename to rgba_to_rgb_sse3 and rgba_to_bgr_sse3. Add bSwapRG to rgba_to_rgb_sse3. Remove rgba_to_bgr_sse3. Add experimental rgb_to_bgra_sse3
+		   
+SpoutDirectX.cpp
+- 24.04.23	- Remove const from 1st arg of ReleaseDX11Texture, ReleaseDX11Device and DebugLog to enable debugging via SDK Layers. ReleaseDX11Device check for release of class device and null the pointer. ReleaseDX11Texture log notice if no outstanding refcount. DebugLog - clean up and add code comments. All object releases - flush context to avoid deferred destruction
+- 28.04.23	- Release d3dInfoQueue in DebugLog
+- 17.05.23	- Add ClearState to FlushWait
+- 18.05.23	- Add Flush() function
+- 22.05.23	- CloseDirectX11 - release immediate context before device. OpenDX11shareHandle - catch OpenSharedResource exeption before testing result
+- 05.06.23	- Allow feature level 11.1 in CreateDX11device. Update logs in ReleaseDX11Texture for refcount
+- 09.06.23	- Add GetDX11FeatureLevel for development
+- 16.06.23	- CreateDX11device - allow for D3D_FEATURE_LEVEL_11_1. CreateSharedDX11Texture - add NT handle argument for development. OpenDirectX11 Save global m_featureLevel for external device. Create ID3D11Device1 and ID3D11DeviceContext1 for D3D_EATURE_LEVEL_11_1. ReleaseDX11Device - release ID3D11Device1 and ID3D11DeviceContext1 if created
+
+SpoutFrameCount.cpp
+- 24.04.23	- Replace m_bDisabled with m_bCountDisabled
+- 03.07.23	- EnableFrameCount, CreateAccessMutex - add detail to logs
+
+SpoutGL.cpp
+- 15.03.23	- If no new sender frame, return true and do not block for all receiving functions to avoid un-necessary Acquire/Release/Lock/Unlock
+- 22.04.23	- Add compute shader utility for OpenGL texture copy. CreateInterop - delete m_glTexture before creating new 
+- 04.05.23	- CopyTexture - detach textures from fbo. Blit method only for texture invert.
+- 07.05.23	- CreateOpenGL - load extensions.
+- 17.05.23	- Remove "m_bInitialized = false" check from CleanupGL and put in release functions
+- 18/05.23	- CleanupGL - Remove m_SenderName clear. Unbind textures before CleanupInterop
+- 19.05.23	- Add GetInteropObject() and GetDXsharedTexture() 
+- 22.05.23	- Remove CleanupInterop from within CleanupGL and use as separate functions
+- 07.06.23	- UnloadTexturePixels - specify number of PBOs created in log
+- 09.06.23	- Use glCopyImageSubData for CopyTexture if no invert
+- 22.06.23	- CreateComputeCopyShader adjust Y workgroup number for aspect ratio
+- 03.07.23	- CreateInterop - code cleanup ReadTextureData - change cast (#PR93)
+- 06.07.23	- Code cleanup
+- 13.07.23	- Make InitTexture public
+- 17.07.23	- CopyTexture - remove glCopyImageSubData due to format limitations. Add SwapRGB utility
+- 18.07.23	- Make GLerror() public
+- 22.07.23	- Some extra checks for null m_pSharedTexture for a receiver
+
+SpoutGLextensions.cpp
+- 20.04.23	- Add compute shader extensions
+- 22.04.23	- Correct EXT_LOG prefix for standalone in ExtLog function
+- 24.04.23	- Add glGetTexParameteriv and glTextureStorage2D
+- 04.05.23	- Define GL_BGRA in case it is used
+- 09.05.23	- Add memory object extensions
+- 16.06.23	- Add glTextureStorageMem2DEXT
+- 24.06.23	- Add glUniform1f
+- 14.07.23	- Add glMemoryBarrier
+- 21.07.23	- Add glGetMemoryObjectParameterivEXT
+
+SpoutReceiver.cpp
+- 06.07.23	- Remove bUseActive from 2.006 CreateReceiver
+
+SpoutSenderNames.cpp
+- 13.07.23 - setActiveSenderName - close any existing active sender map
+
+SpoutSharedMemory.cpp
+- 12.05.23 - Create and Open - Clear ERROR_ALREADY_EXISTS to avoid detection elsewhere.
+
+SpoutUtils.cpp
+- 14.04.23 - Update SDKversion to 2.007.011
+- 24.04.23 - GetTimer - independent start and end variables startcount/endcount
+- 09.05.23 - Yellow console text for warnings and errors
+- 17.05.23 - Set console title to executable name
+- 04-07-23 - _getLogPath() - allow for getenv if not Microsoft compiler (PR #95)
+
+CmakesList.txt - Spout, SpoutGL and SpoutDX
+- Modifications for MINGW build (PR#93-vkedwardli)
+
+===================================\
 07-04-23\
 Update Master from Beta branch.\
 - Version 2.007.010
 
 Cumulative update.
+
 Spout.cpp
-06.01.23 - UIntToPtr for cast of uint32_t to HANDLE
+- 06.01.23 - UIntToPtr for cast of uint32_t to HANDLE
 cast unsigned int array for glGetIntegerv instead of result
 Avoid c-style cast where possible
-08.01.23 - Code review - Use Microsoft Native Recommended rules
-08.03.23 - GetSenderAdapter use SetAdpater instead of SetAdapterPointer
-21.03.23 - ReceiveSenderData - use the format of the D3D11 texture generated
+- 08.01.23 - Code review - Use Microsoft Native Recommended rules
+- 08.03.23 - GetSenderAdapter use SetAdpater instead of SetAdapterPointer
+- 21.03.23 - ReceiveSenderData - use the format of the D3D11 texture generated
 by OpenDX11shareHandle for incorrect sender information.
+
 SpoutCopy.cpp
-02-04-23 - Corrected source pointer increment in rgba2rgba when not inverted
+- 02-04-23 - Corrected source pointer increment in rgba2rgba when not inverted
+
 SpoutDirectX.cpp
-06.01.23 - Correct IsPreferenceAvailable() to pass array length to registry function
-08.01.23 - CreateSharedDX11Texture - option for keyed shared texture
-18.03.23 - CreateDX11StagingTexture - use default DX11 format for zero or DX9 forma
+- 06.01.23 - Correct IsPreferenceAvailable() to pass array length to registry function
+- 08.01.23 - CreateSharedDX11Texture - option for keyed shared texture
+- 18.03.23 - CreateDX11StagingTexture - use default DX11 format for zero or DX9 forma
+
 SpoutFrameCount.cpp
-06.01.23 - CheckKeyedAccess - switch on hr to avoid narrowing cast to DWORD
+- 06.01.23 - CheckKeyedAccess - switch on hr to avoid narrowing cast to DWORD
 Avoid c-style cast where possible
-08.01.23 - CheckTextureAccess/AllowTextureAccess 
+- 08.01.23 - CheckTextureAccess/AllowTextureAccess 
 remove texture check for default null texture
 Code review - Use Microsoft Native Recommended rules
-19.03.23 - WaitFrameSync - do not block if the sender has not created a sync event
-SpoutGLextemsions.cpp
-20.01.23 - Changes to gl definitions for compatibility with Glew
-15.02.23 - SpoutGLextensions.h
-Correct glUnmapBufferPROC from void to GLboolean
-Correct glGenBuffersPROC buffers arg from const
+- 19.03.23 - WaitFrameSync - do not block if the sender has not created a sync event
+
+SpoutGLextensions.cpp
+- 20.01.23 - Changes to gl definitions for compatibility with Glew
+- 15.02.23 - SpoutGLextensions.h
+Correct glUnmapBufferPROC from void to GLboolean. Correct glGenBuffersPROC buffers arg from const
+
 SpoutSenderNames.cpp
-06.01.23 - GetActiveSender, getActiveSenderName, FindActiveSender 
+- 06.01.23 - GetActiveSender, getActiveSenderName, FindActiveSender 
 Change from fixed sendername argument to maxlength (default SpoutMaxSenderNameLen)
-08.01.23 - FindActiveSender - test max length passed
+- 08.01.23 - FindActiveSender - test max length passed
 Code review - Use Microsoft Native Recommended rules
+
 SpoutSharedMemory.cpp
-07.01.23 - Change m_pName from const char* to char* for strdup
+- 07.01.23 - Change m_pName from const char* to char* for strdup
+
 SpoutUtils.cpp
-14.01.23 - OpenSpoutConsole - add MessageBox warning if using a dll
+- 14.01.23 - OpenSpoutConsole - add MessageBox warning if using a dll
 EnableSpoutLog - open console rather than call OpenSpoutConsole
-15.01.23 - Use SpoutMessageBox so it doesn't freeze the application GUI
-16.01.23 - Add SpoutMessageBox caption
-17.01.23 - Add SpoutMessageBox with variable arguments
+- 15.01.23 - Use SpoutMessageBox so it doesn't freeze the application GUI
+- 16.01.23 - Add SpoutMessageBox caption
+- 17.01.23 - Add SpoutMessageBox with variable arguments
 Add ConPrint for SpoutUtils console (printf replacement)
 Remove dll build warning MessageBox.
 Change "ConPrint" to "_conprint" and use Writefile instead of cout.
-18.01.23 - _conprint - cast WriteFile size argument to DWORD
-19.03.23 - Update SDKversion to 2.007.010	
+- 18.01.23 - _conprint - cast WriteFile size argument to DWORD
+- 19.03.23 - Update SDKversion to 2.007.010	
+
 SpoutDX.cpp
-08.01.23 - Add SpoutUtils functions
-23.01.23 - CheckSender - Flush after shared texture release
-17.03.23 - ReceiveSenderData - if there is a valid D3D11 format, use it.
-18.03.23 - CreateDX11StagingTexture - use default DX11 format for zero or DX9 formats
-19.03.23 - Remove redundant CreateDX11StagingTexture and use SpoutDirectX function
+- 08.01.23 - Add SpoutUtils functions
+- 23.01.23 - CheckSender - Flush after shared texture release
+- 17.03.23 - ReceiveSenderData - if there is a valid D3D11 format, use it.
+- 18.03.23 - CreateDX11StagingTexture - use default DX11 format for zero or DX9 formats
+- 19.03.23 - Remove redundant CreateDX11StagingTexture and use SpoutDirectX function
 ReceiveSenderData - create a DX11 receiving texture with compatible format for unknown or DX9 formats.
-21.03.23 - ReceiveSenderData - revert to using the format of the D3D11 texture
+- 21.03.23 - ReceiveSenderData - revert to using the format of the D3D11 texture
 generated by OpenDX11shareHandle for incorrect sender information.		   
+
 SpoutLibrary.cpp
-17.03.23 - SpoutLibrary.h - add redefinitons to avoid include of GL.h 
-Spout.cpp ReceiveSenderData - if there is a valid D3D11 format, use it.
-18.03.23 - For MingW compatibility remove old style include guard from header
+- 17.03.23 - SpoutLibrary.h - add redefinitons to avoid include of GL.h 
+
+Spout.cpp
+-  ReceiveSenderData - if there is a valid D3D11 format, use it.
+- 18.03.23 - For MingW compatibility remove old style include guard from header
 Test for _MSC_VER for pragma warnings in header
 Test for NTDDI_WIN10_RS4 define for graphics preferences
-07.04.23   Rebuild with SDK version 2.007.010 - release VS2022 - 32/64 bit /MD
+- 07.04.23   Rebuild with SDK version 2.007.010 - release VS2022 - 32/64 bit /MD
 
 ===================================
 05-01-23\
