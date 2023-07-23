@@ -19,7 +19,7 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 set(_cmake_targets_defined "")
 set(_cmake_targets_not_defined "")
 set(_cmake_expected_targets "")
-foreach(_cmake_expected_target IN ITEMS Spout2::Spout Spout2::Spout_static Spout2::SpoutDX Spout2::SpoutLibrary)
+foreach(_cmake_expected_target IN ITEMS Spout2::Spout Spout2::Spout_static Spout2::SpoutDX Spout2::SpoutDX_static Spout2::SpoutLibrary)
   list(APPEND _cmake_expected_targets "${_cmake_expected_target}")
   if(TARGET "${_cmake_expected_target}")
     list(APPEND _cmake_targets_defined "${_cmake_expected_target}")
@@ -74,6 +74,13 @@ set_target_properties(Spout2::Spout_static PROPERTIES
 add_library(Spout2::SpoutDX SHARED IMPORTED)
 
 set_target_properties(Spout2::SpoutDX PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
+)
+
+# Create imported target Spout2::SpoutDX_static
+add_library(Spout2::SpoutDX_static STATIC IMPORTED)
+
+set_target_properties(Spout2::SpoutDX_static PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
 )
 

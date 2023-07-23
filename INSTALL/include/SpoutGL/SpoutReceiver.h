@@ -267,7 +267,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	//
 
 	// Create receiver connection
-	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
+	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height);
 	// Check receiver connection
 	bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 	// Receive OpenGL texture

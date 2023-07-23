@@ -34,8 +34,12 @@
 		LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+03.07.23	- Remove _MSC_VER condition from SPOUT_DLLEXP define
+			  (#PR93  Fix MinGW error (beta branch)
+
 
 */
+
 #pragma once
 
 #ifndef __SpoutCommon__
@@ -46,17 +50,13 @@
 // SPOUT_BUILD_DLL in the preprocessor defines.
 // Properties > C++ > Preprocessor > Preprocessor Definitions
 //
-#if defined(_MSC_VER)
-	#if defined(SPOUT_BUILD_DLL)
-		#define SPOUT_DLLEXP	__declspec(dllexport)
-	#elif defined(SPOUT_IMPORT_DLL)
-		#define SPOUT_DLLEXP	__declspec(dllimport)
-	#else
-		#define SPOUT_DLLEXP
-	#endif
-#else // _MSC_VER
+#if defined(SPOUT_BUILD_DLL)
+	#define SPOUT_DLLEXP	__declspec(dllexport)
+#elif defined(SPOUT_IMPORT_DLL)
+	#define SPOUT_DLLEXP	__declspec(dllimport)
+#else
 	#define SPOUT_DLLEXP
-#endif // _MSC_VERR
+#endif
 
 // Common utility functions namespace
 #include "SpoutUtils.h"

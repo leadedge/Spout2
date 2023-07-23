@@ -35,6 +35,16 @@ set_target_properties(Spout2::SpoutDX PROPERTIES
 list(APPEND _cmake_import_check_targets Spout2::SpoutDX )
 list(APPEND _cmake_import_check_files_for_Spout2::SpoutDX "${_IMPORT_PREFIX}/lib/SpoutDX.lib" "${_IMPORT_PREFIX}/bin/SpoutDX.dll" )
 
+# Import target "Spout2::SpoutDX_static" for configuration "Release"
+set_property(TARGET Spout2::SpoutDX_static APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(Spout2::SpoutDX_static PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/SpoutDX_static.lib"
+  )
+
+list(APPEND _cmake_import_check_targets Spout2::SpoutDX_static )
+list(APPEND _cmake_import_check_files_for_Spout2::SpoutDX_static "${_IMPORT_PREFIX}/lib/SpoutDX_static.lib" )
+
 # Import target "Spout2::SpoutLibrary" for configuration "Release"
 set_property(TARGET Spout2::SpoutLibrary APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(Spout2::SpoutLibrary PROPERTIES

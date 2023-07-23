@@ -126,6 +126,9 @@ class SPOUT_DLLEXP spoutFrameCount {
 	// Close sync event
 	void CloseFrameSync();
 
+	// LJ DEBUG
+	bool IsKeyedMutex(ID3D11Texture2D* D3D11texture);
+
 protected:
 
 	// Texture access named mutex
@@ -134,11 +137,11 @@ protected:
 	// DX11 texture keyed mutex checks
 	bool CheckKeyedAccess(ID3D11Texture2D* D3D11texture);
 	bool AllowKeyedAccess(ID3D11Texture2D* D3D11texture);
-	bool IsKeyedMutex(ID3D11Texture2D* D3D11texture);
+	// bool IsKeyedMutex(ID3D11Texture2D* D3D11texture);
 
 	// Frame count semaphore
 	bool m_bFrameCount; // Registry setting of frame count
-	bool m_bDisabled; // application disable
+	bool m_bCountDisabled; // application disable
 	bool m_bIsNewFrame; // received frame is new
 
 	HANDLE m_hCountSemaphore; // semaphore handle
