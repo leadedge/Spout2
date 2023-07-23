@@ -73,6 +73,7 @@
 //		03.11.22	- Add IsPreferenceAvailable
 //		07.11.22	- Add IsApplicationPath
 //		14.12.22	- Remove SetAdapter. Requires OpenGL setup.
+// Version 2.007.11
 //		06.07.23	- Remove bUseActive from 2.006 CreateReceiver
 //
 // ====================================================================================

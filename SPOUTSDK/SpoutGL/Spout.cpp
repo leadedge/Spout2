@@ -249,6 +249,7 @@
 //		08.03.23	- GetSenderAdapter use SetAdpater instead of SetAdapterPointer
 //		21.03.23	- ReceiveSenderData - use the format of the D3D11 texture generated
 //					  by OpenDX11shareHandle for incorrect sender information.
+//	Version 2.007.11
 //		22.04.23	- Minor code comments cleanup
 //		29.04.23	- ReceiveSenderData - test for incorrect sender dimensions
 //		07.05.23	- CheckSender - release interop device and object to re-create

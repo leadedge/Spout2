@@ -73,6 +73,7 @@
 //					  Code review - Use Microsoft Native Recommended rules
 //		19.03.23	- WaitFrameSync - do not block if the sender has not created a sync event
 //		11.04.23	- OpenFrameSync - correct test for null sender name
+// Version 2.007.11
 //		24.04.23	- Replace m_bDisabled with m_bCountDisabled
 //		03.07.23	- EnableFrameCount, CreateAccessMutex - add detail to logs
 //

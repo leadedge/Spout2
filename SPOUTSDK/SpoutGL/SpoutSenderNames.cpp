@@ -94,6 +94,7 @@
 			   Change from fixed sendername argument to maxlength (default SpoutMaxSenderNameLen)
 	08.01.23 - FindActiveSender - test max length passed
 			   Code review - Use Microsoft Native Recommended rules
+	Version 2.007.11
 	13.07.23 - setActiveSenderName - close any existing active sender map
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

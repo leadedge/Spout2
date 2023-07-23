@@ -62,6 +62,7 @@
 	22.12.22 - Compiler compatibility check
 			   Change all {} initializations to "={}"
 	02-04-23 - Corrected source pointer increment in rgba2rgba when not inverted
+	Version 2.007.11
 	17.04.23 - Add rgba_to_rgb_sse and rgba_to_bgr_sse
 	18.04.23 - Rename to rgba_to_rgb_sse3 and rgba_to_bgr_sse3
 			   Add bSwapRG to rgba_to_rgb_sse3

@@ -119,6 +119,7 @@
 //					  SpoutGL.h - include SpoutGLextensions first to prevent gl.h before Glew.h error
 //					  GLerror gluErrorString conditional on Glew define
 //		14.04.23	- Correct CreateMemoryBuffer null name check
+// Version 2.007.11
 //		15.03.23	- If no new sender frame, return true and do not block for all receiving functions
 //					  to avoid un-necessary Acquire/Release/Lock/Unlock
 //		22.04.23	- Add compute shader utility for OpenGL texture copy

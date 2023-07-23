@@ -124,6 +124,7 @@
 				   Change "ConPrint" to "_conprint" and use Writefile instead of cout.
 		18.01.23 - _conprint - cast WriteFile size argument to DWORD
 		19.03.23 - Update SDKversion to 2.007.010
+		Version 2.007.11
 		14.04.23 - Update SDKversion to 2.007.011
 		24.04.23 - GetTimer - independent start and end variables startcount/endcount
 		09.05.23 - Yellow console text for warnings and errors

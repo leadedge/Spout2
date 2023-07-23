@@ -133,6 +133,7 @@
 //		06.01.23	- Correct IsPreferenceAvailable() to pass array length to registry function
 //		08.01.23	- CreateSharedDX11Texture - option for keyed shared texture
 //		18.03.23	- CreateDX11StagingTexture - use default DX11 format for zero or DX9 formats
+// Version 2.007.11
 //		24.04.23	- Remove const from 1st arg of ReleaseDX11Texture, ReleaseDX11Device 
 //					  and DebugLog to enable debugging via SDK Layers.
 //					  ReleaseDX11Device check for release of class device and null the pointer

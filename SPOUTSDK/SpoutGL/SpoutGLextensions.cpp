@@ -42,6 +42,7 @@
 //			15.02.23	- SpoutGLextensions.h
 //						  Correct glUnmapBufferPROC from void to GLboolean
 //						  Correct glGenBuffersPROC buffers arg from const
+// Version 2.007.11
 //			20.04.23	- Add compute shader extensions
 //			22.04.23	- Correct EXT_LOG prefixe for standalone in ExtLog function
 //			24.04.23	- Add glGetTexParameteriv and glTextureStorage2D

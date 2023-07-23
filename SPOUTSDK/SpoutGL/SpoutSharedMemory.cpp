@@ -47,6 +47,7 @@
 //	28.10.22 - Code documentation
 //  18.12.22 - Catch any exception from using Close in destructor
 //	07.01.23 - Change m_pName from const char* to char* for strdup
+//  Version 2.007.11
 //  12.05.23 - Create and Open - Clear ERROR_ALREADY_EXISTS to avoid detection elsewhere.
 // ====================================================================================
 
