@@ -94,6 +94,8 @@
 			   Change from fixed sendername argument to maxlength (default SpoutMaxSenderNameLen)
 	08.01.23 - FindActiveSender - test max length passed
 			   Code review - Use Microsoft Native Recommended rules
+	Version 2.007.11
+	13.07.23 - setActiveSenderName - close any existing active sender map
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -402,7 +404,7 @@ int spoutSenderNames::GetSenderCount() {
 	if(SenderSet.size() > 0) {
 		for(iter = SenderSet.begin(); iter != SenderSet.end(); iter++) {
 			namestring = *iter; // the Sender name string
-			strcpy_s(name, namestring.c_str());
+			strcpy_s(name, SpoutMaxSenderNameLen, namestring.c_str());
 			// we have the name already, so look for it's info
 			if(!getSharedInfo(&name[0], &info)) {
 				// Sender does not exist any more
@@ -1070,6 +1072,7 @@ bool spoutSenderNames::CreateSenderSet()
 		SpoutLogError("spoutSenderNames::CreateSenderSet() : SPOUT_CREATE_FAILED");
 		return false;
 	}
+
 	return true;
 
 } // end CreateSenderSet
@@ -1114,6 +1117,9 @@ bool spoutSenderNames::setActiveSenderName(const char* SenderName)
 	const size_t len = strlen(SenderName);
 	if(len  == 0 || len + 1 > SpoutMaxSenderNameLen)
 		return false;
+
+	// Close any exsiting map which could contain a different name
+	if (m_activeSender.Size() > 0)	m_activeSender.Close();
 
 	const SpoutCreateResult spoutres = m_activeSender.Create("ActiveSenderName", SpoutMaxSenderNameLen);
 	if (spoutres    == SPOUT_CREATE_SUCCESS 

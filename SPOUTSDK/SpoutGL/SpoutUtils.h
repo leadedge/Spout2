@@ -252,10 +252,9 @@ namespace spoututils {
 #ifdef USE_CHRONO
 	// Microseconds elapsed since epoch
 	double SPOUT_DLLEXP ElapsedMicroseconds();
-#else
+#endif
 	void SPOUT_DLLEXP StartCounter();
 	double SPOUT_DLLEXP GetCounter();
-#endif
 
 	//
 	// Private functions

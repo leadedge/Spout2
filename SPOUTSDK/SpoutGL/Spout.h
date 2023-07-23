@@ -220,7 +220,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	bool GetAdapterInfo(char* renderadapter,
 		char* renderdescription, char* renderversion,
 		char* displaydescription, char* displayversion,
-		int maxsize, const bool bUseDX9 = false);
+		int maxsize);
 
 	// Create a sender
 	bool CreateSender(const char *Sendername, unsigned int width = 0, unsigned int height = 0, DWORD dwFormat = 0);
@@ -232,7 +232,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	//
 
 	// Create receiver connection
-	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
+	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height);
 	// Check receiver connection
 	bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
 	// Receive OpenGL texture

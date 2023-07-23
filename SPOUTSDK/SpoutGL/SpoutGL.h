@@ -47,7 +47,6 @@
 #include <tchar.h> // for _tcsicmp
 #include <algorithm> // for string character remove
 
-// 
 #pragma warning(disable : 26485)
 
 using namespace spoututils;
@@ -144,12 +143,21 @@ class SPOUT_DLLEXP spoutGL {
 	//
 	
 	// Copy OpenGL texture with optional invert
-	//   Textures must be the same size
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget, GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
+
+	// Texture swap RGBA <> BGRA
+	bool SwapRGB(GLuint SourceID, unsigned int width, unsigned int height);
+
+	// Compute shader for OpenGL texture copy
+	bool ComputeCopyTexture(GLuint SourceID, GLuint DestID,	unsigned int width, unsigned int height, bool bInvert = false, bool bSwap = false);
+	
 	// Correct for image stride
 	void RemovePadding(const unsigned char *source, unsigned char *dest,
 		unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
+
+	// OpenGL error reprting
+	bool GLerror();
 
 	// DX11 texture read
 	//  o Copy from the shared DX11 texture to a DX11 texture
@@ -233,6 +241,12 @@ class SPOUT_DLLEXP spoutGL {
 	HANDLE LinkGLDXtextures(void* pDXdevice, void* pSharedTexture, GLuint glTextureID);
 	// Return a handle to the the DX/GL interop device
 	HANDLE GetInteropDevice();
+	// Return a handle to the the DX/GL interop ojject
+	HANDLE GetInteropObject();
+	// Pointer to the shared DirectX texture
+	ID3D11Texture2D* GetDXsharedTexture();
+	// Create OpenGL texture
+	void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height);
 	// Copy OpenGL to shared DirectX 11 texture via CPU
 	bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	// Copy from shared DX11 texture to OpenGL via CPU
@@ -267,7 +281,6 @@ class SPOUT_DLLEXP spoutGL {
 	spoutFrameCount frame;
 
 protected :
-
 	
 	// For 2.006(receive only) / WriteMemoryBuffer / ReadMemoryBuffer
 	SpoutSharedMemory memoryshare;
@@ -280,7 +293,6 @@ protected :
 
 	// OpenGL texture create
 	void CheckOpenGLTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
-	void InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
 
 	// OpenGL texture copy
 	bool WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
@@ -320,6 +332,12 @@ protected :
 	int m_NextIndex;
 	bool CheckStagingTextures(unsigned int width, unsigned int height, int nTextures);
 
+	// Compute shader for OpenGL texture copy
+	GLuint m_ComputeCopyProgram = 0;
+	GLuint m_wgX = 32;
+	GLuint m_wgY = 32;
+	GLuint CreateComputeCopyShader(unsigned int width, unsigned int height);
+
 	// 2.006 shared memory
 	bool ReadMemoryTexture(const char* sendername, GLuint TexID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
 	bool ReadMemoryPixels(const char* sendername, unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
@@ -332,7 +350,6 @@ protected :
 	// Errors
 	void DoDiagnostics(const char *error);
 	void PrintFBOstatus(GLenum status);
-	bool GLerror();
 
 	//
 	// Class globals

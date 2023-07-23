@@ -124,6 +124,12 @@
 				   Change "ConPrint" to "_conprint" and use Writefile instead of cout.
 		18.01.23 - _conprint - cast WriteFile size argument to DWORD
 		19.03.23 - Update SDKversion to 2.007.010
+		Version 2.007.11
+		14.04.23 - Update SDKversion to 2.007.011
+		24.04.23 - GetTimer - independent start and end variables startcount/endcount
+		09.05.23 - Yellow console text for warnings and errors
+		17.05.23 - Set console title to executable name
+		04-07-23 - _getLogPath() - allow for getenv if not Microsoft compiler (PR #95)
 
 */
 
@@ -160,18 +166,17 @@ namespace spoututils {
 #ifdef USE_CHRONO
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
-#else
+#endif
 	// PC timer
 	double PCFreq = 0.0;
 	__int64 CounterStart = 0;
-	double start = 0.0;
-	double end = 0.0;
+	double startcount = 0.0;
+	double endcount = 0.0;
 	double m_FrameStart = 0.0;
-#endif
 
 	// Spout SDK version number string
 	// Major, minor, release
-	std::string SDKversion = "2.007.010";
+	std::string SDKversion = "2.007.011";
 
 	//
 	// Group: Information
@@ -251,7 +256,16 @@ namespace spoututils {
 			if (AllocConsole()) {
 				const errno_t err = freopen_s(&pCout, "CONOUT$", "w", stdout);
 				if (err == 0) {
-					SetConsoleTitleA("Spout Log");
+					char title[MAX_PATH]={};
+					if (GetModuleFileNameA(GetCurrentModule(), title, MAX_PATH) > 0) {
+						PathStripPathA(title);
+						PathRemoveExtensionA(title);
+						strcat_s(title, MAX_PATH, ".log"); // Executable name
+						SetConsoleTitleA(title);
+					}
+					else {
+						SetConsoleTitleA("Spout Log");
+					}
 					bConsole = true;
 					// Disable close button
 					// HMENU hmenu = GetSystemMenu(GetConsoleWindow(), FALSE);
@@ -376,7 +390,16 @@ namespace spoututils {
 
 		// Console output
 		if (GetConsoleWindow()) {
-			SetConsoleTitleA("Spout Log");
+			char title[MAX_PATH]={};
+			if (GetModuleFileNameA(GetCurrentModule(), title, MAX_PATH) > 0) {
+				PathStripPathA(title);
+				PathRemoveExtensionA(title);
+				strcat_s(title, MAX_PATH, ".log"); // Executable name
+				SetConsoleTitleA(title);
+			}
+			else {
+				SetConsoleTitleA("Spout Log");
+			}
 			bConsole = true;
 		}
 		else if(!bConsole)
@@ -613,7 +636,11 @@ namespace spoututils {
 	{
 		va_list args;
 		va_start(args, format);
+		// Show warning text bright yellow
+		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 		_doLog(SPOUT_LOG_WARNING, format, args);
+		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 		va_end(args);
 	}
 
@@ -677,6 +704,10 @@ namespace spoututils {
 			// Console logging
 			if (bEnableLog && bConsole) {
 				FILE* out = stdout; // Console output
+				// Yellow text for warnings and errors
+				HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+				if (level == SPOUT_LOG_WARNING || level == SPOUT_LOG_ERROR)
+				    SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 				if (level != SPOUT_LOG_NONE) {
 					// Show log level
 					fprintf(out, "[%s] ", _levelName(level).c_str());
@@ -685,7 +716,8 @@ namespace spoututils {
 				vfprintf(out, format, args);
 				// Newline
 				fprintf(out, "\n");
-
+				// Reset white text
+				SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 			} // end console log
 
 			// File logging
@@ -1147,15 +1179,17 @@ namespace spoututils {
 #else
 	// Start timing period
 	void StartTiming() {
-		start = GetCounter();
+		// startcount = GetCounter();
+		StartCounter();
 	}
 
 	// Stop timing and return microseconds elapsed.
 	// Console output can be enabled for quick timing tests.
 	double EndTiming() {
-		end = GetCounter();
-		return (end-start);
+		endcount = GetCounter();
+		return (endcount-startcount);
 	}
+#endif
 
 	// -----------------------------------------------
 	// Set counter start
@@ -1189,8 +1223,6 @@ namespace spoututils {
 			return 0.0;
 		}
 	}
-
-#endif
 
 
 	//
@@ -1262,7 +1294,11 @@ namespace spoututils {
 			size_t len = 0;
 			bool bSuccess = true;
 			errno_t err = 0;
-			err = _dupenv_s(&appdatapath, &len, "APPDATA");
+			#if defined(_MSC_VER)
+				err = _dupenv_s(&appdatapath, &len, "APPDATA");
+			#else
+				appdatapath = getenv("APPDATA");
+			#endif
 			if (err == 0 && appdatapath) {
 				strcpy_s(logpath, MAX_PATH, appdatapath);
 				strcat_s(logpath, MAX_PATH, "\\Spout");

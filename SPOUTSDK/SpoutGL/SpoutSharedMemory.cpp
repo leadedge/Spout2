@@ -47,6 +47,8 @@
 //	28.10.22 - Code documentation
 //  18.12.22 - Catch any exception from using Close in destructor
 //	07.01.23 - Change m_pName from const char* to char* for strdup
+//  Version 2.007.11
+//  12.05.23 - Create and Open - Clear ERROR_ALREADY_EXISTS to avoid detection elsewhere.
 // ====================================================================================
 
 
@@ -121,6 +123,8 @@ SpoutCreateResult SpoutSharedMemory::Create(const char* name, int size)
 	bool alreadyExists = false;
 	if (err == ERROR_ALREADY_EXISTS) {
 		alreadyExists = true;
+		// Clear the error to avoid detection elsewhere.
+		SetLastError(NO_ERROR);
 		// The size of the map will be the same as when it was created.
 		// 2.004 apps will have created a 10 sender map which will not be increased in size thereafter.
 	}
@@ -194,6 +198,11 @@ bool SpoutSharedMemory::Open(const char* name)
 		Close();
 		return false;
 	}
+
+	// If the mutex object existed before this function call,
+	// GetLastError returns ERROR_ALREADY_EXISTS. 
+	// Clear the error to avoid detection elsewhere.
+	SetLastError(NO_ERROR);
 
 	m_pName = _strdup(name);
 

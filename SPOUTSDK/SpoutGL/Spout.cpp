@@ -249,6 +249,17 @@
 //		08.03.23	- GetSenderAdapter use SetAdpater instead of SetAdapterPointer
 //		21.03.23	- ReceiveSenderData - use the format of the D3D11 texture generated
 //					  by OpenDX11shareHandle for incorrect sender information.
+//	Version 2.007.11
+//		22.04.23	- Minor code comments cleanup
+//		29.04.23	- ReceiveSenderData - test for incorrect sender dimensions
+//		07.05.23	- CheckSender - release interop device and object to re-create
+//		17.05.23	- ReleaseSender - add m_bInitialized = false and remove from SpoutGL::GleanupGL
+//		18.05.23	- ReleaseSender - clear m_SenderName
+//		28.06.23	- Remove bDX9 option from GetAdapterInfo
+//		03.07.23	- CreateReceiver - remove unused bUseActive flag
+//					  and UNREFERENCED_PARAMETER (#PR93  Fix MinGW error(beta branch)
+//		22.07.23	- ReceiveSenderData -
+//					  ensure m_pSharedTexture is null if OpenSharedResource failed.
 //
 // ====================================================================================
 /*
@@ -279,10 +290,6 @@
 
 #include "Spout.h"
 
-#if !defined(_MSC_VER)
-#undef UNREFERENCED_PARAMETER
-#define UNREFERENCED_PARAMETER(x)
-#endif
 
 // Class: Spout
 //
@@ -343,7 +350,6 @@ Spout::Spout()
 	// Adapter index and name are retrieved with create sender or receiver
 	m_AdapterName[0] = 0;
 	m_bAdapt = false; // Receiver adapt to the sender adapter
-
 }
 
 Spout::~Spout()
@@ -442,8 +448,11 @@ void Spout::ReleaseSender()
 
 	if (m_bInitialized) {
 		sendernames.ReleaseSenderName(m_SenderName);
+		m_SenderName[0]=0;
 		frame.CleanupFrameCount();
 		frame.CloseAccessMutex();
+		m_bInitialized = false;
+
 	}
 
 	// Close 2.006 or buffer shared memory if used
@@ -452,9 +461,10 @@ void Spout::ReleaseSender()
 	// Release sync event if used
 	frame.CloseFrameSync();
 
-	// Release OpenGL resources and interop
-	// (releases the DirectX shared texture and Staging textures for CPU share)
-	// OpenGL only - do not close DirectX
+	// Interop objects must be released before releasing shared texture
+	CleanupInterop();
+
+	// Release OpenGL resources
 	CleanupGL();
 
 }
@@ -593,6 +603,7 @@ bool Spout::SendImage(const unsigned char* pixels, unsigned int width, unsigned 
 	// Check for BGRA support
 	GLenum glformat = glFormat;
 	if (!m_bBGRAavailable) {
+		SpoutLogWarning("Spout::SendImage - BGRA extensions not available");
 		// If the bgra extensions are not available and the user
 		// provided GL_BGR_EXT or GL_BGRA_EXT do not use them
 		if (glFormat == GL_BGR_EXT) glformat = GL_RGB;
@@ -744,6 +755,12 @@ void Spout::ReleaseReceiver()
 	if (!m_bInitialized)
 		return;
 
+	// Release interop
+	CleanupInterop();
+
+	// Release OpenGL resources.
+	CleanupGL();
+
 	// Restore the starting sender name if the user specified one in SetReceiverName
 	if (m_SenderNameSetup[0]) {
 		strcpy_s(m_SenderName, 256, m_SenderNameSetup);
@@ -763,29 +780,10 @@ void Spout::ReleaseReceiver()
 	m_Width = 0;
 	m_Height = 0;
 
-	// Reset the received sender texture
-	if (m_pSharedTexture)
-		spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pSharedTexture);
-	m_pSharedTexture = nullptr;
-	m_dxShareHandle = nullptr;
-
-	// Reset connected sender share mode and compatibility.
-	// Assume texture share and hardware compatible by default.
-	m_bSenderCPU = false;
-	m_bSenderGLDX = true;
-
-	// Release staging textures if they have been used
-	if (m_pStaging[0]) spoutdx.ReleaseDX11Texture(spoutdx.GetDX11Device(), m_pStaging[0]);
-	if (m_pStaging[1]) spoutdx.ReleaseDX11Texture(spoutdx.GetDX11Device(), m_pStaging[1]);
-	m_pStaging[0] = nullptr;
-	m_pStaging[1] = nullptr;
-	m_Index = 0;
-	m_NextIndex = 0;
-
 	// Close shared memory and sync event if used
 	memoryshare.Close();
 	frame.CloseFrameSync();
-	
+
 	m_bConnected = false;
 	m_bInitialized = false;
 
@@ -827,7 +825,6 @@ bool Spout::ReceiveTexture()
 //
 bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
-
 	// Return if flagged for update and there is a texture to receive into.
 	// The update flag is reset when the receiving application calls IsUpdated().
 	if (m_bUpdated && TextureID != 0 && TextureTarget != 0) {
@@ -838,6 +835,7 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 	if (!OpenSpout()) {
 		return false;
 	}
+
 
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
@@ -852,24 +850,30 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 		// the receiver is re-initialized and m_bUpdated is set true
 		// so that the application re-allocates the receiving texture.
 		if (m_bUpdated) {
-			// If the sender is new or changed, reset shared textures
+
+			// If the sender is new or changed, reset shared/linked textures
 			if (m_bTextureShare) {
 				// CreateInterop set "true" for receiver
 				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 					return false;
 				}
 			}
-
+	
 			// If receiving to a texture, return to update it.
 			// The application detects the change with IsUpdated().
 			if (TextureID != 0 && TextureTarget != 0) {
 				return true;
 			}
+
+			// m_bUpdated is reset to false on the next call to 
+			// ReceiveSenderData until the sender changes size again
+
 		}
 
 		// Was the sender's shared texture handle null
 		// or has the user set 2.006 memoryshare mode?
 		if (!m_dxShareHandle || m_bMemoryShare) {
+
 			// Possible existence of 2.006 memoryshare sender (no texture handle)
 			// (ReadMemoryTexture currently only works if texture share compatible)
 			if (m_bTextureShare) {
@@ -894,6 +898,7 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 			// 3840x2160 33 fps - 5-7 msec/frame
 			ReadDX11texture(TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
 		}
+
 
 	} // endif sender exists
 	else {
@@ -1091,6 +1096,51 @@ void Spout::HoldFps(int fps)
 {
 	frame.HoldFps(fps);
 }
+
+//
+// Group: Frame synchronization
+//
+//
+//   Notes for synchronisation.
+//
+//
+// In cases where the receiver or the sender have different processing or cycle rates
+// it is often necessary to synchronize one with the other to avoid missed or duplicate frames
+// and possible visible hesitations.
+//
+// This can be achieved using event functions "SetFrameSync" and "WaitFrameSync".
+//
+//      - void SetFrameSync(const char* SenderName);
+//      - bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+//
+//   WaitFrameSync
+//   A sender or receiver should use this before rendering wait for a signal from
+//   the other process that it is ready to send or to read another frame.
+//
+//   SetFrameSync
+//   After processing, a sender or receiver should signal that it is ready to
+//   either send or read another frame. 
+//
+// EXAMPLES
+//
+// 1) If the sender is faster, the slower receiver will miss frames.
+//
+//    Sender
+//    Before processing, the sender waits for a signal from the receiver that it is ready to receive a new frame.
+//        WaitFrameSync(const char* sendername, DORD dwTimeout);'
+//    Receiver
+//    After processing, signals the sender to produce a new frame.
+//        SetFrameSync(const char* sendername);
+//
+// 2) If the sender is slower, the faster receiver will duplicate frames.
+//
+//    Receiver
+//    Before processing, the receiver waits for a signal from the sender that a new frame is ready.
+//        WaitFrameSync(const char* sendername, DORD dwTimeout);
+//    Sender
+//        After processing, signals the receiver that a new frame is ready.
+//        SetFrameSync(const char* sendername);
+//
 
 // -----------------------------------------------
 // Function: SetFrameSync
@@ -1458,15 +1508,13 @@ bool Spout::FindNVIDIA(int &nAdapter)
 //
 // See also the DirectX only version :
 // bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
+// DirectX9 not supported
 //
 bool Spout::GetAdapterInfo(char* renderadapter,
 	char* renderdescription, char* renderversion,
 	char* displaydescription, char* displayversion,
-	int maxsize, const bool bDX9)
+	int maxsize)
 {
-	// DirectX9 not supported
-	UNREFERENCED_PARAMETER(bDX9);
-
 	if(!renderadapter
 	|| !renderdescription
 	|| !renderversion
@@ -1616,10 +1664,8 @@ bool Spout::UpdateSender(const char* name, unsigned int width, unsigned int heig
 //---------------------------------------------------------
 // Function: CreateReceiver
 // Create receiver connection
-bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height, bool bUseActive)
+bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &height)
 {
-	UNREFERENCED_PARAMETER(bUseActive); // no longer used
-
 	if (!sendername)
 		return false;
 
@@ -1698,10 +1744,10 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 //---------------------------------------------------------
 // Function: ReceiveImage
 // Receive image pixels
-bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
+bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
-	if (!pixels)
-		return false;
+	// The receiving pixel buffer is created after the first update
+	// so the pixel pointer can be NULL here
 
 	// Return if flagged for update
 	// The update flag is reset when the receiving application calls IsUpdated()
@@ -1710,12 +1756,14 @@ bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, G
 	}
 
 	// Make sure OpenGL and DirectX are initialized
-	if (!OpenSpout())
+	if (!OpenSpout()) {
 		return false;
+	}
 
 	// Only RGBA, BGRA, RGB, BGR supported
-	if (!(glFormat == GL_RGBA || glFormat == GL_BGRA_EXT || glFormat == GL_RGB || glFormat == GL_BGR_EXT))
+	if (!(glFormat == GL_RGBA || glFormat == GL_BGRA_EXT || glFormat == GL_RGB || glFormat == GL_BGR_EXT)) {
 		return false;
+	}
 
 	// Check for BGRA support
 	GLenum glformat = glFormat;
@@ -1744,8 +1792,9 @@ bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, G
 
 		// The receiving pixel buffer is created after the first update
 		// So check here instead of at the beginning
-		if (!pixels)
+		if (!pixels) {
 			return false;
+		}
 
 		//
 		// Found a sender
@@ -1779,6 +1828,7 @@ bool Spout::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, G
 			// 3840x2160 RGB 30 msec/frame RGBA 9 msec/frame
 			ReadDX11pixels(pixels, m_Width, m_Height, glformat, bInvert);
 		}
+
 		m_bConnected = true;
 	} // sender exists
 	else {
@@ -2113,7 +2163,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 
 			if (m_bTextureShare) {
 				// Create interop for GL/DX transfer
-				// Flag "false" for sender so that a new shared texture is created.
+				// Flag "false" for sender so that a new shared texture and handle are created.
 				// For a receiver the shared texture is created from the sender share handle.
 				if (!CreateInterop(width, height, m_dwFormat, false)) {
 					return false;
@@ -2172,27 +2222,31 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 	}
 	// The sender is initialized but has the sending texture changed size ?
 	else if (m_Width != width || m_Height != height) {
+
 		// Update the shared textures and interop
 		if (m_bTextureShare) {
-			//
 			// The linked textures cannot be re-sized so have to 
-			// be re-created. The interop object handle must then
-			// also be re-created from the new textures.
-			//
-			// It is just as fast to re-create the interop device as well.
-			// Flag "false" for sender to create a new shared texture
-			//
+			// be re-created. The interop object handle is then
+			// re-created from the linking of the new textures.
+			// Flag "false" for sender to create a new shared texture.
+			// Release interop device/object and OpenGL objects and re-create
+			CleanupInterop();
+			CleanupGL();
 			if (!CreateInterop(width, height, m_dwFormat, false)) {
 				return false;
 			}
 		}
 		else {
-			// If the DirectX texture is not linked to OpenGL,
-			// re-create the class shared texture to the new size
+			// For CPU share, the DirectX texture is not linked to OpenGL
+			// Re-create the class shared texture to the new size
 			if (m_pSharedTexture)
 				spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pSharedTexture);
 			m_pSharedTexture = nullptr;
 			m_dxShareHandle = nullptr;
+
+			// Flush context to avoid deferred release
+			spoutdx.Flush();
+
 			if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
 				width, height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
 				return false;
@@ -2259,8 +2313,9 @@ bool Spout::ReceiveSenderData()
 
 	// Find the active sender if the global sender name is null
 	if (sendername[0] == 0) {
-		if (!GetActiveSender(sendername))
+		if (!GetActiveSender(sendername)) {
 			return false; // No sender
+		}
 	}
 
 	// If SpoutPanel has been opened, the active sender name could be different
@@ -2335,22 +2390,47 @@ bool Spout::ReceiveSenderData()
 		// The shared texture handle will be different
 		//   o for texture size or format change
 		//   o for a new sender
+		// Open the sender share handle to produce a new received texture
 		if (dxShareHandle != m_dxShareHandle || strcmp(sendername, m_SenderName) != 0) {
-
+			
 			// Release everything to start again
 			ReleaseReceiver();
 
 			// Update the sender share handle
 			m_dxShareHandle = dxShareHandle;
 
-			// If we have a share handle retrieved from the sender information.
-			// Get a new shared texture pointer (m_pSharedTexture) from the share handle.
+			// Get a new shared texture pointer from the share handle
 			if (m_dxShareHandle) {
-				
-				if (!spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &m_pSharedTexture, dxShareHandle)) {
 
+				if(spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &m_pSharedTexture, dxShareHandle)) {
+
+					// Get the texture details
+					D3D11_TEXTURE2D_DESC desc={};
+					m_pSharedTexture->GetDesc(&desc);
+
+					// Check for zero size
+					if (desc.Width == 0 || desc.Height == 0) {
+						return false;
+					}
+
+					// For incorrect sender information, use dimensions and format
+					// of the D3D11 texture generated by OpenDX11shareHandle
+					if (width != (DWORD)desc.Width)	    width = (DWORD)desc.Width;
+					if (height != (DWORD)desc.Height)   height = (DWORD)desc.Height;
+					if (dwFormat != (DWORD)desc.Format) dwFormat = (DWORD)desc.Format;
+
+					// If the received texture is successfully updated, initialize again
+					// with the new sender name, width, height and format
+					InitReceiver(sendername, width, height, dwFormat);
+
+					// The application can now access and copy the sender texture.
+					// Signal the application to update the receiving texture or image
+					m_bUpdated = true;
+
+				} // endif OpenDX11shareHandle succeeded
+				else {
+					//
 					// Error log generated in OpenDX11shareHandle.
-					
 					//
 					// OpenDX11shareHandle uses OpenSharedResource, which can fail if the sender and receiver 
 					// applications are using different graphics adapters, which is possible if the user has 
@@ -2363,32 +2443,12 @@ bool Spout::ReceiveSenderData()
 					// query the same sender again.
 					//
 					// Return true and wait until another sender is selected or the shared texture handle is valid.
-					// m_pSharedTexture is then null but will not be used.
-					//
+					// m_pSharedTexture is then null but make sure so that it is not used.
+					if (m_pSharedTexture) 
+						spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pSharedTexture);
+					m_pSharedTexture = nullptr;
 
 				} // endif OpenDX11shareHandle fail
-				else {
-
-					// Get the texture details to check for zero size
-					D3D11_TEXTURE2D_DESC desc;
-					ZeroMemory(&desc, sizeof(desc));
-					m_pSharedTexture->GetDesc(&desc);
-					if (desc.Width == 0 || desc.Height == 0)
-						return false;
-
-					// For incorrect sender information, use the format
-					// of the D3D11 texture generated by OpenDX11shareHandle
-					if (dwFormat != (DWORD)desc.Format)
-						dwFormat = (DWORD)desc.Format;
-
-					// If the shared texture is successfully updated, initialize again with the new
-					// sender values : name, width, height, format, texture pointer and share handle
-					InitReceiver(sendername, width, height, dwFormat);
-
-					// The application can now access and copy the sender texture.
-					// Signal the application to update the receiving texture or image
-					m_bUpdated = true;
-				} // endif OpenDX11shareHandle succeeded
 
 			} // endif m_dxShareHandle valid
 
