@@ -171,18 +171,6 @@ copy /y /v "D:\OPENFRAMEWORKS100VS\apps\SpoutLibrary\Source\SpoutLibrary.h" "C:\
     <PostBuildEvent>
       <Command>copy /y /v $(OutDir)$(TargetName).dll "..\Binaries\Win32\SpoutLibrary.dll"
 copy /y /v $(OutDir)$(TargetName).lib "..\Binaries\Win32\SpoutLibrary.lib"
-copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\SpoutLibrary.h" "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\Binaries\Win32\"
-
-copy /y /v $(OutDir)$(TargetName).lib "D:\OPENFRAMEWORKS111_VS2022\apps\myApps\SpoutVideoPlayer\libs"
-copy /y /v $(OutDir)$(TargetName).dll "D:\OPENFRAMEWORKS111_VS2022\apps\myApps\SpoutVideoPlayer\bin"
-copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\SpoutLibrary.h" "D:\OPENFRAMEWORKS111_VS2022\apps\myApps\SpoutVideoPlayer\src"
-
-copy /y /v $(OutDir)$(TargetName).dll "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutGL\SpoutLibraryExample\bin\SpoutLibrary.dll"
-copy /y /v $(OutDir)$(TargetName).dll "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutGL\SpoutLibraryExample\libs\SpoutLibrary.dll"
-copy /y /v $(OutDir)$(TargetName).lib "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutGL\SpoutLibraryExample\libs\SpoutLibrary.lib"
-copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\SpoutLibrary.h" "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutGL\SpoutLibraryExample\src\"
-copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\SpoutLibrary.h" "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutGL\SpoutLibraryExample\libs\"
-
 
 
 </Command>
@@ -209,15 +197,8 @@ copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\SpoutLibrary.h" "D:\
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\VS2022\x64\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\Binaries\x64\SpoutLibrary.dll"
-copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\VS2022\x64\Release\SpoutLibrary.lib" "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\Binaries\x64\SpoutLibrary.lib"
-copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\SpoutLibrary.h" "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\Binaries\x64\"
-
-copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\VS2022\x64\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS111_VS2022\apps\myApps\SpoutVideoPlayer\bin"
-copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\VS2022\x64\Release\SpoutLibrary.dll" "D:\OPENFRAMEWORKS111_VS2022\apps\myApps\SpoutVideoPlayer\libs"
-copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\VS2022\x64\Release\SpoutLibrary.lib" "D:\OPENFRAMEWORKS111_VS2022\apps\myApps\SpoutVideoPlayer\libs"
-copy /y /v "D:\OPENFRAMEWORKS111_VS2022\apps\SpoutLibraryGL\SpoutLibrary.h" "D:\OPENFRAMEWORKS111_VS2022\apps\myApps\SpoutVideoPlayer\src"
-</Command>
+      <Command>copy /y /v $(OutDir)$(TargetName).dll "..\Binaries\x64\SpoutLibrary.dll"
+copy /y /v $(OutDir)$(TargetName).lib "..\Binaries\x64\SpoutLibrary.lib"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -96,6 +96,9 @@
 //				     Test for _MSC_VER for pragma warnings in header
 //				     Test for NTDDI_WIN10_RS4 define for graphics preferences
 //		07.04.23   Rebuild with SDK version 2.007.010 - release VS2022 - 32/64 bit /MD
+//		03.05.23   Add GL_BGRA define to SpoutLibrary.h
+//		08.07.23   CreateReceiver - remove unused bUseActive flag
+//		23.07.23   Rebuild with SDK version 2.007.011 - release VS2022 - 32/64 bit /MD
 //
 /*
 		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
@@ -803,7 +806,7 @@ private: // Spout SDK functions
 	
 	// Function: CreateReceiver
 	// Create receiver connection
-	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false);
+	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height);
 	
 	// Function: CheckReceiver
 	// Check receiver connection
@@ -1549,9 +1552,9 @@ bool SPOUTImpl::UpdateSender(const char* Sendername, unsigned int width, unsigne
 // 
 // Receiver
 //
-bool SPOUTImpl::CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive)
+bool SPOUTImpl::CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height)
 {
-	return spout->CreateReceiver(Sendername, width, height, bUseActive);
+	return spout->CreateReceiver(Sendername, width, height);
 }
 
 bool SPOUTImpl::CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected)

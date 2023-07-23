@@ -36,7 +36,7 @@
 	OpenFrameworks 11
 	Visual Studio 2022
 
-	Copyright (C) 2015-2022 Lynn Jarvis.
+	Copyright (C) 2015-2023 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -65,27 +65,13 @@ void ofApp::setup() {
 		exit();
 	}
 
-
-	//
-	// Options (see sender example)
-	//
-
-	// Logging
 	// receiver->OpenSpoutConsole(); // for debugging when a console is not availlable
-	receiver->EnableSpoutLog(); // Spout logging to console
+	// receiver->EnableSpoutLog(); // log to console
 
 	// Specify the sender to connect to.
 	// The application will not connect to any other unless the user selects one.
 	// If that sender closes, the application will wait for the nominated sender to open.
 	// receiver->SetReceiverName("Spout Demo Sender");
-
-	// Disable CPU sharing backup
-	// If the graphics is not compatible for OpenGL/DirectX texture sharing,
-	// CPU backup methods with system memory and DirectX textures are used.
-	// In most cases it is satisfactory to leave auto-detection enabled,
-	// but sometimes it may be preferable to simply fail if incompatible
-	// so that it is clear whether high speed texture sharing is being used.
-	// receiver->SetAutoShare(false);
 
 	ofSetWindowTitle("SpoutLibrary Receiver Example");
 

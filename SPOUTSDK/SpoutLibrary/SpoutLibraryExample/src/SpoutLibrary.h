@@ -29,16 +29,26 @@
 */
 #pragma once
 
-#ifndef __SpoutLibrary__
-#define __SpoutLibrary__
-
-// LJ DEBUG
+#ifdef _MSC_VER
 #pragma warning(disable : 26433) // Function should be marked with 'override'
+#endif
 
 // for definitions
 #include <windows.h>
 #include <string>
-#include <GL/GL.h>
+
+// Define here to avoid include of GL.h 
+typedef unsigned int GLuint;
+typedef unsigned int GLenum;
+#ifndef GL_RGBA
+#define GL_RGBA 0x1908
+#endif
+#ifndef GL_BGRA
+#define GL_BGRA 0x80E1
+#endif
+#ifndef GL_BGRA_EXT
+#define GL_BGRA_EXT 0x80E1
+#endif
 
 #define SPOUTLIBRARY_EXPORTS // defined for this DLL. The application imports rather than exports
 
@@ -59,7 +69,10 @@
 // For Visual Studio, this warning is designated "Prefer" and "C" standard unscoped enums are
 // therefore retained for compatibility. The warning can be enabled or disabled here.
 //
+#ifdef _MSC_VER
 #pragma warning(disable:26812)
+#endif
+
 //
 enum SpoutLibLogLevel {
 	SPOUT_LOG_SILENT,
@@ -82,6 +95,7 @@ enum SpoutLibLogLevel {
 
 struct SPOUTLIBRARY
 {
+
 	//
 	// Sender
 	//
@@ -343,7 +357,7 @@ struct SPOUTLIBRARY
 	// Update a sender
 	virtual bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height) = 0;
 	// Create receiver connection
-	virtual bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false) = 0;
+	virtual bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height) = 0;
 	// Check receiver connection
 	virtual bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected) = 0;
 	// Get user DX9 mode
@@ -409,7 +423,7 @@ struct SPOUTLIBRARY
 	//
 	// Windows 10+ SDK required
 	//
-#if VER_PRODUCTBUILD > 9600
+#ifdef NTDDI_WIN10_RS4
 
 	// Get the Windows graphics preference for an application
 	//	-1 - Not registered
@@ -475,6 +489,4 @@ typedef SPOUTLIBRARY* SPOUTHANDLE;
 // Factory function that creates an instance of the SPOUT object.
 extern "C" SPOUTAPI SPOUTHANDLE WINAPI GetSpout(VOID);
 
-
-#endif
 ////////////////////////////////////////////////////////////////////////////////
