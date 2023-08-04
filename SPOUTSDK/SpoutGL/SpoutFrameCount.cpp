@@ -76,6 +76,8 @@
 // Version 2.007.11
 //		24.04.23	- Replace m_bDisabled with m_bCountDisabled
 //		03.07.23	- EnableFrameCount, CreateAccessMutex - add detail to logs
+//	Version 2.007.012
+//		03.08.23	- EnableFrameCount, CreateAccessMutex - revise logs
 //
 // ====================================================================================
 //
@@ -229,21 +231,23 @@ void spoutFrameCount::SetFrameCount(bool bEnable)
 // Incremented by a sender, tested by a receiver to retrieve the count.
 void spoutFrameCount::EnableFrameCount(const char* SenderName)
 {
+	SpoutLogNotice("SpoutFrameCount::EnableFrameCount - [%s]", SenderName);
+
 	if (!SenderName) {
-		SpoutLogWarning("SpoutFrameCount::EnableFrameCount - no sender name");
+		SpoutLogWarning("    No sender name");
 		return;
 	}
 
 	// Return if frame counting not recorded in the registry
 	// Subsequently SetNewFrame and GetNewFrame return without action
 	if (!m_bFrameCount) {
-		SpoutLogNotice("SpoutFrameCount::EnableFrameCount : setting not enabled");
+		SpoutLogNotice("    Setting not enabled");
 		return;
 	}
 
 	// Return if application disabled
 	if (m_bCountDisabled) {
-		SpoutLogNotice("SpoutFrameCount::EnableFrameCount : application disabled");
+		SpoutLogNotice("    Application disabled");
 		return;
 	}
 
@@ -267,7 +271,7 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	// Return if already enabled for this sender
 	// The sender name can be the same if the adapter has changed
 	if (m_hCountSemaphore) {
-		SpoutLogNotice("SpoutFrameCount::EnableFrameCount (%s) frame count semaphore already enabled [0x%.7X] ", SenderName, m_hCountSemaphore);
+		SpoutLogNotice("    Semaphore already enabled [0x%.7X] ", m_hCountSemaphore);
 		return;
 	}
 
@@ -279,7 +283,7 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	strcpy_s(m_SenderName, 256, SenderName);
 
 	// Create a name for the frame count semaphore using the sender name
-	sprintf_s(m_CountSemaphoreName, 256, "%s_Count_Semaphore", SenderName);
+	sprintf_s(m_CountSemaphoreName, 256, "    [%s_Count_Semaphore]", SenderName);
 
 	// Create or open a named frame count semaphore with this name
 	HANDLE hSemaphore = CreateSemaphoreA(
@@ -292,25 +296,25 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	switch(dwError) {
 
 		case ERROR_INVALID_HANDLE:
-			SpoutLogError("SpoutFrameCount::EnableFrameCount - invalid semaphore handle");
+			SpoutLogError("    Invalid semaphore handle");
 			break;
 
 		case ERROR_ALREADY_EXISTS:
-			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] exists [0x%7.7X]", m_CountSemaphoreName, LOWORD(hSemaphore));
+			SpoutLogNotice("    Semaphore exists [0x%7.7X]", LOWORD(hSemaphore));
 			// OK if it already exists - either the sender or receiver can create it
 			break;
 		
 		case ERROR_SUCCESS:
-			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - frame count semaphore [%s] created [0x%7.7X]", m_CountSemaphoreName, LOWORD(hSemaphore));
+			SpoutLogNotice("    Semaphore created [0x%7.7X]", LOWORD(hSemaphore));
 			break;
 
 		default :
-			SpoutLogNotice("SpoutFrameCount::EnableFrameCount - unknown error %d (0x%X)", dwError, dwError);
+			SpoutLogNotice("    Unknown error %d (0x%X)", dwError, dwError);
 			break;
 	}
 
 	if (hSemaphore == NULL) {
-		SpoutLogError("SpoutFrameCount::EnableFrameCount - could not create handle");
+		SpoutLogError("    Could not create semaphore handle");
 	}
 
 	// Save the handle for access - it could be NULL
@@ -699,25 +703,27 @@ bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
 	// Create the mutex name to control access to the shared texture
 	sprintf_s(szMutexName, 512, "%s_SpoutAccessMutex", SenderName);
 
+	SpoutLogNotice("spoutFrameCount::CreateAccessMutex - [%s]", szMutexName);
+
 	// Create or open a mutex
 	// Sender and receiver will either open the mutex or create one
 	hMutex = CreateMutexA(NULL, false, szMutexName);
 	if (hMutex == NULL) {
-		SpoutLogError("spoutFrameCount::CreateAccessMutex - NULL handle");
+		SpoutLogError("    NULL handle");
 		return false;
 	}
 	else {
 		errnum = GetLastError();
 		if (errnum == ERROR_INVALID_HANDLE) {
-			SpoutLogError("spoutFrameCount::CreateAccessMutex - [%s] invalid handle", szMutexName);
+			SpoutLogError("    invalid handle");
 			return false;
 		}
 		// Here we can find if the mutex already exists
 		else if (errnum == ERROR_ALREADY_EXISTS) {
-			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] exists [0x%.7X]", szMutexName, PtrToUint(hMutex));
+			SpoutLogNotice("    texture access mutex exists [0x%.7X]", szMutexName, PtrToUint(hMutex));
 		}
 		else {
-			SpoutLogNotice("spoutFrameCount::CreateAccessMutex - texture access mutex [%s] created [0x%.7X]", szMutexName, PtrToUint(hMutex));
+			SpoutLogNotice("    texture access mutex created [0x%.7X]", szMutexName, PtrToUint(hMutex));
 		}
 	}
 
@@ -924,6 +930,8 @@ void spoutFrameCount::CloseFrameSync()
 //
 bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 {
+	printf("CheckKeyedAccess\n");
+
 	// 85-90 microseconds
 	if (pTexture) {
 		IDXGIKeyedMutex* pDXGIKeyedMutex = nullptr;
@@ -936,6 +944,9 @@ bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 					// Sync was acquired
 					// Return to process the texture and call AllowAccess to release sync
 					pDXGIKeyedMutex->Release();
+
+					printf("Sync was acquired\n");
+
 					return true;
 				case static_cast<HRESULT>(WAIT_ABANDONED):
 					// The shared surface and keyed mutex are no longer in a consistent state.
