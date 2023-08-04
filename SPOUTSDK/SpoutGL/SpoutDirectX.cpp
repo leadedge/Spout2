@@ -154,6 +154,7 @@
 //					    Save global m_featureLevel for external device
 //				        Create ID3D11Device1 and ID3D11DeviceContext1 for D3D_FEATURE_LEVEL_11_1
 //					  ReleaseDX11Device - release ID3D11Device1 and ID3D11DeviceContext1 if created
+//	Version 2.007.012
 //
 // ====================================================================================
 /*
@@ -857,7 +858,9 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	// ID3D11Texture2D * texturePointer = *ppSharedTexture;
 	// D3D11_TEXTURE2D_DESC td ={};
 	// texturePointer->GetDesc(&td);
-	// printf("td.Format = %d\n", td.Format); // 87
+	// printf("td.Format = %d\n", td.Format);
+	// 87 - DXGI_FORMAT_B8G8R8A8_UNORM
+	// 28 - DXGI_FORMAT_R8G8B8A8_UNORM
 	// printf("td.Width = %d\n", td.Width);
 	// printf("td.Height = %d\n", td.Height);
 	// printf("td.MipLevels = %d\n", td.MipLevels);
