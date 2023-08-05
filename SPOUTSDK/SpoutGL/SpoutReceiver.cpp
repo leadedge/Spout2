@@ -75,6 +75,8 @@
 //		14.12.22	- Remove SetAdapter. Requires OpenGL setup.
 // Version 2.007.11
 //		06.07.23	- Remove bUseActive from 2.006 CreateReceiver
+//	Version 2.007.012
+//		04.08.23	- Add format functions
 //
 // ====================================================================================
 //
@@ -612,6 +614,48 @@ bool SpoutReceiver::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	return spout.CopyTexture(SourceID, SourceTarget, DestID, DestTarget,
 		width, height, bInvert, HostFBO);
 }
+
+
+//
+// Formats
+//
+
+//---------------------------------------------------------
+DXGI_FORMAT SpoutReceiver::GetDX11format()
+{
+	return spout.GetDX11format();
+}
+
+//---------------------------------------------------------
+void SpoutReceiver::SetDX11format(DXGI_FORMAT textureformat)
+{
+	spout.SetDX11format(textureformat);
+}
+
+//---------------------------------------------------------
+DXGI_FORMAT SpoutReceiver::DX11format(GLint glformat)
+{
+	return spout.DX11format(glformat);
+}
+
+//---------------------------------------------------------
+GLint SpoutReceiver::GLDXformat(DXGI_FORMAT textureformat)
+{
+	return spout.GLDXformat(textureformat);
+}
+
+//---------------------------------------------------------
+GLint SpoutReceiver::GLformat(GLuint TextureID, GLuint TextureTarget)
+{
+	return spout.GLformat(TextureID, TextureTarget);
+}
+
+//---------------------------------------------------------
+std::string SpoutReceiver::GLformatName(GLint glformat)
+{
+	return spout.GLformatName(glformat);
+}
+
 
 //
 // 2.006 compatibility
