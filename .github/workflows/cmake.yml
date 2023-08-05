@@ -1,0 +1,41 @@
+name: CMake
+
+on: [push, pull_request]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    strategy:
+      matrix:
+        compiler: [MinGW, Visual Studio]
+        include:
+          - compiler: MinGW
+            shell: msys2 {0}
+          - compiler: Visual Studio
+            shell: cmd
+
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc
+        if: matrix.compiler == 'MinGW'
+        
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.compiler == 'Visual Studio'
+        
+      - uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DSPOUT_BUILD_SPOUTDX=ON -G Ninja
+
+      - name: Build
+        run: cmake --build build --config ${{env.BUILD_TYPE}}
