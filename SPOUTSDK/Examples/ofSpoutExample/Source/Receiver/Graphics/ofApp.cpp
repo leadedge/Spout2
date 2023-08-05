@@ -35,10 +35,10 @@ void ofApp::setup(){
 	//
 
 	// Logging (see sender example)
-	// OpenSpoutConsole(); // for debugging when a console is not availlable
+	// OpenSpoutConsole(); // for when a console is not available (see main.cpp)
 	// EnableSpoutLog(); // Spout logging to console
 
-	// Specify the sender to connect to.
+	// Option - specify the sender to connect to.
 	// The application will not connect to any other unless the user selects one.
 	// If that sender closes, the application will wait for the nominated sender to open.
 	// receiver.SetReceiverName("Spout Demo Sender");
@@ -48,12 +48,13 @@ void ofApp::setup(){
 	ofBackground(0, 0, 0);
 
 	// Allocate an RGBA texture to receive from the sender
-	// It is resized later to match the sender - see Update()
+	// It is resized later to match the size and format of the sender - see IsUpdated()
 	myTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 
 	// Allocate an RGB image for this example
 	// it can also be RGBA, BGRA or BGR
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
+
 
 } // end setup
 
@@ -83,17 +84,24 @@ void ofApp::draw() {
 	//		bool IsConnected();
 	//
 
-	/*
 	// Option 1 : Receive texture
 	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
 		// Update the receiving texture if the received size has changed
 		if (receiver.IsUpdated()) {
-			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), GL_RGBA);
+			GLint glformat = GL_RGBA; // Receiving texture format
+			//
+			// Option
+			//
+			// Allocate the receiving texture with an OpenGL format
+			// compatible with the sender DirectX shared texture format.
+			// glformat = receiver.GLDXformat();
+			//
+			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), glformat);
 			return; // Return now because the texture will empty
 		}
+
 		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
-	*/
 
 	// Option 2 : Receive pixel data
 	// Specify RGB for this example. Default is RGBA.
@@ -110,6 +118,7 @@ void ofApp::draw() {
 	}
 	*/
 	
+	/*
 	// Option 3 : Receive an OpenGL shared texture to access directly.
 	// Only if compatible for GL/DX interop or else BindSharedTexture fails.
 	// For this example, copy from the shared texture. For other applications
@@ -133,6 +142,7 @@ void ofApp::draw() {
 			receiver.UnBindSharedTexture();
 		}
 	}
+	*/
 
 	// On-screen display
 	showInfo();
@@ -249,6 +259,7 @@ void ofApp::keyPressed(int key) {
 			receiver.SetActiveSender(SenderName);
 			// Change to the active sender
 			receiver.SetReceiverName();
+			// Option
 			// Change to it and lock to that sender
 			// receiver.SetReceiverName(SenderName);
 		}
