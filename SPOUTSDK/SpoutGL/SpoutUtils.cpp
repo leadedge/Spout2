@@ -132,6 +132,7 @@
 		04-07-23 - _getLogPath() - allow for getenv if not Microsoft compiler (PR #95)
 		Version 2.007.012
 		01.08.23 - Add MessageTaskDialog instead of dependence on SpoutPanel
+		04.08.23 - const WCHAR* in MessageTaskDialog
 
 
 */
@@ -1543,7 +1544,7 @@ namespace spoututils {
 			// MB_ICONHAND
 			// TD_WARNING_ICON , TD_ERROR_ICON, TD_INFORMATION_ICON, TD_SHIELD_ICON      
 			WCHAR* wMainIcon = TD_INFORMATION_ICON;
-			WCHAR* wMainInstruction = L"Information";
+			const WCHAR* wMainInstruction = L"Information";
 			if ((dwl ^ MB_ICONERROR) == 0) {
 				wMainIcon = TD_SHIELD_ICON;
 				wMainInstruction = L"Error";
