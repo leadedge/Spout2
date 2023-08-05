@@ -39,6 +39,7 @@
 #include "SpoutSenderNames.h" // for sender creation and update
 #include "SpoutDirectX.h" // for DX11 shared textures
 #include "SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "SpoutShaders.h" // for OpenGL texture processing
 #include "SpoutCopy.h" // for pixel copy
 #include "SpoutUtils.h" // Registry utiities
 
@@ -145,17 +146,9 @@ class SPOUT_DLLEXP spoutGL {
 	// Copy OpenGL texture with optional invert
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget, GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
-
-	// Texture swap RGBA <> BGRA
-	bool SwapRGB(GLuint SourceID, unsigned int width, unsigned int height);
-
-	// Compute shader for OpenGL texture copy
-	bool ComputeCopyTexture(GLuint SourceID, GLuint DestID,	unsigned int width, unsigned int height, bool bInvert = false, bool bSwap = false);
-	
 	// Correct for image stride
 	void RemovePadding(const unsigned char *source, unsigned char *dest,
 		unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
-
 	// OpenGL error reprting
 	bool GLerror();
 
@@ -171,7 +164,6 @@ class SPOUT_DLLEXP spoutGL {
 	bool WriteTextureReadback(ID3D11Texture2D** texture, GLuint TextureID, GLuint TextureTarget,
 		unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO = 0);
 
-
 	// Initialize OpenGL and DX11
 	//     o Load extensions and check for availability and function
 	//     o Open DirectX and check for availability
@@ -180,10 +172,26 @@ class SPOUT_DLLEXP spoutGL {
 	bool OpenSpout(bool bRetest = false);
 	// Initialize DirectX
 	bool OpenDirectX();
-	// Set sender DX11 shared texture format
-	void SetDX11format(DXGI_FORMAT textureformat);
 	// Close DirectX and free resources
 	void CloseDirectX();
+
+	//
+	// Formats
+	//
+
+	// Get sender DX11 shared texture format
+	DXGI_FORMAT GetDX11format();
+	// Set sender DX11 shared texture format
+	void SetDX11format(DXGI_FORMAT textureformat);
+	// Return OpenGL compatible DX11 format
+	DXGI_FORMAT DX11format(GLint glformat);
+	// Return DX11 compatible OpenGL format
+	GLint GLDXformat(DXGI_FORMAT textureformat = DXGI_FORMAT_UNKNOWN);
+	// Return OpenGL texture internal format
+	GLint GLformat(GLuint TextureID, GLuint TextureTarget);
+	// Return OpenGL texture format description
+	std::string GLformatName(GLint glformat = 0);
+
 	// Create an OpenGL window and context for situations where there is none.
 	//   Not used if applications already have an OpenGL context.
 	//   Always call CloseOpenGL afterwards.
@@ -327,16 +335,9 @@ protected :
 
 	// Staging textures for DX11 CPU copy
 	ID3D11Texture2D* m_pStaging[2];
-
 	int m_Index;
 	int m_NextIndex;
 	bool CheckStagingTextures(unsigned int width, unsigned int height, int nTextures);
-
-	// Compute shader for OpenGL texture copy
-	GLuint m_ComputeCopyProgram = 0;
-	GLuint m_wgX = 32;
-	GLuint m_wgY = 32;
-	GLuint CreateComputeCopyShader(unsigned int width, unsigned int height);
 
 	// 2.006 shared memory
 	bool ReadMemoryTexture(const char* sendername, GLuint TexID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
@@ -362,7 +363,7 @@ protected :
 	unsigned int m_Height;
 
 	// Utility
-	GLuint m_fbo; //  Fbo used for OpenGL functions
+	GLuint m_fbo; // Fbo used for OpenGL functions
 	GLuint m_TexID; // Class texture used for invert copy
 	unsigned int m_TexWidth;
 	unsigned int m_TexHeight;
@@ -372,9 +373,8 @@ protected :
 	GLuint m_glTexture; // OpenGL shared texture
 	ID3D11Texture2D* m_pSharedTexture; // DirectX shared texture
 	HANDLE m_dxShareHandle; // DirectX shared texture handle
-	DWORD m_dwFormat; // DirectX shared texture format
-	DXGI_FORMAT m_DX11format; // DirectX 11 texture format
-	bool m_bKeyed; // Keyed shared texture
+	DXGI_FORMAT m_DX11format; // DirectX 11 shared texture format
+	DWORD m_dwFormat; // DWORD texture format used throughout
 
 	// GL/DX interop
 	HANDLE m_hInteropDevice; // Handle to the DX/GL interop device
