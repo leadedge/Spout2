@@ -96,9 +96,10 @@
 //				     Test for _MSC_VER for pragma warnings in header
 //				     Test for NTDDI_WIN10_RS4 define for graphics preferences
 //		07.04.23   Rebuild with SDK version 2.007.010 - release VS2022 - 32/64 bit /MD
-//		14.04.23   Rebuild with SDK version 2.007.011 - release VS2022 - 32/64 bit /MD
 //		03.05.23   Add GL_BGRA define to SpoutLibrary.h
 //		08.07.23   CreateReceiver - remove unused bUseActive flag
+//		23.07.23   Rebuild with SDK version 2.007.011 - release VS2022 - 32/64 bit /MD
+//		05.08.23   Add format functions
 //
 /*
 		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
@@ -1018,6 +1019,23 @@ private: // Spout SDK functions
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0);
 
+	//
+	// Formats
+	//
+
+	// Get sender DX11 shared texture format
+	DXGI_FORMAT GetDX11format();
+	// Set sender DX11 shared texture format
+	void SetDX11format(DXGI_FORMAT textureformat);
+	// Return OpenGL compatible DX11 format
+	DXGI_FORMAT DX11format(GLint glformat);
+	// Return DX11 compatible OpenGL format
+	GLint GLDXformat(DXGI_FORMAT textureformat = DXGI_FORMAT_UNKNOWN);
+	// Return OpenGL texture internal format
+	GLint GLformat(GLuint TextureID, GLuint TextureTarget);
+	// Return OpenGL texture format description
+	std::string GLformatName(GLint glformat = 0);
+
 
 	//
 	// Group: DirectX utilities
@@ -1733,6 +1751,47 @@ bool SPOUTImpl::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	return spout->CopyTexture(SourceID, SourceTarget, DestID, DestTarget,
 								width, height, bInvert, HostFBO);
 }
+
+//
+// Formats
+//
+
+//---------------------------------------------------------
+DXGI_FORMAT SPOUTImpl::GetDX11format()
+{
+	return spout->GetDX11format();
+}
+
+//---------------------------------------------------------
+void SPOUTImpl::SetDX11format(DXGI_FORMAT textureformat)
+{
+	spout->SetDX11format(textureformat);
+}
+
+//---------------------------------------------------------
+DXGI_FORMAT SPOUTImpl::DX11format(GLint glformat)
+{
+	return spout->DX11format(glformat);
+}
+
+//---------------------------------------------------------
+GLint SPOUTImpl::GLDXformat(DXGI_FORMAT textureformat)
+{
+	return spout->GLDXformat(textureformat);
+}
+
+//---------------------------------------------------------
+GLint SPOUTImpl::GLformat(GLuint TextureID, GLuint TextureTarget)
+{
+	return spout->GLformat(TextureID, TextureTarget);
+}
+
+//---------------------------------------------------------
+std::string SPOUTImpl::GLformatName(GLint glformat)
+{
+	return spout->GLformatName(glformat);
+}
+
 
 //
 // DirectX utilities
