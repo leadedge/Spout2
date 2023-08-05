@@ -39,7 +39,6 @@
 #include "SpoutSenderNames.h" // for sender creation and update
 #include "SpoutDirectX.h" // for DX11 shared textures
 #include "SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "SpoutShaders.h" // for OpenGL texture processing
 #include "SpoutCopy.h" // for pixel copy
 #include "SpoutUtils.h" // Registry utiities
 
