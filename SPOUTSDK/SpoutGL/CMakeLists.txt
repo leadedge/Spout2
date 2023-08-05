@@ -62,7 +62,7 @@ set(SpoutLink
 )
 
 if(MINGW)
-  set(SpoutLink ${SpoutLink} winmm)
+  set(SpoutLink ${SpoutLink} comctl32 winmm)
 endif()
 
 add_library(Spout_static STATIC ${SpoutSources} )
