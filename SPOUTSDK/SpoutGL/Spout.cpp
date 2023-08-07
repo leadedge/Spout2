@@ -262,6 +262,7 @@
 //					  ensure m_pSharedTexture is null if OpenSharedResource failed.
 //	Version 2.007.012
 //		03.08.23	- InitReceiver - set m_DX11format
+//		07.08.23	- Add frame sync option functions
 //
 // ====================================================================================
 /*
@@ -1166,6 +1167,23 @@ bool Spout::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 		return false;
 	return frame.WaitFrameSync(SenderName, dwTimeout);
 }
+
+// -----------------------------------------------
+// Function: EnableFrameSync
+// Enable / disabley frame sync
+void Spout::EnableFrameSync(bool bSync)
+{
+	frame.EnableFrameSync(bSync);
+}
+
+// -----------------------------------------------
+// Function: IsFrameSyncEnabled
+// Check for frame sync option
+bool Spout::IsFrameSyncEnabled()
+{
+	return frame.IsFrameSyncEnabled();
+}
+
 
 //
 // Group: Sender names
