@@ -77,6 +77,7 @@
 //		06.07.23	- Remove bUseActive from 2.006 CreateReceiver
 //	Version 2.007.012
 //		04.08.23	- Add format functions
+//		07.08.23	- Add frame sync option functions
 //
 // ====================================================================================
 //
@@ -289,6 +290,18 @@ void SpoutReceiver::SetFrameSync(const char* SenderName)
 bool SpoutReceiver::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 {
 	return spout.WaitFrameSync(SenderName, dwTimeout);
+}
+
+//---------------------------------------------------------
+void SpoutReceiver::EnableFrameSync(bool bSync)
+{
+	spout.EnableFrameSync(bSync);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::IsFrameSyncEnabled()
+{
+	return spout.IsFrameSyncEnabled();
 }
 
 //---------------------------------------------------------

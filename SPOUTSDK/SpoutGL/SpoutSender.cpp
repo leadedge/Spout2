@@ -77,6 +77,7 @@
 //		26.11.22	- Change SetVerticalSync argument to integer to allow adaptive vsync
 //	Version 2.007.012
 //		04.08.23	- Add format functions
+//		07.08.23	- Add frame sync option functions
 //
 // ====================================================================================
 /*
@@ -271,6 +272,19 @@ bool SpoutSender::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 {
 	return spout.WaitFrameSync(SenderName, dwTimeout);
 }
+
+//---------------------------------------------------------
+void SpoutSender::EnableFrameSync(bool bSync)
+{
+	spout.EnableFrameSync(bSync);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::IsFrameSyncEnabled()
+{
+	return spout.IsFrameSyncEnabled();
+}
+
 
 //
 // Data sharing

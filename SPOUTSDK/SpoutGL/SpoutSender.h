@@ -95,6 +95,11 @@ class SPOUT_DLLEXP SpoutSender {
 	void SetFrameSync(const char* SenderName);
 	// Wait or test for a sync event
 	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+	// Enable / disable frame sync
+	void EnableFrameSync(bool bSync = true);
+	// Check for frame sync option
+	bool IsFrameSyncEnabled();
+
 
 	//
 	// Data sharing
