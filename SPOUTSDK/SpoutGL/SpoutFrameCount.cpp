@@ -81,6 +81,7 @@
 //		06.08.23	- Add m_SystemFps to avoid repeated calls to GetRefreshRate()
 //		07.08.23	- Add EnableFrameSync/IsFrameSyncEnabled and global option flag
 //				      EnableFrameCount - correct semapohore name
+//		08.08.23	- EnableFrameSync - close sync event on disable
 //
 // ====================================================================================
 //
@@ -887,7 +888,7 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 		SyncEventName);
 
 	if (!hSyncEvent) {
-		SpoutLogError("spoutFrameCount::WaitFrameSync - no event");
+		SpoutLogWarning("spoutFrameCount::WaitFrameSync - no event");
 		// Do not block if the sender has not created a sync event
 		return true;
 	}
@@ -1183,6 +1184,8 @@ void spoutFrameCount::OpenFrameSync(const char* SenderName)
 void spoutFrameCount::EnableFrameSync(bool bSync)
 {
 	m_bFrameSync = bSync;
+	if (!m_bFrameSync)
+		CloseFrameSync();
 }
 
 // -----------------------------------------------
