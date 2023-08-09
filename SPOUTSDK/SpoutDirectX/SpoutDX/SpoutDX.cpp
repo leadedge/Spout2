@@ -133,6 +133,7 @@
 //					  All object releases - flush context to avoid deferred destruction
 //		08.07.23	- Remove global keyed texture option and SetKeyed/GetKeyed.
 //					  Retain option in SpoutDirectX CreateSharedDX11Texture.
+//		04.08.23	- Correct unused m_bKeyed argument for CreateSharedDX11Texture
 //
 // ====================================================================================
 /*
@@ -1919,6 +1920,7 @@ void spoutDX::DisableSpoutLog()
 }
 
 
+
 //
 // PRIVATE
 //
@@ -1952,7 +1954,7 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 		// A sender creates a new texture with a new share handle
 		// the existing shared texture is released
 		m_dxShareHandle = nullptr;
-		if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &m_pSharedTexture, m_dxShareHandle, m_bKeyed)) {
+		if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
 			SpoutLogWarning("spoutDX::CheckSender - could not create shared texture");
 			return false;
 		}
@@ -2001,7 +2003,7 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 			m_pSharedTexture = nullptr;
 			m_dxShareHandle = nullptr;
 
-			if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &m_pSharedTexture, m_dxShareHandle, m_bKeyed)) {
+			if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
 				SpoutLogWarning("spoutDX::CheckSender - could not re-create shared texture");
 				return false;
 			}
