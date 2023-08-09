@@ -12,6 +12,7 @@
 # 02/02/21 - Support single config generators (ninja, etc) by Joakim Kilby     #
 # 24/06/23 - Modifications for MINGW build (PR#93-vkedwardli)                  #
 # 08/07/23 - Remove MSVC Universal C Runtime dependency (PR#95-vkedwardli)     #
+# 09/08/23 - Add comctl32 to SpoutLink library list (PR#96-scribam)            #
 #/-------------------------------------- . -----------------------------------\#
 
 set(SpoutSources
@@ -47,6 +48,7 @@ set(SpoutLink
     gdi32
     winspool
     comdlg32
+	comctl32
     advapi32
     shell32
     ole32
