@@ -133,7 +133,7 @@
 		Version 2.007.012
 		01.08.23 - Add MessageTaskDialog instead of dependence on SpoutPanel
 		04.08.23 - const WCHAR* in MessageTaskDialog
-
+		13.08.23 - MessageTaskDialog - remove MB_TOPMOST
 
 */
 
@@ -1066,14 +1066,14 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: 
 	// Start timing period
-	// void StartTiming() {
+	// void StartTiming()
 
 	// ---------------------------------------------------------
 	// Function: 
 	// Stop timing and return microseconds elapsed.
 	//
 	// Code console output can be enabled for quick timing tests.
-	// double EndTiming() {
+	// double EndTiming()
 
 	// ---------------------------------------------------------
 	// Function: ElapsedMicroseconds
@@ -1521,7 +1521,10 @@ namespace spoututils {
 			// TDCBF_YES_BUTTON 2
 			// TDCBF_NO_BUTTON 4
 			// TDCBF_CANCEL_BUTTON 8
-			LONG dwl = (LONG)dwButtons;
+
+			// TODO - support topmost
+			LONG dwl = (LONG)dwButtons ^ MB_TOPMOST;
+
 			DWORD dwCommonButtons = MB_OK;
 			if ((dwl ^ MB_OK) == 0)
 				dwCommonButtons = MB_OK;
@@ -1545,6 +1548,7 @@ namespace spoututils {
 			// TD_WARNING_ICON , TD_ERROR_ICON, TD_INFORMATION_ICON, TD_SHIELD_ICON      
 			WCHAR* wMainIcon = TD_INFORMATION_ICON;
 			const WCHAR* wMainInstruction = L"Information";
+
 			if ((dwl ^ MB_ICONERROR) == 0) {
 				wMainIcon = TD_SHIELD_ICON;
 				wMainInstruction = L"Error";
