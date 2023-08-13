@@ -84,6 +84,7 @@
 //		08.08.23	- EnableFrameSync - close sync event on disable
 //		09.08.23	- WaitFrameSync remove warning log if event not found
 //					  Change timeout log from error to warning
+//		13.08.23	- EnableFrameCount - correct semapohore name
 //
 // ====================================================================================
 //
@@ -293,7 +294,7 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	strcpy_s(m_SenderName, 256, SenderName);
 
 	// Create a name for the frame count semaphore using the sender name
-	sprintf_s(m_CountSemaphoreName, 256, "[%s_Count_Semaphore]", SenderName);
+	sprintf_s(m_CountSemaphoreName, 256, "%s_Count_Semaphore", SenderName);
 
 	// Create or open a named frame count semaphore with this name
 	HANDLE hSemaphore = CreateSemaphoreA(
