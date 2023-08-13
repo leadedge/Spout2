@@ -82,6 +82,8 @@
 //		07.08.23	- Add EnableFrameSync/IsFrameSyncEnabled and global option flag
 //				      EnableFrameCount - correct semapohore name
 //		08.08.23	- EnableFrameSync - close sync event on disable
+//		09.08.23	- WaitFrameSync remove warning log if event not found
+//					  Change timeout log from error to warning
 //
 // ====================================================================================
 //
@@ -888,7 +890,6 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 		SyncEventName);
 
 	if (!hSyncEvent) {
-		SpoutLogWarning("spoutFrameCount::WaitFrameSync - no event");
 		// Do not block if the sender has not created a sync event
 		return true;
 	}
@@ -904,7 +905,7 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 			SpoutLogError("spoutFrameCount::WaitFrameSync - WAIT_ABANDONED");
 			break;
 		case WAIT_TIMEOUT: // The time-out interval elapsed, and the object's state is non-signalled.
-			SpoutLogError("spoutFrameCount::WaitFrameSync - WAIT_TIMEOUT");
+			SpoutLogWarning("spoutFrameCount::WaitFrameSync - WAIT_TIMEOUT");
 			break;
 		case WAIT_FAILED: // Could use call GetLastError
 			SpoutLogError("spoutFrameCount::WaitFrameSync - WAIT_FAILED");
