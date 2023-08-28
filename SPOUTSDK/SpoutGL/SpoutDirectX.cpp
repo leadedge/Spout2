@@ -155,6 +155,7 @@
 //				        Create ID3D11Device1 and ID3D11DeviceContext1 for D3D_FEATURE_LEVEL_11_1
 //					  ReleaseDX11Device - release ID3D11Device1 and ID3D11DeviceContext1 if created
 //	Version 2.007.012
+//		07.08.23	- Comment out code for debug layers
 //
 // ====================================================================================
 /*
@@ -402,10 +403,9 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	// See also : void spoutDirectX::DebugLog
 	//
 
-#if defined(_DEBUG)
-	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-
+// #if defined(_DEBUG)
+	// createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+// #endif
 
 	// GL/DX interop Spec
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
@@ -1852,6 +1852,7 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 #pragma warning(default:26485)
 
 
+/*
 // REMOVE THIS COMMENT LINE TO ENABLE SDK LAYERS
 
 #ifdef _DEBUG
@@ -1888,6 +1889,7 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 
 #endif
 
+*/ 
 // REMOVE THIS COMMENT LINE TO ENABLE SDK LAYERS
 
 
