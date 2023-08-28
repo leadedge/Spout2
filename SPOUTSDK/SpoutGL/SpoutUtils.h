@@ -281,7 +281,12 @@ namespace spoututils {
 		bool ExecuteProcess(const char *path);
 
 		int SPOUT_DLLEXP MessageTaskDialog(HINSTANCE hInst, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
-
+		// TaskDialogIndirect callback to handle timer, topmost and hyperlinks
+		HRESULT TDcallbackProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData);
+		// For topmost
+		HWND TaskHwnd = NULL;
+		HWND hwndTop = NULL;
+		bool bTopMost = false;
 
 	}
 

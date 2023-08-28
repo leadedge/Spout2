@@ -134,6 +134,11 @@
 		01.08.23 - Add MessageTaskDialog instead of dependence on SpoutPanel
 		04.08.23 - const WCHAR* in MessageTaskDialog
 		13.08.23 - MessageTaskDialog - remove MB_TOPMOST
+		20.08.23 - Change TaskdialogcallbackProc to TDcallbackProc to avoid naming conflicts
+		21.08.23 - MessageTaskDialog - Restore topmost function
+				   Change bTopmost to bTopMost to avoid naming conflicts
+		23.08.23 - MessageTaskDialog - Fixed topmost recover for calling application
+		26.08.23 - PFTASKDIALOGCALLBACK cast for TDcallbackProc
 
 */
 
@@ -1516,15 +1521,20 @@ namespace spoututils {
 				wstrCaption = L" ";
 			}
 
+			// Hyperlinks can be included in the content using HTML format.
+			// For example : 
+			// <a href=\"https://spout.zeal.co/\">Spout home page</a>
+			// Only double quotes are supported and must be escaped.
+
+			// Topmost global flag
+			bTopMost = ((dwButtons & MB_TOPMOST) != 0);
+			LONG dwl = (LONG)dwButtons ^ MB_TOPMOST;
+
 			// https://learn.microsoft.com/en-us/windows/win32/api/commctrl/nf-commctrl-taskdialog
 			// TDCBF_OK_BUTTON 1
 			// TDCBF_YES_BUTTON 2
 			// TDCBF_NO_BUTTON 4
 			// TDCBF_CANCEL_BUTTON 8
-
-			// TODO - support topmost
-			LONG dwl = (LONG)dwButtons ^ MB_TOPMOST;
-
 			DWORD dwCommonButtons = MB_OK;
 			if ((dwl ^ MB_OK) == 0)
 				dwCommonButtons = MB_OK;
@@ -1575,7 +1585,8 @@ namespace spoututils {
 			}
 
 			int nButtonPressed        = 0;
-			TASKDIALOGCONFIG config   ={ 0 };
+			int nRadioButton          = 0;
+			TASKDIALOGCONFIG config   = {0};
 			config.cbSize             = sizeof(config);
 			config.hwndParent         = NULL;
 			config.hInstance          = hInst;
@@ -1585,40 +1596,73 @@ namespace spoututils {
 			config.pszContent         = wstrTemp.c_str();
 			config.dwCommonButtons    = dwCommonButtons;
 			config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
+			config.dwFlags            = TDF_SIZE_TO_CONTENT | TDF_CALLBACK_TIMER | TDF_ENABLE_HYPERLINKS;
+			config.pfCallback         = reinterpret_cast<PFTASKDIALOGCALLBACK>(TDcallbackProc);
+			config.lpCallbackData     = reinterpret_cast<LONG_PTR>(&dwMilliseconds);
 
-			// Msec timeout
-			// https://stackoverflow.com/questions/51985841/custom-message-box-that-automatically-disappears
-			if (dwMilliseconds > 0) {
-
-				config.dwFlags = TDF_SIZE_TO_CONTENT | TDF_CALLBACK_TIMER;
-				config.lpCallbackData = reinterpret_cast<LONG_PTR>(&dwMilliseconds);
-
-				// Assign a lambda function as callback.
-				config.pfCallback = [](HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
-				{
-					lParam = lParam; // Quiet unreferenced parameter
-					if (uNotification == TDN_TIMER)
-					{
-						DWORD* pTimeout = reinterpret_cast<DWORD*>(dwRefData);  // = tc.lpCallbackData
-						DWORD timeElapsed = static_cast<DWORD>(wParam);
-						if (*pTimeout && timeElapsed >= *pTimeout) {
-							*pTimeout = 0; // Make sure we don't send the button message multiple times.
-							SendMessage(hwnd, TDM_CLICK_BUTTON, IDOK, 0);
-						}
-					}
-					return S_OK;
-				};
-			}
-			else {
-				config.dwFlags = TDF_SIZE_TO_CONTENT;
+			if (bTopMost) {
+				// Get the first visible window in the Z order
+				hwndTop = GetForegroundWindow();
+				HWND hwndParent = GetParent(hwndTop); // Is it a dialog
+				if (hwndParent) hwndTop = hwndParent;
+				// Is it topmost ?
+				if ((GetWindowLong(hwndTop, GWL_EXSTYLE) & WS_EX_TOPMOST) > 0) {
+					// Move it down
+					SetWindowPos(hwndTop, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+				}
+				else {
+					hwndTop = NULL;
+				}
 			}
 
-			TaskDialogIndirect(&config, &nButtonPressed, NULL, NULL);
+			TaskDialogIndirect(&config, &nButtonPressed, &nRadioButton, NULL);
+
+			if (bTopMost && hwndTop) {
+				// Reset the window that was topmost before
+				SetWindowPos(hwndTop, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+			}
 
 			// IDCANCEL, IDNO, IDOK, IDRETRY, IDYES
 			return nButtonPressed;
 
 		}
+
+		HRESULT TDcallbackProc(HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
+		{
+			// Topmost
+			if (bTopMost && TaskHwnd == NULL) {
+				TaskHwnd = hwnd;
+				SetWindowPos(TaskHwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+			}
+
+			// Timeout
+			if (uNotification == TDN_TIMER)
+			{
+				DWORD* pTimeout = reinterpret_cast<DWORD*>(dwRefData);  // = tc.lpCallbackData
+				DWORD timeElapsed = static_cast<DWORD>(wParam);
+				if (*pTimeout && timeElapsed >= *pTimeout) {
+					*pTimeout = 0; // Make sure we don't send the button message multiple times.
+					SendMessage(hwnd, TDM_CLICK_BUTTON, IDOK, 0);
+				}
+			}
+
+			// Hyperlink
+			//   TDN_HYPERLINK_CLICKED indicates that a hyperlink has been selected.
+			//   lParam - Pointer to a wide-character string containing the URL of the hyperlink.
+			if (uNotification == TDN_HYPERLINK_CLICKED) {
+				SHELLEXECUTEINFOW sei{};
+				sei.cbSize = sizeof(sei);
+				sei.hwnd = NULL;
+				sei.lpVerb = L"open";
+				sei.lpFile = (LPCWSTR)lParam;
+				sei.nShow = SW_SHOWNORMAL;
+				if (!ShellExecuteExW(&sei)) {
+					return S_FALSE;
+				}
+				DestroyWindow(hwnd);
+			}
+			return S_OK;
+		};
 
 		
 	} // end private namespace
