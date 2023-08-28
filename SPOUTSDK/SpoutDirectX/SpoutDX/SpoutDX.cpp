@@ -134,6 +134,7 @@
 //		08.07.23	- Remove global keyed texture option and SetKeyed/GetKeyed.
 //					  Retain option in SpoutDirectX CreateSharedDX11Texture.
 //		04.08.23	- Correct unused m_bKeyed argument for CreateSharedDX11Texture
+//		28.08.23	- Add ReadTexurePixels utility function
 //
 // ====================================================================================
 /*
@@ -887,6 +888,7 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 			return true;
 		}
 
+
 		// The receiving pixel buffer is created after the first update
 		// So check here instead of at the beginning
 		if (!pixels)
@@ -895,6 +897,7 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 		// No staging textures - no copy
 		if (!m_pStaging[0] || !m_pStaging[1])
 			return false;
+
 
 		//
 		// Found a sender
@@ -929,6 +932,45 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 	return m_bConnected;
 
 }
+
+//---------------------------------------------------------
+// Function: ReadTexurePixels
+// Read pixels from texture
+bool spoutDX::ReadTexurePixels(ID3D11Texture2D* pTexture, unsigned char* pixels)
+{
+	if (!pTexture || !pixels)
+		return false;
+
+	// Get texture size
+	D3D11_TEXTURE2D_DESC desc={};
+	pTexture->GetDesc(&desc);
+	unsigned int width = desc.Width;
+	unsigned int height = desc.Height;
+
+	// Set global width and height for ReadPixelData
+	if (!m_pStaging[0]) {
+		m_Width = width;
+		m_Height = height;
+	}
+
+	// Update staging textures if necessary
+	CheckStagingTextures(width, height, m_dwFormat);
+	if (!m_pStaging[0] || !m_pStaging[1])
+		return false;
+
+	m_Index = (m_Index + 1) % 2;
+	m_NextIndex = (m_Index + 1) % 2;
+
+	// Copy from the texture to the first staging texture
+	m_pImmediateContext->CopyResource(m_pStaging[m_Index], pTexture);
+
+	// Map and read from the second while the first is occupied
+	ReadPixelData(m_pStaging[m_NextIndex], pixels, width, height, false, false, false);
+
+	return true;
+
+}
+
 
 //---------------------------------------------------------
 // Function: SelectSender
@@ -2287,10 +2329,12 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 			else {
 				// Copy rgba to bgra line by line allowing for source pitch using the fastest method
 				// Uses SSE3 copy function if line data is 16bit aligned (see SpoutCopy.cpp)
-				if(bSwap)
+				if (bSwap) {
 					spoutcopy.rgba2bgra(mappedSubResource.pData, destpixels, width, height, mappedSubResource.RowPitch, bInvert);
-				else
+				}
+				else {
 					spoutcopy.rgba2rgba(mappedSubResource.pData, destpixels, width, height, mappedSubResource.RowPitch, bInvert);
+				}
 			}
 		}
 		else if (m_dwFormat == 28) { // DXGI_FORMAT_R8G8B8A8_UNORM

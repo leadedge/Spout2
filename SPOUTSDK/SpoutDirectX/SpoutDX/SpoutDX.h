@@ -33,12 +33,12 @@
 #define __spoutDX__
 
 // Change the path as required
-#include "..\..\SpoutGL\SpoutCommon.h" // for dll build
-#include "..\..\SpoutGL\SpoutSenderNames.h" // for sender creation and update
-#include "..\..\SpoutGL\SpoutDirectX.h" // for creating DX11 textures
-#include "..\..\SpoutGL\SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "..\..\SpoutGL\SpoutCopy.h" // for pixel copy
-#include "..\..\SpoutGL\SpoutUtils.h" // Registry utiities
+#include "SpoutCommon.h" // for dll build
+#include "SpoutSenderNames.h" // for sender creation and update
+#include "SpoutDirectX.h" // for creating DX11 textures
+#include "SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "SpoutCopy.h" // for pixel copy
+#include "SpoutUtils.h" // Registry utiities
 
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
@@ -108,6 +108,10 @@ class SPOUT_DLLEXP spoutDX {
 	bool ReceiveTexture(ID3D11Texture2D** ppTexture);
 	// Receive an image
 	bool ReceiveImage(unsigned char * pixels, unsigned int width, unsigned int height, bool bRGB = false, bool bInvert = false);
+	// Read pixels from texture
+	bool ReadTexurePixels(ID3D11Texture2D* ppTexture, unsigned char* pixels);
+
+
 	// Open sender selection dialog
 	void SelectSender();
 	// Sender has changed
