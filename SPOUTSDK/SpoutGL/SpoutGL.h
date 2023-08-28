@@ -258,6 +258,12 @@ class SPOUT_DLLEXP spoutGL {
 	bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	// Copy from shared DX11 texture to OpenGL via CPU
 	bool ReadDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
+	// Read pixels from an OpenGL texture
+	bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
+		unsigned int width, unsigned int height, unsigned int pitch,
+		unsigned char* data, GLenum glFormat = GL_RGBA,
+		bool bInvert = false, GLuint HostFBO = 0);
+
 
 	//
 	// Data sharing
@@ -314,12 +320,7 @@ protected :
 	GLuint m_pbo[4];
 	int PboIndex;
 	int NextPboIndex;
-
 	int m_nBuffers;
-	bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
-		unsigned int width, unsigned int height, unsigned int pitch,
-		unsigned char* data, GLenum glFormat = GL_RGBA,
-		bool bInvert = false, GLuint HostFBO = 0);
 	
 	// OpenGL <-> DX11
 	// WriteDX11texture - public

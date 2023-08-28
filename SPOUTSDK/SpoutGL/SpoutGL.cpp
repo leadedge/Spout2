@@ -147,6 +147,7 @@
 //		24.07.23	- Remove  global m_bKeyed flag
 //		31.07.23	- Add OpenGL format functions
 //		04.08.23	- Remove unused compute shaders
+//		28.08.23	- UnloadTexturePixels public
 //
 // ====================================================================================
 //
