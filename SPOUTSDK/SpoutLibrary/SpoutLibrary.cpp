@@ -100,6 +100,8 @@
 //		08.07.23   CreateReceiver - remove unused bUseActive flag
 //		23.07.23   Rebuild with SDK version 2.007.011 - release VS2022 - 32/64 bit /MD
 //		05.08.23   Add format functions
+//		28.09.23   Add EnableFrameSync
+//				   Rebuild with SDK version 2.007.012 - release VS2022 - 32/64 bit /MD
 //
 /*
 		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
@@ -491,6 +493,10 @@ private: // Spout SDK functions
 	// Wait or test for a sync event
 	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 
+	// Function: EnableFrameSync
+	// Enable / disable frame sync
+	void EnableFrameSync(bool bSync = true);
+
 	//
 	// Group: Data sharing
 	//
@@ -512,6 +518,7 @@ private: // Spout SDK functions
 	//
 	//      - void SetFrameSync(const char* SenderName);
 	//      - bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+	//      - void EnableFrameSync(bool bSync);
 	//
 	//   WaitFrameSync
 	//   A sender should use this before rendering or sending texture or data and
@@ -520,6 +527,9 @@ private: // Spout SDK functions
 	//   SetFrameSync
 	//   After receiving a texture, rendering the result and reading data
 	//   a receiver should signal that it is ready to read another. 
+	//
+	//   EnableFrameSync
+	//   Enable or disable frame sync during operation
 	//
 
 	// Function: WriteMemoryBuffer
@@ -1274,6 +1284,11 @@ void SPOUTImpl::SetFrameSync(const char* SenderName)
 bool SPOUTImpl::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 {
 	return spout->WaitFrameSync(SenderName, dwTimeout);
+}
+
+void SPOUTImpl::EnableFrameSync(bool bSync)
+{
+	return spout->EnableFrameSync(bSync);
 }
 
 bool SPOUTImpl::WriteMemoryBuffer(const char *name, const char* data, int length)

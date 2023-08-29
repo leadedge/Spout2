@@ -36,12 +36,21 @@
 // for definitions
 #include <windows.h>
 #include <string>
+#include <dxgiformat.h> // for DXGI_FORMAT enum
 
-// Re-define to avoid include of GL.h 
+// Define here to avoid include of GL.h 
+typedef int GLint;
 typedef unsigned int GLuint;
 typedef unsigned int GLenum;
+
 #ifndef GL_RGBA
 #define GL_RGBA 0x1908
+#endif
+#ifndef GL_BGRA
+#define GL_BGRA 0x80E1
+#endif
+#ifndef GL_BGRA_EXT
+#define GL_BGRA_EXT 0x80E1
 #endif
 
 #define SPOUTLIBRARY_EXPORTS // defined for this DLL. The application imports rather than exports
@@ -201,7 +210,8 @@ struct SPOUTLIBRARY
 	virtual void SetFrameSync(const char* SenderName) = 0;
 	// Wait or test for a sync event
 	virtual bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0) = 0;
-
+	// Enable / disable frame sync
+	virtual void EnableFrameSync(bool bSync = true) = 0;
 
 	//
 	// Data sharing
@@ -351,7 +361,7 @@ struct SPOUTLIBRARY
 	// Update a sender
 	virtual bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height) = 0;
 	// Create receiver connection
-	virtual bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool bUseActive = false) = 0;
+	virtual bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height) = 0;
 	// Check receiver connection
 	virtual bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected) = 0;
 	// Get user DX9 mode
@@ -454,6 +464,23 @@ struct SPOUTLIBRARY
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0) = 0;
+
+	//
+	// Formats
+	//
+
+	// Get sender DX11 shared texture format
+	virtual DXGI_FORMAT GetDX11format() = 0;
+	// Set sender DX11 shared texture format
+	virtual void SetDX11format(DXGI_FORMAT textureformat) = 0;
+	// Return OpenGL compatible DX11 format
+	virtual DXGI_FORMAT DX11format(GLint glformat) = 0;
+	// Return DX11 compatible OpenGL format
+	virtual GLint GLDXformat(DXGI_FORMAT textureformat = DXGI_FORMAT_UNKNOWN) = 0;
+	// Return OpenGL texture internal format
+	virtual int GLformat(GLuint TextureID, GLuint TextureTarget) = 0;
+	// Return OpenGL texture format description
+	virtual std::string GLformatName(GLint glformat = 0) = 0;
 
 	//
 	// DirectX utilities

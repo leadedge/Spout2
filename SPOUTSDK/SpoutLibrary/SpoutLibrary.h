@@ -210,7 +210,8 @@ struct SPOUTLIBRARY
 	virtual void SetFrameSync(const char* SenderName) = 0;
 	// Wait or test for a sync event
 	virtual bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0) = 0;
-
+	// Enable / disable frame sync
+	virtual void EnableFrameSync(bool bSync = true) = 0;
 
 	//
 	// Data sharing
