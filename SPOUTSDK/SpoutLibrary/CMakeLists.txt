@@ -7,6 +7,8 @@
 # 29/12/20 - Add Win32 or x64 build                                            #
 # 30/12/20 - Add copy of build files to Binary folders                         #
 # 02/02/21 - Support single config generators (ninja, etc) by Joakim Kilby     #
+# 09/08/23 - Use TARGET_LINKER_FILE/TARGET_LINKER_FILE_NAME (PR#97-scribam)    #
+#            Old code commented out for reference                              #
 #/-------------------------------------- . -----------------------------------\#                                      #
 
 add_library(SpoutLibrary SHARED 
@@ -24,10 +26,10 @@ target_compile_definitions(SpoutLibrary
     SPOUT_BUILD_DLL
 )
 
-get_property(GeneratorisMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-if(GeneratorisMultiConfig)
-	set(ConfigOutputDirectory $<CONFIG>/)
-endif()
+# get_property(GeneratorisMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+# if(GeneratorisMultiConfig)
+# 	set(ConfigOutputDirectory $<CONFIG>/)
+# endif()
 
 # Win32 or x64 build
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -35,7 +37,8 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 	# Copy Win32 binaries to the BUILD/Binaries folder
 	add_custom_command(TARGET SpoutLibrary POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E 
-		copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}SpoutLibrary.lib ${CMAKE_BINARY_DIR}/Binaries/Win32/SpoutLibrary.lib
+		# copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}SpoutLibrary.lib ${CMAKE_BINARY_DIR}/Binaries/Win32/SpoutLibrary.lib
+		copy $<TARGET_LINKER_FILE:SpoutLibrary> ${CMAKE_BINARY_DIR}/Binaries/Win32/$<TARGET_LINKER_FILE_NAME:SpoutLibrary>
 	)
 	add_custom_command(TARGET SpoutLibrary POST_BUILD
 	    COMMAND ${CMAKE_COMMAND} -E 
@@ -47,7 +50,8 @@ else()
 	# Copy x64 binaries to the BUILD/Binaries folder
 	add_custom_command(TARGET SpoutLibrary POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E 
-		copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}SpoutLibrary.lib ${CMAKE_BINARY_DIR}/Binaries/x64/SpoutLibrary.lib
+		# copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}SpoutLibrary.lib ${CMAKE_BINARY_DIR}/Binaries/x64/SpoutLibrary.lib
+		copy $<TARGET_LINKER_FILE:SpoutLibrary> ${CMAKE_BINARY_DIR}/Binaries/x64/$<TARGET_LINKER_FILE_NAME:SpoutLibrary>
 	)
 	add_custom_command(TARGET SpoutLibrary POST_BUILD
 	    COMMAND ${CMAKE_COMMAND} -E 

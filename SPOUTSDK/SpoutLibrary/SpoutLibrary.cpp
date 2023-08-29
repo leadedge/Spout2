@@ -99,6 +99,9 @@
 //		03.05.23   Add GL_BGRA define to SpoutLibrary.h
 //		08.07.23   CreateReceiver - remove unused bUseActive flag
 //		23.07.23   Rebuild with SDK version 2.007.011 - release VS2022 - 32/64 bit /MD
+//		05.08.23   Add format functions
+//		28.09.23   Add EnableFrameSync
+//				   Rebuild with SDK version 2.007.012 - release VS2022 - 32/64 bit /MD
 //
 /*
 		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
@@ -490,6 +493,10 @@ private: // Spout SDK functions
 	// Wait or test for a sync event
 	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 
+	// Function: EnableFrameSync
+	// Enable / disable frame sync
+	void EnableFrameSync(bool bSync = true);
+
 	//
 	// Group: Data sharing
 	//
@@ -511,6 +518,7 @@ private: // Spout SDK functions
 	//
 	//      - void SetFrameSync(const char* SenderName);
 	//      - bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+	//      - void EnableFrameSync(bool bSync);
 	//
 	//   WaitFrameSync
 	//   A sender should use this before rendering or sending texture or data and
@@ -519,6 +527,9 @@ private: // Spout SDK functions
 	//   SetFrameSync
 	//   After receiving a texture, rendering the result and reading data
 	//   a receiver should signal that it is ready to read another. 
+	//
+	//   EnableFrameSync
+	//   Enable or disable frame sync during operation
 	//
 
 	// Function: WriteMemoryBuffer
@@ -1018,6 +1029,23 @@ private: // Spout SDK functions
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0);
 
+	//
+	// Formats
+	//
+
+	// Get sender DX11 shared texture format
+	DXGI_FORMAT GetDX11format();
+	// Set sender DX11 shared texture format
+	void SetDX11format(DXGI_FORMAT textureformat);
+	// Return OpenGL compatible DX11 format
+	DXGI_FORMAT DX11format(GLint glformat);
+	// Return DX11 compatible OpenGL format
+	GLint GLDXformat(DXGI_FORMAT textureformat = DXGI_FORMAT_UNKNOWN);
+	// Return OpenGL texture internal format
+	GLint GLformat(GLuint TextureID, GLuint TextureTarget);
+	// Return OpenGL texture format description
+	std::string GLformatName(GLint glformat = 0);
+
 
 	//
 	// Group: DirectX utilities
@@ -1256,6 +1284,11 @@ void SPOUTImpl::SetFrameSync(const char* SenderName)
 bool SPOUTImpl::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 {
 	return spout->WaitFrameSync(SenderName, dwTimeout);
+}
+
+void SPOUTImpl::EnableFrameSync(bool bSync)
+{
+	return spout->EnableFrameSync(bSync);
 }
 
 bool SPOUTImpl::WriteMemoryBuffer(const char *name, const char* data, int length)
@@ -1733,6 +1766,47 @@ bool SPOUTImpl::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	return spout->CopyTexture(SourceID, SourceTarget, DestID, DestTarget,
 								width, height, bInvert, HostFBO);
 }
+
+//
+// Formats
+//
+
+//---------------------------------------------------------
+DXGI_FORMAT SPOUTImpl::GetDX11format()
+{
+	return spout->GetDX11format();
+}
+
+//---------------------------------------------------------
+void SPOUTImpl::SetDX11format(DXGI_FORMAT textureformat)
+{
+	spout->SetDX11format(textureformat);
+}
+
+//---------------------------------------------------------
+DXGI_FORMAT SPOUTImpl::DX11format(GLint glformat)
+{
+	return spout->DX11format(glformat);
+}
+
+//---------------------------------------------------------
+GLint SPOUTImpl::GLDXformat(DXGI_FORMAT textureformat)
+{
+	return spout->GLDXformat(textureformat);
+}
+
+//---------------------------------------------------------
+GLint SPOUTImpl::GLformat(GLuint TextureID, GLuint TextureTarget)
+{
+	return spout->GLformat(TextureID, TextureTarget);
+}
+
+//---------------------------------------------------------
+std::string SPOUTImpl::GLformatName(GLint glformat)
+{
+	return spout->GLformatName(glformat);
+}
+
 
 //
 // DirectX utilities

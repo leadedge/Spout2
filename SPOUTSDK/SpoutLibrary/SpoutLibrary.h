@@ -36,10 +36,13 @@
 // for definitions
 #include <windows.h>
 #include <string>
+#include <dxgiformat.h> // for DXGI_FORMAT enum
 
 // Define here to avoid include of GL.h 
+typedef int GLint;
 typedef unsigned int GLuint;
 typedef unsigned int GLenum;
+
 #ifndef GL_RGBA
 #define GL_RGBA 0x1908
 #endif
@@ -207,7 +210,8 @@ struct SPOUTLIBRARY
 	virtual void SetFrameSync(const char* SenderName) = 0;
 	// Wait or test for a sync event
 	virtual bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0) = 0;
-
+	// Enable / disable frame sync
+	virtual void EnableFrameSync(bool bSync = true) = 0;
 
 	//
 	// Data sharing
@@ -460,6 +464,23 @@ struct SPOUTLIBRARY
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0) = 0;
+
+	//
+	// Formats
+	//
+
+	// Get sender DX11 shared texture format
+	virtual DXGI_FORMAT GetDX11format() = 0;
+	// Set sender DX11 shared texture format
+	virtual void SetDX11format(DXGI_FORMAT textureformat) = 0;
+	// Return OpenGL compatible DX11 format
+	virtual DXGI_FORMAT DX11format(GLint glformat) = 0;
+	// Return DX11 compatible OpenGL format
+	virtual GLint GLDXformat(DXGI_FORMAT textureformat = DXGI_FORMAT_UNKNOWN) = 0;
+	// Return OpenGL texture internal format
+	virtual int GLformat(GLuint TextureID, GLuint TextureTarget) = 0;
+	// Return OpenGL texture format description
+	virtual std::string GLformatName(GLint glformat = 0) = 0;
 
 	//
 	// DirectX utilities

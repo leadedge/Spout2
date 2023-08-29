@@ -1,6 +1,6 @@
 SpoutLibrary example
 
-This is an example for Visual Studio 2022 and Openframeworks 11 for 64 bit build.
+This is an example for Visual Studio 2017 and Openframeworks 11.
 
 The project is dependent on the Openframeworks environment and so the "SpoutLibraryExample" folder should be copied as follows.
 
