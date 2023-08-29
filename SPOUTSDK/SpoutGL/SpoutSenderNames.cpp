@@ -96,6 +96,7 @@
 			   Code review - Use Microsoft Native Recommended rules
 	Version 2.007.11
 	13.07.23 - setActiveSenderName - close any existing active sender map
+	Version 2.007.012
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.

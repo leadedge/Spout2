@@ -48,13 +48,10 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Set name for sender creation
 	//   If no name is specified, the executable name is used  
 	void SetSenderName(const char* sendername = nullptr);
-
-	// Set the sender DX11 shared texture format
+	// Set sender DX11 shared texture format
 	void SetSenderFormat(DWORD dwFormat);
-	
 	// Release sender and resources
 	void ReleaseSender();
-
 	// Send OpenGL framebuffer
 	//   The fbo must be bound for read.
 	//   The sending texture can be larger than the size that the sender is set up for
@@ -160,7 +157,11 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	void SetFrameSync(const char* SenderName);
 	// Wait or test for a sync event
 	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
-	
+	// Enable / disable frame sync
+	void EnableFrameSync(bool bSync = true);
+	// Check for frame sync option
+	bool IsFrameSyncEnabled();
+
 	//
 	// Sender names
 	//
@@ -253,7 +254,6 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Render a texture to the shared texture. 
 	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
 #endif // #endif legacyOpenGL
-
 
 
 protected:

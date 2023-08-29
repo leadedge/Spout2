@@ -49,6 +49,7 @@
 //	07.01.23 - Change m_pName from const char* to char* for strdup
 //  Version 2.007.11
 //  12.05.23 - Create and Open - Clear ERROR_ALREADY_EXISTS to avoid detection elsewhere.
+//	Version 2.007.012
 // ====================================================================================
 
 

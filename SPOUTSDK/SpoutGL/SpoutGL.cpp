@@ -119,7 +119,7 @@
 //					  SpoutGL.h - include SpoutGLextensions first to prevent gl.h before Glew.h error
 //					  GLerror gluErrorString conditional on Glew define
 //		14.04.23	- Correct CreateMemoryBuffer null name check
-// Version 2.007.11
+// Version 2.007.011
 //		15.03.23	- If no new sender frame, return true and do not block for all receiving functions
 //					  to avoid un-necessary Acquire/Release/Lock/Unlock
 //		22.04.23	- Add compute shader utility for OpenGL texture copy
@@ -143,6 +143,11 @@
 //				      Add SwapRGB utility
 //		18.07.23	- Make GLerror() public
 //		22.07.23	- Some extra checks for null m_pSharedTexture for a receiver
+// Version 2.007.012
+//		24.07.23	- Remove  global m_bKeyed flag
+//		31.07.23	- Add OpenGL format functions
+//		04.08.23	- Remove unused compute shaders
+//		28.08.23	- UnloadTexturePixels public
 //
 // ====================================================================================
 //
@@ -184,8 +189,6 @@ spoutGL::spoutGL()
 	m_SenderNameSetup[0] = 0;
 	m_Width = 0;
 	m_Height = 0;
-	m_dwFormat = (DWORD)DXGI_FORMAT_B8G8R8A8_UNORM; // default sender format
-	m_bKeyed = false; // Keyed shared texture (default false)
 
 	m_bAuto = true;
 	m_bCPU = false;
@@ -214,6 +217,7 @@ spoutGL::spoutGL()
 	m_dxShareHandle = NULL; // Shared texture handle
 	m_pSharedTexture = nullptr; // DX11 shared texture
 	m_DX11format = DXGI_FORMAT_B8G8R8A8_UNORM; // Default compatible with DX9
+	m_dwFormat = m_DX11format;
 	m_pStaging[0] = nullptr; // DX11 staging textures
 	m_pStaging[1] = nullptr;
 	m_Index = 0;
@@ -246,12 +250,8 @@ spoutGL::spoutGL()
 	m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
 	m_nBuffers = 2; // default number of buffers used
 
-	// Keyed texture option
-	DWORD dwValue = 0;
-	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Keyed", &dwValue))
-		m_bKeyed = (dwValue == 1);
-
 	// Check the user selected Auto share mode
+	DWORD dwValue = 0;
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Auto", &dwValue))
 		m_bAuto = (dwValue == 1);
 
@@ -617,13 +617,40 @@ bool spoutGL::OpenDirectX()
 }
 
 //---------------------------------------------------------
+// Function: CloseDirectX
+// Close DirectX and free resources
+void spoutGL::CloseDirectX()
+{
+	SpoutLogNotice("spoutGL::CloseDirectX()");
+
+	// Release linked DirectX shared texture
+	if (m_pSharedTexture)
+		spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pSharedTexture);
+	m_pSharedTexture = nullptr;
+	m_dxShareHandle = nullptr;
+
+	// Flush context to avoid deferred release
+	spoutdx.Flush();
+
+	spoutdx.CloseDirectX11();
+
+}
+
+//---------------------------------------------------------
+// Function: GetDX11format
+//   Get sender DX11 shared texture format
+DXGI_FORMAT spoutGL::GetDX11format()
+{
+	return m_DX11format;
+}
+
+//---------------------------------------------------------
 // Function: SetDX11format
 //   Set sender DX11 shared texture format
 //
 //   Texture formats compatible with WGL_NV_DX_interop
 //
 //   https://www.khronos.org/registry/OpenGL/extensions/NV/WGL_NV_DX_interop.txt
-//
 //   https://www.khronos.org/registry/OpenGL/extensions/NV/WGL_NV_DX_interop2.txt
 //
 //   D3DFMT_A8R8G8B8                         = 21
@@ -653,26 +680,152 @@ bool spoutGL::OpenDirectX()
 void spoutGL::SetDX11format(DXGI_FORMAT textureformat)
 {
 	m_DX11format = textureformat;
+	m_dwFormat = static_cast<DWORD>(m_DX11format); // DWORD used throughout
 }
 
 //---------------------------------------------------------
-// Function: CloseDirectX
-// Close DirectX and free resources
-void spoutGL::CloseDirectX()
+// Function: DX11format
+//  OpenGL compatible DX11 format
+//
+//	OpenGL format (DX11 format)
+//
+//	GL_RGB, GL_RGB8, GL_RGBA, GL_RGBA8 (DXGI_FORMAT_R8G8B8A8_UNORM)
+//
+//	GL_RGB10_A2 (DXGI_FORMAT_R10G10B10A2_UNORM)
+//
+//	GL_RGB16, GL_RGBA16	(DXGI_FORMAT_R16G16B16A16_UNORM)
+//
+//	GL_RGB16F, GL_RGBA16F (DXGI_FORMAT_R16G16B16A16_FLOAT)
+//
+//	GL_RGB32F, GL_RGBA32F (DXGI_FORMAT_R32G32B32A32_FLOAT)
+//
+DXGI_FORMAT spoutGL::DX11format(GLint glformat)
 {
-	SpoutLogNotice("spoutGL::CloseDirectX()");
+	if (glformat == 0)
+		return DXGI_FORMAT_UNKNOWN;
 
-	// Release linked DirectX shared texture
-	if (m_pSharedTexture)
-		spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pSharedTexture);
-	m_pSharedTexture = nullptr;
-	m_dxShareHandle = nullptr;
+	DXGI_FORMAT d3dformat = DXGI_FORMAT_B8G8R8A8_UNORM; // default
+	switch (glformat) {
+	case GL_RGB:   // 0x1907
+	case GL_RGB8:  // 0x8051
+	case GL_RGBA:  // 0x1908
+	case GL_RGBA8: // 0x8058
+		d3dformat = DXGI_FORMAT_R8G8B8A8_UNORM;
+		break;
+	case GL_RGB10_A2: // 0x8059
+		d3dformat = DXGI_FORMAT_R10G10B10A2_UNORM;
+		break;
+	case GL_RGB16:  // 0x8054
+	case GL_RGBA16: // 0x805B
+		d3dformat = DXGI_FORMAT_R16G16B16A16_UNORM;
+		break;
+	case GL_RGB16F:  // 0x881B
+	case GL_RGBA16F: // 0x881A
+		d3dformat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		break;
+	case GL_RGB32F:  // 0x8815
+	case GL_RGBA32F: // 0x8814
+		d3dformat = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		break;
+	default:
+		break;
+	}
+	return d3dformat;
+}
 
-	// Flush context to avoid deferred release
-	spoutdx.Flush();
+//---------------------------------------------------------
+// Function: GLDXformat
+//   Return DX11 compatible OpenGL format
+GLint spoutGL::GLDXformat(DXGI_FORMAT textureformat)
+{
+	DXGI_FORMAT d3dformat = textureformat;
+	if (d3dformat == DXGI_FORMAT_UNKNOWN)
+		d3dformat = m_DX11format;
 
-	spoutdx.CloseDirectX11();
+	GLint glformat = GL_RGBA;
+	switch (d3dformat) {
+		// DirectX 9
+		case D3DFMT_A8R8G8B8:
+		case D3DFMT_X8R8G8B8:
+		// DirectX 11
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+			glformat = GL_RGBA;
+			break;
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+			glformat = GL_RGB10_A2;
+			break;
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+			glformat = GL_RGBA16;
+			break;
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+			glformat = GL_RGBA16F;
+			break;
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+			glformat = GL_RGBA32F;
+			break;
+		default:
+			break;
+	}
+	return glformat;
+}
 
+//---------------------------------------------------------
+// Function:GLformat
+//   Return OpenGL texture internal format
+GLint spoutGL::GLformat(GLuint TextureID, GLuint TextureTarget)
+{
+	// https://www.khronos.org/opengl/wiki/Image_Format
+	// https://moderngl.readthedocs.io/en/latest/topics/texture_formats.html
+	GLint glformat = 0;
+	glBindTexture(TextureTarget, TextureID);
+	glGetTexLevelParameteriv(TextureTarget, 0, GL_TEXTURE_INTERNAL_FORMAT, &glformat);
+	glBindTexture(TextureTarget, 0);
+	return glformat;
+}
+
+//---------------------------------------------------------
+// Function:GLformatName
+//   Return OpenGL format description for compatible DX11 formats
+std::string spoutGL::GLformatName(GLint glformat)
+{
+	std::string formatname = "unknown";
+	GLint format = glformat;
+
+	// If not specified, get from the global DX11 format
+	if (format == 0)
+		format = GLDXformat();
+
+	switch (format) {
+		case GL_RGBA16:
+			formatname = "16 bit RGBA";
+			break;
+		case GL_RGBA16F:
+			formatname = "16 bit RGBA float";
+			break;
+		case GL_RGBA32F:
+			formatname = "32 bit RGBA float";
+			break;
+		case GL_RGB10_A2:
+			formatname = "10 bit RGBA";
+			break;
+		case GL_RGBA8:
+			formatname = "8 bit RGBA";
+			break;
+		case GL_RGBA:
+			formatname = "8 bit RGBA";
+			break;
+		case GL_BGRA:
+			formatname = "8 bit RGBA";
+			break;
+		default:
+			break;
+	}
+	return formatname;
 }
 
 //---------------------------------------------------------
@@ -1031,7 +1184,6 @@ bool spoutGL::SetSenderID(const char *sendername, bool bCPU, bool bGLDX)
 	return false;
 }
 
-
 //
 // Protected functions
 //
@@ -1052,9 +1204,10 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 
 	// Compatible formats - see SetDX11format
 	// A directX 11 receiver accepts DX9 formats
-	// Default DXGI_FORMAT_B8G8R8A8_UNORM unless set otherwise
+	// Default DXGI_FORMAT_B8G8R8A8_UNORM
+	// unless set otherwise by SetDX11format(DXGI_FORMAT textureformat)
 	DWORD format = m_DX11format;
-	if (dwFormat > 0) {
+	if (dwFormat > 0 && dwFormat != format) {
 		format = dwFormat; // Use the passed texture format
 		SetDX11format((DXGI_FORMAT)format); // Set the global texture format
 	}
@@ -1079,10 +1232,10 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 			(DXGI_FORMAT)format, // Default DXGI_FORMAT_B8G8R8A8_UNORM
 			&m_pSharedTexture,
 			m_dxShareHandle, // Handle for receivers
-			m_bKeyed)) { // Keyed shared texture - default false
-			SpoutLogFatal("spoutGL::CreateInterop - sender CreateSharedDX11Texture failed");
-			DoDiagnostics("spoutGL::CreateInterop - sender LinkGLDXtextures failed");
-			return false;
+			false, false)) { // Keyed shared texture, NT handle - defaults false
+				SpoutLogFatal("spoutGL::CreateInterop - sender CreateSharedDX11Texture failed");
+				DoDiagnostics("spoutGL::CreateInterop - sender LinkGLDXtextures failed");
+				return false;
 		}
 		pLinkedTexture = m_pSharedTexture;
 	}
@@ -1112,7 +1265,7 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 		return false;
 	}
 
-	SpoutLogNotice("    m_pSharedTexture [0x%.7X] m_dxShareHandle [0x%.7X]", PtrToUint(pLinkedTexture), LOWORD(m_dxShareHandle));
+	SpoutLogNotice("    m_pSharedTexture [0x%.7X] m_dxShareHandle [0x%.7X] m_DX11format %d", PtrToUint(pLinkedTexture), LOWORD(m_dxShareHandle), m_DX11format);
 	SpoutLogNotice("    m_hInteropObject = 0x%.7X", LOWORD(m_hInteropObject));
 
 	// Update class dimensions
@@ -1636,7 +1789,7 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 	// Width and height are the used portion and only the used part is copied
 	if (TextureID == 0 && HostFBO >= 0) {
 		if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
-			// The input texture is attached to attachment point 0 of the fbo passed in
+			// The input texture is attached to attachment point 0 of the fbo passed in (HostFBO)
 			// Bind our local fbo for draw
 			glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, m_fbo);
 			// Draw to the first attachment point
@@ -1647,14 +1800,12 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 			status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 			if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 				if (m_bBLITavailable) {
-					if (bInvert) {
-						// copy from one framebuffer to the other while flipping upside down 
+					if (bInvert)
+						// Copy from one framebuffer to the other while flipping upside down 
 						glBlitFramebufferEXT(0, 0, width, height, 0, height, width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-					}
-					else {
+					else
 						// Do not flip during blit
 						glBlitFramebufferEXT(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-					}
 				}
 				else {
 					// No fbo blit extension
@@ -2455,7 +2606,7 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 			glGetTexImage(SourceTarget, 0, GLformat, GL_UNSIGNED_BYTE, (void *)src);
 			glBindTexture(SourceTarget, 0);
 
-			// Flip the buffer
+			// Flip the pixel buffer
 			spoutcopy.FlipBuffer(src, dest, width, height, GLformat);
 
 			delete[] src;
@@ -3783,12 +3934,11 @@ bool spoutGL::SetVerticalSync(int interval)
 //
 // Version number is retrieved from the registry at class initialization
 // Integer number 2005, 2006, 2007 etc. 0 for earlier than 2.005.
+// Set by the Spout installer for 2.005/2.006 or by SpoutSettings for 2.007 and later.
 //
-// Set by the Spout installer for 2.005/2.006 or by SpoutSettings for 2.007 and later. For example :
-//
-//    2007 (2.007) or 2007009 (2.007.009)
-//
-// Now replaced by std::string GetSDKversion() in SpoutUtils 
+// Registry version number now replaced by std::string GetSDKversion() in SpoutUtils
+// Version number is created in constructor
+// For example : 2007 (2.007) or 2007009 (2.007.009)
 //
 int spoutGL::GetSpoutVersion()
 {
@@ -3801,21 +3951,22 @@ int spoutGL::GetSpoutVersion()
 
 //---------------------------------------------------------
 // Function: CopyTexture
-// Copy OpenGL texture with optional invert
-// Textures must be the same size
+//   Copy OpenGL texture with optional invert
+//   Textures must be the same size.
+//
 bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	GLuint DestID, GLuint DestTarget, unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
 {
 	//
-	// Fbo blit
+	// Fbo blit (0.05 - 0.20 msec)
 	//
 
 	// Create an fbo if not already
 	if (m_fbo == 0)
 		glGenFramebuffersEXT(1, &m_fbo);
 
-	// bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
+	// Bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 
 	// Attach the Source texture to the color buffer in our frame buffer
@@ -3830,8 +3981,7 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 		if (m_bBLITavailable) {
 			if (bInvert) {
-				// Blit method 1920x1080 - 0.05 - 0.20 msec
-				// copy one texture buffer to the other while flipping upside down
+				// Copy one texture buffer to the other while flipping upside down
 				// (OpenGL and DirectX have different texture origins)
 				glBlitFramebufferEXT(0, 0, // srcX0, srcY0,
 					width, height,         // srcX1, srcY1
@@ -3865,140 +4015,19 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 
 	// Restore default draw
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-	// restore the previous fbo - default is 0
+
+	// Unbind the color attachments
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1, DestTarget, 0, 0);
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0, SourceTarget, 0, 0);
+
+	// Restore the previous fbo - default is 0
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
 
-	// Show errors
-	GLerror();
+	GLerror(); // Show errors
 
 	return true;
 
 } // end CopyTexture
-
-
-//---------------------------------------------------------
-// Function: SwapRGB
-// Swap texture red and blue (BRGA <> RGBA)
-bool spoutGL::SwapRGB(GLuint SourceID, unsigned int width, unsigned int height)
-{
-	return ComputeCopyTexture(SourceID, SourceID, width, height, false, true);
-}
-
-
-
-//---------------------------------------------------------
-// Function: ComputeCopyTexture
-// OpenGL texture copy using compute shader
-//    bInvert - flip image
-//    bSwap - swap red/blue (RGBA/BGRA)
-// Approximately X2 faster than FBO blit
-// Textures must have the same size and internal format GL_RGBA or GL_RGBA8
-// Texture targets can be different, GL_TEXTURE_2D or GL_TEXTURE_RECTANGLE_ARB
-// Cannot be used with GL/DX interop or glBindImageTexture fails
-//
-bool spoutGL::ComputeCopyTexture(GLuint SourceID, GLuint DestID,
-	unsigned int width, unsigned int height, bool bInvert, bool bSwap)
-{
-	if (SourceID == 0 || DestID == 0)
-		return false;
-
-	// Shader program name is global
-	if (!m_ComputeCopyProgram) {
-		m_ComputeCopyProgram = CreateComputeCopyShader(width, height);
-		if (!m_ComputeCopyProgram)
-			return false;
-	}
-
-	// Texture copy shader program
-	glUseProgram(m_ComputeCopyProgram);
-
-	// Update shader with new input texture
-	glBindImageTexture(0, SourceID, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA8);
-	glBindImageTexture(1, DestID,   0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
-
-	// Flip output option
-	glUniform1i(0, bInvert);
-
-	// Swap red/blue option
-	glUniform1i(1, bSwap);
-
-	// Use the shader with determined work group size (default 32x32)
-	glDispatchCompute(width/m_wgX, height/m_wgY, 1);
-
-	// Wait for the program to finish
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
-	glUseProgram(0);
-
-	return true;
-
-}
-
-
-//---------------------------------------------------------
-// Function: CreateComputeCopyShader
-// Create compute shader for OpenGL texture copy
-GLuint spoutGL::CreateComputeCopyShader(unsigned int width, unsigned int height)
-{
-	// Workgroup x and y sizes should match image width and height
-	m_wgX = width/(unsigned int)ceil((float)width/32.0f); // Default is 32x32
-	m_wgY = m_wgX * height / width; // adjust for aspect ratio
-
-	// Compute shader source
-	std::string shaderstr = "#version 440\n";
-	shaderstr += "layout(rgba8, binding=0) uniform readonly  image2D src;\n";
-	shaderstr += "layout(rgba8, binding=1) uniform writeonly image2D dst;\n";
-	shaderstr += "layout (location = 0) uniform bool flip;\n";
-	shaderstr += "layout (location = 1) uniform bool swap;\n";
-	shaderstr += "layout(local_size_x = ";
-	shaderstr += std::to_string(m_wgX);
-	shaderstr += ", local_size_y = ";
-	shaderstr += std::to_string(m_wgY);
-	shaderstr += ", local_size_z = 1) in;\n";
-	shaderstr += "void main() {\n";
-	shaderstr += "    vec4 c = imageLoad(src, ivec2(gl_GlobalInvocationID.xy));\n";
-	shaderstr += "    uint ypos = gl_GlobalInvocationID.y;\n";
-	// Flip image option
-	shaderstr += "    if(flip) ypos = imageSize(src).y-ypos;\n";
-	// Texture copy with output alpha = 1
-	// Swap red-blue option option RGBA<>BGRA
-	shaderstr += "    if(swap) {\n";
-	shaderstr += "        imageStore(dst, ivec2(gl_GlobalInvocationID.x, ypos), vec4(c.b,c.g,c.r,1.0));\n";
-	shaderstr += "    }\n";
-	shaderstr += "    else {\n";
-	shaderstr += "        imageStore(dst, ivec2(gl_GlobalInvocationID.x, ypos), vec4(c.r,c.g,c.b,1.0));\n";
-	shaderstr += "    }\n";
-	shaderstr += "}";
-
-	// Create the compute shader program
-	GLuint computeProgram = glCreateProgram();
-	if (computeProgram > 0) {
-		GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
-		if (computeShader > 0) {
-			// Compile and link shader
-			GLint status = 0;
-			const char* source = shaderstr.c_str();
-			glShaderSource(computeShader, 1, &source, NULL);
-			glCompileShader(computeShader);
-			glAttachShader(computeProgram, computeShader);
-			glLinkProgram(computeProgram);
-			glGetProgramiv(computeProgram, GL_LINK_STATUS, &status);
-			if (status == 0) {
-				// glGetProgramiv failed
-				glDetachShader(computeProgram, computeShader);
-				glDeleteProgram(computeShader);
-				glDeleteProgram(computeProgram);
-			}
-			else {
-				// After linking, the shader object is not needed
-				glDeleteShader(computeShader);
-				return computeProgram;
-			}
-		}
-	}
-	return 0;
-}
-
 
 //---------------------------------------------------------
 // Function: RemovePadding

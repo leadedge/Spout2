@@ -107,6 +107,10 @@ class SPOUT_DLLEXP SpoutReceiver {
 	void SetFrameSync(const char* SenderName);
 	// Wait or test for a sync event
 	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+	// Enable / disable frame sync
+	void EnableFrameSync(bool bSync = true);
+	// Check for frame sync option
+	bool IsFrameSyncEnabled();
 
 	//
 	// Data sharing
@@ -261,7 +265,23 @@ class SPOUT_DLLEXP SpoutReceiver {
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0);
 
-	
+	//
+	// Formats
+	//
+
+	// Get sender DX11 shared texture format
+	DXGI_FORMAT GetDX11format();
+	// Set sender DX11 shared texture format
+	void SetDX11format(DXGI_FORMAT textureformat);
+	// Return OpenGL compatible DX11 format
+	DXGI_FORMAT DX11format(GLint glformat);
+	// Return DX11 compatible OpenGL format
+	GLint GLDXformat(DXGI_FORMAT textureformat = DXGI_FORMAT_UNKNOWN);
+	// Return OpenGL texture internal format
+	GLint GLformat(GLuint TextureID, GLuint TextureTarget);
+	// Return OpenGL texture format description
+	std::string GLformatName(GLint glformat = 0);
+
 	//
 	// 2.006 compatibility
 	//

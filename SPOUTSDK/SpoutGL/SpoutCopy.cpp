@@ -68,7 +68,7 @@
 			   Add bSwapRG to rgba_to_rgb_sse3
 			   Remove rgba_to_bgr_sse3
 			   Add experimental rgb_to_bgra_sse3
-
+	Version 2.007.012
 
 */
 

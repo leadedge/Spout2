@@ -75,6 +75,9 @@
 //		03.11.22	- Add IsPreferenceAvailable
 //		07.11.22	- Add IsApplicationPath
 //		26.11.22	- Change SetVerticalSync argument to integer to allow adaptive vsync
+//	Version 2.007.012
+//		04.08.23	- Add format functions
+//		07.08.23	- Add frame sync option functions
 //
 // ====================================================================================
 /*
@@ -269,6 +272,19 @@ bool SpoutSender::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 {
 	return spout.WaitFrameSync(SenderName, dwTimeout);
 }
+
+//---------------------------------------------------------
+void SpoutSender::EnableFrameSync(bool bSync)
+{
+	spout.EnableFrameSync(bSync);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::IsFrameSyncEnabled()
+{
+	return spout.IsFrameSyncEnabled();
+}
+
 
 //
 // Data sharing
@@ -608,6 +624,47 @@ bool SpoutSender::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	return spout.CopyTexture(SourceID, SourceTarget, DestID, DestTarget,
 		width, height, bInvert, HostFBO);
 }
+
+//
+// Formats
+//
+
+//---------------------------------------------------------
+DXGI_FORMAT SpoutSender::GetDX11format()
+{
+	return spout.GetDX11format();
+}
+
+//---------------------------------------------------------
+void SpoutSender::SetDX11format(DXGI_FORMAT textureformat)
+{
+	spout.SetDX11format(textureformat);
+}
+
+//---------------------------------------------------------
+DXGI_FORMAT SpoutSender::DX11format(GLint glformat)
+{
+	return spout.DX11format(glformat);
+}
+
+//---------------------------------------------------------
+GLint SpoutSender::GLDXformat(DXGI_FORMAT textureformat)
+{
+	return spout.GLDXformat(textureformat);
+}
+
+//---------------------------------------------------------
+GLint SpoutSender::GLformat(GLuint TextureID, GLuint TextureTarget)
+{
+	return spout.GLformat(TextureID, TextureTarget);
+}
+
+//---------------------------------------------------------
+std::string SpoutSender::GLformatName(GLint glformat)
+{
+	return spout.GLformatName(glformat);
+}
+
 
 //
 // 2.006 compatibility

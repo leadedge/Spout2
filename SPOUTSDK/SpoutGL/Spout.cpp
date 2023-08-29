@@ -249,7 +249,7 @@
 //		08.03.23	- GetSenderAdapter use SetAdpater instead of SetAdapterPointer
 //		21.03.23	- ReceiveSenderData - use the format of the D3D11 texture generated
 //					  by OpenDX11shareHandle for incorrect sender information.
-//	Version 2.007.11
+//	Version 2.007.011
 //		22.04.23	- Minor code comments cleanup
 //		29.04.23	- ReceiveSenderData - test for incorrect sender dimensions
 //		07.05.23	- CheckSender - release interop device and object to re-create
@@ -260,6 +260,9 @@
 //					  and UNREFERENCED_PARAMETER (#PR93  Fix MinGW error(beta branch)
 //		22.07.23	- ReceiveSenderData -
 //					  ensure m_pSharedTexture is null if OpenSharedResource failed.
+//	Version 2.007.012
+//		03.08.23	- InitReceiver - set m_DX11format
+//		07.08.23	- Add frame sync option functions
 //
 // ====================================================================================
 /*
@@ -350,6 +353,7 @@ Spout::Spout()
 	// Adapter index and name are retrieved with create sender or receiver
 	m_AdapterName[0] = 0;
 	m_bAdapt = false; // Receiver adapt to the sender adapter
+
 }
 
 Spout::~Spout()
@@ -429,7 +433,7 @@ void Spout::SetSenderName(const char* sendername)
 //---------------------------------------------------------
 // Function: SetSenderFormat
 // Set the sender DX11 shared texture format
-//    Compatible formats - see SpoutGL::SetDX11format
+//    Compatible formats - see SpoutGL::SetDX11format(DXGI_FORMAT textureformat)
 void Spout::SetSenderFormat(DWORD dwFormat)
 {
 	m_dwFormat = dwFormat;
@@ -452,7 +456,6 @@ void Spout::ReleaseSender()
 		frame.CleanupFrameCount();
 		frame.CloseAccessMutex();
 		m_bInitialized = false;
-
 	}
 
 	// Close 2.006 or buffer shared memory if used
@@ -558,12 +561,7 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 	if (!CheckSender(width, height))
 		return false;
 
-	if (m_bTextureShare) {
-		
-		//
-		// if GL/DX interop compatible
-		//
-
+	if (m_bTextureShare) { // if GL/DX interop compatible
 		// Send OpenGL texture 
 		// 3840-2160 - 60fps (0.45 msec per frame)
 		return WriteGLDXtexture(TextureID, TextureTarget, width, height, bInvert, HostFBO);
@@ -597,6 +595,7 @@ bool Spout::SendImage(const unsigned char* pixels, unsigned int width, unsigned 
 		return false;
 
 	// Only RGBA, BGRA, RGB, BGR supported
+	// (DX11 format DXGI_FORMAT_B8G8R8A8_UNORM)
 	if (!(glFormat == GL_RGBA || glFormat == GL_BGRA_EXT || glFormat == GL_RGB || glFormat == GL_BGR_EXT))
 		return false;
 
@@ -705,6 +704,7 @@ bool Spout::GetGLDX()
 	return m_bSenderGLDX;
 }
 
+
 //
 // Group: Receiver
 //
@@ -787,6 +787,7 @@ void Spout::ReleaseReceiver()
 	m_bConnected = false;
 	m_bInitialized = false;
 
+
 }
 
 //---------------------------------------------------------
@@ -835,7 +836,6 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 	if (!OpenSpout()) {
 		return false;
 	}
-
 
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
@@ -1168,6 +1168,23 @@ bool Spout::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 	return frame.WaitFrameSync(SenderName, dwTimeout);
 }
 
+// -----------------------------------------------
+// Function: EnableFrameSync
+// Enable / disabley frame sync
+void Spout::EnableFrameSync(bool bSync)
+{
+	frame.EnableFrameSync(bSync);
+}
+
+// -----------------------------------------------
+// Function: IsFrameSyncEnabled
+// Check for frame sync option
+bool Spout::IsFrameSyncEnabled()
+{
+	return frame.IsFrameSyncEnabled();
+}
+
+
 //
 // Group: Sender names
 //
@@ -1465,6 +1482,7 @@ bool Spout::IsApplicationPath(const char* path)
 	return spoutdx.IsApplicationPath(path);
 }
 #endif
+
 
 //
 // Group: 2.006 compatibility
@@ -2293,6 +2311,7 @@ void Spout::InitReceiver(const char * SenderName, unsigned int width, unsigned i
 	m_Width = width;
 	m_Height = height;
 	m_dwFormat = dwFormat;
+	m_DX11format = (DXGI_FORMAT)m_dwFormat;
 
 	m_bInitialized = true;
 
@@ -2451,18 +2470,13 @@ bool Spout::ReceiveSenderData()
 				} // endif OpenDX11shareHandle fail
 
 			} // endif m_dxShareHandle valid
-
 			// For a null share handle from a 2.006 memoryshare sender
 			// ReceiveTexture and ReceiveImage will look for the shared memory map
-
 		} // endif changed share handle or sender name
-
 		return true;
-
 	} // endif find sender
 
 	// There is no sender or the connected sender closed
-
 	return false;
 
 }

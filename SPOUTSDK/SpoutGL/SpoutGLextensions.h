@@ -244,21 +244,51 @@ enum ExtLogLevel {
 // param[3] - largest auxiliary free block
 //
 #ifndef VBO_FREE_MEMORY_ATI
-#define VBO_FREE_MEMORY_ATI                     0x87FB
+#define VBO_FREE_MEMORY_ATI            0x87FB
 #endif
 
 #ifndef TEXTURE_FREE_MEMORY_ATI
-#define TEXTURE_FREE_MEMORY_ATI                 0x87FC
+#define TEXTURE_FREE_MEMORY_ATI        0x87FC
 #endif
 
 #ifndef RENDERBUFFER_FREE_MEMORY_ATI
-#define RENDERBUFFER_FREE_MEMORY_ATI            0x87FD
+#define RENDERBUFFER_FREE_MEMORY_ATI   0x87FD
 #endif
+
+// glext.h
+#define GL_TEXTURE_TARGET              0x1006
+
+// glext_1.h
+#define GL_TEXTURE_DEPTH               0x8071
+#define GL_TEXTURE_BUFFER_OFFSET       0x919D
+#define GL_TEXTURE_BUFFER_SIZE         0x919E
+
 
 // Define GL_BGRA in case it is used
 #ifndef GL_BGRA
-#define GL_BGRA 0x80E1
+#define GL_BGRA                        0x80E1
 #endif
+
+// OpenGL floating point formats
+
+// gl3.h
+#ifndef GL_RGBA16F
+#define GL_RGBA16F                     0x881A
+#endif
+
+#ifndef GL_RGB16F
+#define GL_RGB16F                      0x881B
+#endif
+
+// gl4.h
+#ifndef GL_RGBA32F
+#define GL_RGBA32F                     0x8814
+#endif
+
+#ifndef GL_RGB32F
+#define GL_RGB32F                      0x8815
+#endif
+
 
 //------------------------
 // EXTENSION SUPPORT FLAGS
@@ -366,6 +396,10 @@ extern PFNWGLDXUNLOCKOBJECTSNVPROC			wglDXUnlockObjectsNV;
 #define GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL_EXT         0x8CD2
 #define GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE_EXT 0x8CD3
 #define GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_3D_ZOFFSET_EXT    0x8CD4
+#define GL_COLOR_ATTACHMENT0                                0x8CE0
+#define GL_COLOR_ATTACHMENT1                                0x8CE1
+#define GL_COLOR_ATTACHMENT2                                0x8CE2
+#define GL_COLOR_ATTACHMENT3                                0x8CE3
 #define GL_FRAMEBUFFER_COMPLETE_EXT                         0x8CD5
 #define GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT            0x8CD6
 #define GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT    0x8CD7
@@ -407,6 +441,13 @@ extern PFNWGLDXUNLOCKOBJECTSNVPROC			wglDXUnlockObjectsNV;
 #define GL_STENCIL_INDEX16_EXT                              0x8D49
 #define GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT			0x8D56
 #define GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS_EXT			0x8DA8
+
+// gl3.h Read Format
+#define GL_IMPLEMENTATION_COLOR_READ_TYPE                   0x8B9A
+#define GL_IMPLEMENTATION_COLOR_READ_FORMAT                 0x8B9B
+
+#define GL_FRAMEBUFFER_DEFAULT_WIDTH      0x9310
+#define GL_FRAMEBUFFER_DEFAULT_HEIGHT     0x9311
 
 typedef void   (APIENTRY *glBindFramebufferEXTPROC)			(GLenum target, GLuint framebuffer);
 typedef void   (APIENTRY *glBindRenderbufferEXTPROC)		(GLenum target, GLuint renderbuffer);
@@ -576,6 +617,8 @@ typedef void * (APIENTRY *glMapBufferPROC) (GLenum target,  GLenum access);
 typedef void * (APIENTRY *glMapBufferRangePROC) (GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
 typedef GLboolean (APIENTRY *glUnmapBufferPROC) (GLenum target);
 typedef void   (APIENTRY *glGetBufferParameterivPROC) (GLenum target, GLenum value,	GLint * data);
+typedef void   (APIENTRY* glGetTextureParameterivPROC) (GLenum texture, GLenum value, GLint* data);
+
 
 extern glGenBuffersPROC		glGenBuffers;
 extern glDeleteBuffersPROC	glDeleteBuffers;
@@ -586,6 +629,7 @@ extern glMapBufferPROC		glMapBuffer;
 extern glMapBufferRangePROC	glMapBufferRange;
 extern glUnmapBufferPROC	glUnmapBuffer;
 extern glGetBufferParameterivPROC glGetBufferParameteriv;
+extern glGetTextureParameterivPROC glGetTextureParameteriv;
 
 // ------------------------------
 // SYNC objects
@@ -727,6 +771,9 @@ extern glImportMemoryWin32HandleEXTPROC glImportMemoryWin32HandleEXT;
 
 typedef void (APIENTRY* glBufferStorageMemEXTPROC) (GLenum target, GLsizeiptr size, GLuint memory, GLuint64 offset);
 extern glBufferStorageMemEXTPROC glBufferStorageMemEXT;
+
+typedef void (APIENTRY* glMemoryObjectParameterivEXTPROC) (GLuint memoryObject, GLenum pname, const GLint* params);
+extern glMemoryObjectParameterivEXTPROC glMemoryObjectParameterivEXT;
 
 typedef void (APIENTRY* glGetMemoryObjectParameterivEXTPROC) (GLuint memoryObject, GLenum pname, GLint* params);
 extern glGetMemoryObjectParameterivEXTPROC glGetMemoryObjectParameterivEXT;

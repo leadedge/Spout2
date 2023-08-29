@@ -52,7 +52,12 @@
 //			24.06.23	- Add glUniform1f
 //			14.07.23	- Add glMemoryBarrier
 //			21.07.23	- Add glGetMemoryObjectParameterivEXT
-//
+//	Version 2.007.012
+//			24.07.23	- Add glMemoryObjectParameterivEXT
+//			30.07.23	- Add GL_RGBA16F, GL_RGB16F, GL_RGBA32F, GL_RGB32F
+//			31.07.23	- Add defines
+//						  GL_IMPLEMENTATION_COLOR_READ_TYPE, GL_IMPLEMENTATION_COLOR_READ_FORMAT
+//			02.08.23	- Add glGetTextureParameteriv
 
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
 
@@ -135,6 +140,8 @@ glMapBufferPROC							glMapBuffer						= NULL;
 glMapBufferRangePROC					glMapBufferRange				= NULL;
 glUnmapBufferPROC						glUnmapBuffer					= NULL;
 glGetBufferParameterivPROC				glGetBufferParameteriv			= NULL;
+// Could be separated
+glGetTextureParameterivPROC             glGetTextureParameteriv         = NULL;
 glClientWaitSyncPROC					glClientWaitSync				= NULL;
 glDeleteSyncPROC						glDeleteSync					= NULL;
 glFenceSyncPROC							glFenceSync						= NULL;
@@ -172,10 +179,8 @@ glActiveTexturePROC      glActiveTexture    = NULL;
 glUniform1iPROC          glUniform1i        = NULL;
 glUniform1fPROC          glUniform1f        = NULL;
 glGetUniformLocationPROC glGetUniformLocation = NULL;
-
 glTextureStorage2DPROC   glTextureStorage2D  = NULL;
 glCreateTexturesPROC     glCreateTextures    = NULL;
-// glGetTexParameterivPROC  glGetTexParameteriv = NULL;
 
 glCreateMemoryObjectsEXTPROC      glCreateMemoryObjectsEXT = NULL;
 glDeleteMemoryObjectsEXTPROC      glDeleteMemoryObjectsEXT = NULL;
@@ -183,6 +188,7 @@ glTexStorageMem2DEXTPROC          glTexStorageMem2DEXT = NULL;
 glTextureStorageMem2DEXTPROC      glTextureStorageMem2DEXT = NULL;
 glImportMemoryWin32HandleEXTPROC  glImportMemoryWin32HandleEXT = NULL;
 glBufferStorageMemEXTPROC         glBufferStorageMemEXT = NULL;
+glMemoryObjectParameterivEXTPROC  glMemoryObjectParameterivEXT;
 glGetMemoryObjectParameterivEXTPROC glGetMemoryObjectParameterivEXT = NULL;
 
 
@@ -375,6 +381,7 @@ bool loadPBOextensions()
 	glMapBufferRange	= (glMapBufferRangePROC)wglGetProcAddress("glMapBufferRange");
 	glUnmapBuffer		= (glUnmapBufferPROC)wglGetProcAddress("glUnmapBuffer");
 	glGetBufferParameteriv = (glGetBufferParameterivPROC)wglGetProcAddress("glGetBufferParameteriv");
+	glGetTextureParameteriv = (glGetTextureParameterivPROC)wglGetProcAddress("glGetTextureParameteriv");
 	glClientWaitSync	= (glClientWaitSyncPROC)wglGetProcAddress("glClientWaitSync");
 	glDeleteSync		= (glDeleteSyncPROC)wglGetProcAddress("glDeleteSync");
 	glFenceSync			= (glFenceSyncPROC)wglGetProcAddress("glFenceSync");
@@ -383,7 +390,7 @@ bool loadPBOextensions()
 		&& glBindBuffer  != NULL && glBufferData     != NULL
 		&& glBufferStorage != NULL && glMapBuffer   != NULL
 		&& glMapBufferRange != NULL && glUnmapBuffer != NULL
-		&& glGetBufferParameteriv != NULL
+		&& glGetBufferParameteriv != NULL && glGetTextureParameteriv != NULL
 		&& glClientWaitSync != NULL && glDeleteSync != NULL && glFenceSync != NULL) {
 		return true;
 	}
@@ -470,6 +477,7 @@ bool loadComputeShaderExtensions()
 	glTextureStorageMem2DEXT     = (glTextureStorageMem2DEXTPROC)wglGetProcAddress("glTexStorageMem2DEXT");
 	glImportMemoryWin32HandleEXT = (glImportMemoryWin32HandleEXTPROC)wglGetProcAddress("glImportMemoryWin32HandleEXT");
 	glBufferStorageMemEXT        = (glBufferStorageMemEXTPROC)wglGetProcAddress("glBufferStorageMemEXT");
+	glMemoryObjectParameterivEXT = (glMemoryObjectParameterivEXTPROC)wglGetProcAddress("glMemoryObjectParameterivEXT");
 	glGetMemoryObjectParameterivEXT = (glGetMemoryObjectParameterivEXTPROC)wglGetProcAddress("glGetMemoryObjectParameterivEXT");
 
 
@@ -500,6 +508,7 @@ bool loadComputeShaderExtensions()
 		&& glTextureStorageMem2DEXT != NULL
 		&& glImportMemoryWin32HandleEXT != NULL
 		&& glBufferStorageMemEXT != NULL
+		&& glMemoryObjectParameterivEXT != NULL
 		&& glGetMemoryObjectParameterivEXT != NULL) {
 			return true;
 	}
