@@ -135,6 +135,7 @@
 //					  Retain option in SpoutDirectX CreateSharedDX11Texture.
 //		04.08.23	- Correct unused m_bKeyed argument for CreateSharedDX11Texture
 //		28.08.23	- Add ReadTexurePixels utility function
+//		30.08.23	- Add include path prefix define in header file
 //
 // ====================================================================================
 /*

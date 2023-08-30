@@ -32,13 +32,30 @@
 #ifndef __spoutDX__
 #define __spoutDX__
 
-// Change the path as required
+//
+// Change the path as necessary
+//
+// For the repository folder structure, the path prefix is "..\..\SpoutGL\"
+// If the include files are in the same folder there is no prefix.
+// If the files are in a different folder, change the prefix as required.
+//
+#define PATH_PREFIX
+
+#ifdef PATH_PREFIX
+#include "..\..\SpoutGL\SpoutCommon.h" // for dll build
+#include "..\..\SpoutGL\SpoutSenderNames.h" // for sender creation and update
+#include "..\..\SpoutGL\SpoutDirectX.h" // for creating DX11 textures
+#include "..\..\SpoutGL\SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "..\..\SpoutGL\SpoutCopy.h" // for pixel copy
+#include "..\..\SpoutGL\SpoutUtils.h" // Registry utiities
+#else
 #include "SpoutCommon.h" // for dll build
 #include "SpoutSenderNames.h" // for sender creation and update
 #include "SpoutDirectX.h" // for creating DX11 textures
 #include "SpoutFrameCount.h" // for mutex lock and new frame signal
 #include "SpoutCopy.h" // for pixel copy
 #include "SpoutUtils.h" // Registry utiities
+#endif
 
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
