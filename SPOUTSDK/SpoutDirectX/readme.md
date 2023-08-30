@@ -85,7 +85,12 @@ For example, for SpoutDX :
 - include the files listed above in the same folder.
 - edit SpoutDX.h for include paths to refer to the local files.
 
-Change :
+For convenience there is a path prefix definition in SpoutDX.h
+
+#define PATH_PREFIX
+
+For the repository folder structure this should be defined.\
+The path prefix is "..\..\SpoutGL\"
 
     #include "..\..\SpoutGL\SpoutCommon.h"
     #include "..\..\SpoutGL\SpoutSenderNames.h"
@@ -94,7 +99,8 @@ Change :
     #include "..\..\SpoutGL\SpoutCopy.h"
     #include "..\..\SpoutGL\SpoutUtils.h"
 
-To :
+Comment out the definition if the include files are in the same folder.\
+There is no path prefix.
 
     #include "SpoutCommon.h"
     #include "SpoutSenderNames.h"
