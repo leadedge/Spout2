@@ -5,59 +5,51 @@ Update Master from Beta branch.
     Version 2.007.012
 
 Spout.cpp
-03.08.23	- InitReceiver - set m_DX11format
-07.08.23	- Add frame sync option functions
+- 03.08.23	- InitReceiver - set m_DX11format
+- 07.08.23	- Add frame sync option functions
 		   
 SpoutDirectX.cpp
-07.08.23	- Comment out code for debug layers
+- 07.08.23	- Comment out code for debug layers
 
 SpoutFrameCount.cpp
-03.08.23	- EnableFrameCount, CreateAccessMutex - revise logs
-06.08.23	- Add m_SystemFps to avoid repeated calls to GetRefreshRate()
-07.08.23	- Add EnableFrameSync/IsFrameSyncEnabled and global option flag
-		      EnableFrameCount - correct semapohore name
-08.08.23	- EnableFrameSync - close sync event on disable
-09.08.23	- WaitFrameSync remove warning log if event not found
-			  Change timeout log from error to warning
-13.08.23	- EnableFrameCount - correct semaphore name
+- 03.08.23	- EnableFrameCount, CreateAccessMutex - revise logs
+- 06.08.23	- Add m_SystemFps to avoid repeated calls to GetRefreshRate()
+- 07.08.23	- Add EnableFrameSync/IsFrameSyncEnabled and global option flag\
+		  EnableFrameCount - correct semapohore name
+- 08.08.23	- EnableFrameSync - close sync event on disable
+- 09.08.23	- WaitFrameSync remove warning log if event not found\
+		  Change timeout log from error to warning
+- 13.08.23	- EnableFrameCount - correct semaphore name
 
 SpoutGL.cpp
-24.07.23	- Remove  global m_bKeyed flag
-31.07.23	- Add OpenGL format functions
-04.08.23	- Remove unused compute shaders
-28.08.23	- UnloadTexturePixels public
+- 24.07.23	- Remove  global m_bKeyed flag
+- 31.07.23	- Add OpenGL format functions
+- 04.08.23	- Remove unused compute shaders
+- 28.08.23	- UnloadTexturePixels public
 
 SpoutGLextensions.cpp
-24.07.23	- Add glMemoryObjectParameterivEXT
-30.07.23	- Add GL_RGBA16F, GL_RGB16F, GL_RGBA32F, GL_RGB32F
-31.07.23	- Add defines
-			  GL_IMPLEMENTATION_COLOR_READ_TYPE, GL_IMPLEMENTATION_COLOR_READ_FORMAT
-02.08.23	- Add glGetTextureParameteriv
+- 24.07.23	- Add glMemoryObjectParameterivEXT
+- 30.07.23	- Add GL_RGBA16F, GL_RGB16F, GL_RGBA32F, GL_RGB32F
+- 31.07.23	- Add defines\
+		GL_IMPLEMENTATION_COLOR_READ_TYPE, GL_IMPLEMENTATION_COLOR_READ_FORMAT
+- 02.08.23	- Add glGetTextureParameteriv
 
-SpoutReceiver.cpp
+SpoutReceiver.cpp\
 SpoutSender.cpp
-04.08.23	- Add format functions
-07.08.23	- Add frame sync option functions
-
-SpoutSenderNames.cpp
-- 13.07.23 - setActiveSenderName - close any existing active sender map
-
-SpoutSharedMemory.cpp
-- 12.05.23 - Create and Open - Clear ERROR_ALREADY_EXISTS to avoid detection elsewhere.
+- 04.08.23	- Add format functions
+- 07.08.23	- Add frame sync option functions
 
 SpoutUtils.cpp
-01.08.23 - Add MessageTaskDialog instead of dependence on SpoutPanel
-04.08.23 - const WCHAR* in MessageTaskDialog
-13.08.23 - MessageTaskDialog - remove MB_TOPMOST
-20.08.23 - Change TaskdialogcallbackProc to TDcallbackProc to avoid naming conflicts
-21.08.23 - MessageTaskDialog - Restore topmost function
-		   Change bTopmost to bTopMost to avoid naming conflicts
-23.08.23 - MessageTaskDialog - Fixed topmost recover for calling application
-26.08.23 - PFTASKDIALOGCALLBACK cast for TDcallbackProc
-04.09.23 - MessageTaskDialog - add MB_ICONINFORMATION option. Default no icon.
-		   Add MB_ICONSTOP and MB_ICONHAND. MB_TOPMOST flag removal only if specified.
-05.09.23 - Add SpoutMessageBoxIcon for custom icon
-
+- 01.08.23 - Add MessageTaskDialog instead of dependence on SpoutPanel
+- 04.08.23 - const WCHAR* in MessageTaskDialog
+- 13.08.23 - MessageTaskDialog - remove MB_TOPMOST
+- 20.08.23 - Change TaskdialogcallbackProc to TDcallbackProc to avoid naming conflicts
+- 21.08.23 - MessageTaskDialog - Restore topmost function\
+	Change bTopmost to bTopMost to avoid naming conflicts
+- 23.08.23 - MessageTaskDialog - Fixed topmost recover for calling application
+- 26.08.23 - PFTASKDIALOGCALLBACK cast for TDcallbackProc
+- 04.09.23 - MessageTaskDialog - add MB_ICONINFORMATION option. Default no icon. Add MB_ICONSTOP and MB_ICONHAND. MB_TOPMOST flag removal only if specified.
+- 05.09.23 - Add SpoutMessageBoxIcon for custom icon
 
 ============================================\
 23.07.23\
