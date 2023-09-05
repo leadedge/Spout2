@@ -213,9 +213,10 @@ namespace spoututils {
 	// Replaces an existing MessageBox call.
 	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
 
-	// LJ DEBUG
-	// Custom icon for SpoutMessageBox
+	// Custom icon for SpoutMessageBox from resources
 	void SPOUT_DLLEXP SpoutMessageBoxIcon(HICON hIcon);
+
+	// Custom icon for SpoutMessageBox from file
 	bool SPOUT_DLLEXP SpoutMessageBoxIcon(std::string iconfile);
 
 	//
@@ -292,6 +293,8 @@ namespace spoututils {
 		HWND TaskHwnd = NULL;
 		HWND hwndTop = NULL;
 		bool bTopMost = false;
+		// For custom icon
+		HICON hTaskIcon = NULL;
 	}
 
 }
