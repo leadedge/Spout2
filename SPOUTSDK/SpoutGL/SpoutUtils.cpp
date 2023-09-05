@@ -139,6 +139,8 @@
 				   Change bTopmost to bTopMost to avoid naming conflicts
 		23.08.23 - MessageTaskDialog - Fixed topmost recover for calling application
 		26.08.23 - PFTASKDIALOGCALLBACK cast for TDcallbackProc
+		04.09.23 - MessageTaskDialog - add MB_ICONINFORMATION option. Default no icon.
+				   Add MB_ICONSTOP and MB_ICONHAND. MB_TOPMOST flag removal only if specified.
 
 */
 
@@ -1528,7 +1530,9 @@ namespace spoututils {
 
 			// Topmost global flag
 			bTopMost = ((dwButtons & MB_TOPMOST) != 0);
-			LONG dwl = (LONG)dwButtons ^ MB_TOPMOST;
+			LONG dwl = (LONG)dwButtons;
+			if(bTopMost)
+				dwl = dwl ^ MB_TOPMOST;
 
 			// https://learn.microsoft.com/en-us/windows/win32/api/commctrl/nf-commctrl-taskdialog
 			// TDCBF_OK_BUTTON 1
@@ -1547,6 +1551,10 @@ namespace spoututils {
 			else
 				dwCommonButtons = MB_OK;
 
+			// Icons available
+			// TD_WARNING_ICON, TD_ERROR_ICON, TD_INFORMATION_ICON, TD_SHIELD_ICON
+			//
+			// Icons to allow for
 			// MB_ICONEXCLAMATION
 			// MB_ICONWARNING
 			// MB_ICONINFORMATION
@@ -1555,33 +1563,28 @@ namespace spoututils {
 			// MB_ICONSTOP
 			// MB_ICONERROR
 			// MB_ICONHAND
-			// TD_WARNING_ICON , TD_ERROR_ICON, TD_INFORMATION_ICON, TD_SHIELD_ICON      
-			WCHAR* wMainIcon = TD_INFORMATION_ICON;
-			const WCHAR* wMainInstruction = L"Information";
+			WCHAR* wMainIcon = nullptr; // Default no icon
+			const WCHAR* wMainInstruction = nullptr; // No instruction
 
 			if ((dwl ^ MB_ICONERROR) == 0) {
-				wMainIcon = TD_SHIELD_ICON;
+				wMainIcon = TD_ERROR_ICON;
 				wMainInstruction = L"Error";
 			}
-			if ((dwl ^ MB_ICONWARNING) == 0) {
+			else if ((dwl ^ MB_ICONSTOP) == 0 || (dwl ^ MB_ICONHAND) == 0) {
+				wMainIcon = TD_ERROR_ICON;
+				wMainInstruction = L"Stop";
+			}
+			else if ((dwl ^ MB_ICONWARNING) == 0 || (dwl ^ MB_ICONEXCLAMATION) == 0) {
 				wMainIcon = TD_WARNING_ICON;
 				wMainInstruction = L"Warning";
 			}
-			if ((dwl ^ MB_ICONEXCLAMATION) == 0) {
-				wMainIcon = TD_WARNING_ICON;
-				wMainInstruction = L"Warning";
-			}
-			if ((dwl ^ MB_YESNOCANCEL) == 0) {
+			else if ((dwl ^ MB_YESNOCANCEL) == 0 || (dwl ^ MB_YESNO) == 0 || (dwl ^ MB_ICONQUESTION) == 0) {
 				wMainIcon = TD_INFORMATION_ICON;
 				wMainInstruction = L"Question";
 			}
-			if ((dwl ^ MB_YESNO) == 0) {
+			else if ((dwl ^ MB_ICONINFORMATION) == 0) {
 				wMainIcon = TD_INFORMATION_ICON;
-				wMainInstruction = L"Question";
-			}
-			if ((dwl ^ MB_ICONQUESTION) == 0) {
-				wMainIcon = TD_INFORMATION_ICON;
-				wMainInstruction = L"Question";
+				wMainInstruction = L"Information";
 			}
 
 			int nButtonPressed        = 0;
@@ -1590,7 +1593,7 @@ namespace spoututils {
 			config.cbSize             = sizeof(config);
 			config.hwndParent         = NULL;
 			config.hInstance          = hInst;
-			config.pszWindowTitle = wstrCaption.c_str();
+			config.pszWindowTitle     = wstrCaption.c_str();
 			config.pszMainIcon        = wMainIcon;
 			config.pszMainInstruction = wMainInstruction;
 			config.pszContent         = wstrTemp.c_str();
