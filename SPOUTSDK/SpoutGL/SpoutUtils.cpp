@@ -141,7 +141,7 @@
 		26.08.23 - PFTASKDIALOGCALLBACK cast for TDcallbackProc
 		04.09.23 - MessageTaskDialog - add MB_ICONINFORMATION option. Default no icon.
 				   Add MB_ICONSTOP and MB_ICONHAND. MB_TOPMOST flag removal only if specified.
-		05.09.23 - Add SpoutMessageBox icon for custom icon
+		05.09.23 - Add SpoutMessageBoxIcon for custom icon
 
 */
 
