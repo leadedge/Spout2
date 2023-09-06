@@ -36,6 +36,7 @@ class ofApp : public ofBaseApp{
 		SpoutSender sender;            // Spout sender object
 		char sendername[256]{};        // Sender name
 		double g_SenderFps = 0.0;      // For fps display averaging
+		GLint glFormat = GL_RGBA;      // Default OpenGL texture format
 
 		ofImage myBoxImage;            // Image for the 3D demo
 		ofFbo myFbo;                   // For texture send example

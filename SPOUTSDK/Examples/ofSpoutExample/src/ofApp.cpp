@@ -117,6 +117,23 @@ void ofApp::setup(){
 	// with ofSetFrameRate. Applications without such frame rate
 	// control can use Spout "HoldFps" (see Draw())
 
+	//
+	// Set sender application OpenGL format
+	//
+	//       OpenGL                             Compatible DX11 format
+	//       GL_RGBA16    16 bit				(DXGI_FORMAT_R16G16B16A16_UNORM)			
+	//       GL_RGBA16F   16 bit float			(DXGI_FORMAT_R16G16B16A16_FLOAT)
+	//       GL_RGBA32F   32 bit float			(DXGI_FORMAT_R32G32B32A32_FLOAT)
+	//       GL_RGB10_A2  10 bit 2 bit alpha	(DXGI_FORMAT_R10G10B10A2_UNORM)
+	//       GL_RGBA       8 bit                (DXGI_FORMAT_R8G8B8A8_UNORM)
+	//
+	// glFormat = GL_RGB16; // Example 16 bit rgba
+	//
+	// Set a compatible DirectX 11 shared texture format for the sender
+	// so that receivers get a texture with the same format.
+	// Note that some applications may not receive other formats.
+	// sender.SetSenderFormat(sender.DX11format(glFormat));
+
 	// ----------------------------------------------
 
 	// 3D drawing setup for the demo 
@@ -233,7 +250,12 @@ void ofApp::draw() {
 		std::string str = "Sending as : ";
 		str += sender.GetName(); str += " (";
 		str += ofToString(sender.GetWidth()); str += "x";
-		str += ofToString(sender.GetHeight()); str += ")";
+		str += ofToString(sender.GetHeight()); str += ") ";
+		// Sender OpenGL texture format description
+		// for 16 bit and floating point types
+		GLint glformat = sender.GLDXformat();
+		if (glformat != GL_RGBA)
+			str += sender.GLformatName(sender.GLDXformat());
 		// Show sender fps and framecount if available
 		if (sender.GetFrame() > 0) {
 			str += " fps ";
