@@ -35,38 +35,33 @@ void ofApp::setup(){
 	//
 
 	// Logging (see sender example)
-	// OpenSpoutConsole(); // for debugging when a console is not availlable
-	EnableSpoutLog(); // Spout logging to console
+	// OpenSpoutConsole(); // for when a console is not available (see main.cpp)
+	// EnableSpoutLog(); // Spout logging to console
 
-	// Specify the sender to connect to.
+	// Option - specify the sender to connect to.
 	// The application will not connect to any other unless the user selects one.
 	// If that sender closes, the application will wait for the nominated sender to open.
 	// receiver.SetReceiverName("Spout Demo Sender");
 
-	ofSetWindowTitle("OpenGL Receiver Example");
+	ofSetWindowTitle("Spout Graphics Receiver");
 
 	ofBackground(0, 0, 0);
 
 	// Allocate an RGBA texture to receive from the sender
-	// It is resized later to match the sender - see Update()
+	// It is resized later to match the size and format of the sender - see IsUpdated()
 	myTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 
 	// Allocate an RGB image for this example
 	// it can also be RGBA, BGRA or BGR
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
 
+
 } // end setup
 
 
 //--------------------------------------------------------------
 void ofApp::update() {
-	// If IsUpdated() returns true, the sender size has changed
-	// and the receiving texture or pixel buffer must be re-sized.
-	if (receiver.IsUpdated()) {
-		myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), GL_RGBA);
-		// Also resize the image for this example
-		myImage.resize(receiver.GetSenderWidth(), receiver.GetSenderHeight());
-	}
+
 }
 
 //--------------------------------------------------------------
@@ -89,31 +84,50 @@ void ofApp::draw() {
 	//		bool IsConnected();
 	//
 
-	/*
 	// Option 1 : Receive texture
 	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
+		// Update the receiving texture if the received size has changed
+		if (receiver.IsUpdated()) {
+			GLint glformat = GL_RGBA; // Receiving texture format
+			//
+			// Option
+			//
+			// Allocate the receiving texture with an OpenGL format
+			// compatible with the sender DirectX shared texture format.
+			// glformat = receiver.GLDXformat();
+			//
+			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), glformat);
+			return; // Return now because the texture will empty
+		}
+
 		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
-	*/
 
 	// Option 2 : Receive pixel data
 	// Specify RGB for this example. Default is RGBA.
 	/*
 	if (receiver.ReceiveImage(myImage.getPixels().getData(), GL_RGB)) {
+		// Update the receiving image if the received size has changed
+		if (receiver.IsUpdated()) {
+			myImage.resize(receiver.GetSenderWidth(), receiver.GetSenderHeight());
+			return; // Return now because the image will empty
+		}
 		// ofImage update is necessary because the pixels have been changed
 		myImage.update();
 		myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
 	*/
 	
+	/*
 	// Option 3 : Receive an OpenGL shared texture to access directly.
 	// Only if compatible for GL/DX interop or else BindSharedTexture fails.
 	// For this example, copy from the shared texture. For other applications
 	// the texture binding may be used directly for rendering.
 	if (receiver.ReceiveTexture()) {
-		// Update the local texture if the received size has changed
+		// Update the receiving texture if the received size has changed
 		if (receiver.IsUpdated()) {
 			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), GL_RGBA);
+			return; // Return now because the texture will empty
 		}
 		// Bind to get access to the shared texture
 		if (receiver.BindSharedTexture()) {
@@ -128,6 +142,7 @@ void ofApp::draw() {
 			receiver.UnBindSharedTexture();
 		}
 	}
+	*/
 
 	// On-screen display
 	showInfo();
@@ -165,7 +180,6 @@ void ofApp::showInfo() {
 			str += to_string(receiver.GetSenderFrame()); // frame since the sender started
 		}
 		str += ") ";
-		
 		ofDrawBitmapString(str, 10, 20);
 	}
 	else {
@@ -245,6 +259,7 @@ void ofApp::keyPressed(int key) {
 			receiver.SetActiveSender(SenderName);
 			// Change to the active sender
 			receiver.SetReceiverName();
+			// Option
 			// Change to it and lock to that sender
 			// receiver.SetReceiverName(SenderName);
 		}
