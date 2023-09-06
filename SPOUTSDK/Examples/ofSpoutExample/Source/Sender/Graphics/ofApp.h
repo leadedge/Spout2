@@ -35,9 +35,9 @@ class ofApp : public ofBaseApp{
 
 		SpoutSender sender;            // Spout sender object
 		char sendername[256]{};        // Sender name
-		unsigned int senderwidth = 0;  // Dimensions of the sender can be independent
-		unsigned int senderheight = 0; // of the application window if using an fbo
 		double g_SenderFps = 0.0;      // For fps display averaging
+		GLint glFormat = GL_RGBA;      // Default OpenGL texture format
+
 		ofImage myBoxImage;            // Image for the 3D demo
 		ofFbo myFbo;                   // For texture send example
 		ofPixels myPixels;             // For pixel send example
