@@ -142,6 +142,12 @@
 		04.09.23 - MessageTaskDialog - add MB_ICONINFORMATION option. Default no icon.
 				   Add MB_ICONSTOP and MB_ICONHAND. MB_TOPMOST flag removal only if specified.
 		05.09.23 - Add SpoutMessageBoxIcon for custom icon
+		07.09.23 - Add round to ElapsedMicroseconds
+		08.09.23 - Check TDN_CREATED for taskdialog topmost
+		11.09.23 - MessageTaskDialog - correct button and icon type detection
+				 - Allow for NULL caption
+		12.09.23 - Add SpoutMessageBox overload including main instruction large text
+				 - Correct missing SPOUT_DLLEXP for SpoutMessageBox standard function
 
 */
 
@@ -827,13 +833,32 @@ namespace spoututils {
 	// Messagebox with standard arguments and optional timeout
 	//
 	// Replaces an existing MessageBox call.
-	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
+	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
 	{
 		// hwnd no longer used with taskdialog
 		// Quiet unreferenced parameter
 		hwnd = hwnd; 
 		return MessageTaskDialog(NULL, message, caption, uType, dwMilliseconds);
 	}
+
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBox
+	//
+	// MessageBox dialog with standard arguments
+	// including taskdialog main instruction large text
+	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
+	{
+		hwnd = hwnd;
+
+		// Set global main instruction
+		int size_needed = MultiByteToWideChar(CP_UTF8, 0, instruction, (int)strlen(instruction), NULL, 0);
+		wstrInstruction.resize(size_needed);
+		MultiByteToWideChar(CP_UTF8, 0, instruction, (int)strlen(instruction), &wstrInstruction[0], size_needed);
+
+		return MessageTaskDialog(NULL, message, caption, uType, dwMilliseconds);
+	}
+
+
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxIcon
@@ -1148,9 +1173,8 @@ namespace spoututils {
 	{
 		const std::chrono::system_clock::time_point timenow = std::chrono::system_clock::now();
 		const std::chrono::system_clock::duration duration = timenow.time_since_epoch();
-		double timestamp = 0;
-		timestamp = static_cast<double>(duration.count()); // nsec/100 - duration period is 100 nanoseconds
-		return timestamp / 10.0; // microseconds
+		double timestamp = static_cast<double>(duration.count()); // nsec/100 - duration period is 100 nanoseconds
+		return round(timestamp / 10.0); // microseconds
 	}
 #else
 	// Start timing period
@@ -1532,13 +1556,12 @@ namespace spoututils {
 			MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), &wstrTemp[0], size_needed);
 
 			// Caption
-			size_needed = MultiByteToWideChar(CP_UTF8, 0, caption, (int)strlen(caption), NULL, 0);
-			std::wstring wstrCaption(size_needed, 0);
+			// Default caption is the executable name
+			std::wstring wstrCaption;
 			if (caption) {
+				size_needed = MultiByteToWideChar(CP_UTF8, 0, caption, (int)strlen(caption), NULL, 0);
+				wstrCaption.resize(size_needed);
 				MultiByteToWideChar(CP_UTF8, 0, caption, (int)strlen(caption), &wstrCaption[0], size_needed);
-			}
-			else {
-				wstrCaption = L" ";
 			}
 
 			// Hyperlinks can be included in the content using HTML format.
@@ -1553,63 +1576,70 @@ namespace spoututils {
 				dwl = dwl ^ MB_TOPMOST;
 
 			// https://learn.microsoft.com/en-us/windows/win32/api/commctrl/nf-commctrl-taskdialog
-			// TDCBF_OK_BUTTON 1
-			// TDCBF_YES_BUTTON 2
-			// TDCBF_NO_BUTTON 4
+			// TDCBF_OK_BUTTON     1
+			// TDCBF_YES_BUTTON    2
+			// TDCBF_NO_BUTTON     4
 			// TDCBF_CANCEL_BUTTON 8
+			// MB_OK          0x00
+			// MB_OKCANCEL    0x01
+			// MB_YESNOCANCEL 0x03
+			// MB_YESNO       0x04
 			DWORD dwCommonButtons = MB_OK;
-			if ((dwl ^ MB_OK) == 0)
-				dwCommonButtons = MB_OK;
-			else if ((dwl ^ MB_OKCANCEL) == 0)
-				dwCommonButtons = TDCBF_OK_BUTTON | TDCBF_CANCEL_BUTTON;
-			else if ((dwl ^ MB_YESNOCANCEL) == 0)
-				dwCommonButtons = TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON;
-			else if ((dwl ^ MB_YESNO) == 0)
+			DWORD dwb = dwl & 0x0F; // buttons
+			if (dwb == MB_YESNO) { // 4
 				dwCommonButtons = TDCBF_YES_BUTTON | TDCBF_NO_BUTTON;
-			else
+			}
+			else if (dwb == MB_YESNOCANCEL) { // 3
+				dwCommonButtons = TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON;
+			}
+			else if (dwb == MB_OKCANCEL) { // 1
+				dwCommonButtons = TDCBF_OK_BUTTON | TDCBF_CANCEL_BUTTON;
+			}
+			else {
 				dwCommonButtons = MB_OK;
-
+			}
+			
 			// Icons available
 			// TD_WARNING_ICON, TD_ERROR_ICON, TD_INFORMATION_ICON, TD_SHIELD_ICON
 			//
 			// Icons to allow for
-			// MB_ICONEXCLAMATION
-			// MB_ICONWARNING
-			// MB_ICONINFORMATION
-			// MB_ICONASTERISK
-			// MB_ICONQUESTION
-			// MB_ICONSTOP
-			// MB_ICONERROR
-			// MB_ICONHAND
+			// MB_ICONSTOP         0x10
+			// MB_ICONERROR        0x10
+			// MB_ICONHAND         0x10
+			// MB_ICONQUESTION     0x20
+			// MB_ICONEXCLAMATION  0x30
+			// MB_ICONWARNING      0x30
+			// MB_ICONINFORMATION  0x40
+			// MB_ICONASTERISK     0x40
+			// MB_USERICON         0x80
+
 			HICON hMainIcon = NULL; // No user icon
 			WCHAR* wMainIcon = nullptr; // No resource icon
-			const WCHAR* wMainInstruction = nullptr; // No instruction
 
-			if ((dwl ^ MB_ICONERROR) == 0) {
-				wMainIcon = TD_ERROR_ICON;
-				wMainInstruction = L"Error";
+			dwl = dwl & 0xF0; // remove buttons for icons
+			switch(dwl) {
+				case MB_USERICON: // 0x80
+					// Private SpoutUtils icon handle set by SpoutMessageBoxIcon
+					hMainIcon = hTaskIcon;
+					wMainIcon = nullptr;
+					break;
+				case MB_ICONINFORMATION: // 0x40
+					wMainIcon = TD_INFORMATION_ICON;
+					break;
+				case MB_ICONWARNING: // 0x30
+					wMainIcon = TD_WARNING_ICON;
+					break;
+				case MB_ICONQUESTION: // 0x20
+					wMainIcon = TD_INFORMATION_ICON;
+					break;
+				case MB_ICONERROR: // 0x10
+					wMainIcon = TD_ERROR_ICON;
+					break;
+				default:
+					wMainIcon = nullptr;
+					break;
 			}
-			else if ((dwl ^ MB_ICONSTOP) == 0 || (dwl ^ MB_ICONHAND) == 0) {
-				wMainIcon = TD_ERROR_ICON;
-				wMainInstruction = L"Stop";
-			}
-			else if ((dwl ^ MB_ICONWARNING) == 0 || (dwl ^ MB_ICONEXCLAMATION) == 0) {
-				wMainIcon = TD_WARNING_ICON;
-				wMainInstruction = L"Warning";
-			}
-			else if ((dwl ^ MB_YESNOCANCEL) == 0 || (dwl ^ MB_YESNO) == 0 || (dwl ^ MB_ICONQUESTION) == 0) {
-				wMainIcon = TD_INFORMATION_ICON;
-				wMainInstruction = L"Question";
-			}
-			else if ((dwl ^ MB_ICONINFORMATION) == 0) {
-				wMainIcon = TD_INFORMATION_ICON;
-				wMainInstruction = L"Information";
-			}
-			else if ((dwl ^ MB_USERICON) == 0) {
-				// Private SpoutUtils icon handle set by SpoutMessageBoxIcon
-				hMainIcon = hTaskIcon;
-				wMainIcon = nullptr;
-			}
+
 
 			int nButtonPressed        = 0;
 			int nRadioButton          = 0;
@@ -1621,7 +1651,7 @@ namespace spoututils {
 			config.hMainIcon          = hMainIcon;
 			if (!hMainIcon)
 				config.pszMainIcon    = wMainIcon; // Important to remove this
-			config.pszMainInstruction = wMainInstruction;
+			config.pszMainInstruction = wstrInstruction.c_str();
 			config.pszContent         = wstrTemp.c_str();
 			config.dwCommonButtons    = dwCommonButtons;
 			config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
@@ -1653,6 +1683,9 @@ namespace spoututils {
 				SetWindowPos(hwndTop, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			}
 
+			// Clear global main instruction
+			wstrInstruction.clear();
+
 			// IDCANCEL, IDNO, IDOK, IDRETRY, IDYES
 			return nButtonPressed;
 
@@ -1661,9 +1694,11 @@ namespace spoututils {
 		HRESULT TDcallbackProc(HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
 		{
 			// Topmost
-			if (bTopMost && TaskHwnd == NULL) {
-				TaskHwnd = hwnd;
-				SetWindowPos(TaskHwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+			if (uNotification == TDN_CREATED) {
+				if (bTopMost && TaskHwnd == NULL) {
+					TaskHwnd = hwnd;
+					SetWindowPos(TaskHwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+				}
 			}
 
 			// Timeout
