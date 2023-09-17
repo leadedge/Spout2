@@ -136,6 +136,7 @@
 //		04.08.23	- Correct unused m_bKeyed argument for CreateSharedDX11Texture
 //		28.08.23	- Add ReadTexurePixels utility function
 //		30.08.23	- Add include path prefix define in header file
+//		16.09.23	- SendTexture with offsets - check the texture and region sizes
 //
 // ====================================================================================
 /*
@@ -538,12 +539,18 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture,
 
 	// Get the region to copy
 	D3D11_BOX sourceRegion={};
-	sourceRegion.left = xoffset;
-	sourceRegion.right = xoffset+width;
-	sourceRegion.top = yoffset;
-	sourceRegion.bottom = yoffset+height;
-	sourceRegion.front = 0;
-	sourceRegion.back = 1;
+	sourceRegion.left    = xoffset;
+	sourceRegion.right   = xoffset+width;
+	sourceRegion.top     = yoffset;
+	sourceRegion.bottom  = yoffset+height;
+	sourceRegion.front   = 0;
+	sourceRegion.back    = 1;
+
+	// Check the texture and region sizes
+	if ((sourceRegion.right-sourceRegion.left) > desc.Width
+	 || (sourceRegion.bottom-sourceRegion.top) > desc.Height) {
+		return false;
+	}
 
 	// Check the sender mutex for access the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
