@@ -14,6 +14,8 @@
 //		07.03.21	- Change HoldFps to allow numerator and denominator
 //		11.06.21	- Add documentation
 //		27.10.21	- ReceiveSenderData - use LongToHandle before cast
+//		26.09.23	- CheckDX9sender - CreateSharedDX9Texture to new width and height for size change
+//					- SendDX9surface - add update flag to allow a fixed sender size if false
 //
 // ====================================================================================
 /*
@@ -323,7 +325,14 @@ bool spoutDX9::SetSenderName(const char* sendername)
 //---------------------------------------------------------
 // Function: SendDX9surface
 // Send DirectX9 surface using the surface format.
-bool spoutDX9::SendDX9surface(IDirect3DSurface9* pSurface)
+//
+//   bUpdate - update the sender size
+//     - If true (default), size changes are handled by SendDX9surface.
+//     - If false, the sender is created but not updated.
+//       This allows a fixed sender size because DirectX 9 uses "StretchRect"
+//       to copy the surface to the sender shared texture.
+//
+bool spoutDX9::SendDX9surface(IDirect3DSurface9* pSurface, bool bUpdate)
 {
 	// Quit if no data
 	if (!pSurface)
@@ -337,8 +346,11 @@ bool spoutDX9::SendDX9surface(IDirect3DSurface9* pSurface)
 		return false;
 
 	// Create or update the sender
-	if (!CheckDX9sender(desc.Width, desc.Height, (DWORD)desc.Format))
-		return false;
+	if (bUpdate || !m_bSpoutInitialized) {
+		if (!CheckDX9sender(desc.Width, desc.Height, (DWORD)desc.Format)) {
+			return false;
+		}
+	}
 
 	// Check the sender mutex for access the shared texture
 	if (frame.CheckTextureAccess()) {
@@ -786,7 +798,7 @@ bool spoutDX9::CheckDX9sender(unsigned int width, unsigned int height, DWORD dwF
 		if (m_pSharedTexture) m_pSharedTexture->Release();
 		m_pSharedTexture = nullptr;
 		m_dxShareHandle = nullptr;
-		CreateSharedDX9Texture(m_pDevice, m_Width, m_Height, (D3DFORMAT)m_dwFormat, m_pSharedTexture, m_dxShareHandle);
+		CreateSharedDX9Texture(m_pDevice, width, height, (D3DFORMAT)m_dwFormat, m_pSharedTexture, m_dxShareHandle);
 		// Update the sender and class variables
 		sendernames.UpdateSender(m_SenderName, width, height, m_dxShareHandle, dwFormat);
 		m_Width = width;

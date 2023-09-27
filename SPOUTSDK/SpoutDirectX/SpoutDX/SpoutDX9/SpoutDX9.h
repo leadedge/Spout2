@@ -81,7 +81,7 @@ class SPOUT_DLLEXP spoutDX9 {
 		// Set the sender name
 		bool SetSenderName(const char* sendername = nullptr);
 		// Send a DirectX9 surface
-		bool SendDX9surface(IDirect3DSurface9* pSurface);
+		bool SendDX9surface(IDirect3DSurface9* pSurface, bool bUpdate = true);
 		// Close sender and free resources
 		void ReleaseDX9sender();
 		// Sender status

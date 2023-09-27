@@ -13,7 +13,7 @@
 //
 // This is a Spout sender using the SpoutDX9 support class :
 //
-//		bool spoutDX::SendDX9surface(IDirect3DSurface9* pSurface)
+//		bool spoutDX9::SendDX9surface(IDirect3DSurface9* pSurface)
 //
 // See also the corresponding receiver example.
 //
@@ -216,9 +216,6 @@ VOID Cleanup()
 VOID Render()
 {
     // Clear the backbuffer to black
-    // LJ DEBUG 
-	// g_pd3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB( 0, 0, 0 ), 1.0f, 0 );
-	// D3DFMT_A8R8G8B8
 	g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_RGBA(0, 0, 0, 0xff), 1.0f, 0);
 
 	// Use the sender's texture for rendering
@@ -256,6 +253,11 @@ VOID Render()
 		// Send a texture surface
 		//
 		// SendDX9surface handles sender creation and resizing
+		//   If the optional update flag is specified false, 
+		//   the sender is created but not updated.
+		//   This allows a fixed sender size because DirectX 9 uses "StretchRect"
+		//   to copy the surface to the sender shared texture.
+		//
 		//
 		// Sender details can be retrieved with :
 		//		const char * GetName();
