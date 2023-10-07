@@ -260,9 +260,9 @@
 //					  and UNREFERENCED_PARAMETER (#PR93  Fix MinGW error(beta branch)
 //		22.07.23	- ReceiveSenderData -
 //					  ensure m_pSharedTexture is null if OpenSharedResource failed.
-//	Version 2.007.012
 //		03.08.23	- InitReceiver - set m_DX11format
 //		07.08.23	- Add frame sync option functions
+//	Version 2.007.012
 //
 // ====================================================================================
 /*
