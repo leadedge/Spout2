@@ -205,7 +205,7 @@ class SPOUT_DLLEXP spoutGL {
 	bool SetHostPath(const char *sendername);
 	// Set sender PartnerID field with CPU sharing method and GL/DX compatibility
 	bool SetSenderID(const char *sendername, bool bCPU, bool bGLDX);
-
+	
 	//
 	// 2.006 compatibility
 	//
@@ -264,6 +264,10 @@ class SPOUT_DLLEXP spoutGL {
 		unsigned char* data, GLenum glFormat = GL_RGBA,
 		bool bInvert = false, GLuint HostFBO = 0);
 
+	// LJ DEBUG
+	// Public for testing
+	bool ReadGLDXpixels(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
+
 
 	//
 	// Data sharing
@@ -314,7 +318,7 @@ protected :
 	
 	// OpenGL pixel copy
 	bool WriteGLDXpixels(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
-	bool ReadGLDXpixels(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
+	// LJ DEBUG bool ReadGLDXpixels(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 	
 	// PBOs for OpenGL pixel copy
 	GLuint m_pbo[4];

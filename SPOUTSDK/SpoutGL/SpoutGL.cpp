@@ -148,6 +148,7 @@
 //		31.07.23	- Add OpenGL format functions
 //		04.08.23	- Remove unused compute shaders
 //		28.08.23	- UnloadTexturePixels public
+//		07.10.23	- Conditional compile options for _M_ARM64
 //
 // ====================================================================================
 //
@@ -503,8 +504,8 @@ bool spoutGL::OpenSpout(bool bRetest)
 		return true;
 
 	 // This is the start, so make a new line in the log
-	 SpoutLog("");
-#ifdef _M_X64
+	SpoutLog("");
+#if defined _M_X64 || defined _M_ARM64
 	SpoutLogNotice("spoutGL::OpenSpout - 64bit 2.007 - this 0x%.7X", PtrToUint(this));
 #else
 	SpoutLogNotice("spoutGL::OpenSpout - 32bit 2.007 - this 0x%.7X", PtrToUint(this));
