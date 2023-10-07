@@ -69,6 +69,7 @@
 			   Remove rgba_to_bgr_sse3
 			   Add experimental rgb_to_bgra_sse3
 	Version 2.007.012
+	07.10.23 - Conditional compile options for _M_ARM64 in CheckSSE and header
 
 */
 
@@ -1459,6 +1460,11 @@ void spoutCopy::bgra2bgr(const void *bgra_source, void *bgr_dest, unsigned int w
 //
 void spoutCopy::CheckSSE()
 {
+#ifdef _M_ARM64 // All SSE will be routed to NEON
+	m_bSSE2 = true;
+	m_bSSE3 = true;
+	m_bSSSE3 = true;
+#else
 	// An array of four integers that contains the information returned
 	// in EAX (0), EBX (1), ECX (2), and EDX (3) about supported features of the CPU.
 	int CPUInfo[4] ={-1, -1, -1, -1};
@@ -1480,6 +1486,7 @@ void spoutCopy::CheckSSE()
 		// SSSE3 = (cpuid02 & (0x1 << 9)
 		m_bSSSE3 = ((CPUInfo[2] & (0x1 << 9)) || false);
 	}
+#endif
 
 }
 
