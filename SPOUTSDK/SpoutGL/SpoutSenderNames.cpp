@@ -97,6 +97,8 @@
 	Version 2.007.11
 	13.07.23 - setActiveSenderName - close any existing active sender map
 	Version 2.007.012
+	07.10.23 - Conditional compile options for _M_ARM64
+			   Moved additonal includes from cpp to header
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -530,7 +532,7 @@ bool spoutSenderNames::GetSenderInfo(const char* sendername, unsigned int &width
 	if(getSharedInfo(sendername, &info)) {
 		width		  = (unsigned int)info.width;
 		height		  = (unsigned int)info.height;
-#ifdef _M_X64
+#if defined _M_X64 || defined _M_ARM64
 		dxShareHandle = (HANDLE)(LongToHandle((long)info.shareHandle));
 #else
 		dxShareHandle = (HANDLE)info.shareHandle;
@@ -759,7 +761,7 @@ bool spoutSenderNames::FindActiveSender(char * sendername, unsigned int& theWidt
 			strcpy_s(sendername, maxlength, &sname[0]); // pass back sender name
 			theWidth        = (unsigned int)TextureInfo.width;
 			theHeight       = (unsigned int)TextureInfo.height;
-#ifdef _M_X64
+#if defined _M_X64 || defined _M_ARM64
 			hSharehandle = (HANDLE)(LongToHandle((long)TextureInfo.shareHandle));
 #else
 			hSharehandle = (HANDLE)TextureInfo.shareHandle;
@@ -868,7 +870,7 @@ bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidt
 			// Return the texture info
 			theWidth     = (unsigned int)info.width;
 			theHeight    = (unsigned int)info.height;
-#ifdef _M_X64
+#if defined _M_X64 || defined _M_ARM64
 			hSharehandle = (HANDLE)(LongToHandle((long)info.shareHandle));
 #else
 			hSharehandle = (HANDLE)info.shareHandle;
@@ -923,7 +925,7 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 	if (getSharedInfo(sendername, &info)) {
 		width = (unsigned int)info.width; // pass back sender size
 		height = (unsigned int)info.height;
-#ifdef _M_X64
+#if defined _M_X64 || defined _M_ARM64
 		hSharehandle = (HANDLE)(LongToHandle((long)info.shareHandle));
 #else
 		hSharehandle = (HANDLE)info.shareHandle;

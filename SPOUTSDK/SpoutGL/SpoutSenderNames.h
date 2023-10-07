@@ -47,6 +47,10 @@
 #include <unordered_map>
 #include <intrin.h> // for __movsd
 #include <stdint.h> // for _uint32
+#include <assert.h>
+#ifdef _M_ARM64
+#include <sse2neon.h> // For ARM
+#endif
 
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
