@@ -10,6 +10,8 @@
 # 06/11/22 - Add Install option by Joakim Kilby                                #
 # 13/01/23 - Default do not skip INSTALL project                               #
 #            Add necessary SpoutGL headers to SpoutDX includes                 #
+# 07/10/23 - Add SPOUT_BUILD_ARM option and download sse2neon.h                #
+#            Add compiler include_directory and /Zc:preprocessor define        #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -30,6 +32,18 @@ if(NOT WIN32)
   return()
 endif()
 
+
+OPTION(SPOUT_BUILD_ARM "Build for Windows on ARM" OFF)
+if(SPOUT_BUILD_ARM)
+	# Use SS2NEON so SIMD code doesn't have to be rewritten for ARM
+	# Download sse2neon.h
+	File(DOWNLOAD https://github.com/DLTcollab/sse2neon/blob/master/sse2neon.h ${PROJECT_SOURCE_DIR}/SPOUTSDK/sse2neon/sse2neon.h)
+	# Add compiler include_directory and /Zc:preprocessor define
+	include_directories(SPOUTSDK/sse2neon)
+	add_compile_options(/Zc:preprocessor)
+endif()
+
+
 OPTION(SPOUT_BUILD_CMT "For Visual Studio - build /MT to link runtime libraries" ON)
 if(SPOUT_BUILD_CMT)
 	# https://gitlab.kitware.com/cmake/cmake/-/issues/18390
@@ -43,7 +57,6 @@ if(SPOUT_BUILD_CMT)
 endif()
 
 add_subdirectory(SPOUTSDK/SpoutGL)
-# add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX)
 
 OPTION(SPOUT_BUILD_LIBRARY "Build C-compatible cross compiler library" ON)
 if(SPOUT_BUILD_LIBRARY)
