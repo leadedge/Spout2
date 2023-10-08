@@ -37,7 +37,7 @@ OPTION(SPOUT_BUILD_ARM "Build for Windows on ARM" OFF)
 if(SPOUT_BUILD_ARM)
 	# Use SS2NEON so SIMD code doesn't have to be rewritten for ARM
 	# Download sse2neon.h
-	File(DOWNLOAD https://github.com/DLTcollab/sse2neon/blob/master/sse2neon.h ${PROJECT_SOURCE_DIR}/SPOUTSDK/sse2neon/sse2neon.h)
+	File(DOWNLOAD https://github.com/DLTcollab/sse2neon/raw/master/sse2neon.h ${PROJECT_SOURCE_DIR}/SPOUTSDK/sse2neon/sse2neon.h)
 	# Add compiler include_directory and /Zc:preprocessor define
 	include_directories(SPOUTSDK/sse2neon)
 	add_compile_options(/Zc:preprocessor)
