@@ -149,6 +149,7 @@
 //		04.08.23	- Remove unused compute shaders
 //		28.08.23	- UnloadTexturePixels public
 //		07.10.23	- Conditional compile options for _M_ARM64
+//		09.10.23	- Log first line indicate if ARM build
 //
 // ====================================================================================
 //
@@ -505,8 +506,10 @@ bool spoutGL::OpenSpout(bool bRetest)
 
 	 // This is the start, so make a new line in the log
 	SpoutLog("");
-#if defined _M_X64 || defined _M_ARM64
+#if defined _M_X64
 	SpoutLogNotice("spoutGL::OpenSpout - 64bit 2.007 - this 0x%.7X", PtrToUint(this));
+#elif defined _M_ARM64
+	SpoutLogNotice("spoutGL::OpenSpout - 64bit ARM 2.007 - this 0x%.7X", PtrToUint(this));
 #else
 	SpoutLogNotice("spoutGL::OpenSpout - 32bit 2.007 - this 0x%.7X", PtrToUint(this));
 #endif
