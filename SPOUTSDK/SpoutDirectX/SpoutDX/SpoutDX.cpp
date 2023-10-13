@@ -137,6 +137,7 @@
 //		28.08.23	- Add ReadTexurePixels utility function
 //		30.08.23	- Add include path prefix define in header file
 //		16.09.23	- SendTexture with offsets - check the texture and region sizes
+//		13.10.23	- CheckSender - use GetModuleFileNameEx
 //
 // ====================================================================================
 /*
@@ -2017,57 +2018,78 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 
 		// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
 		// and specifying the same texture format
-		m_bSpoutInitialized = sendernames.CreateSender(m_SenderName, m_Width, m_Height, m_dxShareHandle, m_dwFormat);
-
-		// This could be a separate function SetHostPath
-		SharedTextureInfo info ={}; // Empty structure
-		if (sendernames.getSharedInfo(m_SenderName, &info)) {
-			char exepath[256]={};
-			GetModuleFileNameA(NULL, exepath, sizeof(exepath));
-			// Description field is 256 uint8_t
-			strcpy_s((char*)info.description, 256, exepath);
-			if (!sendernames.setSharedInfo(m_SenderName, &info)) {
-				SpoutLogWarning("spoutDX::CheckSender - could not set sender info", m_SenderName);
+		if (sendernames.CreateSender(m_SenderName, m_Width, m_Height, m_dxShareHandle, m_dwFormat)) {
+			// TODO : this could be a separate function "SetHostPath"
+			// Get current sender info
+			SharedTextureInfo info={};
+			if (sendernames.getSharedInfo(m_SenderName, &info)) {
+				// Get the full path of the current process
+				char exepath[256]={};
+				// TODO : SetSenderName
+				// GetModuleFileNameA(NULL, exepath, sizeof(exepath));
+				DWORD dwProcId = GetCurrentProcessId();
+				HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcId);
+				if (hProc) {
+					GetModuleFileNameExA(hProc, NULL, exepath, sizeof(exepath));
+					CloseHandle(hProc);
+				}
+				else {
+					SpoutLogWarning("spoutDX::CheckSender - could not get process handle");
+				}
+				if (exepath) {
+					// Description field is 256 uint8_t
+					strcpy_s((char*)info.description, 256, exepath);
+					if (!sendernames.setSharedInfo(m_SenderName, &info)) {
+						SpoutLogWarning("spoutDX::CheckSender - could not set sender info", m_SenderName);
+					}
+				}
+				else {
+					SpoutLogWarning("spoutDX::CheckSender - could not get process path");
+				}
 			}
+			else {
+				SpoutLogWarning("spoutDX::CheckSender - could not get sender info (%s)", m_SenderName);
+			}
+
+			// Create a sender mutex for access to the shared texture
+			frame.CreateAccessMutex(m_SenderName);
+
+			// Enable frame counting so the receiver gets frame number and fps
+			frame.EnableFrameCount(m_SenderName);
+
+			m_bSpoutInitialized = true;
 		}
 		else {
-			SpoutLogWarning("spoutDX::CheckSender - could not get sender info (%s)", m_SenderName);
+			SpoutLogWarning("spoutDX::CheckSender - could not get create sender");
+			return false;
 		}
+	} // end create sender
 
-		// Create a sender mutex for access to the shared texture
-		frame.CreateAccessMutex(m_SenderName);
-
-		// Enable frame counting so the receiver gets frame number and fps
-		frame.EnableFrameCount(m_SenderName);
-
-	}
 	// Initialized but has the source texture changed size ?
-	else {
-		if (m_Width != width || m_Height != height || m_dwFormat != dwFormat) {
-			SpoutLogNotice("spoutDX::CheckSender - size change from %dx%d to %dx%d\n", m_Width, m_Height, width, height);
-			if (m_pSharedTexture) {
-				spoutdx.ReleaseDX11Texture(m_pSharedTexture);
-				// The existing shared texture is changed on this device
-				m_pImmediateContext->Flush();
-			}
-			m_pSharedTexture = nullptr;
-			m_dxShareHandle = nullptr;
+	if (m_Width != width || m_Height != height || m_dwFormat != dwFormat) {
+		SpoutLogNotice("spoutDX::CheckSender - size change from %dx%d to %dx%d\n", m_Width, m_Height, width, height);
+		if (m_pSharedTexture) {
+			spoutdx.ReleaseDX11Texture(m_pSharedTexture);
+			// The existing shared texture is changed on this device
+			m_pImmediateContext->Flush();
+		}
+		m_pSharedTexture = nullptr;
+		m_dxShareHandle = nullptr;
 
-			if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
-				SpoutLogWarning("spoutDX::CheckSender - could not re-create shared texture");
-				return false;
-			}
-
-			// Update the sender information
-			sendernames.UpdateSender(m_SenderName, width, height, m_dxShareHandle, dwFormat);
-
-			// Update class variables
-			m_Width = width;
-			m_Height = height;
-			m_dwFormat = dwFormat;
+		if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
+			SpoutLogWarning("spoutDX::CheckSender - could not re-create shared texture");
+			return false;
 		}
 
-	} // endif initialization or size checks
+		// Update the sender information
+		sendernames.UpdateSender(m_SenderName, width, height, m_dxShareHandle, dwFormat);
+
+		// Update class variables
+		m_Width = width;
+		m_Height = height;
+		m_dwFormat = dwFormat;
+
+	} // end size checks
 
 	return true;
 

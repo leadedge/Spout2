@@ -60,6 +60,8 @@
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
+#include <psapi.h> // for GetModuleFileNameExA
+#pragma comment(lib, "Psapi.lib")
 
 class SPOUT_DLLEXP spoutDX {
 
