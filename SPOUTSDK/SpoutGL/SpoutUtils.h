@@ -77,6 +77,10 @@ name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 
+// For custom SpoutMessageBox button
+#define MB_USERBUTTON 0x00000007L
+
+
 // SpoutUtils
 namespace spoututils {
 
@@ -212,6 +216,12 @@ namespace spoututils {
 	
 	// MessageBox dialog with standard arguments.
 	// Replaces an existing MessageBox call.
+	// uType options : standard MessageBox buttons and icons
+	// MB_USERICON - use together with SpoutMessageBoxIcon
+	// MB_USERBUTTON - use together with SpoutMessageBoxButton
+	// Hyperlinks can be included in the content using HTML format.
+	// For example : <a href=\"https://spout.zeal.co/\">Spout home page</a>
+	// Only double quotes are supported and must be escaped.
 	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
 
 	// MessageBox dialog with standard arguments
@@ -223,6 +233,12 @@ namespace spoututils {
 
 	// Custom icon for SpoutMessageBox from file
 	bool SPOUT_DLLEXP SpoutMessageBoxIcon(std::string iconfile);
+
+	// Custom button for SpoutMessageBox
+	void SPOUT_DLLEXP SpoutMessageBoxButton(int ID, std::wstring title);
+
+	// Copy text to the clipboard
+	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* caps);
 
 	//
 	// Registry utilities
@@ -291,6 +307,7 @@ namespace spoututils {
 		bool SetNVIDIAmode(const char *command, int mode);
 		bool ExecuteProcess(const char *path);
 
+		// Taskdialog for SpoutMessageBox
 		int SPOUT_DLLEXP MessageTaskDialog(HINSTANCE hInst, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
 		// TaskDialogIndirect callback to handle timer, topmost and hyperlinks
 		HRESULT TDcallbackProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData);
@@ -300,6 +317,9 @@ namespace spoututils {
 		bool bTopMost = false;
 		// For custom icon
 		HICON hTaskIcon = NULL;
+		// For custom buttons
+		std::vector<int>TDbuttonID;
+		std::vector<std::wstring>TDbuttonTitle;
 		// Main instruction text
 		std::wstring wstrInstruction;
 	}

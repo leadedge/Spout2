@@ -148,6 +148,7 @@
 				 - Allow for NULL caption
 		12.09.23 - Add SpoutMessageBox overload including main instruction large text
 				 - Correct missing SPOUT_DLLEXP for SpoutMessageBox standard function
+		12.10.23 - Add SpoutMessageBoxButton and CopyToClipBoard
 
 */
 
@@ -877,6 +878,51 @@ namespace spoututils {
 		return (hTaskIcon);
 	}
 
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBoxButton
+	// Custom button for SpoutMessageBox
+	// Use together with MB_USERBUTTON
+	void SPOUT_DLLEXP SpoutMessageBoxButton(int ID, std::wstring title)
+	{
+		TDbuttonID.push_back(ID);
+		TDbuttonTitle.push_back(title);
+	}
+
+
+	// ---------------------------------------------------------
+	// Function: CopyToClipBoard
+	// Copy text to the clipboard
+	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* caps)
+	{
+		HGLOBAL clipbuffer = NULL;
+		char* buffer = nullptr;
+		bool bret = false;
+
+		if (caps[0] && strlen(caps) > 16) {
+			if (OpenClipboard(hwnd)) {
+				EmptyClipboard();
+				size_t len = (strlen(caps)+1)*sizeof(char);
+				// Use GMEM_MOVEABLE instead of GMEM_DDESHARE to avoid crash on repeat
+				// GlobalUnlock then returns false but ignore
+				clipbuffer = GlobalAlloc(GMEM_MOVEABLE, len); // No crash but GlobalUnlock fails
+				if (clipbuffer) {
+					buffer = (char*)GlobalLock(clipbuffer);
+					if (buffer) {
+						memcpy((void*)buffer, (void*)caps, len);
+						SetClipboardData(CF_TEXT, clipbuffer);
+						bret = true;
+					}
+					GlobalUnlock(clipbuffer);
+					GlobalFree(clipbuffer);
+					clipbuffer = nullptr;
+					buffer = nullptr;
+				}
+				CloseClipboard();
+			}
+		}
+		return bret;
+	}
+
 
 	//
 	// Group: Registry utilities
@@ -1548,15 +1594,18 @@ namespace spoututils {
 
 
 		// MessageBox replacement
+		// // https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-taskdialogconfig
 		int MessageTaskDialog(HINSTANCE hInst, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds)
 		{
+			// User buttons
+			TASKDIALOG_BUTTON buttons[10]={0};
+
 			// Use a wide string to avoid a pre-sized buffer
 			int size_needed = MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), NULL, 0);
 			std::wstring wstrTemp(size_needed, 0);
 			MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), &wstrTemp[0], size_needed);
 
-			// Caption
-			// Default caption is the executable name
+			// Caption (default caption is the executable name)
 			std::wstring wstrCaption;
 			if (caption) {
 				size_needed = MultiByteToWideChar(CP_UTF8, 0, caption, (int)strlen(caption), NULL, 0);
@@ -1575,30 +1624,56 @@ namespace spoututils {
 			if(bTopMost)
 				dwl = dwl ^ MB_TOPMOST;
 
-			// https://learn.microsoft.com/en-us/windows/win32/api/commctrl/nf-commctrl-taskdialog
-			// TDCBF_OK_BUTTON     1
-			// TDCBF_YES_BUTTON    2
-			// TDCBF_NO_BUTTON     4
-			// TDCBF_CANCEL_BUTTON 8
-			// MB_OK          0x00
-			// MB_OKCANCEL    0x01
-			// MB_YESNOCANCEL 0x03
-			// MB_YESNO       0x04
+			//
+			// Buttons
+			//
+			DWORD dwb = dwl & 0x0F; // buttons code
 			DWORD dwCommonButtons = MB_OK;
-			DWORD dwb = dwl & 0x0F; // buttons
-			if (dwb == MB_YESNO) { // 4
-				dwCommonButtons = TDCBF_YES_BUTTON | TDCBF_NO_BUTTON;
-			}
-			else if (dwb == MB_YESNOCANCEL) { // 3
-				dwCommonButtons = TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON;
-			}
-			else if (dwb == MB_OKCANCEL) { // 1
-				dwCommonButtons = TDCBF_OK_BUTTON | TDCBF_CANCEL_BUTTON;
+			if (dwb == MB_USERBUTTON) { // 7 - SpoutSettings defined
+				//
+				// User buttons
+				//
+				if (TDbuttonID.size() > 0) {
+					int i = 0;
+					for (i=0; i<(int)TDbuttonID.size(); i++) {
+						buttons[i].nButtonID = TDbuttonID[i];
+						buttons[i].pszButtonText = TDbuttonTitle[i].c_str();
+					}
+					// Final button is OK
+					buttons[i].nButtonID = IDOK;
+					buttons[i].pszButtonText = L"OK";
+				}
 			}
 			else {
-				dwCommonButtons = MB_OK;
+				//
+				// Common buttons
+				//
+				// https://learn.microsoft.com/en-us/windows/win32/api/commctrl/nf-commctrl-taskdialog
+				// TDCBF_OK_BUTTON     1
+				// TDCBF_YES_BUTTON    2
+				// TDCBF_NO_BUTTON     4
+				// TDCBF_CANCEL_BUTTON 8
+				// MB_OK          0x00
+				// MB_OKCANCEL    0x01
+				// MB_YESNOCANCEL 0x03
+				// MB_YESNO       0x04
+				if (dwb == MB_YESNO) { // 4
+					dwCommonButtons = TDCBF_YES_BUTTON | TDCBF_NO_BUTTON;
+				}
+				else if (dwb == MB_YESNOCANCEL) { // 3
+					dwCommonButtons = TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON;
+				}
+				else if (dwb == MB_OKCANCEL) { // 1
+					dwCommonButtons = TDCBF_OK_BUTTON | TDCBF_CANCEL_BUTTON;
+				}
+				else {
+					dwCommonButtons = MB_OK;
+				}
 			}
-			
+
+			//
+			// Icons
+			//
 			// Icons available
 			// TD_WARNING_ICON, TD_ERROR_ICON, TD_INFORMATION_ICON, TD_SHIELD_ICON
 			//
@@ -1640,7 +1715,6 @@ namespace spoututils {
 					break;
 			}
 
-
 			int nButtonPressed        = 0;
 			int nRadioButton          = 0;
 			TASKDIALOGCONFIG config   = {0};
@@ -1653,7 +1727,18 @@ namespace spoututils {
 				config.pszMainIcon    = wMainIcon; // Important to remove this
 			config.pszMainInstruction = wstrInstruction.c_str();
 			config.pszContent         = wstrTemp.c_str();
-			config.dwCommonButtons    = dwCommonButtons;
+
+			// User buttons in TASKDIALOG_BUTTON buttons
+			// Otherwise use common buttons
+			config.nDefaultButton = IDOK;
+			if (dwb == MB_USERBUTTON) {
+				config.pButtons = buttons;
+				config.cButtons = (UINT)TDbuttonID.size()+1; // Includes OK button
+			}
+			else {
+				config.dwCommonButtons = dwCommonButtons;
+			}
+
 			config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
 			config.dwFlags            = TDF_SIZE_TO_CONTENT | TDF_CALLBACK_TIMER | TDF_ENABLE_HYPERLINKS;
 			if (hMainIcon)
@@ -1686,7 +1771,13 @@ namespace spoututils {
 			// Clear global main instruction
 			wstrInstruction.clear();
 
+			// Clear custom buttons
+			TDbuttonID.clear();
+			TDbuttonTitle.clear();
+
+			// Return button pressed
 			// IDCANCEL, IDNO, IDOK, IDRETRY, IDYES
+			// or custom button ID
 			return nButtonPressed;
 
 		}
