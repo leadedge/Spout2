@@ -864,6 +864,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxIcon
 	// Custom icon for SpoutMessageBox from resources
+	// Use together with MB_USERICON
 	void SPOUT_DLLEXP SpoutMessageBoxIcon(HICON hIcon)
 	{
 		hTaskIcon = hIcon;
@@ -872,6 +873,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxIcon
 	// Custom icon for SpoutMessageBox from file
+	// Use together with MB_USERICON
 	bool SPOUT_DLLEXP SpoutMessageBoxIcon(std::string iconfile)
 	{
 		hTaskIcon = reinterpret_cast<HICON>(LoadImageA(nullptr, iconfile.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE));
