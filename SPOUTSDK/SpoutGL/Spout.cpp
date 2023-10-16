@@ -263,6 +263,8 @@
 //		03.08.23	- InitReceiver - set m_DX11format
 //		07.08.23	- Add frame sync option functions
 //	Version 2.007.012
+//		09.10.23	- SelectSenderPanel
+//					  If not found, show a SpoutMessageBox with Spout releases page url
 //
 // ====================================================================================
 /*
@@ -1908,10 +1910,12 @@ bool Spout::SelectSenderPanel(const char* message)
 				// Does SpoutPanel exist here?
 				if (!PathFileExistsA(path)) {
 					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
-					// Show a MessageBox and direct to the Spout home page
-					if (MessageBoxA(NULL, "The sender selection dialog 'SpoutPanel' was not found\nDownload the latest Spout release and run either\n'SpoutSettings' or 'SpoutPanel' once to establish the path.\n\nDo you want to open the Spout home page now.\n", "Warning", MB_YESNO) == IDYES) {
-						ShellExecuteA(NULL, "open", "http://spout.zeal.co/", NULL, NULL, SW_SHOWNORMAL);
-					}
+					// Show a SpoutMessageBox and direct to the Spout releases page
+					sprintf_s(UserMessage, 512,
+						"The sender selection dialog 'SpoutPanel' was not found\n"\
+						"Download the <a href=\"https://github.com/leadedge/Spout2/releases\">latest Spout release</a> and run either\n"\
+						"'SpoutSettings' or 'SpoutPanel' to establish the path.\n");
+					SpoutMessageBox(NULL, UserMessage, "Warning", MB_ICONWARNING | MB_OK);
 					return false;
 				}
 			}
