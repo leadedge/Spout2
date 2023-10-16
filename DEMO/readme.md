@@ -6,6 +6,9 @@ These programs can be used to find whether your system supports texture sharing 
 
 The on-screen display shows graphics adapter details and texture share compatibility.
 
+They can be downloaded from [Spout releases](https://github.com/leadedge/Spout2/releases).
+
+
 #### Graphics compatibility
 
 Texture sharing with OpenGL progams requires compatibility for OpenGL/DirectX11 texture linking using [NVIDIA GL/DX interop extensions](https://www.khronos.org/registry/OpenGL/extensions/NV/WGL_NV_DX_interop2.txt). This is tested when a sender or receiver is first initialized. If hardware is not compatible, sending and receiving functions switch to backup methods using CPU system memory for sharing textures.
