@@ -109,6 +109,23 @@ void Render();
 
 // SPOUT
 spoutDX receiver; // Spout DirectX11 receiver
+
+
+// =====================================================================
+// SPOUT
+// SYNC OPTION : sync sender with receiver
+// Option only - not required for typical function
+// The sender must wait on the "ready to receive" SendFrameSync message
+// See the Tutorial04 example
+//
+// Enable these lines for the sync option
+// for detection of missed frames
+// long thisframe = 0;
+// long lastframe = 0;
+//
+// =====================================================================
+
+
 ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
 ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view of the texture
 
@@ -166,6 +183,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         CleanupDevice();
         return 0;
     }
+
 
 	//
 	// SPOUT
@@ -874,7 +892,28 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
         EndPaint( hWnd, &ps );
         break;
 
-	// SPOUT - RH click to open SpoutPanel
+		// =====================================================================
+		// SPOUT - SYNC OPTION
+		// Option only - not required for typical function
+		// Enable these lines for the sync option
+		// Space bar - disable or enable sync with the receiver
+	/*
+	case WM_KEYUP:
+		if (wParam == 32) {
+			if (receiver.frame.IsFrameSyncEnabled()) {
+				receiver.frame.EnableFrameSync(false);
+				SpoutLog("Sync disabled");
+			}
+			else {
+				receiver.frame.EnableFrameSync(true);
+				SpoutLog("Sync enabled");
+			}
+		}
+		break;
+		*/
+
+		// =====================================================================
+		// SPOUT - RH click to open SpoutPanel
 	case WM_RBUTTONDOWN:
 		receiver.SelectSender();
 		break;
@@ -964,8 +1003,6 @@ void Render()
 				g_pSpoutTextureRV = nullptr;
 			}
 
-			// A texture has been received
-
 			// In this example, a shader resource view is created if the frame is new
 			if (receiver.IsFrameNew()) {
 				if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
@@ -989,6 +1026,26 @@ void Render()
 			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 			g_pSpoutTextureRV = nullptr;
 		}
+
+		// =====================================================================
+		// SPOUT
+		// OPTION : sync sender with receiver
+		// Option only - not required for typical function
+		// Enable these lines for the sync option
+		/*
+		// frame since the sender started
+		thisframe = receiver.GetSenderFrame();
+		//
+		// Look for missed frames
+		if (thisframe - lastframe > 1)
+			SpoutLog("    Missed frame : this %ld - last %ld", thisframe, lastframe);
+		lastframe = thisframe;
+		//
+		// Signal the sender to send another frame
+		receiver.SetFrameSync(receiver.GetSenderName());
+		*/
+		//
+		// =====================================================================
 
 	}
 	else if (option == 2) {
@@ -1108,6 +1165,15 @@ void Render()
 	// using sync interval for the Present method to synchronize
 	// with vertical blank, typically 60 fps.
 	g_pSwapChain->Present(1, 0);
+
+	// =====================================================================
+	// SPOUT
+	// SYNC OPTION
+	// Option only - not required for typical function
+	// Reduce the frame rate to test sender WaitFrameSync
+	// Enable this line for the sync option
+	// receiver.HoldFps(30);
+	// =====================================================================
 
 
 }

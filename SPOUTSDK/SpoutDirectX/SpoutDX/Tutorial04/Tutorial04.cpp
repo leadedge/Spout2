@@ -101,6 +101,7 @@ spoutDX sender;
 // Functions for selecting graphics adapter
 void ResetDevice();
 void SelectAdapter();
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 static std::string adaptername[10];
 static int adaptercount = 0;
@@ -200,12 +201,12 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
     wcex.cbClsExtra = 0;
     wcex.cbWndExtra = 0;
     wcex.hInstance = hInstance;
-    wcex.hIcon = LoadIcon( hInstance, (LPCTSTR)IDI_TUTORIAL1 );
+    wcex.hIcon = LoadIcon( hInstance, ( LPCTSTR )IDI_TUTORIAL1 );
     wcex.hCursor = LoadCursor( nullptr, IDC_ARROW );
     wcex.hbrBackground = ( HBRUSH )( COLOR_WINDOW + 1 );
 	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_TUTORIAL1); // add a menu
     wcex.lpszClassName = L"TutorialWindowClass";
-    wcex.hIconSm = LoadIcon( wcex.hInstance, (LPCTSTR)IDI_TUTORIAL1 );
+    wcex.hIconSm = LoadIcon( wcex.hInstance, ( LPCTSTR )IDI_TUTORIAL1 );
     if( !RegisterClassEx( &wcex ) )
         return E_FAIL;
 
@@ -714,17 +715,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 					SelectAdapter();
 					break;
 				case IDM_ABOUT:
-				{
-					char tmp[512]{};
-					sprintf_s(tmp, 512, "                    Tutorial04");
-					strcat_s(tmp, 512, "\n\n");
-					strcat_s(tmp, 512, "Spout DirectX texture sender example\n");
-					strcat_s(tmp, 512, "using DirectX 11 and the SpoutDX class.\n");
-					strcat_s(tmp, 512, "Adapted from DirectX SDK examples\nby Chuck Walbourn.\n\n");
-					strcat_s(tmp, 512, "<a href=\"http://spout.zeal.co\">http://spout.zeal.co</a>");
-					SpoutMessageBoxIcon("directx.ico");
-					SpoutMessageBox(NULL, tmp, "Tutorial04", MB_USERICON | MB_OK | MB_TOPMOST);
-				}
+					DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), g_hWnd, About);
 					break;
 				case IDM_EXIT:
 					DestroyWindow(hWnd);
@@ -733,6 +724,28 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 					break;
 			}
 			break;
+
+		// =====================================================================
+		// SPOUT
+		// SYNC OPTION
+		// Option only - not required for typical function
+		// Enable these lines for the sync option
+		/*
+		// Space bar - disable or enable sync with the receiver
+		case WM_KEYUP:
+			if (wParam == 32) {
+				if (sender.frame.IsFrameSyncEnabled()) {
+					sender.frame.EnableFrameSync(false);
+					SpoutLog("Sync disabled");
+				}
+				else {
+					sender.frame.EnableFrameSync(true);
+					SpoutLog("Sync enabled");
+				}
+			}
+			break;
+		// =====================================================================
+		*/
 
 	    case WM_PAINT:
 		    hdc = BeginPaint( hWnd, &ps );
@@ -819,6 +832,19 @@ void Render()
 	// SPOUT
 	//
 
+	// =====================================================================
+	// OPTION - sync with the receiver
+	// Option only - not required for typical function
+	//
+	// Wait until the receiver is ready to read a frame
+	// The receiver must send a "ready to receive" SendFrameSync messsage
+	// See the Tutorial07 example
+	//
+	// Enable this line for the sync option
+	// sender.WaitFrameSync(sender.GetName(), 67);
+	//
+	// =====================================================================
+
 	// Option 1 
 	// Send the swap chain's back buffer.
 	// A single render target view is assumed.
@@ -859,6 +885,68 @@ void Render()
 	// For example :
 	// sender.HoldFps(30);
 
+}
+
+// Message handler for about box.
+// SPOUT : adapted for this example.
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam);
+	char tmp[MAX_PATH];
+	char about[1024];
+	LPDRAWITEMSTRUCT lpdis;
+	HWND hwnd = NULL;
+	HCURSOR cursorHand = NULL;
+
+	switch (message)
+	{
+	case WM_INITDIALOG:
+
+		sprintf_s(about, 256, "                Tutorial04");
+		strcat_s(about, 1024, "\n\n\n");
+		strcat_s(about, 1024, "Spout DirectX texture sender example\n");
+		strcat_s(about, 1024, "using DirectX 11 and the SpoutDX class.\n");
+		strcat_s(about, 1024, "Adapted from DirectX SDK examples by Chuck Walbourn.");
+		SetDlgItemTextA(hDlg, IDC_ABOUT_TEXT, (LPCSTR)about);
+
+		// Spout website hyperlink hand cursor
+		cursorHand = LoadCursor(NULL, IDC_HAND);
+		hwnd = GetDlgItem(hDlg, IDC_SPOUT_URL);
+		SetClassLongPtrA(hwnd, GCLP_HCURSOR, (LONG_PTR)cursorHand);
+		return (INT_PTR)TRUE;
+
+	case WM_DRAWITEM:
+		// The blue hyperlink
+		lpdis = (LPDRAWITEMSTRUCT)lParam;
+		if (lpdis->itemID == -1) break;
+		SetTextColor(lpdis->hDC, RGB(6, 69, 173));
+		switch (lpdis->CtlID) {
+		case IDC_SPOUT_URL:
+			DrawTextA(lpdis->hDC, "http://spout.zeal.co", -1, &lpdis->rcItem, DT_LEFT);
+			break;
+		default:
+			break;
+		}
+		break;
+
+	case WM_COMMAND:
+
+		if (LOWORD(wParam) == IDC_SPOUT_URL) {
+			// Open the website url
+			sprintf_s(tmp, MAX_PATH, "http://spout.zeal.co");
+			ShellExecuteA(hDlg, "open", tmp, NULL, NULL, SW_SHOWNORMAL);
+			EndDialog(hDlg, 0);
+			return (INT_PTR)TRUE;
+		}
+
+		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+		{
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
+	}
+	return (INT_PTR)FALSE;
 }
 
 

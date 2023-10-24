@@ -7,7 +7,7 @@
 
 #define IDR_MAINFRAME           128
 #define IDD_TUTORIAL1_DIALOG    102
-
+#define IDD_ABOUTBOX            103
 #define IDD_ADAPTERBOX          104
 #define IDM_ADAPTER             105
 #define IDM_ABOUT               106
@@ -15,7 +15,6 @@
 #define IDI_TUTORIAL1           108
 #define IDI_SMALL               109
 #define IDC_TUTORIAL1           110
-
 #define IDC_ABOUT_TEXT          201
 #define IDC_SPOUT_URL           202
 #define IDC_ADAPTERS            203
