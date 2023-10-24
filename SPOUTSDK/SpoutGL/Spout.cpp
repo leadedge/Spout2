@@ -265,6 +265,8 @@
 //	Version 2.007.012
 //		09.10.23	- SelectSenderPanel
 //					  If not found, show a SpoutMessageBox with Spout releases page url
+//		18.10.23	- ReceiveSenderData - check for texture format supported
+//					  by OpenGL/DirectX interop
 //
 // ====================================================================================
 /*
@@ -362,8 +364,6 @@ Spout::~Spout()
 {
 	// ~spoutGL will release dependent objects
 }
-
-
 
 //
 // Group: Sender
@@ -756,6 +756,8 @@ void Spout::ReleaseReceiver()
 {
 	if (!m_bInitialized)
 		return;
+
+	SpoutLogNotice("Spout::ReleaseReceiver");
 
 	// Release interop
 	CleanupInterop();
@@ -2415,7 +2417,7 @@ bool Spout::ReceiveSenderData()
 		//   o for a new sender
 		// Open the sender share handle to produce a new received texture
 		if (dxShareHandle != m_dxShareHandle || strcmp(sendername, m_SenderName) != 0) {
-			
+
 			// Release everything to start again
 			ReleaseReceiver();
 
@@ -2441,6 +2443,24 @@ bool Spout::ReceiveSenderData()
 					if (width != (DWORD)desc.Width)	    width = (DWORD)desc.Width;
 					if (height != (DWORD)desc.Height)   height = (DWORD)desc.Height;
 					if (dwFormat != (DWORD)desc.Format) dwFormat = (DWORD)desc.Format;
+
+					// Check for texture format supported by OpenGL/DirectX interop
+					if (!(dwFormat == D3DFMT_A8R8G8B8						// 21
+						|| dwFormat == D3DFMT_X8R8G8B8						// 22
+						|| dwFormat == DXGI_FORMAT_B8G8R8X8_UNORM			// 88
+						|| dwFormat == DXGI_FORMAT_B8G8R8A8_UNORM			// 22
+						|| dwFormat == DXGI_FORMAT_R8G8B8A8_SNORM			// 31
+						|| dwFormat == DXGI_FORMAT_R8G8B8A8_UNORM			// 28
+						|| dwFormat == DXGI_FORMAT_R10G10B10A2_UNORM		// 24
+						|| dwFormat == DXGI_FORMAT_R16G16B16A16_SNORM		// 13
+						|| dwFormat == DXGI_FORMAT_R16G16B16A16_UNORM		// 11
+						|| dwFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB		// 29
+						|| dwFormat == DXGI_FORMAT_R16G16B16A16_FLOAT		// 10
+						|| dwFormat == DXGI_FORMAT_R32G32B32A32_FLOAT)) {	// 2
+						SpoutLogError("Spout::ReceiveSenderData - texture %dx%d incompatible texture format 0x%X (%d)",
+							width, height, dwFormat, dwFormat);
+						return false;
+					}
 
 					// If the received texture is successfully updated, initialize again
 					// with the new sender name, width, height and format
