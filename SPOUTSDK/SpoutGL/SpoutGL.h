@@ -264,10 +264,6 @@ class SPOUT_DLLEXP spoutGL {
 		unsigned char* data, GLenum glFormat = GL_RGBA,
 		bool bInvert = false, GLuint HostFBO = 0);
 
-	// LJ DEBUG
-	// Public for testing
-	bool ReadGLDXpixels(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
-
 
 	//
 	// Data sharing
@@ -318,7 +314,7 @@ protected :
 	
 	// OpenGL pixel copy
 	bool WriteGLDXpixels(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
-	// LJ DEBUG bool ReadGLDXpixels(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
+	bool ReadGLDXpixels(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 	
 	// PBOs for OpenGL pixel copy
 	GLuint m_pbo[4];
@@ -383,6 +379,7 @@ protected :
 	// GL/DX interop
 	HANDLE m_hInteropDevice; // Handle to the DX/GL interop device
 	HANDLE m_hInteropObject; // Handle to the DX/GL interop object (the shared texture)
+	bool m_bInteropFailed = false; // Interop failure flag to avoid repeats
 
 	// General
 	HWND m_hWnd; // OpenGL window
