@@ -240,6 +240,9 @@ namespace spoututils {
 	// Copy text to the clipboard
 	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* caps);
 
+	// Open logs folder
+	bool SPOUT_DLLEXP OpenSpoutLogs();
+
 	//
 	// Registry utilities
 	//

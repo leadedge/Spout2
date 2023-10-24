@@ -925,6 +925,35 @@ namespace spoututils {
 		return bret;
 	}
 
+	// ---------------------------------------------------------
+	// Function: OpenSpoutLogs
+	// Open Spout log folder in Windows explorer
+	bool SPOUT_DLLEXP OpenSpoutLogs()
+	{
+		char* appdatapath = nullptr;
+		size_t len = 0;
+		std::string logfolder;
+		if (_dupenv_s(&appdatapath, &len, "AppData") == 0) {
+			if (appdatapath) {
+				logfolder = appdatapath;
+				logfolder += "\\Spout";
+				if (_access(logfolder.c_str(), 0) != -1) {
+					// Open log folder in explorer
+					ShellExecuteA(NULL, "open", logfolder.c_str(), NULL, NULL, SW_SHOWNORMAL);
+					do {} while (!FindWindowA("CabinetWClass", NULL));
+				}
+			}
+			else {
+				SpoutMessageBox(NULL, "Could not find AppData path", "OpenSpoutLogs", MB_OK | MB_TOPMOST | MB_ICONWARNING);
+				return false;
+			}
+		}
+		else {
+			SpoutMessageBox(NULL, "Could not create AppData path", "OpenSpoutLogs", MB_OK | MB_TOPMOST | MB_ICONWARNING);
+			return false;
+		}
+		return true;
+	}
 
 	//
 	// Group: Registry utilities
