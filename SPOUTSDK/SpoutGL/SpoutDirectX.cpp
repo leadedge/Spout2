@@ -156,6 +156,7 @@
 //					  ReleaseDX11Device - release ID3D11Device1 and ID3D11DeviceContext1 if created
 //	Version 2.007.012
 //		07.08.23	- Comment out code for debug layers
+//		19.10.23	- GetNumAdapters - remove unsued adapter description and output list
 //
 // ====================================================================================
 /*
@@ -555,7 +556,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	}
 
 	SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
-	SpoutLogNotice("    pDevice = 0x%.7X, width = %d, height = %d, format = %d", PtrToUint(pd3dDevice), width, height, format);
+	SpoutLogNotice("    pDevice = 0x%.7X, width = %d, height = %d, format = 0x%X (%d)", PtrToUint(pd3dDevice), width, height, format, format);
 
 	// Use the format passed in
 	// If that is zero or DX9 format, use the default format
@@ -605,7 +606,6 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	desc.SampleDesc.Count	= 1;
 	desc.MipLevels			= 1;
 	desc.ArraySize			= 1;
-
 
 	const HRESULT res = pd3dDevice->CreateTexture2D(&desc, NULL, ppSharedTexture);
 	if (FAILED(res)) {
@@ -671,7 +671,8 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	pOtherResource = nullptr;
 	pTexture = nullptr;
 
-	SpoutLogNotice("    pTexture = [0x%8.8X] : dxShareHandle = [0x%8.8X]", PtrToUint(*ppSharedTexture), LOWORD(dxShareHandle) );
+	SpoutLogNotice("    pTexture [0x%8.8X] (%dx%d format 0x%X) : dxShareHandle = [0x%8.8X]",
+		PtrToUint(*ppSharedTexture), width, height, texformat, LOWORD(dxShareHandle) );
 
 	return true;
 
@@ -1077,6 +1078,9 @@ int spoutDirectX::GetNumAdapters()
 
 	for (i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
 		if (!adapter1_ptr) break;
+		/*
+		// Adapter description
+		// Currently not used
 		DXGI_ADAPTER_DESC desc;
 		adapter1_ptr->GetDesc( &desc );
 		// printf(" Adapter(%d) : %S\n", i, desc.Description );
@@ -1089,31 +1093,30 @@ int spoutDirectX::GetNumAdapters()
 
 		// Look for outputs
 		IDXGIOutput* p_output = nullptr;
+
 		// Is there a first output on this adapter ?
-		if (adapter1_ptr->EnumOutputs(0, &p_output) == DXGI_ERROR_NOT_FOUND) {
-			if (!p_output) break;
-			if (p_output == 0) {
-				// Warning ?
-				// SpoutLogWarning("spoutDirectX::GetNumAdapters - No outputs for Adapter %d : %S", i, desc.Description);
-			}
-			else {
-				// Here we can list all the outputs of the adapter
-				DXGI_OUTPUT_DESC desc_out={};
-				for (UINT32 j = 0; adapter1_ptr->EnumOutputs(j, &p_output) != DXGI_ERROR_NOT_FOUND; j++) {
-					p_output->GetDesc(&desc_out);
-					// printf("   Output : %d\n", j );
-					// printf("     Name %S\n", desc_out.DeviceName );
-					// HMONITOR hMon = desc_out.Monitor;
-					// printf("     Attached to desktop : (%d) %s\n", desc_out.AttachedToDesktop, desc_out.AttachedToDesktop ? "yes" : "no" );
-					// printf("    Rotation : %d\n", desc_out.Rotation );
-					// printf("    Left     : %d\n", desc_out.DesktopCoordinates.left );
-					// printf("    Top      : %d\n", desc_out.DesktopCoordinates.top );
-					// printf("    Right    : %d\n", desc_out.DesktopCoordinates.right );
-					// printf("    Bottom   : %d\n", desc_out.DesktopCoordinates.bottom );
-					p_output->Release();
-				}
+		if (adapter1_ptr->EnumOutputs(0, &p_output) != DXGI_ERROR_NOT_FOUND) {
+			p_output->Release();
+			// Here we can list all the outputs of the adapter
+			DXGI_OUTPUT_DESC desc_out={};
+			for (UINT32 j = 0; adapter1_ptr->EnumOutputs(j, &p_output) != DXGI_ERROR_NOT_FOUND; j++) {
+				p_output->GetDesc(&desc_out);
+				// printf("   Output : %d\n", j );
+				// printf("     Name %S\n", desc_out.DeviceName );
+				// HMONITOR hMon = desc_out.Monitor;
+				// printf("     Attached to desktop : (%d) %s\n", desc_out.AttachedToDesktop, desc_out.AttachedToDesktop ? "yes" : "no" );
+				// printf("    Rotation : %d\n", desc_out.Rotation );
+				// printf("    Left     : %d\n", desc_out.DesktopCoordinates.left );
+				// printf("    Top      : %d\n", desc_out.DesktopCoordinates.top );
+				// printf("    Right    : %d\n", desc_out.DesktopCoordinates.right );
+				// printf("    Bottom   : %d\n", desc_out.DesktopCoordinates.bottom );
+				p_output->Release();
 			}
 		}
+		else {
+			SpoutLogWarning("spoutDirectX::GetNumAdapters - No outputs for Adapter %d : %S", i, desc.Description);
+		}
+		*/
 		adapter1_ptr->Release();
 	}
 

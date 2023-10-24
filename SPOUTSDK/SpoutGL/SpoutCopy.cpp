@@ -70,6 +70,7 @@
 			   Add experimental rgb_to_bgra_sse3
 	Version 2.007.012
 	07.10.23 - Conditional compile options for _M_ARM64 in CheckSSE and header
+	20.10.23 - FlipBuffer / CopyPixels - default pitch width*4
 
 */
 
@@ -102,10 +103,9 @@ void spoutCopy::CopyPixels(const unsigned char *source, unsigned char *dest,
 	unsigned int width, unsigned int height, 
 	GLenum glFormat, bool bInvert) const
 {
-	unsigned int Size = width*height; // GL_LUMINANCE default
-
-	if (glFormat == GL_RGBA || glFormat == GL_BGRA_EXT)
-		Size = width * height * 4;
+	unsigned int Size = width*height*4; // RGBA default
+	if (glFormat == GL_LUMINANCE)
+		Size = width*height;
 	else if (glFormat == GL_RGB || glFormat == GL_BGR_EXT)
 		Size = width*height * 3;
 
@@ -142,11 +142,11 @@ void spoutCopy::FlipBuffer(const unsigned char *src,
 	unsigned int height,
 	GLenum glFormat) const
 {
-	unsigned int pitch = width; // GL_LUMINANCE default
-	if (glFormat == GL_RGBA || glFormat == GL_BGRA_EXT)
-		pitch = width * 4; // RGBA format specified
+	unsigned int pitch = width*4; // RGBA default
+	if (glFormat == GL_LUMINANCE)
+		pitch = width; // Luminance data
 	else if (glFormat == GL_RGB || glFormat == GL_BGR_EXT)
-		pitch = width * 3; // RGB format specified
+		pitch = width * 3; // RGB format specified (RGB float not supported)
 
 	unsigned int line_s = 0;
 	unsigned int line_t = (height - 1)*pitch;
