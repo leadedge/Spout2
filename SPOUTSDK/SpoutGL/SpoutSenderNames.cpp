@@ -99,6 +99,7 @@
 	Version 2.007.012
 	07.10.23 - Conditional compile options for _M_ARM64
 			   Moved additonal includes from cpp to header
+	28.10.23 - SetSenderInfo - use QueryFullProcessImageNameA
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
@@ -579,20 +580,34 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 #endif
 	info.format      = (uint32_t)dwFormat;
 	
-	//
-	// Initialize unused variables
-	//
-
-	// Texture usage
+	// Texture usage - unused
 	info.usage = 0;
-
-	// Description : Host path
-	char exepath[256]={};
-	GetModuleFileNameA(NULL, &exepath[0], sizeof(exepath));
 
 	// Partner ID : Sender CPU sharing mode
 	// Set by SetSenderID
 	// TODO : combine here
+
+	// Description : Host path
+	// Description field is 256 uint8_t, initialize with zeros
+	char exepath[256]={0};
+
+	// Get the full path of the current process
+	// GetModuleFileNameA(NULL, &exepath[0], sizeof(exepath));
+
+	// GetModuleFileNameA could fail for Windows on Arm systems
+	// Use QueryFullProcessImageNameA instead
+	DWORD dwProcId = GetCurrentProcessId();
+	HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcId);
+	if (hProc) {
+		DWORD bufferSize = 256;
+		if (!QueryFullProcessImageNameA(hProc, 0, exepath, &bufferSize)) {
+			SpoutLogWarning("spoutSenderNames::SetSenderInfo -  QueryFullProcessImageName failed");
+		}
+		CloseHandle(hProc);
+	}
+	else {
+		SpoutLogWarning("spoutSenderNames::SetSenderInfo - could not get process handle");
+	}
 
 	// Description is defined as wide chars, but the path is stored as byte chars
 	memcpy(&info.description[0], &exepath[0], 256); // wchar 128
