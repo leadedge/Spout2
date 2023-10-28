@@ -140,6 +140,7 @@
 //		13.10.23	- CheckSender - use GetModuleFileNameEx
 //		26.10.23	- CheckSender - correct exepath test
 //					  Test QueryFullProcessImageName
+//		28.10.23	- CheckSender - executable path retrieved in SpoutSenderNames::SetSenderInfo
 //
 // ====================================================================================
 /*
@@ -2019,44 +2020,11 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 		m_dwFormat = dwFormat;
 
 		// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
-		// and specifying the same texture format
+		// and specifying the same texture format.
 		if (sendernames.CreateSender(m_SenderName, m_Width, m_Height, m_dxShareHandle, m_dwFormat)) {
-			// TODO : this could be a separate function "SetHostPath"
-			// Get current sender info
-			SharedTextureInfo info={};
-			if (sendernames.getSharedInfo(m_SenderName, &info)) {
-				// Get the full path of the current process
-				char exepath[256]={};
-				// TODO : SetSenderName
-				// GetModuleFileNameA(NULL, exepath, sizeof(exepath));
-				DWORD dwProcId = GetCurrentProcessId();
-				HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcId);
-				if (hProc) {
-					// GetModuleFileNameExA(hProc, NULL, exepath, sizeof(exepath));
-					DWORD bufferSize = 256;
-					if (!QueryFullProcessImageNameA(hProc, 0, exepath, &bufferSize)) {
-						SpoutLogWarning("spoutDX::CheckSender -  QueryFullProcessImageName failed");
-					}
-					CloseHandle(hProc);
-				}
-				else {
-					SpoutLogWarning("spoutDX::CheckSender - could not get process handle");
-				}
 
-				if (exepath[0]) {
-					// Description field is 256 uint8_t
-					strcpy_s((char*)info.description, 256, exepath);
-					if (!sendernames.setSharedInfo(m_SenderName, &info)) {
-						SpoutLogWarning("spoutDX::CheckSender - could not set sender info", m_SenderName);
-					}
-				}
-				else {
-					SpoutLogWarning("spoutDX::CheckSender - could not get process path");
-				}
-			}
-			else {
-				SpoutLogWarning("spoutDX::CheckSender - could not get sender info (%s)", m_SenderName);
-			}
+			// sendernames::SetSenderInfo writes the sender information to shared memory
+			// including the sender executable path
 
 			// Create a sender mutex for access to the shared texture
 			frame.CreateAccessMutex(m_SenderName);
