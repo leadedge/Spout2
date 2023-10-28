@@ -138,6 +138,8 @@
 //		30.08.23	- Add include path prefix define in header file
 //		16.09.23	- SendTexture with offsets - check the texture and region sizes
 //		13.10.23	- CheckSender - use GetModuleFileNameEx
+//		26.10.23	- CheckSender - correct exepath test
+//					  Test QueryFullProcessImageName
 //
 // ====================================================================================
 /*
@@ -2030,13 +2032,18 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 				DWORD dwProcId = GetCurrentProcessId();
 				HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcId);
 				if (hProc) {
-					GetModuleFileNameExA(hProc, NULL, exepath, sizeof(exepath));
+					// GetModuleFileNameExA(hProc, NULL, exepath, sizeof(exepath));
+					DWORD bufferSize = 256;
+					if (!QueryFullProcessImageNameA(hProc, 0, exepath, &bufferSize)) {
+						SpoutLogWarning("spoutDX::CheckSender -  QueryFullProcessImageName failed");
+					}
 					CloseHandle(hProc);
 				}
 				else {
 					SpoutLogWarning("spoutDX::CheckSender - could not get process handle");
 				}
-				if (exepath) {
+
+				if (exepath[0]) {
 					// Description field is 256 uint8_t
 					strcpy_s((char*)info.description, 256, exepath);
 					if (!sendernames.setSharedInfo(m_SenderName, &info)) {
