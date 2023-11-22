@@ -149,6 +149,7 @@
 		12.09.23 - Add SpoutMessageBox overload including main instruction large text
 				 - Correct missing SPOUT_DLLEXP for SpoutMessageBox standard function
 		12.10.23 - Add SpoutMessageBoxButton and CopyToClipBoard
+		20.11.23 - OpenSpoutLogs() - allow for getenv if not Microsoft compile
 
 */
 
@@ -933,19 +934,19 @@ namespace spoututils {
 		char* appdatapath = nullptr;
 		size_t len = 0;
 		std::string logfolder;
-		if (_dupenv_s(&appdatapath, &len, "AppData") == 0) {
-			if (appdatapath) {
-				logfolder = appdatapath;
-				logfolder += "\\Spout";
-				if (_access(logfolder.c_str(), 0) != -1) {
-					// Open log folder in explorer
-					ShellExecuteA(NULL, "open", logfolder.c_str(), NULL, NULL, SW_SHOWNORMAL);
-					do {} while (!FindWindowA("CabinetWClass", NULL));
-				}
-			}
-			else {
-				SpoutMessageBox(NULL, "Could not find AppData path", "OpenSpoutLogs", MB_OK | MB_TOPMOST | MB_ICONWARNING);
-				return false;
+		errno_t err = 0;
+		#if defined(_MSC_VER)
+			err = _dupenv_s(&appdatapath, &len, "APPDATA");
+		#else
+			appdatapath = getenv("APPDATA");
+		#endif
+		if (err == 0 && appdatapath) {
+			logfolder = appdatapath;
+			logfolder += "\\Spout";
+			if (_access(logfolder.c_str(), 0) != -1) {
+				// Open log folder in explorer
+				ShellExecuteA(NULL, "open", logfolder.c_str(), NULL, NULL, SW_SHOWNORMAL);
+				do {} while (!FindWindowA("CabinetWClass", NULL));
 			}
 		}
 		else {
