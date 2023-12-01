@@ -9,7 +9,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2017-2023, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2017-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -149,7 +149,10 @@
 		12.09.23 - Add SpoutMessageBox overload including main instruction large text
 				 - Correct missing SPOUT_DLLEXP for SpoutMessageBox standard function
 		12.10.23 - Add SpoutMessageBoxButton and CopyToClipBoard
-		20.11.23 - OpenSpoutLogs() - allow for getenv if not Microsoft compile
+		20.10.23 - Add OpenSpoutLogs to open Spout log folder in Windows explorer
+		20-11-23 - OpenSpoutLogs() - allow for getenv if not Microsoft compile (PR #105)
+		22-11-23 - Remove unused buffer length argument from _dupenv_s
+		01.12.24 - Update Version to "2.007.013"
 
 */
 
@@ -196,7 +199,7 @@ namespace spoututils {
 
 	// Spout SDK version number string
 	// Major, minor, release
-	std::string SDKversion = "2.007.012";
+	std::string SDKversion = "2.007.013";
 
 	//
 	// Group: Information
@@ -932,14 +935,13 @@ namespace spoututils {
 	bool SPOUT_DLLEXP OpenSpoutLogs()
 	{
 		char* appdatapath = nullptr;
-		size_t len = 0;
-		std::string logfolder;
 		errno_t err = 0;
-		#if defined(_MSC_VER)
-			err = _dupenv_s(&appdatapath, &len, "APPDATA");
-		#else
-			appdatapath = getenv("APPDATA");
-		#endif
+		std::string logfolder;
+#if defined(_MSC_VER)
+		err = _dupenv_s(&appdatapath, NULL, "APPDATA");
+#else
+		appdatapath = getenv("APPDATA");
+#endif
 		if (err == 0 && appdatapath) {
 			logfolder = appdatapath;
 			logfolder += "\\Spout";
@@ -1369,11 +1371,10 @@ namespace spoututils {
 
 			// Retrieve user %appdata% environment variable
 			char *appdatapath = nullptr;
-			size_t len = 0;
 			bool bSuccess = true;
 			errno_t err = 0;
 			#if defined(_MSC_VER)
-				err = _dupenv_s(&appdatapath, &len, "APPDATA");
+				err = _dupenv_s(&appdatapath, NULL, "APPDATA");
 			#else
 				appdatapath = getenv("APPDATA");
 			#endif

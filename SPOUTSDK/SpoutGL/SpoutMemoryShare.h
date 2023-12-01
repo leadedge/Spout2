@@ -1,13 +1,16 @@
 /*
 
-	SpoutSharedMemory.h
-	
-	Thanks and credit to Malcolm Bechard the author of this class
+	SpoutMemoryShare.h
 
-	https://github.com/mbechard
+	Spout memory map management for sharing images via shared memory
+	Revised over original single reader/writer pair
+
+	Thanks and credit to Malcolm Bechard for the SpoutSharedMemory class
+
+	https://github.com/mbechard	
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2020, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -29,69 +32,48 @@
 	LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-*/
-
+ */
 #pragma once
+#ifndef __spoutMemoryShare__
+#define __spoutMemoryShare__
 
-#ifndef __SpoutSharedMemory_ // standard way as well
-#define __SpoutSharedMemory_
-
-#include "SpoutCommon.h"
 #include <windowsx.h>
-#include <d3d9.h>
-#include <wingdi.h>
+#include <string>
+#include "../SpoutGL/SpoutCommon.h"
+#include "../SpoutGL/SpoutSharedMemory.h"
 
-using namespace spoututils;
+typedef unsigned int GLenum;
+#define GL_RGB 0x1907
+#define GL_RGBA 0x1908
 
-//
-// Result of memory segment creation
-//
-enum SpoutCreateResult {
-	SPOUT_CREATE_FAILED = 0,
-	SPOUT_CREATE_SUCCESS,
-	SPOUT_ALREADY_EXISTS,
-	SPOUT_ALREADY_CREATED,
-};
+class SPOUT_DLLEXP spoutMemoryShare {
 
-class SPOUT_DLLEXP SpoutSharedMemory {
+	public:
 
-public:
+		spoutMemoryShare();
+		~spoutMemoryShare();
 
-	SpoutSharedMemory();
-	~SpoutSharedMemory();
+		// Create / Open, Update or Close a sender memory map
+		bool CreateSenderMemory (const char *sendername, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA);
+		bool UpdateSenderMemorySize (const char* sendername, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA);
+		bool OpenSenderMemory (const char *sendername);
+		void CloseSenderMemory ();
 
-	// Create a new memory segment, or attach to an existing one
-	SpoutCreateResult Create(const char* name, int size);
+		// Retrieve global width and height
+		bool GetSenderMemorySize(unsigned int &width, unsigned int &height);
 
-	// Open an existing memory map
-	bool Open(const char* name);
+		// Lock and unlock memory and retrieve buffer pointer
+		unsigned char * LockSenderMemory();
+		void UnlockSenderMemory();
 
-	// Close a map
-	void Close();
+		// Close and release memory object
+		void ReleaseSenderMemory ();
 
-	// Lock an open map and return the buffer
-	char* Lock();
+protected:
 
-	// Unlock a map
-	void Unlock();
-
-	// Name of an existing map
-	const char* Name();
-	
-	// Size of an existing map
-	int Size();
-
-	// Print map information for debugging
-	void Debug();
-
-private:
-
-	char*  m_pBuffer; // Buffer pointer
-	HANDLE m_hMap; // Map handle
-	HANDLE m_hMutex; // Mutex for map access
-	int m_lockCount; // Map access lock count
-	char* m_pName; // Map name
-	int m_size; // Map size
+		SpoutSharedMemory *senderMem;
+		unsigned int m_Width;
+		unsigned int m_Height;
 
 };
 

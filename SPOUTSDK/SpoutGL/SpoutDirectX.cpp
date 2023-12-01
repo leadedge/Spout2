@@ -156,12 +156,12 @@
 //					  ReleaseDX11Device - release ID3D11Device1 and ID3D11DeviceContext1 if created
 //	Version 2.007.012
 //		07.08.23	- Comment out code for debug layers
-//		19.10.23	- GetNumAdapters - remove unsued adapter description and output list
+//		19.10.23	- GetNumAdapters - remove unused adapter description and output list
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2023. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2024. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:

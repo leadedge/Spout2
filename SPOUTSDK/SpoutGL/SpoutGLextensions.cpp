@@ -58,8 +58,12 @@
 //			31.07.23	- Add defines
 //						  GL_IMPLEMENTATION_COLOR_READ_TYPE, GL_IMPLEMENTATION_COLOR_READ_FORMAT
 //			02.08.23	- Add glGetTextureParameteriv
+//			21.11.23	- Add defines for : GL_MAX_COMPUTE_WORK_GROUP_COUNT, GL_MAX_COMPUTE_WORK_GROUP_SIZE
+//						  GL_ATTACHED_SHADERS, GL_INFO_LOG_LENGTH
+//						  Add glGetProgramInfoLog, glGetShaderInfoLog, glGetIntegeri_v
+//
 
-	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -158,8 +162,8 @@ glGetInternalFormativPROC glGetInternalFormativ = NULL;
 #endif
 
 //---------------------------
-// (for future use)
 // Compute shader extensions
+// Disable for Processing library (JSpoutLib)
 //---------------------------
 glCreateProgramPROC		 glCreateProgram    = NULL;
 glCreateShaderPROC       glCreateShader     = NULL;
@@ -168,6 +172,9 @@ glCompileShaderPROC      glCompileShader    = NULL;
 glAttachShaderPROC       glAttachShader     = NULL;
 glLinkProgramPROC        glLinkProgram      = NULL;
 glGetProgramivPROC       glGetProgramiv     = NULL;
+glGetProgramInfoLogPROC  glGetProgramInfoLog = NULL;
+glGetShaderInfoLogPROC   glGetShaderInfoLog = NULL;
+glGetIntegeri_vPROC      glGetIntegeri_v    = NULL;
 glDetachShaderPROC       glDetachShader     = NULL;
 glUseProgramPROC         glUseProgram       = NULL;
 glBindImageTexturePROC   glBindImageTexture = NULL;
@@ -456,6 +463,9 @@ bool loadComputeShaderExtensions()
 	glAttachShader     = (glAttachShaderPROC)wglGetProcAddress("glAttachShader");
 	glLinkProgram      = (glLinkProgramPROC)wglGetProcAddress("glLinkProgram");
 	glGetProgramiv     = (glGetProgramivPROC)wglGetProcAddress("glGetProgramiv");
+	glGetProgramInfoLog = (glGetProgramInfoLogPROC)wglGetProcAddress("glGetProgramInfoLog");
+	glGetShaderInfoLog = (glGetShaderInfoLogPROC)wglGetProcAddress("glGetShaderInfoLog");
+	glGetIntegeri_v    = (glGetIntegeri_vPROC)wglGetProcAddress("glGetIntegeri_v");
 	glDetachShader     = (glDetachShaderPROC)wglGetProcAddress("glDetachShader");
 	glUseProgram       = (glUseProgramPROC)wglGetProcAddress("glUseProgram");
 	glBindImageTexture = (glBindImageTexturePROC)wglGetProcAddress("glBindImageTexture");
@@ -488,6 +498,9 @@ bool loadComputeShaderExtensions()
 		&& glAttachShader != NULL
 		&& glLinkProgram != NULL
 		&& glGetProgramiv != NULL
+		&& glGetProgramInfoLog != NULL
+		&& glGetShaderInfoLog != NULL
+		&& glGetIntegeri_v != NULL
 		&& glDetachShader != NULL
 		&& glUseProgram != NULL
 		&& glBindImageTexture != NULL

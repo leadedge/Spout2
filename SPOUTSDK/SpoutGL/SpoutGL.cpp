@@ -155,10 +155,13 @@
 //		20.10.23	- ReadTextureData - correct glReadPixels format for RGBA data
 //					  InitTexture - add pixel type
 //					  GLFormatName - correct BGRA name
+//		01.11.23	- CreateInterop - correct uint printf formatting for error message
+//					  Avoid repeats if interop failure flag is set. Cleared by CleaunpInterop.
+//		30.11.23	- ReadMemoryTexture - remove new frame test
 //
 // ====================================================================================
 //
-//	Copyright (c) 2021-2023, Lynn Jarvis. All rights reserved.
+//	Copyright (c) 2021-2024, Lynn Jarvis. All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without modification, 
 //	are permitted provided that the following conditions are met:
@@ -1206,7 +1209,7 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 {
 
 	// Avoid repeats if interop failure flag is set
-	// Ccleared by CleaunpInterop
+	// Cleared by CleaunpInterop
 	if (m_bInteropFailed)
 		return false;
 
@@ -1254,7 +1257,7 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 				m_pSharedTexture = nullptr;
 				m_dxShareHandle = nullptr;
 				char tmp[256]{};
-				sprintf_s(tmp, 256, "spoutGL::CreateInterop - sender CreateSharedDX11Texture failed (%dx%d format 0x%X)",
+				sprintf_s(tmp, 256, "spoutGL::CreateInterop - sender CreateSharedDX11Texture failed (%ux%u format 0x%X)",
 					width, height, format);
 				SpoutLogFatal(tmp);
 				DoDiagnostics(tmp);
@@ -1792,7 +1795,6 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 	}
 
 	// width and height must be the same as the shared texture
-	// m_TextureInfo is established in CreateDX11interop
 	if (width != m_Width || height != m_Height) {
 		return false;
 	}
@@ -2229,7 +2231,7 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 
 //
-// Copy OpenGL to DirectX 11 texture via CPU where the GL/DX interop is not available
+// Copy OpenGL to DirectX 11 texture via CPU if the GL/DX interop is not available
 //
 // GPU read is from OpenGL.
 // Use multiple PBOs instead of glReadPixels for best speed.
@@ -3038,17 +3040,14 @@ bool spoutGL::CheckStagingTextures(unsigned int width, unsigned int height, int 
 bool spoutGL::ReadMemoryTexture(const char* sendername, GLuint TexID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO)
 {
-	// No new frame, do not block
-	if (!frame.GetNewFrame())
-		return true;
-
 	// Open a shared memory map if it not already
 	if (!memoryshare.Name()) {
 		// Create a name for the map from the sender name
 		std::string namestring = sendername;
 		namestring += "_map";
-		// Open the shared memory map.
+		// Try to open the shared memory map.
 		if (!memoryshare.Open(namestring.c_str())) {
+			// No map
 			return false;
 		}
 		SpoutLogNotice("SpoutSharedMemory::ReadMemoryTexture - opened sender memory map [%s]", memoryshare.Name());

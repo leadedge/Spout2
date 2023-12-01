@@ -10,7 +10,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -47,9 +47,7 @@
 //	28.10.22 - Code documentation
 //  18.12.22 - Catch any exception from using Close in destructor
 //	07.01.23 - Change m_pName from const char* to char* for strdup
-//  Version 2.007.11
 //  12.05.23 - Create and Open - Clear ERROR_ALREADY_EXISTS to avoid detection elsewhere.
-//	Version 2.007.012
 // ====================================================================================
 
 
