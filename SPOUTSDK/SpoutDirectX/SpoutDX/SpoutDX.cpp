@@ -141,10 +141,11 @@
 //		26.10.23	- CheckSender - correct exepath test
 //					  Test QueryFullProcessImageName
 //		28.10.23	- CheckSender - executable path retrieved in SpoutSenderNames::SetSenderInfo
+//		02.12.23	- Update and test examples with 2.007.013 SpoutGL files. No other changes.
 //
 // ====================================================================================
 /*
-	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:

@@ -10,11 +10,12 @@
 //		26.01.21	- First working version
 //		01.03.21	- Cleanup
 //		11.06.21	- Add documentation
+//		02.12.23	- Update and test examples with 2.007.013 SpoutGL files. No other changes.
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2020-2022. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2020-2024. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:

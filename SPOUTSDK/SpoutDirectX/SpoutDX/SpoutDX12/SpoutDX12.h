@@ -4,7 +4,7 @@
 
 	Functions to manage DirectX 12 texture sharing by way of the D3D11On12
 
-	Copyright (c) 2020-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2020-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
