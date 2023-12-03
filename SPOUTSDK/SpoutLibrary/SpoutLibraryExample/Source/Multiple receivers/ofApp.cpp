@@ -37,7 +37,7 @@
 	OpenFrameworks 11
 	Visual Studio 2022
 
-	Copyright (C) 2015-2022 Lynn Jarvis.
+	Copyright (C) 2015-2024 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify

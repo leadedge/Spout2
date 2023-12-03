@@ -103,9 +103,11 @@
 //		28.09.23   Add EnableFrameSync
 //				   Rebuild with SDK version 2.007.012 - release VS2022 - 32/64 bit /MD
 //		16.10.23   Add SpoutMessageBoxIcon and SpoutMessageBoxButton
+//		03.12.23   Rebuild with SDK version 2.007.013 /MD and /MT using CMake
+//				   Binaries included in a Spout2 GiHub release
 //
 /*
-		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2024, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:

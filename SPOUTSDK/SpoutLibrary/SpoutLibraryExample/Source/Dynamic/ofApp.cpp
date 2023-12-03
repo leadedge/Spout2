@@ -8,7 +8,7 @@
 	OpenFrameworks 11
 	Visual Studio 2022
 
-	Copyright (C) 2015-2022 Lynn Jarvis.
+	Copyright (C) 2015-2024 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -34,7 +34,7 @@ void ofApp::setup(){
 	
 	// Try to load SpoutLibrary.dll
 	// The dll file must be in the same folder as the executable.
-	// The dll type (Win32 or x64) must match that of the executable.
+	// The dll build (Win32 or x64 and /MD or /MT) must match that of the executable.
 	sender = spoutloader.LoadSpoutLibrary();
 	if (!sender) {
 		MessageBoxA(NULL, "SpoutLibrary dll not found", "Error", MB_OK);

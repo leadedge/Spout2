@@ -106,7 +106,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <AdditionalDependencies>SpoutLibrary.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -148,12 +148,13 @@
     <Link>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <AdditionalDependencies>SpoutLibrary.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent />
   </ItemDefinitionGroup>
@@ -161,7 +162,7 @@
     <ClCompile>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);src</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -185,6 +186,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ofApp.h" />
+    <ClInclude Include="src\SpoutLibrary.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="$(OF_ROOT)\libs\openFrameworksCompiled\project\vs\openframeworksLib.vcxproj">
