@@ -91,6 +91,18 @@ if(MINGW)
   set(OUTPUT_STATIC_LIB "libSpoutDX_static.a")
   set(OUTPUT_SHARED_LIB "libSpoutDX.dll")
   set(OUTPUT_IMPORT_LIB "libSpoutDX.dll.a")
+
+  # Linking Comctl32 Version 6 for TaskDialogIndirect
+  set(resource_file MinGW/modern-style-manifest.rc)
+  foreach(target IN ITEMS SpoutDX_static SpoutDX)
+    target_sources(${target}
+      INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../${resource_file}>
+        $<INSTALL_INTERFACE:include/${resource_file}>
+      PRIVATE
+        ../../${resource_file}
+    )
+  endforeach()
 else()
   set(OUTPUT_STATIC_LIB "SpoutDX_static.lib")
   set(OUTPUT_SHARED_LIB "SpoutDX.dll")

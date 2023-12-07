@@ -177,6 +177,15 @@ if(NOT SKIP_INSTALL_ALL)
 			)
 		endif()
 
+		if(MINGW)
+			install(
+				FILES
+				SPOUTSDK/MinGW/modern-style-manifest.rc
+				DESTINATION
+					${CMAKE_INSTALL_PREFIX}/include/MinGW
+			)
+		endif()
+
 	endif()
 
 endif()
