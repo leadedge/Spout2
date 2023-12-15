@@ -162,8 +162,9 @@
 		08.12.23 - #ifdef _MSC_VER for linker manifestdependency pragma comment
 				   MessageTaskDialog - correct topmost if a second dialog is opened
 		15.12.23 - Change to #ifdef _WINDOWS for linker manifestdependency pragma comment
-				   Conditional compile of TaskDialogIndirect for _WINDOWS
-				   and use the standard MessageBox function for other compilers.
+				   Conditional compile of TaskDialogIndirect for _WINDOWS.
+				   MessageBoxTimeoutA for other compilers.
+
 
 */
 
@@ -1248,7 +1249,6 @@ namespace spoututils {
 
 	}
 
-
 	//
 	// Group: Timing
 	//
@@ -1900,7 +1900,9 @@ namespace spoututils {
 			// or custom button ID
 			return nButtonPressed;
 #else
-			return MessageBoxA(NULL, content, caption, dwButtons);
+			UNREFERENCED_PARAMETER(hInst);
+			if(MessageBoxTimeoutA(NULL, content, caption, dwButtons, 0, dwMilliseconds) == 0)
+				return MessageBoxA(NULL, content, caption, dwButtons);
 #endif
 		}
 
@@ -1942,7 +1944,35 @@ namespace spoututils {
 			}
 #endif
 			return S_OK;
-		};
+		}
+
+#ifndef _WINDOWS
+		// TimeoutMessageBox replacement for TaskDialogIndirect
+		// https://www.codeproject.com/Articles/7914/MessageBoxTimeout-API
+		int MessageBoxTimeoutA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption,
+			UINT uType, WORD wLanguageId, DWORD dwMilliseconds)
+		{
+			typedef int(__stdcall* MSGBOXAAPI)(IN HWND hWnd,
+				IN LPCSTR lpText, IN LPCSTR lpCaption, IN UINT uType,
+				IN WORD wLanguageId, IN DWORD dwMilliseconds);
+
+			static MSGBOXAAPI MsgBoxTOA = NULL;
+
+			if (!MsgBoxTOA) {
+				HMODULE hUser32 = GetModuleHandleA("user32.dll");
+				if (hUser32) {
+					MsgBoxTOA = (MSGBOXAAPI)GetProcAddress(hUser32, "MessageBoxTimeoutA");
+				}
+				else {
+					// Return to call MessageBox())
+					return 0;
+				}
+			}
+			if (MsgBoxTOA)
+				return MsgBoxTOA(hWnd, lpText, lpCaption, uType, wLanguageId, dwMilliseconds);
+			return 0;
+		}
+#endif
 
 		
 	} // end private namespace

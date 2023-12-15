@@ -45,7 +45,9 @@
 #include <string>
 #include <Shellapi.h> // for shellexecute
 #include <Commctrl.h> // For TaskDialogIndirect
-
+#ifndef _WINDOWS
+#pragma comment(lib, "user32.lib") // For MessageBoxTimeoutA
+#endif
 
 //
 // C++11 timer is only available for MS Visual Studio 2015 and above.
@@ -79,7 +81,6 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 // For custom SpoutMessageBox button
 #define MB_USERBUTTON 0x00000007L
-
 
 // SpoutUtils
 namespace spoututils {
@@ -319,11 +320,16 @@ namespace spoututils {
 		bool GetNVIDIAmode(const char *command, int * mode);
 		bool SetNVIDIAmode(const char *command, int mode);
 		bool ExecuteProcess(const char *path);
-
 		// Taskdialog for SpoutMessageBox
 		int MessageTaskDialog(HINSTANCE hInst, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
 		// TaskDialogIndirect callback to handle timer, topmost and hyperlinks
 		HRESULT TDcallbackProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData);
+#ifndef _WINDOWS
+		// Timeout MessageBox for other compilers
+		int MessageBoxTimeoutA(IN HWND hWnd,
+			IN LPCSTR lpText, IN LPCSTR lpCaption, IN UINT uType,
+			IN WORD wLanguageId, IN DWORD dwMilliseconds);
+#endif
 		// For topmost
 		HWND hwndTop = NULL;
 		bool bTopMost = false;
@@ -334,6 +340,7 @@ namespace spoututils {
 		std::vector<std::wstring>TDbuttonTitle;
 		// Main instruction text
 		std::wstring wstrInstruction;
+
 	}
 
 }
