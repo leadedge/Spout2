@@ -153,6 +153,17 @@
 		20-11-23 - OpenSpoutLogs() - allow for getenv if not Microsoft compile (PR #105)
 		22-11-23 - Remove unused buffer length argument from _dupenv_s
 		01.12.24 - Update Version to "2.007.013"
+		07.12.23 - Remove SPOUT_DLLEXP from private MessageTaskDialog
+				   Use _access and string find in place of shlwapi path functions
+				   Add GetExePath, GetExeName, RemovePath
+				   Revise : _getLogPath(), _getLogFilePath, _logtofile,
+				   EnableSpoutLog, EnableSpoutLogFile, ShowSpoutLogs,
+				   OpenSpoutConsole, GetNVIDIAmode, SetNVIDIAmode
+		08.12.23 - #ifdef _MSC_VER for linker manifestdependency pragma comment
+				   MessageTaskDialog - correct topmost if a second dialog is opened
+		15.12.23 - Change to #ifdef _WINDOWS for linker manifestdependency pragma comment
+				   Conditional compile of TaskDialogIndirect for _WINDOWS
+				   and use the standard MessageBox function for other compilers.
 
 */
 
@@ -255,6 +266,66 @@ namespace spoututils {
 		return hModule;
 	}
 
+
+	// ---------------------------------------------------------
+	// Function: GetExePath()
+	// Get executable or dll path
+	//
+	std::string GetExePath()
+	{
+		char path[MAX_PATH]{};
+		// exe or dll
+		GetModuleFileNameA(GetCurrentModule(), path, MAX_PATH);
+		std::string exepath = path;
+		// Remove name
+		RemoveName(exepath);
+		return exepath;
+	}
+
+	// ---------------------------------------------------------
+	// Function: GetExeName()
+	// Get executable or dll name
+	//
+	std::string GetExeName()
+	{
+		char path[MAX_PATH]{};
+		GetModuleFileNameA(GetCurrentModule(), path, MAX_PATH);
+		std::string exepath = path;
+		// Remove extension
+		size_t pos = exepath.rfind(".");
+		exepath = exepath.substr(0, pos);
+		// Remove path
+		RemovePath(exepath);
+		return exepath;
+	}
+
+	// ---------------------------------------------------------
+	// Function: RemovePath()
+	// Remove path and return the file name
+	//
+	void RemovePath(std::string& path)
+	{
+		// Remove path
+		size_t pos = path.rfind("\\");
+		if (pos == std::string::npos)
+			pos = path.rfind("/");
+		if (pos != std::string::npos)
+			path = path.substr(pos + 1, path.size() - pos);
+	}
+
+	// ---------------------------------------------------------
+	// Function: RemoveName()
+	// Remove file name and return the path
+	//
+	void RemoveName(std::string& path)
+	{
+		size_t pos = path.rfind("\\");
+		if (pos == std::string::npos)
+			pos = path.rfind("/");
+		if (pos != std::string::npos)
+			path = path.substr(0, pos + 1); // leave trailing backslash
+	}
+
 	//
 	// Group: Console management
 	//
@@ -279,18 +350,11 @@ namespace spoututils {
 			if (AllocConsole()) {
 				const errno_t err = freopen_s(&pCout, "CONOUT$", "w", stdout);
 				if (err == 0) {
-					char title[MAX_PATH]={};
-					if (GetModuleFileNameA(GetCurrentModule(), title, MAX_PATH) > 0) {
-						PathStripPathA(title);
-						PathRemoveExtensionA(title);
-						strcat_s(title, MAX_PATH, ".log"); // Executable name
-						SetConsoleTitleA(title);
-					}
-					else {
-						SetConsoleTitleA("Spout Log");
-					}
+					std::string name = GetExeName();
+					name += ".log";
+					SetConsoleTitleA(name.c_str());
 					bConsole = true;
-					// Disable close button
+					// Optional - disable close button
 					// HMENU hmenu = GetSystemMenu(GetConsoleWindow(), FALSE);
 					// EnableMenuItem(hmenu, SC_CLOSE, MF_GRAYED);
 					// Bring the main window to the top again
@@ -409,28 +473,18 @@ namespace spoututils {
 	//
 	void EnableSpoutLog()
 	{
-		bEnableLog = true;
-
-		// Console output
-		if (GetConsoleWindow()) {
-			char title[MAX_PATH]={};
-			if (GetModuleFileNameA(GetCurrentModule(), title, MAX_PATH) > 0) {
-				PathStripPathA(title);
-				PathRemoveExtensionA(title);
-				strcat_s(title, MAX_PATH, ".log"); // Executable name
-				SetConsoleTitleA(title);
-			}
-			else {
-				SetConsoleTitleA("Spout Log");
-			}
-			bConsole = true;
-		}
-		else if(!bConsole)
+		if (!GetConsoleWindow())
 			OpenSpoutConsole();
+
+		std::string name = GetExeName();
+		name += ".log";
+		SetConsoleTitleA(name.c_str());
+
+		bConsole = true;
+		bEnableLog = true;
 
 		// Initialize current log string
 		logChars[0] = 0;
-
 	}
 
 	// ---------------------------------------------------------
@@ -592,15 +646,23 @@ namespace spoututils {
 	void ShowSpoutLogs()
 	{
 		char directory[MAX_PATH]={};
+		std::string logfilefolder;
 
 		if (logPath.empty() || _access(logPath.c_str(), 0) == -1) {
-			std::string logfilefolder = _getLogPath();
-			strcpy_s(directory, MAX_PATH, logfilefolder.c_str());
+			logfilefolder = _getLogPath();
 		}
 		else {
-			strcpy_s(directory, MAX_PATH, logPath.c_str());
-			PathRemoveFileSpecA(directory); // Current log file path
+			logfilefolder = logPath.c_str();
+			// Remove file spec
+			size_t pos = logfilefolder.rfind("\\");
+			if (pos == std::string::npos)
+				pos = logfilefolder.rfind("/");
+			if (pos != std::string::npos)
+				logfilefolder = logfilefolder.substr(0, pos);
 		}
+
+		// Current log file path
+		strcpy_s(directory, MAX_PATH, logfilefolder.c_str());
 
 		SHELLEXECUTEINFOA ShExecInfo;
 		memset(&ShExecInfo, 0, sizeof(ShExecInfo));
@@ -812,7 +874,7 @@ namespace spoututils {
 	}
 
 	// MessageBox with variable arguments
-	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, const char* format, ...)
+	int SpoutMessageBox(const char* caption, const char* format, ...)
 	{
 		std::string strmessage;
 		std::string strcaption;
@@ -838,7 +900,7 @@ namespace spoututils {
 	// Messagebox with standard arguments and optional timeout
 	//
 	// Replaces an existing MessageBox call.
-	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
 	{
 		// hwnd no longer used with taskdialog
 		// Quiet unreferenced parameter
@@ -851,7 +913,7 @@ namespace spoututils {
 	//
 	// MessageBox dialog with standard arguments
 	// including taskdialog main instruction large text
-	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
 	{
 		hwnd = hwnd;
 
@@ -869,7 +931,7 @@ namespace spoututils {
 	// Function: SpoutMessageBoxIcon
 	// Custom icon for SpoutMessageBox from resources
 	// Use together with MB_USERICON
-	void SPOUT_DLLEXP SpoutMessageBoxIcon(HICON hIcon)
+	void SpoutMessageBoxIcon(HICON hIcon)
 	{
 		hTaskIcon = hIcon;
 	}
@@ -878,7 +940,7 @@ namespace spoututils {
 	// Function: SpoutMessageBoxIcon
 	// Custom icon for SpoutMessageBox from file
 	// Use together with MB_USERICON
-	bool SPOUT_DLLEXP SpoutMessageBoxIcon(std::string iconfile)
+	bool SpoutMessageBoxIcon(std::string iconfile)
 	{
 		hTaskIcon = reinterpret_cast<HICON>(LoadImageA(nullptr, iconfile.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE));
 		return (hTaskIcon);
@@ -888,7 +950,7 @@ namespace spoututils {
 	// Function: SpoutMessageBoxButton
 	// Custom button for SpoutMessageBox
 	// Use together with MB_USERBUTTON
-	void SPOUT_DLLEXP SpoutMessageBoxButton(int ID, std::wstring title)
+	void SpoutMessageBoxButton(int ID, std::wstring title)
 	{
 		TDbuttonID.push_back(ID);
 		TDbuttonTitle.push_back(title);
@@ -898,7 +960,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: CopyToClipBoard
 	// Copy text to the clipboard
-	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* caps)
+	bool CopyToClipBoard(HWND hwnd, const char* caps)
 	{
 		HGLOBAL clipbuffer = NULL;
 		char* buffer = nullptr;
@@ -932,7 +994,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: OpenSpoutLogs
 	// Open Spout log folder in Windows explorer
-	bool SPOUT_DLLEXP OpenSpoutLogs()
+	bool OpenSpoutLogs()
 	{
 		char* appdatapath = nullptr;
 		errno_t err = 0;
@@ -1394,8 +1456,7 @@ namespace spoututils {
 			if (!bSuccess) {
 				// _dupenv_s or CreateDirectory failed
 				// Find the path of the executable
-				GetModuleFileNameA(NULL, (LPSTR)logpath, sizeof(logpath));
-				PathRemoveFileSpecA((LPSTR)logpath);
+				sprintf_s(logpath, MAX_PATH, GetExePath().c_str());
 			}
 
 			return logpath;
@@ -1405,60 +1466,82 @@ namespace spoututils {
 		std::string _getLogFilePath(const char* filename)
 		{
 			std::string logFilePath; // full path of the log file
-
 			std::string path;
+			size_t pos;
+
+			//
+			// Default log 
+			//
 			if (!filename) {
 				// Use the executable name if no filename was passed in
-				char name[MAX_PATH]={};
-				if (GetModuleFileNameA(GetCurrentModule(), name, MAX_PATH) > 0) {
-					PathStripPathA(name);
-					PathRemoveExtensionA(name);
-					strcat_s(name, MAX_PATH, ".log"); // Executable name
-					path = _getLogPath(); // C:\Users\username\AppData\Roaming\Spout\application.log
-					path += "\\";
-					path += name; // Full path
-				}
+				// C:\Users\username\AppData\Roaming\Spout\exename.log
+				logFilePath = _getLogPath();
+				logFilePath += "\\";
+				logFilePath += GetExeName();
+				logFilePath += ".log";
+				return logFilePath;
 			}
 			else {
 				path = filename;
-			}
-
-			if (!path.empty()) {
-
-				char fname[MAX_PATH]={};
-				strcpy_s(fname, MAX_PATH, path.c_str());
-				PathRemoveBackslashA(fname);
-
+				//
 				// Path without a filename
-				if (PathIsDirectoryA(fname)) {
-					logFilePath = fname;
-					logFilePath += "\\SpoutLog.log";
+				//
+				pos = path.rfind("\\");
+				if (pos == std::string::npos)
+					pos = path.rfind("/");
+				if (pos != std::string::npos && pos == path.size() - 1) {
+					// Path terminates with a backslash
+					pos = path.find(":");
+					if (pos != std::string::npos) {
+						// Path has a drive letter
+						// Add the executable name
+						path += GetExeName();
+						path += ".log";
+						return path;
+					}
 				}
-
+				//
 				// Filename without a path
-				else if (PathIsFileSpecA(fname)) {
-					// Add an extension if none supplied
-					if (PathFindExtensionA(fname) == 0)
-						strcat_s(fname, MAX_PATH, ".log");
-					logFilePath = _getLogPath();
-					logFilePath += "\\";
-					logFilePath += fname;
+				//
+				pos = path.rfind("\\");
+				if (pos == std::string::npos)
+					pos = path.rfind("/");
+				if (pos == std::string::npos) {
+					// Does not have any backslash
+					pos = path.find(":");
+					if (pos == std::string::npos) {
+						// Does not have a drive letter
+						// Add an extension if not supplied
+						pos = path.rfind(".");
+						if (pos == std::string::npos)
+							path += ".log";
+						logFilePath = _getLogPath();
+						logFilePath += "\\";
+						logFilePath += path;
+						return logFilePath;
+					}
 				}
-
-				// Full path with a filename
-				else if (PathFindFileNameA(fname)) {
-					// Add an extension if none supplied
-					if (!PathFindExtensionA(fname))
-						strcat_s(fname, MAX_PATH, ".log");
-					logFilePath = fname;
+				//
+				// Path with a filename
+				//
+				pos = path.rfind("\\");
+				if (pos == std::string::npos)
+					pos = path.rfind("/");
+				if (pos != std::string::npos) {
+					// Has any backslash
+					pos = path.find(":");
+					if (pos != std::string::npos) {
+						// Has a drive letter
+						// Add an extension if none supplied
+						pos = path.rfind(".");
+						if (pos == std::string::npos)
+							path += ".log";
+						return path;
+					}
 				}
 			}
-			else {
-				// If all options fail, logPath is empty and "SpoutLog.log" is used
-				logFilePath = "SpoutLog.log";
-			}
-
-			return logFilePath;
+			// If all options fail "SpoutLog.log" is used
+			return "SpoutLog.log";
 		}
 
 		// Get the name for the current log level
@@ -1528,7 +1611,7 @@ namespace spoututils {
 				return false;
 			}
 
-			if (!PathFileExistsA(exePath)) {
+			if (_access(exePath, 0) == -1) {
 				SpoutLogError("spoututils::GetNVIDIAmode - SpoutSettings.exe not found");
 				return false;
 			}
@@ -1568,7 +1651,7 @@ namespace spoututils {
 				return false;
 			}
 
-			if (!PathFileExistsA(exePath)) {
+			if (_access(exePath, 0) == -1) {
 				SpoutLogError("spoututils::SetNVIDIAmode - SpoutSettings.exe not found");
 				return false;
 			}
@@ -1625,11 +1708,14 @@ namespace spoututils {
 			return bRet;
 		}
 
-
+		//
 		// MessageBox replacement
-		// // https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-taskdialogconfig
+		// 
+		// https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-taskdialogconfig
+		//
 		int MessageTaskDialog(HINSTANCE hInst, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds)
 		{
+#ifdef _WINDOWS
 			// User buttons
 			TASKDIALOG_BUTTON buttons[10]={0};
 
@@ -1799,6 +1885,7 @@ namespace spoututils {
 			if (bTopMost && hwndTop) {
 				// Reset the window that was topmost before
 				SetWindowPos(hwndTop, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+				hwndTop = NULL;
 			}
 
 			// Clear global main instruction
@@ -1812,16 +1899,18 @@ namespace spoututils {
 			// IDCANCEL, IDNO, IDOK, IDRETRY, IDYES
 			// or custom button ID
 			return nButtonPressed;
-
+#else
+			return MessageBoxA(NULL, content, caption, dwButtons);
+#endif
 		}
 
 		HRESULT TDcallbackProc(HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
 		{
+#ifdef _WINDOWS
 			// Topmost
 			if (uNotification == TDN_CREATED) {
-				if (bTopMost && TaskHwnd == NULL) {
-					TaskHwnd = hwnd;
-					SetWindowPos(TaskHwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+				if (bTopMost) {
+					SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 				}
 			}
 
@@ -1851,6 +1940,7 @@ namespace spoututils {
 				}
 				DestroyWindow(hwnd);
 			}
+#endif
 			return S_OK;
 		};
 

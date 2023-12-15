@@ -29,6 +29,7 @@
 		OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
+
 #pragma once
 #ifndef __spoutUtils__ // standard way as well
 #define __spoutUtils__
@@ -43,7 +44,6 @@
 #include <vector>
 #include <string>
 #include <Shellapi.h> // for shellexecute
-#include <shlwapi.h> // for path functions
 #include <Commctrl.h> // For TaskDialogIndirect
 
 
@@ -66,16 +66,16 @@
 #endif
 
 #pragma comment(lib, "Shell32.lib") // for shellexecute
-#pragma comment(lib, "shlwapi.lib") // for path functions
 #pragma comment(lib, "Advapi32.lib") // for registry functions
 #pragma comment(lib, "Version.lib") // for version resources where necessary
 #pragma comment(lib, "Comctl32.lib") // For taskdialog
 
+#ifdef _WINDOWS
 // https://learn.microsoft.com/en-us/windows/win32/controls/cookbook-overview
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-
+#endif
 
 // For custom SpoutMessageBox button
 #define MB_USERBUTTON 0x00000007L
@@ -113,6 +113,17 @@ namespace spoututils {
 
 	// Get the module handle of an executable or dll
 	HMODULE SPOUT_DLLEXP GetCurrentModule();
+
+	// Get executable or dll path
+	std::string GetExePath();
+
+	// Get executable or dll name
+	std::string GetExeName();
+
+	// Remove path and return the file name
+	void RemovePath(std::string& path);
+
+	void RemoveName(std::string& path);
 
 	//
 	// Console management
@@ -207,7 +218,6 @@ namespace spoututils {
 	//
 
 	// MessageBox dialog with optional timeout.
-	// Used where a Windows MessageBox would interfere with the application GUI.  
 	// The dialog closes itself if a timeout is specified.
 	int SPOUT_DLLEXP SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0);
 
@@ -311,11 +321,10 @@ namespace spoututils {
 		bool ExecuteProcess(const char *path);
 
 		// Taskdialog for SpoutMessageBox
-		int SPOUT_DLLEXP MessageTaskDialog(HINSTANCE hInst, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
+		int MessageTaskDialog(HINSTANCE hInst, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
 		// TaskDialogIndirect callback to handle timer, topmost and hyperlinks
 		HRESULT TDcallbackProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData);
 		// For topmost
-		HWND TaskHwnd = NULL;
 		HWND hwndTop = NULL;
 		bool bTopMost = false;
 		// For custom icon
