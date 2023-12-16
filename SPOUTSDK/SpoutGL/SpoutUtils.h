@@ -45,7 +45,7 @@
 #include <string>
 #include <Shellapi.h> // for shellexecute
 #include <Commctrl.h> // For TaskDialogIndirect
-#ifndef _WINDOWS
+#ifndef _MSC_VER_
 #pragma comment(lib, "user32.lib") // For MessageBoxTimeoutA
 #endif
 
@@ -72,7 +72,7 @@
 #pragma comment(lib, "Version.lib") // for version resources where necessary
 #pragma comment(lib, "Comctl32.lib") // For taskdialog
 
-#ifdef _WINDOWS
+#ifdef _MSC_VER
 // https://learn.microsoft.com/en-us/windows/win32/controls/cookbook-overview
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
@@ -324,7 +324,7 @@ namespace spoututils {
 		int MessageTaskDialog(HINSTANCE hInst, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
 		// TaskDialogIndirect callback to handle timer, topmost and hyperlinks
 		HRESULT TDcallbackProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData);
-#ifndef _WINDOWS
+#ifndef _MSC_VER
 		// Timeout MessageBox for other compilers
 		int MessageBoxTimeoutA(IN HWND hWnd,
 			IN LPCSTR lpText, IN LPCSTR lpCaption, IN UINT uType,

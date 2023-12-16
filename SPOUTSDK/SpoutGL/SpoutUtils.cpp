@@ -164,6 +164,7 @@
 		15.12.23 - Change to #ifdef _WINDOWS for linker manifestdependency pragma comment
 				   Conditional compile of TaskDialogIndirect for _WINDOWS.
 				   MessageBoxTimeoutA for other compilers.
+		16.12.23 - Replace #define _WINDOWS with _MSC_VER for conditional compile for Visual Studio
 
 
 */
@@ -1715,7 +1716,7 @@ namespace spoututils {
 		//
 		int MessageTaskDialog(HINSTANCE hInst, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds)
 		{
-#ifdef _WINDOWS
+#ifdef _MSC_VER
 			// User buttons
 			TASKDIALOG_BUTTON buttons[10]={0};
 
@@ -1908,7 +1909,7 @@ namespace spoututils {
 
 		HRESULT TDcallbackProc(HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
 		{
-#ifdef _WINDOWS
+#ifdef _MSC_VER
 			// Topmost
 			if (uNotification == TDN_CREATED) {
 				if (bTopMost) {
@@ -1946,7 +1947,7 @@ namespace spoututils {
 			return S_OK;
 		}
 
-#ifndef _WINDOWS
+#ifndef _MSC_VER
 		// TimeoutMessageBox replacement for TaskDialogIndirect
 		// https://www.codeproject.com/Articles/7914/MessageBoxTimeout-API
 		int MessageBoxTimeoutA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption,
