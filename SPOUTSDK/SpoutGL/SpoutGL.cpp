@@ -3535,17 +3535,8 @@ void spoutGL::DoDiagnostics(const char *error = nullptr)
 {
 	// Create a log file using the executable or dll name
 	// (See SpoutUtils GetCurrentModule)
-	char exepath[MAX_PATH]={};
 	char logname[MAX_PATH]={};
-	if (GetModuleFileNameA(GetCurrentModule(), exepath, MAX_PATH) > 0) {
-		strcpy_s(logname, MAX_PATH, exepath);
-		PathStripPathA(logname);
-		PathRemoveExtensionA(logname);
-		strcat_s(logname, MAX_PATH, "_diagnostics.log");
-	}
-	else {
-		strcat_s(logname, MAX_PATH, "_diagnostics.log");
-	}
+	strcpy_s(logname, MAX_PATH, (GetExeName() + "_diagnostics.log").c_str());
 
 	// Show a line break for any existing log
 	SpoutLogNotice("\n");

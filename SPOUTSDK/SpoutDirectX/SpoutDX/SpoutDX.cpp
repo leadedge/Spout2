@@ -364,9 +364,7 @@ bool spoutDX::SetSenderName(const char* sendername)
 {
 	if (!sendername) {
 		// Get executable name as default
-		GetModuleFileNameA(NULL, m_SenderName, 256);
-		PathStripPathA(m_SenderName);
-		PathRemoveExtensionA(m_SenderName);
+		strcpy_s(m_SenderName, sizeof(m_SenderName), GetExeName().c_str());
 	}
 	else {
 		strcpy_s(m_SenderName, 256, sendername);
@@ -2473,12 +2471,12 @@ void spoutDX::SelectSenderPanel()
 		_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
 		_makepath_s(path, MAX_PATH, drive, dir, "SpoutPanel", ".exe");
 		// Does SpoutPanel.exe exist in this path ?
-		if (!PathFileExistsA(path)) {
+		if (_access(path, 0) == -1) {
 			// Try the current working directory
 			if (_getcwd(path, MAX_PATH)) {
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
-				if (!PathFileExistsA(path)) {
+				if (_access(path, 0) == -1) {
 					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
 					return;
 				}
