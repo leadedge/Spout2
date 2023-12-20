@@ -158,6 +158,11 @@
 //		01.11.23	- CreateInterop - correct uint printf formatting for error message
 //					  Avoid repeats if interop failure flag is set. Cleared by CleaunpInterop.
 //		30.11.23	- ReadMemoryTexture - remove new frame test
+//		07.12.23	- DoDiagnostics - use spoututils GetExeName
+//		08.12.23	- Remove DXGI_FORMAT_UNKNOWN from DX11format GL>DX11 conversion function
+//					  Use default DXGI_FORMAT_B8G8R8A8_UNORM
+//		14.12.23	- WriteGLDXpixels - return WriteGLDXtexture instead of true
+//					- CreateOpenGL return false if extensions fail to load
 //
 // ====================================================================================
 //
@@ -339,7 +344,6 @@ spoutGL::~spoutGL()
 	catch (...) {
 		MessageBoxA(NULL, "Exception in SpoutGL destructor", NULL, MB_OK);
 	}
-
 }
 
 //
@@ -713,9 +717,6 @@ void spoutGL::SetDX11format(DXGI_FORMAT textureformat)
 //
 DXGI_FORMAT spoutGL::DX11format(GLint glformat)
 {
-	if (glformat == 0)
-		return DXGI_FORMAT_UNKNOWN;
-
 	DXGI_FORMAT d3dformat = DXGI_FORMAT_B8G8R8A8_UNORM; // default
 	switch (glformat) {
 	case GL_RGB:   // 0x1907
@@ -740,8 +741,10 @@ DXGI_FORMAT spoutGL::DX11format(GLint glformat)
 		d3dformat = DXGI_FORMAT_R32G32B32A32_FLOAT;
 		break;
 	default:
+		// Use default DXGI_FORMAT_B8G8R8A8_UNORM
 		break;
 	}
+
 	return d3dformat;
 }
 
@@ -762,10 +765,12 @@ GLint spoutGL::GLDXformat(DXGI_FORMAT textureformat)
 		// DirectX 11
 		case DXGI_FORMAT_B8G8R8X8_UNORM:
 		case DXGI_FORMAT_B8G8R8A8_UNORM:
+			glformat = GL_RGBA8;
+			break;
 		case DXGI_FORMAT_R8G8B8A8_SNORM:
 		case DXGI_FORMAT_R8G8B8A8_UNORM:
 		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-			glformat = GL_RGBA8;
+			glformat = GL_RGBA;
 			break;
 		case DXGI_FORMAT_R10G10B10A2_UNORM:
 			glformat = GL_RGB10_A2;
@@ -827,6 +832,8 @@ std::string spoutGL::GLformatName(GLint glformat)
 			formatname = "10 bit RGBA";
 			break;
 		case GL_RGBA8:
+			formatname = "8 bit RGBA8";
+			break;
 		case GL_RGBA:
 			formatname = "8 bit RGBA";
 			break;
@@ -941,6 +948,7 @@ bool spoutGL::CreateOpenGL()
 	// Load the extensions (returns true if already loaded)
 	if (!LoadGLextensions()) {
 		SpoutLogWarning("OpenGL extensions failed to load");
+		return false;
 	}
 
 	return true;
@@ -1908,9 +1916,7 @@ bool spoutGL::WriteGLDXpixels(const unsigned char* pixels,
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
 	// Write the local texture to the shared texture and invert if necessary
-	WriteGLDXtexture(m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
-
-	return true;
+	return WriteGLDXtexture(m_TexID, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
 
 } // end WriteGLDXpixels
 
@@ -2111,123 +2117,6 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 }
 
-/*
-//
-// glMapBufferRange method
-// Requires work using glFenceSync to avoid stall
-//
-bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
-	unsigned int width, unsigned int height, unsigned int rowpitch,
-	unsigned char* data, GLenum glFormat,
-	bool bInvert, GLuint HostFBO)
-{
-	void *pboMemory = nullptr;
-	int channels = 4; // RGBA or RGB
-
-	if (!data) {
-		return false;
-	}
-
-	if (glFormat == GL_RGB || glFormat == GL_BGR_EXT) {
-		channels = 3;
-	}
-
-	unsigned int pitch = rowpitch; // row pitch passed in
-	if (rowpitch == 0)
-		pitch = width * channels; // RGB or RGBA
-
-	if (m_fbo == 0) {
-		SpoutLogNotice("spoutGL::UnloadTexturePixels - creating FBO");
-		glGenFramebuffersEXT(1, &m_fbo);
-	}
-
-	// Create pbos if not already
-	if (m_pbo[0] == 0) {
-		SpoutLogNotice("spoutGL::UnloadTexturePixels - creating %d PBOs", m_nBuffers);
-		glGenBuffersEXT(m_nBuffers, m_pbo);
-		PboIndex = 0;
-		NextPboIndex = 0;
-	}
-
-	PboIndex = (PboIndex + 1) % m_nBuffers;
-	NextPboIndex = (PboIndex + 1) % m_nBuffers;
-
-	// If Texture ID is zero, the texture is already attached to the Host Fbo
-	// and we do nothing. If not we need to create an fbo and attach the user texture.
-	if (TextureID > 0) {
-		// Attach the texture to point 0
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, TextureTarget, TextureID, 0);
-		// Set the target framebuffer to read
-		glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
-	}
-	else if (HostFBO == 0) {
-		// If no texture ID, a Host FBO must be provided
-		return false;
-	}
-
-	// Bind the PBO
-	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, m_pbo[PboIndex]);
-
-	// Check it's size
-	GLint buffersize = 0;
-	glGetBufferParameterivEXT(GL_PIXEL_PACK_BUFFER, GL_BUFFER_SIZE_EXT, &buffersize);
-	if (buffersize > 0 && buffersize != (int)(pitch * height)) {
-		// For a sender size change, all PBOs must be re-created.
-		glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-		glDeleteBuffersEXT(m_nBuffers, m_pbo);
-		m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
-		return false;
-	}
-
-	// Allocate pbo data buffer with glBufferStorage.
-	// The buffer is immutable and size is set for the lifetime of the object.
-	if (buffersize == 0) {
-		glBufferStorageEXT(GL_PIXEL_PACK_BUFFER, pitch*height, 0, GL_MAP_READ_BIT);
-		glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-		return false; // No more for this round
-	}
-
-	// Read pixels from framebuffer to PBO - glReadPixels() should return immediately.
-	glPixelStorei(GL_PACK_ROW_LENGTH, pitch / channels); // row length in pixels
-	glReadPixels(0, 0, width, height, glFormat, GL_UNSIGNED_BYTE, (GLvoid *)0);
-	glPixelStorei(GL_PACK_ROW_LENGTH, 0);
-
-	// If there is data in the next pbo from the previous call, read it back.
-	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, m_pbo[NextPboIndex]);
-
-	// Map the PBO to process its data by CPU.
-	// Map the entire data store into the client's address space.
-	// glMapBufferRange may give improved performance over glMapBuffer.
-	// GL_MAP_READ_BIT indicates that the returned pointer may be used to read buffer object data.
-	pboMemory = glMapBufferRangeEXT(GL_PIXEL_PACK_BUFFER, 0, buffersize, GL_MAP_READ_BIT);
-
-	// glMapBuffer can return NULL when called the first time
-	// when the next pbo has not been filled with data yet.
-	// Remove the last error
-	glGetError();
-
-	// Update data directly from the mapped buffer.
-	// If no pbo data, skip the copy rather than return false.
-	if (pboMemory) {
-		spoutcopy.CopyPixels((const unsigned char*)pboMemory, (unsigned char*)data, pitch / channels, height, glFormat, bInvert);
-		glUnmapBufferEXT(GL_PIXEL_PACK_BUFFER);
-	}
-
-	// Back to conventional pixel operation
-	glBindBufferEXT(GL_PIXEL_PACK_BUFFER, 0);
-
-	// Restore the default
-	if (TextureID > 0) glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-	// Restore the previous fbo binding
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-
-	return true;
-
-}
-*/
 
 
 //
@@ -3534,18 +3423,10 @@ void spoutGL::trim(char* s) {
 void spoutGL::DoDiagnostics(const char *error = nullptr)
 {
 	// Create a log file using the executable or dll name
-	// (See SpoutUtils GetCurrentModule)
-	char exepath[MAX_PATH]={};
+	// (See SpoutUtils GetExeName)
 	char logname[MAX_PATH]={};
-	if (GetModuleFileNameA(GetCurrentModule(), exepath, MAX_PATH) > 0) {
-		strcpy_s(logname, MAX_PATH, exepath);
-		PathStripPathA(logname);
-		PathRemoveExtensionA(logname);
-		strcat_s(logname, MAX_PATH, "_diagnostics.log");
-	}
-	else {
-		strcat_s(logname, MAX_PATH, "_diagnostics.log");
-	}
+	strcpy_s(logname, MAX_PATH, GetExeName().c_str());
+	strcat_s(logname, MAX_PATH, "_diagnostics.log");
 
 	// Show a line break for any existing log
 	SpoutLogNotice("\n");
@@ -3620,7 +3501,6 @@ void spoutGL::DoDiagnostics(const char *error = nullptr)
 	// If DirectX is OK, check for availabilty of the GL/DX extensions.
 	// The NV_DX_interop extensions will fail if the graphics driver does not support them
 	if (GetDX11Device()) {
-		/*
 		if (wglGetProcAddress("wglDXOpenDeviceNV")) { // extensions can be loaded
 			SpoutLogNotice("NV_DX_interop extensions available");
 			// Load the extensions (returns true if already loaded)
@@ -3662,7 +3542,7 @@ void spoutGL::DoDiagnostics(const char *error = nullptr)
 			SpoutLogWarning("NV_DX_interop extensions not supported");
 			SpoutLogWarning("    Graphics not texture share compatible");
 		}
-		*/
+		
 	}
 
 	SpoutLogNotice("End Diagnostics");
@@ -4006,6 +3886,11 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	GLuint DestID, GLuint DestTarget, unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
 {
+
+	// printf("SourceID = %d, SourceTarget = 0x%X\n", SourceID, SourceTarget); // 0xDE1
+	// printf("DestID   = %d, DestTarget = 0x%X\n", DestID, DestTarget);
+	// return false;
+
 	//
 	// Fbo blit (0.05 - 0.20 msec)
 	//
@@ -4055,6 +3940,7 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 		}
 	}
 	else {
+		// LJ DEBUG
 		PrintFBOstatus(status);
 		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
@@ -4228,6 +4114,5 @@ bool spoutGL::WriteTextureReadback(ID3D11Texture2D** texture,
 
 	return bRet;
 }
-
 
 

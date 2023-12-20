@@ -40,7 +40,6 @@
 #include "SpoutDirectX.h" // for DX11 shared textures
 #include "SpoutFrameCount.h" // for mutex lock and new frame signal
 #include "SpoutCopy.h" // for pixel copy
-#include "SpoutUtils.h" // Registry utiities
 
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
@@ -49,7 +48,9 @@
 
 #pragma warning(disable : 26485)
 
+// Used throughout
 using namespace spoututils;
+
 
 class SPOUT_DLLEXP spoutGL {
 
@@ -426,6 +427,7 @@ protected :
 	bool m_bCOPYavailable;
 	bool m_bCONTEXTavailable;
 	bool m_bExtensionsLoaded;
+
 
 };
 
