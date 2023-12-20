@@ -36,11 +36,11 @@ set_property(TARGET WinSpoutDXSender PROPERTY VS_DPI_AWARE "PerMonitor")
 
 # Copy binaries to the BUILD/Binaries/Examples folder
 add_custom_command(TARGET WinSpoutDXSender POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ConfigOutputDirectory}/WinSpoutDXSender.exe ${CMAKE_BINARY_DIR}/Binaries/Examples/ )
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ConfigOutputDirectory}/WinSpoutDXSender.exe ${CMAKE_BINARY_DIR}/Binaries/Examples/WinSpoutDXSender.exe )
 
 add_custom_command(TARGET WinSpoutDXSender POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/koala-on-tree.bmp ${CMAKE_BINARY_DIR}/Binaries/Examples/ ) 
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/koala-on-tree.bmp ${CMAKE_BINARY_DIR}/Binaries/Examples/koala-on-tree.bmp ) 
 
 add_custom_command(TARGET WinSpoutDXSender POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/ ) 		  
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/SpoutDX.dll ) 		  
 		  

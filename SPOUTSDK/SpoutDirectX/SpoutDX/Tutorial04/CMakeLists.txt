@@ -44,10 +44,10 @@ set_property(TARGET Tutorial04 PROPERTY VS_DPI_AWARE "PerMonitor")
 
 # Copy binaries to the BUILD/Binaries/Examples folder
 add_custom_command(TARGET Tutorial04 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ConfigOutputDirectory}/Tutorial04.exe ${CMAKE_BINARY_DIR}/Binaries/Examples/ )
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ConfigOutputDirectory}/Tutorial04.exe ${CMAKE_BINARY_DIR}/Binaries/Examples/Tutorial04.exe )
 
 add_custom_command(TARGET Tutorial04 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/Tutorial04.fx ${CMAKE_BINARY_DIR}/Binaries/Examples/ ) 
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/Tutorial04.fx ${CMAKE_BINARY_DIR}/Binaries/Examples/Tutorial04.fx ) 
 
 add_custom_command(TARGET Tutorial04 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/ ) 
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/SpoutDX.dll ) 

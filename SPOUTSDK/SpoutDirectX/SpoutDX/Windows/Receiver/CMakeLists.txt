@@ -36,8 +36,8 @@ set_property(TARGET WinSpoutDXReceiver PROPERTY VS_DPI_AWARE "PerMonitor")
 
 # Copy binaries to the BUILD/Binaries/Examples folder
 add_custom_command(TARGET WinSpoutDXReceiver POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ConfigOutputDirectory}/WinSpoutDXReceiver.exe ${CMAKE_BINARY_DIR}/Binaries/Examples/ )
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ConfigOutputDirectory}/WinSpoutDXReceiver.exe ${CMAKE_BINARY_DIR}/Binaries/Examples/WinSpoutDXReceiver.exe )
 
 add_custom_command(TARGET WinSpoutDXReceiver POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/ ) 		  
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/SpoutDX.dll ) 		  
 
