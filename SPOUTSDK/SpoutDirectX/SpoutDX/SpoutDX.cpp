@@ -142,6 +142,7 @@
 //					  Test QueryFullProcessImageName
 //		28.10.23	- CheckSender - executable path retrieved in SpoutSenderNames::SetSenderInfo
 //		02.12.23	- Update and test examples with 2.007.013 SpoutGL files. No other changes.
+//		06.12.23	- SetSenderName - use SpoutUtils GetExeName()
 //
 // ====================================================================================
 /*
@@ -363,10 +364,8 @@ bool spoutDX::IsClassDevice()
 bool spoutDX::SetSenderName(const char* sendername)
 {
 	if (!sendername) {
-		// Get executable name as default
-		GetModuleFileNameA(NULL, m_SenderName, 256);
-		PathStripPathA(m_SenderName);
-		PathRemoveExtensionA(m_SenderName);
+		// Executable name default
+		strcpy_s(m_SenderName, 256, GetExeName().c_str());
 	}
 	else {
 		strcpy_s(m_SenderName, 256, sendername);
@@ -2473,12 +2472,14 @@ void spoutDX::SelectSenderPanel()
 		_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
 		_makepath_s(path, MAX_PATH, drive, dir, "SpoutPanel", ".exe");
 		// Does SpoutPanel.exe exist in this path ?
-		if (!PathFileExistsA(path)) {
+		if(_access(path, 0) == -1) {
+		// if (!PathFileExistsA(path)) {
 			// Try the current working directory
 			if (_getcwd(path, MAX_PATH)) {
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
-				if (!PathFileExistsA(path)) {
+				if (_access(path, 0) == -1) {
+				// if (!PathFileExistsA(path)) {
 					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
 					return;
 				}
