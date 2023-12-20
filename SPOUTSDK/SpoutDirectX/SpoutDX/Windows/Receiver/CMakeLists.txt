@@ -1,13 +1,13 @@
 #\-------------------------------------- . -----------------------------------/#
-# Filename : CMakeList.txt               | SpoutDX Receiver CMakeList          #
+# Filename : CMakeList.txt               | Spout DX Receiver CMakeList         #
 # Author   : Alexandre Buge              |                                     #
 # Started  : 08/09/2020 12:00            |                                     #
-#/-------------------------------------- . -----------------------------------\#
-# Modifications : spout.zeal.co                                                #
-# 06/01/21 - DPI awareness needed for scaled displays                          #
+# 10/12/23 : Add DPI awareness           |                                     #
+#          : Copy binaries to the BUILD/Binaries/Examples folder.              #
+# 12/12/23 : Remove target_link_libraries "Spout". Not used.                   #
 #/-------------------------------------- . -----------------------------------\#
 
-add_executable(WinSpoutDXreceiver WIN32
+add_executable(WinSpoutDXReceiver WIN32
   framework.h
   targetver.h
   Resource.h
@@ -16,26 +16,28 @@ add_executable(WinSpoutDXreceiver WIN32
   WinSpoutDX.rc
 )
 
-target_link_libraries(WinSpoutDXreceiver
-  PRIVATE 
-    Spout_static
-)
-
-# DPI awareness needed for scaled displays
-set_property(TARGET WinSpoutDXreceiver PROPERTY VS_DPI_AWARE "PerMonitor")
-
-target_compile_definitions(WinSpoutDXreceiver
+target_compile_definitions(WinSpoutDXReceiver
   PRIVATE
     SPOUT_IMPORT_DLL
   _UNICODE
   UNICODE
 )
 
-target_link_libraries(WinSpoutDXreceiver
+target_link_libraries(WinSpoutDXReceiver
   PRIVATE
-    Spout_static
     SpoutDX
     d3d11
     d3dcompiler
     dxguid
 )
+
+# Set dpi awareness
+set_property(TARGET WinSpoutDXReceiver PROPERTY VS_DPI_AWARE "PerMonitor")
+
+# Copy binaries to the BUILD/Binaries/Examples folder
+add_custom_command(TARGET WinSpoutDXReceiver POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ConfigOutputDirectory}/WinSpoutDXReceiver.exe ${CMAKE_BINARY_DIR}/Binaries/Examples/ )
+
+add_custom_command(TARGET WinSpoutDXReceiver POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/ ) 		  
+
