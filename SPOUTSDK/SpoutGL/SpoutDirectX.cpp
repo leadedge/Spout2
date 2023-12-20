@@ -212,6 +212,7 @@ spoutDirectX::spoutDirectX() {
 	// Programmer can set for an application
 	m_AdapterIndex  = 0; // Adapter index
 	m_pAdapterDX11  = nullptr; // DX11 adapter pointer
+
 }
 
 spoutDirectX::~spoutDirectX() {
@@ -1078,45 +1079,7 @@ int spoutDirectX::GetNumAdapters()
 
 	for (i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
 		if (!adapter1_ptr) break;
-		/*
-		// Adapter description
-		// Currently not used
-		DXGI_ADAPTER_DESC desc;
-		adapter1_ptr->GetDesc( &desc );
-		// printf(" Adapter(%d) : %S\n", i, desc.Description );
-		// printf(" Vendor Id : %d\n", desc.VendorId );
-		// printf(" Dedicated System Memory : %.0f MiB\n", (float)desc.DedicatedSystemMemory / (1024.f * 1024.f) );
-		// printf(" Dedicated Video Memory : %.0f MiB\n", (float)desc.DedicatedVideoMemory / (1024.f * 1024.f) );
-		// printf(" Shared System Memory : %.0f MiB\n", (float)desc.SharedSystemMemory / (1024.f * 1024.f) );
-		// LUID  DWORD LowPart; LONG HighPart;
-		// printf(" LUID : LowPart %d, HighPart %ld\n", desc.AdapterLuid.LowPart, desc.AdapterLuid.HighPart);
 
-		// Look for outputs
-		IDXGIOutput* p_output = nullptr;
-
-		// Is there a first output on this adapter ?
-		if (adapter1_ptr->EnumOutputs(0, &p_output) != DXGI_ERROR_NOT_FOUND) {
-			p_output->Release();
-			// Here we can list all the outputs of the adapter
-			DXGI_OUTPUT_DESC desc_out={};
-			for (UINT32 j = 0; adapter1_ptr->EnumOutputs(j, &p_output) != DXGI_ERROR_NOT_FOUND; j++) {
-				p_output->GetDesc(&desc_out);
-				// printf("   Output : %d\n", j );
-				// printf("     Name %S\n", desc_out.DeviceName );
-				// HMONITOR hMon = desc_out.Monitor;
-				// printf("     Attached to desktop : (%d) %s\n", desc_out.AttachedToDesktop, desc_out.AttachedToDesktop ? "yes" : "no" );
-				// printf("    Rotation : %d\n", desc_out.Rotation );
-				// printf("    Left     : %d\n", desc_out.DesktopCoordinates.left );
-				// printf("    Top      : %d\n", desc_out.DesktopCoordinates.top );
-				// printf("    Right    : %d\n", desc_out.DesktopCoordinates.right );
-				// printf("    Bottom   : %d\n", desc_out.DesktopCoordinates.bottom );
-				p_output->Release();
-			}
-		}
-		else {
-			SpoutLogWarning("spoutDirectX::GetNumAdapters - No outputs for Adapter %d : %S", i, desc.Description);
-		}
-		*/
 		adapter1_ptr->Release();
 	}
 
@@ -1343,27 +1306,6 @@ bool spoutDirectX::GetAdapterInfo(int index, char* adaptername, char* output, in
 			adapter1_ptr->Release();
 		}
 
-		/*
-		TODO
-		// Find the desktop output
-		IDXGIOutput* p_output = nullptr;
-		for ( UINT32 j = 0; adapter1_ptr->EnumOutputs( j, &p_output ) != DXGI_ERROR_NOT_FOUND; j++ ) {
-			printf("    Output %d\n", j);
-			DXGI_OUTPUT_DESC desc_out;
-			if (p_output) {
-				p_output->GetDesc(&desc_out);
-				wcstombs_s(&charsConverted, display, maxBytes, desc_out.DeviceName, maxBytes - 1);
-				printf("    Device name [%s]\n", display);
-				if (desc_out.AttachedToDesktop)
-					wcstombs_s(&charsConverted, display, maxBytes, desc_out.DeviceName, maxBytes - 1);
-				p_output->Release();
-			}
-			else {
-				printf("    No output\n");
-			}
-		}
-		*/
-
 	}
 	_dxgi_factory1->Release();
 	return true;
@@ -1397,18 +1339,6 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 	for (int i = 0; _dxgi_factory1->EnumAdapters(i, &adapter1_ptr) != DXGI_ERROR_NOT_FOUND; i++) {
 		if (!adapter1_ptr) break;
 		if (adapterindex == i) {
-			/*
-			// TODO : Removed pending testing
-			// Now we have the requested adapter (17-03-18) test for an output on the adapter
-			IDXGIOutput* p_output = nullptr;
-			if (adapter1_ptr->EnumOutputs(0, &p_output) == DXGI_ERROR_NOT_FOUND) {
-				SpoutLogError("spoutDirectX::GetAdapterPointer(%d) :  No outputs", i);
-				adapter1_ptr->Release();
-				_dxgi_factory1->Release();
-				return nullptr;
-			}
-			p_output->Release();
-			*/
 			_dxgi_factory1->Release();
 			return adapter1_ptr;
 		}
@@ -1855,9 +1785,8 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 #pragma warning(default:26485)
 
 
-/*
 // REMOVE THIS COMMENT LINE TO ENABLE SDK LAYERS
-
+/*
 #ifdef _DEBUG
 
 	// New line
@@ -1892,8 +1821,8 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 
 #endif
 
-*/ 
 // REMOVE THIS COMMENT LINE TO ENABLE SDK LAYERS
-
+*/
 
 }
+

@@ -100,6 +100,10 @@
 	07.10.23 - Conditional compile options for _M_ARM64
 			   Moved additonal includes from cpp to header
 	28.10.23 - SetSenderInfo - use QueryFullProcessImageNameA
+	07.12.23 - SetSenderInfo - use spoututils GetEexePath()
+			   Remove unused d3d9.h and d3d11.h from header
+	16.12.23 - SetSenderInfo - correct buffer size for GetModuleFileNameA
+
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
@@ -159,9 +163,8 @@ spoutSenderNames::~spoutSenderNames() {
 		delete itr->second;
 	}
 	delete m_senders;
-	
-}
 
+}
 
 //
 // =========================
@@ -589,10 +592,9 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 
 	// Description : Host path
 	// Description field is 256 uint8_t, initialize with zeros
-	char exepath[256]={0};
-
-	// Get the full path of the current process
-	// GetModuleFileNameA(NULL, &exepath[0], sizeof(exepath));
+	// Get the full path of the current process including name
+	char exepath[MAX_PATH]={0};
+	GetModuleFileNameA(NULL, exepath, MAX_PATH);
 
 	// GetModuleFileNameA could fail for Windows on Arm systems
 	// Use QueryFullProcessImageNameA instead

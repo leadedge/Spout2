@@ -36,6 +36,7 @@
 
 03.07.23	- Remove _MSC_VER condition from SPOUT_DLLEXP define
 			  (#PR93  Fix MinGW error (beta branch)
+07.12.23	- using namespace spoututils moved from SpoutGL.h
 
 
 */
@@ -50,12 +51,14 @@
 // SPOUT_BUILD_DLL in the preprocessor defines.
 // Properties > C++ > Preprocessor > Preprocessor Definitions
 //
-#if defined(SPOUT_BUILD_DLL)
+#ifndef SPOUT_DLLEXP
+	#if defined(SPOUT_BUILD_DLL)
 	#define SPOUT_DLLEXP	__declspec(dllexport)
-#elif defined(SPOUT_IMPORT_DLL)
+	#elif defined(SPOUT_IMPORT_DLL)
 	#define SPOUT_DLLEXP	__declspec(dllimport)
-#else
+	#else
 	#define SPOUT_DLLEXP
+	#endif
 #endif
 
 // Common utility functions namespace

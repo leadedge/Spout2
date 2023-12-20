@@ -38,7 +38,6 @@
 
 #include "SpoutCommon.h"
 #include <windowsx.h>
-#include <d3d9.h>
 #include <wingdi.h>
 
 using namespace spoututils;

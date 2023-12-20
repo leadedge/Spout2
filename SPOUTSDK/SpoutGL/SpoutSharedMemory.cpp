@@ -48,6 +48,8 @@
 //  18.12.22 - Catch any exception from using Close in destructor
 //	07.01.23 - Change m_pName from const char* to char* for strdup
 //  12.05.23 - Create and Open - Clear ERROR_ALREADY_EXISTS to avoid detection elsewhere.
+//	07.12.23 - Remove unused <d3d9.h> from header
+//
 // ====================================================================================
 
 

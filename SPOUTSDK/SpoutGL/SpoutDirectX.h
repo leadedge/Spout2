@@ -32,6 +32,8 @@
 #define __spoutDirectX__
 
 #include "SpoutCommon.h"
+
+#include <d3d9.h> // For format definitions
 #include <d3d11.h>
 #include <d3d11_1.h>
 #include <ntverp.h>
@@ -175,7 +177,6 @@ class SPOUT_DLLEXP spoutDirectX {
 		D3D_FEATURE_LEVEL		m_featureLevel;
 		ID3D11Device1*          m_pd3dDevice1;
 		ID3D11DeviceContext1*   m_pImmediateContext1;
-
 
 };
 

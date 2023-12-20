@@ -41,13 +41,11 @@
 #include <fstream> // for log file
 #include <time.h> // for time and date
 #include <io.h> // for _access
+#include <direct.h> // for _getcwd
 #include <vector>
 #include <string>
 #include <Shellapi.h> // for shellexecute
 #include <Commctrl.h> // For TaskDialogIndirect
-#ifndef _MSC_VER_
-#pragma comment(lib, "user32.lib") // For MessageBoxTimeoutA
-#endif
 
 //
 // C++11 timer is only available for MS Visual Studio 2015 and above.
@@ -78,6 +76,7 @@
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
+
 
 // For custom SpoutMessageBox button
 #define MB_USERBUTTON 0x00000007L
@@ -248,6 +247,12 @@ namespace spoututils {
 	// Custom button for SpoutMessageBox
 	void SPOUT_DLLEXP SpoutMessageBoxButton(int ID, std::wstring title);
 
+	// Activate modeless mode using SpoutPanel.exe
+	void SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode = true);
+
+	// Window handle for SpoutMessageBox where not specified
+	void SPOUT_DLLEXP SpoutMessageBoxWindow(HWND hWnd);
+
 	// Copy text to the clipboard
 	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* caps);
 
@@ -315,13 +320,8 @@ namespace spoututils {
 		std::string _getLogPath();
 		std::string _getLogFilePath(const char *filename);
 		std::string _levelName(SpoutLogLevel level);
-
-		// Used internally for NVIDIA profile functions
-		bool GetNVIDIAmode(const char *command, int * mode);
-		bool SetNVIDIAmode(const char *command, int mode);
-		bool ExecuteProcess(const char *path);
 		// Taskdialog for SpoutMessageBox
-		int MessageTaskDialog(HINSTANCE hInst, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
+		int MessageTaskDialog(HWND hWnd, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
 		// TaskDialogIndirect callback to handle timer, topmost and hyperlinks
 		HRESULT TDcallbackProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData);
 #ifndef _MSC_VER
@@ -330,9 +330,18 @@ namespace spoututils {
 			IN LPCSTR lpText, IN LPCSTR lpCaption, IN UINT uType,
 			IN WORD wLanguageId, IN DWORD dwMilliseconds);
 #endif
+
+		// Use ShellExecutEx to open a program
+		bool ExecuteProcess(const char* path, const char* command = nullptr);
+		// Open SpoutPanel with command line for modeless SpoutMessageBox
+		bool OpenSpoutPanel(const char* message);
+		// Application window
+		HWND hwndMain = NULL;
 		// For topmost
 		HWND hwndTop = NULL;
 		bool bTopMost = false;
+		// Modeless TaskDialog by way of OpenSpoutPanel
+		bool bModeless = false; // Default use local TaskDialogIndirect
 		// For custom icon
 		HICON hTaskIcon = NULL;
 		// For custom buttons

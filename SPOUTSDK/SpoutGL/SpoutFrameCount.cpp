@@ -80,7 +80,7 @@
 //		03.08.23	- EnableFrameCount, CreateAccessMutex - revise logs
 //		06.08.23	- Add m_SystemFps to avoid repeated calls to GetRefreshRate()
 //		07.08.23	- Add EnableFrameSync/IsFrameSyncEnabled and global option flag
-//				      EnableFrameCount - correct semapohore name
+//				      EnableFrameCount - correct semaphore name
 //		08.08.23	- EnableFrameSync - close sync event on disable
 //		09.08.23	- WaitFrameSync remove warning log if event not found
 //					  Change timeout log from error to warning

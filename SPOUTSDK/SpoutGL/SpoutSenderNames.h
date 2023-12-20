@@ -36,9 +36,10 @@
 #ifndef __spoutSenderNames__ // standard way as well
 #define __spoutSenderNames__
 
+#include "SpoutCommon.h"
+#include "SpoutSharedMemory.h"
+
 #include <windowsx.h>
-#include <d3d9.h>
-#include <d3d11.h>
 #include <wingdi.h>
 #include <set>
 #include <map>
@@ -51,9 +52,6 @@
 #ifdef _M_ARM64
 #include <sse2neon.h> // For ARM
 #endif
-
-#include "SpoutCommon.h"
-#include "SpoutSharedMemory.h"
 
 // 100 msec wait for events
 #define SPOUT_WAIT_TIMEOUT 100
@@ -88,6 +86,7 @@ struct SharedTextureInfo {		// 280 bytes total
 // Example 
 // {AB5C33D6-3654-43F9-85F6-F54872B0460B}
 static const char* GUID_queue = "AB5C33D6-3654-43F9-85F6-F54872B0460B";
+
 
 
 class SPOUT_DLLEXP spoutSenderNames {
