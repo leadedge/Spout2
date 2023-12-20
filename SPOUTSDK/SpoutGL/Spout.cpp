@@ -263,10 +263,12 @@
 //		03.08.23	- InitReceiver - set m_DX11format
 //		07.08.23	- Add frame sync option functions
 //	Version 2.007.012
-//		09.10.23	- SelectSenderPanel
-//					  If not found, show a SpoutMessageBox with Spout releases page url
+//		09.10.23	- SelectSenderPanel -if SpoutPanel.exe is not found
+//					  show a SpoutMessageBox with Spout releases page url
 //		18.10.23	- ReceiveSenderData - check for texture format supported
 //					  by OpenGL/DirectX interop
+//		07.12.23	- use _access in place of shlwapi Path functions
+//	Version 2.007.013
 //
 // ====================================================================================
 /*
@@ -397,9 +399,7 @@ void Spout::SetSenderName(const char* sendername)
 	char name[256]={};
 	if (!sendername) {
 		// Get executable name as default
-		GetModuleFileNameA(NULL, name, 256);
-		PathStripPathA(name);
-		PathRemoveExtensionA(name);
+		strcpy_s(name, 256, GetExeName().c_str());
 	}
 	else {
 		strcpy_s(name, 256, sendername);
@@ -1903,12 +1903,12 @@ bool Spout::SelectSenderPanel(const char* message)
 
 	if (path[0]) {
 		// Does SpoutPanel.exe exist in this path ?
-		if (!PathFileExistsA(path)) {
+		if(_access(path, 0) == -1) {
 			// Try the current working directory
 			if (_getcwd(path, MAX_PATH)) {
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
-				if (!PathFileExistsA(path)) {
+				if (_access(path, 0) == -1) {
 					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
 					// Show a SpoutMessageBox and direct to the Spout releases page
 					sprintf_s(UserMessage, 512,
