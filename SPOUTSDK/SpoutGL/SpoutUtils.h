@@ -114,16 +114,19 @@ namespace spoututils {
 	// Get the module handle of an executable or dll
 	HMODULE SPOUT_DLLEXP GetCurrentModule();
 
+	// Get executable or dll version
+	std::string SPOUT_DLLEXP GetExeVersion(const char* path);
+
 	// Get executable or dll path
-	std::string GetExePath();
+	std::string SPOUT_DLLEXP GetExePath();
 
 	// Get executable or dll name
-	std::string GetExeName();
+	std::string SPOUT_DLLEXP GetExeName();
 
 	// Remove path and return the file name
-	void RemovePath(std::string& path);
+	void SPOUT_DLLEXP RemovePath(std::string& path);
 
-	void RemoveName(std::string& path);
+	void SPOUT_DLLEXP RemoveName(std::string& path);
 
 	//
 	// Console management

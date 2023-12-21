@@ -177,6 +177,8 @@
 				 - Use a custom icon if set for SpoutMessageBox functions that do not specify an icon
 				 - Clear custom icon handle after TaskDialogIndirect exit
 				 - Add SpoutMessageBoxWindow
+		21.12.23 - Add std::string GetExeVersion()
+				 - Revise SpoutMessageBoxModeless to test SpoutPanel version > 2.070.
 
 */
 
@@ -279,6 +281,27 @@ namespace spoututils {
 		return hModule;
 	}
 
+	//---------------------------------------------------------
+	// Function: GetExeVersion
+	// Get executable version string
+	//
+	std::string GetExeVersion(const char* path)
+	{
+		// Get product version number
+		std::string productversion;
+		DWORD dwSize = GetFileVersionInfoSizeA(path, nullptr);
+		if (dwSize > 0) {
+			std::vector<BYTE> data(dwSize);
+			if (GetFileVersionInfoA(path, NULL, dwSize, &data[0])) {
+				LPVOID pvProductVersion = NULL;
+				unsigned int iProductVersionLen = 0;
+				if (VerQueryValueA(&data[0], ("\\StringFileInfo\\080904E4\\ProductVersion"), &pvProductVersion, &iProductVersionLen)) {
+					productversion = (char*)pvProductVersion;
+				}
+			}
+		}
+		return productversion;
+	}
 
 	// ---------------------------------------------------------
 	// Function: GetExePath()
@@ -978,31 +1001,51 @@ namespace spoututils {
 	// Function: SpoutMessageBoxModeless
 	// Enable modeless functionality using SpoutPanel.exe
 	// Used where a Windows MessageBox would interfere with the application GUI.
+	// Depends on SpoutPanel.exe version 2.070 or greater distributed with Spout release.
 	void SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode)
 	{
 		// If setting modeless, find the path for SpoutPanel.exe
 		if (bMode) {
+			std::string errmsg;
 			char path[MAX_PATH]{};
 			if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
 				// Does SpoutPanel.exe exist in this path ?
-				if (_access(path, 0) == -1) {
-					// SpoutPanel not available
-					SpoutLogWarning("SpoutMessageBoxModeless - SpoutPanel path not found");
-					// Show a modal SpoutMessageBox and direct to the Spout releases page
-					char* usermessage = "'SpoutPanel.exe' not found.\n\n"\
-						"Download the <a href=\"https://github.com/leadedge/Spout2/releases\">latest Spout release</a>.\n"\
-						"Run either 'SpoutSettings' or 'SpoutPanel' once.\n"\
-						"This will establish the path to SpoutPanel.exe\n"\
-						"to enable modeless function for SpoutMessageBox.\n\n"\
-						"Do you want to download it now?\n\n";
-						SpoutMessageBox(NULL, usermessage, "Warning", MB_ICONWARNING | MB_YESNO);
+				if (_access(path, 0) != -1) {
+					std::string version = GetExeVersion(path);
+					double fvers = atof(version.c_str());
+					if (fvers >= 2.070) {
+						// Set modeless
+						bModeless = bMode;
 						return;
+					}
+					sprintf_s(path, MAX_PATH, "SpoutPanel version %s\n2.070 or greater required for modeless\n\n", version.c_str());
+					errmsg = path;
+				}
+				else {
+					SpoutLogWarning("SpoutMessageBoxModeless - SpoutPanel.exe not found");
+					errmsg = "SpoutPanel.exe not found\n\n";
 				}
 			}
+			else {
+				SpoutLogWarning("SpoutMessageBoxModeless - SpoutPanel path not found");
+				errmsg = "SpoutPanel path not found\n\n";
+			}
+			// Show a modal SpoutMessageBox and direct to the Spout releases page
+			errmsg += "Download the <a href=\"https://github.com/leadedge/Spout2/releases\">latest Spout release</a>.\n";
+			errmsg += "Run either 'SpoutSettings' or 'SpoutPanel' once.\n";
+			errmsg += "This will establish the path to SpoutPanel.exe\n";
+			errmsg += "to enable modeless function for SpoutMessageBox.\n\n\n";
+			bool oldmode = bModeless;
+			bModeless = false;
+			SpoutMessageBox(NULL, errmsg.c_str(), "Warning", MB_ICONWARNING | MB_OK);
+			bModeless = oldmode;
+			return;
 		}
 		// SpoutPanel found or disable modeless
 		bModeless = bMode;
 	}
+
+
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxWindow
