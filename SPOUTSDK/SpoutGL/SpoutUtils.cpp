@@ -178,7 +178,7 @@
 				 - Clear custom icon handle after TaskDialogIndirect exit
 				 - Add SpoutMessageBoxWindow
 		21.12.23 - Add std::string GetExeVersion()
-				 - Revise SpoutMessageBoxModeless to test SpoutPanel version > 2.070.
+				 - Revise SpoutMessageBoxModeless to test SpoutPanel version > 2.072.
 
 */
 
@@ -1001,7 +1001,7 @@ namespace spoututils {
 	// Function: SpoutMessageBoxModeless
 	// Enable modeless functionality using SpoutPanel.exe
 	// Used where a Windows MessageBox would interfere with the application GUI.
-	// Depends on SpoutPanel.exe version 2.070 or greater distributed with Spout release.
+	// Depends on SpoutPanel.exe version 2.072 or greater distributed with Spout release.
 	void SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode)
 	{
 		// If setting modeless, find the path for SpoutPanel.exe
@@ -1013,7 +1013,7 @@ namespace spoututils {
 				if (_access(path, 0) != -1) {
 					std::string version = GetExeVersion(path);
 					double fvers = atof(version.c_str());
-					if (fvers >= 2.070) {
+					if (fvers >= 2.072) {
 						// Set modeless
 						bModeless = bMode;
 						return;
