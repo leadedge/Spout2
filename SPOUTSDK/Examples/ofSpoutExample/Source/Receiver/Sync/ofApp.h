@@ -30,9 +30,11 @@ class ofApp : public ofBaseApp{
 		void draw();
 		void exit();
 		void mousePressed(int x, int y, int button);
+		void keyPressed(int key);
 	
 		SpoutReceiver receiver; // A Spout receiver object
 		ofTexture myTexture; // Receiving texture
 		void showInfo();
+		bool bSync = true; // Disable or enable sync
 
 };

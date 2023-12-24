@@ -2,10 +2,12 @@
 
 	Spout OpenFrameworks Receiver Sync example
 
-    Example of synchronizing a receiver with a sender
+    Example of synchronizing a receiver and sender
 
 	Synchronization is necessary if the sending and receiving applications 
 	require	frame accuracy and missed or duplicated frames are not acceptable.
+
+	See also the receiver sync example.
 
 	Copyright (C) 2023 Lynn Jarvis.
 
@@ -44,6 +46,9 @@ void ofApp::setup(){
 	// Allocate an RGBA texture to receive from the sender
 	// It is resized later to match the sender - see Update()
 	myTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
+
+	// The application must enable sync events
+	receiver.EnableFrameSync();
 	
 } // end setup
 
@@ -56,12 +61,16 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
+	/*
+	// =======================================================================
 	//
 	// Receiver waits on the sender
 	//
 	// If the receiver cycles faster than the sender, there will be duplicated frames.
 	// BEFORE processing, the receiver can wait until the sender signals
 	// that it has sent a new frame. Use a timeout greater than the expected delay. 
+	// The sender signals that it is ready after processing the last frame.
+	// (See the sender sync example)
 	//
 	receiver.WaitFrameSync(receiver.GetSenderName(), 67);
 	//
@@ -71,6 +80,10 @@ void ofApp::draw() {
 	//
 	// The on-screen display will show the actual received frame rate.
 	// Build without WaitFrameSync or with no timeout and observe the difference.
+	// Or press the space bar to disable/enable sync.
+	//
+	// =======================================================================
+	*/
 
 	// Receive texture
 	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
@@ -84,17 +97,23 @@ void ofApp::draw() {
 	// On-screen display
 	showInfo();
 
+	// =======================================================================
 	//
 	// Sender waits on the receiver
 	//
-	// If the receiver cycles slowerthan the sender, there will be missed frames.
-	// AFTER processing, the receiver can signal when it is ready to receive the next frame.
-	//
-	// receiver.SetFrameSync(receiver.GetSenderName());
-	//
 	// To demonstrate the effect of sync functions, reduce the receiver frame rate.
 	// The sender will synchronize with the receiver frame rate.
-	// receiver.HoldFps(30);
+	// Space bar to disable/enable sync
+	if (bSync) receiver.HoldFps(30);
+	//
+	// If the receiver cycles slower than the sender, there will be missed frames.
+	// AFTER processing, the receiver can signal when it is ready to receive the next frame.
+	// Before sending, the sender waits for the receiver signal.
+	// (See the sender sync example)
+	//
+	receiver.SetFrameSync(receiver.GetSenderName());
+	//
+	// =======================================================================
 
 }
 
@@ -119,6 +138,11 @@ void ofApp::showInfo() {
 			str += to_string(receiver.GetSenderFrame()); // frame since the sender started
 		}
 		ofDrawBitmapString(str, 10, 20);
+		if (bSync)
+			str = "SPACE to disable sync";
+		else
+			str = "SPACE to enable sync";
+		ofDrawBitmapString(str, (ofGetWidth()-str.length()*10)/2, ofGetHeight()-20);
 	}
 	else {
 		str = "No sender detected";
@@ -141,3 +165,12 @@ void ofApp::mousePressed(int x, int y, int button){
 	}
 }
 
+//--------------------------------------------------------------
+void ofApp::keyPressed(int key)
+{
+	// Space bar - disable or enable sync
+	if (key == ' ') {
+		bSync = !bSync;
+		receiver.EnableFrameSync(bSync);
+	}
+}

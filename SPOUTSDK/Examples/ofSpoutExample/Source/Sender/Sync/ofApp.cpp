@@ -2,10 +2,12 @@
 
 	Spout OpenFrameworks Sender Sync example
 
-    Example of synchronizing a sender with a receiver
+    Example of synchronizing sender and receiver
 
 	Synchronization is necessary if the sending and receiving applications
 	require	frame accuracy and missed or duplicated frames are not acceptable.
+
+	See also the receiver sync example.
 
 	Spout 2.007
 	OpenFrameworks 11
@@ -66,13 +68,17 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
+	// =======================================================================
 	//
 	// Sender waits on the receiver
 	//
-	// If the sender cycle is faster, thereceiver will miss frames.
+	// If the sender cycle is faster, the receiver will miss frames.
+	//
 	// BEFORE processing, the sender can wait until the receiver
 	// signals that it is ready to receive a frame.
 	// Use a timeout greater than the expected delay. 
+	// The receiver signals that it is ready after processing the last frame.
+	// (See the receiver sync example)
 	//
 	// sender.WaitFrameSync(sender.GetName(), 67);
 	//
@@ -81,7 +87,11 @@ void ofApp::draw() {
 	// The sender will synchronize with the receiver frame rate. 
 	//
 	// The on-screen display will show the actual sender frame rate.
-	// Build without WaitFrameSync or with no timeout and observe the difference.
+	// Build without WaitFrameSync or with no timeout to observe the difference.
+	// Or press the space bar to disable/enable sync.
+	//
+	// =======================================================================
+
 
 	// Draw 3D graphics into the fbo
 	myFbo.begin();
@@ -108,17 +118,22 @@ void ofApp::draw() {
 	// On-screen display
 	showInfo();
 
+	// =======================================================================
 	//
 	// Receiver waits on the sender
 	//
 	// If the sender cycle is slower, the receiver will duplicate frames.
 	// AFTER processing, the sender can signal that a new frame has been produced.
-	//
+	// Before receiving, the receiver waits for the sender signal.
+	// (See the receiver sync example)
 	sender.SetFrameSync(sender.GetName());
 	//
 	// To demonstrate the effect of sync functions, reduce the sender frame rate.
 	// The receiver will synchronize with the sender frame rate.
-	sender.HoldFps(30);
+	// Space bar to disable/enable sync
+	if(bSync) sender.HoldFps(30);
+	//
+	// =======================================================================
 
 }
 
@@ -139,6 +154,12 @@ void ofApp::showInfo() {
 		str += ofToString(sender.GetFrame());
 	}
 	ofDrawBitmapString(str, 10, 20);
+	if(bSync)
+		str = "SPACE to disable sync";
+	else
+		str = "SPACE to enable sync";
+
+	ofDrawBitmapString(str, (ofGetWidth()-str.length()*10)/2, ofGetHeight()-20);
 
 }
 
@@ -154,5 +175,15 @@ void ofApp::windowResized(int w, int h)
 	// The sending size matches the window size, update the fbo
 	if (w > 0 && h > 0) {
 		myFbo.allocate(w, h, GL_RGBA);
+	}
+}
+
+//--------------------------------------------------------------
+void ofApp::keyPressed(int key)
+{
+	// Space bar - disable or enable sync
+	if (key == ' ') {
+		bSync = !bSync;
+		sender.EnableFrameSync(bSync);
 	}
 }

@@ -30,6 +30,7 @@ class ofApp : public ofBaseApp{
 		void draw();
 		void exit();
 		void windowResized(int w, int h);
+		void keyPressed(int key);
 
 		SpoutSender sender;    // Spout sender object
 		char sendername[256];  // Sender name
@@ -38,6 +39,7 @@ class ofApp : public ofBaseApp{
 		ofFbo myFbo;           // For texture send example
 		ofPixels myPixels;     // For pixel send example
 		float rotX, rotY;
+		bool bSync = true;     // Disable or enable sync
 
 		void showInfo();
 
