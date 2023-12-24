@@ -178,7 +178,8 @@
 				 - Clear custom icon handle after TaskDialogIndirect exit
 				 - Add SpoutMessageBoxWindow
 		21.12.23 - Add std::string GetExeVersion()
-				 - Revise SpoutMessageBoxModeless to test SpoutPanel version > 2.072.
+				 - Revise SpoutMessageBoxModeless to test version of SpoutPanel > 2.072
+		Version 2.007.013
 
 */
 

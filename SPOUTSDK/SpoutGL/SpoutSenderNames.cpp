@@ -103,7 +103,7 @@
 	07.12.23 - SetSenderInfo - use spoututils GetEexePath()
 			   Remove unused d3d9.h and d3d11.h from header
 	16.12.23 - SetSenderInfo - correct buffer size for GetModuleFileNameA
-
+	Version 2.007.013
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.

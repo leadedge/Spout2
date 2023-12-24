@@ -157,6 +157,7 @@
 //	Version 2.007.012
 //		07.08.23	- Comment out code for debug layers
 //		19.10.23	- GetNumAdapters - remove unused adapter description and output list
+//	Version 2.007.013
 //
 // ====================================================================================
 /*

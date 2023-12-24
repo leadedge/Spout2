@@ -71,7 +71,7 @@
 	Version 2.007.012
 	07.10.23 - Conditional compile options for _M_ARM64 in CheckSSE and header
 	20.10.23 - FlipBuffer / CopyPixels - default pitch width*4
-
+	Version 2.007.013
 */
 
 #include "SpoutCopy.h"

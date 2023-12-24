@@ -85,6 +85,7 @@
 //		09.08.23	- WaitFrameSync remove warning log if event not found
 //					  Change timeout log from error to warning
 //		13.08.23	- EnableFrameCount - correct semaphore name
+//	Version 2.007.013
 //
 // ====================================================================================
 //

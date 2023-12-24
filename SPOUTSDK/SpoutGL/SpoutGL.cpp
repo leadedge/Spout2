@@ -163,6 +163,7 @@
 //					  Use default DXGI_FORMAT_B8G8R8A8_UNORM
 //		14.12.23	- WriteGLDXpixels - return WriteGLDXtexture instead of true
 //					- CreateOpenGL return false if extensions fail to load
+//	Version 2.007.013
 //
 // ====================================================================================
 //

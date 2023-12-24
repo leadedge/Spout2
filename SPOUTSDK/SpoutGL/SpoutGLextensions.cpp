@@ -61,6 +61,7 @@
 //			21.11.23	- Add defines for : GL_MAX_COMPUTE_WORK_GROUP_COUNT, GL_MAX_COMPUTE_WORK_GROUP_SIZE
 //						  GL_ATTACHED_SHADERS, GL_INFO_LOG_LENGTH
 //						  Add glGetProgramInfoLog, glGetShaderInfoLog, glGetIntegeri_v
+//	Version 2.007.013
 //
 
 	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
