@@ -1,4 +1,125 @@
 ===========================================\
+25.12.23\
+Update Master from Beta branch.
+
+Version 2.007.013
+
+Spout.cpp
+- 09.10.23 - SelectSenderPanel -if SpoutPanel.exe is not found
+  show a SpoutMessageBox with Spout releases page url
+- 18.10.23 - ReceiveSenderData - check for texture format supported
+  by OpenGL/DirectX interop
+- 07.12.23 - use _access in place of shlwapi Path functions
+ 
+SpoutCopy.cpp
+- 07.10.23 - Conditional compile options for _M_ARM64 in CheckSSE and header
+-20.10.23 - FlipBuffer / CopyPixels - default pitch width*4
+
+SpoutDirectX.cpp
+- 07.08.23 - Comment out code for debug layers
+- 19.10.23 - GetNumAdapters - remove unused adapter description and output list
+
+SpoutFrameCount.cpp
+- 03.08.23	- EnableFrameCount, CreateAccessMutex - revise logs
+- 06.08.23	- Add m_SystemFps to avoid repeated calls to GetRefreshRate()
+- 07.08.23	- Add EnableFrameSync/IsFrameSyncEnabled and global option flag
+
+EnableFrameCount
+- 08.08.23	- correct semaphore name
+EnableFrameSync - close sync event on disable
+- 09.08.23	- WaitFrameSync remove warning log if event not found
+ Change timeout log from error to warning
+- 13.08.23	- EnableFrameCount - correct semaphore name
+
+SpoutGL.cpp
+- 01.11.23 - CreateInterop - correct uint printf formatting for error message
+  Avoid repeats if interop failure flag is set. Cleared by CleaunpInterop.
+- 30.11.23 - ReadMemoryTexture - remove new frame test
+- 07.12.23 - DoDiagnostics - use spoututils GetExeName
+- 08.12.23 - Remove DXGI_FORMAT_UNKNOWN from DX11format GL>DX11 conversion function
+ Use default DXGI_FORMAT_B8G8R8A8_UNORM
+- 14.12.23 - WriteGLDXpixels - return WriteGLDXtexture instead of true
+ CreateOpenGL return false if extensions fail to load
+
+SpoutGLextensions.cpp
+- 24.07.23	- Add glMemoryObjectParameterivEXT
+- 30.07.23	- Add GL_RGBA16F, GL_RGB16F, GL_RGBA32F, GL_RGB32F
+- 31.07.23	- Add defines GL_IMPLEMENTATION_COLOR_READ_TYPE, GL_IMPLEMENTATION_COLOR_READ_FORMAT
+- 02.08.23	- Add glGetTextureParameteriv
+- 21.11.23	- Add defines for : GL_MAX_COMPUTE_WORK_GROUP_COUNT, GL_MAX_COMPUTE_WORK_GROUP_SIZE
+  GL_ATTACHED_SHADERS, GL_INFO_LOG_LENGTH
+  Add glGetProgramInfoLog, glGetShaderInfoLog, glGetIntegeri_v
+
+SpoutReceiver.cpp
+- 04.08.23 - Add format functions
+- 07.08.23 - Add frame sync option functions 
+
+SpoutSender.cpp
+- 04.08.23 - Add format functions
+- 07.08.23 - Add frame sync option functions
+
+SpoutSenderNames.cpp
+- 07.10.23 - Conditional compile options for _M_ARM64\
+ Moved additonal includes from cpp to header
+- 28.10.23 - SetSenderInfo - use QueryFullProcessImageNameA
+- 07.12.23 - SetSenderInfo - use spoututils GetEexePath()\
+ Remove unused d3d9.h and d3d11.h from header
+- 16.12.23 - SetSenderInfo - correct buffer size for GetModuleFileNameA
+
+SpoutSharedMemory.cpp
+- 07.12.23 - Remove unused <d3d9.h> from header
+
+SpoutUtils.cpp
+- 01.08.23 - Add MessageTaskDialog instead of dependence on SpoutPanel
+- 04.08.23 - const WCHAR* in MessageTaskDialog
+- 13.08.23 - MessageTaskDialog - remove MB_TOPMOST
+- 20.08.23 - Change TaskdialogcallbackProc to TDcallbackProc to avoid naming conflicts
+- 21.08.23 - MessageTaskDialog - Restore topmost function\
+  Change bTopmost to bTopMost to avoid naming conflicts
+- 23.08.23 - MessageTaskDialog - Fixed topmost recover for calling application
+- 26.08.23 - PFTASKDIALOGCALLBACK cast for TDcallbackProc
+- 04.09.23 - MessageTaskDialog - add MB_ICONINFORMATION option. Default no icon.\
+  Add MB_ICONSTOP and MB_ICONHAND. MB_TOPMOST flag removal only if specified.
+- 05.09.23 - Add SpoutMessageBoxIcon for custom icon
+- 07.09.23 - Add round to ElapsedMicroseconds
+- 08.09.23 - Check TDN_CREATED for taskdialog topmost
+- 11.09.23 - MessageTaskDialog - correct button and icon type detection\
+  Allow for NULL caption
+- 12.09.23 - Add SpoutMessageBox overload including main instruction large text\
+  Correct missing SPOUT_DLLEXP for SpoutMessageBox standard function
+- 12.10.23 - Add SpoutMessageBoxButton and CopyToClipBoard
+- 20.10.23 - Add OpenSpoutLogs to open Spout log folder in Windows explorer
+- 20-11-23 - OpenSpoutLogs() - allow for getenv if not Microsoft compile (PR #105)
+- 22-11-23 - Remove unused buffer length argument from _dupenv_s
+- 01.12.24 - Update Version to "2.007.013"
+- 07.12.23 - Remove SPOUT_DLLEXP from private MessageTaskDialog\
+  Use _access and string find in place of shlwapi path functions
+  Add GetExePath, GetExeName, RemovePath\
+  Revise : _getLogPath(), _getLogFilePath, _logtofile,\
+  EnableSpoutLog, EnableSpoutLogFile, ShowSpoutLogs,\
+  OpenSpoutConsole, GetNVIDIAmode, SetNVIDIAmode
+- 08.12.23 - #ifdef _MSC_VER for linker manifestdependency pragma comment\
+  MessageTaskDialog - correct topmost if a second dialog is opened
+- 15.12.23 - Change to #ifdef _WINDOWS for linker manifestdependency pragma comment\
+  Conditional compile of TaskDialogIndirect for _WINDOWS.\
+  MessageBoxTimeoutA for other compilers.
+- 16.12.23 - Replace #define _WINDOWS with _MSC_VER for conditional compile for Visual Studio\
+  MessageTaskDialog - first argumnent HWND instead of HINSTANCE\
+  SpoutMessageBox - pass in hwnd to MessageTaskDialog\
+  Add TDF_POSITION_RELATIVE_TO_WINDOW to TaskDialogIndirect config flags\
+  TaskDialogIndirect centers on the window if hwnd passed in or the monitor if NULL\
+- 20.12.23 - Remove GetNVIDIAmode, SetNVIDIAmode\
+  ExecuteProcess - use ShellExecuteEx instead of CreateProcess\
+  Add SpoutMessageBoxModless\
+  Restore modeless SpoutMessageBox functionality using SpoutPanel, > v2.72 required.\
+  Call MessageTaskDialog directly in all SpoutMessageBox functions\
+  Use a custom icon if set for SpoutMessageBox functions that do not specify an icon\
+  Clear custom icon handle after TaskDialogIndirect exit\
+  Add SpoutMessageBoxWindow
+- 21.12.23 - Add std::string GetExeVersion()\
+  Revise SpoutMessageBoxModeless to test version of SpoutPanel > 2.072
+
+===========================================\
 05.09.23\
 Update Master from Beta branch.
 
