@@ -13,6 +13,8 @@
 # 24/06/23 - Modifications for MINGW build (PR#93-vkedwardli)                  #
 # 08/07/23 - Remove MSVC Universal C Runtime dependency (PR#95-vkedwardli)     #
 # 09/08/23 - Add comctl32 to SpoutLink library list (PR#96-scribam)            #
+# 16/12/23 - Remove shlwapi from Spoutlink list                                #
+# 20/12/23 - SpoutMessageBox changes in SpoutUtils for MinGW build             #
 #/-------------------------------------- . -----------------------------------\#
 
 set(SpoutSources
@@ -39,7 +41,7 @@ set(SpoutSources
   SpoutSenderNames.cpp
   SpoutSharedMemory.cpp
   SpoutUtils.cpp
-)
+ )
 
 set(SpoutLink
     opengl32
@@ -48,7 +50,7 @@ set(SpoutLink
     gdi32
     winspool
     comdlg32
-	comctl32
+    comctl32
     advapi32
     shell32
     ole32
@@ -59,7 +61,6 @@ set(SpoutLink
     d3d9
     d3d11
     DXGI
-    shlwapi
     Version
 )
 
@@ -100,7 +101,7 @@ else()
   set(OUTPUT_STATIC_LIB "Spout_static.lib")
   set(OUTPUT_SHARED_LIB "Spout.dll")
   set(OUTPUT_IMPORT_LIB "Spout.lib")
-endif()
+ endif()
 
 # Copy binaries to the BUILD/Binaries folder
 # Spout

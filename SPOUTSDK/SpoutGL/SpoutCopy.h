@@ -6,7 +6,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2016-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -38,8 +38,12 @@
 #include <stdio.h> // for debug printf
 #include <gl/gl.h> // For OpenGL definitions
 #include <intrin.h> // for cpuid to test for SSE2
+#ifdef _M_ARM64
+#include <sse2neon.h> // for NEON
+#else
 #include <emmintrin.h> // for SSE2
 #include <tmmintrin.h> // for SSSE3
+#endif
 #include <cmath> // For compatibility with Clang. PR#81
 #include <stdint.h> // for _uint32 etc
 

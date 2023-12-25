@@ -26,7 +26,7 @@
 //
 /*
 
-	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -116,7 +116,7 @@
 #define USE_COPY_EXTENSIONS
 
 // Compute shader extensions
-// For future use
+// Remove for Processing library build (JSpoutLib)
 #define USE_COMPUTE_EXTENSIONS
 
 // If load of context creation extension conflicts, disable it here
@@ -666,8 +666,28 @@ extern glGetInternalFormativPROC glGetInternalFormativ;
 #define GL_COMPUTE_SHADER 0x91B9
 #endif
 
+#ifndef GL_MAX_COMPUTE_WORK_GROUP_COUNT
+#define GL_MAX_COMPUTE_WORK_GROUP_COUNT   0x91BE
+#endif
+
+#ifndef GL_MAX_COMPUTE_WORK_GROUP_SIZE
+#define GL_MAX_COMPUTE_WORK_GROUP_SIZE    0x91BF
+#endif
+
+#ifndef GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS
+#define GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS 0x90EB
+#endif
+
 #ifndef GL_LINK_STATUS
 #define GL_LINK_STATUS 0x8B82
+#endif
+
+#ifndef GL_ATTACHED_SHADERS
+#define GL_ATTACHED_SHADERS 0x8B85
+#endif
+
+#ifndef GL_INFO_LOG_LENGTH
+#define GL_INFO_LOG_LENGTH 0x8B84
 #endif
 
 #ifndef GL_TEXTURE0
@@ -698,6 +718,9 @@ typedef void   (APIENTRY* glCompileShaderPROC) (GLuint shader);
 typedef void   (APIENTRY* glAttachShaderPROC) (GLuint program, GLuint shader);
 typedef void   (APIENTRY* glLinkProgramPROC) (GLuint program);
 typedef void   (APIENTRY* glGetProgramivPROC) (GLuint program, GLenum pname, GLint* param);
+typedef void   (APIENTRY* glGetProgramInfoLogPROC) (GLuint program, GLsizei maxLength, GLsizei* length, char* infoLog);
+typedef void   (APIENTRY* glGetShaderInfoLogPROC) (GLuint shader, GLsizei maxLength, GLsizei* length, char* infoLog);
+typedef void   (APIENTRY* glGetIntegeri_vPROC) (GLenum target, GLuint index, GLint* data);
 typedef void   (APIENTRY* glDetachShaderPROC) (GLuint program, GLuint shader);
 typedef void   (APIENTRY* glUseProgramPROC) (GLuint program);
 typedef void   (APIENTRY* glBindImageTexturePROC) (GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format);
@@ -722,6 +745,9 @@ extern glCompileShaderPROC      glCompileShader;
 extern glAttachShaderPROC       glAttachShader;
 extern glLinkProgramPROC        glLinkProgram;
 extern glGetProgramivPROC       glGetProgramiv;
+extern glGetProgramInfoLogPROC  glGetProgramInfoLog;
+extern glGetShaderInfoLogPROC   glGetShaderInfoLog;
+extern glGetIntegeri_vPROC      glGetIntegeri_v;
 extern glDetachShaderPROC       glDetachShader;
 extern glUseProgramPROC         glUseProgram;
 extern glBindImageTexturePROC   glBindImageTexture;

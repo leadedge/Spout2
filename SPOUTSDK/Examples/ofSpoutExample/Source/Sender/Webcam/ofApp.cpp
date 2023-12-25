@@ -7,7 +7,7 @@
 	OpenFrameworks 11
 	Visual Studio 2022
 
-	Copyright (C) 2022 Lynn Jarvis.
+	Copyright (C) 2022-2023 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -29,20 +29,20 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
 
-	ofBackground(255,255,255);
+	ofBackground(0);
 
 	// Option - show Spout logs
 	// EnableSpoutLog();
 	// Or a console to show webcam details
 	OpenSpoutConsole();
 
-	camsendername = "OF Spout Webcam Sender"; // Set the sender name
+	camsendername = "Spout Webcam Sender"; // Set the sender name
 	ofSetWindowTitle(camsendername); // show it on the title bar
 
 	// Get the webcam list into a vector so we can
 	// identify by name and detect SpoutCam later
 	camdevices = vidGrabber.listDevices();
-	printf("Select a webcam by it's index (0-%d)\n\n", camdevices.size() - 1);
+	// printf("Select a webcam by it's index (0-%d)\n\n", (int)camdevices.size() - 1);
 
 	// Use the default webcam (0) or change as required
 	camindex = 0;
@@ -51,7 +51,10 @@ void ofApp::setup(){
 	// (For SpoutCam use SpoutCamSettings instead)
 	vidGrabber.setDesiredFrameRate(30);
 	vidGrabber.setup(640, 480); // try to grab at this size. 
-	cout << "Initialized webcam (" << vidGrabber.getWidth() << " x " << vidGrabber.getHeight() << ")" << endl;
+	if (vidGrabber.isInitialized())
+		printf("Initialized webcam (%d x %d)\n", (int)vidGrabber.getWidth(), (int)vidGrabber.getHeight());
+	else
+		printf("Select a webcam by it's index (0-%d)\n\n", (int)camdevices.size() - 1);
 
 	// Give the sender the same name as the window title
 	// If none is specified, the executable name is used
@@ -63,8 +66,9 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update() {
 
-	if (!vidGrabber.isInitialized())
+	if (!vidGrabber.isInitialized()) {
 		return;
+	}
 
 	vidGrabber.update();
 
@@ -107,15 +111,13 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	if (!vidGrabber.isInitialized())
-		return;
-
+	std::string str;
 	ofSetColor(255);
 
-	vidGrabber.draw(0, 0, ofGetWidth(), ofGetHeight());
+	if (vidGrabber.isInitialized())
+		vidGrabber.draw(0, 0, ofGetWidth(), ofGetHeight());
 
 	// Show what it's sending
-	std::string str;
 	if (camsender.IsInitialized()) {
 		str = "Sending as : ";
 		str += camsender.GetName(); str += " (";
@@ -131,8 +133,11 @@ void ofApp::draw() {
 			// Show Openframeworks fps
 			str += "fps : " + ofToString((int)roundf(ofGetFrameRate()));
 		}
-		ofDrawBitmapString(str, 20, 30);
 	}
+	else {
+		str += "Select a webcam by it's index";
+	}
+	ofDrawBitmapString(str, 20, 30);
 
 	// Show the webcam list for selection
 	int ypos = 50;
@@ -163,7 +168,7 @@ void ofApp::keyPressed(int key) {
 	int i = key - 48; // Decimal number
 	if (key == 32) {
 		camdevices = vidGrabber.listDevices();
-		printf("Select a webcam by it's index (0-%d)\n", camdevices.size() - 1);
+		printf("Select a webcam by it's index (0-%d)\n", (int)camdevices.size() - 1);
 	}
 	else if (i >= 0 && i < (int)camdevices.size()) {
 		// Change if the user selected a different webcam

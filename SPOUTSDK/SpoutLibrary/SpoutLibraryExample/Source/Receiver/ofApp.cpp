@@ -36,7 +36,7 @@
 	OpenFrameworks 11
 	Visual Studio 2022
 
-	Copyright (C) 2015-2023 Lynn Jarvis.
+	Copyright (C) 2015-2024 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -66,7 +66,7 @@ void ofApp::setup() {
 	}
 
 	// receiver->OpenSpoutConsole(); // for debugging when a console is not availlable
-	// receiver->EnableSpoutLog(); // log to console
+	receiver->EnableSpoutLog(); // log to console
 
 	// Specify the sender to connect to.
 	// The application will not connect to any other unless the user selects one.

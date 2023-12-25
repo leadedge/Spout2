@@ -78,10 +78,11 @@
 //	Version 2.007.012
 //		04.08.23	- Add format functions
 //		07.08.23	- Add frame sync option functions
+//	Version 2.007.013
 //
 // ====================================================================================
 //
-//	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
+//	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without modification, 
 //	are permitted provided that the following conditions are met:

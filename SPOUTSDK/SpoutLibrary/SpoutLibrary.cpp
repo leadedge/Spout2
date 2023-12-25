@@ -102,9 +102,13 @@
 //		05.08.23   Add format functions
 //		28.09.23   Add EnableFrameSync
 //				   Rebuild with SDK version 2.007.012 - release VS2022 - 32/64 bit /MD
+//		16.10.23   Add SpoutMessageBoxIcon and SpoutMessageBoxButton
+//		03.12.23   Rebuild with SDK version 2.007.013 /MD and /MT using CMake
+//		08.12.23   Rebuild all libraries /MT and /MD with Openframeworks 12.0 files using CMake
+//		TODO	   Example binaries /MT, binaries included in a Spout2 GitHub release
 //
 /*
-		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2024, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -658,6 +662,26 @@ private: // Spout SDK functions
 	// MessageBox dialog with standard arguments.
 	// Replaces an existing MessageBox call.
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
+
+	// Function: SpoutMessageBoxIcon
+	// Custom icon for SpoutMessageBox from resources
+	// Use together with MB_USERICON
+	void SpoutMessageBoxIcon(HICON hIcon);
+
+	// Function: SpoutMessageBoxIcon
+	// Custom icon for SpoutMessageBox from file
+	// Use together with MB_USERICON
+	bool SpoutMessageBoxIcon(std::string iconfile);
+
+	// Function: SpoutMessageBoxButton
+	// Custom button for SpoutMessageBox
+	// Use together with MB_USERBUTTON
+	void SpoutMessageBoxButton(int ID, std::wstring title);
+
+	// Function: CopyToClipBoard
+	// Copy text to the clipboard
+	bool CopyToClipBoard(HWND hwnd, const char* caps);
+
 
 	//
 	// Group: Registry utilities
@@ -1421,6 +1445,26 @@ int SPOUTImpl::SpoutMessageBox(const char * message, DWORD dwMilliseconds)
 int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
 {
 	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
+}
+
+void SPOUTImpl::SpoutMessageBoxIcon(HICON hIcon)
+{
+	spoututils::SpoutMessageBoxIcon(hIcon);
+}
+
+bool SPOUTImpl::SpoutMessageBoxIcon(std::string iconfile)
+{
+	return spoututils::SpoutMessageBoxIcon(iconfile);
+}
+
+void SPOUTImpl::SpoutMessageBoxButton(int ID, std::wstring title)
+{
+	spoututils::SpoutMessageBoxButton(ID, title);
+}
+
+bool SPOUTImpl::CopyToClipBoard(HWND hwnd, const char* caps)
+{
+	return spoututils::CopyToClipBoard(hwnd, caps);
 }
 
 // Registry utilities

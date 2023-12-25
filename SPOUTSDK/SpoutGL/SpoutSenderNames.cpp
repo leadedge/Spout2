@@ -97,9 +97,16 @@
 	Version 2.007.11
 	13.07.23 - setActiveSenderName - close any existing active sender map
 	Version 2.007.012
+	07.10.23 - Conditional compile options for _M_ARM64
+			   Moved additonal includes from cpp to header
+	28.10.23 - SetSenderInfo - use QueryFullProcessImageNameA
+	07.12.23 - SetSenderInfo - use spoututils GetEexePath()
+			   Remove unused d3d9.h and d3d11.h from header
+	16.12.23 - SetSenderInfo - correct buffer size for GetModuleFileNameA
+	Version 2.007.013
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -156,9 +163,8 @@ spoutSenderNames::~spoutSenderNames() {
 		delete itr->second;
 	}
 	delete m_senders;
-	
-}
 
+}
 
 //
 // =========================
@@ -530,7 +536,7 @@ bool spoutSenderNames::GetSenderInfo(const char* sendername, unsigned int &width
 	if(getSharedInfo(sendername, &info)) {
 		width		  = (unsigned int)info.width;
 		height		  = (unsigned int)info.height;
-#ifdef _M_X64
+#if defined _M_X64 || defined _M_ARM64
 		dxShareHandle = (HANDLE)(LongToHandle((long)info.shareHandle));
 #else
 		dxShareHandle = (HANDLE)info.shareHandle;
@@ -577,20 +583,33 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 #endif
 	info.format      = (uint32_t)dwFormat;
 	
-	//
-	// Initialize unused variables
-	//
-
-	// Texture usage
+	// Texture usage - unused
 	info.usage = 0;
-
-	// Description : Host path
-	char exepath[256]={};
-	GetModuleFileNameA(NULL, &exepath[0], sizeof(exepath));
 
 	// Partner ID : Sender CPU sharing mode
 	// Set by SetSenderID
 	// TODO : combine here
+
+	// Description : Host path
+	// Description field is 256 uint8_t, initialize with zeros
+	// Get the full path of the current process including name
+	char exepath[MAX_PATH]={0};
+	GetModuleFileNameA(NULL, exepath, MAX_PATH);
+
+	// GetModuleFileNameA could fail for Windows on Arm systems
+	// Use QueryFullProcessImageNameA instead
+	DWORD dwProcId = GetCurrentProcessId();
+	HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcId);
+	if (hProc) {
+		DWORD bufferSize = 256;
+		if (!QueryFullProcessImageNameA(hProc, 0, exepath, &bufferSize)) {
+			SpoutLogWarning("spoutSenderNames::SetSenderInfo -  QueryFullProcessImageName failed");
+		}
+		CloseHandle(hProc);
+	}
+	else {
+		SpoutLogWarning("spoutSenderNames::SetSenderInfo - could not get process handle");
+	}
 
 	// Description is defined as wide chars, but the path is stored as byte chars
 	memcpy(&info.description[0], &exepath[0], 256); // wchar 128
@@ -759,7 +778,7 @@ bool spoutSenderNames::FindActiveSender(char * sendername, unsigned int& theWidt
 			strcpy_s(sendername, maxlength, &sname[0]); // pass back sender name
 			theWidth        = (unsigned int)TextureInfo.width;
 			theHeight       = (unsigned int)TextureInfo.height;
-#ifdef _M_X64
+#if defined _M_X64 || defined _M_ARM64
 			hSharehandle = (HANDLE)(LongToHandle((long)TextureInfo.shareHandle));
 #else
 			hSharehandle = (HANDLE)TextureInfo.shareHandle;
@@ -868,7 +887,7 @@ bool spoutSenderNames::CheckSender(const char *sendername, unsigned int &theWidt
 			// Return the texture info
 			theWidth     = (unsigned int)info.width;
 			theHeight    = (unsigned int)info.height;
-#ifdef _M_X64
+#if defined _M_X64 || defined _M_ARM64
 			hSharehandle = (HANDLE)(LongToHandle((long)info.shareHandle));
 #else
 			hSharehandle = (HANDLE)info.shareHandle;
@@ -923,7 +942,7 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 	if (getSharedInfo(sendername, &info)) {
 		width = (unsigned int)info.width; // pass back sender size
 		height = (unsigned int)info.height;
-#ifdef _M_X64
+#if defined _M_X64 || defined _M_ARM64
 		hSharehandle = (HANDLE)(LongToHandle((long)info.shareHandle));
 #else
 		hSharehandle = (HANDLE)info.shareHandle;

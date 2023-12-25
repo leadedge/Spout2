@@ -4,7 +4,7 @@
 
 	Visual Studio using the Spout SDK
 
-	Copyright (C) 2015-2022 Lynn Jarvis.
+	Copyright (C) 2015-2023 Lynn Jarvis.
 
 	Spout 2.007
 	OpenFrameworks 11
@@ -32,6 +32,9 @@ void ofApp::setup(){
 
 	ofBackground(0, 0, 0);
 	ofSetWindowTitle("Multiple Receiver Example");
+
+	// Optionally enable spout logging
+	EnableSpoutLog();
 
 	// Allocate a texture for the firt receiver
 	myTexture1.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);

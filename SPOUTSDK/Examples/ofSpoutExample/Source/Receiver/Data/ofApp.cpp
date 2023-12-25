@@ -4,7 +4,7 @@
 
     Example of receiving per-frame data
 
-	Copyright (C) 2022 Lynn Jarvis.
+	Copyright (C) 2022-2023 Lynn Jarvis.
 
 	Spout 2.007
 	OpenFrameworks 11
@@ -30,8 +30,10 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
 
+	ofSetWindowTitle("Spout Data Receiver");
 
-	ofSetWindowTitle("OpenGL Data Receiver Example");
+	// Optional logs
+	// EnableSpoutLog();
 
 	ofBackground(0, 0, 0);
 
@@ -47,13 +49,6 @@ void ofApp::setup(){
 	senderpressed = 0;
 	senderdragged = 0;
 	senderbytes = 0;
-
-	// Set framerate slower that the example data sender
-	// to demonstrate sync functions for frame accuracy
-	// Refer to the data sender example.
-	ofSetFrameRate(30);
-
-	EnableSpoutLog();
 	
 } // end setup
 
@@ -197,14 +192,6 @@ void ofApp::draw() {
 
 	// On-screen display
 	showInfo();
-
-	// OPTION : 
-	// If it's important to avoid missed frames, send a ready
-	// signal for the sender to wait on.
-	// The sender frame rate will synchronize with the receiver. 
-	// (Refer to the data sender example).
-	//
-	receiver.SetFrameSync(receiver.GetSenderName());
 
 }
 

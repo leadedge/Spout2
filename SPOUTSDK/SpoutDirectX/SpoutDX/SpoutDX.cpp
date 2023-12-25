@@ -136,10 +136,17 @@
 //		04.08.23	- Correct unused m_bKeyed argument for CreateSharedDX11Texture
 //		28.08.23	- Add ReadTexurePixels utility function
 //		30.08.23	- Add include path prefix define in header file
+//		16.09.23	- SendTexture with offsets - check the texture and region sizes
+//		13.10.23	- CheckSender - use GetModuleFileNameEx
+//		26.10.23	- CheckSender - correct exepath test
+//					  Test QueryFullProcessImageName
+//		28.10.23	- CheckSender - executable path retrieved in SpoutSenderNames::SetSenderInfo
+//		02.12.23	- Update and test examples with 2.007.013 SpoutGL files. No other changes.
+//		06.12.23	- SetSenderName - use SpoutUtils GetExeName()
 //
 // ====================================================================================
 /*
-	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -357,10 +364,8 @@ bool spoutDX::IsClassDevice()
 bool spoutDX::SetSenderName(const char* sendername)
 {
 	if (!sendername) {
-		// Get executable name as default
-		GetModuleFileNameA(NULL, m_SenderName, 256);
-		PathStripPathA(m_SenderName);
-		PathRemoveExtensionA(m_SenderName);
+		// Executable name default
+		strcpy_s(m_SenderName, 256, GetExeName().c_str());
 	}
 	else {
 		strcpy_s(m_SenderName, 256, sendername);
@@ -538,12 +543,18 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture,
 
 	// Get the region to copy
 	D3D11_BOX sourceRegion={};
-	sourceRegion.left = xoffset;
-	sourceRegion.right = xoffset+width;
-	sourceRegion.top = yoffset;
-	sourceRegion.bottom = yoffset+height;
-	sourceRegion.front = 0;
-	sourceRegion.back = 1;
+	sourceRegion.left    = xoffset;
+	sourceRegion.right   = xoffset+width;
+	sourceRegion.top     = yoffset;
+	sourceRegion.bottom  = yoffset+height;
+	sourceRegion.front   = 0;
+	sourceRegion.back    = 1;
+
+	// Check the texture and region sizes
+	if ((sourceRegion.right-sourceRegion.left) > desc.Width
+	 || (sourceRegion.bottom-sourceRegion.top) > desc.Height) {
+		return false;
+	}
 
 	// Check the sender mutex for access the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
@@ -2009,58 +2020,51 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 		m_dwFormat = dwFormat;
 
 		// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
-		// and specifying the same texture format
-		m_bSpoutInitialized = sendernames.CreateSender(m_SenderName, m_Width, m_Height, m_dxShareHandle, m_dwFormat);
+		// and specifying the same texture format.
+		if (sendernames.CreateSender(m_SenderName, m_Width, m_Height, m_dxShareHandle, m_dwFormat)) {
 
-		// This could be a separate function SetHostPath
-		SharedTextureInfo info ={}; // Empty structure
-		if (sendernames.getSharedInfo(m_SenderName, &info)) {
-			char exepath[256]={};
-			GetModuleFileNameA(NULL, exepath, sizeof(exepath));
-			// Description field is 256 uint8_t
-			strcpy_s((char*)info.description, 256, exepath);
-			if (!sendernames.setSharedInfo(m_SenderName, &info)) {
-				SpoutLogWarning("spoutDX::CheckSender - could not set sender info", m_SenderName);
-			}
+			// sendernames::SetSenderInfo writes the sender information to shared memory
+			// including the sender executable path
+
+			// Create a sender mutex for access to the shared texture
+			frame.CreateAccessMutex(m_SenderName);
+
+			// Enable frame counting so the receiver gets frame number and fps
+			frame.EnableFrameCount(m_SenderName);
+
+			m_bSpoutInitialized = true;
 		}
 		else {
-			SpoutLogWarning("spoutDX::CheckSender - could not get sender info (%s)", m_SenderName);
+			SpoutLogWarning("spoutDX::CheckSender - could not get create sender");
+			return false;
 		}
+	} // end create sender
 
-		// Create a sender mutex for access to the shared texture
-		frame.CreateAccessMutex(m_SenderName);
-
-		// Enable frame counting so the receiver gets frame number and fps
-		frame.EnableFrameCount(m_SenderName);
-
-	}
 	// Initialized but has the source texture changed size ?
-	else {
-		if (m_Width != width || m_Height != height || m_dwFormat != dwFormat) {
-			SpoutLogNotice("spoutDX::CheckSender - size change from %dx%d to %dx%d\n", m_Width, m_Height, width, height);
-			if (m_pSharedTexture) {
-				spoutdx.ReleaseDX11Texture(m_pSharedTexture);
-				// The existing shared texture is changed on this device
-				m_pImmediateContext->Flush();
-			}
-			m_pSharedTexture = nullptr;
-			m_dxShareHandle = nullptr;
+	if (m_Width != width || m_Height != height || m_dwFormat != dwFormat) {
+		SpoutLogNotice("spoutDX::CheckSender - size change from %dx%d to %dx%d\n", m_Width, m_Height, width, height);
+		if (m_pSharedTexture) {
+			spoutdx.ReleaseDX11Texture(m_pSharedTexture);
+			// The existing shared texture is changed on this device
+			m_pImmediateContext->Flush();
+		}
+		m_pSharedTexture = nullptr;
+		m_dxShareHandle = nullptr;
 
-			if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
-				SpoutLogWarning("spoutDX::CheckSender - could not re-create shared texture");
-				return false;
-			}
-
-			// Update the sender information
-			sendernames.UpdateSender(m_SenderName, width, height, m_dxShareHandle, dwFormat);
-
-			// Update class variables
-			m_Width = width;
-			m_Height = height;
-			m_dwFormat = dwFormat;
+		if (!spoutdx.CreateSharedDX11Texture(m_pd3dDevice, width, height, (DXGI_FORMAT)dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
+			SpoutLogWarning("spoutDX::CheckSender - could not re-create shared texture");
+			return false;
 		}
 
-	} // endif initialization or size checks
+		// Update the sender information
+		sendernames.UpdateSender(m_SenderName, width, height, m_dxShareHandle, dwFormat);
+
+		// Update class variables
+		m_Width = width;
+		m_Height = height;
+		m_dwFormat = dwFormat;
+
+	} // end size checks
 
 	return true;
 
@@ -2468,12 +2472,14 @@ void spoutDX::SelectSenderPanel()
 		_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
 		_makepath_s(path, MAX_PATH, drive, dir, "SpoutPanel", ".exe");
 		// Does SpoutPanel.exe exist in this path ?
-		if (!PathFileExistsA(path)) {
+		if(_access(path, 0) == -1) {
+		// if (!PathFileExistsA(path)) {
 			// Try the current working directory
 			if (_getcwd(path, MAX_PATH)) {
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
-				if (!PathFileExistsA(path)) {
+				if (_access(path, 0) == -1) {
+				// if (!PathFileExistsA(path)) {
 					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
 					return;
 				}

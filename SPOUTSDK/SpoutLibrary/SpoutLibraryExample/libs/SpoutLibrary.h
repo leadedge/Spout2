@@ -4,7 +4,7 @@
 //	Spout SDK dll compatible with any C++ compiler
 //
 /*
-		Copyright (c) 2016-2023, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2024, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -273,6 +273,14 @@ struct SPOUTLIBRARY
 	// MessageBox dialog with standard arguments
 	//   Replaces an existing MessageBox call
 	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0) = 0;
+	// Custom icon for SpoutMessageBox from resources
+	virtual void SpoutMessageBoxIcon(HICON hIcon) = 0;
+	// Custom icon for SpoutMessageBox from file
+	virtual bool SpoutMessageBoxIcon(std::string iconfile) = 0;
+	// Custom button for SpoutMessageBox
+	virtual void SpoutMessageBoxButton(int ID, std::wstring title) = 0;
+	// Copy text to the clipboard
+	virtual bool CopyToClipBoard(HWND hwnd, const char* caps) = 0;
 
 	//
 	// Registry utilities

@@ -12,7 +12,7 @@
 		Thanks and credit to Malcolm Bechard, the author of this file
 		https://github.com/mbechard
 
-		Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -36,6 +36,7 @@
 
 03.07.23	- Remove _MSC_VER condition from SPOUT_DLLEXP define
 			  (#PR93  Fix MinGW error (beta branch)
+07.12.23	- using namespace spoututils moved from SpoutGL.h
 
 
 */
@@ -50,12 +51,14 @@
 // SPOUT_BUILD_DLL in the preprocessor defines.
 // Properties > C++ > Preprocessor > Preprocessor Definitions
 //
-#if defined(SPOUT_BUILD_DLL)
+#ifndef SPOUT_DLLEXP
+	#if defined(SPOUT_BUILD_DLL)
 	#define SPOUT_DLLEXP	__declspec(dllexport)
-#elif defined(SPOUT_IMPORT_DLL)
+	#elif defined(SPOUT_IMPORT_DLL)
 	#define SPOUT_DLLEXP	__declspec(dllimport)
-#else
+	#else
 	#define SPOUT_DLLEXP
+	#endif
 #endif
 
 // Common utility functions namespace
@@ -80,6 +83,19 @@
 // The warning is designated "Prefer" and "C" standard unscoped enums are retained for compatibility.
 #if defined(_MSC_VER)
 #pragma warning(disable:26812) // unscoped enums
+#endif
+
+//
+// For ARM build
+// __movsd intrinsic not defined
+//
+#if defined _M_ARM64
+#include <memory.h>
+inline void __movsd(unsigned long* Destination,
+	const unsigned long* Source, size_t Count)
+{
+	memcpy(Destination, Source, Count);
+}
 #endif
 
 

@@ -4,7 +4,7 @@
 
     Visual Studio using the Spout SDK
 
-	Copyright (C) 2015-2023 Lynn Jarvis.
+	Copyright (C) 2015-2024 Lynn Jarvis.
 
 	Spout 2.007
 	OpenFrameworks 11
@@ -36,12 +36,27 @@ void ofApp::setup(){
 
 	// Logging (see sender example)
 	// OpenSpoutConsole(); // for when a console is not available (see main.cpp)
-	// EnableSpoutLog(); // Spout logging to console
+	EnableSpoutLog(); // Spout logging to console
 
 	// Option - specify the sender to connect to.
 	// The application will not connect to any other unless the user selects one.
 	// If that sender closes, the application will wait for the nominated sender to open.
 	// receiver.SetReceiverName("Spout Demo Sender");
+
+	//
+	// Receiver texture format
+	//
+	// The receiving texture format can be set to that of the sender.
+	// This is not done now but after a texture has been received.
+	// See receiver.IsUpdated() in "Draw()" below.
+	//     glformat = receiver.GLDXformat();
+	//
+
+	//
+	// Other options
+	// Refer to the graphics sender example
+	//
+
 
 	ofSetWindowTitle("Spout Graphics Receiver");
 
@@ -88,7 +103,7 @@ void ofApp::draw() {
 	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
 		// Update the receiving texture if the received size has changed
 		if (receiver.IsUpdated()) {
-			GLint glformat = GL_RGBA; // Receiving texture format
+			GLint glformat = GL_RGBA; // Default receiving texture format
 			//
 			// Option
 			//
@@ -167,17 +182,17 @@ void ofApp::showInfo() {
 			str += "CPU share : "; 
 
 		// Show sender size
-		str += to_string(receiver.GetSenderWidth()); // width
+		str += std::to_string(receiver.GetSenderWidth()); // width
 		str += "x";
-		str += to_string(receiver.GetSenderHeight()); // height 
+		str += std::to_string(receiver.GetSenderHeight()); // height 
 
 		// Applications < 2.007 will return no frame count information
 		// Frame counting can also be disabled in SpoutSettings
 		if (receiver.GetSenderFrame() > 0) {
 			str += " : fps ";
-			str += to_string((int)(round(receiver.GetSenderFps()))); // frames per second
+			str += std::to_string((int)(round(receiver.GetSenderFps()))); // frames per second
 			str += " : frame ";
-			str += to_string(receiver.GetSenderFrame()); // frame since the sender started
+			str += std::to_string(receiver.GetSenderFrame()); // frame since the sender started
 		}
 		str += ") ";
 		ofDrawBitmapString(str, 10, 20);
@@ -201,7 +216,7 @@ void ofApp::showInfo() {
 
 		// Show current graphics adapter
 		str = "Graphics adapter ";
-		str += to_string(receiver.GetAdapter());
+		str += std::to_string(receiver.GetAdapter());
 		str += " : ";
 		str += receiver.AdapterName();
 		ofDrawBitmapString(str, 10, 50);

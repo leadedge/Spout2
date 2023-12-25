@@ -2,7 +2,7 @@
 
 	Spout OpenFrameworks Data Sender example
 
-	Copyright (C) 2022 Lynn Jarvis.
+	Copyright (C) 2022-2023 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -37,10 +37,8 @@ class ofApp : public ofBaseApp{
 		void mouseDragged(int x, int y, int button);
 
 		SpoutSender sender;    // Spout sender object
-
 		char sendername[256];  // Sender name
-		unsigned int senderwidth;  // Dimensions of the sender can be independent
-		unsigned int senderheight; // of the application window if using an fbo
+
 		ofImage myBoxImage;    // Image for the 3D demo
 		ofFbo myFbo;           // For texture send example
 		ofPixels myPixels;     // For pixel send example

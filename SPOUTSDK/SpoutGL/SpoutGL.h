@@ -5,7 +5,7 @@
 	Base class for OpenGL SpoutSDK
 	See also Sender and Receiver wrapper classes.
 
-	Copyright (c) 2021-2023, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2021-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -40,7 +40,6 @@
 #include "SpoutDirectX.h" // for DX11 shared textures
 #include "SpoutFrameCount.h" // for mutex lock and new frame signal
 #include "SpoutCopy.h" // for pixel copy
-#include "SpoutUtils.h" // Registry utiities
 
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
@@ -49,7 +48,9 @@
 
 #pragma warning(disable : 26485)
 
+// Used throughout
 using namespace spoututils;
+
 
 class SPOUT_DLLEXP spoutGL {
 
@@ -205,7 +206,7 @@ class SPOUT_DLLEXP spoutGL {
 	bool SetHostPath(const char *sendername);
 	// Set sender PartnerID field with CPU sharing method and GL/DX compatibility
 	bool SetSenderID(const char *sendername, bool bCPU, bool bGLDX);
-
+	
 	//
 	// 2.006 compatibility
 	//
@@ -379,6 +380,7 @@ protected :
 	// GL/DX interop
 	HANDLE m_hInteropDevice; // Handle to the DX/GL interop device
 	HANDLE m_hInteropObject; // Handle to the DX/GL interop object (the shared texture)
+	bool m_bInteropFailed = false; // Interop failure flag to avoid repeats
 
 	// General
 	HWND m_hWnd; // OpenGL window
@@ -425,6 +427,7 @@ protected :
 	bool m_bCOPYavailable;
 	bool m_bCONTEXTavailable;
 	bool m_bExtensionsLoaded;
+
 
 };
 

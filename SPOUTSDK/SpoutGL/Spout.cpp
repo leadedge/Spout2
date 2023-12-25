@@ -260,14 +260,20 @@
 //					  and UNREFERENCED_PARAMETER (#PR93  Fix MinGW error(beta branch)
 //		22.07.23	- ReceiveSenderData -
 //					  ensure m_pSharedTexture is null if OpenSharedResource failed.
-//	Version 2.007.012
 //		03.08.23	- InitReceiver - set m_DX11format
 //		07.08.23	- Add frame sync option functions
+//	Version 2.007.012
+//		09.10.23	- SelectSenderPanel -if SpoutPanel.exe is not found
+//					  show a SpoutMessageBox with Spout releases page url
+//		18.10.23	- ReceiveSenderData - check for texture format supported
+//					  by OpenGL/DirectX interop
+//		07.12.23	- use _access in place of shlwapi Path functions
+//	Version 2.007.013
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2023, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -361,8 +367,6 @@ Spout::~Spout()
 	// ~spoutGL will release dependent objects
 }
 
-
-
 //
 // Group: Sender
 //
@@ -395,9 +399,7 @@ void Spout::SetSenderName(const char* sendername)
 	char name[256]={};
 	if (!sendername) {
 		// Get executable name as default
-		GetModuleFileNameA(NULL, name, 256);
-		PathStripPathA(name);
-		PathRemoveExtensionA(name);
+		strcpy_s(name, 256, GetExeName().c_str());
 	}
 	else {
 		strcpy_s(name, 256, sendername);
@@ -755,6 +757,8 @@ void Spout::ReleaseReceiver()
 	if (!m_bInitialized)
 		return;
 
+	SpoutLogNotice("Spout::ReleaseReceiver");
+
 	// Release interop
 	CleanupInterop();
 
@@ -836,7 +840,6 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 	if (!OpenSpout()) {
 		return false;
 	}
-
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
 
@@ -853,6 +856,7 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 
 			// If the sender is new or changed, reset shared/linked textures
 			if (m_bTextureShare) {
+
 				// CreateInterop set "true" for receiver
 				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 					return false;
@@ -873,12 +877,12 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 		// Was the sender's shared texture handle null
 		// or has the user set 2.006 memoryshare mode?
 		if (!m_dxShareHandle || m_bMemoryShare) {
-
 			// Possible existence of 2.006 memoryshare sender (no texture handle)
 			// (ReadMemoryTexture currently only works if texture share compatible)
 			if (m_bTextureShare) {
-				if (ReadMemoryTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo))
+				if (ReadMemoryTexture(m_SenderName, TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo)) {
 					return true;
+				}
 			}
 			// ReadMemoryTexture failed, is there is a texture share handle ?
 			if (!m_dxShareHandle) {
@@ -898,8 +902,6 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 			// 3840x2160 33 fps - 5-7 msec/frame
 			ReadDX11texture(TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
 		}
-
-
 	} // endif sender exists
 	else {
 		// ReceiveSenderData fails if there is no sender or the connected sender closed.
@@ -1901,17 +1903,19 @@ bool Spout::SelectSenderPanel(const char* message)
 
 	if (path[0]) {
 		// Does SpoutPanel.exe exist in this path ?
-		if (!PathFileExistsA(path)) {
+		if(_access(path, 0) == -1) {
 			// Try the current working directory
 			if (_getcwd(path, MAX_PATH)) {
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
-				if (!PathFileExistsA(path)) {
+				if (_access(path, 0) == -1) {
 					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
-					// Show a MessageBox and direct to the Spout home page
-					if (MessageBoxA(NULL, "The sender selection dialog 'SpoutPanel' was not found\nDownload the latest Spout release and run either\n'SpoutSettings' or 'SpoutPanel' once to establish the path.\n\nDo you want to open the Spout home page now.\n", "Warning", MB_YESNO) == IDYES) {
-						ShellExecuteA(NULL, "open", "http://spout.zeal.co/", NULL, NULL, SW_SHOWNORMAL);
-					}
+					// Show a SpoutMessageBox and direct to the Spout releases page
+					sprintf_s(UserMessage, 512,
+						"The sender selection dialog 'SpoutPanel' was not found\n"\
+						"Download the <a href=\"https://github.com/leadedge/Spout2/releases\">latest Spout release</a> and run either\n"\
+						"'SpoutSettings' or 'SpoutPanel' to establish the path.\n");
+					SpoutMessageBox(NULL, UserMessage, "Warning", MB_ICONWARNING | MB_OK);
 					return false;
 				}
 			}
@@ -2411,7 +2415,7 @@ bool Spout::ReceiveSenderData()
 		//   o for a new sender
 		// Open the sender share handle to produce a new received texture
 		if (dxShareHandle != m_dxShareHandle || strcmp(sendername, m_SenderName) != 0) {
-			
+
 			// Release everything to start again
 			ReleaseReceiver();
 
@@ -2437,6 +2441,24 @@ bool Spout::ReceiveSenderData()
 					if (width != (DWORD)desc.Width)	    width = (DWORD)desc.Width;
 					if (height != (DWORD)desc.Height)   height = (DWORD)desc.Height;
 					if (dwFormat != (DWORD)desc.Format) dwFormat = (DWORD)desc.Format;
+
+					// Check for texture format supported by OpenGL/DirectX interop
+					if (!(dwFormat == D3DFMT_A8R8G8B8						// 21
+						|| dwFormat == D3DFMT_X8R8G8B8						// 22
+						|| dwFormat == DXGI_FORMAT_B8G8R8X8_UNORM			// 88
+						|| dwFormat == DXGI_FORMAT_B8G8R8A8_UNORM			// 22
+						|| dwFormat == DXGI_FORMAT_R8G8B8A8_SNORM			// 31
+						|| dwFormat == DXGI_FORMAT_R8G8B8A8_UNORM			// 28
+						|| dwFormat == DXGI_FORMAT_R10G10B10A2_UNORM		// 24
+						|| dwFormat == DXGI_FORMAT_R16G16B16A16_SNORM		// 13
+						|| dwFormat == DXGI_FORMAT_R16G16B16A16_UNORM		// 11
+						|| dwFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB		// 29
+						|| dwFormat == DXGI_FORMAT_R16G16B16A16_FLOAT		// 10
+						|| dwFormat == DXGI_FORMAT_R32G32B32A32_FLOAT)) {	// 2
+						SpoutLogError("Spout::ReceiveSenderData - texture %dx%d incompatible texture format 0x%X (%d)",
+							width, height, dwFormat, dwFormat);
+						return false;
+					}
 
 					// If the received texture is successfully updated, initialize again
 					// with the new sender name, width, height and format

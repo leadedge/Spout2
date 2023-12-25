@@ -9,7 +9,7 @@
 
 	Search for SPOUT for additions to a typical Openframeworks application
 
-	Copyright (C) 2015-2023 Lynn Jarvis.
+	Copyright (C) 2015-2024 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -51,9 +51,9 @@ void ofApp::setup(){
 	// Refer to the "SpoutUtils.cpp" source code for further details.
 	//
 	// sender->OpenSpoutConsole(); // Empty console for debugging
-	// sender->EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
+	sender->EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
 	// The Spout SDK version number e.g. "2.007.000"
-	// sender->SpoutLog("Spout version : %s", sender->GetSDKversion().c_str());
+	sender->SpoutLog("Spout version : %s", sender->GetSDKversion().c_str());
 	//
 	// Many other options are available but are not repeated in this example.
 	// Refer to the "ofApp.cpp" source code for the graphics sender example
