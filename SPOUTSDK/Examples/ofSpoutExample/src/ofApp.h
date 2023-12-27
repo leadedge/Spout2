@@ -2,7 +2,7 @@
 
 	Spout OpenFrameworks Graphics Sender example
 
-	Copyright (C) 2015-2023 Lynn Jarvis.
+	Copyright (C) 2015-2024 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -22,6 +22,9 @@
 
 #include "ofMain.h"
 #include "..\..\..\SpoutGL\SpoutSender.h"
+
+// disable warning conversion from 'size_t' to 'int' for ofxXmlSettings
+#pragma warning(disable:4267)
 
 class ofApp : public ofBaseApp{
 

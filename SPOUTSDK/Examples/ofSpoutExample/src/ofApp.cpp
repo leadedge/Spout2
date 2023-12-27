@@ -6,7 +6,7 @@
 	OpenFrameworks 11
 	Visual Studio 2022
 
-	Copyright (C) 2022-2023 Lynn Jarvis.
+	Copyright (C) 2022-2024 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -41,29 +41,136 @@ void ofApp::setup(){
 
 	//
 	// Logs
+	//
 	// Logging functions are in a namespace and can be called directly
+	// OpenSpoutConsole(); // Empty console for debugging
+	EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
+	//
+	// Logs report information, warnings and errors as well as user logs
+	//
+	// You can set the level above which the logs are shown
+	// SPOUT_LOG_SILENT  : SPOUT_LOG_VERBOSE : SPOUT_LOG_NOTICE (default)
+	// SPOUT_LOG_WARNING : SPOUT_LOG_ERROR   : SPOUT_LOG_FATAL
+	// For example, to show only warnings and errors (you shouldn't see any)
+	// or leave set to default Notice to see more information.
+	//    SetSpoutLogLevel(SPOUT_LOG_WARNING);
+	//
+	// You can instead, or additionally, specify output to a text file
+	// with the extension of your choice
+	//    EnableSpoutLogFile("OF Spout Graphics sender.log");
+	//
+	// The log file is re-created every time the application starts
+	// unless you specify to append to the existing one :
+	//    EnableSpoutLogFile("OF Spout Graphics sender.log", true);
+	//
+	// The file is saved in the %AppData% folder 
+	//    C:>Users>username>AppData>Roaming>Spout
+	// unless you specify the full path.
+	// After the application has run you can find and examine the log file
+	//
+	// This folder can also be shown in Windows Explorer directly from the application.
+	//    ShowSpoutLogs();
+	//
+	// Or the entire log can be returned as a string
+	//    std::string logstring = GetSpoutLog();
+	//
+	// You can also create your own logs
+	// For example :
+	//    SpoutLog("SpoutLog test");
+	//
+	// Or specify the logging level :
+	// For example :
+	//    SpoutLogNotice("Important notice");
+	// or :
+	//    SpoutLogFatal("This should not happen");
+	// or :
+	//    SetSpoutLogLevel(SPOUT_LOG_VERBOSE);
+	//    SpoutLogVerbose("Message");
+	//
 	// Refer to the "SpoutUtils.cpp" source code for further details.
 	//
-	// OpenSpoutConsole(); // Empty console for debugging
-	// EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
 
-	// The Spout SDK version number e.g. "2.007.000"
-	SpoutLog("Spout version : %s", GetSDKversion().c_str());
-
-	// Find out whether the computer is a laptop or desktop system
-	char computername[16]{};
-	DWORD nchars = 16;
-	GetComputerNameA(computername, &nchars);
-	if (IsLaptop()) SpoutLog("Laptop system (%s)", computername);
-	else SpoutLog("Desktop system (%s)", computername);
+	//
+	// SpoutMessageBox
+	//
+	// SpoutMessageBox is an enhanced MessageBox using "TaskDialogIndirect"
+	// and is useful to present user notices with options that are not
+	// available with a standard MessageBox.
+	//
+	// Enhancements include :
+	//   Custom icon
+	//   Modeless mode
+	//   Centre on the application window or desktop
+	//   Message with variable arguments
+	//   Timeout option
+	//   Multiple buttons
+	//   Hyperlinks anywhere in the message text
+	//
+	//   Custom icon
+	//    Icons can be specifed using MessageBox definitions MB_ICONWARNING, MB_ICONINFORMATION etc
+	//    A custom icon can also be specified using :
+	//      SpoutMessageBoxIcon(HICON hIcon)
+	//      SpoutMessageBoxIcon(std::string iconfile)
+	//    Icon files must be of the type ".ico"
+	// std::string iconfile = ofToDataPath("SpoutLogo4.ico", true); // full path required
+	// SpoutMessageBoxIcon(iconfile);
+	//
+	//   Modeless mode
+	//     A typical MessageBox or TaskDialog is modal and stops the appication until return.
+	//     This is undesirable if the messagebox originates from a dll.
+	//     Modeless mode forwards the information on to "SpoutPanel" which is
+	//     an independent process and does not affect the host application.
+	//     In this example, the application window shows and the cube continues to rotate.
+	//     SpoutPanel version 2.017 or greater is required.
+	//     Spout must have been configured using SpoutSettings.
+	//       SpoutMessageBoxModeless(bool bMode = true)
+	// SpoutMessageBoxModeless();
+	//
+	//   Centre on the application window or the desktop
+	//    o Pass the window handle of the current application to centre on the window.
+	//    o Pass NULL as the window handle to centre on the desktop
+	//      SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0)
+	//    Specify the window handle for SpoutMessageBox functions that do not include one
+	//      SpoutMessageBoxWindow(HWND hWnd)
+	// HWND hWnd = ofGetWin32Window();
+	// SpoutMessageBoxWindow(hWnd);
+	//
+	//   Message with variable arguments
+	//    Presents text equivalent to that of "printf"
+	//      SpoutMessageBox(const char * caption, const char* format, ...)
+	// SpoutMessageBox("ofExample", "Spout SDK version %s", GetSDKversion());
+	//
+	//   Timeout option
+	//    The messagebox closes after the specified interval in millseconds.
+	//	    SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0)
+	//      SpoutMessageBox(HWND hWnd, const char* message, const char* caption, UINT uType, DWORD dwMilliseconds = 0)
+	// SpoutMessageBox("message", 2000);
+	//
+	//   Multiple buttons
+	//    Any number of buttons can be specified.
+	//    The SpoutMessageBox function returns the ID of the chosen button.
+	//    The messagebox is modal to allow return of the user choice.
+	//      void SpoutMessageBoxButton(int ID, std::wstring title)
+	// SpoutMessageBoxButton(1000, L"Button 1");
+	// SpoutMessageBoxButton(2000, L"Button 2");
+	// SpoutMessageBoxButton(3000, L"Button 3");
+	// int buttonid = SpoutMessageBox(NULL, "Select a button", "ofExample", MB_OK);
+	// if (buttonid == 1000) SpoutMessageBox("Button 1");
+	// if (buttonid == 2000) SpoutMessageBox("Button 2\n");
+	// if (buttonid == 3000) SpoutMessageBox("Button 3\n");
+	// if (buttonid == 1) SpoutMessageBox("OK pressed\n");
+	//
+	//   Hyperlinks anywhere in the message text
+	//    Urls can be included in the content using HTML format.
+	//    Only double quotes are supported and must be escaped.
+	// SpoutMessageBox("<a href=\"https://spout.zeal.co/\">Spout home page</a>");
+	//
 
 	//
 	// Other options
+	//
 	// Refer to the "SpoutUtils.cpp" source code for documentation.
 	//     Spout SDK version number
-	//     Console
-	//     Spout logs
-	//     SpoutMessageBox dialog
 	//     Registry utilities
 	//     Computer information
 	//     Timing utilities
@@ -117,23 +224,27 @@ void ofApp::setup(){
 	// with ofSetFrameRate. Applications without such frame rate
 	// control can use Spout "HoldFps" (see Draw())
 
+	// ---------------------------------------------------------------------------
 	//
-	// Set sender application OpenGL format
+	// Sender format
 	//
+	// Set the sender application starting OpenGL format
+	// Default DirectX format is DXGI_FORMAT_B8G8R8A8_UNORM
 	//       OpenGL                             Compatible DX11 format
 	//       GL_RGBA16    16 bit				(DXGI_FORMAT_R16G16B16A16_UNORM)			
 	//       GL_RGBA16F   16 bit float			(DXGI_FORMAT_R16G16B16A16_FLOAT)
 	//       GL_RGBA32F   32 bit float			(DXGI_FORMAT_R32G32B32A32_FLOAT)
 	//       GL_RGB10_A2  10 bit 2 bit alpha	(DXGI_FORMAT_R10G10B10A2_UNORM)
+	//       GL_RGBA8      8 bit                (DXGI_FORMAT_R8G8B8A8_UNORM)
 	//       GL_RGBA       8 bit                (DXGI_FORMAT_R8G8B8A8_UNORM)
 	//
-	// glFormat = GL_RGB16; // Example 16 bit rgba
-	//
-	// Set a compatible DirectX 11 shared texture format for the sender
+	// glFormat = GL_RGBA16; // Example 16 bit rgba
+	// A compatible DirectX 11 shared texture format must be set
 	// so that receivers get a texture with the same format.
 	// Note that some applications may not receive other formats.
-	// sender.SetSenderFormat(sender.DX11format(glFormat));
-
+	//     sender.SetSenderFormat(sender.DX11format(glFormat));
+	// See the corresponding received format in the graphics receiver
+	//
 	// ----------------------------------------------
 
 	// 3D drawing setup for the demo 
@@ -164,6 +275,7 @@ void ofApp::setup(){
 	// in case of multiples of the same sender
 	// (see SetSenderName)
 	ofSetWindowTitle(sender.GetName());
+
 
 } // end setup
 
@@ -252,10 +364,10 @@ void ofApp::draw() {
 		str += ofToString(sender.GetWidth()); str += "x";
 		str += ofToString(sender.GetHeight()); str += ") ";
 		// Sender OpenGL texture format description
-		// for 16 bit and floating point types
-		GLint glformat = sender.GLDXformat();
-		if (glformat != GL_RGBA)
+		// If the sender format has been set as above
+		if (sender.GetDX11format() != DXGI_FORMAT_B8G8R8A8_UNORM) { // default
 			str += sender.GLformatName(sender.GLDXformat());
+		}
 		// Show sender fps and framecount if available
 		if (sender.GetFrame() > 0) {
 			str += " fps ";
@@ -308,5 +420,5 @@ void ofApp::windowResized(int w, int h)
 		myFbo.allocate(w, h, GL_RGBA);
 		myPixels.allocate(w, h, GL_RGBA);
 	}
-}
 
+}
