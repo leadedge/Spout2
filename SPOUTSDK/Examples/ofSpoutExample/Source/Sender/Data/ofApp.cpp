@@ -8,7 +8,7 @@
 	OpenFrameworks 11
 	Visual Studio 2022
 
-	Copyright (C) 2022-2023 Lynn Jarvis.
+	Copyright (C) 2022-2024 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -130,7 +130,7 @@ void ofApp::draw() {
 	// A memory buffer of sufficient size has been created in advance (see Setup)
 	//
 	sprintf_s(senderdata, 256, "%d %d %d %d %d", mousex, mousey, mousebutton, mousepressed, mousedragged);
-	sender.WriteMemoryBuffer(sender.GetName(), senderdata, strlen(senderdata));
+	sender.WriteMemoryBuffer(sender.GetName(), senderdata, (int)strlen(senderdata));
 	
 	/*
 	//

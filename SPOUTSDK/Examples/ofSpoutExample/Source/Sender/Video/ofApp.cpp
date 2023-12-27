@@ -2,7 +2,7 @@
 
 	Spout OpenFrameworks Video Sender example
 
-	Copyright (C) 2017-2022 Lynn Jarvis.
+	Copyright (C) 2017-2024 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
 
+	// OpenSpoutConsole(); // for debugging
 	ofBackground(255,255,255);
 	ofSetVerticalSync(true);
 
@@ -32,7 +33,20 @@ void ofApp::setup(){
 
     // Video setup
 	fingerMovie.load("movies/fingers.mov");
+
+	// Set the window height to match the movie aspect ratio.
+	// The movie texture size is not affected.
+	// The receiver is responsible for setting it's own window shape.
+	fingerMovie.update();
+	float height = (float)ofGetWidth()*fingerMovie.getHeight()/fingerMovie.getWidth();
+	ofSetWindowShape(ofGetWidth(), (int)height);
+
+	// Centre the window on the screen
+	ofSetWindowPosition((ofGetScreenWidth()-ofGetWidth())/2, (ofGetScreenHeight()-ofGetHeight())/2);
+
 	fingerMovie.play();
+
+
 
 }
 
@@ -40,6 +54,7 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update() {
     fingerMovie.update();
+
 }
 
 
@@ -66,7 +81,7 @@ void ofApp::draw() {
 	ofDrawBitmapString(str, 20, 20);
 
 	// Show fps
-	sprintf_s(str, 256, "fps: %3.3d", (int)ofGetFrameRate());
+	sprintf_s(str, 256, "fps: %3d", (int)ofGetFrameRate());
 	ofDrawBitmapString(str, 20, 40);
 
 }

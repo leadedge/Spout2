@@ -2,7 +2,7 @@
 
 	Spout OpenFrameworks Webcam Sender example
 
-	Copyright (C) 2022-2023 Lynn Jarvis.
+	Copyright (C) 2022-2024 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by

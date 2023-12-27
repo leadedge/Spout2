@@ -10,10 +10,10 @@
 	See also the receiver sync example.
 
 	Spout 2.007
-	OpenFrameworks 11
+	OpenFrameworks 12
 	Visual Studio 2022
 
-	Copyright (C) 2023 Lynn Jarvis.
+	Copyright (C) 2024 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -149,7 +149,7 @@ void ofApp::showInfo() {
 	if (sender.GetFrame() > 0) {
 		// Sender fps
 		str += " fps ";
-		str += to_string((int)(roundf(ofGetFrameRate()))); // the sending frame rate
+		str += std::to_string((int)(roundf(ofGetFrameRate()))); // the sending frame rate
 		str += " : frame  ";
 		str += ofToString(sender.GetFrame());
 	}
