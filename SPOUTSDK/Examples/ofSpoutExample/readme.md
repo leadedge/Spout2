@@ -40,3 +40,17 @@ SpoutPanel
 
 The receiver example depends on SpoutPanel.exe to select senders.
 It's path is detected after either SpoutSettings or SpoutPanel has been run once.
+
+C++17 pre-processor definition
+
+Openframeworks 12.0 requires C++ Language Standard C++17.
+This causes an error with D3D11.h due to std::byte definition conflict
+due to the use of "using namespace std" in ofMain.h. To avoid this
+a preprocessor definition _HAS_STD_BYTE=0 is included in the project.
+
+
+
+
+
+
+
