@@ -36,17 +36,17 @@
     <ClCompile Include="..\Spout.cpp">
       <Filter>SpoutGL</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\addons\ofxXmlSettings\src\ofxXmlSettings.cpp">
+      <Filter>Addons\ofxXmlSettings\src</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\addons\ofxXmlSettings\libs\tinyxml.cpp">
-      <Filter>addons\ofxXmlSettings\libs</Filter>
+      <Filter>Addons\ofxXmlSettings\libs</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\addons\ofxXmlSettings\libs\tinyxmlerror.cpp">
-      <Filter>addons\ofxXmlSettings\libs</Filter>
+      <Filter>Addons\ofxXmlSettings\libs</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\addons\ofxXmlSettings\libs\tinyxmlparser.cpp">
-      <Filter>addons\ofxXmlSettings\libs</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\addons\ofxXmlSettings\src\ofxXmlSettings.cpp">
-      <Filter>addons\ofxXmlSettings\src</Filter>
+      <Filter>Addons\ofxXmlSettings\libs</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -87,28 +87,28 @@
     <ClInclude Include="..\Spout.h">
       <Filter>SpoutGL</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\addons\ofxXmlSettings\libs\tinyxml.h">
-      <Filter>addons\ofxXmlSettings\libs</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\addons\ofxXmlSettings\src\ofxXmlSettings.h">
-      <Filter>addons\ofxXmlSettings\src</Filter>
+      <Filter>Addons\ofxXmlSettings\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxXmlSettings\libs\tinyxml.h">
+      <Filter>Addons\ofxXmlSettings\libs</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="SpoutGL">
       <UniqueIdentifier>{40684720-d5f5-4b90-bdcb-c8ae275b33ec}</UniqueIdentifier>
     </Filter>
-    <Filter Include="addons">
-      <UniqueIdentifier>{ddaf1f94-a1ab-4d2a-bc66-8459f46f5b96}</UniqueIdentifier>
+    <Filter Include="Addons">
+      <UniqueIdentifier>{020eea48-4bc9-4cb8-af35-d43c786401e8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="addons\ofxXmlSettings">
-      <UniqueIdentifier>{7d90c445-f6e5-4395-9b7b-b1007bfeeb2d}</UniqueIdentifier>
+    <Filter Include="Addons\ofxXmlSettings">
+      <UniqueIdentifier>{4af3a2bb-5c38-4df0-8fb1-2df1afd9dc67}</UniqueIdentifier>
     </Filter>
-    <Filter Include="addons\ofxXmlSettings\libs">
-      <UniqueIdentifier>{72922afa-455a-41f7-9e44-7926ff627dc2}</UniqueIdentifier>
+    <Filter Include="Addons\ofxXmlSettings\src">
+      <UniqueIdentifier>{e82113dc-0ff9-4a31-b271-aac1de9f125b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="addons\ofxXmlSettings\src">
-      <UniqueIdentifier>{a97469da-fcdd-448a-b39d-b5750822f55a}</UniqueIdentifier>
+    <Filter Include="Addons\ofxXmlSettings\libs">
+      <UniqueIdentifier>{d8415f23-7db0-4c03-aad6-88ed3dd26c84}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
