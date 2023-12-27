@@ -9,10 +9,10 @@
 
 	See also the receiver sync example.
 
-	Copyright (C) 2023 Lynn Jarvis.
+	Copyright (C) 2024 Lynn Jarvis.
 
 	Spout 2.007
-	OpenFrameworks 11
+	OpenFrameworks 12
 	Visual Studio 2022
 
 	=========================================================================
@@ -127,15 +127,15 @@ void ofApp::showInfo() {
 	if(receiver.IsConnected()) {
 		str = receiver.GetSenderName(); // sender name
 		str += " (";
-		str += to_string(receiver.GetSenderWidth()); // width
+		str += std::to_string(receiver.GetSenderWidth()); // width
 		str += "x";
-		str += to_string(receiver.GetSenderHeight()); // height 
+		str += std::to_string(receiver.GetSenderHeight()); // height 
 		str += ") ";
 		if (receiver.GetSenderFrame() > 0) {
 			str += " : fps ";
-			str += to_string((int)(roundf(ofGetFrameRate()))); // the actual received frame rate
+			str += std::to_string((int)(roundf(ofGetFrameRate()))); // the actual received frame rate
 			str += " : frame ";
-			str += to_string(receiver.GetSenderFrame()); // frame since the sender started
+			str += std::to_string(receiver.GetSenderFrame()); // frame since the sender started
 		}
 		ofDrawBitmapString(str, 10, 20);
 		if (bSync)

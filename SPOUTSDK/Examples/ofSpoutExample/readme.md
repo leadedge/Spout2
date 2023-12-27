@@ -1,7 +1,7 @@
 ### Spout SDK OpenGL example
 
-This is an example of using the Spout SDK source files with an OpenGL application.\
-The example is for Visual Studio 2017 and Openframeworks 11.
+An example of using the Spout SDK source files with an OpenGL application.\
+The examples are for Visual Studio 2022 and Openframeworks 12.
 
 The "ofSpoutExample" folder and contents has to be copied to the Openframeworks apps\myApps folder.
 
@@ -23,19 +23,20 @@ These are not set up as an addon, so they must be copied to a "SpoutGL" folder w
                   ofSpoutExample.vcxproj.filters
                   src <- the required source files
                   bin <- the required data files
+				  Source <- examples
 
-Open the solution file with Visual Studio 2017, set to "Release" and build "ofSpoutExample".
+Open the solution file with Visual Studio 2022, set to "Release" and build "ofSpoutExample".
 
 Source files
 
 The "src" folder contains files for a Sender example.\
-The "Sources" folder contains files for both Sender and Receiver.\
+The "Sources" folder contains files for both Sender and Receiver and options for each.\
 For the one you want copy "ofApp.h" and "ofApp.cpp" to the "src" folder and "Rebuild".
 
-Methods for 2.006 remain compatible. They are lower level and may be preferred for your application if you want more control over the process. The 2.006 folder contains Sender and Receiver examples.
+Methods for 2.006 remain compatible. They are lower level and may be preferred for your application.
+The 2.006 folder contains Sender and Receiver examples.
 
 SpoutPanel
 
 The receiver example depends on SpoutPanel.exe to select senders.
 It's path is detected after either SpoutSettings or SpoutPanel has been run once.
-Otherwise it must be copied to the folder for the binary

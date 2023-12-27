@@ -1,8 +1,8 @@
 /*
 
-	Spout OpenFrameworks Sender Sync example
+	Spout OpenFrameworks Data Receiver example
 
-	Copyright (C) 2023 Lynn Jarvis.
+	Copyright (C) 2022-2024 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -21,7 +21,8 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\SpoutGL\SpoutSender.h"
+#include "..\..\..\SpoutGL\SpoutReceiver.h" // Spout SDK
+#include "ofxXmlSettings.h"
 
 class ofApp : public ofBaseApp{
 	public:
@@ -29,18 +30,22 @@ class ofApp : public ofBaseApp{
 		void update();
 		void draw();
 		void exit();
-		void windowResized(int w, int h);
-		void keyPressed(int key);
-
-		SpoutSender sender;    // Spout sender object
-		char sendername[256];  // Sender name
-
-		ofImage myBoxImage;    // Image for the 3D demo
-		ofFbo myFbo;           // For texture send example
-		ofPixels myPixels;     // For pixel send example
-		float rotX, rotY;
-		bool bSync = true;     // Disable or enable sync
-
+		void mousePressed(int x, int y, int button);
+	
+		SpoutReceiver receiver; // A Spout receiver object
+		ofTexture myTexture; // Receiving texture
 		void showInfo();
+
+		// For sender data
+		int sendermousex;
+		int sendermousey;
+		int senderbutton;
+		int senderpressed;
+		int senderdragged;
+		std::vector<ofVec2f> senderpoints;
+		int senderbytes;
+		char senderdata[256];
+
+		ofxXmlSettings xml;
 
 };

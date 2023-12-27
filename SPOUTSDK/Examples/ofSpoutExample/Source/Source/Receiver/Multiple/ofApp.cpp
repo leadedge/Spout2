@@ -4,10 +4,10 @@
 
 	Visual Studio using the Spout SDK
 
-	Copyright (C) 2015-2023 Lynn Jarvis.
+	Copyright (C) 2015-2024 Lynn Jarvis.
 
 	Spout 2.007
-	OpenFrameworks 11
+	OpenFrameworks 12
 	Visual Studio 2022
 
 	=========================================================================
@@ -47,6 +47,11 @@ void ofApp::setup(){
 	// Option : Receive only from "Spout Demo Sender_1"
 	// (Open the demo sender again to create it)
 	// receiver2->SetReceiverName("Spout Demo Sender_1");
+
+	// Make the window double width for the two receivers
+	ofSetWindowShape(ofGetWidth()*2, ofGetHeight());
+
+
 
 } // end setup
 
@@ -92,9 +97,9 @@ void ofApp::showInfo() {
 	if (receiver1.IsConnected()) {
 		str = receiver1.GetSenderName(); // sender name
 		str += " (";
-		str += to_string(receiver1.GetSenderWidth()); // width
+		str += std::to_string(receiver1.GetSenderWidth()); // width
 		str += "x";
-		str += to_string(receiver1.GetSenderHeight()); // height 
+		str += std::to_string(receiver1.GetSenderHeight()); // height 
 		str += ") ";
 		ofDrawBitmapString(str, 10, 20);
 		ofDrawBitmapString("RH click to select sender 1", 15, ofGetHeight() - 20);
@@ -107,9 +112,9 @@ void ofApp::showInfo() {
 	if (receiver2.IsConnected()) {
 		str = receiver2.GetSenderName(); // sender name
 		str += " (";
-		str += to_string(receiver2.GetSenderWidth()); // width
+		str += std::to_string(receiver2.GetSenderWidth()); // width
 		str += "x";
-		str += to_string(receiver2.GetSenderHeight()); // height 
+		str += std::to_string(receiver2.GetSenderHeight()); // height 
 		str += ") ";
 		ofDrawBitmapString(str, ofGetWidth()/2+10, 20);
 		ofDrawBitmapString("RH click to select sender 2", ofGetWidth() / 2 + 20, ofGetHeight() - 20);

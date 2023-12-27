@@ -1,8 +1,8 @@
 /*
 
-	Spout OpenFrameworks Data Receiver example
+	Spout OpenFrameworks Video Sender example
 
-	Copyright (C) 2022-2023 Lynn Jarvis.
+	Copyright (C) 2017-2024 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -21,8 +21,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\SpoutGL\SpoutReceiver.h" // Spout SDK
-#include "ofxXmlSettings.h"
+#include "..\..\..\SpoutGL\SpoutSender.h" // Spout SDK
 
 class ofApp : public ofBaseApp{
 	public:
@@ -30,22 +29,9 @@ class ofApp : public ofBaseApp{
 		void update();
 		void draw();
 		void exit();
-		void mousePressed(int x, int y, int button);
 	
-		SpoutReceiver receiver; // A Spout receiver object
-		ofTexture myTexture; // Receiving texture
-		void showInfo();
-
-		// For sender data
-		int sendermousex;
-		int sendermousey;
-		int senderbutton;
-		int senderpressed;
-		int senderdragged;
-		std::vector<ofVec2f> senderpoints;
-		int senderbytes;
-		char senderdata[256];
-
-		ofxXmlSettings xml;
+		SpoutSender spoutsender;   // A sender object
+		char sendername[256];      // Sender name
+		ofVideoPlayer fingerMovie; // Movie to send
 
 };

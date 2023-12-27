@@ -4,7 +4,7 @@
 
     Example of receiving per-frame data
 
-	Copyright (C) 2022-2023 Lynn Jarvis.
+	Copyright (C) 2022-2024 Lynn Jarvis.
 
 	Spout 2.007
 	OpenFrameworks 11
@@ -203,8 +203,9 @@ void ofApp::showInfo() {
 	ofSetColor(255, 255, 255);
 
 	if(receiver.IsConnected()) {
-		str = receiver.GetSenderName(); // sender name
-		str += " (";
+		str = "Receiving [";
+		str += receiver.GetSenderName(); // sender name
+		str += "] (";
 		if (receiver.GetSenderCPU())
 			str += "CPU share : "; 
 		str += to_string(receiver.GetSenderWidth()); // width
