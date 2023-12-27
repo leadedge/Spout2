@@ -179,6 +179,8 @@
 				 - Add SpoutMessageBoxWindow
 		21.12.23 - Add std::string GetExeVersion()
 				 - Revise SpoutMessageBoxModeless to test version of SpoutPanel > 2.072
+		27.12.23 - Send OK button message to close taskdialog instead of DestroyWindow for URL click
+				 - Test for custom icon and multiple buttons in MessageTaskDialog
 		Version 2.007.013
 
 */
@@ -905,11 +907,8 @@ namespace spoututils {
 		if (!message)
 			return 0;
 
-		// Use a custom icon if set
-		UINT type = MB_OK;
-		if (hTaskIcon) type |= MB_USERICON;
+		return MessageTaskDialog(NULL, message, "Message", MB_OK, dwMilliseconds);
 
-		return MessageTaskDialog(NULL, message, "Message", type, dwMilliseconds);
 	}
 
 	// ---------------------------------------------------------
@@ -931,12 +930,8 @@ namespace spoututils {
 			strcaption = caption;
 		else
 			strcaption = "Message";
-		
-		// Use a custom icon if set
-		UINT type = MB_OK;
-		if (hTaskIcon) type |= MB_USERICON;
 
-		return MessageTaskDialog(NULL, strmessage.c_str(), strcaption.c_str(), type, 0);
+		return MessageTaskDialog(NULL, strmessage.c_str(), strcaption.c_str(), MB_OK, 0);
 
 	}
 
@@ -1692,6 +1687,12 @@ namespace spoututils {
 			if (hWnd)
 				hInst = (HINSTANCE)GetWindowLongPtrA(hwndMain, GWLP_HINSTANCE);
 
+			// Use a custom icon if set
+			if (hTaskIcon) dwButtons |= MB_USERICON;
+
+			// Use multiple buttons if set
+			if (TDbuttonID.size() > 0) dwButtons |= MB_USERBUTTON;
+
 			//
 			// TaskDialogIndirect is modal and stops the application.
 			// When used within a plugin or similar this can freeze the host application.
@@ -1974,7 +1975,7 @@ namespace spoututils {
 				if (!ShellExecuteExW(&sei)) {
 					return S_FALSE;
 				}
-				DestroyWindow(hwnd);
+				SendMessage(hwnd, TDM_CLICK_BUTTON, IDOK, 0);
 			}
 #endif
 			return S_OK;
