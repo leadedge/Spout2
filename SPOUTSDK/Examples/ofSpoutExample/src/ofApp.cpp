@@ -95,54 +95,75 @@ void ofApp::setup(){
 	//
 	// SpoutMessageBox is an enhanced MessageBox using "TaskDialogIndirect"
 	// and is useful to present user notices with options that are not
-	// available for a standard MessageBox.
+	// available with a standard MessageBox.
 	//
 	// Enhancements include :
-	//   Timeout option
-	//   Message with variable arguments
-	//   Centre on the application window or desktop
-	//   Multiple buttons
-	//   Hyperlinks anywhere in the message text
 	//   Custom icon
 	//   Modeless mode
-	//
-	//   Timeout option
-	//    The messagebox closes after the specified interval in millseconds.
-	//	    SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0)
-	//
-	//   Message with variable arguments
-	//    Presents text equivalent to that of "printf"
-	//      SpoutMessageBox(const char * caption, const char* format, ...)
-	//
 	//   Centre on the application window or desktop
-	//    Pass the window handle of the current application as for a standard MessageBox
-	//      SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0)
-	//    Specify the window handle for SpoutMessageBox functions that do not include one
-	//      SpoutMessageBoxWindow(HWND hWnd)
-	//    Pass NULL as the window handle to centre on the desktop
-	//
+	//   Message with variable arguments
+	//   Timeout option
 	//   Multiple buttons
-	//    Any number of buttons can be specified. The function returns the ID of the chosen button.
-	//      int SpoutMessageBoxButton(int ID, std::wstring title)
-	//
 	//   Hyperlinks anywhere in the message text
-	//    Urls can be included in the content using HTML format.
-	//    For example : <a href=\"https://spout.zeal.co/\">Spout home page</a>
-	//    Only double quotes are supported and must be escaped.
 	//
 	//   Custom icon
 	//    Icons can be specifed using MessageBox definitions MB_ICONWARNING, MB_ICONINFORMATION etc
 	//    A custom icon can also be specified using :
 	//      SpoutMessageBoxIcon(HICON hIcon)
 	//      SpoutMessageBoxIcon(std::string iconfile)
+	//    Icon files must be of the type ".ico"
+	// std::string iconfile = ofToDataPath("SpoutLogo4.ico", true); // full path required
+	// SpoutMessageBoxIcon(iconfile);
 	//
 	//   Modeless mode
-	//     A normal MessageBox or TaskDialog is modal and stops the appication until return.
+	//     A typical MessageBox or TaskDialog is modal and stops the appication until return.
 	//     This is undesirable if the messagebox originates from a dll.
 	//     Modeless mode forwards the information on to "SpoutPanel" which is
 	//     an independent process and does not affect the host application.
+	//     In this example, the application window shows and the cube continues to rotate.
+	//     SpoutPanel version 2.017 or greater is required.
 	//     Spout must have been configured using SpoutSettings.
 	//       SpoutMessageBoxModeless(bool bMode = true)
+	// SpoutMessageBoxModeless();
+	//
+	//   Centre on the application window or the desktop
+	//    o Pass the window handle of the current application to centre on the window.
+	//    o Pass NULL as the window handle to centre on the desktop
+	//      SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0)
+	//    Specify the window handle for SpoutMessageBox functions that do not include one
+	//      SpoutMessageBoxWindow(HWND hWnd)
+	// HWND hWnd = ofGetWin32Window();
+	// SpoutMessageBoxWindow(hWnd);
+	//
+	//   Message with variable arguments
+	//    Presents text equivalent to that of "printf"
+	//      SpoutMessageBox(const char * caption, const char* format, ...)
+	// SpoutMessageBox("ofExample", "Spout SDK version %s", GetSDKversion());
+	//
+	//   Timeout option
+	//    The messagebox closes after the specified interval in millseconds.
+	//	    SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0)
+	//      SpoutMessageBox(HWND hWnd, const char* message, const char* caption, UINT uType, DWORD dwMilliseconds = 0)
+	// SpoutMessageBox("message", 2000);
+	//
+	//   Multiple buttons
+	//    Any number of buttons can be specified.
+	//    The SpoutMessageBox function returns the ID of the chosen button.
+	//    The messagebox is modal to allow return of the user choice.
+	//      void SpoutMessageBoxButton(int ID, std::wstring title)
+	// SpoutMessageBoxButton(1000, L"Button 1");
+	// SpoutMessageBoxButton(2000, L"Button 2");
+	// SpoutMessageBoxButton(3000, L"Button 3");
+	// int buttonid = SpoutMessageBox(NULL, "Select a button", "ofExample", MB_OK);
+	// if (buttonid == 1000) SpoutMessageBox("Button 1");
+	// if (buttonid == 2000) SpoutMessageBox("Button 2\n");
+	// if (buttonid == 3000) SpoutMessageBox("Button 3\n");
+	// if (buttonid == 1) SpoutMessageBox("OK pressed\n");
+	//
+	//   Hyperlinks anywhere in the message text
+	//    Urls can be included in the content using HTML format.
+	//    Only double quotes are supported and must be escaped.
+	// SpoutMessageBox("<a href=\"https://spout.zeal.co/\">Spout home page</a>");
 	//
 
 	//
@@ -254,6 +275,7 @@ void ofApp::setup(){
 	// in case of multiples of the same sender
 	// (see SetSenderName)
 	ofSetWindowTitle(sender.GetName());
+
 
 } // end setup
 
@@ -398,5 +420,5 @@ void ofApp::windowResized(int w, int h)
 		myFbo.allocate(w, h, GL_RGBA);
 		myPixels.allocate(w, h, GL_RGBA);
 	}
-}
 
+}
