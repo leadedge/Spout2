@@ -279,6 +279,10 @@ struct SPOUTLIBRARY
 	virtual bool SpoutMessageBoxIcon(std::string iconfile) = 0;
 	// Custom button for SpoutMessageBox
 	virtual void SpoutMessageBoxButton(int ID, std::wstring title) = 0;
+	// Activate modeless mode using SpoutPanel.exe
+	virtual void SpoutMessageBoxModeless(bool bMode = true) = 0;
+	// Window handle for SpoutMessageBox where not specified
+	virtual void SpoutMessageBoxWindow(HWND hWnd) = 0;
 	// Copy text to the clipboard
 	virtual bool CopyToClipBoard(HWND hwnd, const char* caps) = 0;
 
