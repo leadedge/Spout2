@@ -118,7 +118,9 @@ SpoutUtils.cpp
   Add SpoutMessageBoxWindow
 - 21.12.23 - Add std::string GetExeVersion()\
   Revise SpoutMessageBoxModeless to test version of SpoutPanel > 2.072
-
+- 27.12.23 - Send OK button message to close taskdialog instead of DestroyWindow for URL click
+  Test for custom icon and multiple buttons in MessageTaskDialog
+  
 ===========================================\
 05.09.23\
 Update Master from Beta branch.
