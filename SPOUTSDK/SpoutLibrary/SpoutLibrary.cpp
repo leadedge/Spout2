@@ -105,7 +105,7 @@
 //		16.10.23   Add SpoutMessageBoxIcon and SpoutMessageBoxButton
 //		03.12.23   Rebuild with SDK version 2.007.013 /MD and /MT using CMake
 //		08.12.23   Rebuild all libraries /MT and /MD with Openframeworks 12.0 files using CMake
-//		TODO	   Example binaries /MT, binaries included in a Spout2 GitHub release
+//		28.12.23   Add SpoutMessageBoxModeless and SpoutMessageBoxWindow
 //
 /*
 		Copyright (c) 2016-2024, Lynn Jarvis. All rights reserved.
@@ -677,6 +677,16 @@ private: // Spout SDK functions
 	// Custom button for SpoutMessageBox
 	// Use together with MB_USERBUTTON
 	void SpoutMessageBoxButton(int ID, std::wstring title);
+
+	// Function: SpoutMessageBoxModeless
+	// Enable modeless functionality using SpoutPanel.exe
+	// Used where a Windows MessageBox would interfere with the application GUI.
+	// Depends on SpoutPanel.exe version 2.072 or greater distributed with Spout release.
+	void SpoutMessageBoxModeless(bool bMode);
+
+	// Function: SpoutMessageBoxWindow
+	// Window handle for SpoutMessageBox where not specified
+	void SpoutMessageBoxWindow(HWND hWnd);
 
 	// Function: CopyToClipBoard
 	// Copy text to the clipboard
@@ -1461,6 +1471,18 @@ void SPOUTImpl::SpoutMessageBoxButton(int ID, std::wstring title)
 {
 	spoututils::SpoutMessageBoxButton(ID, title);
 }
+
+void SPOUTImpl::SpoutMessageBoxModeless(bool bMode)
+{
+	spoututils::SpoutMessageBoxModeless(bMode);
+}
+
+
+void SPOUTImpl::SpoutMessageBoxWindow(HWND hWnd)
+{
+	spoututils::SpoutMessageBoxWindow(hWnd);
+}
+
 
 bool SPOUTImpl::CopyToClipBoard(HWND hwnd, const char* caps)
 {
