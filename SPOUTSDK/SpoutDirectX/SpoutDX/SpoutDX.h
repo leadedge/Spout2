@@ -39,7 +39,7 @@
 // If the include files are in the same folder there is no prefix.
 // If the files are in a different folder, change the prefix as required.
 //
-#define PATH_PREFIX
+// #define PATH_PREFIX
 
 #ifdef PATH_PREFIX
 #include "..\..\SpoutGL\SpoutCommon.h" // for dll build
