@@ -495,35 +495,6 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
 	if (!CheckSender(desc.Width, desc.Height, (DWORD)desc.Format))
 		return false;
 
-
-	// LJ DEBUG
-	D3D11_BOX destRegion;
-	destRegion.top = 0;
-	destRegion.left = 0;
-	destRegion.right = desc.Width*4;
-	destRegion.bottom = desc.Height/8;
-	destRegion.front = 0;
-	destRegion.back = 1;
-
-	unsigned char* bytes = new unsigned char[desc.Width*4*desc.Height/8];
-	m_pImmediateContext->UpdateSubresource(pTexture, 0, &destRegion, bytes, desc.Width*4, 0);
-
-	destRegion.top = 4;
-	destRegion.left = 0;
-	destRegion.right = 64;
-	destRegion.bottom = 5;
-	destRegion.front = 0;
-	destRegion.back = 1;
-
-	unsigned char *stamp = new unsigned char[64];
-	memset((void*)stamp, 0, 64);
-	m_pImmediateContext->UpdateSubresource(pTexture, 0, &destRegion, stamp, desc.Width*4, 0);
-	m_pImmediateContext->Flush();
-
-	delete[]bytes;
-	delete[]stamp;
-
-
 	// Check the sender mutex for access the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		// Copy the application texture to the sender's shared texture
@@ -811,12 +782,6 @@ bool spoutDX::ReceiveTexture()
 				// Test for the individual application.
 				m_pImmediateContext->Flush();
 			}
-			// LJ DEBUG
-			else {
-				frame.AllowTextureAccess(m_pSharedTexture);
-				return false;
-			}
-
 			// Allow access to the shared texture
 			frame.AllowTextureAccess(m_pSharedTexture);
 		}
