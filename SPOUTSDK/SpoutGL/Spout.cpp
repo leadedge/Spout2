@@ -269,6 +269,7 @@
 //					  by OpenGL/DirectX interop
 //		07.12.23	- use _access in place of shlwapi Path functions
 //	Version 2.007.013
+//		14.01.24	- CheckSender - return false if OpenSpout fails
 //
 // ====================================================================================
 /*
@@ -2181,65 +2182,65 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 	if (!m_bInitialized) {
 
 		// Make sure that Spout has been initialized and an OpenGL context is available
-		if (OpenSpout()) {
+		if (!OpenSpout())
+			return false;
 
-			if (m_bTextureShare) {
-				// Create interop for GL/DX transfer
-				// Flag "false" for sender so that a new shared texture and handle are created.
-				// For a receiver the shared texture is created from the sender share handle.
-				if (!CreateInterop(width, height, m_dwFormat, false)) {
-					return false;
-				}
-			}
-			else {
-				// For CPU share with DirectX textures.
-				// A sender creates a new shared texture within this class with a new share handle
-				m_dxShareHandle = nullptr;
-				if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
-					width, height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
-					return false;
-				}
-			}
-
-			// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
-			if (sendernames.CreateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
-
-				m_Width = width;
-				m_Height = height;
-
-				//
-				// SetSenderID writes to the sender shared texture memory
-				// to set sender CPU sharing mode and hardware GL/DX compatibility
-				//
-				// Using CPU sharing methods (m_bCPUshare) - set top bit
-				// 1000 0000 0000 0000 0000 0000 0000 0000
-				//
-				// GL/DX compatible hardware (m_bUseGLDX) - set next to top bit
-				// 0100 0000 0000 0000 0000 0000 0000 0000
-				//
-				// Both bits can be set if GL/DX compatible but the user has selected CPU share mode
-				//
-				SetSenderID(m_SenderName, m_bCPUshare, m_bUseGLDX);
-
-				m_Width = width;
-				m_Height = height;
-
-				// Create a sender mutex for access to the shared texture
-				frame.CreateAccessMutex(m_SenderName);
-
-				// Enable frame counting so the receiver gets frame number and fps
-				frame.EnableFrameCount(m_SenderName);
-				
-				m_bInitialized = true;
-			}
-			else {
-				ReleaseSender();
-				m_SenderName[0] = 0;
-				m_Width = 0;
-				m_Height = 0;
-				m_dwFormat = m_DX11format;
+		if (m_bTextureShare) {
+			// Create interop for GL/DX transfer
+			// Flag "false" for sender so that a new shared texture and handle are created.
+			// For a receiver the shared texture is created from the sender share handle.
+			if (!CreateInterop(width, height, m_dwFormat, false)) {
 				return false;
 			}
+		}
+		else {
+			// For CPU share with DirectX textures.
+			// A sender creates a new shared texture within this class with a new share handle
+			m_dxShareHandle = nullptr;
+			if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
+				width, height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
+				return false;
+			}
+		}
+
+		// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
+		if (sendernames.CreateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
+
+			m_Width = width;
+			m_Height = height;
+
+			//
+			// SetSenderID writes to the sender shared texture memory
+			// to set sender CPU sharing mode and hardware GL/DX compatibility
+			//
+			// Using CPU sharing methods (m_bCPUshare) - set top bit
+			// 1000 0000 0000 0000 0000 0000 0000 0000
+			//
+			// GL/DX compatible hardware (m_bUseGLDX) - set next to top bit
+			// 0100 0000 0000 0000 0000 0000 0000 0000
+			//
+			// Both bits can be set if GL/DX compatible but the user has selected CPU share mode
+			//
+			SetSenderID(m_SenderName, m_bCPUshare, m_bUseGLDX);
+
+			m_Width = width;
+			m_Height = height;
+
+			// Create a sender mutex for access to the shared texture
+			frame.CreateAccessMutex(m_SenderName);
+
+			// Enable frame counting so the receiver gets frame number and fps
+			frame.EnableFrameCount(m_SenderName);
+
+			m_bInitialized = true;
+		}
+		else {
+			ReleaseSender();
+			m_SenderName[0] = 0;
+			m_Width = 0;
+			m_Height = 0;
+			m_dwFormat = m_DX11format;
+			return false;
 		}
 	}
 	// The sender is initialized but has the sending texture changed size ?
