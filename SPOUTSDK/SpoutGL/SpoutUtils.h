@@ -126,6 +126,7 @@ namespace spoututils {
 	// Remove path and return the file name
 	void SPOUT_DLLEXP RemovePath(std::string& path);
 
+	// Remove file name and return the path
 	void SPOUT_DLLEXP RemoveName(std::string& path);
 
 	//
@@ -227,6 +228,9 @@ namespace spoututils {
 	// MessageBox with variable arguments
 	int SPOUT_DLLEXP SpoutMessageBox(const char * caption, const char* format, ...);
 	
+	// MessageBox with variable arguments and icon, buttons
+	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, UINT uType, const char* format, ...);
+
 	// MessageBox dialog with standard arguments.
 	// Replaces an existing MessageBox call.
 	// uType options : standard MessageBox buttons and icons
@@ -240,6 +244,18 @@ namespace spoututils {
 	// MessageBox dialog with standard arguments
 	// including taskdialog main instruction large text
 	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption,  UINT uType, const char* instruction, DWORD dwMilliseconds = 0);
+
+	// MessageBox dialog with an edit control for text input
+	// Can be used in place of a specific application resource dialog
+	//   o For message content, the control is in the footer area
+	//   o If no message, the control is in the main content area
+	//   o All SpoutMessageBox functions such as user icon and buttons are available
+	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text);
+
+	// MessageBox dialog with a combobox control for item selection
+	// Can be used in place of a specific application resource dialog
+	// Properties the same as the edit control
+	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int &selected);
 
 	// Custom icon for SpoutMessageBox from resources
 	void SPOUT_DLLEXP SpoutMessageBoxIcon(HICON hIcon);
@@ -301,7 +317,8 @@ namespace spoututils {
 
 	// Stop timing and return microseconds elapsed.
 	// Code console output can be enabled for quick timing tests.
-	double SPOUT_DLLEXP EndTiming();
+	// Default milliseconds
+	double SPOUT_DLLEXP EndTiming(bool microseconds = false);
 
 	// Monitor refresh rate
 	double SPOUT_DLLEXP GetRefreshRate();
@@ -352,6 +369,19 @@ namespace spoututils {
 		std::vector<std::wstring>TDbuttonTitle;
 		// Main instruction text
 		std::wstring wstrInstruction;
+
+		// For edit text control
+		bool bEdit = false;
+		HWND hEdit = NULL;
+		std::string stredit;
+		#define IDC_TASK_EDIT 101
+
+		// For combo box control
+		bool bCombo = false;
+		HWND hCombo = NULL;
+		std::vector<std::string> comboitems;
+		int comboindex = 0;
+		#define IDC_TASK_COMBO 102
 
 	}
 
