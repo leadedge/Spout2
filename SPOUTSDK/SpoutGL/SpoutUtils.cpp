@@ -187,6 +187,8 @@
 				   Add MessageBox dialog with a combo box control for item selection
 				   Update Taskdialog callback to create the controls and return input
 		19.03.24 - Add icon/button option for variable arguments
+		29.03.24 - Correct ReadPathFromRegistry definition for default size argument
+				   Correct EndTiming definition for microseconds argument
 
 
 */
