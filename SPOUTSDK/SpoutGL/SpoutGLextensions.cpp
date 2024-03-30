@@ -62,6 +62,8 @@
 //						  GL_ATTACHED_SHADERS, GL_INFO_LOG_LENGTH
 //						  Add glGetProgramInfoLog, glGetShaderInfoLog, glGetIntegeri_v
 //	Version 2.007.013
+//			29.03.24	- Correct glUnmapBufferPROC as Glboolean
+//						  Correct glGenBuffersPROC - GLuint* buffers
 //
 
 	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
