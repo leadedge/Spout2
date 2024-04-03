@@ -164,6 +164,9 @@
 //		14.12.23	- WriteGLDXpixels - return WriteGLDXtexture instead of true
 //					- CreateOpenGL return false if extensions fail to load
 //	Version 2.007.013
+//		26.02.24	- CreateInterop - check for dimensions out of bounds (> 16384)
+//		06.03.24	- GLerror - add error number
+//		03.04.24	- Add ReadTexturePixels for multiple format and RGB/RGBA textures
 //
 // ====================================================================================
 //
@@ -1222,6 +1225,12 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 	if (m_bInteropFailed)
 		return false;
 
+	// Check for dimensions out of bounds
+	// D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION (16384)
+	if (width > 16384 || height > 16384)
+		return false;
+
+
 	SpoutLogNotice("spoutGL::CreateInterop");
 
 	// The texture to link with OpenGL
@@ -2116,6 +2125,42 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 	return true;
 
+}
+
+//
+// Read RGB or RGBA pixels from an OpenGL texture
+//
+// nChannels can be 3 (RGB) or 4 (RGBA)
+// Format can be 8 bit or floating point 16 or 32 bit
+// Dest array must match the format :
+// 8 bit unsigned byte, 16 bit unsigned short, or float
+//
+bool spoutGL::ReadTexturePixels(GLuint TextureID, GLuint TextureTarget,
+	unsigned int width, unsigned int height, void* dest,
+	GLenum glFormat, int nChannels)
+{
+	if (glFormat == GL_RGBA16F || glFormat == GL_RGBA32F) {
+		glBindTexture(TextureTarget, TextureID);
+		// RGB data for float hdr images
+		if (nChannels == 3)
+			glGetTexImage(TextureTarget, 0, GL_RGB, GL_FLOAT, dest);
+		else
+			glGetTexImage(TextureTarget, 0, GL_RGBA, GL_FLOAT, dest);
+		glBindTexture(TextureTarget, 0);
+	}
+	else if (glFormat == GL_RGBA16) { // Bit depth 16 bits
+		glBindTexture(TextureTarget, TextureID);
+		glGetTexImage(TextureTarget, 0, GL_RGBA, GL_UNSIGNED_SHORT, dest);
+		glBindTexture(TextureTarget, 0);
+	}
+	else {
+		// Dest must be RGBA or RGB width x height
+		glBindTexture(TextureTarget, TextureID);
+		glGetTexImage(TextureTarget, 0, GL_RGBA, GL_UNSIGNED_BYTE, dest);
+		glBindTexture(TextureTarget, 0);
+	}
+
+	return true;
 }
 
 
@@ -3593,17 +3638,18 @@ void spoutGL::PrintFBOstatus(GLenum status)
 
 bool spoutGL::GLerror() {
 	GLenum err = GL_NO_ERROR;
+	int nError = 0;
 	bool bError = false;
 	while ((err = glGetError()) != GL_NO_ERROR) {
-		SpoutLogError("    GLerror - OpenGL error = %u (0x%.7X)", err, err);
-		printf("    GLerror - OpenGL error = %u (0x%.7X)\n", err, err);
+		SpoutLogError("    GLerror (%d) - OpenGL error = %u (0x%.7X)", nError, err, err);
+		// printf("GLerror (%d) - OpenGL error = %u (0x%.7X)\n", nError, err, err);
+		nError++;
 		bError = true;
 #ifdef USE_GLEW
 		// gluErrorString needs Glu.h and glu32.lib (or glew)
-		printf("GL error = %d (0x%.7X) %s\n", err, err, gluErrorString(err));
+		printf("GL error (%d) = %d (0x%.7X) %s\n", nError, err, err, gluErrorString(err));
 #endif
 	}
-
 	return bError;
 }
 
@@ -3887,11 +3933,6 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	GLuint DestID, GLuint DestTarget, unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
 {
-
-	// printf("SourceID = %d, SourceTarget = 0x%X\n", SourceID, SourceTarget); // 0xDE1
-	// printf("DestID   = %d, DestTarget = 0x%X\n", DestID, DestTarget);
-	// return false;
-
 	//
 	// Fbo blit (0.05 - 0.20 msec)
 	//
@@ -3941,7 +3982,7 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 		}
 	}
 	else {
-		// LJ DEBUG
+		// TODO : prevent repeats
 		PrintFBOstatus(status);
 		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
