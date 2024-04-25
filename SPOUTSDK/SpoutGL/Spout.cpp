@@ -270,6 +270,10 @@
 //		07.12.23	- use _access in place of shlwapi Path functions
 //	Version 2.007.013
 //		14.01.24	- CheckSender - return false if OpenSpout fails
+//		13.02.24	- SelectSenderPanel
+//					  m_ShExecInfo.lpParameters : receiver graphics adapter index by default
+//		19.04.24	- SelectSenderPanel - allow for unicode build for PROCESSENTRY32
+//		24.04.24	- ReceiveImage - allow for multiple OpenGL formats
 //
 // ====================================================================================
 /*
@@ -1765,6 +1769,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 //---------------------------------------------------------
 // Function: ReceiveImage
 // Receive image pixels
+// Format can be GL_RGBA, GL_BGRA, GL_RGB or GL_BGR for the receving buffer
 bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
 	// The receiving pixel buffer is created after the first update
@@ -1781,11 +1786,6 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 		return false;
 	}
 
-	// Only RGBA, BGRA, RGB, BGR supported
-	if (!(glFormat == GL_RGBA || glFormat == GL_BGRA_EXT || glFormat == GL_RGB || glFormat == GL_BGR_EXT)) {
-		return false;
-	}
-
 	// Check for BGRA support
 	GLenum glformat = glFormat;
 	if (!m_bBGRAavailable) {
@@ -1799,7 +1799,9 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 	if (ReceiveSenderData()) {
 
 		// The sender name, width, height, format, shared texture handle and pointer have been retrieved.
+		// m_Width, m_Height, m_dwFormat are updated
 		if (m_bUpdated) {
+
 			// If the sender is new or changed, return to update the receiving texture.
 			// The application detects the change with IsUpdated().
 			if (m_bTextureShare) {
@@ -1864,6 +1866,7 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 
 } // end ReceiveImage
 
+
 //---------------------------------------------------------
 // Function: SelectSenderPanel
 // Open dialog for the user to select a sender
@@ -1871,6 +1874,7 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 //  Optional message argument
 //
 // Replaced by SelectSender for 2.007
+//
 bool Spout::SelectSenderPanel(const char* message)
 {
 	HANDLE hMutex1 = NULL;
@@ -1881,10 +1885,13 @@ bool Spout::SelectSenderPanel(const char* message)
 	char fname[MAX_PATH]={};
 	char UserMessage[512]={};
 
-	if (message && *message)
+	if (message && *message) {
 		strcpy_s(UserMessage, 512, message); // could be an arg or a user message
-	else
-		UserMessage[0] = 0; // make sure SpoutPanel does not see an un-initialized string
+	}
+	else {
+		// Send the receiver graphics adapter index by default
+		strcpy_s(UserMessage, MAX_PATH, std::to_string(GetAdapter()).c_str());
+	}
 
 	// The selected sender is then the "Active" sender and this receiver switches to it.
 	// If Spout is not installed, SpoutPanel.exe has to be in the same folder
@@ -1986,7 +1993,12 @@ bool Spout::SelectSenderPanel(const char* message)
 				else {
 					// Look through all processes
 					while (hRes && !done) {
-						const int value = _tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
+						const int value = 0;
+#ifdef UNICODE
+						_wcsicmp(pEntry.szExeFile, L"SpoutPanel.exe");
+#else
+						_tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
+#endif
 						if (value == 0) {
 							HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, pEntry.th32ProcessID);
 							if (hProcess != NULL) {
@@ -2410,6 +2422,7 @@ bool Spout::ReceiveSenderData()
 			// Create a DX11 receiving texture with compatible format
 			dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
 		}
+
 
 		// The shared texture handle will be different
 		//   o for texture size or format change
