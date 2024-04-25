@@ -561,7 +561,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	}
 
 	SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
-	SpoutLogNotice("    pDevice = 0x%.7X, width = %d, height = %d, format = 0x%X (%d)", PtrToUint(pd3dDevice), width, height, format, format);
+	SpoutLogNotice("    pDevice = 0x%.7X, width = %u, height = %u, format = 0x%X (%d)", PtrToUint(pd3dDevice), width, height, format, format);
 
 	// Use the format passed in
 	// If that is zero or DX9 format, use the default format
