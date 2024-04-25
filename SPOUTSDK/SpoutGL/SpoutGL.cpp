@@ -167,6 +167,11 @@
 //		26.02.24	- CreateInterop - check for dimensions out of bounds (> 16384)
 //		06.03.24	- GLerror - add error number
 //		03.04.24	- Add ReadTexturePixels for multiple format and RGB/RGBA textures
+//		08.04.24	- ReadTexturePixels - check OpenGL texture size and return if different
+//					  PrintFBOstatus - no warning if complete
+//					  InitTexture - corrected internal format
+//					  CreateOpenGL - report version created
+//		25.04.24	- Correct GLDXformat for default GL_RGBA
 //
 // ====================================================================================
 //
@@ -705,27 +710,20 @@ void spoutGL::SetDX11format(DXGI_FORMAT textureformat)
 
 //---------------------------------------------------------
 // Function: DX11format
+//
 //  OpenGL compatible DX11 format
 //
-//	OpenGL format (DX11 format)
-//
-//	GL_RGB, GL_RGB8, GL_RGBA, GL_RGBA8 (DXGI_FORMAT_R8G8B8A8_UNORM)
-//
-//	GL_RGB10_A2 (DXGI_FORMAT_R10G10B10A2_UNORM)
-//
-//	GL_RGB16, GL_RGBA16	(DXGI_FORMAT_R16G16B16A16_UNORM)
-//
-//	GL_RGB16F, GL_RGBA16F (DXGI_FORMAT_R16G16B16A16_FLOAT)
-//
-//	GL_RGB32F, GL_RGBA32F (DXGI_FORMAT_R32G32B32A32_FLOAT)
+//	GL_RGBA, GL_RGBA8        (DXGI_FORMAT_R8G8B8A8_UNORM)
+//	GL_RGB10_A2              (DXGI_FORMAT_R10G10B10A2_UNORM)
+//	GL_RGB16, GL_RGBA16	     (DXGI_FORMAT_R16G16B16A16_UNORM)
+//	GL_RGB16F, GL_RGBA16F    (DXGI_FORMAT_R16G16B16A16_FLOAT)
+//	GL_RGB32F, GL_RGBA32F    (DXGI_FORMAT_R32G32B32A32_FLOAT)
+//  GL_RGB, GL_RGB8, GL_RGBA, GL_BGRA (DXGI_FORMAT_B8G8R8A8_UNORM) // default
 //
 DXGI_FORMAT spoutGL::DX11format(GLint glformat)
 {
-	DXGI_FORMAT d3dformat = DXGI_FORMAT_B8G8R8A8_UNORM; // default
+	DXGI_FORMAT d3dformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 	switch (glformat) {
-	case GL_RGB:   // 0x1907
-	case GL_RGB8:  // 0x8051
-	case GL_RGBA:  // 0x1908
 	case GL_RGBA8: // 0x8058
 		d3dformat = DXGI_FORMAT_R8G8B8A8_UNORM;
 		break;
@@ -745,6 +743,10 @@ DXGI_FORMAT spoutGL::DX11format(GLint glformat)
 		d3dformat = DXGI_FORMAT_R32G32B32A32_FLOAT;
 		break;
 	default:
+		// GL_RGB  0x1907
+		// GL_RGB8 0x8051
+		// GL_RGBA 0x1908
+		// GL_BGRA 0x08E1
 		// Use default DXGI_FORMAT_B8G8R8A8_UNORM
 		break;
 	}
@@ -761,7 +763,7 @@ GLint spoutGL::GLDXformat(DXGI_FORMAT textureformat)
 	if (d3dformat == DXGI_FORMAT_UNKNOWN)
 		d3dformat = m_DX11format;
 
-	GLint glformat = GL_RGBA8;
+	GLint glformat = GL_RGBA;
 	switch (d3dformat) {
 		// DirectX 9
 		case D3DFMT_A8R8G8B8:
@@ -769,12 +771,12 @@ GLint spoutGL::GLDXformat(DXGI_FORMAT textureformat)
 		// DirectX 11
 		case DXGI_FORMAT_B8G8R8X8_UNORM:
 		case DXGI_FORMAT_B8G8R8A8_UNORM:
-			glformat = GL_RGBA8;
+			glformat = GL_RGBA;
 			break;
 		case DXGI_FORMAT_R8G8B8A8_SNORM:
 		case DXGI_FORMAT_R8G8B8A8_UNORM:
 		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-			glformat = GL_RGBA;
+			glformat = GL_RGBA8;
 			break;
 		case DXGI_FORMAT_R10G10B10A2_UNORM:
 			glformat = GL_RGB10_A2;
@@ -852,21 +854,21 @@ std::string spoutGL::GLformatName(GLint glformat)
 
 //---------------------------------------------------------
 // Function: CreateOpenGL
+//
 // Create an OpenGL window and context for situations where there is none.
+// The version created depends on that supported by the operating system
+// and is reported after creation.
 //
 // Not necessary if an OpenGL context is already available.
 // Always call CloseOpenGL() on application close.
 //
 // OpenGL support is required.
-//
 // Include in your application header file :
-//
 //     #include <gl/GL.h>
 //     #pragma comment (lib, "opengl32.lib")
 //
 bool spoutGL::CreateOpenGL()
 {
-	SpoutLogNotice("spoutGL::CreateOpenGL()");
 
 	if (!wglGetCurrentContext()) {
 
@@ -955,7 +957,13 @@ bool spoutGL::CreateOpenGL()
 		return false;
 	}
 
+	int glVersion[2] = { 0, 0 };
+	glGetIntegerv(GL_MAJOR_VERSION, &glVersion[0]);
+	glGetIntegerv(GL_MINOR_VERSION, &glVersion[1]);
+	SpoutLogNotice("CreateOpenGL - Version %d.%d", glVersion[0], glVersion[1]);
+
 	return true;
+
 }
 
 //---------------------------------------------------------
@@ -1717,11 +1725,11 @@ void spoutGL::CheckOpenGLTexture(GLuint &texID, GLenum GLformat, unsigned int wi
 		m_TexWidth  = width;
 		m_TexHeight = height;
 		m_TexFormat = (DWORD)GLformat;
+
 	}
 }
 
 // Initialize OpenGL texture
-
 void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height)
 {
 	if (texID != 0) glDeleteTextures(1, &texID);
@@ -1739,7 +1747,7 @@ void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, un
 		type = GL_FLOAT;
 
 	glBindTexture(GL_TEXTURE_2D, texID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GLformat, width, height, 0, GL_RGBA, type, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GLformat, type, NULL);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -1909,7 +1917,8 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 // COPY IMAGE PIXELS TO THE OPENGL SHARED TEXTURE
 //
 bool spoutGL::WriteGLDXpixels(const unsigned char* pixels,
-	unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
+	unsigned int width, unsigned int height,
+	GLenum glFormat, bool bInvert, GLuint HostFBO)
 {
 	if (width != m_Width || height != m_Height || !pixels)
 		return false;
@@ -2139,6 +2148,21 @@ bool spoutGL::ReadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height, void* dest,
 	GLenum glFormat, int nChannels)
 {
+	if (!dest)
+		return false;
+
+	// Check OpenGL texture size and return if different
+	int w = 0;
+	int h = 0;
+	glBindTexture(TextureTarget, TextureID);
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+	glBindTexture(TextureTarget, 0);
+	if (w != (int)width || h != (int)height) {
+		SpoutLogError("spoutGL::ReadTexturePixels - texure simensions do not match");
+		return false;
+	}
+
 	if (glFormat == GL_RGBA16F || glFormat == GL_RGBA32F) {
 		glBindTexture(TextureTarget, TextureID);
 		// RGB data for float hdr images
@@ -3623,14 +3647,15 @@ void spoutGL::PrintFBOstatus(GLenum status)
 		strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT");
 	else if (status == GL_INVALID_ENUM)
 		strcat_s(tmp, 256, "GL_INVALID_ENUM");
-	// else if (status == GL_FRAMEBUFFER_UNDEFINED)
-	//	strcat_s(tmp, 256, "GL_FRAMEBUFFER_UNDEFINED");
+	else if (status == GL_FRAMEBUFFER_UNDEFINED_EXT)
+		strcat_s(tmp, 256, "GL_FRAMEBUFFER_UNDEFINED");
 	// else if (status == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT)
-	// 	strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT\n");
-	else
+		// strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT\n");
+	if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
 		strcat_s(tmp, 256, "Unknown status code");
-	// Additionally, if an error occurs, zero is returned.
-	SpoutLogError("%s", tmp);
+		// Additionally, if an error occurs, zero is returned.
+		SpoutLogError("%s", tmp);
+	}
 	// printf("  PrintFBOstatus(%d) - %s\n",status, tmp);
 	GLerror();
 
@@ -3942,6 +3967,7 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 		glGenFramebuffersEXT(1, &m_fbo);
 
 	// Bind the FBO (for both, READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
+	// Empty attachments (attachments with no image attached) are complete by default.
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 
 	// Attach the Source texture to the color buffer in our frame buffer
