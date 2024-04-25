@@ -86,6 +86,7 @@
 //					  Change timeout log from error to warning
 //		13.08.23	- EnableFrameCount - correct semaphore name
 //	Version 2.007.013
+//		31.12.23	- Add comments to clarify the purpose of "EnableFrameSync"
 //
 // ====================================================================================
 //
@@ -134,6 +135,7 @@ spoutFrameCount::spoutFrameCount()
 	
 	m_FrameCount = 0L;
 	m_LastFrameCount = 0L;
+	m_FrameTime = 0.0;
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
 	m_lastFrame = 0.0;
@@ -158,7 +160,9 @@ spoutFrameCount::spoutFrameCount()
 	m_bCountDisabled = false;
 
 	// Sync enabled/disabled
-	m_bFrameSync = true; // default enabled
+	// Enable/disable frame sync using "EnableFrameSync"
+	// Default is enabled.
+	m_bFrameSync = true;
 
 #ifdef USE_CHRONO
 
@@ -266,6 +270,7 @@ void spoutFrameCount::EnableFrameCount(const char* SenderName)
 	// Reset frame count, comparator and fps variables
 	m_FrameCount = 0L;
 	m_LastFrameCount = 0L;
+	m_FrameTime = 0.0;
 	m_FrameTimeTotal = 0.0;
 	m_FrameTimeNumber = 0.0;
 	m_SenderFps = m_SystemFps; // Default sender fps is system refresh rate
@@ -465,7 +470,6 @@ void spoutFrameCount::HoldFps(int fps)
 
 }
 
-
 // -----------------------------------------------
 // Function: SetNewFrame
 // Increment the sender frame count.
@@ -601,7 +605,6 @@ bool spoutFrameCount::GetNewFrame()
 
 }
 
-
 // -----------------------------------------------
 // Function: CleanupFrameCount
 // For class cleanup functions
@@ -629,6 +632,7 @@ void spoutFrameCount::CleanupFrameCount()
 		// Reset counters
 		m_FrameCount = 0L;
 		m_LastFrameCount = 0L;
+		m_FrameTime = 0.0;
 		m_FrameTimeTotal = 0.0;
 		m_FrameTimeNumber = 0.0;
 		m_SenderFps = m_SystemFps; // Default sender fps is system refresh rate
@@ -858,7 +862,9 @@ bool spoutFrameCount::IsKeyedMutex(ID3D11Texture2D* D3D11texture)
 // Creates a named sync event and sets for test.
 void spoutFrameCount::SetFrameSync(const char *sendername)
 {
-	if (!m_bFrameSync || !sendername) 
+	// Return if sync is disabled by "EnableFrameSync"
+	// or there is no sender name to open the event.
+	if (!m_bFrameSync || !sendername)
 		return;
 
 	// Create the sync event if not already
@@ -881,6 +887,8 @@ void spoutFrameCount::SetFrameSync(const char *sendername)
 // Wait until the sync event is signalled or the timeout elapses.
 bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 {
+	// Return if sync is disabled by "EnableFrameSync"
+	// or there is no sender name to open the event.
 	if (!m_bFrameSync || !sendername) 
 		return false;
 
@@ -1032,18 +1040,18 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 		// End time since last call
 		*m_FpsEndPtr = std::chrono::steady_clock::now();
 		// Msecs between this frame and the last
-		double frametime = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(*m_FpsEndPtr - *m_FpsStartPtr).count()/1000000.0);
+		m_FrameTime = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(*m_FpsEndPtr - *m_FpsStartPtr).count()/1000000.0);
 #else
 		// End time since last call
 		double thisFrame = GetCounter();
 		// Msecs between this frame and the last
-		double frametime = thisFrame - m_lastFrame;
+		m_FrameTime = thisFrame - m_lastFrame;
 #endif
 		
-		if (frametime > 1.0) { // > 1 msec
+		if (m_FrameTime > 1.0) { // > 1 msec
 
 			// Frame time in seconds 
-			frametime = frametime/1000.0;
+			double frametime = m_FrameTime/1000.0;
 
 			// Accumulate totals
 			m_FrameTimeTotal = m_FrameTimeTotal + frametime;
@@ -1185,6 +1193,9 @@ void spoutFrameCount::OpenFrameSync(const char* SenderName)
 
 // -----------------------------------------------
 // Enable / disable frame sync
+// This is an independent flag that can be used to
+// bypass SetFrameSync and WaitFrameSync temporarily.
+// Default is enabled.
 void spoutFrameCount::EnableFrameSync(bool bSync)
 {
 	m_bFrameSync = bSync;
@@ -1198,7 +1209,6 @@ bool spoutFrameCount::IsFrameSyncEnabled()
 {
 	return m_bFrameSync;
 }
-
 
 // ===============================================================================
 
