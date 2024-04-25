@@ -306,10 +306,18 @@ enum ExtLogLevel {
 //-----------------------------------------------------
 // GL consts that are needed and aren't present in GL.h
 //-----------------------------------------------------
-#define GL_TEXTURE_2D_MULTISAMPLE		0x9100
-#define WGL_ACCESS_READ_ONLY_NV			0x0000
-#define WGL_ACCESS_READ_WRITE_NV		0x0001
-#define WGL_ACCESS_WRITE_DISCARD_NV		0x0002
+#ifndef GL_TEXTURE_2D_MULTISAMPLE
+#define GL_TEXTURE_2D_MULTISAMPLE 	0x9100
+#endif
+#ifndef WGL_ACCESS_READ_ONLY_NV
+#define WGL_ACCESS_READ_ONLY_NV		0x0000
+#endif
+#ifndef WGL_ACCESS_READ_WRITE_NV
+#define WGL_ACCESS_READ_WRITE_NV	0x0001
+#endif
+#ifndef WGL_ACCESS_WRITE_DISCARD_NV
+#define WGL_ACCESS_WRITE_DISCARD_NV	0x0002
+#endif
 
 #define GL_CLAMP_TO_EDGE				0x812F
 
@@ -842,8 +850,12 @@ extern PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB;
 #define		WGL_CONTEXT_PROFILE_MASK_ARB            0x9126
 
 //	Accepted as bits in the attribute value for WGL_CONTEXT_FLAGS in <*attribList>:
+#ifndef WGL_CONTEXT_DEBUG_BIT_ARB
 #define		WGL_CONTEXT_DEBUG_BIT_ARB               0x0001
+#endif
+#ifndef WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB
 #define		WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB  0x0002
+#endif
 
 //	Accepted as bits in the attribute value for
 //	WGL_CONTEXT_PROFILE_MASK_ARB in <*attribList>:

@@ -64,6 +64,8 @@
 //	Version 2.007.013
 //			29.03.24	- Correct glUnmapBufferPROC as Glboolean
 //						  Correct glGenBuffersPROC - GLuint* buffers
+//			19.04.24	- Add #ifndef for pre-defined constants WGL_CONTEXT_FLAGS
+//						  and GL consts that are not present in GL.h
 //
 
 	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
