@@ -172,6 +172,8 @@
 //					  InitTexture - corrected internal format
 //					  CreateOpenGL - report version created
 //		25.04.24	- Correct GLDXformat for default GL_RGBA
+//		26.04.24	- GLformatName - revise names
+//		06.05.24	- Add more logs for wglDX function failure
 //
 // ====================================================================================
 //
@@ -835,13 +837,13 @@ std::string spoutGL::GLformatName(GLint glformat)
 			formatname = "32 bit RGBA float";
 			break;
 		case GL_RGB10_A2:
-			formatname = "10 bit RGBA";
+			formatname = "10 bit RGB A2";
 			break;
 		case GL_RGBA8:
-			formatname = "8 bit RGBA8";
+			formatname = "8 bit RGBA";
 			break;
 		case GL_RGBA:
-			formatname = "8 bit RGBA";
+			formatname = "RGBA";
 			break;
 		case GL_BGRA:
 			formatname = "8 bit BGRA";
@@ -1114,8 +1116,10 @@ bool spoutGL::GLDXready()
 
 		// Release the interop objects created for the test
 		// They are re-created in CreateInterop
-		wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
-		wglDXCloseDeviceNV(m_hInteropDevice);
+		if (!wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject))
+			SpoutLogWarning("spoutGL::GLDXready - wglDXUnregisterObjectNV failed");
+		if(!wglDXCloseDeviceNV(m_hInteropDevice))
+			SpoutLogWarning("spoutGL::GLDXready - wglDXCloseDeviceNV failed");
 		m_hInteropObject = nullptr;
 		m_hInteropDevice = nullptr;
 
@@ -1303,7 +1307,8 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 	// here so the function can be used independently.
 	if (m_hInteropDevice && m_hInteropObject) {
 		SpoutLogNotice("    Re-registering interop");
-		wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject);
+		if(!wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject))
+			SpoutLogNotice("spoutGL::CreateInterop - wglDXUnregisterObjectNV failed");
 		m_hInteropObject = nullptr;
 	}
 
@@ -1466,7 +1471,10 @@ HANDLE spoutGL::LinkGLDXtextures(void* pDXdevice, void* pSharedTexture,  GLuint 
 
 		// Error so close interop device
 		if (m_hInteropDevice) {
-			wglDXCloseDeviceNV(m_hInteropDevice);
+			if (!wglDXCloseDeviceNV(m_hInteropDevice)) {
+				SpoutLogError("spoutGL::LinkGLDXtextures - wglDXCloseDeviceNV failed");
+				return nullptr;
+			}
 			m_hInteropDevice = nullptr;
 		}
 
@@ -1618,7 +1626,7 @@ bool spoutGL::CleanupInterop()
 			if (m_hInteropDevice && m_hInteropObject) {
 				SpoutLogNotice("    wglDXUnregisterObjectNV");
 				if (!wglDXUnregisterObjectNV(m_hInteropDevice, m_hInteropObject)) {
-					SpoutLogWarning("spoutGL::CleanupInterop - could not un-register interop");
+					SpoutLogNotice("spoutGL::CleanupInterop - wglDXUnregisterObjectNV failed : could not un-register interop");
 				}
 				m_hInteropObject = nullptr;
 			}
@@ -1631,7 +1639,7 @@ bool spoutGL::CleanupInterop()
 			if (m_hInteropDevice) {
 				SpoutLogNotice("    wglDXCloseDeviceNV");
 				if (!wglDXCloseDeviceNV(m_hInteropDevice)) {
-					SpoutLogWarning("spoutGL::CleanupInterop - could not close interop");
+					SpoutLogNotice("spoutGL::CleanupInterop - wglDXCloseDeviceNV failed : could not close interop");
 				}
 				m_hInteropDevice = nullptr;
 			}
