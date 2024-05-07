@@ -274,6 +274,7 @@
 //					  m_ShExecInfo.lpParameters : receiver graphics adapter index by default
 //		19.04.24	- SelectSenderPanel - allow for unicode build for PROCESSENTRY32
 //		24.04.24	- ReceiveImage - allow for multiple OpenGL formats
+//		06.05.24	- SelectSenderPanel - removed unused "value" variable
 //
 // ====================================================================================
 /*
@@ -1975,7 +1976,7 @@ bool Spout::SelectSenderPanel(const char* message)
 			// and SpoutPanel is installed, it has crashed.
 			// Terminate the process and the mutex or the mutex will remain
 			// and SpoutPanel will not be started again.
-			PROCESSENTRY32 pEntry;
+			PROCESSENTRY32 pEntry{};
 			pEntry.dwSize = sizeof(pEntry);
 			bool done = false;
 			// Take a snapshot of all processes and threads in the system
@@ -1991,23 +1992,21 @@ bool Spout::SelectSenderPanel(const char* message)
 					CloseHandle(hProcessSnap);
 				}
 				else {
-					// Look through all processes
+					// Look through all processes to find SpoutPanel
 					while (hRes && !done) {
-						const int value = 0;
 #ifdef UNICODE
 						_wcsicmp(pEntry.szExeFile, L"SpoutPanel.exe");
 #else
 						_tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
 #endif
-						if (value == 0) {
-							HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, pEntry.th32ProcessID);
-							if (hProcess != NULL) {
-								// Terminate SpoutPanel and it's mutex
-								TerminateProcess(hProcess, 9);
-								CloseHandle(hProcess);
-								done = true;
-							}
+						HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, pEntry.th32ProcessID);
+						if (hProcess != NULL) {
+							// Terminate SpoutPanel and it's mutex if it opened
+							TerminateProcess(hProcess, 9);
+							CloseHandle(hProcess);
+							done = true;
 						}
+
 						if (!done)
 							hRes = Process32Next(hProcessSnap, &pEntry); // Get the next process
 						else
