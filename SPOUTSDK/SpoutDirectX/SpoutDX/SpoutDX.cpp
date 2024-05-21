@@ -144,6 +144,12 @@
 //		02.12.23	- Update and test examples with 2.007.013 SpoutGL files. No other changes.
 //		06.12.23	- SetSenderName - use SpoutUtils GetExeName()
 //		02.01.24	- ReadPixelData - wait for command completion using FlushWait
+//		06.03.24	- SetReceiverName - clear the receiver name if null passed
+//		13.04.24	- Add SpoutMessageBox functions for dll access
+//		25.04.24	- Correct SpoutMessageBox(const char* caption, UINT uType, const char* format)
+//					  to apps though uType
+//		21.05.24	- CheckSenderFormat remove const from name argument
+//					  SetSenderName - create incrmented name if the sender exists
 //
 // ====================================================================================
 /*
@@ -372,18 +378,26 @@ bool spoutDX::SetSenderName(const char* sendername)
 		strcpy_s(m_SenderName, 256, sendername);
 	}
 
-	// If a sender with this name is already registered, create an incremented name
-	int i = 1;
-	char name[256]={};
+	// If a sender with this name is already registered,
+	// create an incremented name, because this function
+	// precedes SpoutSenderNames::RegisterSenderName
+	char name[256]{};
 	strcpy_s(name, 256, m_SenderName);
 	if (sendernames.FindSenderName(name)) {
+		int i = 1;
 		do {
 			sprintf_s(name, 256, "%s_%d", m_SenderName, i);
 			i++;
 		} while (sendernames.FindSenderName(name));
+		// Re-set the global sender name
+		strcpy_s(m_SenderName, 256, name);
 	}
-	// Re-set the global sender name
-	strcpy_s(m_SenderName, 256, name);
+
+	// Remove the sender from the names list if it's
+	// shared memory information does not exist.
+	// This can happen if the sender has crashed or if a
+	// console window was closed instead of the main program.
+	sendernames.CleanSenders();
 
 	return true;
 }
@@ -679,6 +693,11 @@ void spoutDX::SetReceiverName(const char * SenderName)
 	if (SenderName && SenderName[0]) {
 		strcpy_s(m_SenderNameSetup, 256, SenderName);
 		strcpy_s(m_SenderName, 256, SenderName);
+	}
+	else {
+		// Clear the receiver name
+		m_SenderNameSetup[0] = 0;
+		m_SenderName[0] = 0;
 	}
 }
 
@@ -1902,7 +1921,7 @@ bool spoutDX::CreateDX11texture(ID3D11Device* pd3dDevice,
 // If format is zero, try to open the sharehandle
 // and write the correct format back to shared memory
 // Also register the sender name if not already
-void spoutDX::CheckSenderFormat(const char * sendername)
+void spoutDX::CheckSenderFormat(char * sendername)
 {
 	SharedTextureInfo info={};
 
@@ -1973,6 +1992,38 @@ void spoutDX::DisableSpoutLogFile()
 void spoutDX::DisableSpoutLog()
 {
 	spoututils::DisableSpoutLog();
+}
+
+int spoutDX::SpoutMessageBox(const char* message, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(message, dwMilliseconds);
+}
+
+int spoutDX::SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
+{
+	std::string strmessage;
+	std::string strcaption;
+	char logChars[1024]={};
+
+	// Construct the message
+	va_list args;
+	va_start(args, format);
+	vsprintf_s(logChars, 1024, format, args);
+	strmessage = logChars;
+	va_end(args);
+
+	if (caption && *caption)
+		strcaption = caption;
+	else
+		strcaption = "Message";
+
+	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), uType, 0);
+
+}
+
+int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
 }
 
 

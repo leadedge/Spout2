@@ -39,7 +39,7 @@
 // If the include files are in the same folder there is no prefix.
 // If the files are in a different folder, change the prefix as required.
 //
-// #define PATH_PREFIX
+#define PATH_PREFIX
 
 #ifdef PATH_PREFIX
 #include "..\..\SpoutGL\SpoutCommon.h" // for dll build
@@ -258,19 +258,23 @@ class SPOUT_DLLEXP spoutDX {
 	// Utility
 	//
 
-	void CheckSenderFormat(const char * sendername);
+	void CheckSenderFormat(char * sendername);
 	bool CreateDX11texture(ID3D11Device* pd3dDevice,
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
 
 	//
 	// SpoutUtils namespace functions for dll access
+	//
 	void OpenSpoutConsole();
 	void CloseSpoutConsole(bool bWarning = false);
 	void EnableSpoutLog();
 	void EnableSpoutLogFile(const char* filename, bool append = false);
 	void DisableSpoutLogFile();
 	void DisableSpoutLog();
+	int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0);
+	int SpoutMessageBox(const char* caption, UINT uType, const char* format, ...);
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
 
 	//
 	// Data sharing
