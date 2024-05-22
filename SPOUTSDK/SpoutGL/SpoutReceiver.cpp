@@ -79,6 +79,7 @@
 //		04.08.23	- Add format functions
 //		07.08.23	- Add frame sync option functions
 //	Version 2.007.013
+//		22.05.24	- Add GetReceiverName
 //
 // ====================================================================================
 //
@@ -147,6 +148,11 @@ void SpoutReceiver::SetReceiverName(const char * SenderName)
 	spout.SetReceiverName(SenderName);
 }
 
+//---------------------------------------------------------
+bool SpoutReceiver::GetReceiverName(char* SenderName, int maxchars)
+{
+	return spout.GetReceiverName(SenderName, maxchars);
+}
 
 //---------------------------------------------------------
 // Release receiver and resources
