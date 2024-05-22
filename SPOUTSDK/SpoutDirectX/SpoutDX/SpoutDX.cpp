@@ -149,7 +149,7 @@
 //		25.04.24	- Correct SpoutMessageBox(const char* caption, UINT uType, const char* format)
 //					  to apps though uType
 //		21.05.24	- CheckSenderFormat remove const from name argument
-//					  SetSenderName - create incrmented name if the sender exists
+//		22.05.24	  CheckSpoutPanel - Register sender only if not already registered
 //
 // ====================================================================================
 /*
@@ -2676,9 +2676,12 @@ bool spoutDX::CheckSpoutPanel(char *sendername, int maxchars)
 							// Register the sender if it exists
 							if (newname[0] != 0) {
 								if (sendernames.getSharedInfo(newname, &TextureInfo)) {
-									// Register in the list of senders and make it the active sender
-									sendernames.RegisterSenderName(newname);
-									sendernames.SetActiveSender(newname);
+									// If not already registered
+									if (!sendernames.FindSenderName(newname)) {
+										// Register in the list of senders and make it the active sender
+										sendernames.RegisterSenderName(newname);
+										sendernames.SetActiveSender(newname);
+									}
 								}
 							}
 						}
