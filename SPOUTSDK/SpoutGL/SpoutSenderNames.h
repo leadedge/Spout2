@@ -105,7 +105,7 @@ class SPOUT_DLLEXP spoutSenderNames {
 		//
 
 		// Register a sender name in the list of senders
-		bool RegisterSenderName(char* sendername);
+		bool RegisterSenderName(char* sendername, bool bNewname = false);
 		// Remove a name from the list
 		bool ReleaseSenderName(const char* sendername);
 		// Find a name in the list
