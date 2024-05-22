@@ -276,6 +276,8 @@
 //		24.04.24	- ReceiveImage - allow for multiple OpenGL formats
 //		06.05.24	- SelectSenderPanel - removed unused "value" variable
 //		21.05.24	- SetSenderName - move sender name increment to SenderNames class
+//		22.05.24	- Add GetReceiverName
+//					  CheckSpoutPanel - do not to register twice if already registered
 //
 // ====================================================================================
 /*
@@ -750,6 +752,18 @@ void Spout::SetReceiverName(const char * SenderName)
 	m_SenderNameSetup[0] = 0;
 	m_SenderName[0] = 0;
 
+}
+
+//---------------------------------------------------------
+// Function: GetReceiverName
+// Get sender for connection
+bool Spout::GetReceiverName(char* sendername, int maxchars)
+{
+	if (m_SenderNameSetup[0]) {
+		strcpy_s(sendername, maxchars, m_SenderNameSetup);
+		return true;
+	}
+	return false;
 }
 
 //---------------------------------------------------------
@@ -2350,12 +2364,15 @@ bool Spout::ReceiveSenderData()
 		}
 	}
 
+	// LJ DEBUG
 	// If SpoutPanel has been opened, the active sender name could be different
-	if (CheckSpoutPanel(sendername, 256)) {
+	// Retrieve the name or take no action
+	CheckSpoutPanel(sendername, 256);
+	// if (CheckSpoutPanel(sendername, 256)) {
 		// Retrieved the selected name
 		// Disable the setup name
-		m_SenderNameSetup[0] = 0;
-	}
+		// m_SenderNameSetup[0] = 0;
+	// }
 
 	// Now we have either an existing sender name or the active sender name
 	// Save current sender name and dimensions to test for change
@@ -2539,6 +2556,7 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 			if (hMutex) m_bSpoutPanelActive = true;
 		}
 		else if (!hMutex) { // It has now closed
+
 			m_bSpoutPanelOpened = false; // Don't do this part again
 			m_bSpoutPanelActive = false;
 			// call GetExitCodeProcess() with the hProcess member of
@@ -2557,13 +2575,17 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 							// Register the sender if it exists
 							if (newname[0] != 0) {
 								if (sendernames.getSharedInfo(newname, &TextureInfo)) {
-									// Register in the list of senders and make it the active sender
-									sendernames.RegisterSenderName(newname);
-									sendernames.SetActiveSender(newname);
+									// If not already registered
+									if (!sendernames.FindSenderName(newname)) {
+										// Register in the list of senders and make it the active sender
+										sendernames.RegisterSenderName(newname);
+										sendernames.SetActiveSender(newname);
+									}
 								}
 							}
 						}
 					}
+
 					// Now do we have a valid sender name ?
 					if (newname[0] != 0) {
 						// Pass back the new name
