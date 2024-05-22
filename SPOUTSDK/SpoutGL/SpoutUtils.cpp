@@ -1873,6 +1873,7 @@ namespace spoututils {
 						buttons[i].pszButtonText = TDbuttonTitle[i].c_str();
 					}
 					// Final button is OK
+					// CANCEL/YES/NO etc have to be added as buttons
 					buttons[i].nButtonID = IDOK;
 					buttons[i].pszButtonText = L"OK";
 				}
