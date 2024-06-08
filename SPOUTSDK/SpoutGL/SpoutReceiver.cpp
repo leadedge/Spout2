@@ -80,6 +80,8 @@
 //		07.08.23	- Add frame sync option functions
 //	Version 2.007.013
 //		22.05.24	- Add GetReceiverName
+//		08.06.24	- SelectSender - bool instead of void
+//					- Add GetSenderList
 //
 // ====================================================================================
 //
@@ -254,9 +256,16 @@ bool SpoutReceiver::GetSenderGLDX()
 }
 
 //---------------------------------------------------------
-void SpoutReceiver::SelectSender()
+std::vector<std::string> SpoutReceiver::GetSenderList()
 {
-	spout.SelectSenderPanel();
+	return spout.GetSenderList();
+}
+
+
+//---------------------------------------------------------
+bool SpoutReceiver::SelectSender()
+{
+	return spout.SelectSenderPanel();
 }
 
 //

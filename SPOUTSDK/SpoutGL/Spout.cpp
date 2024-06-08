@@ -278,6 +278,8 @@
 //		21.05.24	- SetSenderName - move sender name increment to SenderNames class
 //		22.05.24	- Add GetReceiverName
 //					  CheckSpoutPanel - do not to register twice if already registered
+//		25.05.24	- SetSenderName - remove name increment
+//		08.06.24	- Add GetSenderList
 //
 // ====================================================================================
 /*
@@ -403,9 +405,10 @@ Spout::~Spout()
 // If no name is specified, the executable name is used. 
 // Thereafter, all sending functions create and update a sender
 // based on the size passed and the name that has been set.
+// If a sender with this name is already registered,
+// create an incremented name : sender_1, sender_2 etc.
 void Spout::SetSenderName(const char* sendername)
 {
-	char name[256]={};
 	if (!sendername) {
 		// Get executable name as default
 		strcpy_s(m_SenderName, 256, GetExeName().c_str());
@@ -414,13 +417,13 @@ void Spout::SetSenderName(const char* sendername)
 		strcpy_s(m_SenderName, 256, sendername);
 	}
 
-	// If a sender with this name is already registered,
-	// create an incremented name, because this function
-	// precedes SpoutSenderNames::RegisterSenderName
+	// Create an incremented name if a sender with this name is already registered,
+	// Although this function precedes SpoutSenderNames::RegisterSenderName,
+	// a further increment is not applied when a sender with the new name is created.
+	char name[256]{};
 	strcpy_s(name, 256, m_SenderName);
 	if (sendernames.FindSenderName(name)) {
 		int i = 1;
-		char name[256]{};
 		do {
 			sprintf_s(name, 256, "%s_%d", m_SenderName, i);
 			i++;
@@ -1071,6 +1074,25 @@ bool Spout::GetSenderGLDX()
 {
 	return m_bSenderGLDX;
 }
+
+//---------------------------------------------------------
+// Function: GetSenderList
+// Return a list of current senders
+std::vector<std::string> Spout::GetSenderList()
+{
+	std::vector<std::string> list;
+	int nSenders = GetSenderCount();
+	if (nSenders > 0) {
+		char sendername[256]{};
+		for (int i=0; i<nSenders; i++) {
+			if (GetSender(i, sendername))
+				list.push_back(sendername);
+		}
+	}
+	return list;
+}
+
+
 
 //---------------------------------------------------------
 // Function: SelectSender
@@ -2194,8 +2216,9 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 		return false;
 	}
 
-	// The sender needs a name
-	// Default is the executable name
+	// The sender needs a name. Default is the executable name
+	// If a sender with this name is already registered,
+	// SetSenderName increments the name : sender_1, sender_2 etc.
 	if (!m_SenderName[0]) {
 		SetSenderName();
 	}
@@ -2226,6 +2249,8 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 		}
 
 		// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
+		// If the sender already exists, the name is incremented
+		// name, name_1, name_2 etc
 		if (sendernames.CreateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
 
 			m_Width = width;
@@ -2365,6 +2390,7 @@ bool Spout::ReceiveSenderData()
 	}
 
 	// LJ DEBUG
+	// TODO - check setup name
 	// If SpoutPanel has been opened, the active sender name could be different
 	// Retrieve the name or take no action
 	CheckSpoutPanel(sendername, 256);

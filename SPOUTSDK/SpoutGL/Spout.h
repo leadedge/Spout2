@@ -140,6 +140,8 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	bool GetSenderCPU();
 	// Received sender GL/DX hardware compatibility
 	bool GetSenderGLDX();
+	// Return a list of current senders
+	std::vector<std::string> GetSenderList();
 	// Open sender selection dialog
 	bool SelectSender();
 
