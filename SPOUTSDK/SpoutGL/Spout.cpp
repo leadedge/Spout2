@@ -280,6 +280,8 @@
 //					  CheckSpoutPanel - do not to register twice if already registered
 //		25.05.24	- SetSenderName - remove name increment
 //		08.06.24	- Add GetSenderList
+//		09.06.24	- SelectSender - use SpoutMessageBox if SelectSenderPanel fails
+//					  Add hwnd argument to centre MessageBox dialog if used.
 //
 // ====================================================================================
 /*
@@ -1097,9 +1099,31 @@ std::vector<std::string> Spout::GetSenderList()
 //---------------------------------------------------------
 // Function: SelectSender
 // Open sender selection dialog
-bool Spout::SelectSender()
+bool Spout::SelectSender(HWND hwnd)
 {
-	return SelectSenderPanel();
+	// Use SpoutPanel if available
+	if (!SelectSenderPanel()) {
+		// If not, create a local sender list
+		std::vector<std::string> senderlist = GetSenderList();
+		if (!senderlist.empty()) {
+			// Open a messagebox for sender selection
+			// centred on the window if handle passed in.
+			// No senders can be selected if the list is empty.
+			// This makes it clear to the user that no senders are running.
+			// Note that the MessageBox is modal and will interrupt the host program.
+			int selected = 0;
+			SpoutMessageBox(hwnd, NULL, "Select sender", MB_OK, senderlist, selected);
+			// Release the receiver and set the selected sender
+			// as active for the next receive
+			ReleaseReceiver();
+			SetActiveSender(senderlist[selected].c_str());
+			return true;
+		}
+		return false;
+	}
+	return true;
+
+
 }
 
 //
@@ -1951,6 +1975,8 @@ bool Spout::SelectSenderPanel(const char* message)
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
 				if (_access(path, 0) == -1) {
+					// LJ DEBUG
+					/*
 					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
 					// Show a SpoutMessageBox and direct to the Spout releases page
 					sprintf_s(UserMessage, 512,
@@ -1958,6 +1984,7 @@ bool Spout::SelectSenderPanel(const char* message)
 						"Download the <a href=\"https://github.com/leadedge/Spout2/releases\">latest Spout release</a> and run either\n"\
 						"'SpoutSettings' or 'SpoutPanel' to establish the path.\n");
 					SpoutMessageBox(NULL, UserMessage, "Warning", MB_ICONWARNING | MB_OK);
+					*/
 					return false;
 				}
 			}
