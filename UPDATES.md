@@ -72,6 +72,19 @@ SpoutUtils.cpp
 - 29.03.24 - Correct ReadPathFromRegistry definition for default size argument
 		    Correct EndTiming definition for microseconds argument
 
+SpoutDX.cpp
+02.01.24	- ReadPixelData - wait for command completion using FlushWait
+06.03.24	- SetReceiverName - clear the receiver name if null passed
+13.04.24	- Add SpoutMessageBox functions for dll access
+25.04.24	- Correct SpoutMessageBox(const char* caption, UINT uType, const char* format)
+			to apps though uType
+21.05.24	- CheckSenderFormat remove const from name argument
+22.05.24	  CheckSpoutPanel - Register sender only if not already registered
+23.05.24	- ReadPixelData/ReadTexurePixels - use global m_bSwapRB flag instead of false
+			ReadPixelData - RGBA and BGRA texture data to BGR pixels default, RGB for swap
+25.05.24	- Add SetMirror/SetSwap/GetMirror/GetSwap for SpoutCam instead of using globals directly
+
+
 ofSpoutExample
 	Add utilities sender example
 	
