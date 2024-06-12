@@ -124,7 +124,6 @@ class SPOUT_DLLEXP spoutSenderNames {
 		// Information about a sender from an index into the list
 		bool GetSenderNameInfo(int index, char* sendername, int sendernameMaxSize, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle);
 
-
 		//
 		// Maximum number of senders allowed in the list
 		// Applies for versions 2.005 and after

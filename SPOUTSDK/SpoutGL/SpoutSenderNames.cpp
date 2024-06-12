@@ -161,8 +161,7 @@ spoutSenderNames::spoutSenderNames() {
 
 spoutSenderNames::~spoutSenderNames() {
 
-	for (auto itr = m_senders->begin(); itr != m_senders->end(); itr++)
-	{
+	for (auto itr = m_senders->begin(); itr != m_senders->end(); itr++)	{
 		delete itr->second;
 	}
 	delete m_senders;
