@@ -36,6 +36,7 @@
 // for definitions
 #include <windows.h>
 #include <string>
+#include <vector>
 #include <dxgiformat.h> // for DXGI_FORMAT enum
 
 // Define here to avoid include of GL.h 
@@ -148,7 +149,6 @@ struct SPOUTLIBRARY
 	virtual void SetReceiverName(const char* SenderName = nullptr) = 0;
 	// Close receiver and release resources ready to connect to another sender
 	virtual void ReleaseReceiver() = 0;
-
 	// Receive texture
 	//   If no arguments, connect to a sender and retrieve texture details ready for access
 	//	 (see BindSharedTexture and UnBindSharedTexture)
@@ -189,6 +189,8 @@ struct SPOUTLIBRARY
 	virtual bool GetSenderCPU() = 0;
 	// Received sender GL/DX compatibility
 	virtual bool GetSenderGLDX() = 0;
+	// Return a list of current senders
+	virtual std::vector<std::string> GetSenderList() = 0;
 	// Open sender selection dialog
 	virtual void SelectSender() = 0;
 
@@ -266,13 +268,24 @@ struct SPOUTLIBRARY
 	virtual void SpoutLogError(const char* format, ...) = 0;
 	// Fatal - always show log
 	virtual void SpoutLogFatal(const char* format, ...) = 0;
+
+	//
+	// MessageBox dialog
+	//
+
 	// MessageBox dialog with optional timeout
 	//   Used where a Windows MessageBox would interfere with the application GUI
 	//   The dialog closes itself if a timeout is specified
 	virtual int SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0) = 0;
+	// MessageBox dialog with variable arguments
+	virtual int SpoutMessageBox(const char* caption, const char* format, ...) = 0;
 	// MessageBox dialog with standard arguments
 	//   Replaces an existing MessageBox call
 	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0) = 0;
+	// MessageBox dialog with an edit control for text input
+	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text) = 0;
+	// MessageBox dialog with a combobox control for item selection
+	virtual	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected) = 0;
 	// Custom icon for SpoutMessageBox from resources
 	virtual void SpoutMessageBoxIcon(HICON hIcon) = 0;
 	// Custom icon for SpoutMessageBox from file
