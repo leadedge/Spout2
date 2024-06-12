@@ -143,6 +143,16 @@
 //		28.10.23	- CheckSender - executable path retrieved in SpoutSenderNames::SetSenderInfo
 //		02.12.23	- Update and test examples with 2.007.013 SpoutGL files. No other changes.
 //		06.12.23	- SetSenderName - use SpoutUtils GetExeName()
+//		02.01.24	- ReadPixelData - wait for command completion using FlushWait
+//		06.03.24	- SetReceiverName - clear the receiver name if null passed
+//		13.04.24	- Add SpoutMessageBox functions for dll access
+//		25.04.24	- Correct SpoutMessageBox(const char* caption, UINT uType, const char* format)
+//					  to apps though uType
+//		21.05.24	- CheckSenderFormat remove const from name argument
+//		22.05.24	  CheckSpoutPanel - Register sender only if not already registered
+//		23.05.24	- ReadPixelData/ReadTexurePixels - use global m_bSwapRB flag instead of false
+//					  ReadPixelData - RGBA and BGRA texture data to BGR pixels default, RGB for swap
+//		25.05.24	- Add SetMirror/SetSwap/GetMirror/GetSwap for SpoutCam instead of using globals directly
 //
 // ====================================================================================
 /*
@@ -360,7 +370,9 @@ bool spoutDX::IsClassDevice()
 // Function: SetSenderName
 // Set name for sender creation
 //
-//   If no name is specified, the executable name is used. 
+// If no name is specified, the executable name is used. 
+// If a sender with this name is already registered,
+// create an incremented name : sender_1, sender_2 etc.
 bool spoutDX::SetSenderName(const char* sendername)
 {
 	if (!sendername) {
@@ -371,18 +383,26 @@ bool spoutDX::SetSenderName(const char* sendername)
 		strcpy_s(m_SenderName, 256, sendername);
 	}
 
-	// If a sender with this name is already registered, create an incremented name
-	int i = 1;
-	char name[256]={};
+	// Create an incremented name if a sender with this name is already registered,
+	// Although this function precedes SpoutSenderNames::RegisterSenderName,
+	// a further increment is not applied when a sender with the new name is created.
+	char name[256]{};
 	strcpy_s(name, 256, m_SenderName);
 	if (sendernames.FindSenderName(name)) {
+		int i = 1;
 		do {
 			sprintf_s(name, 256, "%s_%d", m_SenderName, i);
 			i++;
 		} while (sendernames.FindSenderName(name));
+		// Re-set the global sender name
+		strcpy_s(m_SenderName, 256, name);
 	}
-	// Re-set the global sender name
-	strcpy_s(m_SenderName, 256, name);
+
+	// Remove the sender from the names list if it's
+	// shared memory information does not exist.
+	// This can happen if the sender has crashed or if a
+	// console window was closed instead of the main program.
+	sendernames.CleanSenders();
 
 	return true;
 }
@@ -679,6 +699,11 @@ void spoutDX::SetReceiverName(const char * SenderName)
 		strcpy_s(m_SenderNameSetup, 256, SenderName);
 		strcpy_s(m_SenderName, 256, SenderName);
 	}
+	else {
+		// Clear the receiver name
+		m_SenderNameSetup[0] = 0;
+		m_SenderName[0] = 0;
+	}
 }
 
 //---------------------------------------------------------
@@ -926,7 +951,7 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 				// Copy from the sender's shared texture to the first staging texture
 				m_pImmediateContext->CopyResource(m_pStaging[m_Index], m_pSharedTexture);
 				// Map and read from the second while the first is occupied
-				ReadPixelData(m_pStaging[m_NextIndex], pixels, width, height, bRGB, bInvert, false);
+				ReadPixelData(m_pStaging[m_NextIndex], pixels, width, height, bRGB, bInvert, m_bSwapRB);
 			}
 			// Allow access to the shared texture
 			frame.AllowTextureAccess(m_pSharedTexture);
@@ -977,7 +1002,7 @@ bool spoutDX::ReadTexurePixels(ID3D11Texture2D* pTexture, unsigned char* pixels)
 	m_pImmediateContext->CopyResource(m_pStaging[m_Index], pTexture);
 
 	// Map and read from the second while the first is occupied
-	ReadPixelData(m_pStaging[m_NextIndex], pixels, width, height, false, false, false);
+	ReadPixelData(m_pStaging[m_NextIndex], pixels, width, height, false, false, m_bSwapRB);
 
 	return true;
 
@@ -1851,6 +1876,43 @@ int spoutDX::GetMemoryBufferSize(const char *name)
 }
 
 //
+// Options used for SpoutCam
+//
+
+//---------------------------------------------------------
+// Function: SetMirror
+// Set mirror image option
+void spoutDX::SetMirror(bool bMirror)
+{
+	m_bMirror = bMirror;
+}
+
+//---------------------------------------------------------
+// Function: SetSwap
+// Set swap red/blue option : RGB <> BGR
+void spoutDX::SetSwap(bool bSwap)
+{
+	m_bSwapRB = bSwap;
+}
+
+//---------------------------------------------------------
+// Function: GetMirror
+// Return mirror option
+bool spoutDX::GetMirror()
+{
+	return m_bMirror;
+}
+
+//---------------------------------------------------------
+// Function: GetSwap
+// Return swap option
+bool spoutDX::GetSwap()
+{
+	return m_bSwapRB;
+}
+
+
+//
 // Sharing modes
 //
 
@@ -1901,7 +1963,7 @@ bool spoutDX::CreateDX11texture(ID3D11Device* pd3dDevice,
 // If format is zero, try to open the sharehandle
 // and write the correct format back to shared memory
 // Also register the sender name if not already
-void spoutDX::CheckSenderFormat(const char * sendername)
+void spoutDX::CheckSenderFormat(char * sendername)
 {
 	SharedTextureInfo info={};
 
@@ -1939,6 +2001,7 @@ void spoutDX::CheckSenderFormat(const char * sendername)
 	}
 }
 
+
 //
 // SpoutUtils namespace functions for dll access
 //
@@ -1973,6 +2036,37 @@ void spoutDX::DisableSpoutLog()
 	spoututils::DisableSpoutLog();
 }
 
+int spoutDX::SpoutMessageBox(const char* message, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(message, dwMilliseconds);
+}
+
+int spoutDX::SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
+{
+	std::string strmessage;
+	std::string strcaption;
+	char logChars[1024]={};
+
+	// Construct the message
+	va_list args;
+	va_start(args, format);
+	vsprintf_s(logChars, 1024, format, args);
+	strmessage = logChars;
+	va_end(args);
+
+	if (caption && *caption)
+		strcaption = caption;
+	else
+		strcaption = "Message";
+
+	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), uType, 0);
+
+}
+
+int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
+}
 
 
 //
@@ -2021,6 +2115,8 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 
 		// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
 		// and specifying the same texture format.
+		// If the sender already exists, the name is incremented
+		// name, name_1, name_2 etc
 		if (sendernames.CreateSender(m_SenderName, m_Width, m_Height, m_dxShareHandle, m_dwFormat)) {
 
 			// sendernames::SetSenderInfo writes the sender information to shared memory
@@ -2069,7 +2165,6 @@ bool spoutDX::CheckSender(unsigned int width, unsigned int height, DWORD dwForma
 	return true;
 
 }
-
 
 //---------------------------------------------------------
 // Used when the sender was there but the texture pointer could not be retrieved from the share handle.
@@ -2306,9 +2401,9 @@ void spoutDX::CreateReceiver(const char * SenderName, unsigned int width, unsign
 //
 // A class device and context must have been created using OpenDirectX11()
 //
-// bRGB - pixel data is RGB instead of RGBA
+// bRGB    - pixel data is RGB instead of RGBA
 // bInvert - flip the image
-// bSwap - swap red/blue (BGRA/RGBA). Not available for re-sample
+// bSwap   - swap red/blue (BGRA/RGBA). Not available for re-sample
 //
 bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* destpixels,
 	unsigned int width, unsigned int height, bool bRGB, bool bInvert, bool bSwap)
@@ -2319,62 +2414,68 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 	// Map the staging texture resource so we can access the pixels
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource={};
 	// Make sure all commands are done before mapping the staging texture
-	m_pImmediateContext->Flush();
+	spoutdx.FlushWait(m_pd3dDevice, m_pImmediateContext);
 	// Map waits for GPU access
 	const HRESULT hr = m_pImmediateContext->Map(pStagingSource, 0, D3D11_MAP_READ, 0, &mappedSubResource);
 	if (SUCCEEDED(hr)) {
 		// Copy the staging texture pixels to the user buffer
 		if (!bRGB) {
+			//
 			// RGBA pixel buffer
+			//
 			// TODO : test rgba-rgba resample
 			// TODO : rgba2bgraResample
 			if (width != m_Width || height != m_Height) {
-				spoutcopy.rgba2rgbaResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
+				spoutcopy.rgba2rgbaResample(mappedSubResource.pData, destpixels, m_Width, m_Height,
+					mappedSubResource.RowPitch, width, height, bInvert);
 			}
 			else {
 				// Copy rgba to bgra line by line allowing for source pitch using the fastest method
 				// Uses SSE3 copy function if line data is 16bit aligned (see SpoutCopy.cpp)
-				if (bSwap) {
+				if (bSwap)
 					spoutcopy.rgba2bgra(mappedSubResource.pData, destpixels, width, height, mappedSubResource.RowPitch, bInvert);
-				}
-				else {
+				else
 					spoutcopy.rgba2rgba(mappedSubResource.pData, destpixels, width, height, mappedSubResource.RowPitch, bInvert);
-				}
 			}
 		}
-		else if (m_dwFormat == 28) { // DXGI_FORMAT_R8G8B8A8_UNORM
-			// RGBA texture - RGB/BGR pixel buffer
+		else if (m_dwFormat == 28) { // RGBA - DXGI_FORMAT_R8G8B8A8_UNORM
+			//
+			// RGBA texture to BGR/RGB pixels
+			// BGR is default, RGB is swapped
+			// default RGBA texture > BGR pixels
+			// if swap RGBA texture > RGB pixels
+			//
 			// If the texture format is RGBA it has to be converted to RGB/BGR by the staging texture copy
 			if (width != m_Width || height != m_Height) {
-				if(bSwap)
-					spoutcopy.rgba2bgrResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
-				else
-					spoutcopy.rgba2rgbResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert);
+				spoutcopy.rgba2rgbResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch,
+					width, height, bInvert, m_bMirror, !bSwap);
 			}
 			else {
 				// Copy RGBA to RGB or BGR allowing for source line pitch using the fastest method
 				// Uses SSE3 conversion functions if data is 16bit aligned (see SpoutCopy.cpp)
-				if (bSwap)
-					spoutcopy.rgba2rgb(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert, true);
-				else
-					spoutcopy.rgba2rgb(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert, false);
+				spoutcopy.rgba2rgb(mappedSubResource.pData, destpixels, m_Width, m_Height,
+					mappedSubResource.RowPitch, bInvert, m_bMirror, !bSwap); // reverse swap flag for RGBA
 			}
 		}
 		else {
+			//
+			// BGRA texture to BGR/RGB pixels
+			// BGR is default, RGB is swapped
+			// default BGRA texture > BGR pixels
+			// if swap BGRA texture > RGB pixels
+			//
 			if (width != m_Width || height != m_Height) {
-				spoutcopy.rgba2rgbResample(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, width, height, bInvert, m_bMirror, m_bSwapRB);
+				spoutcopy.rgba2rgbResample(mappedSubResource.pData, destpixels, m_Width, m_Height,
+					mappedSubResource.RowPitch, width, height, bInvert, m_bMirror, bSwap);
 			}
 			else {
 				// Approx 5 msec at 1920x1080
-				spoutcopy.rgba2rgb(mappedSubResource.pData, destpixels, m_Width, m_Height, mappedSubResource.RowPitch, bInvert, m_bMirror, m_bSwapRB);
+				spoutcopy.rgba2rgb(mappedSubResource.pData, destpixels, m_Width, m_Height,
+					mappedSubResource.RowPitch, bInvert, m_bMirror, bSwap);
 			}
-
 		}
-
 		m_pImmediateContext->Unmap(pStagingSource, 0);
-
 		return true;
-
 	} // endif DX11 map OK
 
 	return false;
@@ -2625,9 +2726,12 @@ bool spoutDX::CheckSpoutPanel(char *sendername, int maxchars)
 							// Register the sender if it exists
 							if (newname[0] != 0) {
 								if (sendernames.getSharedInfo(newname, &TextureInfo)) {
-									// Register in the list of senders and make it the active sender
-									sendernames.RegisterSenderName(newname);
-									sendernames.SetActiveSender(newname);
+									// If not already registered
+									if (!sendernames.FindSenderName(newname)) {
+										// Register in the list of senders and make it the active sender
+										sendernames.RegisterSenderName(newname);
+										sendernames.SetActiveSender(newname);
+									}
 								}
 							}
 						}

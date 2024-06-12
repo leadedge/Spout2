@@ -258,19 +258,23 @@ class SPOUT_DLLEXP spoutDX {
 	// Utility
 	//
 
-	void CheckSenderFormat(const char * sendername);
+	void CheckSenderFormat(char * sendername);
 	bool CreateDX11texture(ID3D11Device* pd3dDevice,
 		unsigned int width, unsigned int height,
 		DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
 
 	//
 	// SpoutUtils namespace functions for dll access
+	//
 	void OpenSpoutConsole();
 	void CloseSpoutConsole(bool bWarning = false);
 	void EnableSpoutLog();
 	void EnableSpoutLogFile(const char* filename, bool append = false);
 	void DisableSpoutLogFile();
 	void DisableSpoutLog();
+	int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0);
+	int SpoutMessageBox(const char* caption, UINT uType, const char* format, ...);
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
 
 	//
 	// Data sharing
@@ -288,6 +292,20 @@ class SPOUT_DLLEXP spoutDX {
 	int  GetMemoryBufferSize(const char *name);
 
 	//
+	// Options used for SpoutCam
+	//
+
+	// Mirror image
+	void SetMirror(bool bMirror = true);
+
+	// RGB <> BGR
+	void SetSwap(bool bSwap = true);
+
+	bool GetMirror();
+
+	bool GetSwap();
+
+	//
 	// Public for external access
 	//
 
@@ -295,15 +313,6 @@ class SPOUT_DLLEXP spoutDX {
 	spoutFrameCount frame;
 	spoutDirectX spoutdx;
 	spoutCopy spoutcopy;
-
-	//
-	// Options used for SpoutCam
-	//
-
-	// Mirror image
-	bool m_bMirror;
-	// RGB <> BGR
-	bool m_bSwapRB;
 
 protected :
 
@@ -330,7 +339,10 @@ protected :
 	bool m_bClassDevice;
 	bool m_bAdapt;
 	bool m_bMemoryShare; // Using 2.006 memoryshare methods
+	bool m_bMirror; // Mirror image
+	bool m_bSwapRB; // RGB <> BGR
 	SHELLEXECUTEINFOA m_ShExecInfo; // For ShellExecute
+
 
 	// For WriteMemoryBuffer/ReadMemoryBuffer
 	SpoutSharedMemory memorybuffer;
