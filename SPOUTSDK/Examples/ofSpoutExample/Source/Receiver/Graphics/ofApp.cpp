@@ -31,17 +31,17 @@
 void ofApp::setup(){
 
 	//
-	// Options
+	// ================ Options =================
 	//
 
 	// Logging (see sender example)
 	// OpenSpoutConsole(); // for when a console is not available (see main.cpp)
-	EnableSpoutLog(); // Spout logging to console
+	// EnableSpoutLog(); // Spout logging to console
 
-	// Option - specify the sender to connect to.
+	// Optional - specify the sender to connect to.
 	// The application will not connect to any other unless the user selects one.
 	// If that sender closes, the application will wait for the nominated sender to open.
-	// receiver.SetReceiverName("Spout Demo Sender");
+	// receiver.SetReceiverName("Spout Sender");
 
 	//
 	// Receiver texture format
@@ -56,20 +56,32 @@ void ofApp::setup(){
 	// Other options
 	// Refer to the graphics sender example
 	//
+	// ==========================================
 
 
 	ofSetWindowTitle("Spout Graphics Receiver");
-
 	ofBackground(0, 0, 0);
+
+	// Centre on the screen
+	ofSetWindowPosition((ofGetScreenWidth()-ofGetWidth())/2, (ofGetScreenHeight()-ofGetHeight())/2);
+
+	// Set a custom icon
+	std::string icopath = ofToDataPath("Spout.ico", true);
+	HICON hIcon = reinterpret_cast<HICON>(LoadImageA(nullptr, icopath.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE));
+	SendMessage(ofGetWin32Window(), WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+	SendMessage(ofGetWin32Window(), WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+
+	// Load a Windows truetype font to avoid dependency on a font file.
+	// Arial, Verdana, Tahoma
+	LoadWindowsFont(myFont, "Verdana", 12);
 
 	// Allocate an RGBA texture to receive from the sender
 	// It is resized later to match the size and format of the sender - see IsUpdated()
 	myTexture.allocate(ofGetWidth(), ofGetHeight(), GL_RGBA);
 
-	// Allocate an RGB image for this example
-	// it can also be RGBA, BGRA or BGR
+	// Allocate an RGB image as a receiving pixel buffer for this example
+	// it can also be BGR, RGBA, BGRA, RGBA16, RGBA16F, RGBA32F depending on the application
 	myImage.allocate(ofGetWidth(), ofGetHeight(), OF_IMAGE_COLOR);
-
 
 } // end setup
 
@@ -99,7 +111,9 @@ void ofApp::draw() {
 	//		bool IsConnected();
 	//
 
+	//
 	// Option 1 : Receive texture
+	//
 	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
 		// Update the receiving texture if the received size has changed
 		if (receiver.IsUpdated()) {
@@ -109,18 +123,22 @@ void ofApp::draw() {
 			//
 			// Allocate the receiving texture with an OpenGL format
 			// compatible with the sender DirectX shared texture format.
-			// glformat = receiver.GLDXformat();
+			// Format can be GL_RGBA, GL_RGBA16, GL_RGBA16F or GL_RGBA32F.
+			glformat = receiver.GLDXformat();
 			//
 			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), glformat);
 			return; // Return now because the texture will empty
 		}
-
 		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
 
-	// Option 2 : Receive pixel data
-	// Specify RGB for this example. Default is RGBA.
 	/*
+	//
+	// Option 2 : Receive pixel data
+	//
+	// Format can be GL_RGBA, GL_BGRA, GL_RGB or GL_BGR for the receving buffer.
+	// Specify RGB for this example to receive to RGB ofImage. Default is RGBA.
+	//
 	if (receiver.ReceiveImage(myImage.getPixels().getData(), GL_RGB)) {
 		// Update the receiving image if the received size has changed
 		if (receiver.IsUpdated()) {
@@ -134,14 +152,17 @@ void ofApp::draw() {
 	*/
 	
 	/*
+	//
 	// Option 3 : Receive an OpenGL shared texture to access directly.
+	//
 	// Only if compatible for GL/DX interop or else BindSharedTexture fails.
 	// For this example, copy from the shared texture. For other applications
 	// the texture binding may be used directly for rendering.
+	//
 	if (receiver.ReceiveTexture()) {
 		// Update the receiving texture if the received size has changed
 		if (receiver.IsUpdated()) {
-			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), GL_RGBA);
+			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), receiver.GLDXformat());
 			return; // Return now because the texture will empty
 		}
 		// Bind to get access to the shared texture
@@ -160,7 +181,8 @@ void ofApp::draw() {
 	*/
 
 	// On-screen display
-	showInfo();
+	// Space bar to disable
+	if(bShowInfo) showInfo();
 	
 }
 
@@ -174,32 +196,56 @@ void ofApp::showInfo() {
 	if(receiver.IsConnected()) {
 
 		// Show sender details
-		str = receiver.GetSenderName(); // sender name
-		str += " (";
+		str = "[";
+		str += receiver.GetSenderName(); // sender name
+		str += "]  (";
+		str += ofToString(receiver.GetSenderWidth()); str += "x";
+		str += ofToString(receiver.GetSenderHeight());
 
-		// Show sender sharing mode if not OpenGL compatible
-		if (receiver.GetSenderCPU())
-			str += "CPU share : "; 
+		// Received texture OpenGL format
+		// Default DirectX format is DXGI_FORMAT_B8G8R8A8_UNORM.
+		// Corresponding OpenGL format is GL_RGBA.
+		// If OpenGL name is GL_RGBA. Do not show.
+		if (receiver.GLDXformat() != GL_RGBA) {
+			str += " - ";
+			str += receiver.GLformatName(receiver.GLDXformat());
+		}
+		str += ")";
+		DrawString(str, 10, 20);
 
-		// Show sender size
-		str += std::to_string(receiver.GetSenderWidth()); // width
-		str += "x";
-		str += std::to_string(receiver.GetSenderHeight()); // height 
+		// Is the receiver using CPU sharing ?
+		if (receiver.GetCPUshare()) {
+			str = "CPU share";
+		}
+		else {
+			str = "Texture share";
+			// Graphics can still be incompatible if the user
+			// did not select "Auto" or "CPU" in SpoutSettings
+			if (!receiver.IsGLDXready())
+				str = "Graphics not compatible";
+		}
 
 		// Applications < 2.007 will return no frame count information
 		// Frame counting can also be disabled in SpoutSettings
 		if (receiver.GetSenderFrame() > 0) {
-			str += " : fps ";
-			str += std::to_string((int)(round(receiver.GetSenderFps()))); // frames per second
-			str += " : frame ";
-			str += std::to_string(receiver.GetSenderFrame()); // frame since the sender started
+			str += " - fps ";
+			str += ofToString((int)roundf(receiver.GetSenderFps()));
+			str += " frame  ";
+			str += ofToString(receiver.GetSenderFrame());
 		}
-		str += ") ";
-		ofDrawBitmapString(str, 10, 20);
+		else {
+			// Show Openframeworks fps
+			str += " - fps : " + ofToString((int)roundf(ofGetFrameRate()));
+		}
+		DrawString(str, 10, 40);
+
+		str = "Right click - select sender : Space - hide info";
+		DrawString(str, ofGetWidth()/2 - 200, ofGetHeight() - 14);
+
 	}
 	else {
 		str = "No sender detected";
-		ofDrawBitmapString(str, 10, 20);
+		DrawString(str, 10, 20);
 	}
 
 	// Show more details if not OpenGL/DirectX compatible
@@ -212,14 +258,14 @@ void ofApp::showInfo() {
 			// CPU share disabled (program setting)
 			str = "Graphics not texture share compatible";
 		}
-		ofDrawBitmapString(str, 10, 35);
+		DrawString(str, 10, 35);
 
 		// Show current graphics adapter
 		str = "Graphics adapter ";
 		str += std::to_string(receiver.GetAdapter());
 		str += " : ";
 		str += receiver.AdapterName();
-		ofDrawBitmapString(str, 10, 50);
+		DrawString(str, 10, 50);
 	}
 
 }
@@ -230,27 +276,31 @@ void ofApp::exit() {
 }
 
 //--------------------------------------------------------------
-// RH mouse click to open SpoutPanel for sender selection
+// Right mouse click for sender selection
 void ofApp::mousePressed(int x, int y, int button){
 	
-	// RH button for "SpoutPanel" sender selection dialog
-	// Spout must have been installed and SpoutPanel
-	// or SpoutSettings run at least once
+	//
+	// Activate the sender selection dialog
+	//
+	// "SpoutPanel" is used if SpoutSettings has
+	// been run to establish the path.
+	//
 	if(button == 2) {
-		receiver.SelectSender();
+		// If SpoutPanel is not available, a SpoutMessageBox is used.
+		// Centre it on the application window by providing the window handle.
+		receiver.SelectSender(ofGetWin32Window());
 	}
 
-	// LH button to show a sender list in the console
-	// This could be used to construct a dialog list for user selection
+	// LH button to show a sender list in the console.
+	// This could be also used in a dialog for user selection
+	// See Spout::SelectSender()
 	if (button == 0) {
 		// Show the user the current sender list
-		int nSenders = receiver.GetSenderCount();
-		if (nSenders > 0) {
+		std::vector<std::string> senderlist = receiver.GetSenderList();
+		if (!senderlist.empty()) {
 			printf("\n");
-			char SenderName[256];
-			for (int i = 0; i < nSenders; i++) {
-				receiver.GetSender(i, SenderName);
-				printf("(%d) [%s]\n", i, SenderName);
+			for (int i = 0; i <(int)senderlist.size(); i++) {
+				printf("(%d) [%s]\n", i, senderlist[i].c_str());
 			}
 		}
 		printf("Press number to detect\n");
@@ -259,9 +309,14 @@ void ofApp::mousePressed(int x, int y, int button){
 }
 
 //--------------------------------------------------------------
-// Keypress for sender selection from a list
 void ofApp::keyPressed(int key) {
 
+	// Show on-screen info
+	if (key == ' ') {
+		bShowInfo = !bShowInfo;
+	}
+
+	// Keypress for sender selection from a list
 	// Convert ASCII to number
 	int index = key - 48;
 	// Single key selection (0-9)
@@ -270,13 +325,11 @@ void ofApp::keyPressed(int key) {
 		// Check if the sender exists
 		if (receiver.GetSender(index, SenderName)) {
 			printf("\n");
+			printf("sender(%d) [%s]\n", index, SenderName);
 			// Set as active
 			receiver.SetActiveSender(SenderName);
-			// Change to the active sender
-			receiver.SetReceiverName();
-			// Option
-			// Change to it and lock to that sender
-			// receiver.SetReceiverName(SenderName);
+			// Change to the active sender on the next receive
+			receiver.ReleaseReceiver();
 		}
 		else {
 			printf("sender index [%d] not found\n", index);
@@ -285,3 +338,37 @@ void ofApp::keyPressed(int key) {
 }
 
 
+
+//--------------------------------------------------------------
+// Load a Windows truetype font
+bool ofApp::LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size)
+{
+	std::string fontfolder;
+	char* path = nullptr;
+	errno_t err = _dupenv_s(&path, NULL, "WINDIR");
+	if (err == 0 && path) {
+		fontfolder = path;
+		fontfolder += "\\Fonts\\";
+		fontfolder += name;
+		fontfolder += ".ttf";
+		if (_access(fontfolder.c_str(), 0) != -1) {
+			return font.load(fontfolder, size, true, true);
+		}
+	}
+	return false;
+}
+
+//--------------------------------------------------------------
+void ofApp::DrawString(std::string str, int posx, int posy)
+{
+	if (myFont.isLoaded()) {
+		myFont.drawString(str, posx, posy);
+	}
+	else {
+		// This will only happen if the Windows font is not foud
+		// Quick fix because the default font is wider
+		int x = posx-20;
+		if (x <= 0) x = 10;
+		ofDrawBitmapString(str, x, posy);
+	}
+}

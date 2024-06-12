@@ -1,6 +1,6 @@
 /*
 
-	Spout OpenFrameworks Graphics Sender example
+	Spout OpenFrameworks Spout Utilities example
 
 	Copyright (C) 2015-2024 Lynn Jarvis.
 
@@ -24,6 +24,7 @@
 #include "..\..\..\SpoutGL\SpoutSender.h"
 
 // disable warning conversion from 'size_t' to 'int' for ofxXmlSettings
+// Addon is in the common project file and used for the sync example
 #pragma warning(disable:4267)
 
 class ofApp : public ofBaseApp{
@@ -36,13 +37,9 @@ class ofApp : public ofBaseApp{
 		void exit();
 		void keyPressed(int key);
 		void windowResized(int w, int h);
+		void mouseMoved(int x, int y);
+		void mousePressed(int x, int y, int button);
 
-		// For Truetype font
-		ofTrueTypeFont myFont;
-		bool LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size);
-		void DrawString(std::string str, int posx, int posy);
-
-		// For sender
 		SpoutSender sender;            // Spout sender object
 		char sendername[256]{};        // Sender name
 		unsigned int senderwidth = 0;
@@ -50,12 +47,19 @@ class ofApp : public ofBaseApp{
 		double g_SenderFps = 0.0;      // For fps display averaging
 		GLint glFormat = GL_RGBA;      // Default OpenGL texture format
 		bool bShowInfo = true;         // Show on-screen information
+		bool bMessagebox = false;      // Prevent mouse item selection while messagebox is open
+		void doMessagebox(int item);   // SpoutMessageBox examples
 
-		// For graphics
 		ofImage myBoxImage;            // Image for the 3D demo
-		ofFbo myFbo;                   // For texture send example
-		ofPixels myPixels;             // For pixel send example
+		ofFbo myFbo;                   // For texture send
 		float rotX = 0.0f;             // Box rotation
 		float rotY = 0.0f;
+		int mousex = 0;
+		int mousey = 0;
+
+		// Openframeworks truetype font for larger on-screen text
+		ofTrueTypeFont myFont{};
+		bool LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size);
+		void DrawString(std::string str, int posx, int posy, ofColor oldcolor = 255);
 
 };

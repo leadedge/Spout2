@@ -37,5 +37,11 @@ class ofApp : public ofBaseApp{
 		ofTexture myTexture; // Receiving texture
 		ofImage myImage; // Receiving image
 		void showInfo();
+		bool bShowInfo = true;
+
+		ofTrueTypeFont myFont;
+		bool LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size);
+		void DrawString(std::string str, int posx, int posy);
+
 
 };
