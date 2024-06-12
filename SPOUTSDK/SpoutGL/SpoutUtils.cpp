@@ -2122,7 +2122,7 @@ namespace spoututils {
 
 					// Add combo box items
 					if (comboitems.size() > 0) {
-						for (int i = 0; i<comboitems.size(); i++) {
+						for (int i = 0; i<(int)comboitems.size(); i++) {
 							SendMessageA(hCombo, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)comboitems[i].c_str());
 						}
 						// Display an initial item in the selection field
