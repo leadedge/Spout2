@@ -106,6 +106,9 @@
 //		03.12.23   Rebuild with SDK version 2.007.013 /MD and /MT using CMake
 //		08.12.23   Rebuild all libraries /MT and /MD with Openframeworks 12.0 files using CMake
 //		28.12.23   Add SpoutMessageBoxModeless and SpoutMessageBoxWindow
+//		12.03.24   Restore SpoutMessgaBox with variable arguments
+//				   Add SpoutMessageBox with text entry and with combobox controls
+//		12.06.24   Add GetSenderList
 //
 /*
 		Copyright (c) 2016-2024, Lynn Jarvis. All rights reserved.
@@ -460,6 +463,10 @@ private: // Spout SDK functions
 	//     Returns true if the sender graphics hardware is 
 	//     compatible with NVIDIA NV_DX_interop2 extension
 	bool GetSenderGLDX();
+
+	// Function: GetSenderList
+	// Return a list of current senders
+	std::vector<std::string> GetSenderList();
 	
 	// Function: SelectSender
 	// Open sender selection dialog
@@ -659,9 +666,27 @@ private: // Spout SDK functions
 	int SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0);
 
 	// Function: SpoutMessageBox
+	// MessageBox with variable arguments
+	int SpoutMessageBox(const char* caption, const char* format, ...);
+
+	// Function: SpoutMessageBox
 	// MessageBox dialog with standard arguments.
 	// Replaces an existing MessageBox call.
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
+
+	// Function: SpoutMessageBox
+	// MessageBox dialog with an edit control for text input
+	// Can be used in place of a specific application resource dialog
+	//   o For message content, the control is in the footer area
+	//   o If no message, the control is in the main content area
+	//   o All SpoutMessageBox functions such as user icon and buttons are available
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text);
+
+	// Function: SpoutMessageBox
+	// MessageBox dialog with a combobox control for item selection
+	// Can be used in place of a specific application resource dialog
+	// Properties the same as the edit control
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected);
 
 	// Function: SpoutMessageBoxIcon
 	// Custom icon for SpoutMessageBox from resources
@@ -1275,6 +1300,12 @@ bool SPOUTImpl::GetSenderGLDX()
 {
 	return spout->GetSenderGLDX();
 }
+
+std::vector<std::string> SPOUTImpl::GetSenderList()
+{
+	return spout->GetSenderList();
+}
+
 void SPOUTImpl::SelectSender()
 {
 	spout->SelectSender();
@@ -1447,6 +1478,28 @@ void SPOUTImpl::SpoutLogFatal(const char* format, ...)
 	va_end(args);
 }
 
+int SPOUTImpl::SpoutMessageBox(const char* caption, const char* format, ...)
+{
+	std::string strmessage;
+	std::string strcaption;
+	char logChars[1024]={};
+
+	// Construct the message
+	va_list args;
+	va_start(args, format);
+	vsprintf_s(logChars, 1024, format, args);
+	strmessage = logChars;
+	va_end(args);
+
+	if (caption && *caption)
+		strcaption = caption;
+	else
+		strcaption = "Message";
+
+	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), MB_OK, 0);
+
+}
+
 int SPOUTImpl::SpoutMessageBox(const char * message, DWORD dwMilliseconds)
 {
 	return spoututils::SpoutMessageBox(message, dwMilliseconds);
@@ -1455,6 +1508,16 @@ int SPOUTImpl::SpoutMessageBox(const char * message, DWORD dwMilliseconds)
 int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
 {
 	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
+}
+
+int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, text);
+}
+
+int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& index)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, items, index);
 }
 
 void SPOUTImpl::SpoutMessageBoxIcon(HICON hIcon)
