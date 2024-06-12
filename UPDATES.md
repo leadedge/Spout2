@@ -72,6 +72,9 @@ SpoutUtils.cpp
 - 29.03.24 - Correct ReadPathFromRegistry definition for default size argument
 		    Correct EndTiming definition for microseconds argument
 
+ofSpoutExample
+	Add utilities sender example
+	
 ===========================================\
 25.12.23\
 Update Master from Beta branch.
