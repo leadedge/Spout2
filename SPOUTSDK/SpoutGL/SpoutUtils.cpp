@@ -171,7 +171,7 @@
 				 - TaskDialogIndirect centers on the window if hwnd passed in or the monitor if NULL
 		20.12.23 - Remove GetNVIDIAmode, SetNVIDIAmode
 				 - ExecuteProcess - use ShellExecuteEx instead of CreateProcess
-				 - Add SpoutMessageBoxModless
+				 - Add SpoutMessageBoxModeless
 				 - Restore modeless SpoutMessageBox functionality using SpoutPanel, > v2.72 required.
 				 - Call MessageTaskDialog directly in all SpoutMessageBox functions
 				 - Use a custom icon if set for SpoutMessageBox functions that do not specify an icon
@@ -182,6 +182,14 @@
 		27.12.23 - Send OK button message to close taskdialog instead of DestroyWindow for URL click
 				 - Test for custom icon and multiple buttons in MessageTaskDialog
 		Version 2.007.013
+		28.12.23 - SpoutMessageBox - add MB_RIGHT for right aligned text
+		11.03.24 - Add MessageBox dialog with an edit control for text input
+				   Add MessageBox dialog with a combo box control for item selection
+				   Update Taskdialog callback to create the controls and return input
+		19.03.24 - Add icon/button option for variable arguments
+		29.03.24 - Correct ReadPathFromRegistry definition for default size argument
+				   Correct EndTiming definition for microseconds argument
+
 
 */
 
@@ -248,7 +256,7 @@ namespace spoututils {
 	// Return whether the system is a laptop.
 	//
 	// Queries power status. Most likely a laptop if battery power is available. 
-	bool IsLaptop ()
+	bool IsLaptop()
 	{
 		SYSTEM_POWER_STATUS status;
 		if (GetSystemPowerStatus(&status)) {
@@ -379,7 +387,7 @@ namespace spoututils {
 	void OpenSpoutConsole()
 	{
 		if (!GetConsoleWindow()) {
-	
+
 			//
 			// Application console window mot found
 			//
@@ -413,7 +421,7 @@ namespace spoututils {
 			}
 		}
 	}
-	
+
 	// ---------------------------------------------------------
 	// Function: CloseSpoutConsole
 	// Close console window.
@@ -421,8 +429,8 @@ namespace spoututils {
 	// The optional warning displays a MessageBox if user notification is required.
 	void CloseSpoutConsole(bool bWarning)
 	{
-		if(bWarning) {
-			if(MessageBoxA(NULL, "Console close - are you sure?", "CloseSpoutConsole", MB_YESNO) == IDNO)
+		if (bWarning) {
+			if (MessageBoxA(NULL, "Console close - are you sure?", "CloseSpoutConsole", MB_YESNO) == IDNO)
 				return;
 		}
 		if (pCout) {
@@ -433,7 +441,7 @@ namespace spoututils {
 		}
 	}
 
-			
+
 	//
 	// Group: Logs
 	//
@@ -710,7 +718,7 @@ namespace spoututils {
 		ShExecInfo.nShow = SW_SHOW;
 		ShellExecuteExA(&ShExecInfo);
 	}
-	
+
 	// ---------------------------------------------------------
 	// Function: SetSpoutLogLevel
 	// Set the current log level
@@ -831,7 +839,7 @@ namespace spoututils {
 				// Yellow text for warnings and errors
 				HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 				if (level == SPOUT_LOG_WARNING || level == SPOUT_LOG_ERROR)
-				    SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+					SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 				if (level != SPOUT_LOG_NONE) {
 					// Show log level
 					fprintf(out, "[%s] ", _levelName(level).c_str());
@@ -887,13 +895,13 @@ namespace spoututils {
 		//
 		DWORD nBytesWritten = 0;
 		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), logChars, (DWORD)strlen(logChars), &nBytesWritten, NULL);
-		
+
 		logChars[0]=0;
 		return (int)nBytesWritten;
 	}
 
 
-	
+
 	//
 	// Group: MessageBox
 	//
@@ -902,7 +910,7 @@ namespace spoututils {
 	// Function: SpoutMessageBox
 	// MessageBox dialog with optional timeout.
 	// The dialog closes itself if a timeout is specified.
-	int SpoutMessageBox(const char * message, DWORD dwMilliseconds)
+	int SpoutMessageBox(const char* message, DWORD dwMilliseconds)
 	{
 		if (!message)
 			return 0;
@@ -926,14 +934,38 @@ namespace spoututils {
 		strmessage = logChars;
 		va_end(args);
 
-		if(caption && *caption)
+		if (caption && *caption)
 			strcaption = caption;
 		else
 			strcaption = "Message";
 
 		return MessageTaskDialog(NULL, strmessage.c_str(), strcaption.c_str(), MB_OK, 0);
-
+	
 	}
+
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBox
+	// MessageBox with variable arguments and icon, buttons
+	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
+	{
+		std::string strmessage;
+		std::string strcaption;
+
+		// Construct the message
+		va_list args;
+		va_start(args, format);
+		vsprintf_s(logChars, 1024, format, args);
+		strmessage = logChars;
+		va_end(args);
+
+		if (caption && *caption)
+			strcaption = caption;
+		else
+			strcaption = "Message";
+
+		return MessageTaskDialog(NULL, strmessage.c_str(), strcaption.c_str(), uType, 0);
+	}
+
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBox
@@ -946,7 +978,6 @@ namespace spoututils {
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBox
-	//
 	// MessageBox dialog with standard arguments
 	// including taskdialog main instruction large text
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
@@ -961,8 +992,61 @@ namespace spoututils {
 		return MessageTaskDialog(hwnd, message, caption, uType, dwMilliseconds);
 
 	}
+	
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBox
+	// MessageBox dialog with edit control for text input
+	// Can be used in place of a specific application resource dialog
+	//   o For message content, the control is in the footer area
+	//   o If no message, the control is in the main content area
+	//   o All SpoutMessageBox functions such as user icon and buttons are available
+	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
+	{
+		bEdit = true;
 
+		// A timeout value of 1000000 signals the Taskdialog callback of message content.
+		// The dialog times out after 1000 seconds but is effectively modal.
+		DWORD dwTimeout = 0;
+		std::string content = "";
+		if (message && *message) {
+			dwTimeout = 1000000;
+			content = message;
+		}
+		int iret = MessageTaskDialog(hwnd, content.c_str(), caption, uType, dwTimeout);
+		if (iret == IDOK) text = stredit;
+		stredit.clear();
+		bEdit = false;
+		return iret;
+	}
 
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBox
+	// MessageBox dialog with a combobox control for item selection
+	// Can be used in place of a specific application resource dialog
+	// Properties the same as the edit control
+	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& index)
+	{
+		bCombo = true;
+
+		// Timeout value to signal the Taskdialog callback of message content.
+		DWORD dwTimeout = 0;
+		std::string content = "";
+		if (message && *message) {
+			dwTimeout = 1000000;
+			content = message;
+		}
+
+		// Set taskdialog combo box items vector and selected index
+		comboitems = items;
+		comboindex = index;
+		int iret = MessageTaskDialog(hwnd, content.c_str(), caption, uType, dwTimeout);
+		if (iret == IDOK) index = comboindex;
+		comboitems.clear();
+		comboindex = 0;
+		bCombo = false;
+		return iret;
+
+	}
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxIcon
@@ -1396,12 +1480,16 @@ namespace spoututils {
 		start = std::chrono::steady_clock::now();
 	}
 
-	// Stop timing and return milliseconds elapsed.
+	// Stop timing and return milliseconds or microseconds elapsed.
+	// (microseconds default).
 	// Code console output can be enabled for quick timing tests.
-	double EndTiming() {
+	double EndTiming(bool microseconds) {
 		end = std::chrono::steady_clock::now();
 		double elapsed = 0;
-		elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()/1000.0);
+		if(microseconds)
+			elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
+		else
+			elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()/1000.0);
 		return elapsed;
 	}
 
@@ -1682,6 +1770,7 @@ namespace spoututils {
 			// HWND passed in
 			// Can also be specified by SpoutMessageBoxWindow
 			if (!hwndMain) hwndMain = hWnd;
+
 			// hinstance of the window
 			HINSTANCE hInst = nullptr;
 			if (hWnd)
@@ -1784,6 +1873,7 @@ namespace spoututils {
 						buttons[i].pszButtonText = TDbuttonTitle[i].c_str();
 					}
 					// Final button is OK
+					// CANCEL/YES/NO etc have to be added as buttons
 					buttons[i].nButtonID = IDOK;
 					buttons[i].pszButtonText = L"OK";
 				}
@@ -1890,6 +1980,8 @@ namespace spoututils {
 			// centered relative to the window specified by hwndParent.
 			// If hwndParent is NULL, the dialog is centered on the monitor.
 			config.dwFlags            = TDF_POSITION_RELATIVE_TO_WINDOW | TDF_SIZE_TO_CONTENT | TDF_CALLBACK_TIMER | TDF_ENABLE_HYPERLINKS;
+			if ((dwButtons & MB_RIGHT) == MB_RIGHT)
+				config.dwFlags |= TDF_RTL_LAYOUT;
 			
 			if (hMainIcon)
 				config.dwFlags        |= TDF_USE_HICON_MAIN; // User icon
@@ -1944,10 +2036,122 @@ namespace spoututils {
 		HRESULT TDcallbackProc(HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
 		{
 #ifdef _MSC_VER
-			// Topmost
+			
 			if (uNotification == TDN_CREATED) {
+
+				// hInstance of task dialog
+				HINSTANCE hInstTD = (HINSTANCE)GetWindowLongPtrA(hwnd, GWLP_HINSTANCE);
+
+				// Timeout
+				DWORD* pTimeout = reinterpret_cast<DWORD*>(dwRefData); // = tc.lpCallbackData
+
+				// Remove icons from the caption
+				// An icon appears in the caption when using MB_OKCANCEL
+				// or when an icon is set for the taskdialog content
+				SendMessage(hwnd, WM_SETICON, ICON_BIG, NULL);
+				SendMessage(hwnd, WM_SETICON, ICON_SMALL, NULL);
+
+				// Set topmost
 				if (bTopMost) {
 					SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+				}
+
+				// Edit text control
+				if (bEdit) {
+
+					// Position in the main content by default
+					RECT rect{};
+					GetClientRect(hwnd, &rect);
+
+					// Taskdialog client size is larger with an icon
+					int h = rect.bottom-rect.top;
+					int x = rect.left+70;
+					int y = rect.top + 3;
+					// Allow for increased height with an icon
+					if (h > 90) y += 20;
+					int w = 320;
+					h = 24;
+
+					// Look for a timeout of 1000000 as a signal for message content
+					// and position in the the footer area if so.
+					if (*pTimeout && *pTimeout == 1000000) {
+						x = rect.left+10;
+						y = rect.bottom-38;
+						w = 220;
+					}
+
+					hEdit = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "",
+						WS_CHILD | WS_VISIBLE | WS_HSCROLL | ES_AUTOHSCROLL,
+						x, y, w, h,	hwnd, (HMENU)IDC_TASK_EDIT, hInstTD, NULL);
+
+					// Position on top of content
+					BringWindowToTop(hEdit);
+
+					// Set focus to allow user entry
+					SetFocus(hEdit);
+
+				}
+
+				// Combo box control
+				if (bCombo) {
+
+					// Position in the main content by default
+					RECT rect{};
+					GetClientRect(hwnd, &rect);
+
+					// Taskdialog client size
+					int h = rect.bottom-rect.top;
+					int x = rect.left+70;
+					int y = rect.top;
+					// Allow for increased height with an icon
+					if(h > 90) y += 20;
+					int w = 300; 
+					// Combo box inital height. Changed by content.
+					h = 100;
+
+					// Position in the footer area if there is message content
+					if (*pTimeout && *pTimeout == 1000000) {
+						x = rect.left+10;
+						y = rect.bottom-40;
+						w = 220;
+					}
+
+					hCombo = CreateWindowExA(WS_EX_CLIENTEDGE, "COMBOBOX", "",
+						WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_AUTOVSCROLL | CBS_DROPDOWN,
+						x, y, w, h, hwnd, (HMENU)IDC_TASK_COMBO, hInstTD, NULL);
+
+					// Add combo box items
+					if (comboitems.size() > 0) {
+						for (int i = 0; i<(int)comboitems.size(); i++) {
+							SendMessageA(hCombo, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)comboitems[i].c_str());
+						}
+						// Display an initial item in the selection field
+						SendMessageA(hCombo, CB_SETCURSEL, (WPARAM)comboindex, (LPARAM)0);
+					}
+
+					// Remove icons from the caption
+					SendMessage(hwnd, WM_SETICON, ICON_BIG, NULL);
+					SendMessage(hwnd, WM_SETICON, ICON_SMALL, NULL);
+
+					// Position on top of content
+					BringWindowToTop(hCombo);
+
+				}
+
+			}
+
+			if (uNotification == TDN_DESTROYED) {
+				if (bEdit) {
+					// Get text from edit control
+					char text[MAX_PATH]{};
+					GetWindowTextA(hEdit, text, MAX_PATH);
+					// Move to global string for return
+					stredit = text;
+				}
+
+				if (bCombo) {
+					// Get currently selected index
+					comboindex = (int)SendMessageA(hCombo, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
 				}
 			}
 

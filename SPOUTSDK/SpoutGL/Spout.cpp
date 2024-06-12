@@ -269,6 +269,19 @@
 //					  by OpenGL/DirectX interop
 //		07.12.23	- use _access in place of shlwapi Path functions
 //	Version 2.007.013
+//		14.01.24	- CheckSender - return false if OpenSpout fails
+//		13.02.24	- SelectSenderPanel
+//					  m_ShExecInfo.lpParameters : receiver graphics adapter index by default
+//		19.04.24	- SelectSenderPanel - allow for unicode build for PROCESSENTRY32
+//		24.04.24	- ReceiveImage - allow for multiple OpenGL formats
+//		06.05.24	- SelectSenderPanel - removed unused "value" variable
+//		21.05.24	- SetSenderName - move sender name increment to SenderNames class
+//		22.05.24	- Add GetReceiverName
+//					  CheckSpoutPanel - do not to register twice if already registered
+//		25.05.24	- SetSenderName - remove name increment
+//		08.06.24	- Add GetSenderList
+//		09.06.24	- SelectSender - use SpoutMessageBox if SelectSenderPanel fails
+//					  Add hwnd argument to centre MessageBox dialog if used.
 //
 // ====================================================================================
 /*
@@ -394,34 +407,25 @@ Spout::~Spout()
 // If no name is specified, the executable name is used. 
 // Thereafter, all sending functions create and update a sender
 // based on the size passed and the name that has been set.
+// If a sender with this name is already registered,
+// create an incremented name : sender_1, sender_2 etc.
 void Spout::SetSenderName(const char* sendername)
 {
-	char name[256]={};
 	if (!sendername) {
 		// Get executable name as default
-		strcpy_s(name, 256, GetExeName().c_str());
+		strcpy_s(m_SenderName, 256, GetExeName().c_str());
 	}
 	else {
-		strcpy_s(name, 256, sendername);
+		strcpy_s(m_SenderName, 256, sendername);
 	}
 
-	// Return if the same name
-	if (strcmp(name, m_SenderName) == 0)
-		return;
-
-	// New name
-	strcpy_s(m_SenderName, 256, name);
-
-	// Remove the sender from the names list if it's
-	// shared memory information does not exist.
-	// This can happen if the sender has crashed or if a
-	// console window was closed instead of the main program.
-	sendernames.CleanSenders();
-
-	// If a sender with this name is already registered
-	// create an incremented name by appending '-1' '_2' etc.
-	int i = 1;
+	// Create an incremented name if a sender with this name is already registered,
+	// Although this function precedes SpoutSenderNames::RegisterSenderName,
+	// a further increment is not applied when a sender with the new name is created.
+	char name[256]{};
+	strcpy_s(name, 256, m_SenderName);
 	if (sendernames.FindSenderName(name)) {
+		int i = 1;
 		do {
 			sprintf_s(name, 256, "%s_%d", m_SenderName, i);
 			i++;
@@ -429,6 +433,12 @@ void Spout::SetSenderName(const char* sendername)
 		// Re-set the global sender name
 		strcpy_s(m_SenderName, 256, name);
 	}
+
+	// Remove the sender from the names list if it's
+	// shared memory information does not exist.
+	// This can happen if the sender has crashed or if a
+	// console window was closed instead of the main program.
+	sendernames.CleanSenders();
 
 }
 
@@ -750,6 +760,18 @@ void Spout::SetReceiverName(const char * SenderName)
 }
 
 //---------------------------------------------------------
+// Function: GetReceiverName
+// Get sender for connection
+bool Spout::GetReceiverName(char* sendername, int maxchars)
+{
+	if (m_SenderNameSetup[0]) {
+		strcpy_s(sendername, maxchars, m_SenderNameSetup);
+		return true;
+	}
+	return false;
+}
+
+//---------------------------------------------------------
 // Function: ReleaseReceiver
 // Close receiver and release resources ready to connect to another sender
 void Spout::ReleaseReceiver()
@@ -1056,11 +1078,52 @@ bool Spout::GetSenderGLDX()
 }
 
 //---------------------------------------------------------
+// Function: GetSenderList
+// Return a list of current senders
+std::vector<std::string> Spout::GetSenderList()
+{
+	std::vector<std::string> list;
+	int nSenders = GetSenderCount();
+	if (nSenders > 0) {
+		char sendername[256]{};
+		for (int i=0; i<nSenders; i++) {
+			if (GetSender(i, sendername))
+				list.push_back(sendername);
+		}
+	}
+	return list;
+}
+
+
+
+//---------------------------------------------------------
 // Function: SelectSender
 // Open sender selection dialog
-bool Spout::SelectSender()
+bool Spout::SelectSender(HWND hwnd)
 {
-	return SelectSenderPanel();
+	// Use SpoutPanel if available
+	if (!SelectSenderPanel()) {
+		// If not, create a local sender list
+		std::vector<std::string> senderlist = GetSenderList();
+		if (!senderlist.empty()) {
+			// Open a messagebox for sender selection
+			// centred on the window if handle passed in.
+			// No senders can be selected if the list is empty.
+			// This makes it clear to the user that no senders are running.
+			// Note that the MessageBox is modal and will interrupt the host program.
+			int selected = 0;
+			SpoutMessageBox(hwnd, NULL, "Select sender", MB_OK, senderlist, selected);
+			// Release the receiver and set the selected sender
+			// as active for the next receive
+			ReleaseReceiver();
+			SetActiveSender(senderlist[selected].c_str());
+			return true;
+		}
+		return false;
+	}
+	return true;
+
+
 }
 
 //
@@ -1764,6 +1827,7 @@ bool Spout::ReceiveTexture(char* name, unsigned int &width, unsigned int &height
 //---------------------------------------------------------
 // Function: ReceiveImage
 // Receive image pixels
+// Format can be GL_RGBA, GL_BGRA, GL_RGB or GL_BGR for the receving buffer
 bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
 	// The receiving pixel buffer is created after the first update
@@ -1780,11 +1844,6 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 		return false;
 	}
 
-	// Only RGBA, BGRA, RGB, BGR supported
-	if (!(glFormat == GL_RGBA || glFormat == GL_BGRA_EXT || glFormat == GL_RGB || glFormat == GL_BGR_EXT)) {
-		return false;
-	}
-
 	// Check for BGRA support
 	GLenum glformat = glFormat;
 	if (!m_bBGRAavailable) {
@@ -1798,7 +1857,9 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 	if (ReceiveSenderData()) {
 
 		// The sender name, width, height, format, shared texture handle and pointer have been retrieved.
+		// m_Width, m_Height, m_dwFormat are updated
 		if (m_bUpdated) {
+
 			// If the sender is new or changed, return to update the receiving texture.
 			// The application detects the change with IsUpdated().
 			if (m_bTextureShare) {
@@ -1863,6 +1924,7 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 
 } // end ReceiveImage
 
+
 //---------------------------------------------------------
 // Function: SelectSenderPanel
 // Open dialog for the user to select a sender
@@ -1870,6 +1932,7 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 //  Optional message argument
 //
 // Replaced by SelectSender for 2.007
+//
 bool Spout::SelectSenderPanel(const char* message)
 {
 	HANDLE hMutex1 = NULL;
@@ -1880,10 +1943,13 @@ bool Spout::SelectSenderPanel(const char* message)
 	char fname[MAX_PATH]={};
 	char UserMessage[512]={};
 
-	if (message && *message)
+	if (message && *message) {
 		strcpy_s(UserMessage, 512, message); // could be an arg or a user message
-	else
-		UserMessage[0] = 0; // make sure SpoutPanel does not see an un-initialized string
+	}
+	else {
+		// Send the receiver graphics adapter index by default
+		strcpy_s(UserMessage, MAX_PATH, std::to_string(GetAdapter()).c_str());
+	}
 
 	// The selected sender is then the "Active" sender and this receiver switches to it.
 	// If Spout is not installed, SpoutPanel.exe has to be in the same folder
@@ -1909,6 +1975,8 @@ bool Spout::SelectSenderPanel(const char* message)
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
 				if (_access(path, 0) == -1) {
+					// LJ DEBUG
+					/*
 					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
 					// Show a SpoutMessageBox and direct to the Spout releases page
 					sprintf_s(UserMessage, 512,
@@ -1916,6 +1984,7 @@ bool Spout::SelectSenderPanel(const char* message)
 						"Download the <a href=\"https://github.com/leadedge/Spout2/releases\">latest Spout release</a> and run either\n"\
 						"'SpoutSettings' or 'SpoutPanel' to establish the path.\n");
 					SpoutMessageBox(NULL, UserMessage, "Warning", MB_ICONWARNING | MB_OK);
+					*/
 					return false;
 				}
 			}
@@ -1967,7 +2036,7 @@ bool Spout::SelectSenderPanel(const char* message)
 			// and SpoutPanel is installed, it has crashed.
 			// Terminate the process and the mutex or the mutex will remain
 			// and SpoutPanel will not be started again.
-			PROCESSENTRY32 pEntry;
+			PROCESSENTRY32 pEntry{};
 			pEntry.dwSize = sizeof(pEntry);
 			bool done = false;
 			// Take a snapshot of all processes and threads in the system
@@ -1983,18 +2052,21 @@ bool Spout::SelectSenderPanel(const char* message)
 					CloseHandle(hProcessSnap);
 				}
 				else {
-					// Look through all processes
+					// Look through all processes to find SpoutPanel
 					while (hRes && !done) {
-						const int value = _tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
-						if (value == 0) {
-							HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, pEntry.th32ProcessID);
-							if (hProcess != NULL) {
-								// Terminate SpoutPanel and it's mutex
-								TerminateProcess(hProcess, 9);
-								CloseHandle(hProcess);
-								done = true;
-							}
+#ifdef UNICODE
+						_wcsicmp(pEntry.szExeFile, L"SpoutPanel.exe");
+#else
+						_tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
+#endif
+						HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, pEntry.th32ProcessID);
+						if (hProcess != NULL) {
+							// Terminate SpoutPanel and it's mutex if it opened
+							TerminateProcess(hProcess, 9);
+							CloseHandle(hProcess);
+							done = true;
 						}
+
 						if (!done)
 							hRes = Process32Next(hProcessSnap, &pEntry); // Get the next process
 						else
@@ -2171,75 +2243,78 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 		return false;
 	}
 
-	// The sender needs a name
-	// Default is the executable name
+	// The sender needs a name. Default is the executable name
+	// If a sender with this name is already registered,
+	// SetSenderName increments the name : sender_1, sender_2 etc.
 	if (!m_SenderName[0]) {
 		SetSenderName();
 	}
-	
+
 	// If not initialized, create a new sender
 	if (!m_bInitialized) {
 
 		// Make sure that Spout has been initialized and an OpenGL context is available
-		if (OpenSpout()) {
+		if (!OpenSpout())
+			return false;
 
-			if (m_bTextureShare) {
-				// Create interop for GL/DX transfer
-				// Flag "false" for sender so that a new shared texture and handle are created.
-				// For a receiver the shared texture is created from the sender share handle.
-				if (!CreateInterop(width, height, m_dwFormat, false)) {
-					return false;
-				}
-			}
-			else {
-				// For CPU share with DirectX textures.
-				// A sender creates a new shared texture within this class with a new share handle
-				m_dxShareHandle = nullptr;
-				if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
-					width, height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
-					return false;
-				}
-			}
-
-			// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
-			if (sendernames.CreateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
-
-				m_Width = width;
-				m_Height = height;
-
-				//
-				// SetSenderID writes to the sender shared texture memory
-				// to set sender CPU sharing mode and hardware GL/DX compatibility
-				//
-				// Using CPU sharing methods (m_bCPUshare) - set top bit
-				// 1000 0000 0000 0000 0000 0000 0000 0000
-				//
-				// GL/DX compatible hardware (m_bUseGLDX) - set next to top bit
-				// 0100 0000 0000 0000 0000 0000 0000 0000
-				//
-				// Both bits can be set if GL/DX compatible but the user has selected CPU share mode
-				//
-				SetSenderID(m_SenderName, m_bCPUshare, m_bUseGLDX);
-
-				m_Width = width;
-				m_Height = height;
-
-				// Create a sender mutex for access to the shared texture
-				frame.CreateAccessMutex(m_SenderName);
-
-				// Enable frame counting so the receiver gets frame number and fps
-				frame.EnableFrameCount(m_SenderName);
-				
-				m_bInitialized = true;
-			}
-			else {
-				ReleaseSender();
-				m_SenderName[0] = 0;
-				m_Width = 0;
-				m_Height = 0;
-				m_dwFormat = m_DX11format;
+		if (m_bTextureShare) {
+			// Create interop for GL/DX transfer
+			// Flag "false" for sender so that a new shared texture and handle are created.
+			// For a receiver the shared texture is created from the sender share handle.
+			if (!CreateInterop(width, height, m_dwFormat, false)) {
 				return false;
 			}
+		}
+		else {
+			// For CPU share with DirectX textures.
+			// A sender creates a new shared texture within this class with a new share handle
+			m_dxShareHandle = nullptr;
+			if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
+				width, height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
+				return false;
+			}
+		}
+
+		// Create a sender using the DX11 shared texture handle (m_dxShareHandle)
+		// If the sender already exists, the name is incremented
+		// name, name_1, name_2 etc
+		if (sendernames.CreateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
+
+			m_Width = width;
+			m_Height = height;
+
+			//
+			// SetSenderID writes to the sender shared texture memory
+			// to set sender CPU sharing mode and hardware GL/DX compatibility
+			//
+			// Using CPU sharing methods (m_bCPUshare) - set top bit
+			// 1000 0000 0000 0000 0000 0000 0000 0000
+			//
+			// GL/DX compatible hardware (m_bUseGLDX) - set next to top bit
+			// 0100 0000 0000 0000 0000 0000 0000 0000
+			//
+			// Both bits can be set if GL/DX compatible but the user has selected CPU share mode
+			//
+			SetSenderID(m_SenderName, m_bCPUshare, m_bUseGLDX);
+
+			m_Width = width;
+			m_Height = height;
+
+			// Create a sender mutex for access to the shared texture
+			frame.CreateAccessMutex(m_SenderName);
+
+			// Enable frame counting so the receiver gets frame number and fps
+			frame.EnableFrameCount(m_SenderName);
+
+			m_bInitialized = true;
+		}
+		else {
+			ReleaseSender();
+			m_SenderName[0] = 0;
+			m_Width = 0;
+			m_Height = 0;
+			m_dwFormat = m_DX11format;
+			return false;
 		}
 	}
 	// The sender is initialized but has the sending texture changed size ?
@@ -2341,12 +2416,16 @@ bool Spout::ReceiveSenderData()
 		}
 	}
 
+	// LJ DEBUG
+	// TODO - check setup name
 	// If SpoutPanel has been opened, the active sender name could be different
-	if (CheckSpoutPanel(sendername, 256)) {
+	// Retrieve the name or take no action
+	CheckSpoutPanel(sendername, 256);
+	// if (CheckSpoutPanel(sendername, 256)) {
 		// Retrieved the selected name
 		// Disable the setup name
-		m_SenderNameSetup[0] = 0;
-	}
+		// m_SenderNameSetup[0] = 0;
+	// }
 
 	// Now we have either an existing sender name or the active sender name
 	// Save current sender name and dimensions to test for change
@@ -2410,6 +2489,7 @@ bool Spout::ReceiveSenderData()
 			dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
 		}
 
+
 		// The shared texture handle will be different
 		//   o for texture size or format change
 		//   o for a new sender
@@ -2438,8 +2518,8 @@ bool Spout::ReceiveSenderData()
 
 					// For incorrect sender information, use dimensions and format
 					// of the D3D11 texture generated by OpenDX11shareHandle
-					if (width != (DWORD)desc.Width)	    width = (DWORD)desc.Width;
-					if (height != (DWORD)desc.Height)   height = (DWORD)desc.Height;
+					if (width    != (DWORD)desc.Width)	width = (DWORD)desc.Width;
+					if (height   != (DWORD)desc.Height) height = (DWORD)desc.Height;
 					if (dwFormat != (DWORD)desc.Format) dwFormat = (DWORD)desc.Format;
 
 					// Check for texture format supported by OpenGL/DirectX interop
@@ -2529,6 +2609,7 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 			if (hMutex) m_bSpoutPanelActive = true;
 		}
 		else if (!hMutex) { // It has now closed
+
 			m_bSpoutPanelOpened = false; // Don't do this part again
 			m_bSpoutPanelActive = false;
 			// call GetExitCodeProcess() with the hProcess member of
@@ -2547,13 +2628,17 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 							// Register the sender if it exists
 							if (newname[0] != 0) {
 								if (sendernames.getSharedInfo(newname, &TextureInfo)) {
-									// Register in the list of senders and make it the active sender
-									sendernames.RegisterSenderName(newname);
-									sendernames.SetActiveSender(newname);
+									// If not already registered
+									if (!sendernames.FindSenderName(newname)) {
+										// Register in the list of senders and make it the active sender
+										sendernames.RegisterSenderName(newname);
+										sendernames.SetActiveSender(newname);
+									}
 								}
 							}
 						}
 					}
+
 					// Now do we have a valid sender name ?
 					if (newname[0] != 0) {
 						// Pass back the new name

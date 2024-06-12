@@ -10,26 +10,46 @@ Spout.cpp
 - 18.10.23 - ReceiveSenderData - check for texture format supported
   by OpenGL/DirectX interop
 - 07.12.23 - use _access in place of shlwapi Path functions
- 
+Version 2.007.013
+- 14.01.24	- CheckSender - return false if OpenSpout fails
+- 13.02.24	- SelectSenderPanel
+ 			  m_ShExecInfo.lpParameters : receiver graphics adapter index by default
+- 19.04.24	- SelectSenderPanel - allow for unicode build for PROCESSENTRY32
+- 24.04.24	- ReceiveImage - allow for multiple OpenGL formats
+- 06.05.24	- SelectSenderPanel - removed unused "value" variable
+- 21.05.24	- SetSenderName - move sender name increment to SenderNames class
+- 22.05.24	- Add GetReceiverName
+			  CheckSpoutPanel - do not to register twice if already registered
+- 25.05.24	- SetSenderName - remove name increment
+- 08.06.24	- Add GetSenderList
+- 09.06.24	- SelectSender - use SpoutMessageBox if SelectSenderPanel fails
+			  Add hwnd argument to centre MessageBox dialog if used. 
+
 SpoutCopy.cpp
 - 07.10.23 - Conditional compile options for _M_ARM64 in CheckSSE and header
--20.10.23 - FlipBuffer / CopyPixels - default pitch width*4
+- 20.10.23 - FlipBuffer / CopyPixels - default pitch width*4
+Version 2.007.013
 
 SpoutDirectX.cpp
 - 07.08.23 - Comment out code for debug layers
 - 19.10.23 - GetNumAdapters - remove unused adapter description and output list
+Version 2.007.013
+- 18.02.24	- GetNumAdapters
+		    Change adapter pointer to IDXGIAdapter1 and use EnumAdapters1
+		    to identify and skip the Basic Render Driver adapter
 
 SpoutFrameCount.cpp
 - 03.08.23	- EnableFrameCount, CreateAccessMutex - revise logs
 - 06.08.23	- Add m_SystemFps to avoid repeated calls to GetRefreshRate()
 - 07.08.23	- Add EnableFrameSync/IsFrameSyncEnabled and global option flag
-
 EnableFrameCount
 - 08.08.23	- correct semaphore name
 EnableFrameSync - close sync event on disable
 - 09.08.23	- WaitFrameSync remove warning log if event not found
  Change timeout log from error to warning
 - 13.08.23	- EnableFrameCount - correct semaphore name
+Version 2.007.013
+- 31.12.23	- Add comments to clarify the purpose of "EnableFrameSync"
 
 SpoutGL.cpp
 - 01.11.23 - CreateInterop - correct uint printf formatting for error message
@@ -40,6 +60,17 @@ SpoutGL.cpp
  Use default DXGI_FORMAT_B8G8R8A8_UNORM
 - 14.12.23 - WriteGLDXpixels - return WriteGLDXtexture instead of true
  CreateOpenGL return false if extensions fail to load
+Version 2.007.013
+- 26.02.24	- CreateInterop - check for dimensions out of bounds (> 16384)
+- 06.03.24	- GLerror - add error number
+- 03.04.24	- Add ReadTexturePixels for multiple format and RGB/RGBA textures
+- 08.04.24	- ReadTexturePixels - check OpenGL texture size and return if different
+			  PrintFBOstatus - no warning if complete
+			  InitTexture - corrected internal format
+			  CreateOpenGL - report version created
+- 25.04.24	- Correct GLDXformat for default GL_RGBA
+- 26.04.24	- GLformatName - revise names
+- 06.05.24	- Add more logs for wglDX function failure
 
 SpoutGLextensions.cpp
 - 24.07.23	- Add glMemoryObjectParameterivEXT
@@ -49,14 +80,26 @@ SpoutGLextensions.cpp
 - 21.11.23	- Add defines for : GL_MAX_COMPUTE_WORK_GROUP_COUNT, GL_MAX_COMPUTE_WORK_GROUP_SIZE
   GL_ATTACHED_SHADERS, GL_INFO_LOG_LENGTH
   Add glGetProgramInfoLog, glGetShaderInfoLog, glGetIntegeri_v
+Version 2.007.013
+- 29.03.24	- Correct glUnmapBufferPROC as Glboolean
+			  Correct glGenBuffersPROC - GLuint* buffers
+- 19.04.24	- Add #ifndef for pre-defined constants WGL_CONTEXT_FLAGS
+			  and GL consts that are not present in GL.h
 
 SpoutReceiver.cpp
 - 04.08.23 - Add format functions
 - 07.08.23 - Add frame sync option functions 
+Version 2.007.013
+- 22.05.24	- Add GetReceiverName
+- 08.06.24	- SelectSender - bool instead of void
+			- Add GetSenderList
+- 09.06.24	- SelectSender > spout SelectSender instead of SelectSenderPanel
+			  Add hwnd argument to centre MessageBox dialog if used.
 
 SpoutSender.cpp
 - 04.08.23 - Add format functions
 - 07.08.23 - Add frame sync option functions
+Version 2.007.013
 
 SpoutSenderNames.cpp
 - 07.10.23 - Conditional compile options for _M_ARM64\
@@ -65,9 +108,14 @@ SpoutSenderNames.cpp
 - 07.12.23 - SetSenderInfo - use spoututils GetEexePath()\
  Remove unused d3d9.h and d3d11.h from header
 - 16.12.23 - SetSenderInfo - correct buffer size for GetModuleFileNameA
-
+Version 2.007.013
+- 21.05.24 - RegisterSenderName - increment existing sender name
+		   CreateSender/RegisterSenderName remove const for name
+- 22.05.24 - RegisterSenderName add newname condition for name increment
+	
 SpoutSharedMemory.cpp
 - 07.12.23 - Remove unused <d3d9.h> from header
+Version 2.007.013
 
 SpoutUtils.cpp
 - 01.08.23 - Add MessageTaskDialog instead of dependence on SpoutPanel
@@ -120,7 +168,15 @@ SpoutUtils.cpp
   Revise SpoutMessageBoxModeless to test version of SpoutPanel > 2.072
 - 27.12.23 - Send OK button message to close taskdialog instead of DestroyWindow for URL click
   Test for custom icon and multiple buttons in MessageTaskDialog
-  
+Version 2.007.013
+- 28.12.23 - SpoutMessageBox - add MB_RIGHT for right aligned text
+- 11.03.24 - Add MessageBox dialog with an edit control for text input
+		    Add MessageBox dialog with a combo box control for item selection
+			Update Taskdialog callback to create the controls and return input
+- 19.03.24 - Add icon/button option for variable arguments
+- 29.03.24 - Correct ReadPathFromRegistry definition for default size argument
+		    Correct EndTiming definition for microseconds argument
+				   
 ===========================================\
 05.09.23\
 Update Master from Beta branch.

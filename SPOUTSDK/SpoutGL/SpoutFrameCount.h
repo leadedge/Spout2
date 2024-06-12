@@ -151,6 +151,7 @@ protected:
 	char m_SenderName[256]; // sender currently connected to a receiver
 	long m_FrameCount; // sender frame count
 	long m_LastFrameCount; // receiver frame comparator
+	double m_FrameTime;
 	double m_FrameTimeTotal;
 	double m_FrameTimeNumber;
 	double m_lastFrame;

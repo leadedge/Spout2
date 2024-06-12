@@ -158,6 +158,9 @@
 //		07.08.23	- Comment out code for debug layers
 //		19.10.23	- GetNumAdapters - remove unused adapter description and output list
 //	Version 2.007.013
+//		18.02.24	- GetNumAdapters
+//					    Change adapter pointer to IDXGIAdapter1 and use EnumAdapters1
+//					    to identify and skip the Basic Render Driver adapter
 //
 // ====================================================================================
 /*
@@ -558,7 +561,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	}
 
 	SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
-	SpoutLogNotice("    pDevice = 0x%.7X, width = %d, height = %d, format = 0x%X (%d)", PtrToUint(pd3dDevice), width, height, format, format);
+	SpoutLogNotice("    pDevice = 0x%.7X, width = %u, height = %u, format = 0x%X (%d)", PtrToUint(pd3dDevice), width, height, format, format);
 
 	// Use the format passed in
 	// If that is zero or DX9 format, use the default format
@@ -1068,8 +1071,10 @@ void spoutDirectX::Wait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediat
 int spoutDirectX::GetNumAdapters()
 {
 	IDXGIFactory1* _dxgi_factory1 = nullptr;
-	IDXGIAdapter* adapter1_ptr = nullptr;
+	IDXGIAdapter1* adapter1_ptr = nullptr;
+	DXGI_ADAPTER_DESC1 desc={0};
 	UINT32 i = 0;
+	UINT32 nAdapters = 0;
 
 	// Enum Adapters first : multiple video cards
 	if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&_dxgi_factory1))) {
@@ -1078,15 +1083,35 @@ int spoutDirectX::GetNumAdapters()
 	}
 	if (!_dxgi_factory1) return 0;
 
-	for (i = 0; _dxgi_factory1->EnumAdapters( i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
-		if (!adapter1_ptr) break;
-
+	for (i = 0; _dxgi_factory1->EnumAdapters1(i, &adapter1_ptr ) != DXGI_ERROR_NOT_FOUND; i++ )	{
+		if (!adapter1_ptr) {
+			// No more adapters
+			break;
+		}
+		adapter1_ptr->GetDesc1(&desc);
 		adapter1_ptr->Release();
-	}
 
+		//	0x10DE	NVIDIA
+		//	0x163C	intel
+		//	0x8086  Intel
+		//	0x8087  Intel
+		//  0x1414  Microsoft
+		// printf("Adapter %d\n", i);
+		// printf("  Description [%S]\n", desc.Description);
+		// printf("  Vendor    = %d [0x%.7X]\n", desc.VendorId, desc.VendorId);
+		// printf("  Revision  = %d [0x%.7X]\n", desc.Revision, desc.Revision);
+		// printf("  Device ID = %d [0x%.7X]\n", desc.DeviceId, desc.DeviceId);
+		// printf("  SubSys ID = %d [0x%.7X]\n", desc.SubSysId, desc.SubSysId);
+		
+		// Don't count the Basic Render Driver adapter
+		if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
+			continue;
+		}
+		nAdapters++;
+	}
 	_dxgi_factory1->Release();
 
-	return i;
+	return nAdapters;
 
 }
 
@@ -1617,8 +1642,10 @@ bool spoutDirectX::SetPerformancePreference(int preference, const char* path)
 //
 bool spoutDirectX::GetPreferredAdapterName(int preference, char* adaptername, int maxchars)
 {
-	if (!adaptername)
+	if (!adaptername) {
+		SpoutLogWarning("spoutDirectX::GetPreferredAdapterName : NULL adapter name");
 		return false;
+	}
 
 	// preference : -1, 0, 1, 2
 	// Unregistered (-1) use GetAdapterName 
@@ -1636,7 +1663,6 @@ bool spoutDirectX::GetPreferredAdapterName(int preference, char* adaptername, in
 	else
 		SpoutLogNotice("spoutDirectX::GetPreferredAdapterName - unspecified");
 
-
 	IDXGIFactory2* pFactory = nullptr;
 	if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory2), (void**)&pFactory))) {
 		SpoutLogError("spoutDirectX::GetPreferredAdapterName - Could not create CreateDXGIFactory1");
@@ -1648,7 +1674,10 @@ bool spoutDirectX::GetPreferredAdapterName(int preference, char* adaptername, in
 	IDXGIFactory6* pFactory6 = nullptr;
 	IDXGIAdapter1* pAdapter1 = nullptr;
 	if (SUCCEEDED(pFactory->QueryInterface(IID_PPV_ARGS(&pFactory6)))) {
-		if (!pFactory6) return false;
+		if (!pFactory6) {
+			SpoutLogError("spoutDirectX::GetPreferredAdapterName - Could not QueryInterface pFactory6");
+			return false;
+		}
 		size_t charsConverted = 0;
 		const size_t maxBytes = static_cast<size_t>(maxchars);
 
@@ -1656,6 +1685,7 @@ bool spoutDirectX::GetPreferredAdapterName(int preference, char* adaptername, in
 		if (pFactory6->EnumAdapterByGpuPreference(0, static_cast<DXGI_GPU_PREFERENCE>(preference), IID_PPV_ARGS(&pAdapter1)) != DXGI_ERROR_NOT_FOUND) {
 			if (!pAdapter1) {
 				pFactory6->Release();
+				SpoutLogError("spoutDirectX::GetPreferredAdapterName - Could not Enumerate adapters");
 				return false;
 			}
 			DXGI_ADAPTER_DESC1 desc;

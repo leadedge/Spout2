@@ -105,7 +105,7 @@ class SPOUT_DLLEXP spoutSenderNames {
 		//
 
 		// Register a sender name in the list of senders
-		bool RegisterSenderName(const char* sendername);
+		bool RegisterSenderName(char* sendername, bool bNewname = false);
 		// Remove a name from the list
 		bool ReleaseSenderName(const char* sendername);
 		// Find a name in the list
@@ -123,7 +123,6 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool GetSender(int index, char* sendername, int MaxSize = 256);
 		// Information about a sender from an index into the list
 		bool GetSenderNameInfo(int index, char* sendername, int sendernameMaxSize, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle);
-
 
 		//
 		// Maximum number of senders allowed in the list
@@ -171,8 +170,8 @@ class SPOUT_DLLEXP spoutSenderNames {
 		//
 
 		// Create a sender and register the name in the sender list
-		bool CreateSender (const char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
-		// Update ana existing sender
+		bool CreateSender(char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
+		// Update an existing sender
 		bool UpdateSender (const char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat = 0);
 		// Check details of a sender
 		bool CheckSender  (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &hSharehandle, DWORD &dwFormat);

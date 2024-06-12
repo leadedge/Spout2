@@ -104,6 +104,9 @@
 			   Remove unused d3d9.h and d3d11.h from header
 	16.12.23 - SetSenderInfo - correct buffer size for GetModuleFileNameA
 	Version 2.007.013
+	21.05.24 - RegisterSenderName - increment existing sender name
+			   CreateSender/RegisterSenderName remove const for name
+	22.05.24 - RegisterSenderName add newname condition for name increment
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
@@ -158,8 +161,7 @@ spoutSenderNames::spoutSenderNames() {
 
 spoutSenderNames::~spoutSenderNames() {
 
-	for (auto itr = m_senders->begin(); itr != m_senders->end(); itr++)
-	{
+	for (auto itr = m_senders->begin(); itr != m_senders->end(); itr++)	{
 		delete itr->second;
 	}
 	delete m_senders;
@@ -175,7 +177,10 @@ spoutSenderNames::~spoutSenderNames() {
 //---------------------------------------------------------
 // Function: RegisterSenderName
 // Register a new Sender by adding to the list of Sender names
-bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
+// bool bNewname
+//   If the sender already exists, the name is incremented
+//   name, name_1, name_2 etc and the new name returned
+bool spoutSenderNames::RegisterSenderName(char* Sendername, bool bNewname) {
 
 	std::pair<std::set<std::string>::iterator, bool> ret;
 	std::set<std::string> SenderNames; // set of names
@@ -199,9 +204,25 @@ bool spoutSenderNames::RegisterSenderName(const char* Sendername) {
 		return true;
 	}
 
+	// Check for name incremement
+	if (bNewname) {
+		// If a sender with this name is already registered
+		// create an incremented name by appending '-1' '_2' etc.
+		if (FindSenderName(Sendername)) {
+			char name[256]{};
+			int i = 1;
+			do {
+				sprintf_s(name, 256, "%s_%d", Sendername, i);
+				i++;
+			} while (FindSenderName(name));
+			// Re-set the sender name
+			strcpy_s(Sendername, 256, name);
+		}
+	}
+
 	//
 	// Add the Sender name to the set of names
-	//
+	// Does nothing if the name exists
 	ret = SenderNames.insert(Sendername);
 
 	if(!ret.second) {
@@ -801,14 +822,15 @@ bool spoutSenderNames::FindActiveSender(char * sendername, unsigned int& theWidt
 //---------------------------------------------------------
 // Function: CreateSender
 //	Create a sender
-bool spoutSenderNames::CreateSender(const char *sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
+bool spoutSenderNames::CreateSender(char* sendername, unsigned int width, unsigned int height, HANDLE hSharehandle, DWORD dwFormat)
 {
+	// Register the sender name for a new sender
+	// If the sender already exists, the name is incremented
+	// name, name_1, name_2 etc
+	RegisterSenderName(sendername, true);
+
 	SpoutLogNotice("spoutSenderNames::CreateSender");
 	SpoutLogNotice("    [%s] %dx%d, share handle = 0x%.7X, format = %u", sendername, width, height, LOWORD(hSharehandle), dwFormat);
-	
-	// Register the sender name
-	// The function is ignored if the sender already exists
-	RegisterSenderName(sendername);
 
 	// Save the texture info for this sender
 	if (!UpdateSender(sendername, width, height, hSharehandle, dwFormat))

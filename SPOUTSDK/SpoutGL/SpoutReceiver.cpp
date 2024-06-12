@@ -79,6 +79,12 @@
 //		04.08.23	- Add format functions
 //		07.08.23	- Add frame sync option functions
 //	Version 2.007.013
+//		22.05.24	- Add GetReceiverName
+//		08.06.24	- SelectSender - bool instead of void
+//					- Add GetSenderList
+//		09.06.24	- SelectSender > spout SelectSender instead of SelectSenderPanel
+//					  Add hwnd argument to centre MessageBox dialog if used.
+//					
 //
 // ====================================================================================
 //
@@ -147,6 +153,11 @@ void SpoutReceiver::SetReceiverName(const char * SenderName)
 	spout.SetReceiverName(SenderName);
 }
 
+//---------------------------------------------------------
+bool SpoutReceiver::GetReceiverName(char* SenderName, int maxchars)
+{
+	return spout.GetReceiverName(SenderName, maxchars);
+}
 
 //---------------------------------------------------------
 // Release receiver and resources
@@ -248,9 +259,16 @@ bool SpoutReceiver::GetSenderGLDX()
 }
 
 //---------------------------------------------------------
-void SpoutReceiver::SelectSender()
+std::vector<std::string> SpoutReceiver::GetSenderList()
 {
-	spout.SelectSenderPanel();
+	return spout.GetSenderList();
+}
+
+
+//---------------------------------------------------------
+bool SpoutReceiver::SelectSender(HWND hwnd)
+{
+	return spout.SelectSender(hwnd);
 }
 
 //
