@@ -292,6 +292,20 @@ class SPOUT_DLLEXP spoutDX {
 	int  GetMemoryBufferSize(const char *name);
 
 	//
+	// Options used for SpoutCam
+	//
+
+	// Mirror image
+	void SetMirror(bool bMirror = true);
+
+	// RGB <> BGR
+	void SetSwap(bool bSwap = true);
+
+	bool GetMirror();
+
+	bool GetSwap();
+
+	//
 	// Public for external access
 	//
 
@@ -299,15 +313,6 @@ class SPOUT_DLLEXP spoutDX {
 	spoutFrameCount frame;
 	spoutDirectX spoutdx;
 	spoutCopy spoutcopy;
-
-	//
-	// Options used for SpoutCam
-	//
-
-	// Mirror image
-	bool m_bMirror;
-	// RGB <> BGR
-	bool m_bSwapRB;
 
 protected :
 
@@ -334,7 +339,10 @@ protected :
 	bool m_bClassDevice;
 	bool m_bAdapt;
 	bool m_bMemoryShare; // Using 2.006 memoryshare methods
+	bool m_bMirror; // Mirror image
+	bool m_bSwapRB; // RGB <> BGR
 	SHELLEXECUTEINFOA m_ShExecInfo; // For ShellExecute
+
 
 	// For WriteMemoryBuffer/ReadMemoryBuffer
 	SpoutSharedMemory memorybuffer;
