@@ -82,6 +82,9 @@
 //		22.05.24	- Add GetReceiverName
 //		08.06.24	- SelectSender - bool instead of void
 //					- Add GetSenderList
+//		09.06.24	- SelectSender > spout SelectSender instead of SelectSenderPanel
+//					  Add hwnd argument to centre MessageBox dialog if used.
+//					
 //
 // ====================================================================================
 //
@@ -263,9 +266,9 @@ std::vector<std::string> SpoutReceiver::GetSenderList()
 
 
 //---------------------------------------------------------
-bool SpoutReceiver::SelectSender()
+bool SpoutReceiver::SelectSender(HWND hwnd)
 {
-	return spout.SelectSenderPanel();
+	return spout.SelectSender(hwnd);
 }
 
 //

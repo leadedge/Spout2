@@ -93,7 +93,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// Return a list of current senders
 	std::vector<std::string> GetSenderList();
 	// Open sender selection dialog
-	bool SelectSender();
+	bool SelectSender(HWND hwnd = NULL);
 
 	//
 	// Frame count
