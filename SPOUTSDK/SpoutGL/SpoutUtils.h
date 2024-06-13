@@ -56,7 +56,7 @@
 // If this is a problem, remove _MSC_VER_ and manually enable/disable the USE_CHRONO define.
 //
 // PR #84  Fixes for clang
-#if _MSC_VER >= 1900 || (defined(__clang__) && __cplusplus >= 201103L)
+#if (defined(_MSC_VER) && (_MSC_VER >= 1900)) || (defined(__cplusplus) && (__cplusplus >= 201103L))
 #define USE_CHRONO
 #endif
 
