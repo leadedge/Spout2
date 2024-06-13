@@ -1510,7 +1510,7 @@ namespace spoututils {
 
 	// Stop timing and return microseconds elapsed.
 	// Console output can be enabled for quick timing tests.
-	double EndTiming() {
+	double EndTiming(bool microseconds) {
 		endcount = GetCounter();
 		return (endcount-startcount);
 	}
