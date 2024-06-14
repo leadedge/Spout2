@@ -46,6 +46,7 @@
 #include <string>
 #include <Shellapi.h> // for shellexecute
 #include <Commctrl.h> // For TaskDialogIndirect
+#include <math.h> // for round
 
 //
 // C++11 timer is only available for MS Visual Studio 2015 and above.
@@ -56,7 +57,9 @@
 // If this is a problem, remove _MSC_VER_ and manually enable/disable the USE_CHRONO define.
 //
 // PR #84  Fixes for clang
-#if _MSC_VER >= 1900 || (defined(__clang__) && __cplusplus >= 201103L)
+// PR #114  Fixes for MingW
+#if (defined(_MSC_VER) && (_MSC_VER >= 1900)) || (defined(__cplusplus) && (__cplusplus >= 201103L))
+
 #define USE_CHRONO
 #endif
 
@@ -312,21 +315,23 @@ namespace spoututils {
 	// Timing functions
 	//
 
-	// Start timing period
-	void SPOUT_DLLEXP StartTiming();
-
-	// Stop timing and return microseconds elapsed.
-	// Code console output can be enabled for quick timing tests.
-	// Default milliseconds
-	double SPOUT_DLLEXP EndTiming(bool microseconds = false);
-
 	// Monitor refresh rate
 	double SPOUT_DLLEXP GetRefreshRate();
 
+	// Start timing period
+	void SPOUT_DLLEXP StartTiming();
+
 #ifdef USE_CHRONO
+	// Stop timing and return milliseconds or microseconds elapsed.
+	// (microseconds default).
+	// Code console output can be enabled for quick timing tests.
+	double SPOUT_DLLEXP EndTiming(bool microseconds = false);
 	// Microseconds elapsed since epoch
 	double SPOUT_DLLEXP ElapsedMicroseconds();
+#else
+	double SPOUT_DLLEXP EndTiming();
 #endif
+
 	void SPOUT_DLLEXP StartCounter();
 	double SPOUT_DLLEXP GetCounter();
 

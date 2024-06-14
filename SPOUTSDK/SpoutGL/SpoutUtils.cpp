@@ -189,6 +189,11 @@
 		19.03.24 - Add icon/button option for variable arguments
 		29.03.24 - Correct ReadPathFromRegistry definition for default size argument
 				   Correct EndTiming definition for microseconds argument
+		14.06.24 - SpoutUtils.h - PR #114
+				   Correct conditional definition of EndTimimg in header file
+				   Allow mingw to define USE_CHRONO if available
+				   Include <math.h> to fix mingw build
+				   
 
 
 */
