@@ -1,4 +1,4 @@
-f## Building the OpenGL examples
+## Building the OpenGL examples
 
 Examples are provided for Cinder and Openframeworks. For Cinder, this is limited to one example. Refer to "readme-first.md" in the Cinder\FboBasic folder
 
