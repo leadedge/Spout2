@@ -34,7 +34,7 @@ The "src" folder contains files for a Sender example.\
 The "Sources" folder contains files for both Sender and Receiver and options for each.\
 For the one you want copy "ofApp.h" and "ofApp.cpp" to the "src" folder and "Rebuild".
 
-The Spout2 > 2.006 branch contains Sender and Receiver examples and methods used remain compatible. 
+The Spout2 > 2.006 branch also contains Sender and Receiver examples and methods used remain compatible. 
 
 C++17 pre-processor definition
 
