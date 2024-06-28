@@ -1,14 +1,15 @@
-### Spout SDK OpenGL example
+### Spout SDK OpenGL examples
 
-An example of using the Spout SDK source files with an OpenGL application.\
-The examples are for Visual Studio 2022 and Openframeworks 12.
+Examples of using the Spout SDK source files with an OpenGL application.\
+The examples have been developed for Visual Studio 2022 and Openframeworks 12.
 
 The "ofSpoutExample" folder and contents has to be copied to the Openframeworks apps\myApps folder.
 
 The source files of the Spout SDK are required and will be compiled into the application.
-These are not set up as an addon, so they must be copied to a "SpoutGL" folder within the Openframeworks folder
+These are not set up as an addon, so they must be copied to a "SpoutGL" folder within the Openframeworks folder. 
+This could be renamed from the original distribution folder.
 
-      C:\OPENFRAMEWORKSSpoutGL <- this folder contains your Openframeworks installation
+      C:\OPENFRAMEWORKS <- this folder contains your Openframeworks installation
 	  addons <- Openframeworks addons
 	  examples <- Openframeworks examples
 	  apps
@@ -23,7 +24,7 @@ These are not set up as an addon, so they must be copied to a "SpoutGL" folder w
                   ofSpoutExample.vcxproj.filters
                   src <- the required source files
                   bin <- the required data files
-				  Source <- examples
+			  Source <- examples
 
 Open the solution file with Visual Studio 2022, set to "Release" and build "ofSpoutExample".
 
@@ -33,13 +34,7 @@ The "src" folder contains files for a Sender example.\
 The "Sources" folder contains files for both Sender and Receiver and options for each.\
 For the one you want copy "ofApp.h" and "ofApp.cpp" to the "src" folder and "Rebuild".
 
-Methods for 2.006 remain compatible. They are lower level and may be preferred for your application.
-The 2.006 folder contains Sender and Receiver examples.
-
-SpoutPanel
-
-The receiver example depends on SpoutPanel.exe to select senders.
-It's path is detected after either SpoutSettings or SpoutPanel has been run once.
+The Spout2 > 2.006 branch also contains Sender and Receiver examples and methods used remain compatible. 
 
 C++17 pre-processor definition
 
