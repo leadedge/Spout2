@@ -275,6 +275,9 @@ namespace spoututils {
 	// Window handle for SpoutMessageBox where not specified
 	void SPOUT_DLLEXP SpoutMessageBoxWindow(HWND hWnd);
 
+	// Position to centre SpoutMessageBox
+	void SPOUT_DLLEXP SpoutMessageBoxPosition(POINT pt);
+
 	// Copy text to the clipboard
 	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* caps);
 
@@ -362,6 +365,8 @@ namespace spoututils {
 		bool OpenSpoutPanel(const char* message);
 		// Application window
 		HWND hwndMain = NULL;
+		// Position for TaskDialog window centre
+		POINT TDcentre = {};
 		// For topmost
 		HWND hwndTop = NULL;
 		bool bTopMost = false;

@@ -193,7 +193,10 @@
 				   Correct conditional definition of EndTiming in header file
 				   Allow mingw to define USE_CHRONO if available
 				   Include <math.h> to fix mingw build
-				   
+		01.07.24 - Increase SpoutMessageBox combo width for NDI sender names
+				 - Add "SpoutMessageBoxModeless" to warning caption if SpoutPanel not found
+		02.07.24 - Add SpoutMessageBoxPosition
+
 
 
 */
@@ -1122,7 +1125,7 @@ namespace spoututils {
 			errmsg += "to enable modeless function for SpoutMessageBox.\n\n\n";
 			bool oldmode = bModeless;
 			bModeless = false;
-			SpoutMessageBox(NULL, errmsg.c_str(), "Warning", MB_ICONWARNING | MB_OK);
+			SpoutMessageBox(NULL, errmsg.c_str(), "SpoutMessageBoxModeless - Warning", MB_ICONWARNING | MB_OK);
 			bModeless = oldmode;
 			return;
 		}
@@ -1140,6 +1143,13 @@ namespace spoututils {
 		hwndMain = hWnd;
 	}
 
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBoxPosition
+	// Position to centre SpoutMessageBox
+	void SPOUT_DLLEXP SpoutMessageBoxPosition(POINT pt)
+	{
+		TDcentre = pt;
+	}
 
 
 	// ---------------------------------------------------------
@@ -2027,6 +2037,10 @@ namespace spoututils {
 			// Use before calling any of the SpoutMessagebox functions
 			hTaskIcon = nullptr;
 
+			// Clear dialog user position
+			TDcentre.x = 0;
+			TDcentre.y = 0;
+
 			// Return button pressed
 			// IDCANCEL, IDNO, IDOK, IDRETRY, IDYES
 			// or custom button ID
@@ -2056,10 +2070,26 @@ namespace spoututils {
 				SendMessage(hwnd, WM_SETICON, ICON_BIG, NULL);
 				SendMessage(hwnd, WM_SETICON, ICON_SMALL, NULL);
 
-				// Set topmost
-				if (bTopMost) {
-					SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+				// Dialog Window size and position
+				RECT rect;
+				GetWindowRect(hwnd, &rect);
+				int x = rect.left;
+				int y = rect.top;
+				int w = rect.right-rect.left;
+				int h = rect.bottom - rect.top;
+
+				// Centre the taskdialog window on the point
+				// if SpoutMessageBoxPosition has been used
+				if (TDcentre.x > 0 || TDcentre.y > 0) {
+					// Offset to the centre of the window
+					x = TDcentre.x - (w/2);
+					y = TDcentre.y - (h/2);
 				}
+
+				if (bTopMost)
+					SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_NOSIZE);
+				else
+					SetWindowPos(hwnd, HWND_NOTOPMOST, x, y, w, h, SWP_NOSIZE);
 
 				// Edit text control
 				if (bEdit) {
@@ -2106,15 +2136,23 @@ namespace spoututils {
 
 					// Taskdialog client size
 					int h = rect.bottom-rect.top;
-					int x = rect.left+70;
+					int x = rect.left+20;
 					int y = rect.top;
+					int w = 395;
+
 					// Allow for increased height with an icon
-					if(h > 90) y += 20;
-					int w = 300; 
+					// and position further right
+					if (h > 90) {
+						y += 20;
+						x += 40;
+						w -= 40;
+					}
+
 					// Combo box inital height. Changed by content.
 					h = 100;
 
 					// Position in the footer area if there is message content
+					// Less width due to buttons
 					if (*pTimeout && *pTimeout == 1000000) {
 						x = rect.left+10;
 						y = rect.bottom-40;
