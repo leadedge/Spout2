@@ -190,10 +190,14 @@
 		29.03.24 - Correct ReadPathFromRegistry definition for default size argument
 				   Correct EndTiming definition for microseconds argument
 		14.06.24 - SpoutUtils.h - PR #114
-				   Correct conditional definition of EndTimimg in header file
+				   Correct conditional definition of EndTiming in header file
 				   Allow mingw to define USE_CHRONO if available
 				   Include <math.h> to fix mingw build
-				   
+		01.07.24 - Increase SpoutMessageBox combo width for NDI sender names
+				 - Add "SpoutMessageBoxModeless" to warning caption if SpoutPanel not found
+		02.07.24 - Add SpoutMessageBoxPosition
+		09.07.24 - TDcallbackProc TDN_CREATED : common rect and coordinates
+
 
 
 */
@@ -1122,7 +1126,7 @@ namespace spoututils {
 			errmsg += "to enable modeless function for SpoutMessageBox.\n\n\n";
 			bool oldmode = bModeless;
 			bModeless = false;
-			SpoutMessageBox(NULL, errmsg.c_str(), "Warning", MB_ICONWARNING | MB_OK);
+			SpoutMessageBox(NULL, errmsg.c_str(), "SpoutMessageBoxModeless - Warning", MB_ICONWARNING | MB_OK);
 			bModeless = oldmode;
 			return;
 		}
@@ -1140,6 +1144,13 @@ namespace spoututils {
 		hwndMain = hWnd;
 	}
 
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBoxPosition
+	// Position to centre SpoutMessageBox
+	void SPOUT_DLLEXP SpoutMessageBoxPosition(POINT pt)
+	{
+		TDcentre = pt;
+	}
 
 
 	// ---------------------------------------------------------
@@ -1811,13 +1822,14 @@ namespace spoututils {
 			  && (dwButtons & MB_YESNO) != MB_YESNO
 			  && (dwButtons & MB_YESNOCANCEL) != MB_YESNOCANCEL) {
 				// Construct command line for SpoutPanel
-				std::string str = std::to_string(PtrToUint(hwndMain)); str += ","; // HWND
-				str += content; str += ","; // content
-				str += caption; str += ","; // caption
-				str += std::to_string(dwButtons); str += ","; // buttons
+				std::string str = std::to_string(PtrToUint(hwndMain));
+				str += ",";                                        // HWND
+				str += content; str += ",";                        // content
+				str += caption; str += ",";                        // caption
+				str += std::to_string(dwButtons); str += ",";      // buttons
 				str += std::to_string(dwMilliseconds); str += ","; // timeout
 				if (hTaskIcon) {
-					str += std::to_string(PtrToUint(hTaskIcon)); // user icon
+					str += std::to_string(PtrToUint(hTaskIcon));   // user icon
 					str += ",";
 				}
 				// Pass on to SpoutPanel
@@ -2027,6 +2039,10 @@ namespace spoututils {
 			// Use before calling any of the SpoutMessagebox functions
 			hTaskIcon = nullptr;
 
+			// Clear dialog user position
+			TDcentre.x = 0;
+			TDcentre.y = 0;
+
 			// Return button pressed
 			// IDCANCEL, IDNO, IDOK, IDRETRY, IDYES
 			// or custom button ID
@@ -2044,6 +2060,10 @@ namespace spoututils {
 			
 			if (uNotification == TDN_CREATED) {
 
+				// For general use
+				RECT rect{};
+				int x, y, w, h = 0;
+
 				// hInstance of task dialog
 				HINSTANCE hInstTD = (HINSTANCE)GetWindowLongPtrA(hwnd, GWLP_HINSTANCE);
 
@@ -2056,25 +2076,39 @@ namespace spoututils {
 				SendMessage(hwnd, WM_SETICON, ICON_BIG, NULL);
 				SendMessage(hwnd, WM_SETICON, ICON_SMALL, NULL);
 
-				// Set topmost
-				if (bTopMost) {
-					SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+				// Dialog Window size and position
+				GetWindowRect(hwnd, &rect);
+				x = rect.left;
+				y = rect.top;
+				w = rect.right-rect.left;
+				h = rect.bottom - rect.top;
+
+				// Centre the taskdialog window on the point
+				// if SpoutMessageBoxPosition has been used
+				if (TDcentre.x > 0 || TDcentre.y > 0) {
+					// Offset to the centre of the window
+					x = TDcentre.x - (w/2);
+					y = TDcentre.y - (h/2);
 				}
+
+				if (bTopMost)
+					SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_NOSIZE);
+				else
+					SetWindowPos(hwnd, HWND_NOTOPMOST, x, y, w, h, SWP_NOSIZE);
 
 				// Edit text control
 				if (bEdit) {
 
 					// Position in the main content by default
-					RECT rect{};
 					GetClientRect(hwnd, &rect);
 
 					// Taskdialog client size is larger with an icon
-					int h = rect.bottom-rect.top;
-					int x = rect.left+70;
-					int y = rect.top + 3;
+					h = rect.bottom-rect.top;
+					x = rect.left+70;
+					y = rect.top + 3;
 					// Allow for increased height with an icon
 					if (h > 90) y += 20;
-					int w = 320;
+					w = 320;
 					h = 24;
 
 					// Look for a timeout of 1000000 as a signal for message content
@@ -2101,20 +2135,27 @@ namespace spoututils {
 				if (bCombo) {
 
 					// Position in the main content by default
-					RECT rect{};
 					GetClientRect(hwnd, &rect);
 
 					// Taskdialog client size
-					int h = rect.bottom-rect.top;
-					int x = rect.left+70;
-					int y = rect.top;
+					h = rect.bottom-rect.top;
+					x = rect.left+20;
+					y = rect.top;
+					w = 395;
+
 					// Allow for increased height with an icon
-					if(h > 90) y += 20;
-					int w = 300; 
+					// and position further right
+					if (h > 90) {
+						y += 20;
+						x += 40;
+						w -= 40;
+					}
+
 					// Combo box inital height. Changed by content.
 					h = 100;
 
 					// Position in the footer area if there is message content
+					// Less width due to buttons
 					if (*pTimeout && *pTimeout == 1000000) {
 						x = rect.left+10;
 						y = rect.bottom-40;
