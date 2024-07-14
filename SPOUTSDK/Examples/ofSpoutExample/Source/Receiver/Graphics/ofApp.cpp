@@ -115,8 +115,10 @@ void ofApp::draw() {
 	// Option 1 : Receive texture
 	//
 	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
+
 		// Update the receiving texture if the received size has changed
 		if (receiver.IsUpdated()) {
+
 			GLint glformat = GL_RGBA; // Default receiving texture format
 			//
 			// Option
@@ -280,20 +282,82 @@ void ofApp::exit() {
 void ofApp::mousePressed(int x, int y, int button){
 	
 	//
-	// Activate the sender selection dialog
-	//
-	// "SpoutPanel" is used if SpoutSettings has
-	// been run to establish the path.
+	// Select a sender
 	//
 	if(button == 2) {
-		// If SpoutPanel is not available, a SpoutMessageBox is used.
-		// Centre it on the application window by providing the window handle.
-		receiver.SelectSender(ofGetWin32Window());
+
+		//
+		// Option 1
+		//
+		// Activate the sender selection dialog
+		//
+		// "SpoutPanel" is used if previously opened or
+		// SpoutSettings has been run to establish the path.
+		// If not available, SpoutMessageBox is used (see further below).
+		// SpoutPanel is centred at the cursor position
+		// or on the application window if the handle is passed in.
+		receiver.SelectSender();
+		// receiver.SelectSender(ofGetWin32Window());
+		return;
+
+
+		//
+		// Option 2
+		//
+		// Show a list for user selection.
+		// This can be managed by the application.
+		// In this example, a SpoutMessageBox is used.
+		//
+		std::vector<std::string> senderlist = receiver.GetSenderList();
+		
+		// Open a SpoutMessageBox for sender selection.
+		// Show the MessageBox even if the list is empty.
+		// The index "selected" can be passed in to SpoutMessageBox
+		// and is used as the current combobox item.
+
+		// First get the active sender index to pass in as currently selected
+		int selected = 0;
+		char sendername[256]{};
+		if (receiver.GetActiveSender(sendername)) {
+			selected = receiver.spout.sendernames.GetSenderIndex(sendername);
+		}
+
+		// Centre on the mouse click cursor position.
+		// (for this function, x and y are client coordinates)
+		POINT pt={};
+		GetCursorPos(&pt);
+		SpoutMessageBoxPosition(pt);
+		
+		// If a point is not specified, SpoutMessageBox is centred on the
+		// monitor, or on the application window if the handle is passed in.
+		if (SpoutMessageBox(ofGetWin32Window(), NULL, "Select sender", MB_OKCANCEL, senderlist, selected) == IDOK && !senderlist.empty()) {
+
+			// Make the selected sender active
+			// Receivers then detect this sender on first opening
+			receiver.SetActiveSender(senderlist[selected].c_str());
+
+			//
+			// If SetReceiverName has been used to nominate the sender to receive from :
+			//
+			// Either :
+			//     Re-set the receiving name for change to the active sender (the one just set as active).
+			//         receiver.SetReceiverName();
+			//
+			// Or :
+			//     Nominate the new selected sender for the receiver to connect to.
+			//     If that sender closes, the application will wait for the same sender to open again.
+			//     To reset the behaviour at some other point, call SetReceiverName() as above.
+			//         receiver.SetReceiverName(senderlist[selected].c_str());
+			//
+
+			// Release the current receiver
+			// Next time it connects with the active sender
+			// or the sender nominated by SetReceiverName
+			receiver.ReleaseReceiver();
+		}
 	}
 
-	// LH button to show a sender list in the console.
-	// This could be also used in a dialog for user selection
-	// See Spout::SelectSender()
+	// Left mouse button to show a sender list in the console.
 	if (button == 0) {
 		// Show the user the current sender list
 		std::vector<std::string> senderlist = receiver.GetSenderList();

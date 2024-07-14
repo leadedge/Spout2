@@ -8,7 +8,6 @@
 #define IDD_WINSPOUTDX_DIALOG	102
 #define IDD_ABOUTBOX			103
 #define IDM_ABOUT				104
-#define IDD_SENDERBOX			104
 #define IDM_OPEN				105
 #define IDM_EXIT				106
 #define IDI_WINSPOUTDX			107

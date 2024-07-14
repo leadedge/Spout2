@@ -155,6 +155,7 @@
 //		25.05.24	- Add SetMirror/SetSwap/GetMirror/GetSwap for SpoutCam instead of using globals directly
 //		22.06.24	- Add SpoutMessageBox updates to SpoutGL
 //					  Update SelectSender for local list box
+//		14.07.22	- Update SelectSender for dialog centre position
 //
 // ====================================================================================
 /*
@@ -610,7 +611,7 @@ bool spoutDX::SendImage(const unsigned char * pData, unsigned int width, unsigne
 	// Check the sender mutex for access the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		// Update the shared texture resource with the pixel buffer
-		m_pImmediateContext->UpdateSubresource(m_pSharedTexture, 0, NULL, pData, m_Width * 4, 0);
+		m_pImmediateContext->UpdateSubresource(m_pSharedTexture, 0, NULL, pData, m_Width*4, 0);
 		// Flush the command queue because the shared texture has been updated on this device
 		m_pImmediateContext->Flush();
 		// Signal a new frame while the mutex is locked
@@ -1015,32 +1016,60 @@ bool spoutDX::ReadTexurePixels(ID3D11Texture2D* pTexture, unsigned char* pixels)
 // Open sender selection dialog
 bool spoutDX::SelectSender(HWND hwnd)
 {
+	//
 	// Use SpoutPanel if available
-	if (!SelectSenderPanel()) {
-		// If not, create a local sender list
+	//
+	// SpoutPanel opens either centred on the cursor position 
+	// or on the application window if the handle is passed in.
+
+	// For a valid window handle, convert hwnd to chars
+	// for the SpoutPanel command line
+	char* msg = nullptr;
+	if (hwnd) {
+		msg = new char[256];
+		sprintf_s(msg, 256, "%ld\n", HandleToLong(hwnd));
+	}
+
+	if (!SelectSenderPanel(msg)) {
+
+		// If SpoutPanel is not available use a SpoutMessageBox for sender selection.
+		// Note that SpoutMessageBox is modal and will interrupt the host program.
+
+		// create a local sender list
 		std::vector<std::string> senderlist = GetSenderList();
-		// Open a messagebox for sender selection
-		// Show the MessageBox even if the list is empty.
-		// This makes it clear to the user that no senders are running.
-		// Note that the MessageBox is modal and will interrupt the host program.
-		// The index (selected) can be passed in and is used as the current combobox item.
-		// Get the active sender index.
+
+		// Get the active sender index "selected".
+		// The index is passed in to SpoutMessageBox and used as the current combobox item.
 		int selected = 0;
 		char sendername[256]{};
 		if (GetActiveSender(sendername))
 			selected = GetSenderIndex(sendername);
-		// Centre on the current foreground window
-		// SpoutPanel opens wherever the user clicked
-		// SpoutMessageBox TDF_POSITION_RELATIVE_TO_WINDOW
-		// opens centred on the parent window if hwnd is passed in.
+
+		// SpoutMessageBox opens either centred on the cursor position 
+		// or on the application window if the handle is passed in.
+		if (!hwnd) {
+			POINT pt={};
+			GetCursorPos(&pt);
+			SpoutMessageBoxPosition(pt);
+		}
+
+		// Show the SpoutMessageBox even if the list is empty.
+		// This makes it clear to the user that no senders are running.
 		if (SpoutMessageBox(hwnd, NULL, "Select sender", MB_OKCANCEL, senderlist, selected) == IDOK && !senderlist.empty()) {
-			// Release the receiver and set the selected sender
-			// as active for the next receive
+			// Release the receiver and set the selected sender as active for the next receive
 			ReleaseReceiver();
 			SetActiveSender(senderlist[selected].c_str());
+			// Set the opened flag in the same way as for SelectSenderPanel
+			// to indicate that the user has selected a sender.
+			// This is tested in CheckSpoutPanel.
+			m_bSpoutPanelOpened = true;
 		}
 	}
+
+	if (msg) delete[] msg;
+
 	return true;
+
 }
 
 //---------------------------------------------------------
