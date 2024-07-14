@@ -101,11 +101,12 @@ LRESULT CALLBACK Win32Application::WindowProc(HWND hWnd, UINT message, WPARAM wP
         }
         return 0;
 
-	// SPOUT - RH click to open SpoutPanel
+	// SPOUT - Right click to open SpoutPanel
+    // See D3D12HelloTexture.cpp "OnKeyUp"
 	case WM_RBUTTONDOWN:
 		if (pSample)
 		{
-			pSample->OnKeyUp(83); // 's' to select a sender
+			pSample->OnKeyUp(19); // 'Ctrl-S' to select a sender
 		}
 		return 0;
 

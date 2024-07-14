@@ -33,8 +33,10 @@ public:
     virtual void OnDestroy();
 
 	// SPOUT
-	// 's' or RH click to select sender
+	// 's' or Right mouse click to select sender
 	virtual void OnKeyUp(UINT8 key);
+    // LJ DEBUG
+    // virtual void SelectSender(HWND hwnd = nullptr);
 
 private:
     static const UINT FrameCount = 2;
