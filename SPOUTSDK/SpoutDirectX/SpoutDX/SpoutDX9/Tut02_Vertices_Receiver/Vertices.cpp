@@ -274,8 +274,10 @@ LRESULT WINAPI MsgProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )
 {
     switch( msg )
     {
-		// SPOUT - RH click to open SpoutPanel
-		case WM_RBUTTONDOWN:
+		// SPOUT
+		// Right click to open SpoutPanel and select a sender
+		// Centre on the cursor position
+	case WM_RBUTTONDOWN:
 			receiver.SelectSender();
 			break;
 	

@@ -108,7 +108,7 @@ class SPOUT_DLLEXP spoutDX9 {
 		// Close receiver and free resources
 		void ReleaseReceiver();
 		// Open sender selection dialog
-		void SelectSender();
+		bool SelectSender(HWND hwnd = nullptr);
 		// Sender has changed
 		bool IsUpdated();
 		// Connected to a sender
@@ -129,6 +129,30 @@ class SPOUT_DLLEXP spoutDX9 {
 		double GetSenderFps();
 		// Received sender frame number
 		long GetSenderFrame();
+
+		//
+		// Sender names
+		//
+
+		// Get number of senders
+		int GetSenderCount();
+		// Get sender name for a given index
+		bool GetSender(int index, char* sendername, int MaxSize = 256);
+		// Return a list of current senders
+		std::vector<std::string> GetSenderList();
+		// Sender index into the set of names
+		int GetSenderIndex(const char* sendername);
+		// Get sender details
+		bool GetSenderInfo(const char* sendername, unsigned int& width, unsigned int& height, HANDLE& dxShareHandle, DWORD& dwFormat);
+		// Get active sender name
+		bool GetActiveSender(char* sendername);
+		// set active sender name
+		bool SetActiveSender(const char* sendername);
+		// Get maximum senders allowed
+		int  GetMaxSenders();
+		// Set maximum senders allowed
+		void SetMaxSenders(int maxSenders);
+
 
 		//
 		// COMMON
@@ -178,7 +202,7 @@ class SPOUT_DLLEXP spoutDX9 {
 		// Create receiver resources
 		void CreateReceiver(const char * SenderName, unsigned int width, unsigned int height, DWORD dwFormat);
 		// Pop up SpoutPanel to allow the user to select a sender
-		void SelectSenderPanel();
+		bool SelectSenderPanel(const char* message);
 		// Check whether SpoutPanel opened and return the new sender name
 		bool CheckSpoutPanel(char *sendername, int maxchars = 256);
 

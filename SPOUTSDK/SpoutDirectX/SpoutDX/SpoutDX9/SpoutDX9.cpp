@@ -20,6 +20,8 @@
 //					- SelectSenderPanel use _access instead of PathFileExists
 //					- OpenDirectX9 - revise old plugin workaround.
 //		11.07.24	- SelectSenderPanel - allow for UNICODE build : _wcsicmp / _tcsicmp
+//		14.07.24	- Add sendernames functions from SpoutDX.cpp
+//					- Update SelectSender for list box and dialog centre position
 //
 // ====================================================================================
 /*
@@ -559,9 +561,61 @@ void spoutDX9::ReleaseReceiver()
 //---------------------------------------------------------
 // Function: SelectSender
 // Open sender selection dialog.
-void spoutDX9::SelectSender()
+bool spoutDX9::SelectSender(HWND hwnd)
 {
-	SelectSenderPanel();
+	//
+	// Use SpoutPanel if available
+	//
+	// SpoutPanel opens either centred on the cursor position 
+	// or on the application window if the handle is passed in.
+
+	// For a valid window handle, convert hwnd to chars
+	// for the SpoutPanel command line
+	char* msg = nullptr;
+	if (hwnd) {
+		msg = new char[256];
+		sprintf_s(msg, 256, "%ld\n", HandleToLong(hwnd));
+	}
+
+	if (!SelectSenderPanel(msg)) {
+
+		// If SpoutPanel is not available use a SpoutMessageBox for sender selection.
+		// Note that SpoutMessageBox is modal and will interrupt the host program.
+
+		// create a local sender list
+		std::vector<std::string> senderlist = GetSenderList();
+
+		// Get the active sender index "selected".
+		// The index is passed in to SpoutMessageBox and used as the current combobox item.
+		int selected = 0;
+		char sendername[256]{};
+		if (GetActiveSender(sendername))
+			selected = GetSenderIndex(sendername);
+
+		// SpoutMessageBox opens either centred on the cursor position 
+		// or on the application window if the handle is passed in.
+		if (!hwnd) {
+			POINT pt={};
+			GetCursorPos(&pt);
+			SpoutMessageBoxPosition(pt);
+		}
+
+		// Show the SpoutMessageBox even if the list is empty.
+		// This makes it clear to the user that no senders are running.
+		if (SpoutMessageBox(hwnd, NULL, "Select sender", MB_OKCANCEL, senderlist, selected) == IDOK && !senderlist.empty()) {
+			// Release the receiver and set the selected sender as active for the next receive
+			ReleaseReceiver();
+			SetActiveSender(senderlist[selected].c_str());
+			// Set the opened flag in the same way as for SelectSenderPanel
+			// to indicate that the user has selected a sender.
+			// This is tested in CheckSpoutPanel.
+			m_bSpoutPanelOpened = true;
+		}
+	}
+
+	if (msg) delete[] msg;
+
+	return true;
 }
 
 //---------------------------------------------------------
@@ -599,6 +653,7 @@ bool spoutDX9::IsFrameNew()
 {
 	return m_bNewFrame;
 }
+
 
 //---------------------------------------------------------
 // Function: GetSenderHandle
@@ -656,6 +711,91 @@ double spoutDX9::GetSenderFps()
 long spoutDX9::GetSenderFrame()
 {
 	return frame.GetSenderFrame();
+}
+
+//
+// Group: Sender names
+//
+
+//---------------------------------------------------------
+// Function: GetSenderCount
+// Number of senders
+int spoutDX9::GetSenderCount()
+{
+	return sendernames.GetSenderCount();
+}
+
+//---------------------------------------------------------
+// Function: GetSender
+// Sender item name in the sender names set
+bool spoutDX9::GetSender(int index, char* sendername, int sendernameMaxSize)
+{
+	return sendernames.GetSender(index, sendername, sendernameMaxSize);
+}
+
+//---------------------------------------------------------
+// Function: GetSenderList
+// Return a list of current senders
+std::vector<std::string> spoutDX9::GetSenderList()
+{
+	std::vector<std::string> list;
+	int nSenders = GetSenderCount();
+	if (nSenders > 0) {
+		char sendername[256]{};
+		for (int i=0; i<nSenders; i++) {
+			if (GetSender(i, sendername))
+				list.push_back(sendername);
+		}
+	}
+	return list;
+}
+
+//---------------------------------------------------------
+// Function: GetSenderIndex
+// Sender index into the set of names
+int spoutDX9::GetSenderIndex(const char* sendername)
+{
+	return sendernames.GetSenderIndex(sendername);
+}
+
+//---------------------------------------------------------
+// Function: GetSenderInfo
+// Sender information
+bool spoutDX9::GetSenderInfo(const char* sendername, unsigned int& width, unsigned int& height, HANDLE& dxShareHandle, DWORD& dwFormat)
+{
+	return sendernames.GetSenderInfo(sendername, width, height, dxShareHandle, dwFormat);
+}
+
+//---------------------------------------------------------
+// Function: GetActiveSender
+// Current active sender name
+bool spoutDX9::GetActiveSender(char* Sendername)
+{
+	return sendernames.GetActiveSender(Sendername);
+}
+
+//---------------------------------------------------------
+// Function: SetActiveSender
+// Set sender as active
+bool spoutDX9::SetActiveSender(const char* Sendername)
+{
+	return sendernames.SetActiveSender(Sendername);
+}
+
+//---------------------------------------------------------
+// Function: GetMaxSenders
+// Get user Maximum senders allowed
+int spoutDX9::GetMaxSenders()
+{
+	return(sendernames.GetMaxSenders());
+}
+
+//---------------------------------------------------------
+// Function: SetMaxSenders
+// Set user Maximum senders allowed
+void spoutDX9::SetMaxSenders(int maxSenders)
+{
+	sendernames.SetMaxSenders(maxSenders);
 }
 
 
@@ -745,7 +885,7 @@ bool spoutDX9::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int 
 //
 
 
-// --------------------------------------------------------
+//---------------------------------------------------------
 // If a sender has not been created yet
 //    o Make sure DirectX is initialized
 //    o Create a shared texture for the sender
@@ -824,7 +964,8 @@ bool spoutDX9::CheckDX9sender(unsigned int width, unsigned int height, DWORD dwF
 
 }
 
-
+//---------------------------------------------------------
+// Write to a DirectX9 system memory surface
 bool spoutDX9::WriteDX9memory(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 source_surface, LPDIRECT3DTEXTURE9 dxTexture)
 {
 	IDirect3DSurface9* texture_surface = nullptr;
@@ -860,11 +1001,9 @@ bool spoutDX9::WriteDX9memory(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 so
 } // end WriteDX9memory
 
 
-//
+//---------------------------------------------------------
 // COPY FROM A GPU DX9 SURFACE TO THE SHARED DX9 TEXTURE
-//
-//    The source surface must have been created using the same device as the texture
-//
+// The source surface must have been created using the same device as the texture
 bool spoutDX9::WriteDX9surface(IDirect3DDevice9Ex* pDevice, LPDIRECT3DSURFACE9 surface, LPDIRECT3DTEXTURE9 dxTexture)
 {
 	IDirect3DSurface9* texture_surface = nullptr;
@@ -1062,13 +1201,23 @@ void spoutDX9::CreateReceiver(const char * SenderName, unsigned int width, unsig
 // for applications not using the entire Spout SDK.
 //
 
-// Pop up SpoutPanel to allow the user to select a sender
-// Usually activated by RH click
-void spoutDX9::SelectSenderPanel()
+//
+// Open dialog for the user to select a sender
+// Optional message argument
+//
+bool spoutDX9::SelectSenderPanel(const char* message)
 {
 	HANDLE hMutex1 = NULL;
 	HMODULE module = NULL;
-	char path[MAX_PATH], drive[MAX_PATH], dir[MAX_PATH], fname[MAX_PATH];
+	char path[MAX_PATH]={};
+	char drive[MAX_PATH]={};
+	char dir[MAX_PATH]={};
+	char fname[MAX_PATH]={};
+	char UserMessage[512]={};
+
+	if (message && *message) {
+		strcpy_s(UserMessage, 512, message); // could be an arg or a user message
+	}
 
 	// The selected sender is then the "Active" sender and this receiver switches to it.
 	// If Spout is not installed, SpoutPanel.exe has to be in the same folder
@@ -1076,6 +1225,7 @@ void spoutDX9::SelectSenderPanel()
 	// which causes problems with host GUI messaging.
 
 	// First find if there has been a Spout installation >= 2.002 with an install path for SpoutPanel.exe
+	path[0] = 0;
 	if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
 		// Path not registered so find the path of the host program
 		// where SpoutPanel should have been copied
@@ -1083,6 +1233,9 @@ void spoutDX9::SelectSenderPanel()
 		GetModuleFileNameA(module, path, MAX_PATH);
 		_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
 		_makepath_s(path, MAX_PATH, drive, dir, "SpoutPanel", ".exe");
+	}
+
+	if (path[0]) {
 		// Does SpoutPanel.exe exist in this path ?
 		if(_access(path, 0) == -1) {
 			// Try the current working directory
@@ -1090,24 +1243,18 @@ void spoutDX9::SelectSenderPanel()
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
 				if (_access(path, 0) == -1) {
-					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
-					return;
+					return false;
 				}
 			}
 		}
 	}
+	
 
 	// Check whether the panel is already running
 	// Try to open the application mutex.
 	hMutex1 = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 	if (!hMutex1) {
 		// No mutex, so not running, so can open it
-
-		// First release any orphaned senders if the name exists
-		// in the sender list but the shared memory info does not
-		// So that the sender list is clean
-		sendernames.CleanSenders();
-
 		// Use ShellExecuteEx so we can test its return value later
 		ZeroMemory(&m_ShExecInfo, sizeof(m_ShExecInfo));
 		m_ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
@@ -1115,6 +1262,7 @@ void spoutDX9::SelectSenderPanel()
 		m_ShExecInfo.hwnd = NULL;
 		m_ShExecInfo.lpVerb = NULL;
 		m_ShExecInfo.lpFile = (LPCSTR)path;
+		m_ShExecInfo.lpParameters = UserMessage;
 		m_ShExecInfo.lpDirectory = NULL;
 		m_ShExecInfo.nShow = SW_SHOW;
 		m_ShExecInfo.hInstApp = NULL;
@@ -1127,6 +1275,7 @@ void spoutDX9::SelectSenderPanel()
 		// Then when the selection panel closes, sender name is tested
 		//
 		m_bSpoutPanelOpened = true;
+
 	}
 	else {
 		// The mutex exists, so another instance is already running.
@@ -1145,7 +1294,7 @@ void spoutDX9::SelectSenderPanel()
 			// and SpoutPanel is installed, it has crashed.
 			// Terminate the process and the mutex or the mutex will remain
 			// and SpoutPanel will not be started again.
-			PROCESSENTRY32 pEntry;
+			PROCESSENTRY32 pEntry{};
 			pEntry.dwSize = sizeof(pEntry);
 			bool done = false;
 			// Take a snapshot of all processes and threads in the system
@@ -1161,22 +1310,21 @@ void spoutDX9::SelectSenderPanel()
 					CloseHandle(hProcessSnap);
 				}
 				else {
-					// Look through all processes
+					// Look through all processes to find SpoutPanel
 					while (hRes && !done) {
 #ifdef UNICODE
-						int value = _wcsicmp(pEntry.szExeFile, L"SpoutPanel.exe");
+						_wcsicmp(pEntry.szExeFile, L"SpoutPanel.exe");
 #else
-						int value = _tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
+						_tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
 #endif
-						if (value == 0) {
-							HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, (DWORD)pEntry.th32ProcessID);
-							if (hProcess != NULL) {
-								// Terminate SpoutPanel and it's mutex
-								TerminateProcess(hProcess, 9);
-								CloseHandle(hProcess);
-								done = true;
-							}
+						HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, pEntry.th32ProcessID);
+						if (hProcess != NULL) {
+							// Terminate SpoutPanel and it's mutex if it opened
+							TerminateProcess(hProcess, 9);
+							CloseHandle(hProcess);
+							done = true;
 						}
+
 						if (!done)
 							hRes = Process32Next(hProcessSnap, &pEntry); // Get the next process
 						else
@@ -1192,7 +1340,7 @@ void spoutDX9::SelectSenderPanel()
 	// If we opened the mutex, close it now or it is never released
 	if (hMutex1) CloseHandle(hMutex1);
 
-	return;
+	return true;
 
 } // end SelectSenderPanel
 
