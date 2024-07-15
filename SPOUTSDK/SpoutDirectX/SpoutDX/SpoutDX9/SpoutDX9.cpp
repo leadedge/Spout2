@@ -22,6 +22,8 @@
 //		11.07.24	- SelectSenderPanel - allow for UNICODE build : _wcsicmp / _tcsicmp
 //		14.07.24	- Add sendernames functions from SpoutDX.cpp
 //					- Update SelectSender for list box and dialog centre position
+//		15.07.24	- SelectSender - after cast of window handle to long 
+//					  convert to a string of 8 characters without new line
 //
 // ====================================================================================
 /*
@@ -573,8 +575,10 @@ bool spoutDX9::SelectSender(HWND hwnd)
 	// for the SpoutPanel command line
 	char* msg = nullptr;
 	if (hwnd) {
+		// Window handle is an 32 bit unsigned value
+		// Cast to long of 8 characters without new line
 		msg = new char[256];
-		sprintf_s(msg, 256, "%ld\n", HandleToLong(hwnd));
+		sprintf_s(msg, 256, "%8.8ld\n", HandleToLong(hwnd));
 	}
 
 	if (!SelectSenderPanel(msg)) {
