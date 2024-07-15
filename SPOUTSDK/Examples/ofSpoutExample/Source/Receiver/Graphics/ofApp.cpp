@@ -293,11 +293,13 @@ void ofApp::mousePressed(int x, int y, int button){
 		//
 		// "SpoutPanel" is used if previously opened or
 		// SpoutSettings has been run to establish the path.
-		// If not available, SpoutMessageBox is used (see further below).
+		// If not available, a SpoutMessageBox is used (see further below).
+		//
 		// SpoutPanel is centred at the cursor position
-		// or on the application window if the handle is passed in.
+		// or on the application if the window handle is passed in "ofGetWin32Window()".
+		// Centre on the window is appropriate for a menu selection or key press.
+		//
 		receiver.SelectSender();
-		// receiver.SelectSender(ofGetWin32Window());
 		return;
 
 
@@ -328,9 +330,10 @@ void ofApp::mousePressed(int x, int y, int button){
 		GetCursorPos(&pt);
 		SpoutMessageBoxPosition(pt);
 		
-		// If a point is not specified, SpoutMessageBox is centred on the
-		// monitor, or on the application window if the handle is passed in.
-		if (SpoutMessageBox(ofGetWin32Window(), NULL, "Select sender", MB_OKCANCEL, senderlist, selected) == IDOK && !senderlist.empty()) {
+		// If a point is not specified, SpoutMessageBox is centred on :
+		//   - the application window if the handle is passed in
+		//   - the monitor for no window handle
+		if (SpoutMessageBox(NULL, NULL, "Select sender", MB_OKCANCEL, senderlist, selected) == IDOK && !senderlist.empty()) {
 
 			// Make the selected sender active
 			// Receivers then detect this sender on first opening

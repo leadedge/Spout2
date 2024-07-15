@@ -282,6 +282,16 @@
 //		08.06.24	- Add GetSenderList
 //		09.06.24	- SelectSender - use SpoutMessageBox if SelectSenderPanel fails
 //					  Add hwnd argument to centre MessageBox dialog if used.
+//	Version 2.007.014
+//		13.06.24	- SelectSender - open SpoutMessagebox for no senders.
+//					  Add OK/CANCEL and test for empty senderlist.
+//		21.06.24	- Add GetSenderIndex
+//					  Modify SelectSender to show the active sender as current
+//		03.07.24	- SelectSender - pass hWnd to SpoutPanel command line
+//					  for it to open centred on the window
+//		04.07.24	- CheckSpoutPanel - allow for use of SpoutMessageBox
+//		15.07.24	- SelectSender - after cast of window handle to long 
+//					  convert to a string of 8 characters without new line
 //
 // ====================================================================================
 /*
@@ -1078,49 +1088,64 @@ bool Spout::GetSenderGLDX()
 }
 
 //---------------------------------------------------------
-// Function: GetSenderList
-// Return a list of current senders
-std::vector<std::string> Spout::GetSenderList()
-{
-	std::vector<std::string> list;
-	int nSenders = GetSenderCount();
-	if (nSenders > 0) {
-		char sendername[256]{};
-		for (int i=0; i<nSenders; i++) {
-			if (GetSender(i, sendername))
-				list.push_back(sendername);
-		}
-	}
-	return list;
-}
-
-
-
-//---------------------------------------------------------
 // Function: SelectSender
 // Open sender selection dialog
 bool Spout::SelectSender(HWND hwnd)
 {
+	//
 	// Use SpoutPanel if available
-	if (!SelectSenderPanel()) {
-		// If not, create a local sender list
+	//
+	// SpoutPanel opens either centred on the cursor position 
+	// or on the application window if the handle is passed in.
+
+	// For a valid window handle, convert hwnd to chars
+	// for the SpoutPanel command line
+	char * msg = nullptr;
+	if (hwnd) {
+		// Window handle is an 32 bit unsigned value
+		// Cast to long of 8 characters without new line
+		msg = new char[256];
+		sprintf_s(msg, 256, "%8.8ld", HandleToLong(hwnd));
+	}
+
+	if (!SelectSenderPanel(msg)) {
+
+		// If SpoutPanel is not available use a SpoutMessageBox for sender selection.
+		// Note that SpoutMessageBox is modal and will interrupt the host program.
+
+		// create a local sender list
 		std::vector<std::string> senderlist = GetSenderList();
-		if (!senderlist.empty()) {
-			// Open a messagebox for sender selection
-			// centred on the window if handle passed in.
-			// No senders can be selected if the list is empty.
-			// This makes it clear to the user that no senders are running.
-			// Note that the MessageBox is modal and will interrupt the host program.
-			int selected = 0;
-			SpoutMessageBox(hwnd, NULL, "Select sender", MB_OK, senderlist, selected);
-			// Release the receiver and set the selected sender
-			// as active for the next receive
+	
+		// Get the active sender index "selected".
+		// The index is passed in to SpoutMessageBox and used as the current combobox item.
+		int selected = 0;
+		char sendername[256]{};
+		if (GetActiveSender(sendername))
+			selected = GetSenderIndex(sendername);
+
+		// SpoutMessageBox opens either centred on the cursor position 
+		// or on the application window if the handle is passed in.
+		if (!hwnd) {
+			POINT pt={};
+			GetCursorPos(&pt);
+			SpoutMessageBoxPosition(pt);
+		}
+
+		// Show the SpoutMessageBox even if the list is empty.
+		// This makes it clear to the user that no senders are running.
+		if (SpoutMessageBox(hwnd, NULL, "Select sender", MB_OKCANCEL, senderlist, selected) == IDOK && !senderlist.empty()) {
+			// Release the receiver and set the selected sender as active for the next receive
 			ReleaseReceiver();
 			SetActiveSender(senderlist[selected].c_str());
-			return true;
+			// Set the opened flag in the same way as for SelectSenderPanel
+			// to indicate that the user has selected a sender.
+			// This is tested in CheckSpoutPanel.
+			m_bSpoutPanelOpened = true;
 		}
-		return false;
 	}
+	
+	if (msg) delete[] msg;
+
 	return true;
 
 
@@ -1270,6 +1295,31 @@ bool Spout::GetSender(int index, char* sendername, int MaxSize)
 	if (!sendername)
 		return false;
 	return sendernames.GetSender(index, sendername, MaxSize);
+}
+
+//---------------------------------------------------------
+// Function: GetSenderList
+// Return a list of current senders
+std::vector<std::string> Spout::GetSenderList()
+{
+	std::vector<std::string> list;
+	int nSenders = GetSenderCount();
+	if (nSenders > 0) {
+		char sendername[256]{};
+		for (int i=0; i<nSenders; i++) {
+			if (GetSender(i, sendername))
+				list.push_back(sendername);
+		}
+	}
+	return list;
+}
+
+//---------------------------------------------------------
+// Function: GetSenderIndex
+// Sender index into the set of names
+int Spout::GetSenderIndex(const char* sendername)
+{
+	return sendernames.GetSenderIndex(sendername);
 }
 
 //---------------------------------------------------------
@@ -1975,16 +2025,6 @@ bool Spout::SelectSenderPanel(const char* message)
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
 				if (_access(path, 0) == -1) {
-					// LJ DEBUG
-					/*
-					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
-					// Show a SpoutMessageBox and direct to the Spout releases page
-					sprintf_s(UserMessage, 512,
-						"The sender selection dialog 'SpoutPanel' was not found\n"\
-						"Download the <a href=\"https://github.com/leadedge/Spout2/releases\">latest Spout release</a> and run either\n"\
-						"'SpoutSettings' or 'SpoutPanel' to establish the path.\n");
-					SpoutMessageBox(NULL, UserMessage, "Warning", MB_ICONWARNING | MB_OK);
-					*/
 					return false;
 				}
 			}
@@ -2262,6 +2302,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			// Flag "false" for sender so that a new shared texture and handle are created.
 			// For a receiver the shared texture is created from the sender share handle.
 			if (!CreateInterop(width, height, m_dwFormat, false)) {
+				SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - create - CreateInterop failed", m_SenderName, width, height);
 				return false;
 			}
 		}
@@ -2271,6 +2312,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			m_dxShareHandle = nullptr;
 			if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
 				width, height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
+				SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - create cpu - CreateSharedDX11Texture failed", m_SenderName, width, height);
 				return false;
 			}
 		}
@@ -2309,6 +2351,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			m_bInitialized = true;
 		}
 		else {
+			SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - create - CreateSender failed", m_SenderName, width, height);
 			ReleaseSender();
 			m_SenderName[0] = 0;
 			m_Width = 0;
@@ -2330,6 +2373,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			CleanupInterop();
 			CleanupGL();
 			if (!CreateInterop(width, height, m_dwFormat, false)) {
+				SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - update CreateInterop failed", m_SenderName, width, height);
 				return false;
 			}
 		}
@@ -2346,12 +2390,14 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 
 			if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
 				width, height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
+				SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - cpu - CreateSharedDX11Texture failed", m_SenderName, width, height);
 				return false;
 			}
 		}
 
 		// Update the sender with the new texture and size
 		if (!sendernames.UpdateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
+			SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - UpdateSender failed", m_SenderName, width, height);
 			ReleaseSender();
 			m_SenderName[0] = 0;
 			m_Width = 0;
@@ -2416,16 +2462,10 @@ bool Spout::ReceiveSenderData()
 		}
 	}
 
-	// LJ DEBUG
-	// TODO - check setup name
-	// If SpoutPanel has been opened, the active sender name could be different
-	// Retrieve the name or take no action
+	// If SpoutPanel or SpoutMessgeBox have been opened and a 
+	// sender selected, the active sender name could be different.
+	// Retrieve the new name but do not clear the receiver setup name.
 	CheckSpoutPanel(sendername, 256);
-	// if (CheckSpoutPanel(sendername, 256)) {
-		// Retrieved the selected name
-		// Disable the setup name
-		// m_SenderNameSetup[0] = 0;
-	// }
 
 	// Now we have either an existing sender name or the active sender name
 	// Save current sender name and dimensions to test for change
@@ -2592,10 +2632,29 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 
 	// If SpoutPanel has been activated, test if the user has clicked OK
 	if (m_bSpoutPanelOpened) { // User has activated spout panel
+
+		char newname[256]={};
+
+		// Is SpoutPanel registered ?
+		char path[MAX_PATH]{};
+		if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
+			// If not registered, SpoutMessageBox has been used
+			// Pass back the active name
+			if (sendernames.GetActiveSender(newname)) {
+				strcpy_s(sendername, maxchars, newname);
+				m_bSpoutPanelOpened = false;
+				return true;
+			}
+			return false;
+		}
+
+		//
+		// SpoutPanel
+		//
+
 		SharedTextureInfo TextureInfo = {};
 		HANDLE hMutex = NULL;
 		DWORD dwExitCode = 0;
-		char newname[256]={};
 		bool bRet = false;
 
 		// Must find the mutex to signify that SpoutPanel has opened
