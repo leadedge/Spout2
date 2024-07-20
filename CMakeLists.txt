@@ -1,5 +1,5 @@
 #\-------------------------------------- . -----------------------------------/#
-# Filename : CMakeList.txt               | Main Spout CMakeList                #
+# Filename : CMakeLists.txt              | Main Spout CMakeList                #
 # Author   : Alexandre Buge              |                                     #
 # Started  : 08/09/2020 12:00            |                                     #
 #/-------------------------------------- . -----------------------------------\#
@@ -12,6 +12,7 @@
 #            Add necessary SpoutGL headers to SpoutDX includes                 #
 # 07/10/23 - Add SPOUT_BUILD_ARM option and download sse2neon.h                #
 #            Add compiler include_directory and /Zc:preprocessor define        #
+# 20/07/24 - Add SpoutDX12 library                                             #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -69,6 +70,7 @@ OPTION(SPOUT_BUILD_SPOUTDX_EXAMPLES "Build SpoutDX examples" OFF)
 OPTION(SPOUT_BUILD_SPOUTDX "Build SpoutDX DirectX11 support library" OFF)
 if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
 add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX)
+add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX12)
 endif()
 
 # Install option check boxes
@@ -92,6 +94,7 @@ if(NOT SKIP_INSTALL_ALL)
 
 		if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
 			list(APPEND Spout2InstallTargets SpoutDX SpoutDX_static)
+			list(APPEND Spout2InstallTargets SpoutDX12 SpoutDX12_static)
 		endif()
 
 		if(SPOUT_BUILD_LIBRARY)
@@ -154,6 +157,7 @@ if(NOT SKIP_INSTALL_ALL)
 
 		if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
 			install(
+				# SpoutDX library
 				FILES
 				SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX.h
 				SPOUTSDK/SpoutGL/SpoutCommon.h
@@ -164,7 +168,20 @@ if(NOT SKIP_INSTALL_ALL)
 				SPOUTSDK/SpoutGL/SpoutSharedMemory.h
 				SPOUTSDK/SpoutGL/SpoutUtils.h
 				DESTINATION
-					${CMAKE_INSTALL_PREFIX}/include/SpoutDX
+					${CMAKE_INSTALL_PREFIX}/include/SpoutDX'
+				# SpoutDX12 library
+				FILES
+				SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX12/SpoutDX12.h
+				SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX.h
+				SPOUTSDK/SpoutGL/SpoutCommon.h
+				SPOUTSDK/SpoutGL/SpoutCopy.h
+				SPOUTSDK/SpoutGL/SpoutDirectX.h
+				SPOUTSDK/SpoutGL/SpoutFrameCount.h
+				SPOUTSDK/SpoutGL/SpoutSenderNames.h
+				SPOUTSDK/SpoutGL/SpoutSharedMemory.h
+				SPOUTSDK/SpoutGL/SpoutUtils.h
+				DESTINATION
+					${CMAKE_INSTALL_PREFIX}/include/SpoutDX12
 			)
 		endif()	
 
