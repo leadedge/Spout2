@@ -11,6 +11,11 @@
 //		01.03.21	- Cleanup
 //		11.06.21	- Add documentation
 //		02.12.23	- Update and test examples with 2.007.013 SpoutGL files. No other changes.
+//		17.12.23	- CreateDX11on12device
+//					  return nullptr instead of bool for errors
+//					  Correct numQueues int to unsigned int
+//					- GetAdapterPointer1
+//					  static cast between related types instead of dynamic
 //
 // ====================================================================================
 /*
@@ -279,7 +284,7 @@ ID3D11On12Device* spoutDX12::CreateDX11on12device(ID3D12Device* pDevice12, IUnkn
 	ID3D11On12Device* pd3d11On12Device = nullptr; // D3D11on12 device
 
 	// Only allowing for one queue
-	int numQueues = 0;
+	unsigned int numQueues = 0;
 	if (ppCommandQueue) {
 		SpoutLogNotice("spoutDX12::CreateDX11on12device(0x%.7X, 0x%.7X)", PtrToUint(pDevice12), PtrToUint(ppCommandQueue));
 		numQueues = 1;
@@ -310,14 +315,14 @@ ID3D11On12Device* spoutDX12::CreateDX11on12device(ID3D12Device* pDevice12, IUnkn
 
 	if (FAILED(hRes)) {
 		SpoutLogError("spoutDX12::CreateDX11on12device fail");
-		return false;
+		return nullptr;
 	}
 
 	// Grab interface to the d3d11on12 device from the newly created d3d11 device
 	hRes = pDevice11->QueryInterface(__uuidof(ID3D11On12Device), (void**)&pd3d11On12Device);
 	if (FAILED(hRes)) {
 		SpoutLogError("failed to query 11on12 device");
-		return false;
+		return nullptr;
 	}
 
 	SpoutLogNotice("spoutDX12::CreateDX11on12device");
@@ -487,7 +492,7 @@ IDXGIAdapter1* spoutDX12::GetAdapterPointer1(int index)
 	IDXGIAdapter* pAdapter = spoutdx.GetAdapterPointer(index);
 	IDXGIAdapter1* pAdapter1 = nullptr;
 	if (pAdapter) {
-		pAdapter1 = reinterpret_cast<IDXGIAdapter1*>(pAdapter);
+		pAdapter1 = static_cast<IDXGIAdapter1*>(pAdapter);
 	}
 	return pAdapter1;
 

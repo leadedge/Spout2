@@ -78,7 +78,7 @@ struct DX12_HEAP_PROPERTIES : public D3D12_HEAP_PROPERTIES
 };
 
 
-class spoutDX12 : public spoutDX {
+class SPOUT_DLLEXP spoutDX12 : public spoutDX {
 
 	public:
 
