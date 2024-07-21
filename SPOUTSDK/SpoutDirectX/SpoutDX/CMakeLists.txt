@@ -7,6 +7,7 @@
 #          - Support single config generators (ninja, etc) by Joakim Kilby     #
 # 13/01/23 - Add SpoutDX static library                                        #
 # 24/06/23 - Modifications for MINGW build (PR#93-vkedwardli)                  #
+# 21/07/24 - Remove SpoutGL cpp files from SpoutDXsources                      #
 #/-------------------------------------- . -----------------------------------\#
 
 
@@ -14,31 +15,19 @@
 #
 # SpoutDX static library
 #
-# Build using source files rather than dependent Spout_static libary
-#
 set(SpoutDXsources
   SpoutDX.h
   SpoutDX.cpp
-  ../../SpoutGL/Spout.h
   ../../SpoutGL/SpoutCommon.h
   ../../SpoutGL/SpoutCopy.h
   ../../SpoutGL/SpoutDirectX.h
   ../../SpoutGL/SpoutFrameCount.h
-  ../../SpoutGL/SpoutGL.h
-  ../../SpoutGL/SpoutGLextensions.h
-  ../../SpoutGL/SpoutReceiver.h
-  ../../SpoutGL/SpoutSender.h
   ../../SpoutGL/SpoutSenderNames.h
   ../../SpoutGL/SpoutSharedMemory.h
   ../../SpoutGL/SpoutUtils.h
-  ../../SpoutGL/Spout.cpp
   ../../SpoutGL/SpoutCopy.cpp
   ../../SpoutGL/SpoutDirectX.cpp
   ../../SpoutGL/SpoutFrameCount.cpp
-  ../../SpoutGL/SpoutGL.cpp
-  ../../SpoutGL/SpoutGLextensions.cpp
-  ../../SpoutGL/SpoutReceiver.cpp
-  ../../SpoutGL/SpoutSender.cpp
   ../../SpoutGL/SpoutSenderNames.cpp
   ../../SpoutGL/SpoutSharedMemory.cpp
   ../../SpoutGL/SpoutUtils.cpp

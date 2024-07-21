@@ -1,57 +1,50 @@
 #\-------------------------------------- . -----------------------------------/#
-# Filename : CMakeLists.txt              | SpoutDX12 CMakeList                 #
+# Filename : CMakeList.txt               | SpoutDX9 CMakesList                 #
 # Author   : Lynn Jarvis                 |                                     #
-# Started  : 19/07/2024                  |                                     #
-# 21/07/24 - Remove SpoutGL cpp files from SpoutDX12sources                    #
+# Started  : 21/07/2024                  |                                     #
 #/-------------------------------------- . -----------------------------------\#
 
 
 #/-------------------------------------- . -----------------------------------\#
 #
-# SpoutDX12 static library
+# SpoutDX9 static library
 #
-set(SpoutDX12sources
-  SpoutDX12.h
-  SpoutDX12.cpp
-  ../SpoutDX.h
-  ../SpoutDX.cpp
+set(SpoutDX9sources
+  SpoutDX9.h
+  SpoutDX9.cpp
   ../../../SpoutGL/SpoutCommon.h
   ../../../SpoutGL/SpoutCopy.h
-  ../../../SpoutGL/SpoutDirectX.h
   ../../../SpoutGL/SpoutFrameCount.h
   ../../../SpoutGL/SpoutSenderNames.h
   ../../../SpoutGL/SpoutSharedMemory.h
   ../../../SpoutGL/SpoutUtils.h
   ../../../SpoutGL/SpoutCopy.cpp
-  ../../../SpoutGL/SpoutDirectX.cpp
   ../../../SpoutGL/SpoutFrameCount.cpp
   ../../../SpoutGL/SpoutSenderNames.cpp
   ../../../SpoutGL/SpoutSharedMemory.cpp
   ../../../SpoutGL/SpoutUtils.cpp
 )
 
-add_library(SpoutDX12_static STATIC ${SpoutDX12sources} )
-target_compile_definitions(SpoutDX12_static PRIVATE SPOUT_BUILD_DLL )
+add_library(SpoutDX9_static STATIC ${SpoutDX9sources} )
+target_compile_definitions(SpoutDX9_static PRIVATE SPOUT_BUILD_DLL )
 #/-------------------------------------- . -----------------------------------\#
 
 
 #/-------------------------------------- . -----------------------------------\#
 #
-# SpoutDX12 dynamic link library
+# SpoutDX9 dynamic link library
 #
-add_library(SpoutDX12 SHARED 
-  SpoutDX12.h
-  SpoutDX12.cpp
-  ../SpoutDX.h
-  ../SpoutDX.cpp  
+add_library(SpoutDX9 SHARED 
+  SpoutDX9.h
+  SpoutDX9.cpp
 )
 
-target_link_libraries(SpoutDX12
-   PRIVATE 
+target_link_libraries(SpoutDX9
+PRIVATE 
      Spout_static
 )
 
-target_compile_definitions(SpoutDX12
+target_compile_definitions(SpoutDX9
   PRIVATE
     SPOUT_BUILD_DLL
     SPOUTLIBRARY_EXPORTS
@@ -59,8 +52,8 @@ target_compile_definitions(SpoutDX12
 #/-------------------------------------- . -----------------------------------\#
 
 if(NOT MSVC)
-  target_compile_options(SpoutDX12_static PRIVATE -msse4)
-  target_compile_options(SpoutDX12 PRIVATE -msse4)
+  target_compile_options(SpoutDX9_static PRIVATE -msse4)
+  target_compile_options(SpoutDX9 PRIVATE -msse4)
 endif()
 
 get_property(GeneratorisMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
@@ -76,31 +69,28 @@ else()
 endif()
 
 if(MINGW)
-  set(OUTPUT_STATIC_LIB "libSpoutDX12_static.a")
-  set(OUTPUT_SHARED_LIB "libSpoutDX12.dll")
-  set(OUTPUT_IMPORT_LIB "libSpoutDX12.dll.a")
+  set(OUTPUT_STATIC_LIB "libSpoutDX9_static.a")
+  set(OUTPUT_SHARED_LIB "libSpoutDX9.dll")
+  set(OUTPUT_IMPORT_LIB "libSpoutDX9.dll.a")
 else()
-  set(OUTPUT_STATIC_LIB "SpoutDX12_static.lib")
-  set(OUTPUT_SHARED_LIB "SpoutDX12.dll")
-  set(OUTPUT_IMPORT_LIB "SpoutDX12.lib")
+  set(OUTPUT_STATIC_LIB "SpoutDX9_static.lib")
+  set(OUTPUT_SHARED_LIB "SpoutDX9.dll")
+  set(OUTPUT_IMPORT_LIB "SpoutDX9.lib")
 endif()
 
-#
 # Copy binaries to the BUILD/Binaries folder
-#
-
-# SpoutDX12 dll
-add_custom_command(TARGET SpoutDX12 POST_BUILD
+# SpoutDX9
+add_custom_command(TARGET SpoutDX9 POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E 
   copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}${OUTPUT_IMPORT_LIB} ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_IMPORT_LIB}
 )
-add_custom_command(TARGET SpoutDX12 POST_BUILD
+add_custom_command(TARGET SpoutDX9 POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E 
-  copy $<TARGET_FILE:SpoutDX12> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_SHARED_LIB}
+  copy $<TARGET_FILE:SpoutDX9> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_SHARED_LIB}
 )
 
-# SpoutDX12_static library
-add_custom_command(TARGET SpoutDX12_static POST_BUILD
+# SpoutDX9_static
+add_custom_command(TARGET SpoutDX9_static POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E 
-  copy $<TARGET_FILE:SpoutDX12_static> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_STATIC_LIB}
+  copy $<TARGET_FILE:SpoutDX9_static> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_STATIC_LIB}
 )
