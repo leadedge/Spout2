@@ -31,7 +31,17 @@
 #ifndef __spoutDX12__ 
 #define __spoutDX12__
 
-#include "..\SpoutDX.h" // Base class
+//
+// SpoutDX base class
+//
+// Include files are in the same folder as SpoutDX.h for build using a dll or library.
+// SpoutDX.h is one level above for build using the repository folder structure.
+//
+#if __has_include("SpoutCommon.h")
+#include "SpoutDX.h" 
+#else
+#include "..\\SpoutDX.h"
+#endif
 
 #include <d3d12.h>
 #include <d3d11on12.h>
