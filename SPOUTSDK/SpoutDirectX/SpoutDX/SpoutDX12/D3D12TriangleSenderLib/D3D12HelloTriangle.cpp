@@ -26,23 +26,24 @@
 // SPOUT
 //
 
-#include "include\\SpoutDX.h" // for dll or static library build
-
 //
 // Static or dll build
 //
+// Define BUILDSTATIC below to use SpoutDX12_static.lib
 // dll build requires bin\SpoutDX12.dll
 // in the bin\x64\Release or Debug folder
 //
 #define BUILDSTATIC
 //
 #ifdef BUILDSTATIC
-#pragma comment(lib, "libs\\SpoutDX12_static.lib")
+#pragma comment(lib, "lib\\SpoutDX12_static.lib")
 #else
-#pragma comment(lib, "libs\\SpoutDX12.lib")
+#pragma comment(lib, "lib\\SpoutDX12.lib")
 #endif
 
-#include "..\SpoutDX12.h"
+// "include" folder exists for dll or static library build
+#include "include\\SpoutDX12.h"
+
 spoutDX12 sender;
 ComPtr<ID3D11Resource> m_wrappedBackBuffers[3]; // D3D12 backbuffers wrapped for use with D3D11
 
@@ -62,7 +63,7 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
 void D3D12HelloTriangle::OnInit()
 {
 	// SPOUT
-	// OpenSpoutConsole(); // Console only for debugging
+	OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
 	// printf("D3D12HelloTriangle\n");
 
