@@ -33,10 +33,30 @@
 
 #pragma warning( disable : 4005 ) // Disable macro re-definition warnings
 
-#include "..\..\..\SpoutGL\SpoutCommon.h"
-#include "..\..\..\SpoutGL\SpoutSenderNames.h" // for sender creation and update
-#include "..\..\..\SpoutGL\SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "..\..\..\SpoutGL\SpoutUtils.h" // for logging utilites
+//
+// Include file path
+//
+// 1) If the include files are in the same folder there is no prefix.
+//    This applies for a build using SpoutDX9 dll or static library.
+//
+// 2) If the Spout source is built as a dll or static library,
+//    or an application is built using the repository folder structure
+//    the path prefix for include files is "..\..\..\SpoutGL\"
+//
+// 3) If the include files are in a different folder, change the prefix as required.
+//
+
+#if __has_include("SpoutCommon.h")
+#include "SpoutCommon.h" // include files in the same folder
+#include "SpoutSenderNames.h"
+#include "SpoutFrameCount.h"
+#include "SpoutUtils.h"
+#else
+#include "..\..\..\SpoutGL\SpoutCommon.h" // repository folder structure
+#include "..\..\..\SpoutGL\SpoutSenderNames.h"
+#include "..\..\..\SpoutGL\SpoutFrameCount.h"
+#include "..\..\..\SpoutGL\SpoutUtils.h"
+#endif
 
 #include <direct.h> // for _getcwd
 #include <TlHelp32.h> // for PROCESSENTRY32
