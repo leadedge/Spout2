@@ -22,7 +22,7 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{EFC97802-E2E4-4C08-A186-2ADCAAA7587F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>WinSpoutDX</RootNamespace>
+    <RootNamespace>WinSpoutDXsender</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -152,6 +152,7 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -163,11 +164,11 @@
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
     </Manifest>
     <PostBuildEvent>
-      <Command>copy /y /v "$(OutDir)$(TargetName)$(TargetExt)" "..\..\Binaries\Examples\WindowsReceiver.exe"</Command>
+      <Command>copy /y /v "$(OutDir)$(TargetName)$(TargetExt)" "..\..\Binaries\Examples\WindowsSender.exe"
+copy /y /v "koala-on-tree.bmp" "..\..\Binaries\Examples\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\..\SpoutGL\SpoutCommon.h" />
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutCopy.h" />
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutDirectX.h" />
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutFrameCount.h" />
