@@ -1,0 +1,22 @@
+========================
+    Spout log file
+========================
+ 2023-12-06 10:22:11
+[notice] spoutDX::OpenDirectX11
+[notice] spoutDirectX::OpenDirectX11
+[notice] spoutDirectX::CreateDX11device - default adapter
+[notice]     Device (0x8C6D08D8) - Context (0x8C6D3B90)
+[notice]     created new device (0x8C6D08D8)
+[notice] spoutDirectX::CreateSharedDX11Texture
+[notice]     pDevice = 0x8C6D08D8, width = 640, height = 360, format = 0x57 (87)
+[notice]     pTexture [0x8C8ABF78] (640x360 format 0x57) : dxShareHandle = [0x00001EC2]
+[notice] spoutSenderNames::CreateSender
+[notice]     [Tutorial04] 640x360, share handle = 0x0001EC2, format = 87
+[notice] spoutFrameCount::CreateAccessMutex - [Tutorial04_SpoutAccessMutex]
+[notice]     texture access mutex created [0x42EFF180]
+[notice] SpoutFrameCount::EnableFrameCount - [Tutorial04]
+[notice]     frame count semaphore [Tutorial04_Count_Semaphore] created [0x00005A0]
+[notice] spoutDX::CloseDirectX11()
+[notice] spoutDirectX::CloseDirectX11(0x8C6D08D8)
+[notice] spoutDirectX::ReleaseDX11Device(0x8C6D08D8)
+[notice]     no outstanding refcount

@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns:atg="http://atg.xbox.com" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{8e114980-c1a3-4ada-ad7c-83caadf5daeb}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{2c3d4c8c-5d1a-459a-a05a-a4e4b608a44e}</UniqueIdentifier>
+      <Extensions>fx;fxh;hlsl</Extensions>
+    </Filter>
+    <Filter Include="SpoutDX">
+      <UniqueIdentifier>{1ac1c8e5-d1d3-47e9-ab0a-0ec084c7eddb}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Tutorial04.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CLInclude Include="resource.h">
+      <Filter>Resource Files</Filter>
+    </CLInclude>
+    <ResourceCompile Include="Tutorial04.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+    <ClInclude Include="include\SpoutCommon.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SpoutCopy.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SpoutDirectX.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SpoutDX.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SpoutFrameCount.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SpoutSenderNames.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SpoutSharedMemory.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SpoutUtils.h">
+      <Filter>SpoutDX</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Tutorial04.fx">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Tutorial04_PS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Tutorial04_VS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+  </ItemGroup>
+</Project>

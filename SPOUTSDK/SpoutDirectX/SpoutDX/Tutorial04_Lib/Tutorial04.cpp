@@ -1,28 +1,30 @@
 //--------------------------------------------------------------------------------------
 // File: Tutorial04.cpp
 //
-// - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Adapted for SPOUT output (http://spout.zeal.co/)
 // from : https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
+//
+//
+// * USING SPOUTDX AS A DLL OR STATIC LIBRARY INSTEAD OF SOURCE FILES *
+//
+//
+// The process is the same for the Spout, SpoutDX9 and SpoutDX12 libraries
+//
+// Files from Spout CMake INSTALL are used and equivalent folders
+// created at the root path of the project for the required files :
+//
+//     include     header files from INSTALL\include\SpoutDX
+//     lib         SpoutDX.lib and SpoutDX_static.lib from INSTALL\lib\SpoutDX
+//     bin         SpoutDX.dll from INSTALL\bin\SpoutDX 
+//
+// For build options see "STATIC OR DYNAMIC LIBRARY" below
+//
+// Compare with the Tutorial04 version using SpoutDX source files
+// Apart from this addition, the application source files are the same
+//
+// This is a sender using the "SpoutDX" support class using SendTexture :
+//     bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
 // Search on "SPOUT" for additions.
-// Version to send using 2.007 methods
-//
-// This is a sender using the "SpoutDX" support class using SendTexture
-//
-// bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
-//
-// Compare with a stand-alone version using methods directly from 
-// the Spout SDK classes and with Windows examples using SendImage.
-//
-// Compare also with the "Tutorial04_Lib" project, a version using 
-// SpoutDX as a dynamic or static libary. Application source files
-// are the same apart from a simple code addition.
-//
-//
-// Window resizing has been added to the original sample to demonstrate
-// requirements for a Spout sender to handle size changes.
-//
-// 24.04.23 - remove redundant OpenDirectX11 from ResetDevice
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
@@ -44,8 +46,28 @@
 #include <directxcolors.h>
 #include "resource.h"
 
-// SPOUT
-#include "..\..\SpoutDX\SpoutDX.h"
+// - - - - - - - - - - - SPOUT - - - - - - - - - - - - - - 
+//
+// STATIC OR DYNAMIC LIBRARY
+//
+// Enable BUILDSTATIC below to build using a static libary
+//
+// If using a dll, copy bin\SpoutDX.dll to the bin\x64\Release or Debug folder
+// containing the executable file after build of the project
+//
+#define BUILDSTATIC
+//
+#ifdef BUILDSTATIC
+#pragma comment(lib, "lib\\SpoutDX_static.lib")
+#else
+#pragma comment(lib, "lib\\SpoutDX.lib")
+#endif
+
+// Header files for for both dll or static library build
+#include "include\\SpoutDX.h"
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
 
 using namespace DirectX;
 
