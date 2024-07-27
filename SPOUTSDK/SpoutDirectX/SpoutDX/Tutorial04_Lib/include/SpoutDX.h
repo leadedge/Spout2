@@ -33,28 +33,32 @@
 #define __spoutDX__
 
 //
-// Change the path as necessary
+// Include file path
 //
-// For the repository folder structure, the path prefix is "..\..\SpoutGL\"
-// If the include files are in the same folder there is no prefix.
-// If the files are in a different folder, change the prefix as required.
+// 1) If the include files are in the same folder there is no prefix.
+//    This applies for a build using SpoutDX dll or static library.
 //
-// #define PATH_PREFIX
+// 2) If the Spout source is built as a dll or static library,
+//    or an application is built using the repository folder structure
+//    the path prefix for include files is "..\..\SpoutGL\"
+//
+// 3) If the include files are in a different folder, change the prefix as required.
+//
 
-#ifdef PATH_PREFIX
-#include "..\..\SpoutGL\SpoutCommon.h" // for dll build
-#include "..\..\SpoutGL\SpoutSenderNames.h" // for sender creation and update
-#include "..\..\SpoutGL\SpoutDirectX.h" // for creating DX11 textures
-#include "..\..\SpoutGL\SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "..\..\SpoutGL\SpoutCopy.h" // for pixel copy
-#include "..\..\SpoutGL\SpoutUtils.h" // Registry utiities
+#if __has_include("SpoutCommon.h")
+#include "SpoutCommon.h" // include files in the same folder
+#include "SpoutDirectX.h"
+#include "SpoutSenderNames.h"
+#include "SpoutFrameCount.h"
+#include "SpoutCopy.h"
+#include "SpoutUtils.h"
 #else
-#include "SpoutCommon.h" // for dll build
-#include "SpoutSenderNames.h" // for sender creation and update
-#include "SpoutDirectX.h" // for creating DX11 textures
-#include "SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "SpoutCopy.h" // for pixel copy
-#include "SpoutUtils.h" // Registry utiities
+#include "..\..\SpoutGL\SpoutCommon.h" // repository folder structure
+#include "..\..\SpoutGL\SpoutDirectX.h"
+#include "..\..\SpoutGL\SpoutSenderNames.h"
+#include "..\..\SpoutGL\SpoutFrameCount.h"
+#include "..\..\SpoutGL\SpoutCopy.h"
+#include "..\..\SpoutGL\SpoutUtils.h"
 #endif
 
 #include <direct.h> // for _getcwd

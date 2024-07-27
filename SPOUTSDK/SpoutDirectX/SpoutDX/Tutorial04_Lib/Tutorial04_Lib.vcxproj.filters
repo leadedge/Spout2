@@ -9,9 +9,6 @@
       <UniqueIdentifier>{2c3d4c8c-5d1a-459a-a05a-a4e4b608a44e}</UniqueIdentifier>
       <Extensions>fx;fxh;hlsl</Extensions>
     </Filter>
-    <Filter Include="SpoutDX">
-      <UniqueIdentifier>{1ac1c8e5-d1d3-47e9-ab0a-0ec084c7eddb}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Tutorial04.cpp" />
@@ -23,30 +20,6 @@
     <ResourceCompile Include="Tutorial04.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
-    <ClInclude Include="include\SpoutCommon.h">
-      <Filter>SpoutDX</Filter>
-    </ClInclude>
-    <ClInclude Include="include\SpoutCopy.h">
-      <Filter>SpoutDX</Filter>
-    </ClInclude>
-    <ClInclude Include="include\SpoutDirectX.h">
-      <Filter>SpoutDX</Filter>
-    </ClInclude>
-    <ClInclude Include="include\SpoutDX.h">
-      <Filter>SpoutDX</Filter>
-    </ClInclude>
-    <ClInclude Include="include\SpoutFrameCount.h">
-      <Filter>SpoutDX</Filter>
-    </ClInclude>
-    <ClInclude Include="include\SpoutSenderNames.h">
-      <Filter>SpoutDX</Filter>
-    </ClInclude>
-    <ClInclude Include="include\SpoutSharedMemory.h">
-      <Filter>SpoutDX</Filter>
-    </ClInclude>
-    <ClInclude Include="include\SpoutUtils.h">
-      <Filter>SpoutDX</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Tutorial04.fx">

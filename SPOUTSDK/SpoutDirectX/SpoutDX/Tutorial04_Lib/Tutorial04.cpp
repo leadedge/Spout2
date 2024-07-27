@@ -3,15 +3,15 @@
 //
 // Adapted for SPOUT output (http://spout.zeal.co/)
 // from : https://github.com/walbourn/directx-sdk-samples/tree/master/Direct3D11Tutorials
+// This is a sender using the "SpoutDX" support class using SendTexture :
+//     bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
+// Search on "SPOUT" for additions.
 //
 //
 // * USING SPOUTDX AS A DLL OR STATIC LIBRARY INSTEAD OF SOURCE FILES *
 //
-//
-// The process is the same for the Spout, SpoutDX9 and SpoutDX12 libraries
-//
-// Files from Spout CMake INSTALL are used and equivalent folders
-// created at the root path of the project for the required files :
+// Files from CMake INSTALL build or Spout release are copied to equivalent
+// folders at the root path of the project :
 //
 //     include     header files from INSTALL\include\SpoutDX
 //     lib         SpoutDX.lib and SpoutDX_static.lib from INSTALL\lib\SpoutDX
@@ -19,13 +19,32 @@
 //
 // For build options see "STATIC OR DYNAMIC LIBRARY" below
 //
-// Compare with the Tutorial04 version using SpoutDX source files
+// Compare this example with the Tutorial04 version using SpoutDX source files
 // Apart from this addition, the application source files are the same
 //
-// This is a sender using the "SpoutDX" support class using SendTexture :
-//     bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
-// Search on "SPOUT" for additions.
+// The process is the same for the Spout, SpoutDX9 and SpoutDX12 libraries
+//   1) Create lib, include and bin folders at the root folder of the project
+//   2) Copy files from a CMake INSTALL build or Spout release for the library.
+//   3) Insert the "STATIC OR DYNAMIC LIBRARY" code at the beginning of the
+//      main application source file and modify the library names.
+//   4) Remove Spout source files from the project.
 //
+// Note that the application project build
+//   Project Properties > C++ > Code Generation > Runtime Library
+// must match the CMake option "SPOUT_BUILD_CMT" for project generation
+// and the build type, Release or Debug.
+//   Release
+//     SPOUT_BUILD_CMT enabled  > Multi-threaded (/MT)
+//     SPOUT_BUILD_CMT disabled > Multi-threaded DLL (/MD)
+//   Debug
+//     SPOUT_BUILD_CMT enabled  > Multi-threaded Debug (/MTd)
+//     SPOUT_BUILD_CMT disabled > Multi-threaded Debug DLL (/MDd)
+//
+// This application project and the distributed libraries are
+//     Release / Multi-threaded DLL (/MD)
+// For Debug configuration, or other Runtime Library options
+// the libraries must be re-built to match.
+// 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
 // This application displays a 3D cube using Direct3D 11
@@ -46,27 +65,26 @@
 #include <directxcolors.h>
 #include "resource.h"
 
-// - - - - - - - - - - - SPOUT - - - - - - - - - - - - - - 
 //
-// STATIC OR DYNAMIC LIBRARY
+// ================== STATIC OR DYNAMIC LIBRARY ==================
 //
-// Enable BUILDSTATIC below to build using a static libary
+// Enable BUILDSTATIC below to build using a static libary instead of a dll
 //
-// If using a dll, copy bin\SpoutDX.dll to the bin\x64\Release or Debug folder
-// containing the executable file after build of the project
+// For a dll, copy "bin/SpoutDX.dll" to the folder containing the executable
+// file after build of the project
 //
 #define BUILDSTATIC
 //
 #ifdef BUILDSTATIC
-#pragma comment(lib, "lib\\SpoutDX_static.lib")
+#pragma comment(lib, "lib/SpoutDX_static.lib")
 #else
-#pragma comment(lib, "lib\\SpoutDX.lib")
+#pragma comment(lib, "lib/SpoutDX.lib")
 #endif
-
-// Header files for for both dll or static library build
-#include "include\\SpoutDX.h"
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+//
+// Header files for both dll or static library build
+#include "include/SpoutDX.h"
+//
+// ===============================================================
 
 
 using namespace DirectX;
