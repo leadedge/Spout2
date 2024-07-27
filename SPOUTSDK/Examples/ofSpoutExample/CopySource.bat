@@ -34,7 +34,8 @@ if %input% EQU 9 copy /y /v Source\Receiver\Data\*.* src
 if %input% EQU 0 copy /y /v Source\Receiver\Multiple\*.* src
 rem
 echo.
-echo Re-build "ofSpoutExample" with the new source files
+echo Rebuild "ofSpoutExample" with the new source files
+echo Rescan can be used to refresh Intellisense
 echo.
 set /p input=Enter to end
 set input=
