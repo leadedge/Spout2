@@ -3,6 +3,12 @@
 	Spout OpenFrameworks Data Sender example
 
 	Example of sending per-frame data
+	
+	1) Run the Data Receiver example
+	2) Move the mouse over the sender window :
+	    the cursor position is mirrored by a yellow ball in the receiver window
+	3) Press and draw a line :
+	    a yellow line is drawn in the receiver window
 
 	Spout 2.007
 	OpenFrameworks 11

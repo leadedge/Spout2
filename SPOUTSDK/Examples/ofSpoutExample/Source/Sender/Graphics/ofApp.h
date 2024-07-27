@@ -21,7 +21,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\SpoutGL\SpoutSender.h"
+#include "..\..\..\..\apps\SpoutGL\SpoutSender.h"
 
 // disable warning conversion from 'size_t' to 'int' for ofxXmlSettings
 #pragma warning(disable:4267)

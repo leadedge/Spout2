@@ -2,6 +2,10 @@
 
 	Spout OpenFrameworks Multiple Receiver example
 
+	- Opens two receivers, side by side in the window
+	- Each receiver is independent and can receive from different senders
+	- Mouse right click in each half of the window to select a sender 
+
 	Visual Studio using the Spout SDK
 
 	Copyright (C) 2015-2024 Lynn Jarvis.
@@ -51,6 +55,8 @@ void ofApp::setup(){
 	// Make the window double width for the two receivers
 	ofSetWindowShape(ofGetWidth()*2, ofGetHeight());
 
+	// Centre on the screen
+	ofSetWindowPosition((ofGetScreenWidth()-ofGetWidth())/2, (ofGetScreenHeight()-ofGetHeight())/2);
 
 
 } // end setup
@@ -102,7 +108,7 @@ void ofApp::showInfo() {
 		str += std::to_string(receiver1.GetSenderHeight()); // height 
 		str += ") ";
 		ofDrawBitmapString(str, 10, 20);
-		ofDrawBitmapString("RH click to select sender 1", 15, ofGetHeight() - 20);
+		ofDrawBitmapString("Right click to select sender 1", 15, ofGetHeight() - 20);
 	}
 	else {
 		str = "No sender detected";
@@ -117,7 +123,7 @@ void ofApp::showInfo() {
 		str += std::to_string(receiver2.GetSenderHeight()); // height 
 		str += ") ";
 		ofDrawBitmapString(str, ofGetWidth()/2+10, 20);
-		ofDrawBitmapString("RH click to select sender 2", ofGetWidth() / 2 + 20, ofGetHeight() - 20);
+		ofDrawBitmapString("Right click to select sender 2", ofGetWidth() / 2 + 20, ofGetHeight() - 20);
 	}
 	else {
 		str = "No sender detected";

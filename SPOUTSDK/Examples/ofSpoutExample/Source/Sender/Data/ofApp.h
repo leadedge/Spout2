@@ -21,7 +21,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\SpoutGL\SpoutSender.h"
+#include "..\..\..\apps\SpoutGL\SpoutSender.h"
 #include "ofxXmlSettings.h"
 
 class ofApp : public ofBaseApp{

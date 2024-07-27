@@ -9,6 +9,16 @@
 
 	See also the receiver sync example.
 
+	The sender waits for a sync signal from the receiver before producing a frame
+
+	1) On open, the sender will cycle at 60 fps
+	2) Open the receiver sync example and enable sync
+	3) The sender will synchronise with the receiver at 30fps
+	4) Disable Sync
+	5) The sender does not wait for the receiver and will cycle at 60fps
+
+	Consult the code comments for the reverse (receiver waits on the sender)
+
 	Spout 2.007
 	OpenFrameworks 12
 	Visual Studio 2022
@@ -80,7 +90,8 @@ void ofApp::draw() {
 	// The receiver signals that it is ready after processing the last frame.
 	// (See the receiver sync example)
 	//
-	// sender.WaitFrameSync(sender.GetName(), 67);
+	sender.WaitFrameSync(sender.GetName(), 67);
+	bSenderWait = true; // For on-screen display
 	//
 	// To demonstrate the effect of sync functions, reduce the receiver frame rate.
 	// (See the receiver sync example).
@@ -118,6 +129,7 @@ void ofApp::draw() {
 	// On-screen display
 	showInfo();
 
+	/*
 	// =======================================================================
 	//
 	// Receiver waits on the sender
@@ -127,6 +139,7 @@ void ofApp::draw() {
 	// Before receiving, the receiver waits for the sender signal.
 	// (See the receiver sync example)
 	sender.SetFrameSync(sender.GetName());
+	bSenderWait = false; // For on-screen display
 	//
 	// To demonstrate the effect of sync functions, reduce the sender frame rate.
 	// The receiver will synchronize with the sender frame rate.
@@ -134,6 +147,7 @@ void ofApp::draw() {
 	if(bSync) sender.HoldFps(30);
 	//
 	// =======================================================================
+	*/
 
 }
 
@@ -154,12 +168,19 @@ void ofApp::showInfo() {
 		str += ofToString(sender.GetFrame());
 	}
 	ofDrawBitmapString(str, 10, 20);
-	if(bSync)
-		str = "SPACE to disable sync";
-	else
-		str = "SPACE to enable sync";
 
-	ofDrawBitmapString(str, (ofGetWidth()-str.length()*10)/2, ofGetHeight()-20);
+	if (bSync) {
+		if (bSenderWait)
+			str = "Sender waits for the receiver ready to receive a frame";
+		else
+			str = "Receiver waits for the sender to produce a frame";
+		ofDrawBitmapString(str, (ofGetWidth()-str.length()*8)/2, ofGetHeight()-40);
+		str = "SPACE to disable sync";
+	}
+	else {
+		str = "SPACE to enable sync";
+	}
+	ofDrawBitmapString(str, (ofGetWidth()-str.length()*8)/2, ofGetHeight()-20);
 
 }
 

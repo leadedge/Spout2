@@ -9,7 +9,7 @@
 	'F1' - sender name, 'F2' - sender format and are practical examples
 
 	Spout 2.007
-	OpenFrameworks 11
+	OpenFrameworks 12
 	Visual Studio 2022
 
 	Copyright (C) 2022-2024 Lynn Jarvis.
@@ -40,6 +40,9 @@ void ofApp::setup(){
 
  	strcpy_s(sendername, 256, "Spout Utilities"); // The sender name
 	ofSetWindowTitle(sendername); // show it on the title bar
+
+	// Don't centre on the screen to demonstrate messagebox
+	// window centre postioning using spoutMessageBoxWindow
 
 	// Load an Information icon from imageres.dll
 	// https://renenyffenegger.ch/development/Windows/PowerShell/examples/WinAPI/ExtractIconEx/imageres.html
@@ -85,7 +88,7 @@ void ofApp::setup(){
 	//      SpoutMessageBoxIcon(HICON hIcon)
 	//      SpoutMessageBoxIcon(std::string iconfile)
 	//    Icon files must be of the type ".ico"
-	// std::string iconfile = ofToDataPath("SpoutLogo4.ico", true); // full path required
+	// std::string iconfile = ofToDataPath("Spout.ico", true); // full path required
 	// SpoutMessageBoxIcon(iconfile);
 	//
 	//   Modeless mode
@@ -496,7 +499,7 @@ void ofApp::keyPressed(int key)
 	// Change sender name
 	if (key == OF_KEY_F1) {
 		// Spout icon
-		std::string iconfile = ofToDataPath("SpoutLogo4.ico", true);
+		std::string iconfile = ofToDataPath("Spout.ico", true);
 		SpoutMessageBoxIcon(iconfile);
 		// Centre dialog on the window instead of the desktop
 		SpoutMessageBoxWindow(ofGetWin32Window());
@@ -624,7 +627,7 @@ void ofApp::doMessagebox(int item)
 		str += "Refer to SpoutUtils.cpp for more utilites\n";
 		str += "Information, Console, Logging, Registry, Timing\n\n";
 		str += "                                    <a href=\"https://spout.zeal.co\">https://spout.zeal.co</a>\n\n";
-		std::string iconfile = ofToDataPath("SpoutLogo4.ico", true);
+		std::string iconfile = ofToDataPath("Spout.ico", true);
 		SpoutMessageBoxIcon(iconfile);
 		SpoutMessageBox(NULL, str.c_str(), "About", MB_TOPMOST | MB_OK);
 	}
@@ -648,7 +651,7 @@ void ofApp::doMessagebox(int item)
 		str += "Click \"Desktop\" to center on the desktop\n";
 		str += "Click \"OK\" for no change\n\n";
 		str += "If the application window is centred on the desktop now,\n";
-		str += "move it to one side and the effect can be more easily seen.\n";
+		str += "move it to one side so the effect can be more easily seen.\n";
 		SpoutMessageBoxButton(1000, L"Window");
 		SpoutMessageBoxButton(2000, L"Desktop");
 		int iret = SpoutMessageBox(NULL, str.c_str(), "Window", MB_TOPMOST | MB_OK);
@@ -762,12 +765,12 @@ void ofApp::doMessagebox(int item)
 	// A full path to an icon file (.ico) is required
 	//
 	if (item == 'h') {
-		std::string iconfile = ofToDataPath("SpoutLogo4.ico", true);
+		std::string iconfile = ofToDataPath("Spout.ico", true);
 		SpoutMessageBoxIcon(iconfile);
 		std::string str = "A custom icon can be loaded from an icon \".ico\" image file:\n";
 		str += "A full path to the icon file is required.\n";
 		str += "Here we can use an Openframeworks function :\n\n";
-		str += "    std::string iconfile = ofToDataPath(\"SpoutLogo4.ico\", true);\n";
+		str += "    std::string iconfile = ofToDataPath(\"Spout.ico\", true);\n";
 		str += "    SpoutMessageBoxIcon(iconfile)\n\n";
 		str += "An icon can also be loaded using an icon handle.\n";
 		str += "The handle can be obtained from resources\n";
@@ -818,7 +821,7 @@ void ofApp::doMessagebox(int item)
 		str += "         SpoutMessageBox(NULL, \"Enter text in the edit box below\", \"Caption\", MB_OK, editstring)\n\n";
 		str += "   o Icon\n";
 		str += "      Custom icons can be used with both caption and message with caption\n";
-		str += "         std::string icofile = ofToDataPath(\"SpoutLogo4.ico\", true);\n";
+		str += "         std::string icofile = ofToDataPath(\"Spout.ico\", true);\n";
 		str += "         SpoutMessageBoxIcon(icofile);\n\n";
 		str += "Select an option and repeat for more options\n";
 		SpoutMessageBoxButton(1000, L"Caption");
@@ -838,7 +841,7 @@ void ofApp::doMessagebox(int item)
 			}
 		}
 		if (iret == 3000) {
-			std::string icofile = ofToDataPath("SpoutLogo4.ico", true);
+			std::string icofile = ofToDataPath("Spout.ico", true);
 			SpoutMessageBoxIcon(icofile);
 			if (SpoutMessageBox(NULL, "Example of using a custom icon with text entry", "Text entry with icon", MB_OKCANCEL, editstring) == IDOK) {
 				if (!editstring.empty())
@@ -893,7 +896,7 @@ void ofApp::doMessagebox(int item)
 		if (buttonid == 3000) {
 			index = 3; // starting index (0-3)
 			// Caption with message and icon
-			std::string icofile = ofToDataPath("SpoutLogo4.ico", true);
+			std::string icofile = ofToDataPath("Spout.ico", true);
 			SpoutMessageBoxIcon(icofile);
 			if (SpoutMessageBox(NULL, "Combo box with user icon\nThis is a list of items\nSelect an item\nThe item index will be returned", "Select item", MB_OKCANCEL, items, index) == IDOK) {
 				SpoutMessageBox("Item selection", "%d (%s)", index, items[index].c_str());
@@ -919,8 +922,9 @@ void ofApp::doMessagebox(int item)
 		str += "\"Modeless\" is disabled for any dialog requiring user input.\n\n";
 		str += "       SpoutMessageBoxModeless(true);\n";
 		str += "       SpoutMessageBoxModeless(false);\n\n";
-		str += "This Message is modeless and all other controls can be used while it is\n";
-		str += "open. Move it to one side and try them. Or even close the program.\n\n";
+		str += "This Message is modeless. Move it to one side and notice that the cube\n";
+		str += "is still spinning. All other controls can also be used and the message will\n";
+		str += "remain open even if the program is closed.\n\n";
 		str += "For this to work, you must have downloaded a <a href=\"https://github.com/leadedge/Spout2/releases/\">Spout release</a>\n";
 		str += "and run SpoutPanel or SpoutSettings at least once.\n\n";
 		SpoutMessageBoxModeless(true);

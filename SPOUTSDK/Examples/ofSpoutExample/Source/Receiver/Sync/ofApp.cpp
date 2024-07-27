@@ -7,7 +7,16 @@
 	Synchronization is necessary if the sending and receiving applications 
 	require	frame accuracy and missed or duplicated frames are not acceptable.
 
-	See also the receiver sync example.
+	See also the sender sync example.
+
+	The receiver produces a sync signal when ready for the sender to produce a new frame
+
+	1) Open the sender sync example and enable sync
+	2) The receiver will synchronise to the sender at 30fps
+	3) Disable Sync
+	4) The receiver receives from the sender every frame and cycles at 60fps
+
+	Consult the code comments for the reverse (receiver waits on the sender)
 
 	Copyright (C) 2024 Lynn Jarvis.
 
@@ -37,6 +46,9 @@ void ofApp::setup(){
 
 	ofSetWindowTitle("Receiver Sync Example");
 	ofBackground(0, 0, 0);
+
+	// Centre on the screen
+	ofSetWindowPosition((ofGetScreenWidth()-ofGetWidth())/2, (ofGetScreenHeight()-ofGetHeight())/2);
 
 	// Optional logs
 	// EnableSpoutLog();
@@ -73,6 +85,7 @@ void ofApp::draw() {
 	// (See the sender sync example)
 	//
 	receiver.WaitFrameSync(receiver.GetSenderName(), 67);
+	bSenderWait = true;  // For on-screen display
 	//
 	// To show the effect of sync functions, reduce the sender frame rate.
 	// (See the sender sync example).
@@ -112,6 +125,7 @@ void ofApp::draw() {
 	// (See the sender sync example)
 	//
 	receiver.SetFrameSync(receiver.GetSenderName());
+	bSenderWait = false; // For on-screen display
 	//
 	// =======================================================================
 
@@ -138,11 +152,19 @@ void ofApp::showInfo() {
 			str += std::to_string(receiver.GetSenderFrame()); // frame since the sender started
 		}
 		ofDrawBitmapString(str, 10, 20);
-		if (bSync)
+
+		if (bSync) {
+			if (bSenderWait)
+				str = "Sender waits for the receiver ready to receive a frame";
+			else
+				str = "Receiver waits for the sender to produce a frame";
+			ofDrawBitmapString(str, (ofGetWidth()-str.length()*8)/2, ofGetHeight()-40);
 			str = "SPACE to disable sync";
-		else
+		}
+		else {
 			str = "SPACE to enable sync";
-		ofDrawBitmapString(str, (ofGetWidth()-str.length()*10)/2, ofGetHeight()-20);
+		}
+		ofDrawBitmapString(str, (ofGetWidth()-str.length()*8)/2, ofGetHeight()-20);
 	}
 	else {
 		str = "No sender detected";

@@ -21,7 +21,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\SpoutGL\SpoutReceiver.h" // Spout SDK
+#include "..\..\..\apps\SpoutGL\SpoutReceiver.h" // Spout SDK
 
 class ofApp : public ofBaseApp{
 	public:
@@ -36,5 +36,6 @@ class ofApp : public ofBaseApp{
 		ofTexture myTexture; // Receiving texture
 		void showInfo();
 		bool bSync = true; // Disable or enable sync
+		bool bSenderWait = false; // Sender waits on the receiver
 
 };

@@ -21,7 +21,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\SpoutGL\SpoutReceiver.h" // Receiver functions
+#include "..\..\..\apps\SpoutGL\SpoutReceiver.h" // Receiver functions
 
 
 class ofApp : public ofBaseApp{

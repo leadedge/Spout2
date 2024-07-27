@@ -7,7 +7,7 @@
 	Copyright (C) 2015-2024 Lynn Jarvis.
 
 	Spout 2.007
-	OpenFrameworks 11
+	OpenFrameworks 12
 	Visual Studio 2022
 
 	=========================================================================

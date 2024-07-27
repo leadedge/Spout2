@@ -21,7 +21,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\SpoutGL\SpoutSender.h"
+#include "..\..\..\apps\SpoutGL\SpoutSender.h"
 
 class ofApp : public ofBaseApp{
 	public:
@@ -32,14 +32,15 @@ class ofApp : public ofBaseApp{
 		void windowResized(int w, int h);
 		void keyPressed(int key);
 
-		SpoutSender sender;    // Spout sender object
-		char sendername[256];  // Sender name
+		SpoutSender sender;      // Spout sender object
+		char sendername[256];    // Sender name
 
-		ofImage myBoxImage;    // Image for the 3D demo
-		ofFbo myFbo;           // For texture send example
-		ofPixels myPixels;     // For pixel send example
+		ofImage myBoxImage;      // Image for the 3D demo
+		ofFbo myFbo;             // For texture send example
+		ofPixels myPixels;       // For pixel send example
 		float rotX, rotY;
-		bool bSync = true;     // Disable or enable sync
+		bool bSync = true;       // Disable or enable sync
+		bool bSenderWait = true; // Sender waits on the receiver
 
 		void showInfo();
 

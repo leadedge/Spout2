@@ -21,7 +21,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\SpoutGL\SpoutReceiver.h" // Spout SDK
+#include "..\..\..\apps\SpoutGL\SpoutReceiver.h" // Spout SDK
 #include "ofxXmlSettings.h"
 
 class ofApp : public ofBaseApp{

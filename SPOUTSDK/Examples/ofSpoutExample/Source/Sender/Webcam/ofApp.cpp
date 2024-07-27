@@ -39,6 +39,9 @@ void ofApp::setup(){
 	camsendername = "Spout Webcam Sender"; // Set the sender name
 	ofSetWindowTitle(camsendername); // show it on the title bar
 
+	// Centre on the screen
+	ofSetWindowPosition((ofGetScreenWidth()-ofGetWidth())/2, (ofGetScreenHeight()-ofGetHeight())/2);
+
 	// Get the webcam list into a vector so we can
 	// identify by name and detect SpoutCam later
 	camdevices = vidGrabber.listDevices();

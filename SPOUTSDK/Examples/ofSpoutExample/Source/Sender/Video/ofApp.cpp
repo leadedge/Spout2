@@ -2,6 +2,8 @@
 
 	Spout OpenFrameworks Video Sender example
 
+	A simple example of a sender
+
 	Copyright (C) 2017-2024 Lynn Jarvis.
 
 	=========================================================================
@@ -32,7 +34,7 @@ void ofApp::setup(){
 	ofSetWindowTitle(sendername);					// show it on the title bar
 
     // Video setup
-	fingerMovie.load("movies/fingers.mov");
+	fingerMovie.load("fingers.mov");
 
 	// Set the window height to match the movie aspect ratio.
 	// The movie texture size is not affected.

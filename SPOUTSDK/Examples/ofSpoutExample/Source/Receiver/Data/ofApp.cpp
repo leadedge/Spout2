@@ -4,10 +4,16 @@
 
     Example of receiving per-frame data
 
+	1) Run the Data Sender example
+	2) Move the mouse over the sender window :
+	    the cursor position is mirrored by a yellow ball in the receiver window
+	3) Press and draw a line :
+	    a yellow line is drawn in the receiver window
+
 	Copyright (C) 2022-2024 Lynn Jarvis.
 
 	Spout 2.007
-	OpenFrameworks 11
+	OpenFrameworks 12
 	Visual Studio 2022
 
 	=========================================================================
@@ -31,6 +37,9 @@
 void ofApp::setup(){
 
 	ofSetWindowTitle("Spout Data Receiver");
+
+	// Centre on the screen
+	ofSetWindowPosition((ofGetScreenWidth()-ofGetWidth())/2, (ofGetScreenHeight()-ofGetHeight())/2);
 
 	// Optional logs
 	// EnableSpoutLog();
