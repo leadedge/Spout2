@@ -2,10 +2,16 @@
 
 	Spout OpenFrameworks SpoutLibrary dll dynamic Load example
 
-	The SpoutLibrary.lib file does not need to be linked during build
+	SpoutLibrary.h loads SpoutLibrary.dll and gets the entry point
+	for the function that creates an instance of SpoutLibrary.
+	This is the only exported function for SpoutLirbary.
+
+	SpoutLibrary.lib does not need to be linked during build
+	Other examples use SpoutLibrary.lib for the linker.	
+	
 
 	Spout 2.007
-	OpenFrameworks 11
+	OpenFrameworks 12
 	Visual Studio 2022
 
 	Copyright (C) 2015-2024 Lynn Jarvis.

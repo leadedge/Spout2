@@ -7,15 +7,13 @@
 	1) Copy SpoutLibrary.h to the source files "src" folder
 	
 	2) Copy SpoutLibrary.lib to any convenient folder e.g. "libs"
+	
+	3) A pragma comment avoids the need to specify a library
+	   for the linker in the application project
 
-	3) Tell the linker to input SpoutLibrary.lib to your project
-	   For Visual Studio this will be : Project > Properties > Linker > Input
+		#pragma comment(lib, "libs/SpoutLibrary.lib")
 
-	4) Tell the linker where to find it (libs)
-	   For Visual Studio this will be :
-	   Project > Properties > Linker > General > Aditional library directories
-
-	5) Copy SpoutLibrary.dll to the executable folder e.g. "bin" in this case
+	4) Copy SpoutLibrary.dll to the executable folder e.g. "bin" in this case
 
    	To use :
 
@@ -34,7 +32,7 @@
 	Compare with the receiver example using the Spout SDK source files.
 
 	Spout 2.007
-	OpenFrameworks 11
+	OpenFrameworks 12
 	Visual Studio 2022
 
 	Copyright (C) 2015-2024 Lynn Jarvis.
@@ -55,6 +53,9 @@
 	=========================================================================
 */
 #include "ofApp.h"
+
+// Specify SpoutLibrary.lib for the linker
+#pragma comment(lib, "libs/SpoutLibrary.lib")
 
 //--------------------------------------------------------------
 void ofApp::setup(){

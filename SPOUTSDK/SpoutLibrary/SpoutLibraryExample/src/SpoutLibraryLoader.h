@@ -4,8 +4,15 @@
 //	Dynamic load of SpoutLibrary.dll
 //
 //	Use this if SpoutLibrary.lib is not compatible with your compiler,
-//  or to allow user update of SpoutLibrary.dll if the disributed library
-//	build has been updated with SDK updates but the functions have not changed.
+//  or to allow user update of SpoutLibrary.dll without application rebuild.
+//
+//	Loads SpoutLibrary.dll and gets the entry point for the function that
+//	creates an instance of SpoutLibrary. This is the only exported function
+//	for SpoutLirbary.
+//
+//	SpoutLibrary.lib does not need to be linked during build
+//	Other examples use SpoutLibrary.lib for the linker.
+//
 //
 
 /*
@@ -63,8 +70,6 @@ public:
 		// To avoid anti-virus false positive detections, SpoutLibrary.dll is
 		// distributed compiled as "Multi-threaded DLL (/MD)" and requires the 
 		// Visual Studio runtime dlls to be installed on the system.
-		// Visual C++ 2015, 2017 and 2019 all share the same redistributable files.
-		//
 		// https://support.microsoft.com/en-us/topic/the-latest-supported-visual-c-downloads-2647da03-1eea-4433-9aff-95f26a218cc0
 		//
 		// If you build the library yourself, you can use "Multi-threaded (/MT)"
