@@ -39,7 +39,7 @@ add_custom_command(TARGET WinSpoutDXSender POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ConfigOutputDirectory}/WinSpoutDXSender.exe ${CMAKE_BINARY_DIR}/Binaries/Examples/WinSpoutDXSender.exe )
 
 add_custom_command(TARGET WinSpoutDXSender POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/koala-on-tree.bmp ${CMAKE_BINARY_DIR}/Binaries/Examples/koala-on-tree.bmp ) 
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/koala-on-tree-640.bmp ${CMAKE_BINARY_DIR}/Binaries/Examples/koala-on-tree-640.bmp ) 
 
 add_custom_command(TARGET WinSpoutDXSender POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/SpoutDX.dll ) 		  
