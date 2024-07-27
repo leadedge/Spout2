@@ -292,6 +292,7 @@
 //		04.07.24	- CheckSpoutPanel - allow for use of SpoutMessageBox
 //		15.07.24	- SelectSender - after cast of window handle to long 
 //					  convert to a string of 8 characters without new line
+//		16.07.24	- Add receiver ID3D11Texture2D* GetSenderTexture()
 //
 // ====================================================================================
 /*
@@ -1066,6 +1067,14 @@ long Spout::GetSenderFrame()
 HANDLE Spout::GetSenderHandle()
 {
 	return m_dxShareHandle;
+}
+
+//---------------------------------------------------------
+// Function: GetSenderTexture
+// Received sender texture
+ID3D11Texture2D* Spout::GetSenderTexture()
+{
+	return m_pSharedTexture;
 }
 
 //---------------------------------------------------------

@@ -136,12 +136,16 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	long GetSenderFrame();
 	// Received sender share handle
 	HANDLE GetSenderHandle();
+	// Received sender texture
+	ID3D11Texture2D* GetSenderTexture();
 	// Received sender sharing method
 	bool GetSenderCPU();
 	// Received sender GL/DX hardware compatibility
 	bool GetSenderGLDX();
 	// Return a list of current senders
 	std::vector<std::string> GetSenderList();
+	// Sender index into the set of names
+	int GetSenderIndex(const char* sendername);
 	// Open sender selection dialog
 	bool SelectSender(HWND hwnd = NULL);
 
