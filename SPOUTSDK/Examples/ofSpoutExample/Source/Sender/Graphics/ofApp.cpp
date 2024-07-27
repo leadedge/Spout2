@@ -57,11 +57,14 @@ void ofApp::setup(){
 	// Options
 	//
 
+	// Empty console for debugging if linker options are
+	// "Windows (/SUBSYSTEM:WINDOWS)". See Main.cpp.
+	// OpenSpoutConsole();
+
 	//
 	// Logs
 	//
 	// Logging functions are in a namespace and can be called directly
-	// OpenSpoutConsole(); // Empty console for debugging
 	// EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
 	//
 	// Logs report information, warnings and errors as well as user logs
@@ -302,18 +305,6 @@ void ofApp::draw() {
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
-
-	int w = 0;
-	int h = 0;
-	int f = 0;
-	glBindTexture(myFbo.getTexture().getTextureData().textureTarget, myFbo.getTexture().getTextureData().textureID);
-	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &f);
-	glBindTexture(myFbo.getTexture().getTextureData().textureTarget, 0);
-
-	// printf("%dx%d - format 0x%X\n", w, h, f);
-
 
 	//
 	// Option 2 : Send texture
