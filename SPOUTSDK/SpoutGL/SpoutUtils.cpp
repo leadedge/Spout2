@@ -197,7 +197,9 @@
 				 - Add "SpoutMessageBoxModeless" to warning caption if SpoutPanel not found
 		02.07.24 - Add SpoutMessageBoxPosition
 		09.07.24 - TDcallbackProc TDN_CREATED : common rect and coordinates
-
+		15.07.24 - Update Spout SDK version
+		24.07.24 - SpoutMessageBoxModeless - add code comments for SpoutPanel version
+		Version 2.007.015
 
 
 */
@@ -245,7 +247,7 @@ namespace spoututils {
 
 	// Spout SDK version number string
 	// Major, minor, release
-	std::string SDKversion = "2.007.013";
+	std::string SDKversion = "2.007.015";
 
 	//
 	// Group: Information
@@ -1100,7 +1102,10 @@ namespace spoututils {
 			if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
 				// Does SpoutPanel.exe exist in this path ?
 				if (_access(path, 0) != -1) {
+					// Get the version of SpoutPanel
 					std::string version = GetExeVersion(path);
+					// Check that the version supports Modeless mode
+					// (> 2.072 - for example 2.076)
 					double fvers = atof(version.c_str());
 					if (fvers >= 2.072) {
 						// Set modeless
