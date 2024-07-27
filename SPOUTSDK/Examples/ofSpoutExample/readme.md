@@ -1,15 +1,15 @@
 ### Spout SDK OpenGL examples
 
 Examples of using the Spout SDK source files with an OpenGL application.\
-The examples have been developed for Visual Studio 2022 and Openframeworks 12.
+The examples have been developed for Visual Studio 2022 and [Openframeworks 12](https://openframeworks.cc/).
 
-The "ofSpoutExample" folder and contents has to be copied to the Openframeworks apps\myApps folder.
+Openframeworks can be [downloaded](https://openframeworks.cc/download/) for Visual Studio. No installation is necessary. Extract the download zip file to a convenient location and rename the folder if required.
 
-The source files of the Spout SDK are required and will be compiled into the application.
-These are not set up as an addon, so they must be copied to a "SpoutGL" folder within the Openframeworks folder. 
-This could be renamed from the original distribution folder.
+Copy the "ofSpoutExample" folder and contents to the Openframeworks "apps\myApps" folder.
 
-      C:\OPENFRAMEWORKS <- this folder contains your Openframeworks installation
+The source files of the Spout SDK are required and will be compiled into the application. To match with the example application project, the files must be copied to a "SpoutGL" folder within the Openframeworks folder. 
+
+      ..\of_v0.12.0_vs_release <- this folder contains your Openframeworks installation
 	  addons <- Openframeworks addons
 	  examples <- Openframeworks examples
 	  apps
@@ -24,17 +24,22 @@ This could be renamed from the original distribution folder.
                   ofSpoutExample.vcxproj.filters
                   src <- the required source files
                   bin <- the required data files
-			  Source <- examples
+			      Source <- examples
 
-Open the solution file with Visual Studio 2022, set to "Release" and build "ofSpoutExample".
+- Open the solution file with Visual Studio 2022, set to "Release".\
+- The first time the project is used, re-build "openframeworkslib".\
+This ensures that the Openframeworks library is created with the correct build type and that the required dependent dll files are copied to a "dll" folder in the project folder.\
+- Build the aplication.
 
-Source files
+### Source files
 
-The "src" folder contains files for a Sender example.\
+The "src" folder contains files for a the example.\
 The "Sources" folder contains files for both Sender and Receiver and options for each.\
-For the one you want copy "ofApp.h" and "ofApp.cpp" to the "src" folder and "Rebuild".
+"main.cpp", "ofApp.cpp" and "ofApp.h" are copied the example "src" folder.
 
-The Spout2 > 2.006 branch also contains Sender and Receiver examples and methods used remain compatible. 
+Open "CopySource.bat" to select the required example and Rebuild the project.
+
+The Spout2 > 2.006 branch also contains Sender and Receiver examples and methods used remain compatible with 2.007. 
 
 C++17 pre-processor definition
 
