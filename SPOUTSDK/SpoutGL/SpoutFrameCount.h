@@ -31,12 +31,11 @@
 #ifndef __spoutFrameCount__
 #define __spoutFrameCount__
 
-#include <string>
-#include <vector>
-
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
 
+#include <string>
+#include <vector>
 #include <d3d11.h>
 #pragma comment (lib, "d3d11.lib") // for keyed mutex texture access
 #pragma comment (lib, "Winmm.lib") // for timer resolution functions 
