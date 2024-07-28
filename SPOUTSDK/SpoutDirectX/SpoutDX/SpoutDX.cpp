@@ -158,6 +158,7 @@
 //		14.07.22	- Update SelectSender for dialog centre position
 //		15.07.24	- SelectSender - after cast of window handle to long 
 //					  convert to a string of 8 characters without new line
+//		28.07.24	- Change to #if __has_include("SpoutCommon.h") in Spout.h
 //
 // ====================================================================================
 /*
