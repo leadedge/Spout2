@@ -17,23 +17,25 @@ The process is the same for the Spout, SpoutDX9 and SpoutDX12 libraries
 main application source file and modify the library names.
 - Remove Spout source files from the project.
 
-Note that the application project build
+Note that the application project build for Release or Debug
 
     Project Properties > C++ > Code Generation > Runtime Library
     
 must match the CMake option "SPOUT_BUILD_CMT" for project generation
-and the build type, Release or Debug.
+and the Spout project build type, Release or Debug.
 
-    Release
-      SPOUT_BUILD_CMT enabled  > Multi-threaded (/MT)
-      SPOUT_BUILD_CMT disabled > Multi-threaded DLL (/MD)
-    Debug
-      SPOUT_BUILD_CMT enabled  > Multi-threaded Debug (/MTd)
-      SPOUT_BUILD_CMT disabled > Multi-threaded Debug DLL (/MDd)
+    SPOUT_BUILD_CMT enabled
+      Release  > Multi-threaded (/MT)
+      Debug    > Multi-threaded Debug (/MTd)
+    SPOUT_BUILD_CMT disabled
+      Release > Multi-threaded DLL (/MD)
+      Debug   > Multi-threaded Debug DLL (/MDd)
 
-This application project and the distributed libraries are
+The libraries distributed with this project are built Release with\
+SPOUT_BUILD_CMT enabled and the application project is configured for :
 
-    Release / Multi-threaded DLL (/MD)
+    Release / Multi-threaded (/MT)
 
-For Debug configuration, or other Runtime Library options
-the libraries must be re-built to match.
+For Debug configuration of the application project, or for other\
+Runtime options, the libraries must be re-built to match.
+
