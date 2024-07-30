@@ -5,7 +5,7 @@ The examples have been developed for Visual Studio 2022 and [Openframeworks 12](
 
 ### Openframeworks
 
-- Openframeworks can be downloaded for Visual Studio. No installation is necessary.
+If you do not use Openframeworks, it can be downloaded for Visual Studio. No installation is necessary.
 - Download from https://openframeworks.cc/download/
 - Choose download openFrameworks for "visual studio"
 - Save the zip file, for example "of_v0.12.0_vs_release.zip", to a convenient location for the build.
@@ -43,7 +43,7 @@ apps
 	  ofSpoutExample
 	    src -> current example
 	    Source -> additional examples
-	    CopySource.bat _> to select the required example
+	    CopySource.bat -> to select the required example
 	    ofSpoutExample.sln
 	    ofSpoutExample.vcxproj
 	    ofSpoutExample.vcxproj.filters
@@ -54,15 +54,14 @@ Now that the code is in place, it's ready for build with either Visual Studio or
 ### Visual Studio
  
 - If you have Visual Studio installed, open "apps\SpoutGL\ofSpoutExample.sln" and set to "Release".<br>
-Build Openframeworks<br>
 - The first time the project is used, re-build "openframeworkslib".\
-- Right click on "openframeworksLib" in the project explorer and "Build".<br>
+- Right click on "openframeworksLib" in the project explorer, set to "Release" and "Rebuild".<br>
 This ensures that the Openframeworks library is created with the correct build type\
-and that the required dependent dll files are copied to a "dll" folder in the project folder.
+and that the required dependent dll files are copied to a "dll" folder in the project folder.\
 Now you can build the project.<br> 
 - Expand "ofSpoutExample" in the "Solution Explorer" pane and open "ofApp.cpp".<br>
-- Build options are documented and can be explored.<br>
-ofApp::draw() has options for sending fbo, texture or image.<br>
+- Options are documented in the source code and can be explored.<br>
+For example, the default Sender/Graphics example, ofApp::draw() has options for sending fbo, texture or image.<br>
 - Right click on "ofSpoutExample" and "Build".<br>
 You will find "ofSpoutExample.exe" in the "bin" folder.
 
@@ -87,7 +86,8 @@ ofSpoutExample
  </pre>
  
 Each example folder contains "main.cpp", "ofApp.cpp" and "ofApp.h".\
-Use "CopySource.bat" to select the example of interest. These three files are copied to "ofSpoutExample\src\".\
+Use "CopySource.bat" to select the example of interest.\
+These three files are copied to "ofSpoutExample\src\".\
 Rebuild is required after copy, and Rescan to update Intellisense if necessary.\
 Build results in "ofSpoutExample.exe" in the "bin" folder. Rename it as required.
 
@@ -99,22 +99,17 @@ The Spout2 > 2.006 branch contains Sender and Receiver examples. Methods used re
    
 ## MSBuild
 
-If you are not familiar with Visual Studio or do not have it installed, you can still build the project using MSBuild to automate the process.
-
-### Visual Studio installation
-
 If Visual Studio 2022 has previously been installed, there will already be a copy of MSBuild.exe in :
+<pre>C:\Program Files\Microsoft Visual Studio\2022\Community\Msbuild\Current\Bin</pre>
+MSBuild can be used to to automate the build process.
 
-C:\Program Files\Microsoft Visual Studio\2022\Community\Msbuild\Current\Bin
-
-If not, the Visual Studio Build Tools can be independently installed.
+If you are not familiar with Visual Studio and do not have it installed, you can still use MSBuild to build the example project.\
+The Visual Studio Build Tools can be independently installed.
 
 ### Download
 
 Download from :
-
-https://visualstudio.microsoft.com/visual-cpp-build-tools/
-
+<pre>https://visualstudio.microsoft.com/visual-cpp-build-tools/</pre>
 Click "Download Build Tools" and save the file (vs_BuildTools.exe).
 
 ### Installation
@@ -128,14 +123,11 @@ Click "Download Build Tools" and save the file (vs_BuildTools.exe).
 ### Environment path
 
 After installation of Build Tools, confirm the location of MSBuild.exe at :
-
-C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin
-
+<pre>C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin</pre>
 or, if Visual Studio 2022 has previously been installed, there will be a copy in :
-
-C:\Program Files\Microsoft Visual Studio\2022\Community\Msbuild\Current\Bin
-
-MsBuild is run from the command line from a console window. Create an Environment Variable with this path so that you don't have to enter the full path every time.
+<pre>C:\Program Files\Microsoft Visual Studio\2022\Community\Msbuild\Current\Bin</pre>
+MsBuild is run from the command line from a console window.\
+Create an Environment Variable with its path so that you don't have to enter the full path every time.
 
 - In the search window, enter "Environment" and choose<br>"Edit the system environment variables"
 - Click the "Environment variables" button.
@@ -151,7 +143,7 @@ MSbuild is now ready to run from a console window without having to enter the fu
 The Visual Studio project for Openframeworks is "openframeworksLib.vcxproj"<br>
 and is located in :
 
-of_v0.12.0_vs_release\libs\openFrameworksCompiled\project\vs\
+<pre>of_v0.12.0_vs_release\libs\openFrameworksCompiled\project\vs\</pre>
 
 - In File Explorer left click on the address bar to highlight this location
 - Type cmd to replace the highlighted text and press enter.<br>
@@ -169,14 +161,12 @@ You might see warnings, but the important thing after the build is complete is "
 
 In File Explorer move to the project folder within Openframeworks :
 
-"of_v0.12.0_vs_release\apps\SpoutGL\ofSpoutExample" 
+<pre>"of_v0.12.0_vs_release\apps\SpoutGL\ofSpoutExample"</pre>
 
 - As before, left click on the address bar to highlight the location
 - Type "cmd" to replace the highlighted text and enter.
 - Type in or copy/paste :
-
-MSBuild ofSpoutExample.sln -p:Configuration=RELEASE -p:Platform=x64
-
+<pre>MSBuild ofSpoutExample.sln -p:Configuration=RELEASE -p:Platform=x64</pre>
 - Press enter to build.
 
 The build should succeed with 0 Warnings and 0 Errors.<br>
