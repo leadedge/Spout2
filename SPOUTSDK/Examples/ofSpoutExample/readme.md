@@ -1,7 +1,9 @@
 ## Spout SDK OpenGL examples
 
 Examples of using the Spout SDK source files with an OpenGL application.\
-The examples have been developed for Visual Studio 2022 and [Openframeworks 12](https://openframeworks.cc/).
+The examples have been developed for Visual Studio 2022 and [Openframeworks 12](https://openframeworks.cc/).\
+A dynamic libary "Spout.dll" or static library "Spout_static.lib" can also be used.\
+Refer to the "SpoutDirectX/Readme.md" for details.
 
 ### Openframeworks
 
