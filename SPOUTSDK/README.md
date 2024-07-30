@@ -22,7 +22,7 @@ The Spout SDK as a C-compatible dll that can be used with compilers other than V
 A sub-set of the Spout SDK for applications using DirectX rather than OpenGL.\
 SpoutDX is a support class for that provides functions similar to those in the OpenGL version of the SDK.\
 Several examples show details of use.\
-SpoutDX was originally designed for D3D11 and has been extended for D3D12 and D3D9. These contain very similar methods, but have not been tested in practical applications and should be considered as developmental.
+SpoutDX was originally designed for D3D11 and has been extended for D3D12 and D3D9 with very similar methods.
 
 - ARM build
 

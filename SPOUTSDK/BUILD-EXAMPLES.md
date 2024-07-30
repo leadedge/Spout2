@@ -4,7 +4,9 @@ Examples are provided for Cinder and Openframeworks. For Cinder, this is limited
 
 For the examples in "ofSpoutExample", Openframeworks has to be downloaded and the SpoutGL files and example project copied to the right locations.
 
-If you familiar with Visual Studio and Openframeworks, the project solution file "ofSpoutExample.sln" can then be used directly. The project can also be built without the Visual Studio IDE and without any previous knowledge of Visual Studio or Openframeworks, by using "MSBuild" with only one line from a command window.
+A batch file "CopySource.bat" allows easy selection and copy of the required example. Rebuild is required after copy, and Rescan to update Intellisense if necessary.
+
+If you familiar with Visual Studio and Openframeworks, the project solution file "ofSpoutExample.sln" can then be used directly. The project can also be built without the Visual Studio IDE and without any previous knowledge of Visual Studio or Openframeworks, by using "MSBuild" as detailed below with only one line from a command window.
 
 ### Openframeworks
 
@@ -42,10 +44,15 @@ apps
   apps
     myApps
     SpoutGL
+	  ..
+	  .. SpoutGL files ..
+	  ..
 	  ofSpoutExample
-	   ..
-	   .. SpoutGL files ..
-	   ..
+	  ..
+	  .. src -> current example
+	  .. Source -> additional examples
+	  CopySource.bat _> to select the required example
+	  ..
  </pre>
 
 Now that the code is in place, it's ready for build with either Visual Studio or MSBuild.
@@ -61,7 +68,6 @@ Now that the code is in place, it's ready for build with either Visual Studio or
 ofApp::draw() has options for sending fbo, texture or image.<br>
 - Right click on "ofSpoutExample" and "Build".<br>
 You will find "ofSpoutExample.exe" in the "bin" folder. Rename it to "SpoutSender.exe".<br>
-- Before opening it, go to the "x64dlls" folder and copy all the dll files to "bin".
 
 ### Building other examples
 
@@ -83,7 +89,8 @@ ofSpoutExample
        Webcam
  </pre>
  
-Each example folder contains "main.cpp", "ofApp.cpp" and "ofApp.h". Copy these three files from the example of interest to "ofSpoutExample\src\". "Rebuild" the ofSpoutExample project. All builds result in "ofSpoutExample.exe". Rename it as required.
+Each example folder contains "main.cpp", "ofApp.cpp" and "ofApp.h".\
+Use "CopySource.bat" to copy these three files from the example of interest to "ofSpoutExample\src\". "Rebuild" the ofSpoutExample project. All builds result in "ofSpoutExample.exe". Rename it as required.
 
    
 ## MSBuild
