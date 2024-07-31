@@ -109,6 +109,9 @@
 //		12.03.24   Restore SpoutMessgaBox with variable arguments
 //				   Add SpoutMessageBox with text entry and with combobox controls
 //		12.06.24   Add GetSenderList
+//		31.07.24   Add GetSenderTexture, GetCurrentModule, GetExeVersion,
+//				   GetExePath, GetExeName, RemovePath, RemoveName
+//				   Remove GetSpoutVersion
 //
 /*
 		Copyright (c) 2016-2024, Lynn Jarvis. All rights reserved.
@@ -452,6 +455,10 @@ private: // Spout SDK functions
 	// Function: GetSenderHandle
 	// Received sender share handle
 	HANDLE GetSenderHandle();
+
+	// Function: GetSenderTexture
+	// Received sender texture
+	ID3D11Texture2D* GetSenderTexture();
 	
 	// Function: GetSenderCPU
 	// Received sender sharing mode.
@@ -463,6 +470,11 @@ private: // Spout SDK functions
 	//     Returns true if the sender graphics hardware is 
 	//     compatible with NVIDIA NV_DX_interop2 extension
 	bool GetSenderGLDX();
+
+	// Function: GetHostPath
+	// The path of the host that produced the sender
+	// Retrieved from the description string in the sender info memory map
+	bool GetHostPath(const char* sendername, char* hostpath, int maxchars);
 
 	// Function: GetSenderList
 	// Return a list of current senders
@@ -508,6 +520,14 @@ private: // Spout SDK functions
 	// Enable / disable frame sync
 	void EnableFrameSync(bool bSync = true);
 
+	// Function: GetVerticalSync
+	// Vertical sync status
+	int GetVerticalSync();
+
+	// Function: SetVerticalSync
+	// Lock to monitor vertical sync
+	bool SetVerticalSync(bool bSync = true);
+
 	//
 	// Group: Data sharing
 	//
@@ -515,6 +535,7 @@ private: // Spout SDK functions
 	//   These functions can be used in addition to texture sharing.
 	//   Typical uses will be for data attached to the video frame,
 	//   commonly referred to as "per frame Metadata".
+	//
 	//
 	//   Notes for synchronisation.
 	//
@@ -542,7 +563,7 @@ private: // Spout SDK functions
 	//   EnableFrameSync
 	//   Enable or disable frame sync during operation
 	//
-
+	//
 	// Function: WriteMemoryBuffer
 	// Write buffer to shared memory.
 	//
@@ -768,6 +789,36 @@ private: // Spout SDK functions
 	// Queries power status. Battery power most likely means laptop.
 	bool IsLaptop();
 
+	// ---------------------------------------------------------
+	// Function: GetCurrentModule
+	// Get the module handle of an executable or dll
+	HMODULE GetCurrentModule();
+	
+	// ---------------------------------------------------------
+	// Function: GetExeVersion
+	// Get executable or dll version
+	std::string GetExeVersion(const char* path);
+
+	// ---------------------------------------------------------
+	// Function: GetExePath
+	// Get executable or dll path
+	std::string GetExePath();
+
+	// ---------------------------------------------------------
+	// Function: GetExeName
+	// Get executable or dll name
+	std::string GetExeName();
+
+	// ---------------------------------------------------------
+	// Function: RemovePath
+	// Remove path and return the file name
+	void RemovePath(std::string& path);
+
+	// ---------------------------------------------------------
+	// Function: RemoveName
+	// Remove file name and return the path
+	void RemoveName(std::string& path);
+
 	//
 	// Group: Timing utilities
 	//
@@ -920,28 +971,6 @@ private: // Spout SDK functions
 	// Open sender selection dialog
 	//  2.006 compatibility only. Use SelectSender()
 	void SelectSenderPanel();
-
-	//
-	// Group: Information
-	//
-
-	// Function: GetHostPath
-	// The path of the host that produced the sender
-	//
-	// Retrieved from the description string in the sender info memory map
-	bool GetHostPath(const char *sendername, char *hostpath, int maxchars);
-	
-	// Function: GetVerticalSync
-	// Vertical sync status
-	int GetVerticalSync();
-	
-	// Function: SetVerticalSync
-	// Lock to monitor vertical sync
-	bool SetVerticalSync(bool bSync = true);
-	
-	// Function: GetSpoutVersion
-	// Get Spout version
-	int GetSpoutVersion();
 
 	//
 	// Group: Graphics compatibility
@@ -1291,6 +1320,11 @@ HANDLE SPOUTImpl::GetSenderHandle()
 	return spout->GetSenderHandle();
 }
 
+ID3D11Texture2D* SPOUTImpl::GetSenderTexture()
+{
+	return spout->GetSenderTexture();
+}
+
 bool SPOUTImpl::GetSenderCPU()
 {
 	return spout->GetSenderCPU();
@@ -1299,6 +1333,11 @@ bool SPOUTImpl::GetSenderCPU()
 bool SPOUTImpl::GetSenderGLDX()
 {
 	return spout->GetSenderGLDX();
+}
+
+bool SPOUTImpl::GetHostPath(const char* sendername, char* hostpath, int maxchars)
+{
+	return spout->GetHostPath(sendername, hostpath, maxchars);
 }
 
 std::vector<std::string> SPOUTImpl::GetSenderList()
@@ -1355,6 +1394,17 @@ void SPOUTImpl::EnableFrameSync(bool bSync)
 {
 	return spout->EnableFrameSync(bSync);
 }
+
+int SPOUTImpl::GetVerticalSync()
+{
+	return spout->GetVerticalSync();
+}
+
+bool SPOUTImpl::SetVerticalSync(bool bSync)
+{
+	return spout->SetVerticalSync(bSync);
+}
+
 
 bool SPOUTImpl::WriteMemoryBuffer(const char *name, const char* data, int length)
 {
@@ -1599,6 +1649,36 @@ bool SPOUTImpl::IsLaptop()
 	return spoututils::IsLaptop();
 }
 
+HMODULE SPOUTImpl::GetCurrentModule()
+{
+	return spoututils::GetCurrentModule();
+}
+
+std::string SPOUTImpl::GetExeVersion(const char* path)
+{
+	return spoututils::GetExeVersion(path);
+}
+
+std::string SPOUTImpl::GetExePath()
+{
+	return spoututils::GetExePath();
+}
+
+std::string SPOUTImpl::GetExeName()
+{
+	return spoututils::GetExeName();
+}
+
+void SPOUTImpl::RemovePath(std::string& path)
+{
+	return spoututils::RemovePath(path);
+}
+
+void SPOUTImpl::RemoveName(std::string& path)
+{
+	return spoututils::RemoveName(path);
+}
+
 void SPOUTImpl::StartTiming()
 {
 	spoututils::StartTiming();
@@ -1768,32 +1848,6 @@ void SPOUTImpl::SelectSenderPanel()
 {
 	spout->SelectSender();
 }
-
-
-//
-// Information
-//
-
-bool SPOUTImpl::GetHostPath(const char *sendername, char *hostpath, int maxchars)
-{
-	return spout->GetHostPath(sendername, hostpath, maxchars);
-}
-
-int SPOUTImpl::GetVerticalSync()
-{
-	return spout->GetVerticalSync();
-}
-
-bool SPOUTImpl::SetVerticalSync(bool bSync)
-{
-	return spout->SetVerticalSync(bSync);
-}
-
-int SPOUTImpl::GetSpoutVersion()
-{
-	return spout->GetSpoutVersion();
-}
-
 
 //
 // Graphics compatibility
