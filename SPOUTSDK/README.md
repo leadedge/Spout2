@@ -1,11 +1,11 @@
 ## Documentation
 
-- [Spout SDK for OpenGL](https://spoutgl-site.netlify.app/)
+- [Spout for OpenGL](https://spoutgl-site.netlify.app/)
 - [SpoutLibrary - C compatible library](https://spoutlibrary-site.netlify.app/)
-- [Spout for DirectX - DirectX support classes](https://spoutdx-site.netlify.app/)
-- [SpoutGL](https://spoutgl-site.netlify.app/)
+- [Spout for DirectX](https://spoutdx-site.netlify.app/)
 
-The SpoutGL folder contains the Spout SDK source files for OpenGL.
+The SpoutGL folder contains the Spout SDK source files for OpenGL.\
+The SpoutDirectX folder contains source files for SpoutDX, SpoutDX9 and SpoutDX12 classes.
 
 ## Libraries
 
