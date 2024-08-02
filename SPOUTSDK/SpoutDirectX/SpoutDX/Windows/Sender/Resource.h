@@ -13,9 +13,6 @@
 #define IDI_WINSPOUTDX			207
 // Not used #define IDI_SMALL	208
 #define IDC_WINSPOUTDX			209
-#define IDC_ABOUT_TEXT          210
-#define IDC_SPOUT_URL           212
-#define IDC_MYICON				2
 #ifndef IDC_STATIC
 #define IDC_STATIC				-1
 #endif

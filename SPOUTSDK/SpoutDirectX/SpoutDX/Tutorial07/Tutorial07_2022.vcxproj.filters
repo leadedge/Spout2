@@ -39,9 +39,6 @@
     <ClCompile Include="..\..\..\SpoutGL\SpoutUtils.cpp">
       <Filter>SpoutSDK</Filter>
     </ClCompile>
-    <ClCompile Include="..\SpoutControls.cpp">
-      <Filter>SpoutDX</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Tutorial07.cpp" />
@@ -74,9 +71,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\SpoutGL\SpoutUtils.h">
       <Filter>SpoutSDK</Filter>
-    </ClInclude>
-    <ClInclude Include="..\SpoutControls.h">
-      <Filter>SpoutDX</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

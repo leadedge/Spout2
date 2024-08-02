@@ -90,6 +90,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
+      <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -110,6 +111,11 @@
     <FxCompile>
       <EntryPointName />
     </FxCompile>
+    <PostBuildEvent>
+      <Command>copy /y /v "$(OutDir)$(TargetName)$(TargetExt)" "..\..\Binaries\Examples\"
+copy /y /v "shaders-triangle.hlsl" "..\..\Binaries\Examples\"
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutCommon.h" />
@@ -147,9 +153,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="shaders.hlsl">
+    <CustomBuild Include="shaders-triangle.hlsl">
       <FileType>Document</FileType>
-      <DeploymentContent>true</DeploymentContent>
     </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

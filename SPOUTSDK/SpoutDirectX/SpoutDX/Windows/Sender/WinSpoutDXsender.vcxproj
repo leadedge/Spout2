@@ -117,6 +117,10 @@
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
     </Manifest>
+    <PostBuildEvent>
+      <Command>copy /y /v "koala-on-tree-640.bmp" "$(OutDir)"
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -165,7 +169,8 @@
     </Manifest>
     <PostBuildEvent>
       <Command>copy /y /v "$(OutDir)$(TargetName)$(TargetExt)" "..\..\Binaries\Examples\WindowsSender.exe"
-copy /y /v "koala-on-tree.bmp" "..\..\Binaries\Examples\"</Command>
+copy /y /v "koala-on-tree-640.bmp" "..\..\Binaries\Examples\"
+copy /y /v "koala-on-tree-640.bmp" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

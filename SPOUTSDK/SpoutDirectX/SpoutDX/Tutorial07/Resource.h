@@ -6,18 +6,18 @@
 #define IDS_APP_TITLE           100
 
 #define IDR_MAINFRAME           128
+
 #define IDD_TUTORIAL1_DIALOG    102
 #define IDD_ABOUTBOX            103
-#define IDD_SENDERBOX           104
-#define IDM_SENDER              105
-#define IDD_ADAPTERBOX          106
-#define IDM_ADAPTER             107
-#define IDM_AUTO_ADAPTER        108
-#define IDM_ABOUT               109
-#define IDM_EXIT                110
-#define IDI_TUTORIAL1           111
-#define IDI_SMALL               112
-#define IDC_TUTORIAL1           113
+#define IDM_SENDER              104
+#define IDM_ADAPTER             105
+#define IDM_AUTO_ADAPTER        106
+#define IDM_ABOUT               107
+#define IDM_EXIT                109
+#define IDI_TUTORIAL1           110
+#define IDI_SMALL               111
+#define IDC_TUTORIAL1           112
+
 #define IDC_ABOUT_TEXT          201
 #define IDC_SPOUT_URL           202
 #define IDC_SENDERS             203

@@ -1,8 +1,6 @@
-## Using SpoutDX as a dll or static library instead of source files
+### Using SpoutDX as a dll or static library instead of source files
 
-
-### Library files
-
+\
 Files from CMake INSTALL build or Spout release are copied to equivalent
 folders at the root path of the project :
 
@@ -10,7 +8,7 @@ folders at the root path of the project :
      lib         SpoutDX.lib and SpoutDX_static.lib from INSTALL\lib\SpoutDX
      bin         SpoutDX.dll from INSTALL\bin\SpoutDX 
 
-For library options see "STATIC OR DYNAMIC LIBRARY" in the application source
+For build options see "STATIC OR DYNAMIC LIBRARY" in the application source
 
 The process is the same for the Spout, SpoutDX9 and SpoutDX12 libraries
 - Create lib, include and bin folders at the root folder of the project
@@ -19,30 +17,23 @@ The process is the same for the Spout, SpoutDX9 and SpoutDX12 libraries
 main application source file and modify the library names.
 - Remove Spout source files from the project.
 
-### Build
-
-<b>Change to "Release" configuration for build.</b>
-
-The libraries distributed with this project are built Release with\
-SPOUT_BUILD_CMT enabled and the application project is configured for :
-
-    Release / Multi-threaded (/MT)
-    
-Note that the application project configuration, Release or Debug, and Runtime options :
+Note that the application project build
 
     Project Properties > C++ > Code Generation > Runtime Library
     
 must match the CMake option "SPOUT_BUILD_CMT" for project generation
-and the Spout project build type, Release or Debug.
+and the build type, Release or Debug.
 
-    SPOUT_BUILD_CMT enabled
-      Release  > Multi-threaded (/MT)
-      Debug    > Multi-threaded Debug (/MTd)
-    SPOUT_BUILD_CMT disabled
-      Release > Multi-threaded DLL (/MD)
-      Debug   > Multi-threaded Debug DLL (/MDd)
+    Release
+      SPOUT_BUILD_CMT enabled  > Multi-threaded (/MT)
+      SPOUT_BUILD_CMT disabled > Multi-threaded DLL (/MD)
+    Debug
+      SPOUT_BUILD_CMT enabled  > Multi-threaded Debug (/MTd)
+      SPOUT_BUILD_CMT disabled > Multi-threaded Debug DLL (/MDd)
 
-For Debug configuration of the application project, or for other\
-Runtime options, the libraries must be re-built to match.
+This application project and the distributed libraries are
 
+    Release / Multi-threaded DLL (/MD)
 
+For Debug configuration, or other Runtime Library options
+the libraries must be re-built to match.

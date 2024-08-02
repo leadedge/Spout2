@@ -192,8 +192,8 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy /y /v "Tutorial04.fx" "$(OutDir)"
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -275,7 +275,11 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y /v "$(OutDir)$(TargetName)$(TargetExt)" "..\Binaries\Examples"</Command>
+      <Command>copy /y /v "$(OutDir)$(TargetName)$(TargetExt)" "..\Binaries\Examples"
+copy /y /v "bin\SpoutDX.dll" "..\Binaries\Examples"
+copy /y /v "Tutorial04.fx" "..\Binaries\Examples"
+copy /y /v "Tutorial04.fx" "$(OutDir)"
+</Command>
     </PostBuildEvent>
     <ManifestResourceCompile>
       <ResourceOutputFileName>

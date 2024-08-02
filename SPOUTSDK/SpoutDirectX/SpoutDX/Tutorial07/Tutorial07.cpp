@@ -155,7 +155,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	//
 
 	// OpenSpoutConsole(); // Console only for debugging
-	EnableSpoutLog(); // Enable Spout logging to console
+	// EnableSpoutLog(); // Enable Spout logging to console
 	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
