@@ -149,7 +149,6 @@ struct SPOUTLIBRARY
 	virtual void SetReceiverName(const char* SenderName = nullptr) = 0;
 	// Close receiver and release resources ready to connect to another sender
 	virtual void ReleaseReceiver() = 0;
-
 	// Receive texture
 	//   If no arguments, connect to a sender and retrieve texture details ready for access
 	//	 (see BindSharedTexture and UnBindSharedTexture)
@@ -190,6 +189,8 @@ struct SPOUTLIBRARY
 	virtual bool GetSenderCPU() = 0;
 	// Received sender GL/DX compatibility
 	virtual bool GetSenderGLDX() = 0;
+	// Return a list of current senders
+	virtual std::vector<std::string> GetSenderList() = 0;
 	// Open sender selection dialog
 	virtual void SelectSender() = 0;
 

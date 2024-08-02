@@ -4,11 +4,14 @@
 
 	SpoutLibrary.h loads SpoutLibrary.dll and gets the entry point
 	for the function that creates an instance of SpoutLibrary.
-	This is the only exported function for SpoutLirbary.
+	This is the only exported function for SpoutLibrary.
 
-	SpoutLibrary.lib does not need to be linked during build
-	Other examples use SpoutLibrary.lib for the linker.	
-	
+	"SpoutLibraryLoader.h" loads SpoutLibrary.dll dynamically and gets the
+	entry point for the function that creates an instance of SpoutLibrary.
+	This is the only exported function for SpoutLibrary.
+
+	Applications without the loader use SpoutLibrary.lib for the linker.
+	See the "Sender" example.
 
 	Spout 2.007
 	OpenFrameworks 12

@@ -3,6 +3,8 @@
 	Spout OpenFrameworks Sender example
 	using the SpoutLibrary C-compatible dll
 
+	From a Spout CMake INSTALL build
+
 	1) Copy SpoutLibrary.h to the source files "src" folder
 
 	2) Copy SpoutLibrary.lib to any convenient folder e.g. "libs"
@@ -29,7 +31,7 @@
 		sender->SendTexture(... ) etc.
 
 	Compare with the sender example using the Spout SDK source files.
-
+	Compare also with the dynamic load example.
 
 	Copyright (C) 2015-2024 Lynn Jarvis.
 
