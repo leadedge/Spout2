@@ -189,6 +189,7 @@
 		19.03.24 - Add icon/button option for variable arguments
 		29.03.24 - Correct ReadPathFromRegistry definition for default size argument
 				   Correct EndTiming definition for microseconds argument
+		Version 2.007.014
 		14.06.24 - SpoutUtils.h - PR #114
 				   Correct conditional definition of EndTiming in header file
 				   Allow mingw to define USE_CHRONO if available
@@ -199,7 +200,6 @@
 		09.07.24 - TDcallbackProc TDN_CREATED : common rect and coordinates
 		15.07.24 - Update Spout SDK version
 		24.07.24 - SpoutMessageBoxModeless - add code comments for SpoutPanel version
-		Version 2.007.015
 
 
 */

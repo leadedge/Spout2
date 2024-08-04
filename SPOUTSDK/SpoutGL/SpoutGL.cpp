@@ -174,6 +174,7 @@
 //		25.04.24	- Correct GLDXformat for default GL_RGBA
 //		26.04.24	- GLformatName - revise names
 //		06.05.24	- Add more logs for wglDX function failure
+//	Version 2.007.014
 //		26.06.14	- Restore LoadTexturePixels for 20% speed gain
 //
 // ====================================================================================

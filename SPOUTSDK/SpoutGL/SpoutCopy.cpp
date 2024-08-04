@@ -72,6 +72,7 @@
 	07.10.23 - Conditional compile options for _M_ARM64 in CheckSSE and header
 	20.10.23 - FlipBuffer / CopyPixels - default pitch width*4
 	Version 2.007.013
+	Version 2.007.014
 	19.06.24 - Add ClearAlpha
 
 */

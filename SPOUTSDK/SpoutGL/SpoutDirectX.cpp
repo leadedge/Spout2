@@ -161,6 +161,7 @@
 //		18.02.24	- GetNumAdapters
 //					    Change adapter pointer to IDXGIAdapter1 and use EnumAdapters1
 //					    to identify and skip the Basic Render Driver adapter
+//	Version 2.007.014
 //
 // ====================================================================================
 /*
@@ -876,6 +877,9 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	// printf("td.SampleDesc Quality = %d\n", td.SampleDesc.Quality);
 	// printf("td.BindFlags = %d\n", td.BindFlags);
 	// printf("td.MiscFlags = %d\n", td.MiscFlags); // D3D11_RESOURCE_MISC_SHARED (2)
+
+	// LJ DEBUG
+	SpoutLogNotice("spoutDirectX::OpenDX11shareHandle - OK");
 
 	return true;
 

@@ -107,6 +107,7 @@
 	21.05.24 - RegisterSenderName - increment existing sender name
 			   CreateSender/RegisterSenderName remove const for name
 	22.05.24 - RegisterSenderName add newname condition for name increment
+	Version 2.007.014
 	20.06.24 - Add GetSenderIndex
 
 
