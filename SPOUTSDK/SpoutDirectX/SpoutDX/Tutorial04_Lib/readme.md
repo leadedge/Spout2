@@ -1,6 +1,6 @@
 ### Using SpoutDX as a dll or static library instead of source files
 
-\
+
 Files from CMake INSTALL build or Spout release are copied to equivalent
 folders at the root path of the project :
 
@@ -16,6 +16,8 @@ The process is the same for the Spout, SpoutDX9 and SpoutDX12 libraries
 - Insert the "STATIC OR DYNAMIC LIBRARY" code at the beginning of the\
 main application source file and modify the library names.
 - Remove Spout source files from the project.
+
+IMPORTANT : change to Release configuration before build.
 
 Note that the application project build
 
@@ -33,7 +35,7 @@ and the build type, Release or Debug.
 
 This application project and the distributed libraries are
 
-    Release / Multi-threaded DLL (/MD)
+    Release / Multi-threaded (/MT)
 
 For Debug configuration, or other Runtime Library options
 the libraries must be re-built to match.
