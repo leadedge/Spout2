@@ -33,10 +33,13 @@ ARM build has been tested with Visual Studio and no support can not be offered f
 
 ## Examples
 
-Examples are provided for Cinder and Openframeworks.\
+Examples are provided for Cinder, Openframeworks and Windows.\
 For Cinder, refer to "readme-first.md" in the "Cinder\FboBasic" folder.\
-For OpenFrameworks, Sender and Receiver examples are well commented.\
-Refer to "Examples\ofSpoutExample\readme.md" for build instructions.
+OpenFrameworks examples demonstrate OpenGL texture send/receive and options such as synchronisation, data exchange and utility functions. The graphics Sender and Receiver examples are well commented.\
+Refer to "Examples\ofSpoutExample\readme.md" for setup and build instructions.\
+Windows examples do not depend on any OpenGL framework and are based on basic applications for Visual Studio that use the Win32 API.
+
+
 
 
 
