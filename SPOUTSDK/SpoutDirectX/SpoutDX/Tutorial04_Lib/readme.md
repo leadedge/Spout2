@@ -1,5 +1,6 @@
-### Using SpoutDX as a dll or static library instead of source files
+## Using SpoutDX as a dll or static library instead of source files
 
+### Libraries
 
 Files from CMake INSTALL build or Spout release are copied to equivalent
 folders at the root path of the project :
@@ -18,6 +19,8 @@ main application source file and modify the library names.
 - Remove Spout source files from the project.
 
 IMPORTANT : change to Release configuration before build.
+
+### Runtime
 
 Note that the application project build
 
@@ -39,3 +42,12 @@ This application project and the distributed libraries are
 
 For Debug configuration, or other Runtime Library options
 the libraries must be re-built to match.
+
+### Binaries
+
+After build, the application executable "Tutorial04_Lib.exe" can be found in :
+
+..\SpoutDX\Binaries\Examples
+
+Other SpoutDX examples are also copied to this folder.
+
