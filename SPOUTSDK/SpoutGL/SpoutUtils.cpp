@@ -200,6 +200,7 @@
 		09.07.24 - TDcallbackProc TDN_CREATED : common rect and coordinates
 		15.07.24 - Update Spout SDK version
 		24.07.24 - SpoutMessageBoxModeless - add code comments for SpoutPanel version
+		06.08.24 - SpoutMessageBox - show initial content in edit box control
 
 
 */
@@ -1013,6 +1014,7 @@ namespace spoututils {
 	//   o All SpoutMessageBox functions such as user icon and buttons are available
 	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
 	{
+		// For edit control creation
 		bEdit = true;
 
 		// A timeout value of 1000000 signals the Taskdialog callback of message content.
@@ -1023,7 +1025,11 @@ namespace spoututils {
 			dwTimeout = 1000000;
 			content = message;
 		}
+
+		// Set initial text for edit control
+		stredit = text;
 		int iret = MessageTaskDialog(hwnd, content.c_str(), caption, uType, dwTimeout);
+		// Get text from global edit control string
 		if (iret == IDOK) text = stredit;
 		stredit.clear();
 		bEdit = false;
@@ -1037,6 +1043,7 @@ namespace spoututils {
 	// Properties the same as the edit control
 	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& index)
 	{
+		// For combobox creation
 		bCombo = true;
 
 		// Timeout value to signal the Taskdialog callback of message content.
@@ -2128,12 +2135,18 @@ namespace spoututils {
 						WS_CHILD | WS_VISIBLE | WS_HSCROLL | ES_AUTOHSCROLL,
 						x, y, w, h,	hwnd, (HMENU)IDC_TASK_EDIT, hInstTD, NULL);
 
+					// Set an initial entry in the edit box
+					if (!stredit.empty()) {
+						SetWindowTextA(hEdit, (LPCSTR)stredit.c_str());
+						// Select all text in the edit field
+						SendMessage(hEdit, EM_SETSEL, 0, 0x7FFF0000L);
+					}
+
 					// Position on top of content
 					BringWindowToTop(hEdit);
 
 					// Set focus to allow user entry
 					SetFocus(hEdit);
-
 				}
 
 				// Combo box control
