@@ -7,8 +7,8 @@
 #define IDR_MAINFRAME			128
 #define IDD_WINSPOUTGL_DIALOG	102
 #define IDD_ABOUTBOX			103
-#define IDM_ABOUT				104
-#define IDM_OPEN				105
+#define IDM_SELECT				104
+#define IDM_ABOUT				105
 #define IDM_EXIT				106
 #define IDI_WINSPOUTGL			107
 // Not used #define IDI_SMALL	108

@@ -4,7 +4,7 @@
 
 // SPOUT
 #include <vector>
-#include "..\..\..\SpoutGL\Spout.h"
+#include "..\..\SpoutGL\Spout.h"
 
 // For OpenGL core functions
 #include  <gl/GL.h>

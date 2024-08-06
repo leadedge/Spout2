@@ -7,10 +7,11 @@
 #define IDR_MAINFRAME			128
 
 #define IDD_WINSPOUTGL_DIALOG	200
-#define IDM_ABOUT				201
-#define IDM_EXIT				202
-#define IDI_WINSPOUTGL			203
-#define IDB_WINSPOUTBMP         204
+#define IDM_SENDER				201
+#define IDM_ABOUT				202
+#define IDM_EXIT				203
+#define IDI_WINSPOUTGL			204
+#define IDB_WINSPOUTBMP         205
 
 #define IDC_WINSPOUTGL			300
 #define IDC_SPOUT_URL           301
