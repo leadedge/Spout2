@@ -20,9 +20,7 @@ The Spout SDK as a C-compatible dll that can be used with compilers other than V
 - [SpoutDirectX](https://spoutdx-site.netlify.app/)
 
 A sub-set of the Spout SDK for applications using DirectX rather than OpenGL.\
-SpoutDX is a support class for that provides functions similar to those in the OpenGL version of the SDK.\
-Several examples show details of use.\
-SpoutDX was originally designed for D3D11 and has been extended for D3D12 and D3D9 with very similar methods.
+SpoutDX is a support class for that provides functions similar to those in the OpenGL version of the SDK. SpoutDX was originally designed for D3D11 and has been extended for D3D12 and D3D9 with very similar methods. Several examples show details of use. 
 
 - ARM build
 
@@ -31,13 +29,19 @@ The Spout library can be built for [Windows on ARM](https://learn.microsoft.com/
 Note that Spout is designed for Windows and will not operate with Linux.\
 ARM build has been tested with Visual Studio and no support can not be offered for other compilers.
 
-## Examples
+## OpenGL examples
 
-Examples are provided for Cinder, Openframeworks and Windows.\
+OpenGL examples are provided for Windows, Openframeworks and Cinder.
+
+Windows examples do not depend on any OpenGL framework and are based on basic applications for Visual Studio that use the Win32 API. Projects are available for Visual Studio 2022. The solution files can be opened immediately and are a good start to get an overview of sending and receiving methods.
+
+OpenFrameworks examples are more comprehensive and demonstrate OpenGL texture send/receive as well as options such as synchronisation, data exchange and utility functions. All examples are well commented. Refer to "Examples\ofSpoutExample\readme.md" for further detail.
+
 For Cinder, refer to "readme-first.md" in the "Cinder\FboBasic" folder.\
-OpenFrameworks examples demonstrate OpenGL texture send/receive and options such as synchronisation, data exchange and utility functions. The graphics Sender and Receiver examples are well commented.\
-Refer to "Examples\ofSpoutExample\readme.md" for setup and build instructions.\
-Windows examples do not depend on any OpenGL framework and are based on basic applications for Visual Studio that use the Win32 API.
+
+## DirectX examples
+
+Examples are provided for DirectX11, DirectX12 and DirectX9. Refer to "readme.md" in the "SPOUTSDK\SpoutDirectX" folder.
 
 
 
