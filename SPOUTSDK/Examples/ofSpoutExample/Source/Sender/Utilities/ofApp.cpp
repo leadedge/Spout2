@@ -614,6 +614,7 @@ void ofApp::doMessagebox(int item)
 		str += "        SpoutMessageBox(caption, const char* format, ...)\n";
 		str += "  o Edit control\n";
 		str += "    An edit control within the MessageBox to enter and return text.\n";
+		str += "    If the edit string is not empty, it is shown highlighted in the edit control.\n";
 		str += "        SpoutMessageBox(hwnd, message, caption, type, std::string& text)\n";
 		str += "  o Combo box control\n";
 		str += "    A combo box control within the MessageBox\n";
@@ -814,18 +815,19 @@ void ofApp::doMessagebox(int item)
 		str += "If the edit string is not empty, it is shown highlighted in the edit control.\n";
 		str += "All SpoutMessageBox functions such as user icon and buttons are available.\n\n";
 		str += "   o Caption only\n";
-		str += "     If no message, the control is in the main content area\n";
+		str += "      The edit control is in the main content area\n";
 		str += "         std::string editstring;\n";
 		str += "         SpoutMessageBox(NULL, NULL, \"Text entry with caption\", MB_OK, editstring)\n\n";
 		str += "   o Caption with message\n";
-		str += "     For message content, the control is in the footer area\n";
-		str += "         SpoutMessageBox(NULL, \"Enter text in the edit box below\", \"Caption\", MB_OK, editstring)\n\n";
+		str += "      The edit control is in the footer area\n";
+		str += "      This example shows an exiting text entry.\n";
+		str += "      The same applies for the caption only option.\n";
+		str += "         std::string editstring = \"Existing text\";\n";
+		str += "         SpoutMessageBox(NULL, \"Enter new text in the edit box below\", \"Caption\", MB_OK, editstring)\n\n";
 		str += "   o Icon\n";
 		str += "      Custom icons can be used with both caption and message with caption\n";
 		str += "         std::string icofile = ofToDataPath(\"Spout.ico\", true);\n";
-		str += "         SpoutMessageBoxIcon(icofile);\n";
-		str += "      This example shows an exiting text entry.\n";
-		str += "      The same applies for the caption and message options.\n\n";
+		str += "         SpoutMessageBoxIcon(icofile);\n\n";
 		str += "Select an option and repeat for more options\n";
 		SpoutMessageBoxButton(1000, L"Caption");
 		SpoutMessageBoxButton(2000, L"Message");
@@ -839,7 +841,8 @@ void ofApp::doMessagebox(int item)
 				SpoutMessageBox(NULL, editstring.c_str(), "Text entered", MB_OK);
 		}
 		if (iret == 2000) {
-			if (SpoutMessageBox(NULL, "Enter the text in the edit\ncontrol in the footer area\n", "Message text entry", MB_OKCANCEL, editstring) == IDOK) {
+			editstring = "existing entry";
+			if (SpoutMessageBox(NULL, "This example also shows an existing entry.\nEnter new text in the edit control in the footer area.\n", "Message text entry", MB_OKCANCEL, editstring) == IDOK) {
 				if (!editstring.empty())
 					SpoutMessageBox(NULL, editstring.c_str(), "Text entered", MB_OK);
 			}
@@ -847,8 +850,7 @@ void ofApp::doMessagebox(int item)
 		if (iret == 3000) {
 			std::string icofile = ofToDataPath("Spout.ico", true);
 			SpoutMessageBoxIcon(icofile);
-			editstring = "existing entry";
-			if (SpoutMessageBox(NULL, "Example of using a custom icon with text entry\nThis example also shows an existing entry\n",
+			if (SpoutMessageBox(NULL, "Example of using a custom icon with text entry\n",
 				"Text entry with icon", MB_OKCANCEL, editstring) == IDOK) {
 				if (!editstring.empty())
 					SpoutMessageBox(NULL, editstring.c_str(), "Text entered", MB_OK);
