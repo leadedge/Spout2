@@ -811,6 +811,7 @@ void ofApp::doMessagebox(int item)
 	if (item == 'j') {
 		std::string str = "An edit control within the MessageBox can be used to return a string.\n\n";
 		str += "Can be used in place of a specific application resource dialog\n";
+		str += "If the edit string is not empty, it is shown highlighted in the edit control.\n";
 		str += "All SpoutMessageBox functions such as user icon and buttons are available.\n\n";
 		str += "   o Caption only\n";
 		str += "     If no message, the control is in the main content area\n";
@@ -822,7 +823,9 @@ void ofApp::doMessagebox(int item)
 		str += "   o Icon\n";
 		str += "      Custom icons can be used with both caption and message with caption\n";
 		str += "         std::string icofile = ofToDataPath(\"Spout.ico\", true);\n";
-		str += "         SpoutMessageBoxIcon(icofile);\n\n";
+		str += "         SpoutMessageBoxIcon(icofile);\n";
+		str += "      This example shows an exiting text entry.\n";
+		str += "      The same applies for the caption and message options.\n\n";
 		str += "Select an option and repeat for more options\n";
 		SpoutMessageBoxButton(1000, L"Caption");
 		SpoutMessageBoxButton(2000, L"Message");
@@ -830,7 +833,8 @@ void ofApp::doMessagebox(int item)
 		int iret = SpoutMessageBox(NULL, str.c_str(), "Edit control", MB_OK);
 		std::string editstring;
 		if (iret == 1000) {
-			iret = SpoutMessageBox(NULL, NULL, "Text entry with caption", MB_OKCANCEL, editstring);
+			//                     hwnd  message  caption                    buttons      edit string
+			iret = SpoutMessageBox(NULL, NULL,    "Text entry with caption", MB_OKCANCEL, editstring);
 			if (iret != 0 && !editstring.empty())
 				SpoutMessageBox(NULL, editstring.c_str(), "Text entered", MB_OK);
 		}
@@ -843,7 +847,9 @@ void ofApp::doMessagebox(int item)
 		if (iret == 3000) {
 			std::string icofile = ofToDataPath("Spout.ico", true);
 			SpoutMessageBoxIcon(icofile);
-			if (SpoutMessageBox(NULL, "Example of using a custom icon with text entry", "Text entry with icon", MB_OKCANCEL, editstring) == IDOK) {
+			editstring = "existing entry";
+			if (SpoutMessageBox(NULL, "Example of using a custom icon with text entry\nThis example also shows an existing entry\n",
+				"Text entry with icon", MB_OKCANCEL, editstring) == IDOK) {
 				if (!editstring.empty())
 					SpoutMessageBox(NULL, editstring.c_str(), "Text entered", MB_OK);
 			}
