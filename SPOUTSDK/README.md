@@ -20,7 +20,9 @@ The Spout SDK as a C-compatible dll that can be used with compilers other than V
 - [SpoutDirectX](https://spoutdx-site.netlify.app/)
 
 A sub-set of the Spout SDK for applications using DirectX rather than OpenGL.\
-SpoutDX is a support class for that provides functions similar to those in the OpenGL version of the SDK. SpoutDX was originally designed for D3D11 and has been extended for D3D12 and D3D9 with very similar methods. Several examples show details of use. 
+SpoutDX is a support class for that provides functions similar to those in the OpenGL version of the SDK.\
+SpoutDX was originally designed for D3D11 and has been extended for D3D12 and D3D9 with very similar methods.\
+Several examples show details of use. 
 
 - ARM build
 
@@ -31,11 +33,13 @@ ARM build has been tested with Visual Studio and no support can not be offered f
 
 ## OpenGL examples
 
-OpenGL examples are provided for Windows, Openframeworks and Cinder. Refer to "readme.md" in the "SPOUTSDK\Examples" folder.
+OpenGL examples are provided for Windows, Openframeworks and Cinder.\
+Refer to "readme.md" in the "SPOUTSDK\Examples" folder.
 
 ## DirectX examples
 
-Examples are provided for DirectX11, DirectX12 and DirectX9. Refer to "readme.md" in the "SPOUTSDK\SpoutDirectX" folder.
+Examples are provided for DirectX11, DirectX12 and DirectX9.\
+Refer to "readme.md" in the "SPOUTSDK\SpoutDirectX" folder.
 
 
 
