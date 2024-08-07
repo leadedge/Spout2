@@ -31,13 +31,7 @@ ARM build has been tested with Visual Studio and no support can not be offered f
 
 ## OpenGL examples
 
-OpenGL examples are provided for Windows, Openframeworks and Cinder.
-
-Windows examples do not depend on any OpenGL framework and are based on basic applications for Visual Studio that use the Win32 API. Projects are available for Visual Studio 2022. The solution files can be opened immediately and are a good start to get an overview of sending and receiving methods.
-
-OpenFrameworks examples are more comprehensive and demonstrate OpenGL texture send/receive as well as options such as synchronisation, data exchange and utility functions. All examples are well commented. Refer to "Examples\ofSpoutExample\readme.md" for further detail.
-
-For Cinder, refer to "readme-first.md" in the "Cinder\FboBasic" folder.\
+OpenGL examples are provided for Windows, Openframeworks and Cinder. Refer to "readme.md" in the "SPOUTSDK\Examples" folder.
 
 ## DirectX examples
 
