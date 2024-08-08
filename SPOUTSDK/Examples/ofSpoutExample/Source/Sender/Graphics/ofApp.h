@@ -43,13 +43,13 @@ class ofApp : public ofBaseApp{
 		void DrawString(std::string str, int posx, int posy);
 
 		// For sender
-		SpoutSender sender;            // Spout sender object
-		char sendername[256]{};        // Sender name
-		unsigned int senderwidth = 0;
-		unsigned int senderheight = 0;
-		double g_SenderFps = 0.0;      // For fps display averaging
-		GLint glFormat = GL_RGBA;      // Default OpenGL texture format
-		bool bShowInfo = true;         // Show on-screen information
+		SpoutSender sender;              // Spout sender object
+		char m_sendername[256]{};        // Sender name
+		unsigned int m_senderwidth = 0;
+		unsigned int m_senderheight = 0;
+		double m_senderfps = 0.0;       // For fps display averaging
+		GLint m_glformat = GL_RGBA;      // Default OpenGL texture format
+		bool bShowInfo = true;           // Show on-screen information
 
 		// For graphics
 		ofImage myBoxImage;            // Image for the 3D demo

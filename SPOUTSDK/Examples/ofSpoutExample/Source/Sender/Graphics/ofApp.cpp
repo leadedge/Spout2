@@ -32,11 +32,11 @@ void ofApp::setup(){
 
 	// Give the sender a name
 	// If no name is specified, the executable name is used.
-	strcpy_s(sendername, 256, "Spout Graphics Sender"); // The sender name
-	sender.SetSenderName(sendername);
+	strcpy_s(m_sendername, 256, "Spout Graphics Sender"); // The sender name
+	sender.SetSenderName(m_sendername);
 
 	// Show it on the title bar
-	ofSetWindowTitle(sendername);
+	ofSetWindowTitle(m_sendername);
 
 	// Centre on the screen
 	ofSetWindowPosition((ofGetScreenWidth()-ofGetWidth())/2, (ofGetScreenHeight()-ofGetHeight())/2);
@@ -197,7 +197,7 @@ void ofApp::setup(){
 	//
 	// Default DirectX format is DXGI_FORMAT_B8G8R8A8_UNORM
 	// Default OpenGL format is GL_RGBA
-	glFormat = GL_RGBA;
+	m_glformat = GL_RGBA;
 	//
 	//
 	//       OpenGL                             Compatible DX11 format
@@ -212,12 +212,12 @@ void ofApp::setup(){
 	// Note that some applications may not receive other formats.
 	// Only RGB or RGBA is supported for SendImage and for Openframeworks pixels.
 	//
-	// glFormat = GL_RGBA16; // Example 16 bit rgba
+	// m_glformat = GL_RGBA16; // Example 16 bit rgba
 	//
 	// A compatible DirectX 11 shared texture format must be set
 	// so that receivers get a texture with the same format.
 	//
-	// sender.SetSenderFormat(sender.DX11format(glFormat));
+	// sender.SetSenderFormat(sender.DX11format(m_glformat));
 	//
 	// See also OpenGL format the graphics receiver exapmle
 	//
@@ -236,24 +236,24 @@ void ofApp::setup(){
 	// independent of the window and would need to be defined and managed.
 
 	// Create an fbo for texture transfers
-	senderwidth = ofGetWidth();
-	senderheight = ofGetHeight();
+	m_senderwidth = ofGetWidth();
+	m_senderheight = ofGetHeight();
 
 	// Use settings to specify the internal format
 	// See also keypress 'F2' for re-allocation with the selected format
 	ofFboSettings settings;
 	settings.textureTarget = GL_TEXTURE_2D;
-	settings.width = senderwidth;
-	settings.height = senderheight;
-	settings.internalformat = glFormat;
+	settings.width = m_senderwidth;
+	settings.height = m_senderheight;
+	settings.internalformat = m_glformat;
 	settings.useDepth = true;
 	myFbo.allocate(settings);
 
 	// Create pixels optional SendImage
-	myPixels.allocate(senderwidth, senderheight, OF_IMAGE_COLOR_ALPHA);
+	myPixels.allocate(m_senderwidth, m_senderheight, OF_IMAGE_COLOR_ALPHA);
 
 	// Starting value for sender fps display
-	g_SenderFps = GetRefreshRate();
+	m_senderfps = GetRefreshRate();
 
 } // end setup
 
@@ -301,7 +301,7 @@ void ofApp::draw() {
 	//   the texture attached to the fbo is already flipped in y.
 	//   The fbo is allocated sender width, height and format
 	//   See also Option 4 to send the default framebuffer.
-	// sender.SendFbo(myFbo.getId(), senderwidth, senderheight, false);
+	// sender.SendFbo(myFbo.getId(), m_senderwidth, m_senderheight, false);
 
 	myFbo.end();
 	// - - - - - - - - - - - - - - - - 
@@ -311,7 +311,7 @@ void ofApp::draw() {
 	//
 	sender.SendTexture(myFbo.getTexture().getTextureData().textureID,
 		myFbo.getTexture().getTextureData().textureTarget,
-		senderwidth, senderheight, false);
+		m_senderwidth, m_senderheight, false);
 
 	//
 	// Option 3 : Send image pixels
@@ -319,9 +319,9 @@ void ofApp::draw() {
 	// Only 8 bit OF_IMAGE_COLOR or OF_IMAGE_COLOR_ALPHA formats are supported
 	// for Openframeworks ofPixels. If the sender OpenGL format is changed to 
 	// 16 or 32 bit, SendImage is not called and the sender is not initialized.
-	// if (glFormat == GL_RGBA) {
+	// if (m_glformat == GL_RGBA) {
 		// myFbo.readToPixels(myPixels); // readToPixels is slow - but this is just an example
-		// sender.SendImage(myPixels.getData(), senderwidth, senderheight, GL_RGBA, false);
+		// sender.SendImage(myPixels.getData(), m_senderwidth, m_senderheight, GL_RGBA, false);
 	// }
 
 	// Show the result sized to the application window
@@ -363,9 +363,9 @@ void ofApp::draw() {
 			if (sender.GetFrame() > 0) {
 				str = "fps ";
 				// Average to stabilise fps display
-				g_SenderFps = g_SenderFps*.85 + 0.15*sender.GetFps();
+				m_senderfps = m_senderfps*.85 + 0.15*sender.GetFps();
 				// Round first or integer cast will truncate to the whole part
-				str += ofToString((int)(round(g_SenderFps)));
+				str += ofToString((int)(round(m_senderfps)));
 				str += " : frame  ";
 				str += ofToString(sender.GetFrame());
 				DrawString(str, 10, 40);
@@ -385,7 +385,7 @@ void ofApp::draw() {
 		}
 		else {
 			str = "Sender not initialized";
-			if (glFormat != GL_RGBA)
+			if (m_glformat != GL_RGBA)
 				str += " - Format not compatible\n";
 			DrawString(str, 10, 20);
 		}
@@ -429,17 +429,17 @@ void ofApp::keyPressed(int key)
 
 		// Sender name
 		if (key == OF_KEY_F1) {
-			std::string strname;
+			std::string strname = m_sendername;
 			// SpoutMessageBox with edit control
 			if (SpoutMessageBox(NULL, NULL, "Enter a new sender name", MB_ICONINFORMATION | MB_OKCANCEL, strname) == IDOK) {
-				if (strcmp(sendername, strname.c_str()) != 0) {
-					// Change to the user entered name
-					strcpy_s(sendername, 256, strname.c_str());
-					// Release the current sender
-					// SendTexture looks after sender creation for the new name
+				if (strcmp(m_sendername, strname.c_str()) != 0) {
+					// Release the current sender first
 					sender.ReleaseSender();
+					// Change to the user entered name
+					strcpy_s(m_sendername, 256, strname.c_str());
 					// SetSenderName handles duplicate names with "_1", "_2" etc. appended.
-					sender.SetSenderName(sendername);
+					sender.SetSenderName(m_sendername);
+					// SendTexture looks after sender creation for the new name
 				}
 			}
 		}
@@ -461,7 +461,7 @@ void ofApp::keyPressed(int key)
 				selected = 0;
 			}
 			else {
-				switch (glFormat) {
+				switch (m_glformat) {
 					case GL_RGBA:     selected = 0;	break;
 					case GL_RGBA8:    selected = 1;	break;
 					case GL_RGB10_A2: selected = 2; break;
@@ -475,14 +475,14 @@ void ofApp::keyPressed(int key)
 			// SpoutMessageBox with combobox returns the item index
 			if (SpoutMessageBox(NULL, NULL, "Select sender format", MB_ICONINFORMATION | MB_OKCANCEL, items, selected) == IDOK) {
 				// Default output format
-				glFormat = GL_RGBA;
+				m_glformat = GL_RGBA;
 				switch (selected) {
 					case 0: default: break;
-					case 1:	glFormat = GL_RGBA8;	break;
-					case 2:	glFormat = GL_RGB10_A2; break;
-					case 3:	glFormat = GL_RGBA16;   break;
-					case 4:	glFormat = GL_RGBA16F;  break;
-					case 5:	glFormat = GL_RGBA32F;  break;
+					case 1:	m_glformat = GL_RGBA8;	break;
+					case 2:	m_glformat = GL_RGB10_A2; break;
+					case 3:	m_glformat = GL_RGBA16;   break;
+					case 4:	m_glformat = GL_RGBA16F;  break;
+					case 5:	m_glformat = GL_RGBA32F;  break;
 				}
 				// Release sender to re-start with the new format
 				sender.ReleaseSender();
@@ -490,17 +490,17 @@ void ofApp::keyPressed(int key)
 				if (selected == 0)
 					sender.SetSenderFormat(DXGI_FORMAT_B8G8R8A8_UNORM); // Default
 				else
-					sender.SetSenderFormat(sender.DX11format(glFormat)); // Selected
-				sender.SetSenderName(sendername); // Keep the same name
+					sender.SetSenderFormat(sender.DX11format(m_glformat)); // Selected
+				sender.SetSenderName(m_sendername); // Keep the same name
 
 				// Re-allocate fbo for texture transfer.
 				// Use settings here to specify the internal format
 				// or the default is used 0x1908 (GL_RGBA)
 				ofFboSettings settings;
 				settings.textureTarget = GL_TEXTURE_2D;
-				settings.width = senderwidth;
-				settings.height = senderheight;
-				settings.internalformat = glFormat;
+				settings.width = m_senderwidth;
+				settings.height = m_senderheight;
+				settings.internalformat = m_glformat;
 				settings.useDepth = true; // for cube draw
 				myFbo.allocate(settings);
 			}
@@ -514,17 +514,17 @@ void ofApp::windowResized(int w, int h)
 	// If the sending size matches the window size,
 	// the fbo, texture or image should be updated here.
 	if (w > 0 && h > 0) {
-		senderwidth = w;
-		senderheight = h;
+		m_senderwidth = w;
+		m_senderheight = h;
 		// Use settings to specify the internal format
 		ofFboSettings settings;
 		settings.textureTarget = GL_TEXTURE_2D;
-		settings.width = senderwidth;
-		settings.height = senderheight;
-		settings.internalformat = glFormat;
+		settings.width = m_senderwidth;
+		settings.height = m_senderheight;
+		settings.internalformat = m_glformat;
 		settings.useDepth = true;
 		myFbo.allocate(settings);
-		myPixels.allocate(senderwidth, senderheight, OF_IMAGE_COLOR_ALPHA);
+		myPixels.allocate(m_senderwidth, m_senderheight, OF_IMAGE_COLOR_ALPHA);
 	}
 
 }
