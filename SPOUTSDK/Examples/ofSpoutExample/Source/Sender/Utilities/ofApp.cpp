@@ -504,7 +504,7 @@ void ofApp::keyPressed(int key)
 		// Centre dialog on the window instead of the desktop
 		SpoutMessageBoxWindow(ofGetWin32Window());
 		// SpoutMessageBox with edit control
-		std::string strname;
+		std::string strname = sendername; // existing entry
 		if (SpoutMessageBox(NULL, NULL, "Enter sender name", MB_USERICON | MB_OKCANCEL, strname) == IDOK) {
 			if (strcmp(sendername, strname.c_str()) != 0) {
 				// Change to the user entered name
