@@ -201,6 +201,8 @@
 		15.07.24 - Update Spout SDK version
 		24.07.24 - SpoutMessageBoxModeless - add code comments for SpoutPanel version
 		06.08.24 - SpoutMessageBox - show initial content in edit box control
+		08.08.24 - SpoutMessageBox - removed unused WS_HSCROLL in edit box control
+		10.08.25 - SpoutMessageBox - select all text in the combobox edit field
 
 
 */
@@ -222,6 +224,7 @@
 //
 // Refer to source code for documentation.
 //
+
 
 namespace spoututils {
 
@@ -1163,7 +1166,6 @@ namespace spoututils {
 	{
 		TDcentre = pt;
 	}
-
 
 	// ---------------------------------------------------------
 	// Function: CopyToClipBoard
@@ -2132,7 +2134,7 @@ namespace spoututils {
 					}
 
 					hEdit = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "",
-						WS_CHILD | WS_VISIBLE | WS_HSCROLL | ES_AUTOHSCROLL,
+						WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
 						x, y, w, h,	hwnd, (HMENU)IDC_TASK_EDIT, hInstTD, NULL);
 
 					// Set an initial entry in the edit box
@@ -2145,8 +2147,9 @@ namespace spoututils {
 					// Position on top of content
 					BringWindowToTop(hEdit);
 
-					// Set focus to allow user entry
+					// Set keyboard focus to allow user entry
 					SetFocus(hEdit);
+
 				}
 
 				// Combo box control
@@ -2191,6 +2194,8 @@ namespace spoututils {
 						}
 						// Display an initial item in the selection field
 						SendMessageA(hCombo, CB_SETCURSEL, (WPARAM)comboindex, (LPARAM)0);
+						// Select all text in the edit field
+						SendMessage(hCombo, CB_SETEDITSEL, 0, MAKELONG(0, -1));
 					}
 
 					// Remove icons from the caption
@@ -2331,7 +2336,7 @@ namespace spoututils {
 			return bRet;
 
 		} // end OpenSpoutPanel
-		
+
 	} // end private namespace
 
 } // end namespace spoututils
