@@ -1,6 +1,7 @@
 ## Using MSBuild for example projects
 
-After setting up OpenFrameworks and copying the required files as explained in "readme.md". MSBuild can be used to to automate the build process instead of using the Visual Studio IDE.
+After setting up OpenFrameworks and copying the required files as explained in "readme.md",\
+MSBuild can be used to to automate the build process instead of using the Visual Studio IDE.
 
 If Visual Studio 2022 has previously been installed, skip to the <b>"Environment path"</b> section.
 
