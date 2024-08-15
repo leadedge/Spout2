@@ -49,6 +49,9 @@ This causes an error with D3D11.h due to std::byte definition conflict
 due to the use of "using namespace std" in ofMain.h. To avoid this
 a preprocessor definition _HAS_STD_BYTE=0 is included in the project.
 
+### MSBuild
+
+Refer to "msbuild.md" for using MSBuild with the example project instead of the Visual Studio IDE.
 
 
 
