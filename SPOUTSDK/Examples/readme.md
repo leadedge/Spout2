@@ -17,7 +17,7 @@ The SpoutGL folder and contents must be copied to the Openframeworks "apps" fold
 	          .
 		      . Spout SDK source files
 	          .
-	          Openframeworks <- copy the entire Openframeworks folder here\
+	          Openframeworks <- copy the entire Openframeworks folder here
                   ofSpoutExample.sln
                   ofSpoutExample.vcxproj
                   ofSpoutExample.vcxproj.filters
