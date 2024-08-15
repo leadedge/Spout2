@@ -66,7 +66,7 @@ The command to build the example project is :
 
 <pre>MSbuild.exe ofSpoutExample.sln -v:m -p:Configuration=RELEASE -p:Platform=x64</pre>
 
-This is contained in a convenient batch file "build.bat".\
+This is contained in a convenient batch file "Build.bat".\
 In File Explorer move to the project folder. For example :
 
 <pre>"of_v0.12.0_vs_release\apps\SpoutGL\Openframeworks\"</pre>
@@ -76,9 +76,19 @@ In File Explorer move to the project folder. For example :
 - Type "build" and enter to build.
 
 The build should succeed with 0 Warnings and 0 Errors.\
-All example applications are accumulated in the project "Binaries" folder.
+Example applications are copied to the "Binaries" folder.
 
 Leave the console window open and type "CopySource" to select other examples.\
 Type "build" again to repeat the process.
+
+### Build all examples
+
+The batch file "BuildAll.bat" combines the commands of "CopySource.bat" and "Build.bat".\
+Run "BuildAll.bat" to build all examples.
+Applications are accumulated in the project "Binaries" folder.
+
+
+
+
 
 
