@@ -33,13 +33,13 @@ ARM build has been tested with Visual Studio and no support can not be offered f
 
 ## OpenGL examples
 
-OpenGL examples are provided for Windows, Openframeworks and Cinder.\
-Refer to "readme.md" in the "SPOUTSDK\Examples" folder.
+OpenGL examples are available for Windows, Openframeworks and Cinder.\
+Refer to "readme.md" in the "Examples" folder.
 
 ## DirectX examples
 
-Examples are provided for DirectX11, DirectX12 and DirectX9.\
-Refer to "readme.md" in the "SPOUTSDK\SpoutDirectX" folder.
+Examples are available for DirectX11, DirectX12 and DirectX9.\
+Refer to "readme.md" in the "SpoutDirectX" folder.
 
 
 

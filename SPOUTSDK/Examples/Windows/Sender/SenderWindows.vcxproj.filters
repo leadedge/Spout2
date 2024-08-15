@@ -1,0 +1,110 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="SenderWindows.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\Spout.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\SpoutCopy.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\SpoutDirectX.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\SpoutFrameCount.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\SpoutGL.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\SpoutGLextensions.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\SpoutReceiver.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\SpoutSender.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\SpoutSenderNames.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\SpoutSharedMemory.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL\SpoutUtils.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="framework.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SenderWindows.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\Spout.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutCommon.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutCopy.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutDirectX.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutFrameCount.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutGL.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutGLextensions.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutReceiver.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutSender.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutSenderNames.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutSharedMemory.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL\SpoutUtils.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="SpoutGL">
+      <UniqueIdentifier>{5b29e859-0e4a-4685-8e5d-e7bf9086e1e3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{c033fb7c-05b1-437f-b9a0-d98036b9597d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{0ffefa7a-8d26-4334-8783-d5a6859f76ac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{ccfa3d7d-93e5-42f8-8335-93df3ecea1ea}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="SenderWindows.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

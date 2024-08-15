@@ -1,4 +1,4 @@
-SPOUT SDK
+### SpoutGL
 
 This folder contains all the source files necessary for your C++ application to use the Spout SDK. You can also use a dll if you prefer. The ["SpoutLibrary"](https://spoutlibrary-site.netlify.app/) C-compatible dll be used for compilers other than Visual Studio.
 
