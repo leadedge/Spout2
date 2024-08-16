@@ -202,7 +202,10 @@
 		24.07.24 - SpoutMessageBoxModeless - add code comments for SpoutPanel version
 		06.08.24 - SpoutMessageBox - show initial content in edit box control
 		08.08.24 - SpoutMessageBox - removed unused WS_HSCROLL in edit box control
-		10.08.25 - SpoutMessageBox - select all text in the combobox edit field
+		10.08.24 - SpoutMessageBox - select all text in the combobox edit field
+		11.08.24 - Add CBS_HASSTRINGS style to combobox and detect CB_ERR.
+		16.08.22 - ExecuteProcess, SpoutMessageBoxIcon return conditional value
+				   to avoid warning C4800: 'BOOL': forcing value to bool 'true' or 'false' 
 
 
 */
@@ -1085,7 +1088,7 @@ namespace spoututils {
 	bool SpoutMessageBoxIcon(std::string iconfile)
 	{
 		hTaskIcon = reinterpret_cast<HICON>(LoadImageA(nullptr, iconfile.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE));
-		return (hTaskIcon);
+		return (hTaskIcon != nullptr);
 	}
 
 	// ---------------------------------------------------------
@@ -2182,9 +2185,8 @@ namespace spoututils {
 						y = rect.bottom-40;
 						w = 220;
 					}
-
 					hCombo = CreateWindowExA(WS_EX_CLIENTEDGE, "COMBOBOX", "",
-						WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_AUTOVSCROLL | CBS_DROPDOWN,
+						CBS_DROPDOWN | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
 						x, y, w, h, hwnd, (HMENU)IDC_TASK_COMBO, hInstTD, NULL);
 
 					// Add combo box items
@@ -2220,7 +2222,9 @@ namespace spoututils {
 
 				if (bCombo) {
 					// Get currently selected index
-					comboindex = (int)SendMessageA(hCombo, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+					// Allow for error if the user edits the list item
+					int index = (int)SendMessageA(hCombo, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+					if (index != CB_ERR) comboindex = index;
 				}
 			}
 
@@ -2300,7 +2304,7 @@ namespace spoututils {
 				ShExecInfo.lpParameters = commandline;
 			ShExecInfo.nShow = SW_SHOW;
 
-			return ShellExecuteExA(&ShExecInfo);
+			return (ShellExecuteExA(&ShExecInfo) != FALSE);
 
 		}
 
