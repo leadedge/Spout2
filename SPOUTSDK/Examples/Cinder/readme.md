@@ -10,19 +10,19 @@ The example has been created for Visual Studio 2022 and Cinder 0.9.3.
 - Remove any existing "build" folder
 - Open Cinder.sln with VS2022
 - When you see the Retarget projects dialog, click CANCEL\
-The solution will be renamed to "cinder (Visual Studio 2015)
+The solution will be renamed to "cinder (Visual Studio 2015)"
 - Rebuild the library x64 or Win32
 
 ### Building the example project
 
 - Create a "SpoutGL" folder under the Cinder root folder.
 - Copy all the source files of the Spout2 SDK "SpoutGL" folder into it.
-- Find the Cinder example project "..\samples\_opengl\FboBasic
+- Find the Cinder example project "..\samples\_opengl\FboBasic"
 - Back up the original FboBasic folder.
 - Replace with the Spout example FboBasic folder.
 - Open "vc2022 > FboBasic.sln" with Visual Studio 2022.
 - As before, click CANCEL for the Retarget projects dialog.
-- Examine FboBasicApp.cpp for sender or receiver compile definition :\
+- Examine FboBasicApp.cpp for sender or receiver compile definition :
   <pre>// #define _receiver</pre>
   - Enable this define to create a receiver.
   - Disable it to create a sender.
@@ -31,6 +31,6 @@ The solution will be renamed to "cinder (Visual Studio 2015)
 
 ### SpoutPanel
 
-The receiver example depends on SpoutPanel.exe to select senders.
+The receiver example depends on SpoutPanel.exe to select senders.\
 It's path is detected after either SpoutSettings or SpoutPanel has been run once.
 
