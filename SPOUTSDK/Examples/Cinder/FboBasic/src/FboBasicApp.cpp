@@ -5,6 +5,15 @@
 		Search on SPOUT for details.
 		
 		2021-2023 Lynn Jarvis https://spout.zeal.co/
+		
+		Revisions - 
+		18.11.21
+			created
+		27.12.22 
+			updated SpoutGL files
+		16.08.24
+			updated SpoutGL files
+			created VS2022 solution
 
 */
 
