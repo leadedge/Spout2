@@ -293,6 +293,9 @@
 //		15.07.24	- SelectSender - after cast of window handle to long 
 //					  convert to a string of 8 characters without new line
 //		16.07.24	- Add receiver ID3D11Texture2D* GetSenderTexture()
+//		20.08.24	- SelectSender - if no SpoutPanel and SpoutMessageBox is used,
+//					  test open sender shared texture handle
+//					  and warn for NT handle or failure
 //
 // ====================================================================================
 /*
@@ -420,6 +423,7 @@ Spout::~Spout()
 // based on the size passed and the name that has been set.
 // If a sender with this name is already registered,
 // create an incremented name : sender_1, sender_2 etc.
+// and update the passed name
 void Spout::SetSenderName(const char* sendername)
 {
 	if (!sendername) {
@@ -450,6 +454,7 @@ void Spout::SetSenderName(const char* sendername)
 	// This can happen if the sender has crashed or if a
 	// console window was closed instead of the main program.
 	sendernames.CleanSenders();
+
 
 }
 
@@ -1119,7 +1124,7 @@ bool Spout::SelectSender(HWND hwnd)
 
 	if (!SelectSenderPanel(msg)) {
 
-		// If SpoutPanel is not available use a SpoutMessageBox for sender selection.
+		// If SpoutPanel is not available, use a SpoutMessageBox for sender selection.
 		// Note that SpoutMessageBox is modal and will interrupt the host program.
 
 		// create a local sender list
@@ -1143,9 +1148,42 @@ bool Spout::SelectSender(HWND hwnd)
 		// Show the SpoutMessageBox even if the list is empty.
 		// This makes it clear to the user that no senders are running.
 		if (SpoutMessageBox(hwnd, NULL, "Select sender", MB_OKCANCEL, senderlist, selected) == IDOK && !senderlist.empty()) {
-			// Release the receiver and set the selected sender as active for the next receive
+			
+			// Release the receiver
 			ReleaseReceiver();
+
+			// Set the selected sender as active for the next receive
 			SetActiveSender(senderlist[selected].c_str());
+
+			// Test open the sender share handle
+			// - Warn if NT share handle
+			// - Warn for failure
+			SharedTextureInfo info{};
+			if (sendernames.getSharedInfo(senderlist[selected].c_str(), &info)) {
+				std::string str;
+				ID3D11Texture2D* pTexture = nullptr;
+				if (spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &pTexture, LongToHandle((long)info.shareHandle))) {
+					D3D11_TEXTURE2D_DESC desc{};
+					pTexture->GetDesc(&desc);
+					if (desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX) {
+						if (desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE) {
+							str = "NT handle shared texture not supported\n";
+							SpoutMessageBox(hwnd, str.c_str(), "Warning", MB_OK | MB_ICONWARNING);
+						}
+					}
+					spoutdx.ReleaseDX11Texture(pTexture);
+				}
+				else {
+					str ="WARNING - failed to open texture share handle\n\n";
+					str += "For a laptop with power saving, switchable graphics\n";
+					str += "check that both sender and receiver applications are\n";
+					str += "set to use the high performance adapter\n\n";
+					str += "Open <a href=\"ms-settings:display-advancedgraphics\">Windows Graphics Performance Preference</a>\n";
+					str += "and set to High Performance for sender and receiver\n";
+					SpoutMessageBox(hwnd, str.c_str(), "Warning", MB_OK | MB_ICONWARNING);
+				}
+			}
+
 			// Set the opened flag in the same way as for SelectSenderPanel
 			// to indicate that the user has selected a sender.
 			// This is tested in CheckSpoutPanel.
@@ -1474,6 +1512,7 @@ int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxch
 			pAdapter->Release();
 		}
 	}
+
 
 	// Set the SpoutDirectX class adapter back to what it was
 	spoutdx.SetAdapter(adapterIndex);
@@ -2039,7 +2078,6 @@ bool Spout::SelectSenderPanel(const char* message)
 			}
 		}
 	}
-	
 
 	// Check whether the panel is already running
 	// Try to open the application mutex.
@@ -2058,7 +2096,6 @@ bool Spout::SelectSenderPanel(const char* message)
 		m_ShExecInfo.nShow = SW_SHOW;
 		m_ShExecInfo.hInstApp = NULL;
 		ShellExecuteExA(&m_ShExecInfo);
-
 		//
 		// The flag "m_bSpoutPanelOpened" is set here to indicate that the user
 		// has opened the panel to select a sender. This flag is local to 
