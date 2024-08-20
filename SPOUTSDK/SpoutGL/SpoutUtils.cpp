@@ -205,7 +205,10 @@
 		10.08.24 - SpoutMessageBox - select all text in the combobox edit field
 		11.08.24 - Add CBS_HASSTRINGS style to combobox and detect CB_ERR.
 		16.08.22 - ExecuteProcess, SpoutMessageBoxIcon return conditional value
-				   to avoid warning C4800: 'BOOL': forcing value to bool 'true' or 'false' 
+				   to avoid warning C4800: 'BOOL': forcing value to bool 'true' or 'false'
+				 - GetSpoutLog - remove null argument check for use of existing log path
+		20.08.24 - GetSpoutLog - add check for empty filepath
+
 
 
 */
@@ -584,7 +587,9 @@ namespace spoututils {
 
 		// Create the log file path given the filename passed in
 		logPath = _getLogFilePath(filename);
+
 		_logtofile(bAppend);
+
 	}
 
 	// ---------------------------------------------------------
@@ -681,10 +686,8 @@ namespace spoututils {
 		std::string logstr = "";
 		std::string path;
 
-		if (!filepath) return "";
-
 		// Check for specified log file path
-		if (*filepath != 0)
+		if (filepath && *filepath != 0)
 			path = filepath;
 		else
 			path = logPath;
