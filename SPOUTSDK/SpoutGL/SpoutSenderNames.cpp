@@ -109,6 +109,7 @@
 	22.05.24 - RegisterSenderName add newname condition for name increment
 	Version 2.007.014
 	20.06.24 - Add GetSenderIndex
+	23.08.24 - GetSenderInfor, SetSenderID - initialize SharedTextureInfo
 
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -569,7 +570,7 @@ int spoutSenderNames::GetMaxSenders()
 // Fails if the sender does not exist.
 bool spoutSenderNames::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
 {
-	SharedTextureInfo info;
+	SharedTextureInfo info={};
 
 	// For external access to getSharedInfo - redundancy
 
@@ -685,7 +686,7 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 // 2.006 senders may or may not have these bits set but will rarely have the exact values.
 bool spoutSenderNames::SetSenderID(const char *sendername, bool bCPU, bool bGLDX)
 {
-	SharedTextureInfo info;
+	SharedTextureInfo info={};
 
 	if (getSharedInfo(sendername, &info)) {
 		// Using CPU sharing methods - set top bit
