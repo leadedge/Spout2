@@ -832,7 +832,6 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 // Retrieve the pointer of a DirectX11 shared texture
 bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle)
 {
-
 	if (!pDevice || !ppSharedTexture || !dxShareHandle) {
 		SpoutLogError("spoutDirectX::OpenDX11shareHandle - null sources");
 		return false;
@@ -878,7 +877,6 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	// printf("td.BindFlags = %d\n", td.BindFlags);
 	// printf("td.MiscFlags = %d\n", td.MiscFlags); // D3D11_RESOURCE_MISC_SHARED (2)
 
-	// LJ DEBUG
 	SpoutLogNotice("spoutDirectX::OpenDX11shareHandle - OK");
 
 	return true;
