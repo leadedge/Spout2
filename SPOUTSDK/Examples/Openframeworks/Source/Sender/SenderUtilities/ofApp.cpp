@@ -291,23 +291,24 @@ void ofApp::draw() {
 			if (sender.GetDX11format() != DXGI_FORMAT_B8G8R8A8_UNORM) { // default
 				str += sender.GLformatName(sender.GLDXformat());
 			}
-			DrawString(str, 10, 30);
+			// DrawString(str, 10, 30);
 
 			// Show sender fps and framecount if available
 			if (sender.GetFrame() > 0) {
-				str = "fps ";
+				str += "  fps ";
 				// Average to stabilise fps display
 				g_SenderFps = g_SenderFps*.85 + 0.15*sender.GetFps();
 				// Round first or integer cast will truncate to the whole part
 				str += ofToString((int)(round(g_SenderFps)));
 				str += " : frame  ";
 				str += ofToString(sender.GetFrame());
-				DrawString(str, 10, 50);
+				// DrawString(str, 10, 50);
 			}
+			DrawString(str, 10, 20);
 
 			// Show options to change sender name and format at the bottom of the window
 			str = "'F1' - sender name : 'F2' - sender format : Space - hide info";
-			DrawString(str, 120, ofGetHeight()-14);
+			DrawString(str, 170, ofGetHeight()-14);
 
 			//
 			// Options for SpoutMessageBox examples
@@ -318,38 +319,39 @@ void ofApp::draw() {
 			ofFill();
 			ofSetColor(128, 32, 0); // red
 			// About
-			ofDrawRectangle(10, 65, 140, 20); // -15
+			ofDrawRectangle(10, 35, 140, 20); // -15
 			ofSetColor(0, 45, 90); // blue
 			// Position
-			ofDrawRectangle(10, 87, 140, 20);
+			ofDrawRectangle(10, 57, 140, 20);
 			// Simple
-			ofDrawRectangle(10, 109, 140, 20);
+			ofDrawRectangle(10, 79, 140, 20);
 			// Variable
-			ofDrawRectangle(10, 131, 140, 20);
+			ofDrawRectangle(10, 101, 140, 20);
 			// Timeout
-			ofDrawRectangle(10, 153, 140, 20);
+			ofDrawRectangle(10, 123, 140, 20);
 			// Options
-			ofDrawRectangle(10, 175, 140, 20);
+			ofDrawRectangle(10, 145, 140, 20);
 			// Instruction
-			ofDrawRectangle(10, 197, 140, 20);
+			ofDrawRectangle(10, 167, 140, 20);
 			// Icon
-			ofDrawRectangle(10, 219, 140, 20);
+			ofDrawRectangle(10, 189, 140, 20);
 			// Buttons
-			ofDrawRectangle(10, 241, 140, 20);
+			ofDrawRectangle(10, 211, 140, 20);
 			// Edit
-			ofDrawRectangle(10, 263, 140, 20);
+			ofDrawRectangle(10, 233, 140, 20);
 			// Combobox
-			ofDrawRectangle(10, 285, 140, 20);
+			ofDrawRectangle(10, 255, 140, 20);
 			// Modeless
-			ofDrawRectangle(10, 307, 140, 20);
+			ofDrawRectangle(10, 277, 140, 20);
 			// Hyperlink
-			ofDrawRectangle(10, 329, 140, 20);
+			ofDrawRectangle(10, 299, 140, 20);
 			// Clipboard
-			ofDrawRectangle(10, 351, 140, 20);
+			ofDrawRectangle(10, 321, 140, 20);
 
 			// Highlight item
-			if (mousex > 10 && mousex < 150	&& mousey > 65 && mousey < 366) {
-				int y = ((mousey/22)*22)-1;
+			// About = 10, 35, 140, 20 (y 35-55)
+			if (mousex > 10 && mousex < 150	&& mousey > 34 && mousey < 336) {
+				int y = ((mousey/22)*22)+13;
 				ofSetColor(0, 128, 128); // cyan
 				ofDrawRectangle(10, y, 140, 20);
 			}
@@ -357,33 +359,33 @@ void ofApp::draw() {
 			// Item text
 			ofSetColor(255);
 			str = "         About";
-			DrawString(str, 10, 80);
+			DrawString(str, 10, 50); // 80-50 = -30
 			str = "       Position";
-			DrawString(str, 10, 102); // +22
+			DrawString(str, 10, 72); // +22
 			str = "        Simple";
-			DrawString(str, 10, 124);
+			DrawString(str, 10, 94);
 			str = "       Variable";
-			DrawString(str, 10, 146);
+			DrawString(str, 10, 116);
 			str = "       Timeout";
-			DrawString(str, 10, 168);
+			DrawString(str, 10, 138);
 			str = "       Options";
-			DrawString(str, 10, 190);
+			DrawString(str, 10, 160);
 			str = "     Instruction";
-			DrawString(str, 10, 212);
+			DrawString(str, 10, 182);
 			str = "         Icon";
-			DrawString(str, 10, 234);
+			DrawString(str, 10, 204);
 			str = "       Buttons";
-			DrawString(str, 10, 256);
+			DrawString(str, 10, 226);
 			str = "         Edit";
-			DrawString(str, 10, 278);
+			DrawString(str, 10, 248);
 			str = "     Combobox";
-			DrawString(str, 10, 300);
+			DrawString(str, 10, 270);
 			str = "      Modeless";
-			DrawString(str, 10, 322);
+			DrawString(str, 10, 292);
 			str = "      Hyperlink";
-			DrawString(str, 10, 344);
+			DrawString(str, 10, 314);
 			str = "      Clipboard";
-			DrawString(str, 10, 366);
+			DrawString(str, 10, 336);
 
 		}
 		else {
@@ -405,72 +407,72 @@ void ofApp::mousePressed(int x, int y, int button)
 	if (x > 10 && x <150 && !bMessagebox) {
 
 		//  About
-		if (y >65 && y <85) {
+		if (y >35 && y <65) {
 			doMessagebox('a');
 		}
 
 		//  Position
-		if (y >87 && y <107) {
+		if (y >57 && y <77) {
 			doMessagebox('b');
 		}
 
 		//  Simple
-		if (y >109 && y <129) {
+		if (y >79 && y <109) {
 			doMessagebox('c');
 		}
 
 		// Variable
-		if (y >131 && y <151) {
+		if (y >101 && y <121) {
 			doMessagebox('d');
 		}
 
 		// Timeout
-		if (y >153 && y <173) {
+		if (y >123 && y <153) {
 			doMessagebox('e');
 		}
 
 		// Options
-		if (y >175 && y <195) {
+		if (y >145 && y <165) {
 			doMessagebox('f');
 		}
 
 		// Instruction
-		if (y >197 && y <217) {
+		if (y >167 && y <197) {
 			doMessagebox('g');
 		}
 
 		// Icon
-		if (y > 219 && y < 239) {
+		if (y > 189 && y < 209) {
 			doMessagebox('h');
 		}
 
 		// Buttons
-		if (y > 241 && y < 261) {
+		if (y > 211 && y < 231) {
 			doMessagebox('i');
 		}
 
 		// Edit
-		if (y > 263 && y < 283) {
+		if (y > 233 && y < 253) {
 			doMessagebox('j');
 		}
 
 		// Combobox
-		if (y > 285 && y < 305) {
+		if (y > 255 && y < 275) {
 			doMessagebox('k');
 		}
 
 		// Modeless
-		if (y > 307 && y < 327) {
+		if (y > 277 && y < 297) {
 			doMessagebox('l');
 		}
 
 		// Hyperlink
-		if (y > 329 && y < 349) {
+		if (y > 299 && y < 319) {
 			doMessagebox('m');
 		}
 
 		// Clipboard
-		if (y > 351 && y < 371) {
+		if (y > 321 && y < 341) {
 			doMessagebox('n');
 		}
 

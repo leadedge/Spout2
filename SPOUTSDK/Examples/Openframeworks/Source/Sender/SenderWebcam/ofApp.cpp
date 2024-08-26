@@ -31,16 +31,20 @@ void ofApp::setup(){
 
 	ofBackground(0);
 
+	// Open a console to show webcam details
+	OpenSpoutConsole();
 	// Option - show Spout logs
 	// EnableSpoutLog();
-	// Or a console to show webcam details
-	OpenSpoutConsole();
 
 	camsendername = "Spout Webcam Sender"; // Set the sender name
 	ofSetWindowTitle(camsendername); // show it on the title bar
 
 	// Centre on the screen
 	ofSetWindowPosition((ofGetScreenWidth()-ofGetWidth())/2, (ofGetScreenHeight()-ofGetHeight())/2);
+
+	// Load a Windows truetype font to avoid dependency on a font file.
+	// Arial, Verdana, Tahoma
+	LoadWindowsFont(myFont, "Verdana", 12);
 
 	// Get the webcam list into a vector so we can
 	// identify by name and detect SpoutCam later
@@ -61,6 +65,7 @@ void ofApp::setup(){
 
 	// Give the sender the same name as the window title
 	// If none is specified, the executable name is used
+
 	camsender.SetSenderName(camsendername.c_str());
 
 }
@@ -136,24 +141,25 @@ void ofApp::draw() {
 			// Show Openframeworks fps
 			str += "fps : " + ofToString((int)roundf(ofGetFrameRate()));
 		}
+		DrawString(str, 20, 30);
 	}
-	else {
-		str += "Select a webcam by it's index";
-	}
-	ofDrawBitmapString(str, 20, 30);
+	// else {
+		// str += "Select a webcam by it's index";
+	// }
+	// DrawString(str, 20, 30);
 
 	// Show the webcam list for selection
-	int ypos = 50;
+	int ypos = 60;
 	for (int i=0; i<(int)camdevices.size(); i++) {
 		str = "("; str+= ofToString(i); str += ") ";
 		str += camdevices[i].deviceName;
-		ofDrawBitmapString(str, 40, ypos);
-		ypos += 15;
+		DrawString(str, 40, ypos);
+		ypos += 22;
 	}
-	str = "Press 0 to ";
+	str = "Select a webcam (0 to ";
 	str += ofToString(camdevices.size()-1);
-	str += " to select a webcam";
-	ofDrawBitmapString(str, 40, ypos);
+	str += ")";
+	DrawString(str, 40, ypos+5);
 
 
 }
@@ -179,6 +185,8 @@ void ofApp::keyPressed(int key) {
 			// Release our sender before changing webcams or a
 			// switch to SpoutCam will pick up this application
 			camsender.ReleaseSender();
+			// Set the sender name again
+			camsender.SetSenderName(camsendername.c_str());
 			camindex = i;
 			vidGrabber.close();
 			vidGrabber.setDeviceID(camindex);
@@ -196,3 +204,37 @@ void ofApp::keyPressed(int key) {
 
 }
 
+
+//--------------------------------------------------------------
+// Load a Windows truetype font
+bool ofApp::LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size)
+{
+	std::string fontfolder;
+	char* path = nullptr;
+	errno_t err = _dupenv_s(&path, NULL, "WINDIR");
+	if (err == 0 && path) {
+		fontfolder = path;
+		fontfolder += "\\Fonts\\";
+		fontfolder += name;
+		fontfolder += ".ttf";
+		if (_access(fontfolder.c_str(), 0) != -1) {
+			return font.load(fontfolder, size, true, true);
+		}
+	}
+	return false;
+}
+
+//--------------------------------------------------------------
+void ofApp::DrawString(std::string str, int posx, int posy)
+{
+	if (myFont.isLoaded()) {
+		myFont.drawString(str, posx, posy);
+	}
+	else {
+		// This will only happen if the Windows font is not foud
+		// Quick fix because the default font is wider
+		int x = posx-20;
+		if (x <= 0) x = 10;
+		ofDrawBitmapString(str, x, posy);
+	}
+}

@@ -36,6 +36,11 @@ class ofApp : public ofBaseApp{
 		void mouseMoved(int x, int y);
 		void mouseDragged(int x, int y, int button);
 
+		// For Truetype font
+		ofTrueTypeFont myFont;
+		bool LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size);
+		void DrawString(std::string str, int posx, int posy);
+
 		SpoutSender sender;    // Spout sender object
 		char sendername[256];  // Sender name
 

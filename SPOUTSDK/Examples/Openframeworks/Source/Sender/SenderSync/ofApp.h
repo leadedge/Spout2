@@ -44,4 +44,9 @@ class ofApp : public ofBaseApp{
 
 		void showInfo();
 
+		// For Truetype font
+		ofTrueTypeFont myFont;
+		bool LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size);
+		void DrawString(std::string str, int posx, int posy);
+
 };

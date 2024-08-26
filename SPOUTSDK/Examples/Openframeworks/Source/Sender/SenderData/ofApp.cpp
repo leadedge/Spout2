@@ -44,12 +44,15 @@ void ofApp::setup(){
  	strcpy_s(sendername, 256, "Spout Data Sender"); // The sender name
 	ofSetWindowTitle(sendername); // show it on the title bar
 
+	// Load a Windows truetype font to avoid dependency on a font file.
+	// Arial, Verdana, Tahoma
+	LoadWindowsFont(myFont, "Verdana", 12);
+
 	// Give the sender a name
 	sender.SetSenderName(sendername);
 	
 	// 3D drawing setup for the demo 
 	ofDisableArbTex(); // Needed for ofBox texturing
-	ofEnableDepthTest(); // enable depth comparisons for the cube
 	myBoxImage.load("SpoutBox.jpg"); // image for the cube texture
  	rotX = rotY = 0.0f;
 
@@ -98,6 +101,7 @@ void ofApp::draw() {
 	// Draw 3D graphics into the fbo
 	myFbo.begin();
 	ofClear(10, 100, 140, 255);
+	ofEnableDepthTest(); // enable depth comparisons for the cube
 	ofPushMatrix();
 	ofTranslate(myFbo.getWidth() / 2.0, myFbo.getHeight() / 2.0, 0);
 	ofRotateYDeg(rotX); // rotate
@@ -108,6 +112,7 @@ void ofApp::draw() {
 	ofPopMatrix();
 	rotX += 0.6;
 	rotY += 0.6;
+	ofDisableDepthTest(); // Or graphics draw fails
 	
 	// Send fbo
 	sender.SendFbo(myFbo.getId(), ofGetWidth(), ofGetHeight(), false);
@@ -218,7 +223,7 @@ void ofApp::draw() {
 		str += " : frame  ";
 		str += ofToString(sender.GetFrame());
 	}
-	ofDrawBitmapString(str, 10, 20);
+	DrawString(str, 10, 20);
 
 }
 
@@ -276,3 +281,36 @@ void ofApp::mouseDragged(int x, int y, int button)
 	mousedragged = 1;
 }
 
+//--------------------------------------------------------------
+// Load a Windows truetype font
+bool ofApp::LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size)
+{
+	std::string fontfolder;
+	char* path = nullptr;
+	errno_t err = _dupenv_s(&path, NULL, "WINDIR");
+	if (err == 0 && path) {
+		fontfolder = path;
+		fontfolder += "\\Fonts\\";
+		fontfolder += name;
+		fontfolder += ".ttf";
+		if (_access(fontfolder.c_str(), 0) != -1) {
+			return font.load(fontfolder, size, true, true);
+		}
+	}
+	return false;
+}
+
+//--------------------------------------------------------------
+void ofApp::DrawString(std::string str, int posx, int posy)
+{
+	if (myFont.isLoaded()) {
+		myFont.drawString(str, posx, posy);
+	}
+	else {
+		// This will only happen if the Windows font is not foud
+		// Quick fix because the default font is wider
+		int x = posx-20;
+		if (x <= 0) x = 10;
+		ofDrawBitmapString(str, x, posy);
+	}
+}

@@ -63,7 +63,6 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	char str[256];
 	ofSetHexColor(0xFFFFFF);
 
 	fingerMovie.draw(0, 0, ofGetWidth(), ofGetHeight());
@@ -77,14 +76,12 @@ void ofApp::draw() {
 			fingerMovie.getWidth(), fingerMovie.getHeight(), false);
 	}
 	
-	// Show what it is sending
-	ofSetColor(255);
-	sprintf_s(str, 256, "Sending as : [%s]", sendername);
-	ofDrawBitmapString(str, 20, 20);
+	char str[256]; // For formatting
 
-	// Show fps
-	sprintf_s(str, 256, "fps: %3d", (int)ofGetFrameRate());
-	ofDrawBitmapString(str, 20, 40);
+	// Show what it is sending and fps 
+	ofSetColor(255);
+	sprintf_s(str, 256, "Sending as : [%s] (fps: %3d)", sendername, (int)ofGetFrameRate());
+	ofDrawBitmapString(str, 20, 20);
 
 }
 

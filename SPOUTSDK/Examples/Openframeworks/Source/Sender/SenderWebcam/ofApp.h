@@ -31,6 +31,11 @@ class ofApp : public ofBaseApp {
 		void exit();
 		void keyPressed(int key);
 
+		// For Truetype font
+		ofTrueTypeFont myFont;
+		bool LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size);
+		void DrawString(std::string str, int posx, int posy);
+
 		ofVideoGrabber vidGrabber; // Webcam
 		std::vector <ofVideoDevice> camdevices; // Webcams available
 		SpoutSender camsender; // A Spout sender object

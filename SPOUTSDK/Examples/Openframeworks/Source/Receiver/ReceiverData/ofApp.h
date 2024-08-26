@@ -31,6 +31,11 @@ class ofApp : public ofBaseApp{
 		void draw();
 		void exit();
 		void mousePressed(int x, int y, int button);
+
+		// For Truetype font
+		ofTrueTypeFont myFont;
+		bool LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size);
+		void DrawString(std::string str, int posx, int posy);
 	
 		SpoutReceiver receiver; // A Spout receiver object
 		ofTexture myTexture; // Receiving texture
