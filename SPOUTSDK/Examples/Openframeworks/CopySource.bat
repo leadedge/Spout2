@@ -2,8 +2,9 @@
 rem
 rem Copy source files to ofSpoutExample "src" folder
 rem
-cls
 setlocal
+:Start
+cls
 echo.
 echo Copy source files to the example 'src' folder
 rem
@@ -19,8 +20,14 @@ echo [8] Receiver Sync           Synchronise Sender and Receiver
 echo [9] Receiver Data           Exchange data
 echo [0] Receiver Multiple       Multiple receivers in one application
 echo.
-set /P input=Enter option to copy source files :
-if "%input%" == "" goto End
+echo Rebuild "ofSpoutExample" with the new source files
+echo Rescan can be used to refresh Intellisense
+echo The executable file is copied to the Binaries folder
+echo.
+set input=
+set /P input=Enter option (none to quit) :
+if "%input%" equ "" goto End
+echo [%input%]
 rem
 echo.
 if %input% EQU 1 (
@@ -64,16 +71,13 @@ if %input% EQU 0 (
 	copy /y /v Source\Receiver\ReceiverMultiple\*.bat
 )
 rem
-echo.
-echo Rebuild "ofSpoutExample" with the new source files
-echo Rescan can be used to refresh Intellisense
-echo After build, the Binaries folder contains executable files
-echo.
-set /p input=Enter to end
-set input=
-endlocal
+rem Allow for repeats without re-starting CopySource
+rem
+goto Start
 rem
 :End
+set input=
+endlocal
 rem
 
 
