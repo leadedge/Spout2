@@ -109,7 +109,7 @@
 	22.05.24 - RegisterSenderName add newname condition for name increment
 	Version 2.007.014
 	20.06.24 - Add GetSenderIndex
-	23.08.24 - GetSenderInfor, SetSenderID - initialize SharedTextureInfo
+	23.08.24 - GetSenderInfo, SetSenderID - initialize SharedTextureInfo
 
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
