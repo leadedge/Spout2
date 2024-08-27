@@ -1,4 +1,92 @@
 ===========================================\
+27.08.24\
+Update Master from Beta branch.
+
+Version 2.007.015
+
+1) Additional libraries
+    - SpoutDX12 and SpoutDX9 libraries included in CMake build
+2) Library example
+    - New Tutorial04_Lib example for using libraries
+	- Revise readme files
+3) SpoutDX example solution
+    - New SpoutDX Example.sln to build all SpoutDX examples
+	- Revise source and readme files
+	- Executable files copied to a Binaries/Examples folder
+4) OpenGL examples
+    - Windows
+     -- Basic Windows OpenGL examples without library dependency
+    - Openframeworks
+      -- "CopySource.bat" for easy selection and copy of example source files
+    - MSbuild to automate build
+      -- build.bat - build current example
+	  -- build-all.bat - build all examples
+	  -- Executable files copied to a Binaries folder
+	  -- Separate documentation
+
+Spout.cpp
+- 13.06.24	- SelectSender - open SpoutMessagebox for no senders.
+			  Add OK/CANCEL and test for empty senderlist.
+- 21.06.24	- Add GetSenderIndex
+			  Modify SelectSender to show the active sender as current
+- 03.07.24	- SelectSender - pass hWnd to SpoutPanel command line
+			  for it to open centred on the window
+- 04.07.24	- CheckSpoutPanel - allow for use of SpoutMessageBox
+- 15.07.24	- SelectSender - after cast of window handle to long 
+			  convert to a string of 8 characters without new line
+- 16.07.24	- Add receiver ID3D11Texture2D* GetSenderTexture()
+- 21.08.24	- SetPerformancePreference - remove null path test
+- 23.08.24	- SelectSender - if no SpoutPanel and SpoutMessageBox is used :
+			  test for successful open of the sender share handle
+			   - Warn if NT share handle
+			   - Warn for open failure
+			   - Allow setting preferences for laptop
+			   - Allow sender adapter test for desktop
+			   - Refer to Spout settings if no resolution or a desktop system
+			  Also warn in SpoutPanel
+
+SpoutCopy.cpp
+- 19.06.24 - Add ClearAlpha
+
+SpoutDirectX.cpp
+
+SpoutFrameCount.cpp
+- 04.07.24	- SetNewFrame - add m_hCountSemaphore to initial check
+
+SpoutGL.cpp
+- 26.06.14	- Restore LoadTexturePixels for 20% speed gain
+
+SpoutGLextensions.cpp
+
+SpoutReceiver.cpp
+
+SpoutSender.cpp
+
+SpoutSendernames.cpp
+- 20.06.24 - Add GetSenderIndex
+- 23.08.24 - GetSenderInfo, SetSenderID - initialize SharedTextureInfo
+
+SpoutUtils.cpp
+- 14.06.24 - SpoutUtils.h - PR #114
+		     Correct conditional definition of EndTiming in header file
+		     Allow mingw to define USE_CHRONO if available
+		     Include <math.h> to fix mingw build
+- 01.07.24 - Increase SpoutMessageBox combo width for NDI sender names
+		     Add "SpoutMessageBoxModeless" to warning caption if SpoutPanel not found
+- 02.07.24 - Add SpoutMessageBoxPosition
+- 09.07.24 - TDcallbackProc TDN_CREATED : common rect and coordinates
+- 15.07.24 - Update Spout SDK version
+- 24.07.24 - SpoutMessageBoxModeless - add code comments for SpoutPanel version
+- 06.08.24 - SpoutMessageBox - show initial content in edit box control
+- 08.08.24 - SpoutMessageBox - removed unused WS_HSCROLL in edit box control
+- 10.08.25 - SpoutMessageBox - select all text in the combobox edit field
+- 11.08.24 - Add CBS_HASSTRINGS style to combobox and detect CB_ERR.
+- 16.08.22 - ExecuteProcess, SpoutMessageBoxIcon return conditional value
+			 to avoid warning C4800: 'BOOL': forcing value to bool 'true' or 'false'
+		   - GetSpoutLog - remove null argument check for use of existing log path
+- 20.08.24 - GetSpoutLog - add check for empty filepath
+
+===========================================\
 12.06.24\
 Update Master from Beta branch.
 
