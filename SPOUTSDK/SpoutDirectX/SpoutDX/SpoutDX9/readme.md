@@ -23,7 +23,7 @@ The following additional files are also required :
 SpoutDX9.h\
 SpoutDX9.cpp
 
-The example project files are for Visual Studio 2017. To build them, retain the folder structure of the Spout distribution. The Spout SDK files should be in a folder "SpoutSDK" as follows :
+The example project files are for Visual Studio 2022. To build them, retain the folder structure of the Spout distribution. The Spout SDK files should be in a folder "SpoutSDK" as follows :
 
       SpoutGL <- this folder has all the Spout SDK source files in it for OpenGL. 
 	  SpoutDirectX <- this folder is for DirectX examples and the SpoutDX support class

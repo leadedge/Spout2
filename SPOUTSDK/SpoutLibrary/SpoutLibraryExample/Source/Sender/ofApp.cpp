@@ -3,11 +3,35 @@
 	Spout OpenFrameworks Sender example
 	using the SpoutLibrary C-compatible dll
 
-	Include SpoutLibrary.h in the "src" source files folder
-	Include SpoutLibrary.lib where the linker can find it
-	Include SpoutLibrary.dll in the "bin" executable folder
+	From a Spout CMake INSTALL build
 
-	Search for SPOUT for additions to a typical Openframeworks application
+	1) Copy SpoutLibrary.h to the source files "src" folder
+
+	2) Copy SpoutLibrary.lib to any convenient folder e.g. "libs"
+
+	3) A pragma comment avoids the need to specify a library
+	   for the linker in the application project
+
+		#pragma comment(lib, "libs/SpoutLibrary.lib")
+
+	4) Copy SpoutLibrary.dll to the executable folder e.g. "bin" in this case
+
+	To use :
+
+	1) Include SpoutLibrary.h in your application header file
+	   #include "SpoutLibrary.h"
+
+	2) Create a spout sender object pointer
+		SPOUTLIBRARY * sender;
+
+	3) Create an instance of the library
+		sender = GetSpout();
+
+	4) Use the object as usual :
+		sender->SendTexture(... ) etc.
+
+	Compare with the sender example using the Spout SDK source files.
+	Compare also with the dynamic load example.
 
 	Copyright (C) 2015-2024 Lynn Jarvis.
 
@@ -27,6 +51,9 @@
 	=========================================================================
 */
 #include "ofApp.h"
+
+// Specify SpoutLibrary.lib for the linker
+#pragma comment(lib, "libs/SpoutLibrary.lib")
 
 //--------------------------------------------------------------
 void ofApp::setup(){

@@ -11,11 +11,18 @@
 //
 // bool spoutDX::SendTexture(ID3D11Texture2D* pTexture)
 //
-// Compare with a stand-alone version using methods directly from the Spout SDK classes
-// Compare also with Windows examples using SendImage.
+// Compare with a stand-alone version using methods directly from 
+// the Spout SDK classes and with Windows examples using SendImage.
+//
+// Compare also with the "Tutorial04_Lib" project, a version using 
+// SpoutDX as a dynamic or static libary. Application source files
+// are the same apart from a simple code addition.
+//
 //
 // Window resizing has been added to the original sample to demonstrate
 // requirements for a Spout sender to handle size changes.
+//
+// 24.04.23 - remove redundant OpenDirectX11 from ResetDevice
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
@@ -127,9 +134,9 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// Optionally enable logging to catch Spout warnings and errors
 	// OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
-	// EnableSpoutLogFile("Tutorial04.log"); // Log to file
+	// EnableSpoutLogFile(); // Log to file
 	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
-	
+
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
 
@@ -162,8 +169,8 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// Option : give the sender a name
 	// If none is specified, the executable name is used
 	// sender.SetSenderName("Tutorial04sender");
-
-    // Main message loop
+	
+	// Main message loop
     MSG msg = {0};
     while( WM_QUIT != msg.message )
     {
@@ -192,7 +199,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
 {
     // Register class
-    WNDCLASSEX wcex;
+	WNDCLASSEX wcex={};
     wcex.cbSize = sizeof( WNDCLASSEX );
     wcex.style = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc = WndProc;
@@ -307,12 +314,9 @@ HRESULT InitDevice()
 	// Graphics adapter selection requires a class device.
 	// Both sender and receiver must be using the same graphics adapter
 	//
-	// The alternative is to use OpenDirectX11() after an application device
+	// The other metohod is to use OpenDirectX11() after an application device
 	// has been created. See creation of an application device further below.
 	//
-	bClassdevice = true;
-	// bClassdevice = false;
-
 	if (bClassdevice) {
 		if (sender.OpenDirectX11()) {
 			// Set the application device and context to those created in the SpoutDX class
@@ -387,7 +391,9 @@ HRESULT InitDevice()
 		if (FAILED(hr))
 			return hr;
 
-		// Initialize the Spout DirectX device.
+		//
+		// Initialize the Spout DirectX device using the application device.
+		//
 		// If an application DirectX 11.0 device was created above,
 		// the device pointer must be passed in to the SpoutDX class.
 		// The function does nothing if a class device was already created.
@@ -494,7 +500,7 @@ HRESULT InitDevice()
     g_pImmediateContext->OMSetRenderTargets( 1, &g_pRenderTargetView, nullptr );
 
     // Setup the viewport
-    D3D11_VIEWPORT vp;
+	D3D11_VIEWPORT vp={};
     vp.Width = (FLOAT)width;
     vp.Height = (FLOAT)height;
     vp.MinDepth = 0.0f;
@@ -693,8 +699,6 @@ void ResetDevice()
 	// Create device and objects
 	InitDevice();
 	// SpoutDX will now use the new device
-	sender.OpenDirectX11(g_pd3dDevice);
-
 }
 
 
@@ -706,38 +710,58 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
     PAINTSTRUCT ps;
     HDC hdc;
 
-    switch( message )
-    {
+    switch( message )  {
 
-	case WM_COMMAND :
-		// Parse the menu selections:
-		switch (LOWORD(wParam))
-		{
-			case IDM_ADAPTER:
-				SelectAdapter();
-				break;
-			case IDM_ABOUT:
-				DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), g_hWnd, About);
-				break;
-			case IDM_EXIT:
-				DestroyWindow(hWnd);
-				break;
-			default:
-				break;
-		}
-		break;
+		case WM_COMMAND :
+			// Parse the menu selections:
+			switch (LOWORD(wParam))	{
+				case IDM_ADAPTER:
+					SelectAdapter();
+					break;
+				case IDM_ABOUT:
+					DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), g_hWnd, About);
+					break;
+				case IDM_EXIT:
+					DestroyWindow(hWnd);
+					break;
+				default:
+					break;
+			}
+			break;
 
-    case WM_PAINT:
-        hdc = BeginPaint( hWnd, &ps );
-        EndPaint( hWnd, &ps );
-        break;
+		// =====================================================================
+		// SPOUT
+		// SYNC OPTION
+		// Option only - not required for typical function
+		// Enable these lines for the sync option
+		/*
+		// Space bar - disable or enable sync with the receiver
+		case WM_KEYUP:
+			if (wParam == 32) {
+				if (sender.frame.IsFrameSyncEnabled()) {
+					sender.frame.EnableFrameSync(false);
+					SpoutLog("Sync disabled");
+				}
+				else {
+					sender.frame.EnableFrameSync(true);
+					SpoutLog("Sync enabled");
+				}
+			}
+			break;
+		// =====================================================================
+		*/
 
-    case WM_DESTROY:
-        PostQuitMessage( 0 );
-        break;
+	    case WM_PAINT:
+		    hdc = BeginPaint( hWnd, &ps );
+			EndPaint( hWnd, &ps );
+			break;
 
-    default:
-        return DefWindowProc( hWnd, message, wParam, lParam );
+		case WM_DESTROY:
+			PostQuitMessage( 0 );
+			break;
+
+		default:
+			return DefWindowProc( hWnd, message, wParam, lParam );
     }
 
     return 0;
@@ -794,7 +818,7 @@ void Render()
     //
     // Update variables
     //
-    ConstantBuffer cb;
+	ConstantBuffer cb={};
 	cb.mWorld = XMMatrixTranspose( g_World );
 	cb.mView = XMMatrixTranspose( g_View );
 	cb.mProjection = XMMatrixTranspose( g_Projection );
@@ -811,6 +835,19 @@ void Render()
 	//
 	// SPOUT
 	//
+
+	// =====================================================================
+	// OPTION - sync with the receiver
+	// Option only - not required for typical function
+	//
+	// Wait until the receiver is ready to read a frame
+	// The receiver must send a "ready to receive" SendFrameSync messsage
+	// See the Tutorial07 example
+	//
+	// Enable this line for the sync option
+	// sender.WaitFrameSync(sender.GetName(), 67);
+	//
+	// =====================================================================
 
 	// Option 1 
 	// Send the swap chain's back buffer.

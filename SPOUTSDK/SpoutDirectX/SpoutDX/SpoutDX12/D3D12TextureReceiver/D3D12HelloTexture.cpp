@@ -450,12 +450,26 @@ void D3D12HelloTexture::OnUpdate()
 }
 
 // SPOUT
-// 's' or RH click to select sender (see Win32Application::WindowProc)
+// Select sender (see Win32Application::WindowProc WM_RBUTTONDOWN)
+// For a key, centre on the application window
+// Default, centre on the cursor position
 void D3D12HelloTexture::OnKeyUp(UINT8 key)
 {
-	if (key == 83) // 's'
-		receiver.SelectSender();
+    if (key == 83) { // 's'
+        // For a key, pass in the window handle to centre 
+        // the selection dialog on the application window
+        receiver.SelectSender(Win32Application::GetHwnd());
+    }
+
+    // Ctrl-S message is sent from 
+    // Win32Application::WindowProc WM_RBUTTONDOWN
+    if (key == 19) { // 'Ctrl-S'
+        // No argument for mouse click to centre the
+        // selection dialog on the cursor position
+        receiver.SelectSender();
+    }
 }
+
 
 // Render the scene.
 void D3D12HelloTexture::OnRender()

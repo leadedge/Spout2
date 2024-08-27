@@ -4,7 +4,7 @@
 
 	Functions to manage DirectX 12 texture sharing by way of the D3D11On12
 
-	Copyright (c) 2020-2022, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2020-2024, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -31,7 +31,17 @@
 #ifndef __spoutDX12__ 
 #define __spoutDX12__
 
-#include "..\SpoutDX.h" // Base class
+//
+// SpoutDX base class
+//
+// Include files are in the same folder as SpoutDX.h for build using a dll or library.
+// SpoutDX.h is one level above for build using the repository folder structure.
+//
+#if __has_include("SpoutCommon.h")
+#include "SpoutDX.h" 
+#else
+#include "..\\SpoutDX.h"
+#endif
 
 #include <d3d12.h>
 #include <d3d11on12.h>
@@ -78,7 +88,7 @@ struct DX12_HEAP_PROPERTIES : public D3D12_HEAP_PROPERTIES
 };
 
 
-class spoutDX12 : public spoutDX {
+class SPOUT_DLLEXP spoutDX12 : public spoutDX {
 
 	public:
 

@@ -109,6 +109,22 @@ void Render();
 
 // SPOUT
 spoutDX receiver; // Spout DirectX11 receiver
+
+
+// =====================================================================
+// SPOUT
+// SYNC OPTION : sync sender with receiver
+// Option only - not required for typical function
+// The sender must wait on the "ready to receive" SendFrameSync message
+// See the Tutorial04 example
+//
+// Enable these lines for the sync option
+// for detection of missed frames
+// long thisframe = 0;
+// long lastframe = 0;
+//
+// =====================================================================
+
 ID3D11Texture2D* g_pReceivedTexture = nullptr; // Texture received from a sender
 ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view of the texture
 
@@ -116,21 +132,14 @@ ID3D11ShaderResourceView* g_pSpoutTextureRV = nullptr; // Shader resource view o
 void ResetDevice();
 void SelectAdapter();
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-INT_PTR CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-INT_PTR CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
 // Options
 bool g_bAutoAdapt = false; // Auto switch to the same adapter as the sender (menu option)
-bool bClassdevice = false; // Create a SpoutDX class device (see InitDevice)
+bool bClassdevice = true;  // Create a SpoutDX class device (see InitDevice)
 
-
-// Statics for dialog box
-static char sendername[256]{};
-static std::string adaptername[10]{};
-static int adaptercount = 0;
-static int currentadapter = 0;
-static int selectedadapter = 0;
-static int senderadapter = 0;
+// For select adapter
+int currentadapter = 0;
+int selectedadapter = 0;
 
 //--------------------------------------------------------------------------------------
 // Entry point to the program. Initializes everything and goes into a message processing 
@@ -166,6 +175,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
         CleanupDevice();
         return 0;
     }
+
 
 	//
 	// SPOUT
@@ -353,9 +363,8 @@ HRESULT InitDevice()
 	// The alternative is to use OpenDirectX11() after an application device
 	// has been created. See the code following InitDevice() at program start.
 	//
-
-	// Change the option when bClassdevice is initialized or here
-	bClassdevice = true;
+	// Change the option when bClassdevice is initialized
+	//
 
 	if (bClassdevice) {
 		if (receiver.OpenDirectX11()) {
@@ -415,6 +424,9 @@ HRESULT InitDevice()
 		if (FAILED(hr))
 			return hr;
 
+		//
+		// Initialize the Spout DirectX device using the application device.
+		//
 		// If an application DirectX 11.0 device was created above,
 		// the device pointer must be passed in to the SpoutDX class.
 		// The function does nothing if a class device was already created.
@@ -827,14 +839,17 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 		{
 			// Select sender
 			case IDM_SENDER:
-				// Sender selection dialog box 
-				sendername[0] = 0; // Clear static name for dialog
-				DialogBox(g_hInst, MAKEINTRESOURCE(IDD_SENDERBOX), g_hWnd, (DLGPROC)SenderProc);
+				// Sender selection
+				// Pass in hWnd to centre on the window
+				// See WM_RBUTTONDOWN
+				receiver.SelectSender(hWnd);
 				break;
+
 			// Select graphics adapter
 			case IDM_ADAPTER:
 				SelectAdapter();
 				break;
+
 			// Auto switch to sender adapter
 			case IDM_AUTO_ADAPTER:
 				{
@@ -858,9 +873,11 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 					}
 				}
 				break;
+
 			case IDM_ABOUT:
 				DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), g_hWnd, About);
 				break;
+
 			case IDM_EXIT:
 				DestroyWindow(hWnd);
 				break;
@@ -874,8 +891,31 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
         EndPaint( hWnd, &ps );
         break;
 
+	// =====================================================================
+	// SPOUT - SYNC OPTION
+	// Option only - not required for typical function
+	// Enable these lines for the sync option
+	// Space bar - disable or enable sync with the receiver
+	/*
+	case WM_KEYUP:
+		if (wParam == 32) {
+			if (receiver.frame.IsFrameSyncEnabled()) {
+				receiver.frame.EnableFrameSync(false);
+				SpoutLog("Sync disabled");
+			}
+			else {
+				receiver.frame.EnableFrameSync(true);
+				SpoutLog("Sync enabled");
+			}
+		}
+		break;
+	*/
+
+	// =====================================================================
 	// SPOUT - RH click to open SpoutPanel
 	case WM_RBUTTONDOWN:
+		// Pass in hWnd to centre on the cursor position
+		// See also IDM_OPEN
 		receiver.SelectSender();
 		break;
 
@@ -883,8 +923,8 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
         PostQuitMessage( 0 );
         break;
 
-        // Note that this tutorial does not handle resizing (WM_SIZE) requests,
-        // so we created the window without the resize border.
+    // Note that this tutorial does not handle resizing (WM_SIZE) requests,
+    // so we created the window without the resize border.
 
     default:
         return DefWindowProc( hWnd, message, wParam, lParam );
@@ -964,8 +1004,6 @@ void Render()
 				g_pSpoutTextureRV = nullptr;
 			}
 
-			// A texture has been received
-
 			// In this example, a shader resource view is created if the frame is new
 			if (receiver.IsFrameNew()) {
 				if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
@@ -989,6 +1027,26 @@ void Render()
 			if (g_pSpoutTextureRV) g_pSpoutTextureRV->Release();
 			g_pSpoutTextureRV = nullptr;
 		}
+
+		// =====================================================================
+		// SPOUT
+		// OPTION : sync sender with receiver
+		// Option only - not required for typical function
+		// Enable these lines for the sync option
+		/*
+		// frame since the sender started
+		thisframe = receiver.GetSenderFrame();
+		//
+		// Look for missed frames
+		if (thisframe - lastframe > 1)
+			SpoutLog("    Missed frame : this %ld - last %ld", thisframe, lastframe);
+		lastframe = thisframe;
+		//
+		// Signal the sender to send another frame
+		receiver.SetFrameSync(receiver.GetSenderName());
+		*/
+		//
+		// =====================================================================
 
 	}
 	else if (option == 2) {
@@ -1109,6 +1167,15 @@ void Render()
 	// with vertical blank, typically 60 fps.
 	g_pSwapChain->Present(1, 0);
 
+	// =====================================================================
+	// SPOUT
+	// SYNC OPTION
+	// Option only - not required for typical function
+	// Reduce the frame rate to test sender WaitFrameSync
+	// Enable this line for the sync option
+	// receiver.HoldFps(30);
+	// =====================================================================
+
 
 }
 
@@ -1177,100 +1244,25 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 
-// Message handler for selecting sender
-INT_PTR  CALLBACK SenderProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	UNREFERENCED_PARAMETER(lParam); // suppress warning
-
-	switch (message) {
-
-	case WM_INITDIALOG:
-		// Sender combo selection
-		{
-			// Create an sender name list for the combo box
-			HWND hwndList = GetDlgItem(hDlg, IDC_SENDERS);
-
-			// Active sender name for initial item
-			char activename[256]{};
-			receiver.GetActiveSender(activename);
-			int activeindex = 0;
-
-			// Sender count
-			int count = receiver.GetSenderCount();
-
-			// Populate the combo box
-			char name[128]{};
-			for (int i = 0; i < count; i++) {
-				receiver.GetSender(i, name, 128);
-				// Active sender index for the initial combo box item
-				if (strcmp(name, activename) == 0)
-					activeindex = i;
-				SendMessageA(hwndList, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)name);
-			}
-
-			// Show the active sender as the initial item
-			SendMessageA(hwndList, CB_SETCURSEL, (WPARAM)activeindex, (LPARAM)0);
-		}
-		return TRUE;
-
-	case WM_COMMAND:
-
-		// Combo box selection
-		if (HIWORD(wParam) == CBN_SELCHANGE) {
-			// Get the selected sender name
-			int index = (int)SendMessageA((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-			SendMessageA((HWND)lParam, (UINT)CB_GETLBTEXT, (WPARAM)index, (LPARAM)sendername);
-		}
-		// Drop through
-
-		switch (LOWORD(wParam)) {
-
-		case IDOK:
-			// Selected sender
-			if (sendername[0]) {
-				// Make the sender active
-				receiver.SetActiveSender(sendername);
-				// The new active sender is detected on the next ReceiveTexture call
-			}
-			EndDialog(hDlg, 1);
-			break;
-
-		case IDCANCEL:
-			// User pressed cancel.
-			EndDialog(hDlg, 0);
-			return (INT_PTR)TRUE;
-
-		default:
-			return (INT_PTR)FALSE;
-		}
-	}
-
-	return (INT_PTR)FALSE;
-}
-
-
 void SelectAdapter()
 {
-	// The current adapter index
+	// Save the current adapter index
 	currentadapter = receiver.GetAdapter();
 
 	// The index to be selected in the dialog
 	selectedadapter = currentadapter;
 
 	// Create an adapter name list for the dialog
-	adaptercount = receiver.GetNumAdapters();
-	adaptername->clear();
-	char name[64];
-	for (int i = 0; i < adaptercount; i++) {
+	std::vector<std::string> adapternames;
+	char name[64]{};
+	for (int i = 0; i < receiver.GetNumAdapters(); i++) {
 		receiver.GetAdapterName(i, name, 64);
-		adaptername[i] = name;
+		adapternames.push_back(name);
 	}
+	if (adapternames.empty())
+		return;
 
-	// Show the dialog box 
-	int retvalue = (int)DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ADAPTERBOX), g_hWnd, (DLGPROC)AdapterProc);
-
-	if (retvalue != 0) {
-
+	if (SpoutMessageBox(NULL, NULL, "Select graphics adapter", MB_OKCANCEL, adapternames, selectedadapter) == IDOK) {
 		// OK - adapter index (selectedadapter) has been selected
 		// Set the selected adapter if different
 		if (selectedadapter != currentadapter) {
@@ -1285,68 +1277,12 @@ void SelectAdapter()
 				// so set the adapter index back to what it was
 				receiver.SetAdapter(currentadapter);
 			}
-
 			// Reset everything to create a new device with the new adapter
 			// A new sender using the selected adapter is detected on the next ReceiveTexture call
 			ResetDevice();
-
 		}
 	}
 }
 
-
-// Message handler for selecting adapter
-INT_PTR  CALLBACK AdapterProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	UNREFERENCED_PARAMETER(lParam); // suppress warning
-
-	HWND hwndList = NULL;
-	int i = 0;
-	char name[128];
-
-	switch (message) {
-
-	case WM_INITDIALOG:
-		// Adapter combo selection
-		hwndList = GetDlgItem(hDlg, IDC_ADAPTERS);
-		if (adaptercount < 10) {
-			for (i = 0; i < adaptercount; i++) {
-				sprintf_s(name, 128, "%d : %s", i, adaptername[i].c_str());
-				SendMessageA(hwndList, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)name);
-			}
-			// Display an initial item in the selection field
-			SendMessageA(hwndList, CB_SETCURSEL, (WPARAM)currentadapter, (LPARAM)0);
-		}
-		return TRUE;
-
-	case WM_COMMAND:
-
-		// Combo box selection
-		if (HIWORD(wParam) == CBN_SELCHANGE) {
-			selectedadapter = (int)SendMessageA((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-		}
-		// Drop through
-
-		switch (LOWORD(wParam)) {
-
-		case IDOK:
-			// Return the selected adapter index
-			EndDialog(hDlg, 1);
-			break;
-
-		case IDCANCEL:
-			// User pressed cancel.
-			// Reset the selected index and take down dialog box.
-			selectedadapter = currentadapter;
-			EndDialog(hDlg, 0);
-			return (INT_PTR)TRUE;
-
-		default:
-			return (INT_PTR)FALSE;
-		}
-	}
-
-	return (INT_PTR)FALSE;
-}
 
 // That's all..

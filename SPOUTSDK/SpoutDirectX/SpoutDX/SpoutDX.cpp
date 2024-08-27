@@ -153,6 +153,12 @@
 //		23.05.24	- ReadPixelData/ReadTexurePixels - use global m_bSwapRB flag instead of false
 //					  ReadPixelData - RGBA and BGRA texture data to BGR pixels default, RGB for swap
 //		25.05.24	- Add SetMirror/SetSwap/GetMirror/GetSwap for SpoutCam instead of using globals directly
+//		22.06.24	- Add SpoutMessageBox updates to SpoutGL
+//					  Update SelectSender for local list box
+//		14.07.22	- Update SelectSender for dialog centre position
+//		15.07.24	- SelectSender - after cast of window handle to long 
+//					  convert to a string of 8 characters without new line
+//		28.07.24	- Change to #if __has_include("SpoutCommon.h") in Spout.h
 //
 // ====================================================================================
 /*
@@ -608,7 +614,7 @@ bool spoutDX::SendImage(const unsigned char * pData, unsigned int width, unsigne
 	// Check the sender mutex for access the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		// Update the shared texture resource with the pixel buffer
-		m_pImmediateContext->UpdateSubresource(m_pSharedTexture, 0, NULL, pData, m_Width * 4, 0);
+		m_pImmediateContext->UpdateSubresource(m_pSharedTexture, 0, NULL, pData, m_Width*4, 0);
 		// Flush the command queue because the shared texture has been updated on this device
 		m_pImmediateContext->Flush();
 		// Signal a new frame while the mutex is locked
@@ -1008,13 +1014,67 @@ bool spoutDX::ReadTexurePixels(ID3D11Texture2D* pTexture, unsigned char* pixels)
 
 }
 
-
 //---------------------------------------------------------
 // Function: SelectSender
 // Open sender selection dialog
-void spoutDX::SelectSender()
+bool spoutDX::SelectSender(HWND hwnd)
 {
-	SelectSenderPanel();
+	//
+	// Use SpoutPanel if available
+	//
+	// SpoutPanel opens either centred on the cursor position 
+	// or on the application window if the handle is passed in.
+
+	// For a valid window handle, convert hwnd to chars
+	// for the SpoutPanel command line
+	char* msg = nullptr;
+	if (hwnd) {
+		// Window handle is an 32 bit unsigned value
+		// Cast to long of 8 characters without new line
+		msg = new char[256];
+		sprintf_s(msg, 256, "%8.8ld\n", HandleToLong(hwnd));
+	}
+
+	if (!SelectSenderPanel(msg)) {
+
+		// If SpoutPanel is not available use a SpoutMessageBox for sender selection.
+		// Note that SpoutMessageBox is modal and will interrupt the host program.
+
+		// create a local sender list
+		std::vector<std::string> senderlist = GetSenderList();
+
+		// Get the active sender index "selected".
+		// The index is passed in to SpoutMessageBox and used as the current combobox item.
+		int selected = 0;
+		char sendername[256]{};
+		if (GetActiveSender(sendername))
+			selected = GetSenderIndex(sendername);
+
+		// SpoutMessageBox opens either centred on the cursor position 
+		// or on the application window if the handle is passed in.
+		if (!hwnd) {
+			POINT pt={};
+			GetCursorPos(&pt);
+			SpoutMessageBoxPosition(pt);
+		}
+
+		// Show the SpoutMessageBox even if the list is empty.
+		// This makes it clear to the user that no senders are running.
+		if (SpoutMessageBox(hwnd, NULL, "Select sender", MB_OKCANCEL, senderlist, selected) == IDOK && !senderlist.empty()) {
+			// Release the receiver and set the selected sender as active for the next receive
+			ReleaseReceiver();
+			SetActiveSender(senderlist[selected].c_str());
+			// Set the opened flag in the same way as for SelectSenderPanel
+			// to indicate that the user has selected a sender.
+			// This is tested in CheckSpoutPanel.
+			m_bSpoutPanelOpened = true;
+		}
+	}
+
+	if (msg) delete[] msg;
+
+	return true;
+
 }
 
 //---------------------------------------------------------
@@ -1225,6 +1285,31 @@ int spoutDX::GetSenderCount()
 bool spoutDX::GetSender(int index, char* sendername, int sendernameMaxSize)
 {
 	return sendernames.GetSender(index, sendername, sendernameMaxSize);
+}
+
+//---------------------------------------------------------
+// Function: GetSenderList
+// Return a list of current senders
+std::vector<std::string> spoutDX::GetSenderList()
+{
+	std::vector<std::string> list;
+	int nSenders = GetSenderCount();
+	if (nSenders > 0) {
+		char sendername[256]{};
+		for (int i=0; i<nSenders; i++) {
+			if (GetSender(i, sendername))
+				list.push_back(sendername);
+		}
+	}
+	return list;
+}
+
+//---------------------------------------------------------
+// Function: GetSenderIndex
+// Sender index into the set of names
+int spoutDX::GetSenderIndex(const char* sendername)
+{
+	return sendernames.GetSenderIndex(sendername);
 }
 
 //---------------------------------------------------------
@@ -2063,10 +2148,27 @@ int spoutDX::SpoutMessageBox(const char* caption, UINT uType, const char* format
 
 }
 
+// LJ DEBUG
 int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
 {
 	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
 }
+
+int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, instruction, dwMilliseconds);
+}
+
+int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, text);
+}
+
+int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, items, selected);
+}
+
 
 
 //
@@ -2547,17 +2649,29 @@ bool spoutDX::CheckTexture(unsigned int width, unsigned int height, DWORD dwForm
 // The following functions are adapted from equivalents in SpoutSDK.cpp
 // for applications not using the entire Spout SDK.
 //
-
-// Pop up SpoutPanel to allow the user to select a sender
-// Usually activated by RH click
-void spoutDX::SelectSenderPanel()
+// Open dialog for the user to select a sender
+//
+//  Optional message argument
+//
+// Replaced by SelectSender for 2.007
+//
+bool spoutDX::SelectSenderPanel(const char* message)
 {
 	HANDLE hMutex1 = NULL;
 	HMODULE module = NULL;
 	char path[MAX_PATH]={};
-	char drive[MAX_PATH]={};;
+	char drive[MAX_PATH]={};
 	char dir[MAX_PATH]={};
 	char fname[MAX_PATH]={};
+	char UserMessage[512]={};
+
+	if (message && *message) {
+		strcpy_s(UserMessage, 512, message); // could be an arg or a user message
+	}
+	else {
+		// Send the receiver graphics adapter index by default
+		strcpy_s(UserMessage, MAX_PATH, std::to_string(GetAdapter()).c_str());
+	}
 
 	// The selected sender is then the "Active" sender and this receiver switches to it.
 	// If Spout is not installed, SpoutPanel.exe has to be in the same folder
@@ -2565,6 +2679,7 @@ void spoutDX::SelectSenderPanel()
 	// which causes problems with host GUI messaging.
 
 	// First find if there has been a Spout installation >= 2.002 with an install path for SpoutPanel.exe
+	path[0] = 0;
 	if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
 		// Path not registered so find the path of the host program
 		// where SpoutPanel should have been copied
@@ -2572,33 +2687,28 @@ void spoutDX::SelectSenderPanel()
 		GetModuleFileNameA(module, path, MAX_PATH);
 		_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
 		_makepath_s(path, MAX_PATH, drive, dir, "SpoutPanel", ".exe");
+	}
+
+	if (path[0]) {
 		// Does SpoutPanel.exe exist in this path ?
 		if(_access(path, 0) == -1) {
-		// if (!PathFileExistsA(path)) {
 			// Try the current working directory
 			if (_getcwd(path, MAX_PATH)) {
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
 				if (_access(path, 0) == -1) {
-				// if (!PathFileExistsA(path)) {
-					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
-					return;
+					return false;
 				}
 			}
 		}
 	}
+	
 
 	// Check whether the panel is already running
 	// Try to open the application mutex.
 	hMutex1 = OpenMutexA(MUTEX_ALL_ACCESS, 0, "SpoutPanel");
 	if (!hMutex1) {
 		// No mutex, so not running, so can open it
-
-		// First release any orphaned senders if the name exists
-		// in the sender list but the shared memory info does not
-		// So that the sender list is clean
-		sendernames.CleanSenders();
-
 		// Use ShellExecuteEx so we can test its return value later
 		ZeroMemory(&m_ShExecInfo, sizeof(m_ShExecInfo));
 		m_ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
@@ -2606,6 +2716,7 @@ void spoutDX::SelectSenderPanel()
 		m_ShExecInfo.hwnd = NULL;
 		m_ShExecInfo.lpVerb = NULL;
 		m_ShExecInfo.lpFile = (LPCSTR)path;
+		m_ShExecInfo.lpParameters = UserMessage;
 		m_ShExecInfo.lpDirectory = NULL;
 		m_ShExecInfo.nShow = SW_SHOW;
 		m_ShExecInfo.hInstApp = NULL;
@@ -2618,6 +2729,7 @@ void spoutDX::SelectSenderPanel()
 		// Then when the selection panel closes, sender name is tested
 		//
 		m_bSpoutPanelOpened = true;
+
 	}
 	else {
 		// The mutex exists, so another instance is already running.
@@ -2636,7 +2748,7 @@ void spoutDX::SelectSenderPanel()
 			// and SpoutPanel is installed, it has crashed.
 			// Terminate the process and the mutex or the mutex will remain
 			// and SpoutPanel will not be started again.
-			PROCESSENTRY32 pEntry={};
+			PROCESSENTRY32 pEntry{};
 			pEntry.dwSize = sizeof(pEntry);
 			bool done = false;
 			// Take a snapshot of all processes and threads in the system
@@ -2652,18 +2764,21 @@ void spoutDX::SelectSenderPanel()
 					CloseHandle(hProcessSnap);
 				}
 				else {
-					// Look through all processes
+					// Look through all processes to find SpoutPanel
 					while (hRes && !done) {
-						const int value = _tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
-						if (value == 0) {
-							HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, (DWORD)pEntry.th32ProcessID);
-							if (hProcess != NULL) {
-								// Terminate SpoutPanel and it's mutex
-								TerminateProcess(hProcess, 9);
-								CloseHandle(hProcess);
-								done = true;
-							}
+#ifdef UNICODE
+						_wcsicmp(pEntry.szExeFile, L"SpoutPanel.exe");
+#else
+						_tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
+#endif
+						HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, pEntry.th32ProcessID);
+						if (hProcess != NULL) {
+							// Terminate SpoutPanel and it's mutex if it opened
+							TerminateProcess(hProcess, 9);
+							CloseHandle(hProcess);
+							done = true;
 						}
+
 						if (!done)
 							hRes = Process32Next(hProcessSnap, &pEntry); // Get the next process
 						else
@@ -2679,9 +2794,10 @@ void spoutDX::SelectSenderPanel()
 	// If we opened the mutex, close it now or it is never released
 	if (hMutex1) CloseHandle(hMutex1);
 
-	return;
+	return true;
 
 } // end SelectSenderPanel
+
 
 //
 // Check whether SpoutPanel opened and return the new sender name

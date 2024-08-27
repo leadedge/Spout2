@@ -1,6 +1,6 @@
 /*
 
-	Spout OpenFrameworks Graphics Sender example
+	Spout OpenFrameworks dynamic Load example
 
 	Copyright (C) 2015-2024 Lynn Jarvis.
 
@@ -21,7 +21,10 @@
 #pragma once
 
 #include "ofMain.h"
-#include "SpoutLibrary.h" // for Spout SDK library
+
+// SpoutLibrary dll dynamic loader
+// Includes a header for SpoutLibrary
+#include "SpoutLibraryLoader.h"
 
 
 class ofApp : public ofBaseApp{
@@ -30,17 +33,14 @@ class ofApp : public ofBaseApp{
 		void update();
 		void draw();
 		void exit();
-		void windowResized(int w, int h);
 
-		SPOUTLIBRARY* sender; // A sender object
+		SpoutLibraryLoader spoutloader; // SpoutLibrary dynamic loader
+		SPOUTLIBRARY * sender = nullptr; // A sender object pointer
+		char sendername[256]{}; // Sender name
+		ofImage myBoxImage; // Image for the 3D demo
+		float rotX = 0; // Box rotation speed
+		float rotY = 0;
+		double g_SenderFps = 0.0; // Fps display averaging
 
-		char sendername[256];  // Sender name
-		unsigned int senderwidth;  // Dimensions of the sender can be independent
-		unsigned int senderheight; // of the application window if using an fbo
-		double g_SenderFps = 0.0; // For fps display averaging
-		ofImage myBoxImage;    // Image for the 3D demo
-		ofFbo myFbo;           // For texture send example
-		ofPixels myPixels;     // For pixel send example
-		float rotX, rotY;
 
 };
