@@ -84,8 +84,8 @@ Type "build" again to repeat the process.
 
 ### Build all examples
 
-The batch file "BuildAll.bat" combines the commands of "CopySource.bat" and "Build.bat".\
-Run "BuildAll.bat" to build all examples.
+The batch file "Build-All.bat" combines the commands of "CopySource.bat" and "Build.bat".\
+Run "Build-All.bat" to build all examples.
 Applications are accumulated in the project "Binaries" folder.
 
 

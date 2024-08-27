@@ -28,7 +28,7 @@ The SpoutGL folder and contents must be copied to the Openframeworks "apps" fold
                   CopyExe.bat <- The project copies the application files to "Binaries"
                   msbuild.md <- Details for using MSBuild
                   Build.bat <- Build project with MSBuild
-                  BuildAll.bat <- Build all examples with MSBuild
+                  Build-All.bat <- Build all examples with MSBuild
 
 - Open the solution file with Visual Studio 2022 and set to "Release" and "x64".
 - The first time the project is used, re-build "openframeworkslib".\
