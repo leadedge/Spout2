@@ -72,6 +72,9 @@
 	07.10.23 - Conditional compile options for _M_ARM64 in CheckSSE and header
 	20.10.23 - FlipBuffer / CopyPixels - default pitch width*4
 	Version 2.007.013
+	Version 2.007.014
+	19.06.24 - Add ClearAlpha
+
 */
 
 #include "SpoutCopy.h"
@@ -205,6 +208,20 @@ void spoutCopy::RemovePadding(const unsigned char *source, unsigned char *dest,
 		dest   += pitch;
 	}
 }
+
+//---------------------------------------------------------
+// Function: ClearAlpha
+// Clear alpha of rgba image pixels to the required value
+void spoutCopy::ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha) const
+{
+	unsigned char* pixels = src;
+	for (unsigned int i = 0; i<width*height; i++) {
+		*(pixels + 3) = alpha; // alpha is the last of the 4 bytes
+		pixels += 4; // move the pointer along to the next rgba pixel
+	}
+}
+
+
 
 //
 // Fast memcpy.

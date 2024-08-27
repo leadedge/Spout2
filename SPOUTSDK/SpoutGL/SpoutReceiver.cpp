@@ -84,6 +84,7 @@
 //					- Add GetSenderList
 //		09.06.24	- SelectSender > spout SelectSender instead of SelectSenderPanel
 //					  Add hwnd argument to centre MessageBox dialog if used.
+//	Version 2.007.014
 //					
 //
 // ====================================================================================

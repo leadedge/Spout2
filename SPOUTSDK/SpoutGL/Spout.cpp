@@ -282,6 +282,26 @@
 //		08.06.24	- Add GetSenderList
 //		09.06.24	- SelectSender - use SpoutMessageBox if SelectSenderPanel fails
 //					  Add hwnd argument to centre MessageBox dialog if used.
+//	Version 2.007.014
+//		13.06.24	- SelectSender - open SpoutMessagebox for no senders.
+//					  Add OK/CANCEL and test for empty senderlist.
+//		21.06.24	- Add GetSenderIndex
+//					  Modify SelectSender to show the active sender as current
+//		03.07.24	- SelectSender - pass hWnd to SpoutPanel command line
+//					  for it to open centred on the window
+//		04.07.24	- CheckSpoutPanel - allow for use of SpoutMessageBox
+//		15.07.24	- SelectSender - after cast of window handle to long 
+//					  convert to a string of 8 characters without new line
+//		16.07.24	- Add receiver ID3D11Texture2D* GetSenderTexture()
+//		21.08.24	- SetPerformancePreference - remove null path test
+//		23.08.24	- SelectSender - if no SpoutPanel and SpoutMessageBox is used :
+//					  test for successful open of the sender share handle
+//					   - Warn if NT share handle
+//					   - Warn for open failure
+//					   - Allow setting preferences for laptop
+//					   - Allow sender adapter test for desktop
+//					   - Refer to Spout settings if no resolution or a desktop system
+//					  Also warn in SpoutPanel
 //
 // ====================================================================================
 /*
@@ -409,6 +429,7 @@ Spout::~Spout()
 // based on the size passed and the name that has been set.
 // If a sender with this name is already registered,
 // create an incremented name : sender_1, sender_2 etc.
+// and update the passed name
 void Spout::SetSenderName(const char* sendername)
 {
 	if (!sendername) {
@@ -439,6 +460,7 @@ void Spout::SetSenderName(const char* sendername)
 	// This can happen if the sender has crashed or if a
 	// console window was closed instead of the main program.
 	sendernames.CleanSenders();
+
 
 }
 
@@ -1059,6 +1081,14 @@ HANDLE Spout::GetSenderHandle()
 }
 
 //---------------------------------------------------------
+// Function: GetSenderTexture
+// Received sender texture
+ID3D11Texture2D* Spout::GetSenderTexture()
+{
+	return m_pSharedTexture;
+}
+
+//---------------------------------------------------------
 // Function: GetSenderCPU
 // Received sender sharing method.
 //   Returns true if the sender is using CPU methods
@@ -1078,49 +1108,220 @@ bool Spout::GetSenderGLDX()
 }
 
 //---------------------------------------------------------
-// Function: GetSenderList
-// Return a list of current senders
-std::vector<std::string> Spout::GetSenderList()
-{
-	std::vector<std::string> list;
-	int nSenders = GetSenderCount();
-	if (nSenders > 0) {
-		char sendername[256]{};
-		for (int i=0; i<nSenders; i++) {
-			if (GetSender(i, sendername))
-				list.push_back(sendername);
-		}
-	}
-	return list;
-}
-
-
-
-//---------------------------------------------------------
 // Function: SelectSender
 // Open sender selection dialog
 bool Spout::SelectSender(HWND hwnd)
 {
+	//
 	// Use SpoutPanel if available
-	if (!SelectSenderPanel()) {
-		// If not, create a local sender list
-		std::vector<std::string> senderlist = GetSenderList();
-		if (!senderlist.empty()) {
-			// Open a messagebox for sender selection
-			// centred on the window if handle passed in.
-			// No senders can be selected if the list is empty.
-			// This makes it clear to the user that no senders are running.
-			// Note that the MessageBox is modal and will interrupt the host program.
-			int selected = 0;
-			SpoutMessageBox(hwnd, NULL, "Select sender", MB_OK, senderlist, selected);
-			// Release the receiver and set the selected sender
-			// as active for the next receive
-			ReleaseReceiver();
-			SetActiveSender(senderlist[selected].c_str());
-			return true;
-		}
-		return false;
+	//
+	// SpoutPanel opens either centred on the cursor position 
+	// or on the application window if the handle is passed in.
+
+	// For a valid window handle, convert hwnd to chars
+	// for the SpoutPanel command line
+	char * msg = nullptr;
+	if (hwnd) {
+		// Window handle is an 32 bit unsigned value
+		// Cast to long of 8 characters without new line
+		msg = new char[256];
+		sprintf_s(msg, 256, "%8.8ld", HandleToLong(hwnd));
 	}
+
+	if (!SelectSenderPanel(msg)) {
+
+		// If SpoutPanel is not available, use a SpoutMessageBox for sender selection.
+		// Note that SpoutMessageBox is modal and will interrupt the host program.
+
+		// create a local sender list
+		std::vector<std::string> senderlist = GetSenderList();
+	
+		// Get the active sender index "selected".
+		// The index is passed in to SpoutMessageBox and used as the current combobox item.
+		int selected = 0;
+		char sendername[256]{};
+		if (GetActiveSender(sendername))
+			selected = GetSenderIndex(sendername);
+
+		// SpoutMessageBox opens either centred on the cursor position 
+		// or on the application window if the handle is passed in.
+		if (!hwnd) {
+			POINT pt={};
+			GetCursorPos(&pt);
+			SpoutMessageBoxPosition(pt);
+		}
+
+		// Show the SpoutMessageBox even if the list is empty.
+		// This makes it clear to the user that no senders are running.
+		if (SpoutMessageBox(hwnd, NULL, "Select sender", MB_OKCANCEL, senderlist, selected) == IDOK && !senderlist.empty()) {
+
+			// Release the receiver
+			ReleaseReceiver();
+
+			// Set the selected sender as active for the next receive
+			SetActiveSender(senderlist[selected].c_str());
+
+			//
+			// Test for successful open of the sender share handle
+			//
+			// - Warn if NT share handle
+			// - Warn for open failure
+			// - Allow setting preferences for laptop
+			// - Allow sender adapter test for desktop
+			// - Refer to Spout settings if no resolution or a desktop system
+			SharedTextureInfo info{};
+			if (sendernames.getSharedInfo(senderlist[selected].c_str(), &info)) {
+				std::string str;
+				ID3D11Texture2D* pTexture = nullptr;
+				if (spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &pTexture, LongToHandle((long)info.shareHandle))) {
+					// If OpenDX11shareHandle succeeded, sender and receiver use the same adapter
+					// Check for an NT handle
+					D3D11_TEXTURE2D_DESC desc{};
+					pTexture->GetDesc(&desc);
+					if (desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX) {
+						if (desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE) {
+							str = "NT handle shared texture not supported\n";
+							SpoutMessageBox(hwnd, str.c_str(), "Warning", MB_OK | MB_ICONWARNING);
+						}
+					}
+					spoutdx.ReleaseDX11Texture(pTexture);
+				}
+				else {
+					str ="WARNING - failed to open texture share handle\n\n";
+					if (IsLaptop()) {
+						str += "Laptop system detected.\n\n";
+						str += "<a href=\"ms-settings:display-advancedgraphics\">Windows Graphics Performance Preferences</a>\n";
+						// Windows preferences for laptop power saving graphics
+						//     -1 - No preference
+						//      0 - Default
+						//      1 - Power saving
+						//      2 - High performance
+						char senderpath[512]{};
+						strcpy_s(senderpath, 512, (char*)info.description);
+						if (_access(senderpath, 0) != -1) {
+							// Sender
+							int senderpref = GetPerformancePreference(senderpath);
+							// Receiver is this application
+							int receiverpref = GetPerformancePreference();
+							// If both are already set to high performance, there is another problem
+							if (senderpref == 2 && receiverpref == 2) {
+								str += "Both sender and receiver are already set\n";
+								str += "to prefer High performance.\n\n";
+								// General
+								str += "Open \"SpoutSettings\" and \"Reset\" for default settings\n";
+								str += "Click \"Diagnostics\" to show system details, and \"Logs\"\n";
+								str += "to explore application logs. If sender or receiver log files\n";
+								str += "are available, examine for Warnings and Errors.\n\n";
+								str += "Seek further assistance on the <a href=\"https://spout.discourse.group/\">Spout Discourse Group</a>\n\n";
+								SpoutMessageBox(hwnd, str.c_str(), "Warning", MB_OK | MB_ICONWARNING);
+							}
+							else {
+								str += "Both sender and receiver applications\n";
+								str += "must be set to prefer High performance.\n";
+								if (senderpref == -1 && receiverpref == -1) {
+									str += "    No preferences set\n";
+								}
+								else {
+									str += "    Sender    - ";
+									if (senderpref == -1) str += "  No preference set\n";
+									if (senderpref ==  0) str += "  Let Windows decide\n";
+									if (senderpref ==  1) str += "  Power saving\n";
+									if (senderpref ==  2) str += "  High performance\n";
+									str += "    Receiver - ";
+									if (receiverpref == -1) str += "  No preference set\n";
+									if (receiverpref ==  0) str += "  Let Windows decide\n";
+									if (receiverpref ==  1) str += "  Power saving\n";
+									if (receiverpref ==  2) str += "  High performance\n";
+									str += "\n";
+								}
+								str += "Change both sender and receiver\nto prefer High Performance now?\n\n";
+								if (SpoutMessageBox(hwnd, str.c_str(), "Warning", MB_YESNO | MB_ICONWARNING) == IDYES) {
+									// Sender
+									SetPerformancePreference(2, senderpath);
+									// Receiver
+									SetPerformancePreference(2);
+									SpoutMessageBox(hwnd, "Restart sender and receiver\nfor changes to take effect", "Information", MB_OK | MB_ICONINFORMATION);
+								}
+							}
+						}
+					} // endif laptop system
+					else {
+						int nadapters = GetNumAdapters();
+						str += "Desktop system with ";
+						str += std::to_string(nadapters);
+						if(nadapters == 1)
+							str += " graphics adapter.\n";
+						else
+							str += " graphics adapters.\n";
+						// List multiple graphics adapters
+						char adaptername[256]{};
+						for (int i=0; i<nadapters; i++) {
+							GetAdapterName(i, adaptername);
+							str += " ("; str += std::to_string(i); str += ") ";
+							str += adaptername; str += "\n";
+						}
+						str += "\n";
+						if (nadapters > 1) {
+							str += "Both sender and receiver applications\n";
+							str += "must use the same graphics adapter.\n";
+							// Get the receiver adapter name
+							int adapterindex = GetAdapter();
+							GetAdapterName(adapterindex, adaptername);
+							str += "Receiver - ";
+							str += " ("; str += std::to_string(adapterindex); str += ") ";
+							str += adaptername; str += "\n\n";
+							// Optional test for sender adapter
+							str += "Click \"Test\" below to find an adapter that opens the\n";
+							str += "texture share handle and compare with the receiver.\n";
+							str += "Note that this process can fail for some systems.\n\n";
+							SpoutMessageBoxButton(1000, L"Test");
+							if (SpoutMessageBox(hwnd, str.c_str(), "Warning", MB_OK | MB_ICONWARNING) == 1000) {
+								// Loop though adapters and get the Sender adapter index and name
+								char senderadaptername[256]{};
+								int senderadapter = GetSenderAdapter(senderlist[selected].c_str(), senderadaptername);
+								str = "Sender    - ";
+								str += " ("; str += std::to_string(senderadapter); str += ") ";
+								str += senderadaptername; str += "\n";
+								// Receiver index and adapter name
+								adapterindex = GetAdapter();
+								GetAdapterName(adapterindex, adaptername);
+								str += "Receiver - ";
+								str += " ("; str += std::to_string(adapterindex); str += ") ";
+								str += adaptername; str += "\n";
+								if (senderadapter == adapterindex) {
+									str += "\nReceiver and sender use the same graphics adapter\n";
+									SpoutMessageBox(hwnd, str.c_str(), "Graphics", MB_OK | MB_ICONINFORMATION);
+								}
+								else {
+									str += "\nReceiver and sender use different graphics adapters\n";
+									str += "Refer to the sender application documentation\n";
+									SpoutMessageBox(hwnd, str.c_str(), "Warning", MB_OK | MB_ICONWARNING);
+								}
+							}
+							str = ""; // Clear first message if multiple adapters
+						}
+
+						// General
+						str += "Open \"SpoutSettings\" and \"Reset\" for default settings\n";
+						str += "Click \"Diagnostics\" to show system details, and \"Logs\"\n";
+						str += "to explore application logs. If sender or receiver log files\n";
+						str += "are available, examine for Warnings and Errors.\n\n";
+						str += "Seek further assistance on the <a href=\"https://spout.discourse.group/\">Spout Discourse Group</a>\n\n";
+						SpoutMessageBox(hwnd, str.c_str(), "Settings", MB_OK | MB_ICONINFORMATION, "Spout settings");
+
+					} // endif desktop system
+				} // endif opensharehandle failed
+			} // endif senderinfo
+
+			// Set the opened flag in the same way as for SelectSenderPanel
+			// to indicate that the user has selected a sender.
+			// This is tested in CheckSpoutPanel.
+			m_bSpoutPanelOpened = true;
+		}
+	}
+	
+	if (msg) delete[] msg;
+
 	return true;
 
 
@@ -1273,6 +1474,31 @@ bool Spout::GetSender(int index, char* sendername, int MaxSize)
 }
 
 //---------------------------------------------------------
+// Function: GetSenderList
+// Return a list of current senders
+std::vector<std::string> Spout::GetSenderList()
+{
+	std::vector<std::string> list;
+	int nSenders = GetSenderCount();
+	if (nSenders > 0) {
+		char sendername[256]{};
+		for (int i=0; i<nSenders; i++) {
+			if (GetSender(i, sendername))
+				list.push_back(sendername);
+		}
+	}
+	return list;
+}
+
+//---------------------------------------------------------
+// Function: GetSenderIndex
+// Sender index into the set of names
+int Spout::GetSenderIndex(const char* sendername)
+{
+	return sendernames.GetSenderIndex(sendername);
+}
+
+//---------------------------------------------------------
 // Function: GetSenderInfo
 // Sender information
 bool Spout::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
@@ -1375,7 +1601,6 @@ int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxch
 	ID3D11Device* pDummyDevice = nullptr;
 	ID3D11DeviceContext* pContext = nullptr;
 	IDXGIAdapter* pAdapter = nullptr;
-
 	SpoutLogNotice("Spout::GetSenderAdapter - testing for sender adapter (%s)", sendername);
 
 	SharedTextureInfo info={};
@@ -1396,7 +1621,7 @@ int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxch
 				// Try to open the share handle with the device created from the adapter
 				if (spoutdx.OpenDX11shareHandle(pDummyDevice, &pSharedTexture, UIntToPtr(info.shareHandle))) {
 					// break as soon as it succeeds
-					SpoutLogNotice("    found sender adapter %d (0x%.7X)", i, PtrToUint(pAdapter));
+					SpoutLogNotice("  found sender adapter %d(0x%.7X)[%s]", i, PtrToUint(pAdapter), adaptername);
 					senderadapter = i;
 					// Return the adapter name
 					spoutdx.GetAdapterName(i, adaptername, maxchars);
@@ -1483,9 +1708,6 @@ int Spout::GetPerformancePreference(const char* path)
 //
 bool Spout::SetPerformancePreference(int preference, const char* path)
 {
-	if (!path)
-		return false;
-
 	return spoutdx.SetPerformancePreference(preference, path);
 }
 
@@ -1975,22 +2197,11 @@ bool Spout::SelectSenderPanel(const char* message)
 				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
 				// Does SpoutPanel exist here?
 				if (_access(path, 0) == -1) {
-					// LJ DEBUG
-					/*
-					SpoutLogWarning("spoutDX::SelectSender - SpoutPanel path not found");
-					// Show a SpoutMessageBox and direct to the Spout releases page
-					sprintf_s(UserMessage, 512,
-						"The sender selection dialog 'SpoutPanel' was not found\n"\
-						"Download the <a href=\"https://github.com/leadedge/Spout2/releases\">latest Spout release</a> and run either\n"\
-						"'SpoutSettings' or 'SpoutPanel' to establish the path.\n");
-					SpoutMessageBox(NULL, UserMessage, "Warning", MB_ICONWARNING | MB_OK);
-					*/
 					return false;
 				}
 			}
 		}
 	}
-	
 
 	// Check whether the panel is already running
 	// Try to open the application mutex.
@@ -2009,7 +2220,6 @@ bool Spout::SelectSenderPanel(const char* message)
 		m_ShExecInfo.nShow = SW_SHOW;
 		m_ShExecInfo.hInstApp = NULL;
 		ShellExecuteExA(&m_ShExecInfo);
-
 		//
 		// The flag "m_bSpoutPanelOpened" is set here to indicate that the user
 		// has opened the panel to select a sender. This flag is local to 
@@ -2262,6 +2472,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			// Flag "false" for sender so that a new shared texture and handle are created.
 			// For a receiver the shared texture is created from the sender share handle.
 			if (!CreateInterop(width, height, m_dwFormat, false)) {
+				SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - create - CreateInterop failed", m_SenderName, width, height);
 				return false;
 			}
 		}
@@ -2271,6 +2482,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			m_dxShareHandle = nullptr;
 			if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
 				width, height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
+				SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - create cpu - CreateSharedDX11Texture failed", m_SenderName, width, height);
 				return false;
 			}
 		}
@@ -2309,6 +2521,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			m_bInitialized = true;
 		}
 		else {
+			SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - create - CreateSender failed", m_SenderName, width, height);
 			ReleaseSender();
 			m_SenderName[0] = 0;
 			m_Width = 0;
@@ -2330,6 +2543,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			CleanupInterop();
 			CleanupGL();
 			if (!CreateInterop(width, height, m_dwFormat, false)) {
+				SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - update CreateInterop failed", m_SenderName, width, height);
 				return false;
 			}
 		}
@@ -2346,12 +2560,14 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 
 			if (!spoutdx.CreateSharedDX11Texture(spoutdx.GetDX11Device(),
 				width, height, (DXGI_FORMAT)m_dwFormat, &m_pSharedTexture, m_dxShareHandle)) {
+				SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - cpu - CreateSharedDX11Texture failed", m_SenderName, width, height);
 				return false;
 			}
 		}
 
 		// Update the sender with the new texture and size
 		if (!sendernames.UpdateSender(m_SenderName, width, height, m_dxShareHandle, m_dwFormat)) {
+			SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - UpdateSender failed", m_SenderName, width, height);
 			ReleaseSender();
 			m_SenderName[0] = 0;
 			m_Width = 0;
@@ -2416,16 +2632,10 @@ bool Spout::ReceiveSenderData()
 		}
 	}
 
-	// LJ DEBUG
-	// TODO - check setup name
-	// If SpoutPanel has been opened, the active sender name could be different
-	// Retrieve the name or take no action
+	// If SpoutPanel or SpoutMessgeBox have been opened and a 
+	// sender selected, the active sender name could be different.
+	// Retrieve the new name but do not clear the receiver setup name.
 	CheckSpoutPanel(sendername, 256);
-	// if (CheckSpoutPanel(sendername, 256)) {
-		// Retrieved the selected name
-		// Disable the setup name
-		// m_SenderNameSetup[0] = 0;
-	// }
 
 	// Now we have either an existing sender name or the active sender name
 	// Save current sender name and dimensions to test for change
@@ -2592,10 +2802,29 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 
 	// If SpoutPanel has been activated, test if the user has clicked OK
 	if (m_bSpoutPanelOpened) { // User has activated spout panel
+
+		char newname[256]={};
+
+		// Is SpoutPanel registered ?
+		char path[MAX_PATH]{};
+		if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
+			// If not registered, SpoutMessageBox has been used
+			// Pass back the active name
+			if (sendernames.GetActiveSender(newname)) {
+				strcpy_s(sendername, maxchars, newname);
+				m_bSpoutPanelOpened = false;
+				return true;
+			}
+			return false;
+		}
+
+		//
+		// SpoutPanel
+		//
+
 		SharedTextureInfo TextureInfo = {};
 		HANDLE hMutex = NULL;
 		DWORD dwExitCode = 0;
-		char newname[256]={};
 		bool bRet = false;
 
 		// Must find the mutex to signify that SpoutPanel has opened

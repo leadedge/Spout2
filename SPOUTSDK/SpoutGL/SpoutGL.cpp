@@ -174,6 +174,8 @@
 //		25.04.24	- Correct GLDXformat for default GL_RGBA
 //		26.04.24	- GLformatName - revise names
 //		06.05.24	- Add more logs for wglDX function failure
+//	Version 2.007.014
+//		26.06.14	- Restore LoadTexturePixels for 20% speed gain
 //
 // ====================================================================================
 //
@@ -1499,7 +1501,6 @@ ID3D11Texture2D* spoutGL::GetDXsharedTexture()
 	return m_pSharedTexture; // Shared texture
 }
 
-
 //
 //	GL/DX Interop lock
 //
@@ -1937,9 +1938,18 @@ bool spoutGL::WriteGLDXpixels(const unsigned char* pixels,
 
 	// Transfer the pixels to the local texture
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // In case of RGB pixel data
-	glBindTexture(GL_TEXTURE_2D, m_TexID);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, glFormat, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
-	glBindTexture(GL_TEXTURE_2D, 0);
+
+	if (m_bPBOavailable) {
+		// 17-30 msec 3840x2160
+		LoadTexturePixels(m_TexID, GL_TEXTURE_2D, width, height, pixels, glFormat);
+	}
+	else {
+		// 25-45 msec 3840x2160
+		glBindTexture(GL_TEXTURE_2D, m_TexID);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, glFormat, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
 	// Write the local texture to the shared texture and invert if necessary
@@ -2144,6 +2154,76 @@ bool spoutGL::UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 
 }
 
+// Streaming texture pixel load
+// From : http://www.songho.ca/opengl/gl_pbo.html
+// Approximately 20% faster than using glTexSubImage2D alone
+// GLformat can be default GL_BGRA or GL_RGBA
+bool spoutGL::LoadTexturePixels(GLuint TextureID, GLuint TextureTarget,
+	unsigned int width, unsigned int height, 
+	const unsigned char* data, int GLformat, bool bInvert)
+{
+	void* pboMemory = NULL;
+
+	// Create pbos if not already
+	if (m_pbo[0] == 0) {
+		SpoutLogNotice("spoutGL::LoadTexturePixels - creating %d PBOs", m_nBuffers);
+		glGenBuffers(m_nBuffers, m_pbo);
+		PboIndex = 0;
+		NextPboIndex = 0;
+	}
+
+	PboIndex = (PboIndex + 1) % m_nBuffers;
+	NextPboIndex = (PboIndex + 1) % m_nBuffers;
+
+	// Bind the texture and PBO
+	glBindTexture(TextureTarget, TextureID);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo[PboIndex]);
+
+	// Copy pixels from PBO to the texture - use offset instead of pointer.
+	// glTexSubImage2D redefines a contiguous subregion of an existing
+	// two-dimensional texture image. NULL data pointer reserves space.
+	glTexSubImage2D(TextureTarget, 0, 0, 0, width, height, GLformat, GL_UNSIGNED_BYTE, 0);
+
+	// Bind PBO to update the texture
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pbo[NextPboIndex]);
+
+	// Check it's size
+	GLint size = 0;
+	glGetBufferParameteriv(GL_PIXEL_PACK_BUFFER, GL_BUFFER_SIZE, &size);
+	if (size > 0 && size != (int)(width*height*4)) {
+		// All PBOs must be re-created
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+		glDeleteBuffers(m_nBuffers, m_pbo);
+		m_pbo[0] = m_pbo[1] = m_pbo[2] = m_pbo[3] = 0;
+		return false;
+	}
+
+	// Call glBufferData() with a NULL pointer to clear the PBO data and avoid a stall.
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, width*height*4, 0, GL_STREAM_DRAW);
+
+	// Map the buffer object into client's memory
+	pboMemory = (void*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+	// Update the mapped buffer directly
+	if (pboMemory) {
+		// Copy pixel data
+		// Use sse2 if the width is divisible by 16
+		spoutcopy.CopyPixels(data, (unsigned char*)pboMemory, 
+			width, height, GLformat, bInvert);
+		glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER); // release the mapped buffer
+	}
+	else {
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+		return false;
+	}
+
+	// Release PBOs
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+	return true;
+
+}
+
+
 //
 // Read RGB or RGBA pixels from an OpenGL texture
 //
@@ -2186,9 +2266,9 @@ bool spoutGL::ReadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 		glBindTexture(TextureTarget, 0);
 	}
 	else {
-		// Dest must be RGBA or RGB width x height
+		// Dest must be RGBA or BGRA width x height
 		glBindTexture(TextureTarget, TextureID);
-		glGetTexImage(TextureTarget, 0, GL_RGBA, GL_UNSIGNED_BYTE, dest);
+		glGetTexImage(TextureTarget, 0, glFormat, GL_UNSIGNED_BYTE, dest);
 		glBindTexture(TextureTarget, 0);
 	}
 
@@ -3966,10 +4046,6 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	GLuint DestID, GLuint DestTarget, unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
 {
-	//
-	// Fbo blit (0.05 - 0.20 msec)
-	//
-
 	// Create an fbo if not already
 	if (m_fbo == 0)
 		glGenFramebuffersEXT(1, &m_fbo);
@@ -3989,6 +4065,7 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 		if (m_bBLITavailable) {
+			// ~30 microseconds at 3480x2160
 			if (bInvert) {
 				// Copy one texture buffer to the other while flipping upside down
 				// (OpenGL and DirectX have different texture origins)
@@ -4010,6 +4087,7 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 		else {
 			// No fbo blit extension
 			// Copy from the fbo (source texture attached) to the dest texture
+			// 150-200 microseconds at 3840x2160
 			glBindTexture(DestTarget, DestID);
 			glCopyTexSubImage2D(DestTarget, 0, 0, 0, 0, 0, width, height);
 			glBindTexture(DestTarget, 0);
@@ -4058,6 +4136,7 @@ void spoutGL::RemovePadding(const unsigned char *source, unsigned char *dest,
 //---------------------------------------------------------
 // Function: ReadTexture
 // Copy the sender DirectX shared texture
+// Textures must be the same size and created with the same device
 bool spoutGL::ReadTexture(ID3D11Texture2D** texture)
 {
 	// Only for DX11 mode
@@ -4090,6 +4169,7 @@ bool spoutGL::ReadTexture(ID3D11Texture2D** texture)
 //---------------------------------------------------------
 // Function: WriteTexture
 // Copy to the sender DirectX shared texture
+// Textures must be the same size and created with the same device
 bool spoutGL::WriteTexture(ID3D11Texture2D** texture)
 {
 	// Only for DX11 mode
@@ -4129,6 +4209,10 @@ bool spoutGL::WriteTexture(ID3D11Texture2D** texture)
 
 
 //---------------------------------------------------------
+// Function: WriteTextureReadback
+// Copy a DX11 texture to the DX11 shared texture
+// Copy the linked OpenGL texture back to an OpenGL texture
+// Textures must be the same size and created with the same device
 bool spoutGL::WriteTextureReadback(ID3D11Texture2D** texture,
 	GLuint TextureID, GLuint TextureTarget,
 	unsigned int width, unsigned int height,
@@ -4190,5 +4274,3 @@ bool spoutGL::WriteTextureReadback(ID3D11Texture2D** texture,
 
 	return bRet;
 }
-
-

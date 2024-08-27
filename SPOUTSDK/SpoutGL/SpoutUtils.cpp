@@ -189,6 +189,7 @@
 		19.03.24 - Add icon/button option for variable arguments
 		29.03.24 - Correct ReadPathFromRegistry definition for default size argument
 				   Correct EndTiming definition for microseconds argument
+		Version 2.007.014
 		14.06.24 - SpoutUtils.h - PR #114
 				   Correct conditional definition of EndTiming in header file
 				   Allow mingw to define USE_CHRONO if available
@@ -196,6 +197,17 @@
 		01.07.24 - Increase SpoutMessageBox combo width for NDI sender names
 				 - Add "SpoutMessageBoxModeless" to warning caption if SpoutPanel not found
 		02.07.24 - Add SpoutMessageBoxPosition
+		09.07.24 - TDcallbackProc TDN_CREATED : common rect and coordinates
+		15.07.24 - Update Spout SDK version
+		24.07.24 - SpoutMessageBoxModeless - add code comments for SpoutPanel version
+		06.08.24 - SpoutMessageBox - show initial content in edit box control
+		08.08.24 - SpoutMessageBox - removed unused WS_HSCROLL in edit box control
+		10.08.24 - SpoutMessageBox - select all text in the combobox edit field
+		11.08.24 - Add CBS_HASSTRINGS style to combobox and detect CB_ERR.
+		16.08.22 - ExecuteProcess, SpoutMessageBoxIcon return conditional value
+				   to avoid warning C4800: 'BOOL': forcing value to bool 'true' or 'false'
+				 - GetSpoutLog - remove null argument check for use of existing log path
+		20.08.24 - GetSpoutLog - add check for empty filepath
 
 
 
@@ -218,6 +230,7 @@
 //
 // Refer to source code for documentation.
 //
+
 
 namespace spoututils {
 
@@ -244,7 +257,7 @@ namespace spoututils {
 
 	// Spout SDK version number string
 	// Major, minor, release
-	std::string SDKversion = "2.007.013";
+	std::string SDKversion = "2.007.015";
 
 	//
 	// Group: Information
@@ -574,7 +587,9 @@ namespace spoututils {
 
 		// Create the log file path given the filename passed in
 		logPath = _getLogFilePath(filename);
+
 		_logtofile(bAppend);
+
 	}
 
 	// ---------------------------------------------------------
@@ -671,10 +686,8 @@ namespace spoututils {
 		std::string logstr = "";
 		std::string path;
 
-		if (!filepath) return "";
-
 		// Check for specified log file path
-		if (*filepath != 0)
+		if (filepath && *filepath != 0)
 			path = filepath;
 		else
 			path = logPath;
@@ -1010,6 +1023,7 @@ namespace spoututils {
 	//   o All SpoutMessageBox functions such as user icon and buttons are available
 	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
 	{
+		// For edit control creation
 		bEdit = true;
 
 		// A timeout value of 1000000 signals the Taskdialog callback of message content.
@@ -1020,7 +1034,11 @@ namespace spoututils {
 			dwTimeout = 1000000;
 			content = message;
 		}
+
+		// Set initial text for edit control
+		stredit = text;
 		int iret = MessageTaskDialog(hwnd, content.c_str(), caption, uType, dwTimeout);
+		// Get text from global edit control string
 		if (iret == IDOK) text = stredit;
 		stredit.clear();
 		bEdit = false;
@@ -1034,6 +1052,7 @@ namespace spoututils {
 	// Properties the same as the edit control
 	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& index)
 	{
+		// For combobox creation
 		bCombo = true;
 
 		// Timeout value to signal the Taskdialog callback of message content.
@@ -1072,7 +1091,7 @@ namespace spoututils {
 	bool SpoutMessageBoxIcon(std::string iconfile)
 	{
 		hTaskIcon = reinterpret_cast<HICON>(LoadImageA(nullptr, iconfile.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE));
-		return (hTaskIcon);
+		return (hTaskIcon != nullptr);
 	}
 
 	// ---------------------------------------------------------
@@ -1099,7 +1118,10 @@ namespace spoututils {
 			if (ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
 				// Does SpoutPanel.exe exist in this path ?
 				if (_access(path, 0) != -1) {
+					// Get the version of SpoutPanel
 					std::string version = GetExeVersion(path);
+					// Check that the version supports Modeless mode
+					// (> 2.072 - for example 2.076)
 					double fvers = atof(version.c_str());
 					if (fvers >= 2.072) {
 						// Set modeless
@@ -1150,7 +1172,6 @@ namespace spoututils {
 	{
 		TDcentre = pt;
 	}
-
 
 	// ---------------------------------------------------------
 	// Function: CopyToClipBoard
@@ -1821,13 +1842,14 @@ namespace spoututils {
 			  && (dwButtons & MB_YESNO) != MB_YESNO
 			  && (dwButtons & MB_YESNOCANCEL) != MB_YESNOCANCEL) {
 				// Construct command line for SpoutPanel
-				std::string str = std::to_string(PtrToUint(hwndMain)); str += ","; // HWND
-				str += content; str += ","; // content
-				str += caption; str += ","; // caption
-				str += std::to_string(dwButtons); str += ","; // buttons
+				std::string str = std::to_string(PtrToUint(hwndMain));
+				str += ",";                                        // HWND
+				str += content; str += ",";                        // content
+				str += caption; str += ",";                        // caption
+				str += std::to_string(dwButtons); str += ",";      // buttons
 				str += std::to_string(dwMilliseconds); str += ","; // timeout
 				if (hTaskIcon) {
-					str += std::to_string(PtrToUint(hTaskIcon)); // user icon
+					str += std::to_string(PtrToUint(hTaskIcon));   // user icon
 					str += ",";
 				}
 				// Pass on to SpoutPanel
@@ -2058,6 +2080,10 @@ namespace spoututils {
 			
 			if (uNotification == TDN_CREATED) {
 
+				// For general use
+				RECT rect{};
+				int x, y, w, h = 0;
+
 				// hInstance of task dialog
 				HINSTANCE hInstTD = (HINSTANCE)GetWindowLongPtrA(hwnd, GWLP_HINSTANCE);
 
@@ -2071,12 +2097,11 @@ namespace spoututils {
 				SendMessage(hwnd, WM_SETICON, ICON_SMALL, NULL);
 
 				// Dialog Window size and position
-				RECT rect;
 				GetWindowRect(hwnd, &rect);
-				int x = rect.left;
-				int y = rect.top;
-				int w = rect.right-rect.left;
-				int h = rect.bottom - rect.top;
+				x = rect.left;
+				y = rect.top;
+				w = rect.right-rect.left;
+				h = rect.bottom - rect.top;
 
 				// Centre the taskdialog window on the point
 				// if SpoutMessageBoxPosition has been used
@@ -2095,16 +2120,15 @@ namespace spoututils {
 				if (bEdit) {
 
 					// Position in the main content by default
-					RECT rect{};
 					GetClientRect(hwnd, &rect);
 
 					// Taskdialog client size is larger with an icon
-					int h = rect.bottom-rect.top;
-					int x = rect.left+70;
-					int y = rect.top + 3;
+					h = rect.bottom-rect.top;
+					x = rect.left+70;
+					y = rect.top + 3;
 					// Allow for increased height with an icon
 					if (h > 90) y += 20;
-					int w = 320;
+					w = 320;
 					h = 24;
 
 					// Look for a timeout of 1000000 as a signal for message content
@@ -2116,13 +2140,20 @@ namespace spoututils {
 					}
 
 					hEdit = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "",
-						WS_CHILD | WS_VISIBLE | WS_HSCROLL | ES_AUTOHSCROLL,
+						WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
 						x, y, w, h,	hwnd, (HMENU)IDC_TASK_EDIT, hInstTD, NULL);
+
+					// Set an initial entry in the edit box
+					if (!stredit.empty()) {
+						SetWindowTextA(hEdit, (LPCSTR)stredit.c_str());
+						// Select all text in the edit field
+						SendMessage(hEdit, EM_SETSEL, 0, 0x7FFF0000L);
+					}
 
 					// Position on top of content
 					BringWindowToTop(hEdit);
 
-					// Set focus to allow user entry
+					// Set keyboard focus to allow user entry
 					SetFocus(hEdit);
 
 				}
@@ -2131,14 +2162,13 @@ namespace spoututils {
 				if (bCombo) {
 
 					// Position in the main content by default
-					RECT rect{};
 					GetClientRect(hwnd, &rect);
 
 					// Taskdialog client size
-					int h = rect.bottom-rect.top;
-					int x = rect.left+20;
-					int y = rect.top;
-					int w = 395;
+					h = rect.bottom-rect.top;
+					x = rect.left+20;
+					y = rect.top;
+					w = 395;
 
 					// Allow for increased height with an icon
 					// and position further right
@@ -2158,9 +2188,8 @@ namespace spoututils {
 						y = rect.bottom-40;
 						w = 220;
 					}
-
 					hCombo = CreateWindowExA(WS_EX_CLIENTEDGE, "COMBOBOX", "",
-						WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_AUTOVSCROLL | CBS_DROPDOWN,
+						CBS_DROPDOWN | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
 						x, y, w, h, hwnd, (HMENU)IDC_TASK_COMBO, hInstTD, NULL);
 
 					// Add combo box items
@@ -2170,6 +2199,8 @@ namespace spoututils {
 						}
 						// Display an initial item in the selection field
 						SendMessageA(hCombo, CB_SETCURSEL, (WPARAM)comboindex, (LPARAM)0);
+						// Select all text in the edit field
+						SendMessage(hCombo, CB_SETEDITSEL, 0, MAKELONG(0, -1));
 					}
 
 					// Remove icons from the caption
@@ -2194,7 +2225,9 @@ namespace spoututils {
 
 				if (bCombo) {
 					// Get currently selected index
-					comboindex = (int)SendMessageA(hCombo, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+					// Allow for error if the user edits the list item
+					int index = (int)SendMessageA(hCombo, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+					if (index != CB_ERR) comboindex = index;
 				}
 			}
 
@@ -2274,7 +2307,7 @@ namespace spoututils {
 				ShExecInfo.lpParameters = commandline;
 			ShExecInfo.nShow = SW_SHOW;
 
-			return ShellExecuteExA(&ShExecInfo);
+			return (ShellExecuteExA(&ShExecInfo) != FALSE);
 
 		}
 
@@ -2310,7 +2343,7 @@ namespace spoututils {
 			return bRet;
 
 		} // end OpenSpoutPanel
-		
+
 	} // end private namespace
 
 } // end namespace spoututils

@@ -87,6 +87,8 @@
 //		13.08.23	- EnableFrameCount - correct semaphore name
 //	Version 2.007.013
 //		31.12.23	- Add comments to clarify the purpose of "EnableFrameSync"
+//	Version 2.007.014
+//		04.07.24	- SetNewFrame - add m_hCountSemaphore to initial check
 //
 // ====================================================================================
 //
@@ -482,7 +484,7 @@ void spoutFrameCount::HoldFps(int fps)
 void spoutFrameCount::SetNewFrame()
 {
 	// Return silently if frame counting is disabled
-	if (!m_bFrameCount || m_bCountDisabled)
+	if (!m_bFrameCount || m_bCountDisabled || !m_hCountSemaphore)
 		return;
 
 	// Access the frame count semaphore

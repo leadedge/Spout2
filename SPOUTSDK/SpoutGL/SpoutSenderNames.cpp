@@ -107,6 +107,10 @@
 	21.05.24 - RegisterSenderName - increment existing sender name
 			   CreateSender/RegisterSenderName remove const for name
 	22.05.24 - RegisterSenderName add newname condition for name increment
+	Version 2.007.014
+	20.06.24 - Add GetSenderIndex
+	23.08.24 - GetSenderInfo, SetSenderID - initialize SharedTextureInfo
+
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
@@ -312,19 +316,16 @@ bool spoutSenderNames::ReleaseSenderName(const char* Sendername)
 // Test to see if a Sender name exists in the sender set
 bool spoutSenderNames::FindSenderName(const char* Sendername)
 {
-	if (!Sendername)
+	if (!Sendername || !Sendername[0])
 		return false;
 
-	std::string namestring = "";
 	std::set<std::string> SenderNames;
-	// Get the current list to update the passed list
+	// Get the current names list
 	if(GetSenderSet(SenderNames)) {
-		// Does the name exist
-		if (SenderNames.find(Sendername) != SenderNames.end()) {
+		// Does the name exist in the list
+		if (SenderNames.find(Sendername) != SenderNames.end())
 			return true;
-		}
 	}
-
 	return false;
 }
 
@@ -482,6 +483,25 @@ bool spoutSenderNames::GetSender(int index, char* sendername, int sendernameMaxS
 }
 
 //---------------------------------------------------------
+// Function: GetSenderIndex
+// Sender index into the sender names set
+int spoutSenderNames::GetSenderIndex(const char* sendername)
+{
+	std::set<std::string> SenderNameSet;
+	std::set<std::string>::iterator iter;
+	int i = 0;
+	if (GetSenderNames(&SenderNameSet)) {
+		for (iter = SenderNameSet.begin(); iter != SenderNameSet.end(); iter++) {
+			if (*iter == sendername) {
+				return i;
+			}
+			i++;
+		}
+	}
+	return -1;
+}
+
+//---------------------------------------------------------
 // Function: GetSenderNameInfo
 // Get sender info given a sender index and knowing the sender count.
 //
@@ -550,7 +570,7 @@ int spoutSenderNames::GetMaxSenders()
 // Fails if the sender does not exist.
 bool spoutSenderNames::GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat)
 {
-	SharedTextureInfo info;
+	SharedTextureInfo info={};
 
 	// For external access to getSharedInfo - redundancy
 
@@ -666,7 +686,7 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 // 2.006 senders may or may not have these bits set but will rarely have the exact values.
 bool spoutSenderNames::SetSenderID(const char *sendername, bool bCPU, bool bGLDX)
 {
-	SharedTextureInfo info;
+	SharedTextureInfo info={};
 
 	if (getSharedInfo(sendername, &info)) {
 		// Using CPU sharing methods - set top bit
@@ -984,8 +1004,7 @@ bool spoutSenderNames::FindSender(char *sendername, unsigned int &width, unsigne
 // Used for testing - may be removed
 bool spoutSenderNames::FindSender(const char* sendername)
 {
-	std::string namestring = sendername;
-	if (m_senders->find(namestring) != m_senders->end())
+	if (m_senders->find(sendername) != m_senders->end())
 		return true;
 
 	return false;

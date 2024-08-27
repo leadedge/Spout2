@@ -160,7 +160,7 @@ class SPOUT_DLLEXP spoutGL {
 	bool WriteTexture(ID3D11Texture2D** texture);
 	// DX11 texture write with readback to OpenGL texture
 	//   o Copy a DX11 texture to the DX11 shared texture
-	//   o Copy the linked OpenGL texture back to and OpenGL texture
+	//   o Copy the linked OpenGL texture back to an OpenGL texture
 	bool WriteTextureReadback(ID3D11Texture2D** texture, GLuint TextureID, GLuint TextureTarget,
 		unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO = 0);
 
@@ -264,6 +264,11 @@ class SPOUT_DLLEXP spoutGL {
 		unsigned int width, unsigned int height, unsigned int pitch,
 		unsigned char* data, GLenum glFormat = GL_RGBA,
 		bool bInvert = false, GLuint HostFBO = 0);
+	// Load pixels to an OpenGL texture using pbo
+	bool LoadTexturePixels(GLuint TextureID, GLuint TextureTarget,
+		unsigned int width, unsigned int height, 
+		const unsigned char* data, int GLformat = GL_RGBA,
+		bool bInvert = false);
 	// Read RGB or RGBA pixels from an OpenGL texture with format
 	bool ReadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 		unsigned int width, unsigned int height, void* dest,
