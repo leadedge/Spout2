@@ -24,6 +24,7 @@
 //					- Update SelectSender for list box and dialog centre position
 //		15.07.24	- SelectSender - after cast of window handle to long 
 //					  convert to a string of 8 characters without new line
+//		29.08.24	- ReadDX9texture - remove !frame.IsFrameCountEnabled() condition
 //
 // ====================================================================================
 /*
@@ -1141,9 +1142,7 @@ bool spoutDX9::ReceiveSenderData()
 //
 bool spoutDX9::ReadDX9texture(IDirect3DDevice9Ex* pDevice, LPDIRECT3DTEXTURE9 &dxTexture)
 {
-	if (!pDevice || m_Width == 0 || m_Height == 0
-		|| !frame.IsFrameCountEnabled()
-		|| !m_dxShareHandle)
+	if (!pDevice || m_Width == 0 || m_Height == 0 || !m_dxShareHandle)
 		return false;
 
 
