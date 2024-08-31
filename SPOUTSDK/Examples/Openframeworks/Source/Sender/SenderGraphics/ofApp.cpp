@@ -42,7 +42,7 @@ void ofApp::setup(){
 	ofSetWindowPosition((ofGetScreenWidth()-ofGetWidth())/2, (ofGetScreenHeight()-ofGetHeight())/2);
 
 	// Set a custom icon
-	std::string icopath = ofToDataPath("Spout.ico", true);
+	std::string icopath = GetExePath() + "data\\Spout.ico";
 	HICON hIcon = reinterpret_cast<HICON>(LoadImageA(nullptr, icopath.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE));
 	SendMessage(ofGetWin32Window(), WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 	SendMessage(ofGetWin32Window(), WM_SETICON, ICON_SMALL, (LPARAM)hIcon);

@@ -83,7 +83,8 @@ void ofApp::setup(){
 	//      SpoutMessageBoxIcon(HICON hIcon)
 	//      SpoutMessageBoxIcon(std::string iconfile)
 	//    Icon files must be of the type ".ico"
-	// std::string iconfile = ofToDataPath("Spout.ico", true); // full path required
+	//    A full path to the icon file is required.
+	// std::string iconfile = GetExePath() + "data\\Spout.ico";
 	// SpoutMessageBoxIcon(iconfile);
 	//
 	//   Modeless mode
@@ -406,8 +407,24 @@ void ofApp::mousePressed(int x, int y, int button)
 {
 	if (x > 10 && x <150 && !bMessagebox) {
 
+		// About        35-55
+		// Position     57-77
+		// Simple       79
+		// Variable    101
+		// Timeout     123
+		// Options     145
+		// Instruction 167
+		// Icon        189
+		// Buttons     211
+		// Edit        233
+		// Combobox    255
+		// Modeless    277
+		// Hyperlink   299
+		// Clipboard   321
+
 		//  About
-		if (y >35 && y <65) {
+		// if (y >35 && y <65) {
+		if (y >35 && y <55) {
 			doMessagebox('a');
 		}
 
@@ -417,7 +434,8 @@ void ofApp::mousePressed(int x, int y, int button)
 		}
 
 		//  Simple
-		if (y >79 && y <109) {
+		// if (y >79 && y <109) {
+		if (y >79 && y <99) {
 			doMessagebox('c');
 		}
 
@@ -427,7 +445,8 @@ void ofApp::mousePressed(int x, int y, int button)
 		}
 
 		// Timeout
-		if (y >123 && y <153) {
+		// if (y >123 && y <153) {
+		if (y >123 && y <143) {
 			doMessagebox('e');
 		}
 
@@ -437,7 +456,7 @@ void ofApp::mousePressed(int x, int y, int button)
 		}
 
 		// Instruction
-		if (y >167 && y <197) {
+		if (y >167 && y <187) {
 			doMessagebox('g');
 		}
 
@@ -498,7 +517,7 @@ void ofApp::keyPressed(int key)
 	// Change sender name
 	if (key == OF_KEY_F1) {
 		// Spout icon
-		std::string iconfile = ofToDataPath("Spout.ico", true);
+		std::string iconfile = GetExePath() + "data\\Spout.ico";
 		SpoutMessageBoxIcon(iconfile);
 		// Centre dialog on the window instead of the desktop
 		SpoutMessageBoxWindow(ofGetWin32Window());
@@ -627,7 +646,7 @@ void ofApp::doMessagebox(int item)
 		str += "Refer to SpoutUtils.cpp for more utilites\n";
 		str += "Information, Console, Logging, Registry, Timing\n\n";
 		str += "                                    <a href=\"https://spout.zeal.co\">https://spout.zeal.co</a>\n\n";
-		std::string iconfile = ofToDataPath("Spout.ico", true);
+		std::string iconfile = GetExePath() + "data\\Spout.ico";
 		SpoutMessageBoxIcon(iconfile);
 		SpoutMessageBox(NULL, str.c_str(), "About", MB_TOPMOST | MB_OK);
 	}
@@ -771,12 +790,11 @@ void ofApp::doMessagebox(int item)
 	// A full path to an icon file (.ico) is required
 	//
 	if (item == 'h') {
-		std::string iconfile = ofToDataPath("Spout.ico", true);
+		std::string iconfile = GetExePath() + "data\\Spout.ico";
 		SpoutMessageBoxIcon(iconfile);
 		std::string str = "A custom icon can be loaded from an icon \".ico\" image file:\n";
-		str += "A full path to the icon file is required.\n";
-		str += "Here we can use an Openframeworks function :\n\n";
-		str += "    std::string iconfile = ofToDataPath(\"Spout.ico\", true);\n";
+		str += "A full path to the icon file is required.\n\n";
+		str += "    std::string iconfile = GetExePath() + \"data\\Spout.ico\"\n";
 		str += "    SpoutMessageBoxIcon(iconfile)\n\n";
 		str += "An icon can also be loaded using an icon handle.\n";
 		str += "The handle can be obtained from resources\n";
@@ -831,7 +849,7 @@ void ofApp::doMessagebox(int item)
 		str += "         SpoutMessageBox(NULL, \"Enter new text\", \"Caption\", MB_OK, editstring)\n\n";
 		str += "   o Icon\n";
 		str += "      Custom icons can be used with both caption and message with caption\n";
-		str += "         std::string icofile = ofToDataPath(\"Spout.ico\", true);\n";
+		str += "         std::string icofile = GetExePath()+\"data/Spout.ico\", true);\n";
 		str += "         SpoutMessageBoxIcon(icofile);\n\n";
 		str += "Select an option and repeat for more options\n";
 		SpoutMessageBoxButton(1000, L"Caption");
@@ -853,7 +871,7 @@ void ofApp::doMessagebox(int item)
 			}
 		}
 		if (iret == 3000) {
-			std::string icofile = ofToDataPath("Spout.ico", true);
+			std::string icofile = GetExePath()+"data/Spout.ico";
 			SpoutMessageBoxIcon(icofile);
 			if (SpoutMessageBox(NULL, "Example of using a custom icon with text entry\n",
 				"Text entry with icon", MB_OKCANCEL, editstring) == IDOK) {
@@ -909,7 +927,7 @@ void ofApp::doMessagebox(int item)
 		if (buttonid == 3000) {
 			index = 3; // starting index (0-3)
 			// Caption with message and icon
-			std::string icofile = ofToDataPath("Spout.ico", true);
+			std::string icofile = GetExePath()+"data/Spout.ico";
 			SpoutMessageBoxIcon(icofile);
 			if (SpoutMessageBox(NULL, "Combo box with user icon\nThis is a list of items\nSelect an item\nThe item index will be returned", "Select item", MB_OKCANCEL, items, index) == IDOK) {
 				SpoutMessageBox("Item selection", "%d (%s)", index, items[index].c_str());
