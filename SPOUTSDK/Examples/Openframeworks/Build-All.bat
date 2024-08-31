@@ -35,7 +35,7 @@ rem
 copy /y /v Source\Sender\SenderVideo\ofApp.* src
 copy /y /v Source\Sender\SenderVideo\*.bat
 rmdir /s /q ofSpoutExample
-msbuild.exe ofSpoutExamplermdir /s /q ofSpoutExample.sln -v:m -p:Configuration=RELEASE -p:Platform=x64
+msbuild.exe ofSpoutExample.sln -v:m -p:Configuration=RELEASE -p:Platform=x64
 rem
 copy /y /v Source\Sender\SenderWebcam\ofApp.* src
 copy /y /v Source\Sender\SenderWebcam\*.bat
