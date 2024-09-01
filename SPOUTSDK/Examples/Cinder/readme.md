@@ -11,7 +11,13 @@ The example has been created for Visual Studio 2022 and Cinder 0.9.3.
 - Open Cinder.sln with VS2022
 - When you see the Retarget projects dialog, click CANCEL\
 The solution will be renamed to "cinder (Visual Studio 2015)"
-- Rebuild the library x64 or Win32
+- Select Project > Properties > General
+- Configuration > All Configurations / Platform > All Platforms
+- Platform Toolset > Visual Studio 2017 (v141)
+- OK to establish settings\
+The solution will be renamed to "cinder (Visual Studio 2017)"
+- File > Save All - to save the changes
+- Rebuild the library x64
 
 ### Building the example project
 
@@ -29,8 +35,5 @@ The solution will be renamed to "cinder (Visual Studio 2015)"
 - Build Release x64
 - Select "File > Save All" before closing to save the project settings
 
-### SpoutPanel
 
-The receiver example depends on SpoutPanel.exe to select senders.\
-It's path is detected after either SpoutSettings or SpoutPanel has been run once.
 
