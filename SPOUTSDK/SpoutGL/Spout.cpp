@@ -302,6 +302,8 @@
 //					   - Allow sender adapter test for desktop
 //					   - Refer to Spout settings if no resolution or a desktop system
 //					  Also warn in SpoutPanel
+//		03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
+//				
 //
 // ====================================================================================
 /*
@@ -1190,6 +1192,7 @@ bool Spout::SelectSender(HWND hwnd)
 					str ="WARNING - failed to open texture share handle\n\n";
 					if (IsLaptop()) {
 						str += "Laptop system detected.\n\n";
+#ifdef NTDDI_WIN10_RS4
 						str += "<a href=\"ms-settings:display-advancedgraphics\">Windows Graphics Performance Preferences</a>\n";
 						// Windows preferences for laptop power saving graphics
 						//     -1 - No preference
@@ -1244,6 +1247,9 @@ bool Spout::SelectSender(HWND hwnd)
 								}
 							}
 						}
+#else
+						str += "No graphics preferences available\n";
+#endif
 					} // endif laptop system
 					else {
 						int nadapters = GetNumAdapters();
@@ -1675,7 +1681,6 @@ bool Spout::GetAdapterInfo(int index, char* description, char* output, int maxch
 // April 2018 update "Redstone 4" (Version 1803, build 17134) and later.
 // Windows 10 SDK required included in Visual Studio 2017 ver.15.7 
 //
-#ifdef NTDDI_WIN10_RS4
 
 //---------------------------------------------------------
 // Function: GetPerformancePreference
@@ -1768,8 +1773,6 @@ bool Spout::IsApplicationPath(const char* path)
 
 	return spoutdx.IsApplicationPath(path);
 }
-#endif
-
 
 //
 // Group: 2.006 compatibility

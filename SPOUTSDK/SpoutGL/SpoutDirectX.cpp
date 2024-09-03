@@ -162,6 +162,7 @@
 //					    Change adapter pointer to IDXGIAdapter1 and use EnumAdapters1
 //					    to identify and skip the Basic Render Driver adapter
 //	Version 2.007.014
+//		03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
 //
 // ====================================================================================
 /*
@@ -1483,8 +1484,6 @@ bool spoutDirectX::FindNVIDIA(int& nAdapter)
 // April 2018 update "Redstone 4" (Version 1803, build 17134) and later.
 // Windows 10 SDK required included in Visual Studio 2017 ver.15.7 
 //
-#ifdef NTDDI_WIN10_RS4
-
 //---------------------------------------------------------
 // Function: GetPerformancePreference
 // Get the Windows graphics preference for an application
@@ -1506,6 +1505,7 @@ int spoutDirectX::GetPerformancePreference(const char* path)
 		return -1;
 	}
 
+#ifdef NTDDI_WIN10_RS4
 	char exepath[MAX_PATH]={};
 	// No path specified - get the current application path
 	if (!path) {
@@ -1533,6 +1533,7 @@ int spoutDirectX::GetPerformancePreference(const char* path)
 	else {
 		SpoutLogWarning("spoutDirectX::GetPerformancePreference - Application path not valid");
 	}
+#endif
 	return -1;
 }
 
@@ -1557,6 +1558,7 @@ bool spoutDirectX::SetPerformancePreference(int preference, const char* path)
 		return false;
 	}
 
+#ifdef NTDDI_WIN10_RS4
 	char exepath[MAX_PATH]={};
 	// No path specified - get the current application path
 	if (!path) {
@@ -1604,6 +1606,7 @@ bool spoutDirectX::SetPerformancePreference(int preference, const char* path)
 	else {
 		SpoutLogNotice("    Application path not valid");
 	}
+#endif
 	return false;
 }
 
@@ -1659,6 +1662,9 @@ bool spoutDirectX::GetPreferredAdapterName(int preference, char* adaptername, in
 		return false;
 	}
 
+#ifdef NTDDI_WIN10_RS4
+	bool bRet = false;
+
 	if (preference == DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE)
 		SpoutLogNotice("spoutDirectX::GetPreferredAdapterName - high performance");
 	else if (preference == DXGI_GPU_PREFERENCE_MINIMUM_POWER)
@@ -1673,7 +1679,6 @@ bool spoutDirectX::GetPreferredAdapterName(int preference, char* adaptername, in
 	}
 	if(!pFactory) return false;
 
-	bool bRet = false;
 	IDXGIFactory6* pFactory6 = nullptr;
 	IDXGIAdapter1* pAdapter1 = nullptr;
 	if (SUCCEEDED(pFactory->QueryInterface(IID_PPV_ARGS(&pFactory6)))) {
@@ -1701,8 +1706,12 @@ bool spoutDirectX::GetPreferredAdapterName(int preference, char* adaptername, in
 	}
 
 	pFactory->Release();
+
 	return bRet;
 
+#endif
+
+	return false;
 }
 
 //---------------------------------------------------------
@@ -1734,6 +1743,7 @@ bool spoutDirectX::SetPreferredAdapter(int preference)
 		return false;
 	}
 
+#ifdef NTDDI_WIN10_RS4
 	if(preference == DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE)
 		SpoutLogNotice("spoutDirectX::SetPreferredAdapter - high performance");
 	else if (preference == DXGI_GPU_PREFERENCE_MINIMUM_POWER)
@@ -1751,6 +1761,7 @@ bool spoutDirectX::SetPreferredAdapter(int preference)
 			return SetAdapter(index);
 		}
 	}
+#endif
 	return false;
 }
 
@@ -1762,11 +1773,13 @@ bool spoutDirectX::SetPreferredAdapter(int preference)
 // (Version 1803, build 17134) and later.
 bool spoutDirectX::IsPreferenceAvailable()
 {
+#ifdef NTDDI_WIN10_RS4
 	char build[128]={};
 	if (ReadPathFromRegistry(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentBuildNumber", build, 128)) {
 		if (atoi(build) >= 17134)
 			return true;
 	}
+#endif
 	return false;
 }
 
@@ -1786,7 +1799,7 @@ bool spoutDirectX::IsApplicationPath(const char* path)
 	}
 	return false;
 }
-#endif
+// #endif
 
 //
 // Protected

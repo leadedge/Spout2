@@ -142,12 +142,9 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Find the index of the NVIDIA adapter in a multi-adapter system
 		bool FindNVIDIA(int &nAdapter);
 
-
-// Windows 10 Vers 1803, build 17134 or later
-#ifdef NTDDI_WIN10_RS4
-
 		//
 		// Graphics preference
+		// Windows 10 Vers 1803, build 17134 or later
 		//
 
 		// Get the Windows graphics preference for an application
@@ -162,8 +159,6 @@ class SPOUT_DLLEXP spoutDirectX {
 		bool IsPreferenceAvailable();
 		// Is the path a valid application
 		bool IsApplicationPath(const char* path);
-
-#endif
 
 	protected:
 
