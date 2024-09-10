@@ -208,6 +208,9 @@
 				   to avoid warning C4800: 'BOOL': forcing value to bool 'true' or 'false'
 				 - GetSpoutLog - remove null argument check for use of existing log path
 		20.08.24 - GetSpoutLog - add check for empty filepath
+		10.09.24 - ReadPathFromRegistry -
+				   "valuename" argument can be null for the(Default) key string
+
 
 
 
@@ -1303,7 +1306,8 @@ namespace spoututils {
 	// Read subkey character string
 	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath, DWORD dwSize)
 	{
-		if (!subkey || !*subkey || !valuename || !*valuename || !filepath)
+		// Valuename can be null for the (Default) key string
+		if (!subkey || !*subkey || !filepath) {
 			return false;
 
 		HKEY  hRegKey = NULL;
