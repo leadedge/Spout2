@@ -1307,7 +1307,7 @@ namespace spoututils {
 	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath, DWORD dwSize)
 	{
 		// Valuename can be null for the (Default) key string
-		if (!subkey || !*subkey || !filepath) {
+		if (!subkey || !*subkey || !filepath)
 			return false;
 
 		HKEY  hRegKey = NULL;
