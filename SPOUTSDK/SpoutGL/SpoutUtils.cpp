@@ -210,8 +210,7 @@
 		20.08.24 - GetSpoutLog - add check for empty filepath
 		10.09.24 - ReadPathFromRegistry -
 				   "valuename" argument can be null for the(Default) key string
-
-
+		06.10.24 - OpenSpoutConsole, EnableSpoutLog - add optional title argument
 
 
 */
@@ -408,7 +407,7 @@ namespace spoututils {
 	// A console window opens without logs.
 	// Useful for debugging with console output.
 	//
-	void OpenSpoutConsole()
+	void OpenSpoutConsole(const char* title)
 	{
 		if (!GetConsoleWindow()) {
 
@@ -422,7 +421,7 @@ namespace spoututils {
 				const errno_t err = freopen_s(&pCout, "CONOUT$", "w", stdout);
 				if (err == 0) {
 					std::string name = GetExeName();
-					name += ".log";
+					if (title != nullptr) name = title;
 					SetConsoleTitleA(name.c_str());
 					bConsole = true;
 					// Optional - disable close button
@@ -542,14 +541,15 @@ namespace spoututils {
 	// Logs are displayed in a console window.  
 	// Useful for program development.
 	//
-	void EnableSpoutLog()
+	void EnableSpoutLog(const char *title)
 	{
-		if (!GetConsoleWindow())
-			OpenSpoutConsole();
 
 		std::string name = GetExeName();
 		name += ".log";
-		SetConsoleTitleA(name.c_str());
+		if (title != nullptr) name = title;
+
+		if (!GetConsoleWindow())
+			OpenSpoutConsole(name.c_str());
 
 		bConsole = true;
 		bEnableLog = true;

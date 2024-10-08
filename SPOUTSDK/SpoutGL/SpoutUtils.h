@@ -139,7 +139,7 @@ namespace spoututils {
 	// Open console window.
 	// A console window opens without logs.
 	// Useful for debugging with console output.
-	void SPOUT_DLLEXP OpenSpoutConsole();
+	void SPOUT_DLLEXP OpenSpoutConsole(const char *title = nullptr);
 	
 	// Close console window.
 	// The optional warning displays a MessageBox if user notification is required.
@@ -148,7 +148,7 @@ namespace spoututils {
 	// Enable logging to the console.
 	// Logs are displayed in a console window.  
 	// Useful for program development.
-	void SPOUT_DLLEXP EnableSpoutLog();
+	void SPOUT_DLLEXP EnableSpoutLog(const char* title = nullptr);
 
 	// Enable logging to a file with optional append.
 	// As well as a console window, you can output logs to a text file. 
