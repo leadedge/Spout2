@@ -85,6 +85,7 @@
 //		09.06.24	- SelectSender > spout SelectSender instead of SelectSenderPanel
 //					  Add hwnd argument to centre MessageBox dialog if used.
 //	Version 2.007.014
+//		21.09.24	-Add ReadTextureData
 //					
 //
 // ====================================================================================
@@ -646,6 +647,16 @@ bool SpoutReceiver::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 {
 	return spout.CopyTexture(SourceID, SourceTarget, DestID, DestTarget,
 		width, height, bInvert, HostFBO);
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
+	void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
+	GLenum dataformat, GLenum datatype, bool bInvert, GLuint HostFBO)
+{
+	return spout.ReadTextureData(SourceID, SourceTarget,
+		data, width, height, rowpitch, dataformat,
+		datatype, bInvert, HostFBO);
 }
 
 
