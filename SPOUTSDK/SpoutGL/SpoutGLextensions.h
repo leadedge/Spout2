@@ -269,6 +269,11 @@ enum ExtLogLevel {
 #define GL_BGRA                        0x80E1
 #endif
 
+// RGBA <> BGRA
+#ifndef GL_TEXTURE_SWIZZLE_RGBA
+#define GL_TEXTURE_SWIZZLE_RGBA        0x8E46
+#endif
+
 // OpenGL floating point formats
 
 // gl3.h
