@@ -110,7 +110,7 @@ void spoutCopy::CopyPixels(const unsigned char *source, unsigned char *dest,
 	if (glFormat == GL_LUMINANCE)
 		Size = width*height;
 	else if (glFormat == GL_RGB || glFormat == GL_BGR_EXT)
-		Size = width*height * 3;
+		Size = width*height*3;
 
 	if (bInvert) {
 		FlipBuffer(source, dest, width, height, glFormat);
