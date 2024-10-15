@@ -80,6 +80,7 @@
 //		07.08.23	- Add frame sync option functions
 //	Version 2.007.013
 //	Version 2.007.014
+//		21.09.24	-Add ReadTextureData
 //
 // ====================================================================================
 /*
@@ -625,6 +626,16 @@ bool SpoutSender::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 {
 	return spout.CopyTexture(SourceID, SourceTarget, DestID, DestTarget,
 		width, height, bInvert, HostFBO);
+}
+
+//---------------------------------------------------------
+bool SpoutSender::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
+	void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
+	GLenum dataformat, GLenum datatype, bool bInvert, GLuint HostFBO)
+{
+	return spout.ReadTextureData(SourceID, SourceTarget,
+		data, width, height, rowpitch, dataformat,
+		datatype, bInvert, HostFBO);
 }
 
 //
