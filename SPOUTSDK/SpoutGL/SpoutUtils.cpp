@@ -212,7 +212,6 @@
 				   "valuename" argument can be null for the(Default) key string
 		06.10.24 - OpenSpoutConsole, EnableSpoutLog - add optional title argument
 
-
 */
 
 #include "SpoutUtils.h"
@@ -858,10 +857,10 @@ namespace spoututils {
 			strcpy_s(logChars, 1024, currentLog);
 
 			// Console logging
-			if (bEnableLog && bConsole) {
-				FILE* out = stdout; // Console output
+			if (bConsole && bEnableLog) {
 				// Yellow text for warnings and errors
 				HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+				FILE* out = stdout; // Console output
 				if (level == SPOUT_LOG_WARNING || level == SPOUT_LOG_ERROR)
 					SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 				if (level != SPOUT_LOG_NONE) {
@@ -894,7 +893,6 @@ namespace spoututils {
 					logFile.close();
 				}
 			} // end file log
-
 		}
 	}
 
