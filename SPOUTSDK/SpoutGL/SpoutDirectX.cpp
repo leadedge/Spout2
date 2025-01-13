@@ -765,10 +765,14 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 	unsigned int width,	unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppStagingTexture)
 {
-	if (pd3dDevice == NULL || !ppStagingTexture)
-		return false;
+	printf("spoutDirectX::CreateDX11StagingTexture(0x%X, %d, %d, %d)\n",
+		PtrToUint(pd3dDevice), width, height, format);
 
-	SpoutLogNotice("spoutDirectX::CreateDX11StagingTexture(0x%.X, %d, %d, %d)",
+	if (pd3dDevice == NULL || !ppStagingTexture) {
+		return false;
+	}
+
+	SpoutLogNotice("spoutDirectX::CreateDX11StagingTexture(0x%X, %d, %d, %d)",
 		PtrToUint(pd3dDevice), width, height, format);
 
 	// Release the texture if it already exists
@@ -1709,9 +1713,10 @@ bool spoutDirectX::GetPreferredAdapterName(int preference, char* adaptername, in
 
 	return bRet;
 
+#else
+	return false;
 #endif
 
-	return false;
 }
 
 //---------------------------------------------------------
