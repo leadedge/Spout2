@@ -5,7 +5,7 @@
 	Base class for OpenGL SpoutSDK
 	See also Sender and Receiver wrapper classes.
 
-	Copyright (c) 2021-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2021-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -234,7 +234,7 @@ class SPOUT_DLLEXP spoutGL {
 	bool IsCOPYavailable(); // copy extensions available
 	bool IsPBOavailable();  // pbo extensions supported
 	bool IsCONTEXTavailable(); // Context extension supported
-	GLint GetGLversion();
+	float GetGLversion(); // OpenGL version - 3.0, 4.0, 4.6 etc
 
 	//
 	// Legacy OpenGL functions
@@ -440,8 +440,6 @@ protected :
 	bool m_bCOPYavailable;
 	bool m_bCONTEXTavailable;
 	bool m_bExtensionsLoaded;
-
-	GLint m_GLversion; // 30, 40, 45 etc
 
 };
 

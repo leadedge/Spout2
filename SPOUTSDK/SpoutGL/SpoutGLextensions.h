@@ -26,7 +26,7 @@
 //
 /*
 
-	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -816,6 +816,29 @@ extern glMemoryObjectParameterivEXTPROC glMemoryObjectParameterivEXT;
 
 typedef void (APIENTRY* glGetMemoryObjectParameterivEXTPROC) (GLuint memoryObject, GLenum pname, GLint* params);
 extern glGetMemoryObjectParameterivEXTPROC glGetMemoryObjectParameterivEXT;
+
+typedef GLboolean(APIENTRY* glIsMemoryObjectEXTPROC) (GLuint memoryObject);
+extern glIsMemoryObjectEXTPROC glIsMemoryObjectEXT;
+
+typedef void (APIENTRY* glCreateBuffersPROC) (GLsizei n, GLuint* buffers);
+extern glCreateBuffersPROC glCreateBuffers;
+
+typedef void (APIENTRY* glBindBufferBasePROC) (GLenum target, GLuint index, GLuint buffer);
+extern glBindBufferBasePROC glBindBufferBase;
+
+
+
+
+// LJ DEBUG : TODO
+#define GL_SHADER_STORAGE_BARRIER_BIT                 0x2000
+#define GL_SHADER_STORAGE_BUFFER                      0x90D2
+#define GL_SHADER_STORAGE_BUFFER_BINDING              0x90D3
+#define GL_SHADER_STORAGE_BUFFER_START                0x90D4
+#define GL_SHADER_STORAGE_BUFFER_SIZE                 0x90D5
+#define GL_STATIC_DRAW                                0x88E4
+#define GL_STATIC_READ                                0x88E5
+#define GL_STATIC_COPY                                0x88E6
+
 
 #ifndef GL_DEDICATED_MEMORY_OBJECT_EXT
 #define GL_DEDICATED_MEMORY_OBJECT_EXT                0x9581

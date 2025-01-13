@@ -305,11 +305,12 @@
 //		03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
 //		10.09.24	- SelectSenderPanel - test for exe file name for terminate
 //		25.09.24	- Revise ReceiveTexture and extend code comments for sender update
+//		08.01.25	- Add empty senderlist check in SelectSender()
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -1133,6 +1134,9 @@ bool Spout::SelectSender(HWND hwnd)
 
 		// create a local sender list
 		std::vector<std::string> senderlist = GetSenderList();
+		if(senderlist.empty())
+			return false;
+
 	
 		// Get the active sender index "selected".
 		// The index is passed in to SpoutMessageBox and used as the current combobox item.
@@ -2645,6 +2649,8 @@ bool Spout::ReceiveSenderData()
 	unsigned int height = m_Height;
 	DWORD dwFormat = m_dwFormat;
 	HANDLE dxShareHandle = m_dxShareHandle;
+
+
 
 	// Retrieve the sender information : width, height, sharehandle and format.
 	SharedTextureInfo info;

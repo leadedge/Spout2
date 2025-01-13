@@ -196,7 +196,7 @@
 //
 // ====================================================================================
 //
-//	Copyright (c) 2021-2024, Lynn Jarvis. All rights reserved.
+//	Copyright (c) 2021-2025, Lynn Jarvis. All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without modification, 
 //	are permitted provided that the following conditions are met:
@@ -286,12 +286,6 @@ spoutGL::spoutGL()
 	m_bCOPYavailable = false;
 	m_bPBOavailable = true; // Assume true until tested by LoadGLextensions
 	m_bCONTEXTavailable = false;
-
-	// OpenGL version
-	GLint vers[2]{};
-	glGetIntegerv(GL_MAJOR_VERSION, &vers[0]);
-	glGetIntegerv(GL_MINOR_VERSION, &vers[1]);
-	m_GLversion = (vers[0]*10)+vers[1];
 
 	// PBO support
 	m_nBuffers = 2; // default number of buffers used
@@ -3267,9 +3261,18 @@ bool spoutGL::IsCONTEXTavailable()
 	return m_bCONTEXTavailable;
 }
 
-GLint spoutGL::GetGLversion()
+//---------------------------------------------------------
+// OpenGL version - 3.0, 4.0, 4.6 etc
+float spoutGL::GetGLversion()
 {
-	return m_GLversion;
+	float glversion = 0.0f;
+	GLint major = 0;
+	GLint minor = 0;
+	glGetIntegerv(GL_MAJOR_VERSION, &major);
+	glGetIntegerv(GL_MINOR_VERSION, &minor);
+	glversion = (float)major + (float)minor/10.0f;
+
+	return glversion;
 }
 
 // 
