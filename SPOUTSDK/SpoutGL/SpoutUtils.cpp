@@ -9,7 +9,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2017-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2017-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -211,6 +211,10 @@
 		10.09.24 - ReadPathFromRegistry -
 				   "valuename" argument can be null for the(Default) key string
 		06.10.24 - OpenSpoutConsole, EnableSpoutLog - add optional title argument
+		22.12.24 - Remove MB_USERBUTTON. Use TDbuttonID.size() instead.
+				   SpoutMessageBoxModeless bool instead of void
+		07.01.25 - GetExePath - add option for full path with executable name
+		13.01.25 - Add #standalone define in SpoutUtils.h
 
 */
 
@@ -339,15 +343,21 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: GetExePath()
 	// Get executable or dll path
+	//    bFull
+	//	    true  - full path with executable name
+	//	    false - path without executable name (default)
 	//
-	std::string GetExePath()
+	std::string GetExePath(bool bFull)
 	{
 		char path[MAX_PATH]{};
 		// exe or dll
 		GetModuleFileNameA(GetCurrentModule(), path, MAX_PATH);
 		std::string exepath = path;
+		
 		// Remove name
-		RemoveName(exepath);
+		if(!bFull)
+			RemoveName(exepath);
+
 		return exepath;
 	}
 
@@ -936,7 +946,7 @@ namespace spoututils {
 	{
 		if (!message)
 			return 0;
-
+		
 		return MessageTaskDialog(NULL, message, "Message", MB_OK, dwMilliseconds);
 
 	}
@@ -1098,7 +1108,6 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxButton
 	// Custom button for SpoutMessageBox
-	// Use together with MB_USERBUTTON
 	void SpoutMessageBoxButton(int ID, std::wstring title)
 	{
 		TDbuttonID.push_back(ID);
@@ -1110,7 +1119,7 @@ namespace spoututils {
 	// Enable modeless functionality using SpoutPanel.exe
 	// Used where a Windows MessageBox would interfere with the application GUI.
 	// Depends on SpoutPanel.exe version 2.072 or greater distributed with Spout release.
-	void SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode)
+	bool SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode)
 	{
 		// If setting modeless, find the path for SpoutPanel.exe
 		if (bMode) {
@@ -1127,7 +1136,7 @@ namespace spoututils {
 					if (fvers >= 2.072) {
 						// Set modeless
 						bModeless = bMode;
-						return;
+						return true;
 					}
 					sprintf_s(path, MAX_PATH, "SpoutPanel version %s\n2.070 or greater required for modeless\n\n", version.c_str());
 					errmsg = path;
@@ -1150,13 +1159,14 @@ namespace spoututils {
 			bModeless = false;
 			SpoutMessageBox(NULL, errmsg.c_str(), "SpoutMessageBoxModeless - Warning", MB_ICONWARNING | MB_OK);
 			bModeless = oldmode;
-			return;
+			return false;
 		}
-		// SpoutPanel found or disable modeless
+
+		// Disable modeless
 		bModeless = bMode;
+
+		return true;
 	}
-
-
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxWindow
@@ -1587,7 +1597,6 @@ namespace spoututils {
 		}
 	}
 
-
 	//
 	// Private functions
 	//
@@ -1818,7 +1827,8 @@ namespace spoututils {
 			if (hTaskIcon) dwButtons |= MB_USERICON;
 
 			// Use multiple buttons if set
-			if (TDbuttonID.size() > 0) dwButtons |= MB_USERBUTTON;
+			// LJ DEBUG
+			// if (TDbuttonID.size() > 0) dwButtons |= MB_USERBUTTON;
 
 			//
 			// TaskDialogIndirect is modal and stops the application.
@@ -1839,10 +1849,12 @@ namespace spoututils {
 			//   2) Any dialog is requested that requires user input
 			//
 			if (bModeless
-			  && (dwButtons & MB_USERBUTTON) != MB_USERBUTTON
-			  && (dwButtons & MB_OKCANCEL) != MB_OKCANCEL
-			  && (dwButtons & MB_YESNO) != MB_YESNO
-			  && (dwButtons & MB_YESNOCANCEL) != MB_YESNOCANCEL) {
+				// LJ DEBUG
+				// && (dwButtons & MB_USERBUTTON)  != MB_USERBUTTON
+				&& TDbuttonID.size() == 0
+				&& (dwButtons & MB_OKCANCEL)    != MB_OKCANCEL
+				&& (dwButtons & MB_YESNO)       != MB_YESNO
+				&& (dwButtons & MB_YESNOCANCEL) != MB_YESNOCANCEL) {
 				// Construct command line for SpoutPanel
 				std::string str = std::to_string(PtrToUint(hwndMain));
 				str += ",";                                        // HWND
@@ -1870,17 +1882,21 @@ namespace spoututils {
 			//
 
 			// User buttons
-			TASKDIALOG_BUTTON buttons[10]={0};
+			TASKDIALOG_BUTTON buttons[10]={ 0 };
 
 			// Use a wide string to avoid a pre-sized buffer
-			int size_needed = MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), NULL, 0);
-			std::wstring wstrTemp(size_needed, 0);
-			MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), &wstrTemp[0], size_needed);
+			std::wstring wstrTemp;
+			if (content) {
+				int size_needed = MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), NULL, 0);
+				wstrTemp.resize(size_needed);
+				MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), &wstrTemp[0], size_needed);
+			}
+
 
 			// Caption (default caption is the executable name)
 			std::wstring wstrCaption;
 			if (caption) {
-				size_needed = MultiByteToWideChar(CP_UTF8, 0, caption, (int)strlen(caption), NULL, 0);
+				int size_needed = MultiByteToWideChar(CP_UTF8, 0, caption, (int)strlen(caption), NULL, 0);
 				wstrCaption.resize(size_needed);
 				MultiByteToWideChar(CP_UTF8, 0, caption, (int)strlen(caption), &wstrCaption[0], size_needed);
 			}
@@ -1893,7 +1909,7 @@ namespace spoututils {
 			// Topmost global flag
 			bTopMost = ((dwButtons & MB_TOPMOST) != 0);
 			LONG dwl = (LONG)dwButtons;
-			if(bTopMost)
+			if (bTopMost)
 				dwl = dwl ^ MB_TOPMOST;
 
 			//
@@ -1901,22 +1917,23 @@ namespace spoututils {
 			//
 			DWORD dwb = dwl & 0x0F; // buttons code
 			DWORD dwCommonButtons = MB_OK;
-			if (dwb == MB_USERBUTTON) { // 7 - SpoutSettings defined
-				//
-				// User buttons
-				//
-				if (TDbuttonID.size() > 0) {
-					int i = 0;
-					for (i=0; i<(int)TDbuttonID.size(); i++) {
-						buttons[i].nButtonID = TDbuttonID[i];
-						buttons[i].pszButtonText = TDbuttonTitle[i].c_str();
-					}
-					// Final button is OK
-					// CANCEL/YES/NO etc have to be added as buttons
-					buttons[i].nButtonID = IDOK;
-					buttons[i].pszButtonText = L"OK";
+			// LJ DEBUG
+			// if (dwb == MB_USERBUTTON) { // 7 - SpoutSettings defined - used alone
+			//
+			// User buttons
+			//
+			if (TDbuttonID.size() > 0) {
+				int i = 0;
+				for (i=0; i<(int)TDbuttonID.size(); i++) {
+					buttons[i].nButtonID = TDbuttonID[i];
+					buttons[i].pszButtonText = TDbuttonTitle[i].c_str();
 				}
+				// Final button is OK
+				// CANCEL/YES/NO etc have to be added as buttons
+				buttons[i].nButtonID = IDOK;
+				buttons[i].pszButtonText = L"OK";
 			}
+			// }
 			else {
 				//
 				// Common buttons
@@ -1971,22 +1988,22 @@ namespace spoututils {
 			}
 			else {
 				switch (dwl) {
-					case MB_ICONINFORMATION: // 0x40
-						wMainIcon = TD_INFORMATION_ICON;
-						break;
-					case MB_ICONWARNING: // 0x30
-						wMainIcon = TD_WARNING_ICON;
-						break;
-					case MB_ICONQUESTION: // 0x20
-						wMainIcon = TD_INFORMATION_ICON;
-						break;
-					case MB_ICONERROR: // 0x10
-						wMainIcon = TD_ERROR_ICON;
-						break;
-					default:
-						// No icon specified
-						wMainIcon = nullptr;
-						break;
+				case MB_ICONINFORMATION: // 0x40
+					wMainIcon = TD_INFORMATION_ICON;
+					break;
+				case MB_ICONWARNING: // 0x30
+					wMainIcon = TD_WARNING_ICON;
+					break;
+				case MB_ICONQUESTION: // 0x20
+					wMainIcon = TD_INFORMATION_ICON;
+					break;
+				case MB_ICONERROR: // 0x10
+					wMainIcon = TD_ERROR_ICON;
+					break;
+				default:
+					// No icon specified
+					wMainIcon = nullptr;
+					break;
 				}
 			}
 
@@ -2001,12 +2018,17 @@ namespace spoututils {
 			if (!hMainIcon)
 				config.pszMainIcon    = wMainIcon; // Important to remove this
 			config.pszMainInstruction = wstrInstruction.c_str();
-			config.pszContent         = wstrTemp.c_str();
+			if (content) {
+				config.pszContent         = wstrTemp.c_str();
+			}
 
 			// User buttons in TASKDIALOG_BUTTON buttons
 			// Otherwise use common buttons
 			config.nDefaultButton = IDOK;
-			if (dwb == MB_USERBUTTON) {
+
+			// LJ DEBUG
+			// if (dwb == MB_USERBUTTON) {
+			if (TDbuttonID.size() > 0) {
 				config.pButtons = buttons;
 				config.cButtons = (UINT)TDbuttonID.size()+1; // Includes OK button
 			}
@@ -2143,7 +2165,7 @@ namespace spoututils {
 
 					hEdit = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "",
 						WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-						x, y, w, h,	hwnd, (HMENU)IDC_TASK_EDIT, hInstTD, NULL);
+						x, y, w, h, hwnd, (HMENU)IDC_TASK_EDIT, hInstTD, NULL);
 
 					// Set an initial entry in the edit box
 					if (!stredit.empty()) {
@@ -2213,7 +2235,6 @@ namespace spoututils {
 					BringWindowToTop(hCombo);
 
 				}
-
 			}
 
 			if (uNotification == TDN_DESTROYED) {

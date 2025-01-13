@@ -6,7 +6,7 @@
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-		Copyright (c) 2017-2024, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2017-2025, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -34,7 +34,20 @@
 #ifndef __spoutUtils__ // standard way as well
 #define __spoutUtils__
 
-#include "SpoutCommon.h"
+// Enable this define to use independently of Spout source files
+// Also defined in SpoutGLextensions
+#ifndef standalone
+#define standalone
+#endif
+
+#ifdef standalone
+#define SPOUT_DLLEXP
+#else
+// For use together with Spout source files
+#include "SpoutCommon.h" // for legacyOpenGL define and Utils
+#include <stdint.h> // for _uint32 etc
+#endif
+
 #include <windows.h>
 #include <stdio.h> // for console
 #include <iostream> // std::cout, std::end
@@ -73,16 +86,13 @@
 #pragma comment(lib, "Version.lib") // for version resources where necessary
 #pragma comment(lib, "Comctl32.lib") // For taskdialog
 
+// TaskDialog requires comctl32.dll version 6
 #ifdef _MSC_VER
 // https://learn.microsoft.com/en-us/windows/win32/controls/cookbook-overview
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
-
-
-// For custom SpoutMessageBox button
-#define MB_USERBUTTON 0x00000007L
 
 // SpoutUtils
 namespace spoututils {
@@ -121,7 +131,7 @@ namespace spoututils {
 	std::string SPOUT_DLLEXP GetExeVersion(const char* path);
 
 	// Get executable or dll path
-	std::string SPOUT_DLLEXP GetExePath();
+	std::string SPOUT_DLLEXP GetExePath(bool bFull = false);
 
 	// Get executable or dll name
 	std::string SPOUT_DLLEXP GetExeName();
@@ -238,7 +248,6 @@ namespace spoututils {
 	// Replaces an existing MessageBox call.
 	// uType options : standard MessageBox buttons and icons
 	// MB_USERICON - use together with SpoutMessageBoxIcon
-	// MB_USERBUTTON - use together with SpoutMessageBoxButton
 	// Hyperlinks can be included in the content using HTML format.
 	// For example : <a href=\"https://spout.zeal.co/\">Spout home page</a>
 	// Only double quotes are supported and must be escaped.
@@ -270,7 +279,7 @@ namespace spoututils {
 	void SPOUT_DLLEXP SpoutMessageBoxButton(int ID, std::wstring title);
 
 	// Activate modeless mode using SpoutPanel.exe
-	void SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode = true);
+	bool SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode = true);
 
 	// Window handle for SpoutMessageBox where not specified
 	void SPOUT_DLLEXP SpoutMessageBoxWindow(HWND hWnd);
@@ -374,9 +383,11 @@ namespace spoututils {
 		bool bModeless = false; // Default use local TaskDialogIndirect
 		// For custom icon
 		HICON hTaskIcon = NULL;
+
 		// For custom buttons
 		std::vector<int>TDbuttonID;
 		std::vector<std::wstring>TDbuttonTitle;
+
 		// Main instruction text
 		std::wstring wstrInstruction;
 
