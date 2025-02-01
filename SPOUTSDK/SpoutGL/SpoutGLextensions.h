@@ -21,6 +21,8 @@
 //					   https://github.com/robtherich/Spout2
 //			19.04.23 - correct glGenBuffersPROC and glUnmapBufferPROC
 //					   to match with Glew.h
+//			18.01.25 - Rename "standalone" to "StandAloneExtensions"
+//					   to avoid naming conflicts
 //
 //			All changes now documented in SpoutGLextensions.cpp
 //
@@ -70,13 +72,14 @@
 //
 
 //
-// Define "standalone" here to use the extensions independently of Spout source files.
+// Define "standaloneExtensions" here to use
+// the extensions independently of Spout source files.
 // Leave undefined otherwise.
 //
-// #define standalone
+// #define standaloneExtensions
 //
 
-#ifdef standalone
+#ifdef standaloneExtensions
 
 #include <windows.h>
 #include <stdio.h> // for console
