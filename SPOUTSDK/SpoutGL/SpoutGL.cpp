@@ -1377,7 +1377,7 @@ HANDLE spoutGL::LinkGLDXtextures(void* pDXdevice, void* pSharedTexture,  GLuint 
 	DWORD dwError = 0;
 	char tmp[128]={};
 
-	SpoutLogNotice("spoutGL::LinkGLDXtextures - device 0x%X, texture 0x%X, GL texture ID %d",
+	SpoutLogNotice("spoutGL::LinkGLDXtextures - device 0x%X, texture 0x%X, GL texture %d",
 		PtrToUint(pDXdevice), PtrToUint(pSharedTexture), glTexture);
 
 	// Are the GL/DX interop extensions loaded ?
