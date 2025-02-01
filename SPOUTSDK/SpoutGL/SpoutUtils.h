@@ -35,12 +35,10 @@
 #define __spoutUtils__
 
 // Enable this define to use independently of Spout source files
-// Also defined in SpoutGLextensions
-#ifndef standalone
-#define standalone
-#endif
+// See also the stand alone define in SpoutGLextensions
+// #define standaloneUtils
 
-#ifdef standalone
+#ifdef standaloneUtils
 #define SPOUT_DLLEXP
 #else
 // For use together with Spout source files
@@ -118,8 +116,13 @@ namespace spoututils {
 	// Information
 	//
 
-	// Get SDK version number string e.g. "2.007.000"
+	// Get SDK version number string
+	// e.g. "2.007.000"
 	std::string SPOUT_DLLEXP GetSDKversion();
+
+	// Get the Spout version as a single number
+	// e.g. 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
+	int GetSpoutVersion();
 
 	// Computer type
 	bool SPOUT_DLLEXP IsLaptop();
@@ -288,7 +291,7 @@ namespace spoututils {
 	void SPOUT_DLLEXP SpoutMessageBoxPosition(POINT pt);
 
 	// Copy text to the clipboard
-	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* caps);
+	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* text);
 
 	// Open logs folder
 	bool SPOUT_DLLEXP OpenSpoutLogs();

@@ -215,6 +215,10 @@
 				   SpoutMessageBoxModeless bool instead of void
 		07.01.25 - GetExePath - add option for full path with executable name
 		13.01.25 - Add #standalone define in SpoutUtils.h
+		18.01.25 - Rename "#standalone" to "#standaloneUtils" to avoid naming conflicts
+		01.02.25 - Add GetSpoutVersion
+				   OpenSpoutLogs - use _getLogPath
+				   GetSpoutLog - use _getLogFilePath
 
 */
 
@@ -271,10 +275,25 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: GetSDKversion
 	//
-	// Get SDK version number string. 
+	// Get SDK version number string.
+	// e.g. "2.007.000"
 	std::string GetSDKversion()
 	{
 		return SDKversion;
+	}
+
+	// ---------------------------------------------------------
+	// Function: GetSpoutVersion
+	//
+	// Get the Spout version as a single number
+	// e.g. 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
+	int GetSpoutVersion() {
+		// Get SDK version number string e.g. "2.007.009"
+		std::string str = GetSDKversion();
+		// Remove all "." chars
+		str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
+		// integer from string e.g. 2007009
+		return std::stoi(str);
 	}
 
 	// ---------------------------------------------------------
@@ -303,7 +322,7 @@ namespace spoututils {
 
 
 	// ---------------------------------------------------------
-	// Function: GetCurrentModule()
+	// Function: GetCurrentModule
 	// Get the module handle of a process.
 	//
 	// This method is necessary if the process is a dll
@@ -341,7 +360,7 @@ namespace spoututils {
 	}
 
 	// ---------------------------------------------------------
-	// Function: GetExePath()
+	// Function: GetExePath
 	// Get executable or dll path
 	//    bFull
 	//	    true  - full path with executable name
@@ -362,7 +381,7 @@ namespace spoututils {
 	}
 
 	// ---------------------------------------------------------
-	// Function: GetExeName()
+	// Function: GetExeName
 	// Get executable or dll name
 	//
 	std::string GetExeName()
@@ -379,7 +398,7 @@ namespace spoututils {
 	}
 
 	// ---------------------------------------------------------
-	// Function: RemovePath()
+	// Function: RemovePath
 	// Remove path and return the file name
 	//
 	void RemovePath(std::string& path)
@@ -393,7 +412,7 @@ namespace spoututils {
 	}
 
 	// ---------------------------------------------------------
-	// Function: RemoveName()
+	// Function: RemoveName
 	// Remove file name and return the path
 	//
 	void RemoveName(std::string& path)
@@ -692,6 +711,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: GetSpoutLog
 	// Return the Spout log file as a string
+	// If not a full path, prepend appdata\Spout
 	// If a file path is not specified, return the current log file
 	std::string GetSpoutLog(const char* filepath)
 	{
@@ -699,24 +719,26 @@ namespace spoututils {
 		std::string path;
 
 		// Check for specified log file path
-		if (filepath && *filepath != 0)
-			path = filepath;
-		else
+		if (filepath && *filepath != 0) {
+			path = _getLogFilePath(filepath);
+		}
+		else {
 			path = logPath;
-
-		if (!path.empty()) {
-			if (_access(path.c_str(), 0) != -1) { // does the file exist
-				// Open the log file
-				std::ifstream logstream(path);
-				// Source file loaded OK ?
-				if (logstream.is_open()) {
-					// Get the file text as a single string
-					logstr.assign((std::istreambuf_iterator< char >(logstream)), std::istreambuf_iterator< char >());
-					logstr += ""; // ensure a NULL terminator
-					logstream.close();
-				}
+		}
+		
+		 // does the log file exist
+		if (_access(path.c_str(), 0) != -1) {
+			// Open the log file
+			std::ifstream logstream(path);
+			// Source file loaded OK ?
+			if (logstream.is_open()) {
+				// Get the file text as a single string
+				logstr.assign((std::istreambuf_iterator<char>(logstream)), std::istreambuf_iterator<char>());
+				logstr += ""; // ensure a NULL terminator
+				logstream.close();
 			}
 		}
+
 		return logstr;
 	}
 
@@ -1187,23 +1209,23 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: CopyToClipBoard
 	// Copy text to the clipboard
-	bool CopyToClipBoard(HWND hwnd, const char* caps)
+	bool CopyToClipBoard(HWND hwnd, const char* text)
 	{
 		HGLOBAL clipbuffer = NULL;
 		char* buffer = nullptr;
 		bool bret = false;
 
-		if (caps[0] && strlen(caps) > 16) {
+		if (text[0] && strlen(text) > 16) {
 			if (OpenClipboard(hwnd)) {
 				EmptyClipboard();
-				size_t len = (strlen(caps)+1)*sizeof(char);
+				size_t len = (strlen(text) + 1) * sizeof(char);
 				// Use GMEM_MOVEABLE instead of GMEM_DDESHARE to avoid crash on repeat
 				// GlobalUnlock then returns false but ignore
 				clipbuffer = GlobalAlloc(GMEM_MOVEABLE, len); // No crash but GlobalUnlock fails
 				if (clipbuffer) {
 					buffer = (char*)GlobalLock(clipbuffer);
 					if (buffer) {
-						memcpy((void*)buffer, (void*)caps, len);
+						memcpy((void *)buffer, (void *)text, len);
 						SetClipboardData(CF_TEXT, clipbuffer);
 						bret = true;
 					}
@@ -1223,21 +1245,13 @@ namespace spoututils {
 	// Open Spout log folder in Windows explorer
 	bool OpenSpoutLogs()
 	{
-		char* appdatapath = nullptr;
-		errno_t err = 0;
-		std::string logfolder;
-#if defined(_MSC_VER)
-		err = _dupenv_s(&appdatapath, NULL, "APPDATA");
-#else
-		appdatapath = getenv("APPDATA");
-#endif
-		if (err == 0 && appdatapath) {
-			logfolder = appdatapath;
-			logfolder += "\\Spout";
+		// Retrieve Spout log path
+		std::string logfolder = _getLogPath();
+		if (!logfolder.empty()) {
 			if (_access(logfolder.c_str(), 0) != -1) {
 				// Open log folder in explorer
 				ShellExecuteA(NULL, "open", logfolder.c_str(), NULL, NULL, SW_SHOWNORMAL);
-				do {} while (!FindWindowA("CabinetWClass", NULL));
+				do { } while (!FindWindowA("CabinetWClass", NULL));
 			}
 		}
 		else {
@@ -1246,6 +1260,7 @@ namespace spoututils {
 		}
 		return true;
 	}
+
 
 	//
 	// Group: Registry utilities
