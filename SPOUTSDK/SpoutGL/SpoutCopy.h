@@ -203,6 +203,10 @@ class SPOUT_DLLEXP spoutCopy {
 		// Copy BGRA to BGR
 		void bgra2bgr (const void* bgra_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 
+		// SSE capability
+
+		void GetSSE(bool &bSSE2, bool &bSSE3, bool &bSSSE3);
+
 	protected :
 
 		void CheckSSE();

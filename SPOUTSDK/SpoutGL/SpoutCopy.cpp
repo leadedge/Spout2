@@ -74,6 +74,10 @@
 	Version 2.007.013
 	Version 2.007.014
 	19.06.24 - Add ClearAlpha
+	07.02.25 - Add GetSSE to return SSE capability
+
+//
+void spoutCopy::GetSSE
 
 */
 
@@ -1429,6 +1433,16 @@ void spoutCopy::bgra2bgr(const void *bgra_source, void *bgr_dest, unsigned int w
 } // end bgra2bgr
 
 
+//---------------------------------------------------------
+// Function: GetSSE
+// Return SSE2, SSE3 and SSSE3 capability
+//
+void spoutCopy::GetSSE(bool & bSSE2, bool & bSSE3, bool & bSSSE3)
+{
+	bSSE2 = m_bSSE2;
+	bSSE3 = m_bSSE3;
+	bSSSE3 = m_bSSSE3;
+}
 
 //
 // Protected
