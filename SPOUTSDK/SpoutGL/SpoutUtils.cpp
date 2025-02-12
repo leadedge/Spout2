@@ -219,6 +219,10 @@
 		01.02.25 - Add GetSpoutVersion
 				   OpenSpoutLogs - use _getLogPath
 				   GetSpoutLog - use _getLogFilePath
+		02.02.25 - GetSDKversion - optional return integer version number
+				   GetSpoutVersion - get the user Spout version string from the registry
+				   optional return integer version number
+		09.02.25 - Remove debug comments for MB_USERBUTTON (no longer used)
 
 */
 
@@ -275,26 +279,48 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: GetSDKversion
 	//
-	// Get SDK version number string.
-	// e.g. "2.007.000"
-	std::string GetSDKversion()
-	{
+	// Get SDK version number string e.g. "2.007.000"
+	// Optional - return as a single number
+	// e.g. 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
+	std::string GetSDKversion(int * number) {
+		if (number) {
+			// Version number string e.g. "2.007.009"
+			std::string str = SDKversion;
+			// Remove all "." chars
+			str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
+			// integer from string e.g. 2007009
+			*number = std::stoi(str);
+		}
+		// Return the version string
 		return SDKversion;
 	}
 
 	// ---------------------------------------------------------
 	// Function: GetSpoutVersion
 	//
-	// Get the Spout version as a single number
-	// e.g. 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
-	int GetSpoutVersion() {
-		// Get SDK version number string e.g. "2.007.009"
-		std::string str = GetSDKversion();
-		// Remove all "." chars
-		str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
-		// integer from string e.g. 2007009
-		return std::stoi(str);
+	// Get the user Spout version number from the registry
+	// Optional - return as a single number
+	std::string GetSpoutVersion(int * number) {
+		std::string vstr;
+		DWORD dwVers = 0;
+		if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Version", &dwVers)) {
+			// Create version string e.g. 2.006, 2.007, 2.007.009
+			std::string str = std::to_string(dwVers);
+			// 2006, 2007, 2007009
+			vstr = str.substr(0, 1); // first digit
+			vstr += "."; // decimal place
+			vstr += str.substr(1, 3); // Major
+			if (str.size() > 4) {
+				vstr += ".";
+				vstr += str.substr(4, 3); // Minor
+			}
+			if (number) {
+				*number = (int)dwVers;
+			}
+		}
+		return vstr;
 	}
+
 
 	// ---------------------------------------------------------
 	// Function: IsLaptop
@@ -1841,10 +1867,6 @@ namespace spoututils {
 			// Use a custom icon if set
 			if (hTaskIcon) dwButtons |= MB_USERICON;
 
-			// Use multiple buttons if set
-			// LJ DEBUG
-			// if (TDbuttonID.size() > 0) dwButtons |= MB_USERBUTTON;
-
 			//
 			// TaskDialogIndirect is modal and stops the application.
 			// When used within a plugin or similar this can freeze the host application.
@@ -1864,8 +1886,6 @@ namespace spoututils {
 			//   2) Any dialog is requested that requires user input
 			//
 			if (bModeless
-				// LJ DEBUG
-				// && (dwButtons & MB_USERBUTTON)  != MB_USERBUTTON
 				&& TDbuttonID.size() == 0
 				&& (dwButtons & MB_OKCANCEL)    != MB_OKCANCEL
 				&& (dwButtons & MB_YESNO)       != MB_YESNO
@@ -1932,8 +1952,6 @@ namespace spoututils {
 			//
 			DWORD dwb = dwl & 0x0F; // buttons code
 			DWORD dwCommonButtons = MB_OK;
-			// LJ DEBUG
-			// if (dwb == MB_USERBUTTON) { // 7 - SpoutSettings defined - used alone
 			//
 			// User buttons
 			//
@@ -2041,8 +2059,6 @@ namespace spoututils {
 			// Otherwise use common buttons
 			config.nDefaultButton = IDOK;
 
-			// LJ DEBUG
-			// if (dwb == MB_USERBUTTON) {
 			if (TDbuttonID.size() > 0) {
 				config.pButtons = buttons;
 				config.cButtons = (UINT)TDbuttonID.size()+1; // Includes OK button

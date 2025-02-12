@@ -116,13 +116,14 @@ namespace spoututils {
 	// Information
 	//
 
-	// Get SDK version number string
-	// e.g. "2.007.000"
-	std::string SPOUT_DLLEXP GetSDKversion();
-
-	// Get the Spout version as a single number
+	// Get SDK version number string e.g. "2.007.000"
+	// Optional - return as a single number
 	// e.g. 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
-	int GetSpoutVersion();
+	std::string SPOUT_DLLEXP GetSDKversion(int * number = nullptr);
+
+	// Get the user Spout version from the registry
+	// Optional - return as a single number
+	std::string SPOUT_DLLEXP GetSpoutVersion(int * number = nullptr);
 
 	// Computer type
 	bool SPOUT_DLLEXP IsLaptop();
