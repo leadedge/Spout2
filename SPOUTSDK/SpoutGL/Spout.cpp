@@ -1145,7 +1145,7 @@ bool Spout::SelectSender(HWND hwnd)
 		if (GetActiveSender(sendername))
 			selected = GetSenderIndex(sendername);
 
-		// SpoutMessageBox opens either centred on the cursor position 
+		// SpoutMessageBox opens either centered on the cursor position 
 		// or on the application window if the handle is passed in.
 		if (!hwnd) {
 			POINT pt={};
