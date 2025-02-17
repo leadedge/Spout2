@@ -223,6 +223,8 @@
 				   GetSpoutVersion - get the user Spout version string from the registry
 				   optional return integer version number
 		09.02.25 - Remove debug comments for MB_USERBUTTON (no longer used)
+		17.02.25 - Adjust combo box width to the longest item string
+				   Use CBS_DROPDOWNLIST style for list only
 
 */
 
@@ -2225,26 +2227,61 @@ namespace spoututils {
 					y = rect.top;
 					w = 395;
 
-					// Allow for increased height with an icon
-					// and position further right
-					if (h > 90) {
-						y += 20;
-						x += 40;
-						w -= 40;
+					// Find combo box width from the longest item string
+					LONG maxw = 0L;
+					if (comboitems.size() > 0) {
+						HDC hdc = GetDC(hwnd);
+						HFONT hFont = (HFONT)SendMessage(hwnd, WM_GETFONT, 0, 0);
+						SelectObject(hdc, hFont);
+						for (int i = 0; i < (int)comboitems.size(); i++) {
+							// Text width for the current string
+							SIZE size;
+							GetTextExtentPoint32A(hdc, (LPCSTR)comboitems[i].c_str(), (int)comboitems[i].size(), &size);
+							if (size.cx > maxw)
+								maxw = size.cx;
+        				}
+						ReleaseDC(hwnd, hdc);
+						// Add padding for the combo box button
+						maxw += 35;
+					}
+
+					// Adjust to the maximum width required
+					w = 0;
+					if(maxw > 0)
+						w = (int)maxw;
+					if(w < 200) w = 200; // Minimum combo width
+					int dw = rect.right-rect.left;
+					if (w < dw) {
+						// If the width is less than the dialog adjust the x position 
+						x = (dw-w)/2;
+						if (*pTimeout && *pTimeout == 1000000) {
+							// Position in the footer area if there is message content
+							// Less width due to buttons
+							x = rect.left+10;
+							y = rect.bottom-40;
+							w = 220; // Fixed width
+						}
+						else if (h > 90) { // Increased client size for icon
+							// Allow for increased height and position further right
+							y += 20;
+							if (x < 20) {
+								x += 40;
+								w -= 40;
+							}
+						}
+					}
+					else {
+						// If the width is larger, reduce to fit the dialog
+						w = dw-4;
+						x = 2;
 					}
 
 					// Combo box inital height. Changed by content.
 					h = 100;
 
-					// Position in the footer area if there is message content
-					// Less width due to buttons
-					if (*pTimeout && *pTimeout == 1000000) {
-						x = rect.left+10;
-						y = rect.bottom-40;
-						w = 220;
-					}
+					// Use CBS_DROPDOWNLIST style for list only
 					hCombo = CreateWindowExA(WS_EX_CLIENTEDGE, "COMBOBOX", "",
-						CBS_DROPDOWN | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+						CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
 						x, y, w, h, hwnd, (HMENU)IDC_TASK_COMBO, hInstTD, NULL);
 
 					// Add combo box items
@@ -2254,8 +2291,6 @@ namespace spoututils {
 						}
 						// Display an initial item in the selection field
 						SendMessageA(hCombo, CB_SETCURSEL, (WPARAM)comboindex, (LPARAM)0);
-						// Select all text in the edit field
-						SendMessage(hCombo, CB_SETEDITSEL, 0, MAKELONG(0, -1));
 					}
 
 					// Remove icons from the caption
@@ -2266,6 +2301,7 @@ namespace spoututils {
 					BringWindowToTop(hCombo);
 
 				}
+
 			}
 
 			if (uNotification == TDN_DESTROYED) {
