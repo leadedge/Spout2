@@ -2069,6 +2069,7 @@ namespace spoututils {
 				config.dwCommonButtons = dwCommonButtons;
 			}
 
+			
 			config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
 			// TDF_POSITION_RELATIVE_TO_WINDOW Indicates that the task dialog is
 			// centered relative to the window specified by hwndParent.
@@ -2167,7 +2168,6 @@ namespace spoututils {
 					x = TDcentre.x - (w/2);
 					y = TDcentre.y - (h/2);
 				}
-
 				if (bTopMost)
 					SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_NOSIZE);
 				else
@@ -2245,6 +2245,7 @@ namespace spoututils {
 						maxw += 35;
 					}
 
+					// For combo box
 					// Adjust to the maximum width required
 					w = 0;
 					if(maxw > 0)
@@ -2275,9 +2276,6 @@ namespace spoututils {
 						w = dw-4;
 						x = 2;
 					}
-
-					// Combo box inital height. Changed by content.
-					h = 100;
 
 					// Use CBS_DROPDOWNLIST style for list only
 					hCombo = CreateWindowExA(WS_EX_CLIENTEDGE, "COMBOBOX", "",
