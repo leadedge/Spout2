@@ -1,72 +1,74 @@
 
 ===========================================\
 01.03.25\
-Cumulative update
+Cumulative update from beta branch
+
+Version 2.007.016
 
 Spout.cpp
-03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
-10.09.24	- SelectSenderPanel - test for exe file name for terminate
-25.09.24	- Revise ReceiveTexture and extend code comments for sender update
-08.01.25	- Add empty senderlist check in SelectSender()
+- 03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
+- 10.09.24	- SelectSenderPanel - test for exe file name for terminate
+- 25.09.24	- Revise ReceiveTexture and extend code comments for sender update
+- 08.01.25	- Add empty senderlist check in SelectSender()
 
 SpoutCopy.cpp
-07.02.25	- Add GetSSE to return SSE capability
+- 07.02.25	- Add GetSSE to return SSE capability
 
 SpoutDirectX.cpp
-03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
+- 03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
 
 SpoutFrameCount.cpp
 
 SpoutGL.cpp
-10.09.24    - ReadTextureData - Create a local OpenGL texture
-      Read back in the required format
-    - Destructor - specify sender only for name release
-21.09.24	- Revise ReadTextureData for buffer pitch, format and type
-			  Replace ReadTexturePixels with ReadTextureData
+- 10.09.24    - ReadTextureData - Create a local OpenGL texture\
+      Read back in the required format\
+      Destructor - specify sender only for name release
+- 21.09.24	- Revise ReadTextureData for buffer pitch, format and type\
+			  Replace ReadTexturePixels with ReadTextureData\
 			  Revise code comments for ReadTextureData
-23.09.24	- LoadTetxurePixels - independent pbos and indices
+- 23.09.24	- LoadTetxurePixels - independent pbos and indices\
 			  ReadTextureData - allow zero argument row pitch for RGB/RGBA
-25.09.24	- Test with all texture formats. Revise code comments.
-01.10.24	- Revise ReadTextureData -
-			  Check that the source texture format matches the pixel data type
-			  Specify correct format for glReadPixels and glGetTexImage
-			- CleanupInterop - remove warning if already released
-02.10.24	- InitTexture - internal texture format GL_RGBA8
-07.10.24	- Remove unused flags m_bMirror and m_bSwapRB
-08.10.24	- Initialize OpenGL version class variable in constructor
+- 25.09.24	- Test with all texture formats. Revise code comments.
+- 01.10.24	- Revise ReadTextureData\
+			  Check that the source texture format matches the pixel data type\
+			  Specify correct format for glReadPixels and glGetTexImage\
+			  CleanupInterop - remove warning if already released
+- 02.10.24	- InitTexture - internal texture format GL_RGBA8
+- 07.10.24	- Remove unused flags m_bMirror and m_bSwapRB
+- 08.10.24	- Initialize OpenGL version class variable in constructor\
 			  Add GetGLversion()
 
 SpoutGLextensions.cpp
-28.09.24	- SpoutGLextensions.h - add #define GL_TEXTURE_SWIZZLE_RGBA
-22.10.24	- Add glIsMemoryObjectEXT, glCreateBuffers
+- 28.09.24	- SpoutGLextensions.h - add #define GL_TEXTURE_SWIZZLE_RGBA
+- 22.10.24	- Add glIsMemoryObjectEXT, glCreateBuffers
 
 SpoutReceiver.cpp
-21.09.24	-Add ReadTextureData
+- 21.09.24	-Add ReadTextureData
 
 SpoutSender.cpp
-21.09.24	-Add ReadTextureData
+- 21.09.24	-Add ReadTextureData
 
 SpoutSendernames.cpp
 
 SpoutSharedMemory.cpp
 
 SpoutUtils.cpp
-10.09.24 - ReadPathFromRegistry -
+- 10.09.24 - ReadPathFromRegistry -\
    "valuename" argument can be null for the(Default) key string
-06.10.24 - OpenSpoutConsole, EnableSpoutLog - add optional title argument
-22.12.24 - Remove MB_USERBUTTON. Use TDbuttonID.size() instead.
+- 06.10.24 - OpenSpoutConsole, EnableSpoutLog - add optional title argument
+- 22.12.24 - Remove MB_USERBUTTON. Use TDbuttonID.size() instead.\
    SpoutMessageBoxModeless bool instead of void
-07.01.25 - GetExePath - add option for full path with executable name
-13.01.25 - Add #standalone define in SpoutUtils.h
-18.01.25 - Rename "#standalone" to "#standaloneUtils" to avoid naming conflicts
-01.02.25 - Add GetSpoutVersion
-   OpenSpoutLogs - use _getLogPath
+- 07.01.25 - GetExePath - add option for full path with executable name
+- 13.01.25 - Add #standalone define in SpoutUtils.h
+- 18.01.25 - Rename "#standalone" to "#standaloneUtils" to avoid naming conflicts
+- 01.02.25 - Add GetSpoutVersion\
+   OpenSpoutLogs - use _getLogPath\
    GetSpoutLog - use _getLogFilePath
-02.02.25 - GetSDKversion - optional return integer version number
-   GetSpoutVersion - get the user Spout version string from the registry
+- 02.02.25 - GetSDKversion - optional return integer version number\
+   GetSpoutVersion - get the user Spout version string from the registry\
    optional return integer version number
-09.02.25 - Remove debug comments for MB_USERBUTTON (no longer used)
-17.02.25 - Adjust combo box width to the longest item string
+- 09.02.25 - Remove debug comments for MB_USERBUTTON (no longer used)
+- 17.02.25 - Adjust combo box width to the longest item string
    Use CBS_DROPDOWNLIST style for list only
 
 
