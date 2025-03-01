@@ -36,7 +36,7 @@
 
 // Enable this define to use independently of Spout source files
 // See also the stand alone define in SpoutGLextensions
-#define standaloneUtils
+// #define standaloneUtils
 
 #ifdef standaloneUtils
 #define SPOUT_DLLEXP
