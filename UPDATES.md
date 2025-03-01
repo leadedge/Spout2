@@ -1,3 +1,75 @@
+
+===========================================\
+01.03.25\
+Cumulative update
+
+Spout.cpp
+03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
+10.09.24	- SelectSenderPanel - test for exe file name for terminate
+25.09.24	- Revise ReceiveTexture and extend code comments for sender update
+08.01.25	- Add empty senderlist check in SelectSender()
+
+SpoutCopy.cpp
+07.02.25	- Add GetSSE to return SSE capability
+
+SpoutDirectX.cpp
+03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
+
+SpoutFrameCount.cpp
+
+SpoutGL.cpp
+10.09.24    - ReadTextureData - Create a local OpenGL texture
+      Read back in the required format
+    - Destructor - specify sender only for name release
+21.09.24	- Revise ReadTextureData for buffer pitch, format and type
+			  Replace ReadTexturePixels with ReadTextureData
+			  Revise code comments for ReadTextureData
+23.09.24	- LoadTetxurePixels - independent pbos and indices
+			  ReadTextureData - allow zero argument row pitch for RGB/RGBA
+25.09.24	- Test with all texture formats. Revise code comments.
+01.10.24	- Revise ReadTextureData -
+			  Check that the source texture format matches the pixel data type
+			  Specify correct format for glReadPixels and glGetTexImage
+			- CleanupInterop - remove warning if already released
+02.10.24	- InitTexture - internal texture format GL_RGBA8
+07.10.24	- Remove unused flags m_bMirror and m_bSwapRB
+08.10.24	- Initialize OpenGL version class variable in constructor
+			  Add GetGLversion()
+
+SpoutGLextensions.cpp
+28.09.24	- SpoutGLextensions.h - add #define GL_TEXTURE_SWIZZLE_RGBA
+22.10.24	- Add glIsMemoryObjectEXT, glCreateBuffers
+
+SpoutReceiver.cpp
+21.09.24	-Add ReadTextureData
+
+SpoutSender.cpp
+21.09.24	-Add ReadTextureData
+
+SpoutSendernames.cpp
+
+SpoutSharedMemory.cpp
+
+SpoutUtils.cpp
+10.09.24 - ReadPathFromRegistry -
+   "valuename" argument can be null for the(Default) key string
+06.10.24 - OpenSpoutConsole, EnableSpoutLog - add optional title argument
+22.12.24 - Remove MB_USERBUTTON. Use TDbuttonID.size() instead.
+   SpoutMessageBoxModeless bool instead of void
+07.01.25 - GetExePath - add option for full path with executable name
+13.01.25 - Add #standalone define in SpoutUtils.h
+18.01.25 - Rename "#standalone" to "#standaloneUtils" to avoid naming conflicts
+01.02.25 - Add GetSpoutVersion
+   OpenSpoutLogs - use _getLogPath
+   GetSpoutLog - use _getLogFilePath
+02.02.25 - GetSDKversion - optional return integer version number
+   GetSpoutVersion - get the user Spout version string from the registry
+   optional return integer version number
+09.02.25 - Remove debug comments for MB_USERBUTTON (no longer used)
+17.02.25 - Adjust combo box width to the longest item string
+   Use CBS_DROPDOWNLIST style for list only
+
+
 ===========================================\
 27.08.24\
 Update Master from Beta branch.
@@ -15,39 +87,35 @@ Version 2.007.015
 	- Executable files copied to a Binaries/Examples folder
 4) OpenGL examples
     - Windows
-      - Basic Windows OpenGL examples without library dependency
+     -- Basic Windows OpenGL examples without library dependency
     - Openframeworks
-       - "CopySource.bat" for easy selection and copy of example source files
+      -- "CopySource.bat" for easy selection and copy of example source files
     - MSbuild to automate build
-       - build.bat - build current example
-	   - build-all.bat - build all examples
-	   - Executable files copied to a Binaries folder
-	   - Separate documentation
+      -- build.bat - build current example
+	  -- build-all.bat - build all examples
+	  -- Executable files copied to a Binaries folder
+	  -- Separate documentation
 
 Spout.cpp
-- 13.06.24	- SelectSender
-  - open SpoutMessagebox for no senders.
-  - Add OK/CANCEL and test for empty senderlist.
+- 13.06.24	- SelectSender - open SpoutMessagebox for no senders.
+			  Add OK/CANCEL and test for empty senderlist.
 - 21.06.24	- Add GetSenderIndex
-  - Modify SelectSender to show the active sender as current
-- 03.07.24	- SelectSender
-  - pass hWnd to SpoutPanel command line for it to open centred on the window
-- 04.07.24	- CheckSpoutPanel
-  - allow for use of SpoutMessageBox
-- 15.07.24	- SelectSender
-  - after cast of window handle to long 
-  - convert to a string of 8 characters without new line
+			  Modify SelectSender to show the active sender as current
+- 03.07.24	- SelectSender - pass hWnd to SpoutPanel command line
+			  for it to open centred on the window
+- 04.07.24	- CheckSpoutPanel - allow for use of SpoutMessageBox
+- 15.07.24	- SelectSender - after cast of window handle to long 
+			  convert to a string of 8 characters without new line
 - 16.07.24	- Add receiver ID3D11Texture2D* GetSenderTexture()
 - 21.08.24	- SetPerformancePreference - remove null path test
-- 23.08.24	- SelectSender
-  - if no SpoutPanel and SpoutMessageBox is used\
-    test for successful open of the sender share handle
-  - Warn if NT share handle
-  - Warn for open failure
-  - Allow setting preferences for laptop
-  - Allow sender adapter test for desktop
-  - Refer to Spout settings if no resolution or a desktop system
-  - Also warn in SpoutPanel
+- 23.08.24	- SelectSender - if no SpoutPanel and SpoutMessageBox is used :
+			  test for successful open of the sender share handle
+			   - Warn if NT share handle
+			   - Warn for open failure
+			   - Allow setting preferences for laptop
+			   - Allow sender adapter test for desktop
+			   - Refer to Spout settings if no resolution or a desktop system
+			  Also warn in SpoutPanel
 
 SpoutCopy.cpp
 - 19.06.24 - Add ClearAlpha
@@ -55,8 +123,7 @@ SpoutCopy.cpp
 SpoutDirectX.cpp
 
 SpoutFrameCount.cpp
-- 04.07.24	- SetNewFrame
-   - add m_hCountSemaphore to initial check
+- 04.07.24	- SetNewFrame - add m_hCountSemaphore to initial check
 
 SpoutGL.cpp
 - 26.06.14	- Restore LoadTexturePixels for 20% speed gain
@@ -73,12 +140,11 @@ SpoutSendernames.cpp
 
 SpoutUtils.cpp
 - 14.06.24 - SpoutUtils.h - PR #114
-  - Correct conditional definition of EndTiming in header file
-  - Allow mingw to define USE_CHRONO if available
-  - Include <math.h> to fix mingw build
-- 01.07.24
-  - Increase SpoutMessageBox combo width for NDI sender names
-  - Add "SpoutMessageBoxModeless" to warning caption if SpoutPanel not found
+		     Correct conditional definition of EndTiming in header file
+		     Allow mingw to define USE_CHRONO if available
+		     Include <math.h> to fix mingw build
+- 01.07.24 - Increase SpoutMessageBox combo width for NDI sender names
+		     Add "SpoutMessageBoxModeless" to warning caption if SpoutPanel not found
 - 02.07.24 - Add SpoutMessageBoxPosition
 - 09.07.24 - TDcallbackProc TDN_CREATED : common rect and coordinates
 - 15.07.24 - Update Spout SDK version
@@ -87,10 +153,9 @@ SpoutUtils.cpp
 - 08.08.24 - SpoutMessageBox - removed unused WS_HSCROLL in edit box control
 - 10.08.25 - SpoutMessageBox - select all text in the combobox edit field
 - 11.08.24 - Add CBS_HASSTRINGS style to combobox and detect CB_ERR.
-- 16.08.22 - ExecuteProcess
-  - SpoutMessageBoxIcon return conditional value\
-  to avoid warning C4800: 'BOOL': forcing value to bool 'true' or 'false'
-  - GetSpoutLog - remove null argument check for use of existing log path
+- 16.08.22 - ExecuteProcess, SpoutMessageBoxIcon return conditional value
+			 to avoid warning C4800: 'BOOL': forcing value to bool 'true' or 'false'
+		   - GetSpoutLog - remove null argument check for use of existing log path
 - 20.08.24 - GetSpoutLog - add check for empty filepath
 
 ===========================================\
