@@ -74,6 +74,10 @@
 	Version 2.007.013
 	Version 2.007.014
 	19.06.24 - Add ClearAlpha
+	07.02.25 - Add GetSSE to return SSE capability
+
+//
+void spoutCopy::GetSSE
 
 */
 
@@ -110,7 +114,7 @@ void spoutCopy::CopyPixels(const unsigned char *source, unsigned char *dest,
 	if (glFormat == GL_LUMINANCE)
 		Size = width*height;
 	else if (glFormat == GL_RGB || glFormat == GL_BGR_EXT)
-		Size = width*height * 3;
+		Size = width*height*3;
 
 	if (bInvert) {
 		FlipBuffer(source, dest, width, height, glFormat);
@@ -1429,6 +1433,16 @@ void spoutCopy::bgra2bgr(const void *bgra_source, void *bgr_dest, unsigned int w
 } // end bgra2bgr
 
 
+//---------------------------------------------------------
+// Function: GetSSE
+// Return SSE2, SSE3 and SSSE3 capability
+//
+void spoutCopy::GetSSE(bool & bSSE2, bool & bSSE3, bool & bSSSE3)
+{
+	bSSE2 = m_bSSE2;
+	bSSE3 = m_bSSE3;
+	bSSSE3 = m_bSSSE3;
+}
 
 //
 // Protected

@@ -2,7 +2,7 @@
 
 					SpoutSender.h
 
-	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -258,6 +258,10 @@ class SPOUT_DLLEXP SpoutSender {
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0);
+	// Copy OpenGL texture data to a pixel buffer
+	bool ReadTextureData(GLuint SourceID, GLuint SourceTarget,
+		void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
+		GLenum dataformat, GLenum datatype, bool bInvert = false, GLuint HostFBO = 0);
 
 	//
 	// Formats

@@ -93,7 +93,7 @@
 // ====================================================================================
 //
 /*
-	Copyright (c) 2019-2024. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2019-2025. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -903,7 +903,8 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 		SyncEventName);
 
 	if (!hSyncEvent) {
-		// Do not block if the sender has not created a sync event
+		// Do not block if the sender or receiver
+		// has not created a sync event
 		return true;
 	}
 
@@ -1146,12 +1147,12 @@ void spoutFrameCount::OpenFrameSync(const char* SenderName)
 		return;
 	}
 
-	// Return if already enabled for this sender
+	// Return if already enabled for this name
 	if (m_hSyncEvent && strcmp(SenderName, m_SenderName) == 0) {
 		return;
 	}
 
-	// Close any existing event for a new sender
+	// Close any existing event for a new name
 	if (m_hSyncEvent) {
 		CloseHandle(m_hSyncEvent);
 		m_hSyncEvent = NULL;

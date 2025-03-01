@@ -67,9 +67,11 @@
 //			19.04.24	- Add #ifndef for pre-defined constants WGL_CONTEXT_FLAGS
 //						  and GL consts that are not present in GL.h
 //	Version 2.007.014
+//			28.09.24	- SpoutGLextensions.h - add #define GL_TEXTURE_SWIZZLE_RGBA
+//			22.10.24	- Add glIsMemoryObjectEXT, glCreateBuffers
 //
 
-	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -195,14 +197,17 @@ glGetUniformLocationPROC glGetUniformLocation = NULL;
 glTextureStorage2DPROC   glTextureStorage2D  = NULL;
 glCreateTexturesPROC     glCreateTextures    = NULL;
 
-glCreateMemoryObjectsEXTPROC      glCreateMemoryObjectsEXT = NULL;
-glDeleteMemoryObjectsEXTPROC      glDeleteMemoryObjectsEXT = NULL;
-glTexStorageMem2DEXTPROC          glTexStorageMem2DEXT = NULL;
-glTextureStorageMem2DEXTPROC      glTextureStorageMem2DEXT = NULL;
-glImportMemoryWin32HandleEXTPROC  glImportMemoryWin32HandleEXT = NULL;
-glBufferStorageMemEXTPROC         glBufferStorageMemEXT = NULL;
-glMemoryObjectParameterivEXTPROC  glMemoryObjectParameterivEXT;
+glCreateMemoryObjectsEXTPROC        glCreateMemoryObjectsEXT = NULL;
+glDeleteMemoryObjectsEXTPROC        glDeleteMemoryObjectsEXT = NULL;
+glTexStorageMem2DEXTPROC            glTexStorageMem2DEXT = NULL;
+glTextureStorageMem2DEXTPROC        glTextureStorageMem2DEXT = NULL;
+glImportMemoryWin32HandleEXTPROC    glImportMemoryWin32HandleEXT = NULL;
+glBufferStorageMemEXTPROC           glBufferStorageMemEXT = NULL;
+glMemoryObjectParameterivEXTPROC    glMemoryObjectParameterivEXT;
 glGetMemoryObjectParameterivEXTPROC glGetMemoryObjectParameterivEXT = NULL;
+glIsMemoryObjectEXTPROC             glIsMemoryObjectEXT = NULL;
+glCreateBuffersPROC                 glCreateBuffers = NULL;
+glBindBufferBasePROC                glBindBufferBase = NULL;
 
 
 //---------------------------
@@ -495,7 +500,9 @@ bool loadComputeShaderExtensions()
 	glBufferStorageMemEXT        = (glBufferStorageMemEXTPROC)wglGetProcAddress("glBufferStorageMemEXT");
 	glMemoryObjectParameterivEXT = (glMemoryObjectParameterivEXTPROC)wglGetProcAddress("glMemoryObjectParameterivEXT");
 	glGetMemoryObjectParameterivEXT = (glGetMemoryObjectParameterivEXTPROC)wglGetProcAddress("glGetMemoryObjectParameterivEXT");
-
+	glIsMemoryObjectEXT          = (glIsMemoryObjectEXTPROC)wglGetProcAddress("glIsMemoryObjectEXT");
+	glCreateBuffers              = (glCreateBuffersPROC)wglGetProcAddress("glCreateBuffers");
+	glBindBufferBase             = (glBindBufferBasePROC)wglGetProcAddress("glBindBufferBase");
 
 	if(glCreateProgram != NULL
 		&& glCreateShader != NULL
@@ -528,7 +535,10 @@ bool loadComputeShaderExtensions()
 		&& glImportMemoryWin32HandleEXT != NULL
 		&& glBufferStorageMemEXT != NULL
 		&& glMemoryObjectParameterivEXT != NULL
-		&& glGetMemoryObjectParameterivEXT != NULL) {
+		&& glGetMemoryObjectParameterivEXT != NULL
+		&& glIsMemoryObjectEXT != NULL
+		&& glCreateBuffers != NULL
+		&& glBindBufferBase != NULL) {
 			return true;
 	}
 	else {

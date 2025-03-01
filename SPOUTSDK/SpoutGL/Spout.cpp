@@ -302,11 +302,15 @@
 //					   - Allow sender adapter test for desktop
 //					   - Refer to Spout settings if no resolution or a desktop system
 //					  Also warn in SpoutPanel
+//		03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
+//		10.09.24	- SelectSenderPanel - test for exe file name for terminate
+//		25.09.24	- Revise ReceiveTexture and extend code comments for sender update
+//		08.01.25	- Add empty senderlist check in SelectSender()
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -461,7 +465,6 @@ void Spout::SetSenderName(const char* sendername)
 	// console window was closed instead of the main program.
 	sendernames.CleanSenders();
 
-
 }
 
 //---------------------------------------------------------
@@ -512,17 +515,17 @@ void Spout::ReleaseSender()
 //
 //   The fbo must be bound for read. 
 //
-//   The sending texture can be larger than the size that the sender is set up for
-//   For example, if the application is using only a portion of the allocated texture space,  
-//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture)
+//   The sending texture attached to the fbo can be larger than the sender
+//   if the application is using only a portion of the allocated texture space,  
+//   such as for FreeframeGL plugins. (The 2.006 equivalent is DrawToSharedTexture)
 //
 //   To send the default OpenGL framebuffer, specify FboID = 0. 
 //   If width and height are also 0, the function determines the viewport size. 
 //
 bool Spout::SendFbo(GLuint FboID, unsigned int fbowidth, unsigned int fboheight, bool bInvert)
 {
-	// For texture sharing, the size of the texture attached to the
-	// fbo must be equal to or larger than the shared texture
+	// The size of the texture attached to the fbo must be
+	// equal to or larger than the sending texture
 	// Establish local width and height in case the viewport size is used
 	unsigned int width  = fbowidth;
 	unsigned int height = fboheight;
@@ -532,9 +535,9 @@ bool Spout::SendFbo(GLuint FboID, unsigned int fbowidth, unsigned int fboheight,
 		// Default framebuffer fails if iconic
 		if (IsIconic(m_hWnd))
 			return false;
-		// This additional test allows the application to get the viewport size 
-		// only when necessary to prevent repeated calls to glGetIntegerv if
-		// performance is affected.
+		// Get the viewport size if width and height are passed as zero.
+		// Use this only when necessary to prevent repeated calls to
+		// glGetIntegerv because performance can be affected.
 		if (width == 0 || height == 0) {
 			// Get the viewport size
 			unsigned int vpdims[4]={0};
@@ -551,6 +554,8 @@ bool Spout::SendFbo(GLuint FboID, unsigned int fbowidth, unsigned int fboheight,
 
 	// All clear to send the fbo texture
 	if(m_bTextureShare) {
+		// Specify 0 for texture ID and target
+		// to write the texture attached to the fbo.
 		// 3840-2160 - 60fps (0.45 msec per frame)
 		return WriteGLDXtexture(0, 0, width, height, bInvert, FboID);
 	}
@@ -614,12 +619,9 @@ bool Spout::SendTexture(GLuint TextureID, GLuint TextureTarget,
 // Function: SendImage
 // Send pixel image
 //
-//     SendImage creates a shared texture using image pixels as the source
-//     instead of an OpenGL texture. The format of the image to be sent is RGBA 
-//     by default but can be a different OpenGL format, for example GL_RGB or GL_BGRA_EXT.
-//
+//     SendImage creates a shared texture using image pixels as the source.
+//     RGBA, BGRA, RGB, BGR formats are supported.
 //     The invert flag is optional and false by default.
-//
 //     The ID of a currently bound fbo should be passed in.
 //
 bool Spout::SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert, GLuint HostFBO)
@@ -628,27 +630,30 @@ bool Spout::SendImage(const unsigned char* pixels, unsigned int width, unsigned 
 	if (!pixels || width == 0 || height == 0)
 		return false;
 
-	// Only RGBA, BGRA, RGB, BGR supported
+	// Only RGBA, BGRA, RGB, BGR are supported
 	// (DX11 format DXGI_FORMAT_B8G8R8A8_UNORM)
-	if (!(glFormat == GL_RGBA || glFormat == GL_BGRA_EXT || glFormat == GL_RGB || glFormat == GL_BGR_EXT))
+	GLenum glformat = glFormat;
+	if (!(glformat == GL_RGBA || glformat == GL_BGRA_EXT
+	   || glformat == GL_RGB  || glformat == GL_BGR_EXT)) {
+		SpoutLogError("Spout::SendImage - unsupported format 0x%X\n", glformat);
 		return false;
+	}
 
 	// Check for BGRA support
-	GLenum glformat = glFormat;
 	if (!m_bBGRAavailable) {
 		SpoutLogWarning("Spout::SendImage - BGRA extensions not available");
 		// If the bgra extensions are not available and the user
 		// provided GL_BGR_EXT or GL_BGRA_EXT do not use them
-		if (glFormat == GL_BGR_EXT) glformat = GL_RGB;
-		if (glFormat == GL_BGRA_EXT) glformat = GL_RGBA;
+		if (glformat == GL_BGR_EXT)  glformat = GL_RGB;
+		if (glformat == GL_BGRA_EXT) glformat = GL_RGBA;
 	}
-	
+
 	// Create or update the sender
 	if (!CheckSender(width, height))
 		return false;
 
 	//
-	// Write pixel data to the rgba shared texture according to pixel format
+	// Write pixel data to the rgba shared texture
 	//
 	if (m_bTextureShare) {
 		// Texture share compatible
@@ -884,6 +889,7 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 	if (!OpenSpout()) {
 		return false;
 	}
+
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
 
@@ -893,29 +899,22 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 		// Let the application know
 		m_bConnected = true;
 
-		// If the connected sender sharehandle or name is different,
-		// the receiver is re-initialized and m_bUpdated is set true
-		// so that the application re-allocates the receiving texture.
+		// If the connected sender sharehandle or name is different, the receiver
+		// is re-initialized and m_bUpdated is set true by ReceiveSenderData so that
+		// IsUpdated() returns true and the application re-allocates the receiving texture.
 		if (m_bUpdated) {
-
 			// If the sender is new or changed, reset shared/linked textures
 			if (m_bTextureShare) {
-
 				// CreateInterop set "true" for receiver
 				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 					return false;
 				}
 			}
-	
-			// If receiving to a texture, return to update it.
-			// The application detects the change with IsUpdated().
-			if (TextureID != 0 && TextureTarget != 0) {
-				return true;
-			}
-
+			// Return now for the application to test IsUpdated() and 
+			// re-allocate the receiving texture.
 			// m_bUpdated is reset to false on the next call to 
-			// ReceiveSenderData until the sender changes size again
-
+			// ReceiveSenderData until the sender changes size again.
+			return true;
 		}
 
 		// Was the sender's shared texture handle null
@@ -1135,6 +1134,9 @@ bool Spout::SelectSender(HWND hwnd)
 
 		// create a local sender list
 		std::vector<std::string> senderlist = GetSenderList();
+		if(senderlist.empty())
+			return false;
+
 	
 		// Get the active sender index "selected".
 		// The index is passed in to SpoutMessageBox and used as the current combobox item.
@@ -1143,7 +1145,7 @@ bool Spout::SelectSender(HWND hwnd)
 		if (GetActiveSender(sendername))
 			selected = GetSenderIndex(sendername);
 
-		// SpoutMessageBox opens either centred on the cursor position 
+		// SpoutMessageBox opens either centered on the cursor position 
 		// or on the application window if the handle is passed in.
 		if (!hwnd) {
 			POINT pt={};
@@ -1190,6 +1192,7 @@ bool Spout::SelectSender(HWND hwnd)
 					str ="WARNING - failed to open texture share handle\n\n";
 					if (IsLaptop()) {
 						str += "Laptop system detected.\n\n";
+#ifdef NTDDI_WIN10_RS4
 						str += "<a href=\"ms-settings:display-advancedgraphics\">Windows Graphics Performance Preferences</a>\n";
 						// Windows preferences for laptop power saving graphics
 						//     -1 - No preference
@@ -1244,6 +1247,9 @@ bool Spout::SelectSender(HWND hwnd)
 								}
 							}
 						}
+#else
+						str += "No graphics preferences available\n";
+#endif
 					} // endif laptop system
 					else {
 						int nadapters = GetNumAdapters();
@@ -1675,7 +1681,6 @@ bool Spout::GetAdapterInfo(int index, char* description, char* output, int maxch
 // April 2018 update "Redstone 4" (Version 1803, build 17134) and later.
 // Windows 10 SDK required included in Visual Studio 2017 ver.15.7 
 //
-#ifdef NTDDI_WIN10_RS4
 
 //---------------------------------------------------------
 // Function: GetPerformancePreference
@@ -1768,8 +1773,6 @@ bool Spout::IsApplicationPath(const char* path)
 
 	return spoutdx.IsApplicationPath(path);
 }
-#endif
-
 
 //
 // Group: 2.006 compatibility
@@ -2071,7 +2074,7 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 	if (!m_bBGRAavailable) {
 		// If the bgra extensions are not available and the user
 		// provided GL_BGR_EXT or GL_BGRA_EXT do not use them
-		if (glFormat == GL_BGR_EXT) glformat = GL_RGB; // GL_BGR_EXT
+		if (glFormat == GL_BGR_EXT)  glformat = GL_RGB; // GL_BGR_EXT
 		if (glFormat == GL_BGRA_EXT) glformat = GL_RGBA; // GL_BGRA_EXT
 	}
 
@@ -2265,16 +2268,19 @@ bool Spout::SelectSenderPanel(const char* message)
 					// Look through all processes to find SpoutPanel
 					while (hRes && !done) {
 #ifdef UNICODE
-						_wcsicmp(pEntry.szExeFile, L"SpoutPanel.exe");
+						int iRet = _wcsicmp(pEntry.szExeFile, L"SpoutPanel.exe");
 #else
-						_tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
+						int iRet = _tcsicmp(pEntry.szExeFile, _T("SpoutPanel.exe"));
 #endif
-						HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, pEntry.th32ProcessID);
-						if (hProcess != NULL) {
-							// Terminate SpoutPanel and it's mutex if it opened
-							TerminateProcess(hProcess, 9);
-							CloseHandle(hProcess);
-							done = true;
+						// Terminate if the file name is SpoutPanel.exe
+						if (iRet == 0) {
+							HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, 0, pEntry.th32ProcessID);
+							if (hProcess != NULL) {
+								// Terminate SpoutPanel and it's mutex if it opened
+								TerminateProcess(hProcess, 9);
+								CloseHandle(hProcess);
+								done = true;
+							}
 						}
 
 						if (!done)

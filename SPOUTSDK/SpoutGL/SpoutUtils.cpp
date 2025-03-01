@@ -9,7 +9,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2017-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2017-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -208,8 +208,23 @@
 				   to avoid warning C4800: 'BOOL': forcing value to bool 'true' or 'false'
 				 - GetSpoutLog - remove null argument check for use of existing log path
 		20.08.24 - GetSpoutLog - add check for empty filepath
-
-
+		10.09.24 - ReadPathFromRegistry -
+				   "valuename" argument can be null for the(Default) key string
+		06.10.24 - OpenSpoutConsole, EnableSpoutLog - add optional title argument
+		22.12.24 - Remove MB_USERBUTTON. Use TDbuttonID.size() instead.
+				   SpoutMessageBoxModeless bool instead of void
+		07.01.25 - GetExePath - add option for full path with executable name
+		13.01.25 - Add #standalone define in SpoutUtils.h
+		18.01.25 - Rename "#standalone" to "#standaloneUtils" to avoid naming conflicts
+		01.02.25 - Add GetSpoutVersion
+				   OpenSpoutLogs - use _getLogPath
+				   GetSpoutLog - use _getLogFilePath
+		02.02.25 - GetSDKversion - optional return integer version number
+				   GetSpoutVersion - get the user Spout version string from the registry
+				   optional return integer version number
+		09.02.25 - Remove debug comments for MB_USERBUTTON (no longer used)
+		17.02.25 - Adjust combo box width to the longest item string
+				   Use CBS_DROPDOWNLIST style for list only
 
 */
 
@@ -266,11 +281,48 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: GetSDKversion
 	//
-	// Get SDK version number string. 
-	std::string GetSDKversion()
-	{
+	// Get SDK version number string e.g. "2.007.000"
+	// Optional - return as a single number
+	// e.g. 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
+	std::string GetSDKversion(int * number) {
+		if (number) {
+			// Version number string e.g. "2.007.009"
+			std::string str = SDKversion;
+			// Remove all "." chars
+			str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
+			// integer from string e.g. 2007009
+			*number = std::stoi(str);
+		}
+		// Return the version string
 		return SDKversion;
 	}
+
+	// ---------------------------------------------------------
+	// Function: GetSpoutVersion
+	//
+	// Get the user Spout version number from the registry
+	// Optional - return as a single number
+	std::string GetSpoutVersion(int * number) {
+		std::string vstr;
+		DWORD dwVers = 0;
+		if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Version", &dwVers)) {
+			// Create version string e.g. 2.006, 2.007, 2.007.009
+			std::string str = std::to_string(dwVers);
+			// 2006, 2007, 2007009
+			vstr = str.substr(0, 1); // first digit
+			vstr += "."; // decimal place
+			vstr += str.substr(1, 3); // Major
+			if (str.size() > 4) {
+				vstr += ".";
+				vstr += str.substr(4, 3); // Minor
+			}
+			if (number) {
+				*number = (int)dwVers;
+			}
+		}
+		return vstr;
+	}
+
 
 	// ---------------------------------------------------------
 	// Function: IsLaptop
@@ -298,7 +350,7 @@ namespace spoututils {
 
 
 	// ---------------------------------------------------------
-	// Function: GetCurrentModule()
+	// Function: GetCurrentModule
 	// Get the module handle of a process.
 	//
 	// This method is necessary if the process is a dll
@@ -336,22 +388,28 @@ namespace spoututils {
 	}
 
 	// ---------------------------------------------------------
-	// Function: GetExePath()
+	// Function: GetExePath
 	// Get executable or dll path
+	//    bFull
+	//	    true  - full path with executable name
+	//	    false - path without executable name (default)
 	//
-	std::string GetExePath()
+	std::string GetExePath(bool bFull)
 	{
 		char path[MAX_PATH]{};
 		// exe or dll
 		GetModuleFileNameA(GetCurrentModule(), path, MAX_PATH);
 		std::string exepath = path;
+		
 		// Remove name
-		RemoveName(exepath);
+		if(!bFull)
+			RemoveName(exepath);
+
 		return exepath;
 	}
 
 	// ---------------------------------------------------------
-	// Function: GetExeName()
+	// Function: GetExeName
 	// Get executable or dll name
 	//
 	std::string GetExeName()
@@ -368,7 +426,7 @@ namespace spoututils {
 	}
 
 	// ---------------------------------------------------------
-	// Function: RemovePath()
+	// Function: RemovePath
 	// Remove path and return the file name
 	//
 	void RemovePath(std::string& path)
@@ -382,7 +440,7 @@ namespace spoututils {
 	}
 
 	// ---------------------------------------------------------
-	// Function: RemoveName()
+	// Function: RemoveName
 	// Remove file name and return the path
 	//
 	void RemoveName(std::string& path)
@@ -405,7 +463,7 @@ namespace spoututils {
 	// A console window opens without logs.
 	// Useful for debugging with console output.
 	//
-	void OpenSpoutConsole()
+	void OpenSpoutConsole(const char* title)
 	{
 		if (!GetConsoleWindow()) {
 
@@ -419,7 +477,7 @@ namespace spoututils {
 				const errno_t err = freopen_s(&pCout, "CONOUT$", "w", stdout);
 				if (err == 0) {
 					std::string name = GetExeName();
-					name += ".log";
+					if (title != nullptr) name = title;
 					SetConsoleTitleA(name.c_str());
 					bConsole = true;
 					// Optional - disable close button
@@ -539,14 +597,15 @@ namespace spoututils {
 	// Logs are displayed in a console window.  
 	// Useful for program development.
 	//
-	void EnableSpoutLog()
+	void EnableSpoutLog(const char *title)
 	{
-		if (!GetConsoleWindow())
-			OpenSpoutConsole();
 
 		std::string name = GetExeName();
 		name += ".log";
-		SetConsoleTitleA(name.c_str());
+		if (title != nullptr) name = title;
+
+		if (!GetConsoleWindow())
+			OpenSpoutConsole(name.c_str());
 
 		bConsole = true;
 		bEnableLog = true;
@@ -680,6 +739,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: GetSpoutLog
 	// Return the Spout log file as a string
+	// If not a full path, prepend appdata\Spout
 	// If a file path is not specified, return the current log file
 	std::string GetSpoutLog(const char* filepath)
 	{
@@ -687,24 +747,26 @@ namespace spoututils {
 		std::string path;
 
 		// Check for specified log file path
-		if (filepath && *filepath != 0)
-			path = filepath;
-		else
+		if (filepath && *filepath != 0) {
+			path = _getLogFilePath(filepath);
+		}
+		else {
 			path = logPath;
-
-		if (!path.empty()) {
-			if (_access(path.c_str(), 0) != -1) { // does the file exist
-				// Open the log file
-				std::ifstream logstream(path);
-				// Source file loaded OK ?
-				if (logstream.is_open()) {
-					// Get the file text as a single string
-					logstr.assign((std::istreambuf_iterator< char >(logstream)), std::istreambuf_iterator< char >());
-					logstr += ""; // ensure a NULL terminator
-					logstream.close();
-				}
+		}
+		
+		 // does the log file exist
+		if (_access(path.c_str(), 0) != -1) {
+			// Open the log file
+			std::ifstream logstream(path);
+			// Source file loaded OK ?
+			if (logstream.is_open()) {
+				// Get the file text as a single string
+				logstr.assign((std::istreambuf_iterator<char>(logstream)), std::istreambuf_iterator<char>());
+				logstr += ""; // ensure a NULL terminator
+				logstream.close();
 			}
 		}
+
 		return logstr;
 	}
 
@@ -855,10 +917,10 @@ namespace spoututils {
 			strcpy_s(logChars, 1024, currentLog);
 
 			// Console logging
-			if (bEnableLog && bConsole) {
-				FILE* out = stdout; // Console output
+			if (bConsole && bEnableLog) {
 				// Yellow text for warnings and errors
 				HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+				FILE* out = stdout; // Console output
 				if (level == SPOUT_LOG_WARNING || level == SPOUT_LOG_ERROR)
 					SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 				if (level != SPOUT_LOG_NONE) {
@@ -891,7 +953,6 @@ namespace spoututils {
 					logFile.close();
 				}
 			} // end file log
-
 		}
 	}
 
@@ -935,7 +996,7 @@ namespace spoututils {
 	{
 		if (!message)
 			return 0;
-
+		
 		return MessageTaskDialog(NULL, message, "Message", MB_OK, dwMilliseconds);
 
 	}
@@ -1097,7 +1158,6 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxButton
 	// Custom button for SpoutMessageBox
-	// Use together with MB_USERBUTTON
 	void SpoutMessageBoxButton(int ID, std::wstring title)
 	{
 		TDbuttonID.push_back(ID);
@@ -1109,7 +1169,7 @@ namespace spoututils {
 	// Enable modeless functionality using SpoutPanel.exe
 	// Used where a Windows MessageBox would interfere with the application GUI.
 	// Depends on SpoutPanel.exe version 2.072 or greater distributed with Spout release.
-	void SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode)
+	bool SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode)
 	{
 		// If setting modeless, find the path for SpoutPanel.exe
 		if (bMode) {
@@ -1126,7 +1186,7 @@ namespace spoututils {
 					if (fvers >= 2.072) {
 						// Set modeless
 						bModeless = bMode;
-						return;
+						return true;
 					}
 					sprintf_s(path, MAX_PATH, "SpoutPanel version %s\n2.070 or greater required for modeless\n\n", version.c_str());
 					errmsg = path;
@@ -1149,13 +1209,14 @@ namespace spoututils {
 			bModeless = false;
 			SpoutMessageBox(NULL, errmsg.c_str(), "SpoutMessageBoxModeless - Warning", MB_ICONWARNING | MB_OK);
 			bModeless = oldmode;
-			return;
+			return false;
 		}
-		// SpoutPanel found or disable modeless
+
+		// Disable modeless
 		bModeless = bMode;
+
+		return true;
 	}
-
-
 
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxWindow
@@ -1176,23 +1237,23 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: CopyToClipBoard
 	// Copy text to the clipboard
-	bool CopyToClipBoard(HWND hwnd, const char* caps)
+	bool CopyToClipBoard(HWND hwnd, const char* text)
 	{
 		HGLOBAL clipbuffer = NULL;
 		char* buffer = nullptr;
 		bool bret = false;
 
-		if (caps[0] && strlen(caps) > 16) {
+		if (text[0] && strlen(text) > 16) {
 			if (OpenClipboard(hwnd)) {
 				EmptyClipboard();
-				size_t len = (strlen(caps)+1)*sizeof(char);
+				size_t len = (strlen(text) + 1) * sizeof(char);
 				// Use GMEM_MOVEABLE instead of GMEM_DDESHARE to avoid crash on repeat
 				// GlobalUnlock then returns false but ignore
 				clipbuffer = GlobalAlloc(GMEM_MOVEABLE, len); // No crash but GlobalUnlock fails
 				if (clipbuffer) {
 					buffer = (char*)GlobalLock(clipbuffer);
 					if (buffer) {
-						memcpy((void*)buffer, (void*)caps, len);
+						memcpy((void *)buffer, (void *)text, len);
 						SetClipboardData(CF_TEXT, clipbuffer);
 						bret = true;
 					}
@@ -1212,21 +1273,13 @@ namespace spoututils {
 	// Open Spout log folder in Windows explorer
 	bool OpenSpoutLogs()
 	{
-		char* appdatapath = nullptr;
-		errno_t err = 0;
-		std::string logfolder;
-#if defined(_MSC_VER)
-		err = _dupenv_s(&appdatapath, NULL, "APPDATA");
-#else
-		appdatapath = getenv("APPDATA");
-#endif
-		if (err == 0 && appdatapath) {
-			logfolder = appdatapath;
-			logfolder += "\\Spout";
+		// Retrieve Spout log path
+		std::string logfolder = _getLogPath();
+		if (!logfolder.empty()) {
 			if (_access(logfolder.c_str(), 0) != -1) {
 				// Open log folder in explorer
 				ShellExecuteA(NULL, "open", logfolder.c_str(), NULL, NULL, SW_SHOWNORMAL);
-				do {} while (!FindWindowA("CabinetWClass", NULL));
+				do { } while (!FindWindowA("CabinetWClass", NULL));
 			}
 		}
 		else {
@@ -1235,6 +1288,7 @@ namespace spoututils {
 		}
 		return true;
 	}
+
 
 	//
 	// Group: Registry utilities
@@ -1303,7 +1357,8 @@ namespace spoututils {
 	// Read subkey character string
 	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath, DWORD dwSize)
 	{
-		if (!subkey || !*subkey || !valuename || !*valuename || !filepath)
+		// Valuename can be null for the (Default) key string
+		if (!subkey || !*subkey || !filepath)
 			return false;
 
 		HKEY  hRegKey = NULL;
@@ -1585,7 +1640,6 @@ namespace spoututils {
 		}
 	}
 
-
 	//
 	// Private functions
 	//
@@ -1815,9 +1869,6 @@ namespace spoututils {
 			// Use a custom icon if set
 			if (hTaskIcon) dwButtons |= MB_USERICON;
 
-			// Use multiple buttons if set
-			if (TDbuttonID.size() > 0) dwButtons |= MB_USERBUTTON;
-
 			//
 			// TaskDialogIndirect is modal and stops the application.
 			// When used within a plugin or similar this can freeze the host application.
@@ -1837,10 +1888,10 @@ namespace spoututils {
 			//   2) Any dialog is requested that requires user input
 			//
 			if (bModeless
-			  && (dwButtons & MB_USERBUTTON) != MB_USERBUTTON
-			  && (dwButtons & MB_OKCANCEL) != MB_OKCANCEL
-			  && (dwButtons & MB_YESNO) != MB_YESNO
-			  && (dwButtons & MB_YESNOCANCEL) != MB_YESNOCANCEL) {
+				&& TDbuttonID.size() == 0
+				&& (dwButtons & MB_OKCANCEL)    != MB_OKCANCEL
+				&& (dwButtons & MB_YESNO)       != MB_YESNO
+				&& (dwButtons & MB_YESNOCANCEL) != MB_YESNOCANCEL) {
 				// Construct command line for SpoutPanel
 				std::string str = std::to_string(PtrToUint(hwndMain));
 				str += ",";                                        // HWND
@@ -1868,17 +1919,21 @@ namespace spoututils {
 			//
 
 			// User buttons
-			TASKDIALOG_BUTTON buttons[10]={0};
+			TASKDIALOG_BUTTON buttons[10]={ 0 };
 
 			// Use a wide string to avoid a pre-sized buffer
-			int size_needed = MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), NULL, 0);
-			std::wstring wstrTemp(size_needed, 0);
-			MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), &wstrTemp[0], size_needed);
+			std::wstring wstrTemp;
+			if (content) {
+				int size_needed = MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), NULL, 0);
+				wstrTemp.resize(size_needed);
+				MultiByteToWideChar(CP_UTF8, 0, content, (int)strlen(content), &wstrTemp[0], size_needed);
+			}
+
 
 			// Caption (default caption is the executable name)
 			std::wstring wstrCaption;
 			if (caption) {
-				size_needed = MultiByteToWideChar(CP_UTF8, 0, caption, (int)strlen(caption), NULL, 0);
+				int size_needed = MultiByteToWideChar(CP_UTF8, 0, caption, (int)strlen(caption), NULL, 0);
 				wstrCaption.resize(size_needed);
 				MultiByteToWideChar(CP_UTF8, 0, caption, (int)strlen(caption), &wstrCaption[0], size_needed);
 			}
@@ -1891,7 +1946,7 @@ namespace spoututils {
 			// Topmost global flag
 			bTopMost = ((dwButtons & MB_TOPMOST) != 0);
 			LONG dwl = (LONG)dwButtons;
-			if(bTopMost)
+			if (bTopMost)
 				dwl = dwl ^ MB_TOPMOST;
 
 			//
@@ -1899,22 +1954,21 @@ namespace spoututils {
 			//
 			DWORD dwb = dwl & 0x0F; // buttons code
 			DWORD dwCommonButtons = MB_OK;
-			if (dwb == MB_USERBUTTON) { // 7 - SpoutSettings defined
-				//
-				// User buttons
-				//
-				if (TDbuttonID.size() > 0) {
-					int i = 0;
-					for (i=0; i<(int)TDbuttonID.size(); i++) {
-						buttons[i].nButtonID = TDbuttonID[i];
-						buttons[i].pszButtonText = TDbuttonTitle[i].c_str();
-					}
-					// Final button is OK
-					// CANCEL/YES/NO etc have to be added as buttons
-					buttons[i].nButtonID = IDOK;
-					buttons[i].pszButtonText = L"OK";
+			//
+			// User buttons
+			//
+			if (TDbuttonID.size() > 0) {
+				int i = 0;
+				for (i=0; i<(int)TDbuttonID.size(); i++) {
+					buttons[i].nButtonID = TDbuttonID[i];
+					buttons[i].pszButtonText = TDbuttonTitle[i].c_str();
 				}
+				// Final button is OK
+				// CANCEL/YES/NO etc have to be added as buttons
+				buttons[i].nButtonID = IDOK;
+				buttons[i].pszButtonText = L"OK";
 			}
+			// }
 			else {
 				//
 				// Common buttons
@@ -1969,22 +2023,22 @@ namespace spoututils {
 			}
 			else {
 				switch (dwl) {
-					case MB_ICONINFORMATION: // 0x40
-						wMainIcon = TD_INFORMATION_ICON;
-						break;
-					case MB_ICONWARNING: // 0x30
-						wMainIcon = TD_WARNING_ICON;
-						break;
-					case MB_ICONQUESTION: // 0x20
-						wMainIcon = TD_INFORMATION_ICON;
-						break;
-					case MB_ICONERROR: // 0x10
-						wMainIcon = TD_ERROR_ICON;
-						break;
-					default:
-						// No icon specified
-						wMainIcon = nullptr;
-						break;
+				case MB_ICONINFORMATION: // 0x40
+					wMainIcon = TD_INFORMATION_ICON;
+					break;
+				case MB_ICONWARNING: // 0x30
+					wMainIcon = TD_WARNING_ICON;
+					break;
+				case MB_ICONQUESTION: // 0x20
+					wMainIcon = TD_INFORMATION_ICON;
+					break;
+				case MB_ICONERROR: // 0x10
+					wMainIcon = TD_ERROR_ICON;
+					break;
+				default:
+					// No icon specified
+					wMainIcon = nullptr;
+					break;
 				}
 			}
 
@@ -1999,12 +2053,15 @@ namespace spoututils {
 			if (!hMainIcon)
 				config.pszMainIcon    = wMainIcon; // Important to remove this
 			config.pszMainInstruction = wstrInstruction.c_str();
-			config.pszContent         = wstrTemp.c_str();
+			if (content) {
+				config.pszContent         = wstrTemp.c_str();
+			}
 
 			// User buttons in TASKDIALOG_BUTTON buttons
 			// Otherwise use common buttons
 			config.nDefaultButton = IDOK;
-			if (dwb == MB_USERBUTTON) {
+
+			if (TDbuttonID.size() > 0) {
 				config.pButtons = buttons;
 				config.cButtons = (UINT)TDbuttonID.size()+1; // Includes OK button
 			}
@@ -2012,6 +2069,7 @@ namespace spoututils {
 				config.dwCommonButtons = dwCommonButtons;
 			}
 
+			
 			config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
 			// TDF_POSITION_RELATIVE_TO_WINDOW Indicates that the task dialog is
 			// centered relative to the window specified by hwndParent.
@@ -2110,7 +2168,6 @@ namespace spoututils {
 					x = TDcentre.x - (w/2);
 					y = TDcentre.y - (h/2);
 				}
-
 				if (bTopMost)
 					SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_NOSIZE);
 				else
@@ -2141,7 +2198,7 @@ namespace spoututils {
 
 					hEdit = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "",
 						WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-						x, y, w, h,	hwnd, (HMENU)IDC_TASK_EDIT, hInstTD, NULL);
+						x, y, w, h, hwnd, (HMENU)IDC_TASK_EDIT, hInstTD, NULL);
 
 					// Set an initial entry in the edit box
 					if (!stredit.empty()) {
@@ -2170,26 +2227,59 @@ namespace spoututils {
 					y = rect.top;
 					w = 395;
 
-					// Allow for increased height with an icon
-					// and position further right
-					if (h > 90) {
-						y += 20;
-						x += 40;
-						w -= 40;
+					// Find combo box width from the longest item string
+					LONG maxw = 0L;
+					if (comboitems.size() > 0) {
+						HDC hdc = GetDC(hwnd);
+						HFONT hFont = (HFONT)SendMessage(hwnd, WM_GETFONT, 0, 0);
+						SelectObject(hdc, hFont);
+						for (int i = 0; i < (int)comboitems.size(); i++) {
+							// Text width for the current string
+							SIZE size;
+							GetTextExtentPoint32A(hdc, (LPCSTR)comboitems[i].c_str(), (int)comboitems[i].size(), &size);
+							if (size.cx > maxw)
+								maxw = size.cx;
+        				}
+						ReleaseDC(hwnd, hdc);
+						// Add padding for the combo box button
+						maxw += 35;
 					}
 
-					// Combo box inital height. Changed by content.
-					h = 100;
-
-					// Position in the footer area if there is message content
-					// Less width due to buttons
-					if (*pTimeout && *pTimeout == 1000000) {
-						x = rect.left+10;
-						y = rect.bottom-40;
-						w = 220;
+					// For combo box
+					// Adjust to the maximum width required
+					w = 0;
+					if(maxw > 0)
+						w = (int)maxw;
+					if(w < 200) w = 200; // Minimum combo width
+					int dw = rect.right-rect.left;
+					if (w < dw) {
+						// If the width is less than the dialog adjust the x position 
+						x = (dw-w)/2;
+						if (*pTimeout && *pTimeout == 1000000) {
+							// Position in the footer area if there is message content
+							// Less width due to buttons
+							x = rect.left+10;
+							y = rect.bottom-40;
+							w = 220; // Fixed width
+						}
+						else if (h > 90) { // Increased client size for icon
+							// Allow for increased height and position further right
+							y += 20;
+							if (x < 20) {
+								x += 40;
+								w -= 40;
+							}
+						}
 					}
+					else {
+						// If the width is larger, reduce to fit the dialog
+						w = dw-4;
+						x = 2;
+					}
+
+					// Use CBS_DROPDOWNLIST style for list only
 					hCombo = CreateWindowExA(WS_EX_CLIENTEDGE, "COMBOBOX", "",
-						CBS_DROPDOWN | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+						CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
 						x, y, w, h, hwnd, (HMENU)IDC_TASK_COMBO, hInstTD, NULL);
 
 					// Add combo box items
@@ -2199,8 +2289,6 @@ namespace spoututils {
 						}
 						// Display an initial item in the selection field
 						SendMessageA(hCombo, CB_SETCURSEL, (WPARAM)comboindex, (LPARAM)0);
-						// Select all text in the edit field
-						SendMessage(hCombo, CB_SETEDITSEL, 0, MAKELONG(0, -1));
 					}
 
 					// Remove icons from the caption
