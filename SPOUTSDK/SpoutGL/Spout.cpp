@@ -2650,8 +2650,6 @@ bool Spout::ReceiveSenderData()
 	DWORD dwFormat = m_dwFormat;
 	HANDLE dxShareHandle = m_dxShareHandle;
 
-
-
 	// Retrieve the sender information : width, height, sharehandle and format.
 	SharedTextureInfo info;
 	if (sendernames.getSharedInfo(sendername, &info)) {

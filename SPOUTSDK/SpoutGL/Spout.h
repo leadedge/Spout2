@@ -284,7 +284,6 @@ protected:
 	char m_AdapterName[256];
 	bool m_bAdapt; // Receiver adapt to the sender adapter
 
-
 };
 
 #endif
