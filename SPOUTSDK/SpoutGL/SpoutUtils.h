@@ -58,6 +58,7 @@
 #include <Shellapi.h> // for shellexecute
 #include <Commctrl.h> // For TaskDialogIndirect
 #include <math.h> // for round
+#include <algorithm> // for string character remove
 
 //
 // C++11 timer is only available for MS Visual Studio 2015 and above.
