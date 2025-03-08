@@ -379,6 +379,8 @@ namespace spoututils {
 		bool OpenSpoutPanel(const char* message);
 		// Application window
 		HWND hwndMain = NULL;
+		// Taskdialog window to prevent multiple open
+		HWND hwndTask = NULL;
 		// Position for TaskDialog window centre
 		POINT TDcentre = {};
 		// For topmost
