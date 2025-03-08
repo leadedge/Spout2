@@ -2,7 +2,7 @@
 
 	Spout OpenFrameworks Spout Utilities example
 
-	Copyright (C) 2015-2024 Lynn Jarvis.
+	Copyright (C) 2015-2025 Lynn Jarvis.
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -48,7 +48,7 @@ class ofApp : public ofBaseApp{
 		GLint glFormat = GL_RGBA;      // Default OpenGL texture format
 		bool bShowInfo = true;         // Show on-screen information
 		bool bMessagebox = false;      // Prevent mouse item selection while messagebox is open
-		void doMessagebox(int item);   // SpoutMessageBox examples
+		void doMessagebox(std::string title);   // SpoutMessageBox examples
 
 		ofImage myBoxImage;            // Image for the 3D demo
 		ofFbo myFbo;                   // For texture send
@@ -56,6 +56,24 @@ class ofApp : public ofBaseApp{
 		float rotY = 0.0f;
 		int mousex = 0;
 		int mousey = 0;
+
+		// Button
+		struct button {
+			int x = 0;
+			int y = 0;
+			int width = 0;
+			int height = 0;
+			std::string title="";
+			ofColor backcol = 192;
+			ofColor textcol = 0;
+		};
+
+		std::vector<button> buttons;
+		void AddButton(int x, int y, int w, int h,
+			std::string title, ofColor backcol = 192, ofColor textcol = 0);
+		void AddButtons();
+		void DrawButtons();
+
 
 		// Openframeworks truetype font for larger on-screen text
 		ofTrueTypeFont myFont{};

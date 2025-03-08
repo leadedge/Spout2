@@ -12,7 +12,7 @@
 	OpenFrameworks 12
 	Visual Studio 2022
 
-	Copyright (C) 2022-2024 Lynn Jarvis.
+	Copyright (C) 2022-2025 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -36,7 +36,7 @@ void ofApp::setup(){
 
 	ofBackground(0, 0, 0);
 
-	// OpenSpoutConsole(); // Empty console for debugging
+	OpenSpoutConsole(); // Empty console for debugging
 
  	strcpy_s(sendername, 256, "Spout Utilities"); // The sender name
 	ofSetWindowTitle(sendername); // show it on the title bar
@@ -235,6 +235,9 @@ void ofApp::setup(){
 	// Starting value for sender fps display
 	g_SenderFps = GetRefreshRate();
 
+	// Add menu buttons
+	AddButtons();
+
 } // end setup
 
 
@@ -292,7 +295,6 @@ void ofApp::draw() {
 			if (sender.GetDX11format() != DXGI_FORMAT_B8G8R8A8_UNORM) { // default
 				str += sender.GLformatName(sender.GLDXformat());
 			}
-			// DrawString(str, 10, 30);
 
 			// Show sender fps and framecount if available
 			if (sender.GetFrame() > 0) {
@@ -303,7 +305,6 @@ void ofApp::draw() {
 				str += ofToString((int)(round(g_SenderFps)));
 				str += " : frame  ";
 				str += ofToString(sender.GetFrame());
-				// DrawString(str, 10, 50);
 			}
 			DrawString(str, 10, 20);
 
@@ -316,78 +317,8 @@ void ofApp::draw() {
 			// See "doMessageBox" for source code.
 			//
 
-			// Menu rectangles
-			ofFill();
-			ofSetColor(128, 32, 0); // red
-			// About
-			ofDrawRectangle(10, 35, 140, 20); // -15
-			ofSetColor(0, 45, 90); // blue
-			// Position
-			ofDrawRectangle(10, 57, 140, 20);
-			// Simple
-			ofDrawRectangle(10, 79, 140, 20);
-			// Variable
-			ofDrawRectangle(10, 101, 140, 20);
-			// Timeout
-			ofDrawRectangle(10, 123, 140, 20);
-			// Options
-			ofDrawRectangle(10, 145, 140, 20);
-			// Instruction
-			ofDrawRectangle(10, 167, 140, 20);
-			// Icon
-			ofDrawRectangle(10, 189, 140, 20);
-			// Buttons
-			ofDrawRectangle(10, 211, 140, 20);
-			// Edit
-			ofDrawRectangle(10, 233, 140, 20);
-			// Combobox
-			ofDrawRectangle(10, 255, 140, 20);
-			// Modeless
-			ofDrawRectangle(10, 277, 140, 20);
-			// Hyperlink
-			ofDrawRectangle(10, 299, 140, 20);
-			// Clipboard
-			ofDrawRectangle(10, 321, 140, 20);
-
-			// Highlight item
-			// About = 10, 35, 140, 20 (y 35-55)
-			if (mousex > 10 && mousex < 150	&& mousey > 34 && mousey < 336) {
-				int y = ((mousey/22)*22)+13;
-				ofSetColor(0, 128, 128); // cyan
-				ofDrawRectangle(10, y, 140, 20);
-			}
-
-			// Item text
-			ofSetColor(255);
-			str = "         About";
-			DrawString(str, 10, 50); // 80-50 = -30
-			str = "       Position";
-			DrawString(str, 10, 72); // +22
-			str = "        Simple";
-			DrawString(str, 10, 94);
-			str = "       Variable";
-			DrawString(str, 10, 116);
-			str = "       Timeout";
-			DrawString(str, 10, 138);
-			str = "       Options";
-			DrawString(str, 10, 160);
-			str = "     Instruction";
-			DrawString(str, 10, 182);
-			str = "         Icon";
-			DrawString(str, 10, 204);
-			str = "       Buttons";
-			DrawString(str, 10, 226);
-			str = "         Edit";
-			DrawString(str, 10, 248);
-			str = "     Combobox";
-			DrawString(str, 10, 270);
-			str = "      Modeless";
-			DrawString(str, 10, 292);
-			str = "      Hyperlink";
-			DrawString(str, 10, 314);
-			str = "      Clipboard";
-			DrawString(str, 10, 336);
-
+			// Draw menu buttons
+			DrawButtons();
 		}
 		else {
 			str = "Sender not initialized\n";
@@ -405,96 +336,16 @@ void ofApp::mouseMoved(int x, int y)
 
 void ofApp::mousePressed(int x, int y, int button)
 {
-	if (x > 10 && x <150 && !bMessagebox) {
-
-		// About        35-55
-		// Position     57-77
-		// Simple       79
-		// Variable    101
-		// Timeout     123
-		// Options     145
-		// Instruction 167
-		// Icon        189
-		// Buttons     211
-		// Edit        233
-		// Combobox    255
-		// Modeless    277
-		// Hyperlink   299
-		// Clipboard   321
-
-		//  About
-		// if (y >35 && y <65) {
-		if (y >35 && y <55) {
-			doMessagebox('a');
+	if (!bMessagebox) {
+		// Which button was pressed
+		for (size_t i = 0; i < buttons.size(); i++) {
+			if (x > buttons[i].x
+				&& x < (buttons[i].x + buttons[i].width)
+				&& y > buttons[i].y
+				&& y < (buttons[i].y + buttons[i].height)) {
+				doMessagebox(buttons[i].title);
+			}
 		}
-
-		//  Position
-		if (y >57 && y <77) {
-			doMessagebox('b');
-		}
-
-		//  Simple
-		// if (y >79 && y <109) {
-		if (y >79 && y <99) {
-			doMessagebox('c');
-		}
-
-		// Variable
-		if (y >101 && y <121) {
-			doMessagebox('d');
-		}
-
-		// Timeout
-		// if (y >123 && y <153) {
-		if (y >123 && y <143) {
-			doMessagebox('e');
-		}
-
-		// Options
-		if (y >145 && y <165) {
-			doMessagebox('f');
-		}
-
-		// Instruction
-		if (y >167 && y <187) {
-			doMessagebox('g');
-		}
-
-		// Icon
-		if (y > 189 && y < 209) {
-			doMessagebox('h');
-		}
-
-		// Buttons
-		if (y > 211 && y < 231) {
-			doMessagebox('i');
-		}
-
-		// Edit
-		if (y > 233 && y < 253) {
-			doMessagebox('j');
-		}
-
-		// Combobox
-		if (y > 255 && y < 275) {
-			doMessagebox('k');
-		}
-
-		// Modeless
-		if (y > 277 && y < 297) {
-			doMessagebox('l');
-		}
-
-		// Hyperlink
-		if (y > 299 && y < 319) {
-			doMessagebox('m');
-		}
-
-		// Clipboard
-		if (y > 321 && y < 341) {
-			doMessagebox('n');
-		}
-
 	}
 
 }
@@ -592,14 +443,10 @@ void ofApp::keyPressed(int key)
 //
 // SpoutMessageBox examples
 //
-void ofApp::doMessagebox(int item)
+void ofApp::doMessagebox(std::string title)
 {
 	// Prevent mouse item selection while a messagebox is open
 	bMessagebox = true;
-
-	//
-	// SpoutMessageBox
-	//
 
 	//
 	// " About
@@ -607,7 +454,7 @@ void ofApp::doMessagebox(int item)
 	// Practical example of an About box.
 	// Typically created using resources for Windows programs
 	//
-	if (item == 'a') {
+	if (title == "About") {
 		std::string str = "Utility functions of the Spout library\n";
 		str += "Examples can be tested here and the source provides example code.\n\n";
 		str += "spoutMessageBox\n";
@@ -663,23 +510,23 @@ void ofApp::doMessagebox(int item)
 	//     spoutMessageBoxWindow(HWND hwnd)
 	// A null handle returns to default centre on the desktop
 	//
-	if (item == 'b') {
-		std::string str = "SpoutMessageBox opens centred on the desktop by default.\n";
-		str += "Some functions include a window handle argument which\n";
-		str += "can be used to centre on the application window.\n\n";
-		str += "SpoutMessageBoxWindow provides a window handle\n";
-		str += "for those functions that do not include one, and applies\n";
-		str += "for all subsequent SpoutMessageBox functions.\n";
-		str += "A null handle returns to default centre on the desktop.\n\n";
+	if (title == "Position") {
+		std::string str = "SpoutMessageBox opens centred on the application window\n";
+		str += "if a handle argument is passed in, or on the desktop for a null\n";
+		str += "window handle.\n\n";
+		str += "\"SpoutMessageBoxWindow\" provides a window handle\n";
+		str += "in place of the window handle argument, and all functions\n";
+		str += "centre on that window thereafter. A null handle returns to\n";
+		str += "the position depending on the window handle passed in.\n\n";
 		str += "    spoutMessageBoxWindow(HWND hwnd)\n\n";
-		str += "Click \"Window\" to center messages on the sketch window\n";
+		str += "Click \"Window\" to center messages on the window\n";
 		str += "Click \"Desktop\" to center on the desktop\n";
 		str += "Click \"OK\" for no change\n\n";
 		str += "If the application window is centred on the desktop now,\n";
 		str += "move it to one side so the effect can be more easily seen.\n";
 		SpoutMessageBoxButton(1000, L"Window");
 		SpoutMessageBoxButton(2000, L"Desktop");
-		int iret = SpoutMessageBox(NULL, str.c_str(), "Window", MB_TOPMOST | MB_OK);
+		int iret = SpoutMessageBox(NULL, str.c_str(), "Position", MB_TOPMOST | MB_OK);
 		if (iret == 1000) { // Window centre
 			SpoutMessageBoxWindow(ofGetWin32Window());
 			SpoutMessageBox("Messages will be centred on the application window");
@@ -694,7 +541,7 @@ void ofApp::doMessagebox(int item)
 	// Simple messagebox with message and optional timeout
 	// The dialog closes itself if a timeout is specified.
 	//
-	if (item == 'c') {
+	if (title == "Simple") {
 		std::string str = "Simple messagebox with message and optional millisecond timeout\n";
 		str += "The dialog closes itself if a timeout is specified\n\n";
 		str += "  SpoutMessageBox(const char * message, DWORD dwTimeout = 0)\n\n";
@@ -707,7 +554,7 @@ void ofApp::doMessagebox(int item)
 	//
 	// MessageBox with variable arguments
 	//
-	if (item == 'd') {
+	if (title == "Variable") {
 		std::string str = "Variable arguments provide a replacement for \"printf\"\n";
 		str += "which avoids having to open a console.\n";
 		str += "Useful for debugging and tracing errors\n";
@@ -731,7 +578,7 @@ void ofApp::doMessagebox(int item)
 	//
 	// Messagebox with message, caption, and milliseconds timeout
 	//
-	if (item == 'e') {
+	if (title == "Timeout") {
 		std::string str = "A timeout can be added to any of the spoutMessageBox functions\n";
 		str += "except for a MessageBox with variable arguments\n\n";
 		str += "Timeout is in millseconds and disabled for any MessageBox requiring user input.\n";
@@ -742,7 +589,7 @@ void ofApp::doMessagebox(int item)
 	//
 	// MessageBox options
 	//
-	if (item == 'f') {
+	if (title == "Options") {
 		std::string str = "Optional arguments are the same as for Windows ";
 		str += "<a href=\"https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messagebox\">MessageBox</a>\n";
 		str += "but limited by translation to ";
@@ -775,7 +622,7 @@ void ofApp::doMessagebox(int item)
 	//
 	// MessageBox with message, caption, type, instruction
 	//
-	if (item == 'g') {
+	if (title == "Instruction") {
 		std::string str = "MessageBox with message, caption, type and instruction\n\n";
 		str += "The main instruction is a special heading in large blue font\n";
 		str += "above the message and is useful to draw attention to the content\n";
@@ -789,7 +636,7 @@ void ofApp::doMessagebox(int item)
 	//
 	// A full path to an icon file (.ico) is required
 	//
-	if (item == 'h') {
+	if (title == "Icon") {
 		std::string iconfile = GetExePath() + "data\\Spout.ico";
 		SpoutMessageBoxIcon(iconfile);
 		std::string str = "A custom icon can be loaded from an icon \".ico\" image file:\n";
@@ -808,14 +655,14 @@ void ofApp::doMessagebox(int item)
 	//
 	// The button ID is returned by the messagebox
 	//
-	if (item == 'i') {
+	if (title == "Buttons") {
 		std::string str = "As well as OK / CANCEL etc, multiple user buttons can be added.\n";
 		str += "Each button has a unique ID and button text. The text is a wide string.\n";
 		str += "The ID is returned and can be used to choose the required action.\n\n";
 		str += "      SpoutMessageBoxButton(1000, L\"Button 1\");\n";
 		str += "      SpoutMessageBoxButton(2000, L\"Button 2\");\n";
 		str += "      SpoutMessageBoxButton(3000, L\"Button 3\");\n";
-		str += "      int iret = SpoutMessageBox(\"User button message\", \"Choose a button\");\n";
+		str += "      int iret = SpoutMessageBox(\"User buttons\", \"Choose a button\");\n";
 		str += "      if(iret == 1000) SpoutMessageBox(\"Button 1 pressed\");\n";
 		str += "      if(iret == 2000) SpoutMessageBox(\"Button 2 pressed\");\n";
 		str += "      if(iret == 3000) SpoutMessageBox(\"Button 3 pressed\");\n\n";
@@ -823,7 +670,7 @@ void ofApp::doMessagebox(int item)
 		SpoutMessageBoxButton(1000, L"Button 1");
 		SpoutMessageBoxButton(2000, L"Button 2");
 		SpoutMessageBoxButton(3000, L"Button 3");
-		int iret = SpoutMessageBox(NULL, str.c_str(), "User button message", MB_OK);
+		int iret = SpoutMessageBox(NULL, str.c_str(), "User buttons", MB_OK);
 		if (iret == 1000) SpoutMessageBox("Button 1 pressed");
 		if (iret == 2000) SpoutMessageBox("Button 2 pressed");
 		if (iret == 3000) SpoutMessageBox("Button 3 pressed");
@@ -832,7 +679,7 @@ void ofApp::doMessagebox(int item)
 	//
 	// Edit control
 	//
-	if (item == 'j') {
+	if (title == "Edit") {
 		std::string str = "An edit control within the MessageBox can be used to return a string.\n\n";
 		str += "Can be used in place of a specific application resource dialog\n";
 		str += "If the edit string is not empty, it is shown highlighted in the edit control.\n";
@@ -885,7 +732,7 @@ void ofApp::doMessagebox(int item)
 	// MessageBox with a combo box control for item selection,
 	// the selected item index is returned
 	//
-	if (item == 'k') {
+	if (title == "Combobox") {
 		std::string str = "A combo box control within the MessageBox can be used\nto select an item from a list and return the selection index.\n\n";
 		str += "A vector of strings is passed to fill the item list. The index value\n";
 		str += "passed in is used to show an initial item in the combobox and is\n";
@@ -945,7 +792,7 @@ void ofApp::doMessagebox(int item)
 	// is closed first. 
 	// Spout must have been installed and SpoutPanel or SpoutSettings run at least once.
 	// Modeless is disabled for any dialog requiring user input.
-	if (item == 'l') {
+	if (title == "Modeless") {
 		std::string str = "A MessageBox is normally modal and stops the application until closed.\n";
 		str += "\"Modeless\" mode transfers the message to another program\n";
 		str += "\"SpoutPanel.exe\" so the dialog does not stop the application's operation.\n";
@@ -972,7 +819,7 @@ void ofApp::doMessagebox(int item)
 	// For example : <a href=\"https://spout.zeal.co/\">Spout home page</a>
 	// Only double quotes are supported and must be escaped.
 	//
-	if (item == 'm') {
+	if (title == "Hyperlink") {
 		std::string str = "Hyperlinks can be included in the content using HTML format.\n";
 		str += "Only double quotes are supported and must be escaped.\n";
 		str += "The MessageBox closes if the link is selected.\n\n";
@@ -990,7 +837,7 @@ void ofApp::doMessagebox(int item)
 	//
 	// Copy text to the clipboard
 	//
-	if (item == 'n') {
+	if (title == "Clipboard") {
 		std::string str = "Text can be copied to the clipboard by using \n\n";
 		str += "    bool CopyToClipBoard(HWND hwnd, const char* text);\n\n";
 		str += "\"hwnd\" is the window handle used by ";
@@ -1021,8 +868,86 @@ void ofApp::windowResized(int w, int h)
 
 }
 
+//--------------------------------------------------------------
+// Add a button to the buttons vector
+void ofApp::AddButton(int x, int y, int w, int h,
+	std::string title, ofColor backcol, ofColor textcol)
+{
+	button btn;
+	btn.x = x;
+	btn.y = y;
+	btn.width = w;
+	btn.height = h;
+	btn.title = title;
+	btn.backcol = backcol;
+	btn.textcol = textcol;
+	buttons.push_back(btn);
+}
 
+void ofApp::AddButtons()
+{
+	int x = 10;
+	int y = 30;
+	int width = 140;
+	int height = 22;
+	int next = 23;
 
+	// Red
+	AddButton(x, y, width, height, "About", ofColor(128, 32, 0), ofColor(255));
+	y += next;
+	// Blue
+	AddButton(x, y, width, height, "Position", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Simple", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Variable", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Timeout", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Options", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Instruction", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Icon", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Buttons", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Edit", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Combobox", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Modeless", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Hyperlink", ofColor(0, 45, 90), ofColor(255));
+	y += next;
+	AddButton(x, y, width, height, "Clipboard", ofColor(0, 45, 90), ofColor(255));
+
+}
+
+void ofApp::DrawButtons()
+{
+	ofFill();
+	int xpos = 0;
+	int ypos = 0;
+	ofRectangle r;
+	for (size_t i = 0; i < buttons.size(); i++) {
+		// Button background colour
+		ofSetColor(buttons[i].backcol);
+		// Highlight item for mouse hover
+		if (mousex > buttons[i].x
+			&& mousex < (buttons[i].x + buttons[i].width)
+			&& mousey > buttons[i].y
+			&& mousey < (buttons[i].y + buttons[i].height)) {
+			ofSetColor(0, 128, 128); // cyan highlight
+		}
+		ofDrawRectangle(buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height);
+		ofSetColor(buttons[i].textcol);
+		r = myFont.getStringBoundingBox(buttons[i].title, 0, 0);
+		xpos = buttons[i].x + (buttons[i].width - (int)r.getWidth()) / 2;
+		DrawString(buttons[i].title, xpos, buttons[i].y + 18);
+	}
+
+}
 //--------------------------------------------------------------
 // Load a Windows truetype font
 bool ofApp::LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size)
@@ -1045,19 +970,19 @@ bool ofApp::LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size)
 //--------------------------------------------------------------
 void ofApp::DrawString(std::string str, int posx, int posy, ofColor oldcolor)
 {
-	//
-	// Allow for the Windows font not found
-	//
+	// White text
 	ofSetColor(255);
+
 	if (myFont.isLoaded()) {
 		myFont.drawString(str, posx, posy);
 	}
 	else {
-		// This will only happen if the Windows font is not foud
+		// Allow for the Windows font not found
 		// Quick fix because the default font is wider
 		int x = posx-20;
 		if (x <= 0) x = 10;
 		ofDrawBitmapString(str, x, posy);
 	}
+	// Original colour
 	ofSetColor(oldcolor);
 }
