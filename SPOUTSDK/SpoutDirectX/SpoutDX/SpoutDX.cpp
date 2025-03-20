@@ -2545,8 +2545,7 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 			}
 		}
 		// RGB/BGR pixel buffer
-		else if (m_dwFormat == 28) { // RGBA texture
-			DXGI_FORMAT_R8G8B8A8_UNORM
+		else if (m_dwFormat == 28) { // RGBA texture - DXGI_FORMAT_R8G8B8A8_UNORM
 			//
 			// RGBA texture to BGR/RGB pixels
 			// BGR is default, RGB is swapped
