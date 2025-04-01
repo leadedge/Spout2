@@ -7,7 +7,7 @@
 	OpenFrameworks 12
 	Visual Studio 2022
 
-	Copyright (C) 2022-2024 Lynn Jarvis.
+	Copyright (C) 2022-2025 Lynn Jarvis.
 
 	=========================================================================
 	This program is free software: you can redistribute it and/or modify
@@ -43,30 +43,28 @@ void ofApp::setup(){
 	ofSetWindowPosition((ofGetScreenWidth()-ofGetWidth())/2, (ofGetScreenHeight()-ofGetHeight())/2);
 
 	// Load a Windows truetype font to avoid dependency on a font file.
-	// Arial, Verdana, Tahoma
+	// Arial, Verdana, Tahoma etc. in C:\Windows\Fonts
 	LoadWindowsFont(myFont, "Verdana", 12);
 
-	// Get the webcam list into a vector so we can
-	// identify by name and detect SpoutCam later
+	// Get the webcam list into a vector so that SpoutCam
+	// can be identified by name and detected later
 	camdevices = vidGrabber.listDevices();
-	// printf("Select a webcam by it's index (0-%d)\n\n", (int)camdevices.size() - 1);
 
 	// Use the default webcam (0) or change as required
 	camindex = 0;
 	vidGrabber.setDeviceID(camindex);
+
 	// Try to set this frame rate
-	// (For SpoutCam use SpoutCamSettings instead)
+	// (for SpoutCam use SpoutCamSettings)
 	vidGrabber.setDesiredFrameRate(30);
-	vidGrabber.setup(640, 480); // try to grab at this size. 
-	if (vidGrabber.isInitialized())
-		printf("Initialized webcam (%d x %d)\n", (int)vidGrabber.getWidth(), (int)vidGrabber.getHeight());
-	else
-		printf("Select a webcam by it's index (0-%d)\n\n", (int)camdevices.size() - 1);
 
 	// Give the sender the same name as the window title
 	// If none is specified, the executable name is used
-
 	camsender.SetSenderName(camsendername.c_str());
+
+	// Start the webcam
+	if (camdevices.size() > 0)
+		SetWebcam(camindex);
 
 }
 
@@ -74,15 +72,14 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update() {
 
-	if (!vidGrabber.isInitialized()) {
+	if (!vidGrabber.isInitialized())
 		return;
-	}
 
 	vidGrabber.update();
 
 	// SpoutCam is a receiver and connects to the active sender when it starts.
 	// To avoid feedback from this application, wait until another sender is running.
-	bSendCam = true;
+	bool bSendCam = true;
 	if (camdevices[camindex].deviceName == "SpoutCam") {
 		if(camsender.GetSenderCount() == 0) {
 			// Nothing running - do not send
@@ -100,7 +97,7 @@ void ofApp::update() {
 	}
 
 	if (bSendCam) {
-		// If you send the webcam texture when the frame is new
+		// If the webcam texture is sent when the frame is new
 		// and Frame count is enabled in SpoutSettings,
 		// receivers will detect the webcam fps.
 		if (vidGrabber.isFrameNew()) {
@@ -143,10 +140,6 @@ void ofApp::draw() {
 		}
 		DrawString(str, 20, 30);
 	}
-	// else {
-		// str += "Select a webcam by it's index";
-	// }
-	// DrawString(str, 20, 30);
 
 	// Show the webcam list for selection
 	int ypos = 60;
@@ -156,11 +149,20 @@ void ofApp::draw() {
 		DrawString(str, 40, ypos);
 		ypos += 22;
 	}
-	str = "Select a webcam (0 to ";
-	str += ofToString(camdevices.size()-1);
-	str += ")";
-	DrawString(str, 40, ypos+5);
 
+	if(camdevices.size() > 1) {
+		str = "Select a webcam  - right click or press 0 to ";
+		str += ofToString(camdevices.size() - 1);
+	}
+	else if (camdevices.size() == 1) {
+		str = "Select a webcam  - right click or press 0";
+	}
+	else {
+		str = "Mo webcams available";
+	}
+	DrawString(str, 40, ofGetHeight()-30);
+	str = "Middle click for SpoutCam properties";
+	DrawString(str, 40, ofGetHeight()-10);
 
 }
 
@@ -181,27 +183,124 @@ void ofApp::keyPressed(int key) {
 	}
 	else if (i >= 0 && i < (int)camdevices.size()) {
 		// Change if the user selected a different webcam
-		if (i != camindex) {
-			// Release our sender before changing webcams or a
-			// switch to SpoutCam will pick up this application
-			camsender.ReleaseSender();
-			// Set the sender name again
-			camsender.SetSenderName(camsendername.c_str());
-			camindex = i;
-			vidGrabber.close();
-			vidGrabber.setDeviceID(camindex);
-			vidGrabber.setDesiredFrameRate(30);
-			vidGrabber.setUseTexture(true);
-			if (vidGrabber.setup(640, 480)) {
-				ofSetWindowShape(vidGrabber.getWidth(), vidGrabber.getHeight());
-				std::cout << "Initialized webcam [" << camdevices[camindex].deviceName << "] (" << vidGrabber.getWidth() << " x " << vidGrabber.getHeight() << ")" << std::endl;
+		if (i != camindex)
+			SetWebcam(i);
+	}
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mousePressed(int x, int y, int button) {
+
+	if (button == 2) { // Right button
+		if (!camdevices.empty()) {
+			// List the webcams for combo box selection
+			std::vector<std::string> cams;
+			for (size_t i = 0; i < camdevices.size(); i++) {
+				cams.push_back(camdevices[i].deviceName);
 			}
-			else {
-				printf("Webcam setup error. Try a different one.\n");
+			int index = camindex;
+			if (SpoutMessageBox(NULL, "", "Select a webcam", MB_OKCANCEL, cams, index) == IDOK) {
+				// Change if the user selected a different webcam
+				if (index != camindex)
+					SetWebcam(index);
 			}
 		}
 	}
 
+	if (button == 1) { // Middle button
+		if (!camdevices.empty() && camdevices[camindex].deviceName == "SpoutCam") {
+			// Bring up the SpoutCam property page
+			// system("C:/Windows/System32/rundll32.exe SpoutCam64.ax, Configure");
+			char path[MAX_PATH]{};
+			if (ReadPathFromRegistry(HKEY_CLASSES_ROOT, "CLSID\\{8E14549A-DB61-4309-AFA1-3578E927E933}\\InprocServer32", "", path)) {
+				std::string str = "C:/Windows/System32/rundll32.exe ";
+				str += path;
+				str += ", Configure";
+				system(str.c_str());
+				// Restart SpoutCam
+				SetWebcam(camindex);
+			}
+		}
+	}
+
+}
+
+//--------------------------------------------------------------
+// Set up a webcam
+bool ofApp::SetWebcam(int index)
+{
+	// Release the sender before changing webcams or a
+	// switch to SpoutCam will pick up this sender application
+	camsender.ReleaseSender();
+
+	// Set the sender name again
+	camsender.SetSenderName(camsendername.c_str());
+	camindex = index;
+	vidGrabber.close();
+	vidGrabber.setDeviceID(camindex);
+	vidGrabber.setDesiredFrameRate(30); // Default fps
+	vidGrabber.setUseTexture(true);
+
+	// Default resolution
+	unsigned int camwidth  = 640;
+	unsigned int camheight = 480;
+
+	// Look in the registry for SpoutCam resolutions
+	if (camdevices[camindex].deviceName == "SpoutCam") {
+		// Active sender 0 (default)
+		DWORD mode = 0;
+		if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutCam", "resolution", &mode)) {
+			// Possible resolutions set by SpoutCamSettings
+			std::vector<unsigned int> widths  = { 0, 320, 640, 640, 800, 1024, 1024, 1280, 1280, 1280, 1920 };
+			std::vector<unsigned int> heights = { 0, 240, 360, 480, 600, 720, 768, 720, 960, 1024, 1080 };
+			// 0 means the active sender resolution
+			if (widths[mode] == 0) {
+				char sendername[256] {};
+				if (camsender.GetActiveSender(sendername)) {
+					// Set camwidth/camheight only if the sender is found
+					HANDLE dxShareHandle = nullptr;
+					DWORD dwFormat = 0;
+					camsender.GetSenderInfo(sendername, camwidth, camheight, dxShareHandle, dwFormat);
+				}
+			}
+			// Get SpoutCam fps
+			DWORD fpsMode = 0;
+			if(ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutCam", "fps", &fpsMode)) {
+				std::vector<int> fps = { 10, 15, 25, 30, 50, 60 };
+				int camfps = fps[fpsMode];
+				vidGrabber.setDesiredFrameRate(camfps); // Spoutcam fps
+			}
+		}
+	}
+
+	// Set up the grabber at default or SpoutCam resolution
+	if (vidGrabber.setup(camwidth, camheight)) {
+
+		// Set window maximum width to 800
+		int width = vidGrabber.getWidth();
+		if (width > 800) width = 800;
+
+		// Adjust window height to the aspect ratio of the webcam
+		int height = width * camheight / camwidth;
+		ofSetWindowShape(width, height);
+
+		// Centre on the desktop
+		int xpos = (ofGetScreenWidth() - width) / 2;
+		int ypos = (ofGetScreenHeight() - height) / 2;
+		ofSetWindowPosition(xpos, ypos);
+
+		printf("Initialized webcam [%s] (%d x %d)",
+			camdevices[camindex].deviceName.c_str(),
+			(int)vidGrabber.getWidth(), (int)vidGrabber.getHeight());
+
+	}
+	else {
+		printf("Webcam setup error. Try a different one.\n");
+		return false;
+	}
+
+	return true;
 }
 
 
