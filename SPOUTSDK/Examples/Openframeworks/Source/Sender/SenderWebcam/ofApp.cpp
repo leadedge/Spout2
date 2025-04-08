@@ -161,8 +161,12 @@ void ofApp::draw() {
 		str = "Mo webcams available";
 	}
 	DrawString(str, 40, ofGetHeight()-30);
-	str = "Middle click for SpoutCam properties";
-	DrawString(str, 40, ofGetHeight()-10);
+
+	// Spoutcam properties
+	if (camdevices[camindex].deviceName == "SpoutCam") {
+		str = "Middle click for SpoutCam properties";
+		DrawString(str, 40, ofGetHeight() - 10);
+	}
 
 }
 
@@ -208,7 +212,8 @@ void ofApp::mousePressed(int x, int y, int button) {
 		}
 	}
 
-	if (button == 1) { // Middle button
+	// Middle button for SpoutCam properties
+	if (button == 1) {
 		if (!camdevices.empty() && camdevices[camindex].deviceName == "SpoutCam") {
 			// Bring up the SpoutCam property page
 			// system("C:/Windows/System32/rundll32.exe SpoutCam64.ax, Configure");
@@ -217,9 +222,13 @@ void ofApp::mousePressed(int x, int y, int button) {
 				std::string str = "C:/Windows/System32/rundll32.exe ";
 				str += path;
 				str += ", Configure";
+
+				// The dialog will block
 				system(str.c_str());
-				// Restart SpoutCam
+
+				// Restart SpoutCam with the changed settings
 				SetWebcam(camindex);
+
 			}
 		}
 	}
@@ -230,14 +239,19 @@ void ofApp::mousePressed(int x, int y, int button) {
 // Set up a webcam
 bool ofApp::SetWebcam(int index)
 {
+	if (index > camdevices.size())
+		return false;
+
 	// Release the sender before changing webcams or a
 	// switch to SpoutCam will pick up this sender application
 	camsender.ReleaseSender();
-
 	// Set the sender name again
 	camsender.SetSenderName(camsendername.c_str());
+
+	// Set the webcam from the index
 	camindex = index;
 	vidGrabber.close();
+	camindex = index;
 	vidGrabber.setDeviceID(camindex);
 	vidGrabber.setDesiredFrameRate(30); // Default fps
 	vidGrabber.setUseTexture(true);
