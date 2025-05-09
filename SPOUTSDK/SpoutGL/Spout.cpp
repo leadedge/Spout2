@@ -306,6 +306,9 @@
 //		10.09.24	- SelectSenderPanel - test for exe file name for terminate
 //		25.09.24	- Revise ReceiveTexture and extend code comments for sender update
 //		08.01.25	- Add empty senderlist check in SelectSender()
+//		05.03.25	- Add m_bSender flag for sender/receiver
+//					  Set by Spout::CheckSender and also by Spout::InitReceiver
+//					  SetFrameSync/WaitFrameSync - do not block of not initialized
 //
 // ====================================================================================
 /*
@@ -396,7 +399,6 @@ Spout::Spout()
 	// Adapter index and name are retrieved with create sender or receiver
 	m_AdapterName[0] = 0;
 	m_bAdapt = false; // Receiver adapt to the sender adapter
-
 }
 
 Spout::~Spout()
@@ -839,7 +841,6 @@ void Spout::ReleaseReceiver()
 
 	m_bConnected = false;
 	m_bInitialized = false;
-
 
 }
 
@@ -1418,10 +1419,17 @@ void Spout::HoldFps(int fps)
 // Function: SetFrameSync
 // Signal sync event.
 //   Create a named sync event and set for test
-void Spout::SetFrameSync(const char* SenderName)
+void Spout::SetFrameSync(const char* name)
 {
-	if (SenderName && *SenderName && m_bInitialized)
-		frame.SetFrameSync(SenderName);
+	// Do not block of not initialized
+	if (!m_bInitialized)
+		return;
+
+	if (!name)
+		frame.SetFrameSync(m_SenderName);
+	else
+		frame.SetFrameSync(name);
+
 }
 
 // -----------------------------------------------
@@ -1435,7 +1443,7 @@ void Spout::SetFrameSync(const char* SenderName)
 // 
 bool Spout::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 {
-	if (!SenderName || !m_bInitialized)
+	if (!SenderName || !*SenderName || !m_bInitialized)
 		return false;
 	return frame.WaitFrameSync(SenderName, dwTimeout);
 }
@@ -2438,6 +2446,7 @@ bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget,
 } // end DrawToSharedTexture
 #endif
 
+
 //
 // Protected functions
 //
@@ -2525,6 +2534,10 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			frame.EnableFrameCount(m_SenderName);
 
 			m_bInitialized = true;
+
+			// Sender rather than receiver
+			m_bSender = true;
+
 		}
 		else {
 			SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - create - CreateSender failed", m_SenderName, width, height);
@@ -2613,8 +2626,10 @@ void Spout::InitReceiver(const char * SenderName, unsigned int width, unsigned i
 	m_Height = height;
 	m_dwFormat = dwFormat;
 	m_DX11format = (DXGI_FORMAT)m_dwFormat;
-
 	m_bInitialized = true;
+
+	// Receiver rather than sender
+	m_bSender = false;
 
 }
 
