@@ -231,7 +231,13 @@
 				   Move modeless check to first.
 				   Disable modeless mode after SpoutPanel open so it is one-off.
 				   Window handle is HWND passed in or specified by SpoutMessageBoxWindow.
-		08.01.25 - Add missing SPOUT_DLLEXP to SpoutMessageIcon and SpoutMessageBoxButton
+		08.03.25 - Add missing SPOUT_DLLEXP to SpoutMessageBoxIcon and SpoutMessageBoxButton
+		09.03.25 - Change function names from RemoveName and RemovePath to
+				   GetPath and GetName to modify the path argument and return a string
+		27.03.25 - Remove messagebox from GetName
+		20.04.25 - Correct GetExeName to return GetName
+				   Correct GetExePath to return GetPath
+
 */
 
 #include "SpoutUtils.h"
@@ -406,12 +412,12 @@ namespace spoututils {
 		// exe or dll
 		GetModuleFileNameA(GetCurrentModule(), path, MAX_PATH);
 		std::string exepath = path;
-		
-		// Remove name
-		if(!bFull)
-			RemoveName(exepath);
 
-		return exepath;
+		if(!bFull)
+			return GetPath(exepath); // Remove name and get path
+		else
+			return exepath;// Return the full path
+		
 	}
 
 	// ---------------------------------------------------------
@@ -426,36 +432,38 @@ namespace spoututils {
 		// Remove extension
 		size_t pos = exepath.rfind(".");
 		exepath = exepath.substr(0, pos);
-		// Remove path
-		RemovePath(exepath);
-		return exepath;
+		// Remove path for name only
+		return GetName(exepath);
 	}
 
 	// ---------------------------------------------------------
-	// Function: RemovePath
-	// Remove path and return the file name
-	//
-	void RemovePath(std::string& path)
-	{
-		// Remove path
-		size_t pos = path.rfind("\\");
-		if (pos == std::string::npos)
-			pos = path.rfind("/");
-		if (pos != std::string::npos)
-			path = path.substr(pos + 1, path.size() - pos);
-	}
-
-	// ---------------------------------------------------------
-	// Function: RemoveName
+	// Function: GetPath
 	// Remove file name and return the path
 	//
-	void RemoveName(std::string& path)
-	{
-		size_t pos = path.rfind("\\");
+	std::string GetPath(std::string fullpath) {
+		std::string path;
+		size_t pos = fullpath.rfind("\\");
 		if (pos == std::string::npos)
-			pos = path.rfind("/");
-		if (pos != std::string::npos)
-			path = path.substr(0, pos + 1); // leave trailing backslash
+			pos = fullpath.rfind("/");
+		if (pos != std::string::npos) {
+			path = fullpath.substr(0, pos + 1); // leave trailing backslash
+		}
+		return path;
+	}
+
+	// ---------------------------------------------------------
+	// Function: GetName
+	// Remove path and return the file name
+	//
+	std::string GetName(std::string fullpath) {
+		std::string name;
+		size_t pos = fullpath.rfind("\\");
+		if (pos == std::string::npos)
+			pos = fullpath.rfind("/");
+		if (pos != std::string::npos) {
+			name = fullpath.substr(pos + 1, fullpath.size() - pos);
+		}
+		return name;
 	}
 
 	//
@@ -1115,7 +1123,8 @@ namespace spoututils {
 	// MessageBox dialog with a combobox control for item selection
 	// Can be used in place of a specific application resource dialog
 	// Properties the same as the edit control
-	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& index)
+	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType,
+		std::vector<std::string> items, int& index)
 	{
 		// For combobox creation
 		bCombo = true;
@@ -2238,7 +2247,8 @@ namespace spoututils {
 					GetClientRect(hwnd, &rect);
 
 					// Taskdialog client size
-					h = rect.bottom-rect.top;
+					// h = rect.bottom-rect.top;
+					h = rect.bottom - rect.top;
 					x = rect.left+20;
 					y = rect.top;
 					w = 395;
@@ -2337,7 +2347,9 @@ namespace spoututils {
 					// Get currently selected index
 					// Allow for error if the user edits the list item
 					int index = (int)SendMessageA(hCombo, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-					if (index != CB_ERR) comboindex = index;
+					if (index != CB_ERR) {
+						comboindex = index;
+					}
 				}
 			}
 
