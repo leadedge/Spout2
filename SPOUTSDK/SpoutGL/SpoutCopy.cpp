@@ -75,6 +75,7 @@
 	Version 2.007.014
 	19.06.24 - Add ClearAlpha
 	07.02.25 - Add GetSSE to return SSE capability
+	08.05.25 - FlipBuffer - add in-place overload
 
 //
 void spoutCopy::GetSSE
@@ -142,13 +143,15 @@ void spoutCopy::CopyPixels(const unsigned char *source, unsigned char *dest,
 
 //---------------------------------------------------------
 // Function: FlipBuffer
-// Flip a pixel buffer in place.
+// Flip a pixel buffer from source to destination
 void spoutCopy::FlipBuffer(const unsigned char *src,
 	unsigned char *dst,
 	unsigned int width,
 	unsigned int height,
 	GLenum glFormat) const
 {
+	if (!src || !dst) return;
+
 	unsigned int pitch = width*4; // RGBA default
 	if (glFormat == GL_LUMINANCE)
 		pitch = width; // Luminance data
@@ -177,6 +180,39 @@ void spoutCopy::FlipBuffer(const unsigned char *src,
 	}
 
 }
+
+//---------------------------------------------------------
+// Function: FlipBuffer
+// Flip a pixel buffer in place
+// No otimization - memcpy only
+void spoutCopy::FlipBuffer(unsigned char* src,
+			unsigned int width, unsigned int height,
+			GLenum glFormat) const
+{
+	if (!src) return;
+
+	// Row size RGBA default
+	unsigned int pitch = width*4;
+	if (glFormat == GL_LUMINANCE)
+		pitch = width; // Luminance data
+	else if (glFormat == GL_RGB || glFormat == GL_BGR_EXT)
+		pitch = width * 3; // RGB format specified (RGB float not supported)
+
+	// Allocate a one row buffer
+	unsigned char* tempRow = new unsigned char[pitch];
+
+    for (unsigned int y = 0; y<height/2; y++) {
+		unsigned char* rowTop = src + y*pitch;
+        unsigned char* rowBottom = src + (height-1-y)*pitch;
+        memcpy(tempRow,   rowTop,    pitch); // Save top row
+        memcpy(rowTop,    rowBottom, pitch); // Copy bottom to top
+        memcpy(rowBottom, tempRow,   pitch); // Copy saved top to bottom
+    }
+
+	delete[] tempRow;
+
+}
+
 
 //---------------------------------------------------------
 // Function: RemovePadding

@@ -59,10 +59,15 @@ class SPOUT_DLLEXP spoutCopy {
 						unsigned int width, unsigned int height, 
 						GLenum glFormat = GL_RGBA, bool bInvert = false) const;
 
-		// Flip a pixel buffer in place
+		// Flip a pixel buffer from source to destiination
 		void FlipBuffer(const unsigned char *src, unsigned char *dst,
 						unsigned int width, unsigned int height,
 						GLenum glFormat = GL_RGBA) const;
+
+		// Flip a pixel buffer in place
+		void FlipBuffer(unsigned char* src,
+			unsigned int width, unsigned int height,
+			GLenum glFormat = GL_RGBA) const;
 
 		// Correct for image stride
 		void RemovePadding(const unsigned char* source, unsigned char* dest,
