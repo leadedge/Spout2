@@ -248,6 +248,9 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// Vertical sync status
 	int GetVerticalSync();
 	// Lock to monitor vertical sync
+	//   1 - wait for 1 cycle vertical refresh
+	//   0 - buffer swaps are not synchronized to a video frame
+	//  -1 - adaptive vsync
 	bool SetVerticalSync(bool bSync = true);
 	// Get Spout version
 	int GetSpoutVersion();
