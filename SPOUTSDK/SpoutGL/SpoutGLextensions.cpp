@@ -1,5 +1,3 @@
-/*
-//
 //
 //			spoutGLextensions.cpp
 //
@@ -69,8 +67,9 @@
 //	Version 2.007.014
 //			28.09.24	- SpoutGLextensions.h - add #define GL_TEXTURE_SWIZZLE_RGBA
 //			22.10.24	- Add glIsMemoryObjectEXT, glCreateBuffers
+//			25.03.25	- ExtLog - changed "standalone" to "standaloneExtensions"
 //
-
+/*
 	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
@@ -795,7 +794,7 @@ void ExtLog(ExtLogLevel level, const char* format, ...)
 	va_list args;
 	va_start(args, format);
 
-#ifdef standalone
+#ifdef standaloneExtensions
 	char currentLog[512]={};
 	vsprintf_s(currentLog, 512, format, args);
 	std::string logstring;
