@@ -163,6 +163,7 @@
 //					    to identify and skip the Basic Render Driver adapter
 //	Version 2.007.014
 //		03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
+//		20.03.25	- CreateDX11StagingTexture - remove console print of texture format
 //
 // ====================================================================================
 /*
@@ -765,9 +766,6 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 	unsigned int width,	unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppStagingTexture)
 {
-	printf("spoutDirectX::CreateDX11StagingTexture(0x%X, %d, %d, %d)\n",
-		PtrToUint(pd3dDevice), width, height, format);
-
 	if (pd3dDevice == NULL || !ppStagingTexture) {
 		return false;
 	}
