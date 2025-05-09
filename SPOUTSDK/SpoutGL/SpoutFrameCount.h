@@ -72,6 +72,7 @@ class SPOUT_DLLEXP spoutFrameCount {
 	bool IsFrameCountEnabled();
 	// Is the received frame new
 	bool IsFrameNew();
+
 	// Received frame rate
 	double GetSenderFps();
 	// Received frame count
@@ -85,8 +86,13 @@ class SPOUT_DLLEXP spoutFrameCount {
 
 	// Sender increment the semaphore count
 	void SetNewFrame();
+
 	// Receiver read the semaphore count
 	bool GetNewFrame();
+
+	// Receiver wait on semaphore update
+	bool WaitNewFrame(DWORD dwTimeout);
+
 	// For class cleanup functions
 	void CleanupFrameCount();
 
@@ -126,7 +132,9 @@ class SPOUT_DLLEXP spoutFrameCount {
 	bool WaitFrameSync(const char *name, DWORD dwTimeout = 0);
 	// Close sync event
 	void CloseFrameSync();
-	// Enable / disable frame sync
+	// Check for existence of the sender frame sync event
+	bool CheckFrameSync();
+	// Enable/disable frame sync
 	void EnableFrameSync(bool bSync = true);
 	// Check for frame sync option
 	bool IsFrameSyncEnabled();
