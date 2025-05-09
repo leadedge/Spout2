@@ -146,6 +146,12 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool SetSenderInfo (const char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat);
 		// Set sender PartnerID field with "CPU" sharing method and GL/DX compatibility
 		bool SetSenderID(const char *sendername, bool bCPU, bool bGLDX);
+		// Set sender usage field
+		bool SetSenderUsage(const char * sendername, uint32_t usage);
+		// Get sender usage field
+		uint32_t GetSenderUsage(const char * sendername);
+
+
 		// Generic sender map info read (returned in a shared texture information structure)
 		bool getSharedInfo (const char* sendername, SharedTextureInfo* info);
 		// Generic sender map info write

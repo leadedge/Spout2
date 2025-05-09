@@ -708,6 +708,36 @@ bool spoutSenderNames::SetSenderID(const char *sendername, bool bCPU, bool bGLDX
 	return false;
 }
 
+//---------------------------------------------------------
+// Function: SetSenderUsage
+// Set sender usage field
+bool spoutSenderNames::SetSenderUsage(const char * sendername, uint32_t usage)
+{
+	if (sendername && *sendername) {
+		SharedTextureInfo info {};
+		if (getSharedInfo(sendername, &info)) {
+			info.usage = usage;
+			setSharedInfo(sendername, &info);
+			return true;
+		}
+	}
+	return false;
+}
+
+//---------------------------------------------------------
+// Function: GetSenderUsage
+// Get sender usage field
+uint32_t spoutSenderNames::GetSenderUsage(const char * sendername)
+{
+	if (sendername && *sendername) {
+		SharedTextureInfo info {};
+		if (getSharedInfo(sendername, &info)) {
+			return info.usage;
+		}
+	}
+	return 0;
+}
+
 //
 // Active Sender
 //
