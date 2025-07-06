@@ -36,7 +36,7 @@
 
 // Enable this define to use independently of Spout source files
 // See also the stand alone define in SpoutGLextensions
-#define standaloneUtils
+// #define standaloneUtils
 
 #ifdef standaloneUtils
 #define SPOUT_DLLEXP
@@ -343,7 +343,7 @@ namespace spoututils {
 	// Stop timing and return milliseconds or microseconds elapsed.
 	// (microseconds default).
 	// Code console output can be enabled for quick timing tests.
-	double SPOUT_DLLEXP EndTiming(bool microseconds = false);
+	double SPOUT_DLLEXP EndTiming(bool microseconds = false, bool bPrint = false);
 	// Microseconds elapsed since epoch
 	double SPOUT_DLLEXP ElapsedMicroseconds();
 #else

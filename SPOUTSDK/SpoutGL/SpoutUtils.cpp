@@ -237,6 +237,9 @@
 		27.03.25 - Remove messagebox from GetName
 		20.04.25 - Correct GetExeName to return GetName
 				   Correct GetExePath to return GetPath
+		13.05.25 - Use a local file pointer for freopen_s with AllocConsole
+				   if "standaloneutils" is defined to avoid crash - unknown cause
+		25.05.25 - Add print option to EndTiming
 
 */
 
@@ -266,7 +269,7 @@ namespace spoututils {
 	bool bEnableLogFile = false;
 	bool bDoLogs = true;
 	SpoutLogLevel CurrentLogLevel = SPOUT_LOG_NOTICE;
-	FILE* pCout = NULL; // for log to console
+	FILE* pCout = nullptr; // for log to console
 	std::ofstream logFile; // for log to file
 	std::string logPath; // folder path for the logfile
 	char logChars[1024]={}; // The current log string
@@ -488,7 +491,12 @@ namespace spoututils {
 			// Get calling process window
 			HWND hwndFgnd = GetForegroundWindow();
 			if (AllocConsole()) {
-				const errno_t err = freopen_s(&pCout, "CONOUT$", "w", stdout);
+				#ifndef standaloneUtils
+					FILE * fp = nullptr;
+					const errno_t err = freopen_s(&fp, "CONOUT$", "w", stdout);
+				#else
+					const errno_t err = freopen_s(&pCout, "CONOUT$", "w", stdout);
+				#endif
 				if (err == 0) {
 					std::string name = GetExeName();
 					if (title != nullptr) name = title;
@@ -501,9 +509,10 @@ namespace spoututils {
 					SetWindowPos(hwndFgnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 				}
 				else {
-					pCout = NULL;
+					pCout = nullptr;
 					bConsole = false;
 				}
+				
 			}
 			else {
 				// If the calling process is already attached to a console,
@@ -512,6 +521,7 @@ namespace spoututils {
 					bConsole = true;
 				}
 			}
+
 		}
 	}
 
@@ -526,12 +536,10 @@ namespace spoututils {
 			if (MessageBoxA(NULL, "Console close - are you sure?", "CloseSpoutConsole", MB_YESNO) == IDNO)
 				return;
 		}
-		if (pCout) {
-			fclose(pCout);
-			FreeConsole();
-			pCout = NULL;
-			bConsole = false;
-		}
+		if(pCout) fclose(pCout);
+		if (GetConsoleWindow()) FreeConsole();
+		pCout = nullptr;
+		bConsole = false;
 	}
 
 
@@ -1587,13 +1595,16 @@ namespace spoututils {
 	// Stop timing and return milliseconds or microseconds elapsed.
 	// (microseconds default).
 	// Code console output can be enabled for quick timing tests.
-	double EndTiming(bool microseconds) {
+	double EndTiming(bool microseconds, bool bPrint) {
 		end = std::chrono::steady_clock::now();
 		double elapsed = 0;
-		if(microseconds)
+		if (microseconds) {
 			elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-		else
-			elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()/1000.0);
+			if (bPrint) printf("%.3f microsec\n", elapsed);
+		} else {
+			elapsed = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0);
+			if (bPrint) printf("%.3f millisec\n", elapsed);
+		}
 		return elapsed;
 	}
 
