@@ -164,11 +164,16 @@
 //	Version 2.007.014
 //		03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
 //		20.03.25	- CreateDX11StagingTexture - remove console print of texture format
+//		19.05.25	- Add D3D11_BIND_UNORDERED_ACCESS to CreateSharedTexture bindflags
+//		22.05.25	- Remove ClearState from Flush and FlushWait for use of shaders
+//		24.05.25	- Add CreateDX11Texture overload to create a DirectX texture
+//					  with specific bind and misc flags
+//		27.06.25	- Replace ZeroMemory throughout with {} in stucture declarations
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2024. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2025. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -229,7 +234,7 @@ spoutDirectX::~spoutDirectX() {
 		if (m_pAdapterDX11) m_pAdapterDX11->Release();
 	}
 	catch (...) {
-		MessageBoxA(NULL, "Exception in spoutDriectX destructor", NULL, MB_OK);
+		MessageBoxA(NULL, "Exception in spoutDirectX destructor", NULL, MB_OK);
 	}
 
 }
@@ -240,14 +245,11 @@ spoutDirectX::~spoutDirectX() {
 
 //---------------------------------------------------------
 // Function: OpenDirectX11
-// Initialize and prepare Directx 11
-// Retain a class device and context
-
-//		OpenDirectX11
-//		    Save global m_featureLevel for external device
-//		    Create ID3D11Device1 and ID3D11DeviceContext1 for D3D_FEATURE_LEVEL_11_1
-//		ReleaseDX11Device - release ID3D11Device1 and ID3D11DeviceContext1 if created
-
+//    Initialize and prepare Directx 11
+//    Retain a class device and context
+//    Save global m_featureLevel for external device
+//    Create ID3D11Device1 and ID3D11DeviceContext1 for D3D_FEATURE_LEVEL_11_1
+//    ReleaseDX11Device - release ID3D11Device1 and ID3D11DeviceContext1 if created
 bool spoutDirectX::OpenDirectX11(ID3D11Device* pDevice)
 {
 	// Quit if already initialized
@@ -303,7 +305,7 @@ bool spoutDirectX::OpenDirectX11(ID3D11Device* pDevice)
 
 //---------------------------------------------------------
 // Function: CloseDirectX11
-// Release DirectX 11 device and context
+//     Release DirectX 11 device and context
 void spoutDirectX::CloseDirectX11()
 {
 	// Quit if already released
@@ -311,7 +313,6 @@ void spoutDirectX::CloseDirectX11()
 		SpoutLogNotice("spoutDirectX::CloseDirectX11() - device already released");
 		return;
 	}
-
 
 	// Release m_pImmediateContext if created
 	if (m_pImmediateContext) {
@@ -344,7 +345,7 @@ void spoutDirectX::CloseDirectX11()
 
 //---------------------------------------------------------
 // Function: SetDX11Device
-// Set the class device
+//    Set the class device
 bool spoutDirectX::SetDX11Device(ID3D11Device* pDevice)
 {
 	// Quit if already initialized
@@ -379,8 +380,7 @@ bool spoutDirectX::SetDX11Device(ID3D11Device* pDevice)
 
 //---------------------------------------------------------
 // Function: CreateDX11Device
-// Create DX11 device
-//
+//     Create DX11 device
 // https://github.com/walbourn/directx-sdk-samples/tree/main/Direct3D11Tutorials/Tutorial04
 //
 ID3D11Device* spoutDirectX::CreateDX11device()
@@ -411,10 +411,9 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 	// Remove the comments to enable D3D11 debugging if D3D11_1SDKLayers.dll is installed.
 	// See also : void spoutDirectX::DebugLog
 	//
-
-// #if defined(_DEBUG)
+	// #if defined(_DEBUG)
 	// createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-// #endif
+	// #endif
 
 	// GL/DX interop Spec
 	// ID3D11Device can only be used on WDDM operating systems : Must be multithreaded
@@ -509,7 +508,7 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 
 //---------------------------------------------------------
 // Function: GetDX11Device
-// Return the class device
+//     Return the class device
 ID3D11Device* spoutDirectX::GetDX11Device()
 {
 	return m_pd3dDevice;
@@ -533,7 +532,7 @@ D3D_FEATURE_LEVEL spoutDirectX::GetDX11FeatureLevel()
 
 //---------------------------------------------------------
 // Function: CreateSharedDX11Texture
-// Create a DirectX11 shared texture
+//     Create a DirectX11 shared texture
 bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	unsigned int width,
 	unsigned int height,
@@ -572,7 +571,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
 		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
-	// Textures being shared from D3D9 to D3D11 have the following restrictions (LJ - D3D11 to D3D9 ?).
+	// Textures being shared from D3D9 to D3D11 have the following restrictions
 	//		Textures must be 2D
 	//		Only 1 mip level is allowed
 	//		Texture must have default usage
@@ -586,11 +585,10 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	// To share a resource between two Direct3D 11 devices the resource must have been created
 	// with the D3D11_RESOURCE_MISC_SHARED flag, if it was created using the ID3D11Device interface.
 	//
-	D3D11_TEXTURE2D_DESC desc;
-	ZeroMemory(&desc, sizeof(desc));
+	D3D11_TEXTURE2D_DESC desc{};
 	desc.Width				= width;
 	desc.Height				= height;
-	desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+	desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 	// This texture will be shared
 	// Note that a DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not
 	// compatible with DirectX 9. If compatibility is required, a general named mutex
@@ -688,7 +686,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 //---------------------------------------------------------
 // Function: CreateDX11Texture
-// Create a DirectX texture which is not shared
+//     Create a DirectX texture which is not shared
 bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice, 
 	unsigned int width, unsigned int height,
 	DXGI_FORMAT format,	ID3D11Texture2D** ppTexture)
@@ -718,8 +716,7 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
 		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
-	D3D11_TEXTURE2D_DESC desc;
-	ZeroMemory(&desc, sizeof(desc));
+	D3D11_TEXTURE2D_DESC desc{};
 	desc.Width = width;
 	desc.Height = height;
 	desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -761,8 +758,83 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 }
 
 //---------------------------------------------------------
+// Function: CreateDX11Texture
+//    Create a DirectX texture with specific bind and misc flags 
+bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice, 
+	unsigned int width, unsigned int height,
+	DXGI_FORMAT format, UINT bindFlags, UINT miscFlags, 
+	ID3D11Texture2D** ppTexture)
+{
+	if (width == 0 || height == 0)
+		return false;
+
+	if (!pd3dDevice) {
+		SpoutLogFatal("spoutDirectX::CreateDX11Texture NULL device");
+		return false;
+	}
+
+	if (!ppTexture) {
+		SpoutLogWarning("spoutDirectX::CreateDX11Texture NULL ppTexture");
+		return false;
+	}
+
+	SpoutLogNotice("spoutDirectX::CreateDX11Texture(0x%.X, %d, %d, %d)",
+		PtrToUint(pd3dDevice), width, height, format);
+
+	if (*ppTexture)
+		ReleaseDX11Texture(pd3dDevice, *ppTexture);
+	
+	// Use the format passed in
+	DXGI_FORMAT texformat = format;
+	// If that is zero or DX9 format, use the default format
+	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
+		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+	D3D11_TEXTURE2D_DESC desc{};
+	desc.Width = width;
+	desc.Height = height;
+	desc.BindFlags = bindFlags;
+	desc.MiscFlags = miscFlags;
+	desc.CPUAccessFlags = 0;
+	desc.Format = texformat;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.SampleDesc.Quality = 0;
+	desc.SampleDesc.Count = 1;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+
+	HRESULT res = 0;
+	res = pd3dDevice->CreateTexture2D(&desc, NULL, ppTexture);
+
+	if (FAILED(res)) {
+		char tmp[256]={};
+		const int error = static_cast<int>((LOWORD(res)));
+		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11Texture ERROR - %d (0x%.X) : ", error, error);
+		switch (res) {
+		case DXGI_ERROR_INVALID_CALL:
+			strcat_s(tmp, 256, "DXGI_ERROR_INVALID_CALL");
+			break;
+		case E_INVALIDARG:
+			strcat_s(tmp, 256, "E_INVALIDARG");
+			break;
+		case E_OUTOFMEMORY:
+			strcat_s(tmp, 256, "E_OUTOFMEMORY");
+			break;
+		default:
+			strcat_s(tmp, 256, "Unlisted error");
+			break;
+		}
+		SpoutLogFatal("%s", tmp);
+		return false;
+	}
+	
+	return true;
+
+}
+
+//---------------------------------------------------------
 // Function: CreateDX11StagingTexture
-// Create a DirectX 11 staging texture for read and write
+//     Create a DirectX 11 staging texture for read and write
 bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 	unsigned int width,	unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppStagingTexture)
 {
@@ -786,8 +858,7 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 	if (format == 0 || format == 21 || format == 22) // D3DFMT_A8R8G8B8 = 21 D3DFMT_X8R8G8B8 = 22
 		texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
-	D3D11_TEXTURE2D_DESC desc;
-	ZeroMemory(&desc, sizeof(desc));
+	D3D11_TEXTURE2D_DESC desc{};
 	desc.Width = width;
 	desc.Height = height;
 	desc.MipLevels = 1;
@@ -832,7 +903,7 @@ bool spoutDirectX::CreateDX11StagingTexture(ID3D11Device* pd3dDevice,
 
 //---------------------------------------------------------
 // Function: OpenDX11shareHandle
-// Retrieve the pointer of a DirectX11 shared texture
+//     Retrieve the pointer of a DirectX11 shared texture
 bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** ppSharedTexture, HANDLE dxShareHandle)
 {
 	if (!pDevice || !ppSharedTexture || !dxShareHandle) {
@@ -886,13 +957,16 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 
 }
 
+
+
+
 //
 // Group: DirectX11 utiities
 //
 
 //---------------------------------------------------------
 // Function: ReleaseDX11Texture
-// Release a texture resource created with a class device
+//     Release a texture resource created with a class device
 unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Texture2D* pTexture)
 {
 	return ReleaseDX11Texture(m_pd3dDevice, pTexture);
@@ -900,7 +974,7 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Texture2D* pTexture)
 
 //---------------------------------------------------------
 // Function: ReleaseDX11Texture
-// Release a texture resource
+//     Release a texture resource
 unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11Texture2D* pTexture)
 {
 
@@ -935,7 +1009,7 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 
 //---------------------------------------------------------
 // Function: ReleaseDX11Device
-// Release a device
+//     Release a device
 unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 {
 	if (!pd3dDevice)
@@ -944,7 +1018,7 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 	SpoutLogNotice("spoutDirectX::ReleaseDX11Device(0x%.7X)", PtrToUint(pd3dDevice));
 
 	// Release feature level 1 context and device if created
-	// TOD : refcount
+	// TODO : refcount
 	if (m_pImmediateContext1) {
 		m_pImmediateContext1->Flush();
 		m_pImmediateContext1->Release();
@@ -1008,24 +1082,22 @@ unsigned long spoutDirectX::ReleaseDX11Device(ID3D11Device* pd3dDevice)
 //
 //---------------------------------------------------------
 // Function: Flush
-// Flush immediate context command queue
+//     Flush immediate context command queue
 void spoutDirectX::Flush()
 {
 	if (!m_pd3dDevice || !m_pImmediateContext)
 		return;
-	m_pImmediateContext->ClearState();
 	m_pImmediateContext->Flush();
 }
 
 //---------------------------------------------------------
 // Function: FlushWait
-// Flush immediate context command queue and wait for completion
+//     Flush immediate context command queue and wait for completion
 void spoutDirectX::FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext)
 {
 	if (!pd3dDevice || !pImmediateContext)
 		return;
 
-	pImmediateContext->ClearState();
 	pImmediateContext->Flush();
 
 	// CopyResource and Flush are both asynchronous.
@@ -1039,7 +1111,7 @@ void spoutDirectX::FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImm
 
 //---------------------------------------------------------
 // Function: Wait
-// Wait for completion after flush
+//     Wait for completion after flush
 void spoutDirectX::Wait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext)
 {
 	if (!pd3dDevice || !pImmediateContext)
@@ -1048,14 +1120,16 @@ void spoutDirectX::Wait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediat
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476578%28v=vs.85%29.aspx
 	// When the GPU is finished, ID3D11DeviceContext::GetData will return S_OK.
 	// When using this type of query, ID3D11DeviceContext::Begin is disabled.
-	D3D11_QUERY_DESC queryDesc={};
+	D3D11_QUERY_DESC queryDesc{};
 	ID3D11Query* pQuery = nullptr;
-	ZeroMemory(&queryDesc, sizeof(queryDesc));
 	queryDesc.Query = D3D11_QUERY_EVENT;
 	pd3dDevice->CreateQuery(&queryDesc, &pQuery);
 	if (pQuery) {
 		pImmediateContext->End(pQuery);
-		while (S_OK != pImmediateContext->GetData(pQuery, NULL, 0, 0));
+		while (S_OK != pImmediateContext->GetData(pQuery, NULL, 0, 0)) {
+			// Yield to reduce CPU load polling GetData()
+			Sleep(0);
+		}
 		pQuery->Release();
 		pImmediateContext->Flush();
 	}
@@ -1073,7 +1147,7 @@ void spoutDirectX::Wait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediat
 
 //---------------------------------------------------------
 // Function: GetNumAdapters
-// Get the number of graphics adapters in the system
+//     Get the number of graphics adapters in the system
 int spoutDirectX::GetNumAdapters()
 {
 	IDXGIFactory1* _dxgi_factory1 = nullptr;
@@ -1123,7 +1197,7 @@ int spoutDirectX::GetNumAdapters()
 
 //---------------------------------------------------------
 // Function: GetAdapterName
-// Get the name of an adapter index
+//     Get the name of an adapter index
 bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 {
 	if (!adaptername)
@@ -1163,8 +1237,8 @@ bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
 
 //---------------------------------------------------------
 // Function: GetAdapterIndex
-// Get the index of an adapter name.
-// Return -1 if the adapter name was not found,
+//     Get the index of an adapter name.
+//     Return -1 if the adapter name was not found,
 int spoutDirectX::GetAdapterIndex(const char* adaptername)
 {
 	if (!adaptername)
@@ -1207,7 +1281,7 @@ int spoutDirectX::GetAdapterIndex(const char* adaptername)
 
 //---------------------------------------------------------
 // Function: GetAdapter
-// Get the global adapter index
+//     Get the global adapter index
 int spoutDirectX::GetAdapter()
 {
 	return m_AdapterIndex;
@@ -1215,7 +1289,7 @@ int spoutDirectX::GetAdapter()
 
 //---------------------------------------------------------
 // Function: SetAdapter
-// Set required graphics adapter for output
+//     Set required graphics adapter for output
 bool spoutDirectX::SetAdapter(int index)
 {
 	char adaptername[128]={};
@@ -1289,9 +1363,8 @@ bool spoutDirectX::SetAdapter(int index)
 
 //---------------------------------------------------------
 // Function: GetAdapterInfo
-// Get the description and output name of the current adapter
-//
-// Overload retained for back compatibility
+//     Get the description and output name of the current adapter
+//     Overload retained for back compatibility
 bool spoutDirectX::GetAdapterInfo(char* adaptername, char* output, int maxchars)
 {
 	return GetAdapterInfo(0, adaptername, output, maxchars);
@@ -1299,7 +1372,7 @@ bool spoutDirectX::GetAdapterInfo(char* adaptername, char* output, int maxchars)
 
 //---------------------------------------------------------
 // Function: GetAdapterInfo
-// Get the description and output display name for a given adapter
+//     Get the description and output display name for a given adapter
 bool spoutDirectX::GetAdapterInfo(int index, char* adaptername, char* output, int maxchars)
 {
 	if (!adaptername || !output)
@@ -1345,7 +1418,7 @@ bool spoutDirectX::GetAdapterInfo(int index, char* adaptername, char* output, in
 
 //---------------------------------------------------------
 // Function: GetAdapterPointer
-// Get adapter pointer for a given adapter (-1 means current)
+//     Get adapter pointer for a given adapter (-1 means current)
 IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 {
 	int adapterindex = index;
@@ -1383,7 +1456,7 @@ IDXGIAdapter* spoutDirectX::GetAdapterPointer(int index)
 
 //---------------------------------------------------------
 // Function: SetAdapterPointer
-// Set required graphics adapter for CreateDX11device
+//     et required graphics adapter for CreateDX11device
 void spoutDirectX::SetAdapterPointer(IDXGIAdapter* pAdapter)
 {
 	m_pAdapterDX11 = pAdapter;
@@ -1391,9 +1464,8 @@ void spoutDirectX::SetAdapterPointer(IDXGIAdapter* pAdapter)
 
 //---------------------------------------------------------
 // Function: FindNVIDIA
-// Find the index of the NVIDIA adapter
-//
-// For purposes where NVIDIA hardware acceleration is used (e.g. FFmpeg)
+//     Find the index of the NVIDIA adapter
+//     For purposes where NVIDIA hardware acceleration is used (e.g. FFmpeg)
 bool spoutDirectX::FindNVIDIA(int& nAdapter)
 {
 	IDXGIFactory1* _dxgi_factory1 = nullptr;
@@ -1436,7 +1508,6 @@ bool spoutDirectX::FindNVIDIA(int& nAdapter)
 		adapter1_ptr->Release();
 
 		if (wcsstr(desc.Description, L"NVIDIA")) {
-			// printf("spoutDirectX::FindNVIDIA - Found NVIDIA adapter %d (%S)\n", i, desc.Description);
 			bFound = true;
 			break;
 		}
@@ -1621,15 +1692,15 @@ bool spoutDirectX::SetPerformancePreference(int preference, const char* path)
 //
 // When DXGI_GPU_PREFERENCE_MINIMUM_POWER is specified for the GpuPreference parameter,
 // the order of preference for the adapter returned in ppvAdapter will be:
-// 1. iGPUs (integrated GPUs)
-// 2. dGPUs (discrete GPUs)
-// 3. xGPUs (external GPUs)
+//     1. iGPUs (integrated GPUs)
+//     2. dGPUs (discrete GPUs)
+//     3. xGPUs (external GPUs)
 //
 // When DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE is specified for the GpuPreference parameter,
 // the order of preference for the adapter returned in ppvAdapter will be:
-// 1. xGPUs (external GPUs)
-// 2. dGPUs (discrete GPUs)
-// 3. iGPUs (integrated GPUs)
+//     1. xGPUs (external GPUs)
+//     2. dGPUs (discrete GPUs)
+//     3. iGPUs (integrated GPUs)
 //
 
 //---------------------------------------------------------
@@ -1770,10 +1841,9 @@ bool spoutDirectX::SetPreferredAdapter(int preference)
 
 //---------------------------------------------------------
 // Function: IsPreferenceAvailable()
-// Availability of Windows graphics preference settings.
-//
-// Settings are available from Windows 10 April 2018 update 
-// (Version 1803, build 17134) and later.
+//     Availability of Windows graphics preference settings.
+//     Settings are available from Windows 10 April 2018 update 
+//     (Version 1803, build 17134) and later.
 bool spoutDirectX::IsPreferenceAvailable()
 {
 #ifdef NTDDI_WIN10_RS4
@@ -1788,10 +1858,8 @@ bool spoutDirectX::IsPreferenceAvailable()
 
 //---------------------------------------------------------
 // Function: IsApplicationPath
-//
-// Is the path a valid application
-//
-// A valid application path will have a drive letter and terminate with ".exe"
+//    Is the path a valid application
+//    A valid application path will have a drive letter and terminate with ".exe"
 bool spoutDirectX::IsApplicationPath(const char* path)
 {
 	// Search for the drive letter colon ":" and terminating ".exe"
@@ -1802,7 +1870,9 @@ bool spoutDirectX::IsApplicationPath(const char* path)
 	}
 	return false;
 }
-// #endif
+
+
+// ===============================================
 
 //
 // Protected
@@ -1816,11 +1886,8 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 
 	//
 	// Output for debug using D3D11 SDK layers
-	// (_DEBUG is defined for debug build)
-	//
-	// *** Manually remove the comment block below if you have D3D11_1SDKLayers.dll installed. ***
-	//
-	// See comments in : ID3D11Device* spoutDirectX::CreateDX11device()
+	// Must be compiled with Debug configuration
+	// _DEBUG is defined for debug build
 	//
 
 	// Suppress warning 26826 to use vsprintf_s
@@ -1834,8 +1901,12 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 	va_end(args);
 #pragma warning(default:26485)
 
+	//
+	// *** Manually remove the comment block below if you have D3D11_1SDKLayers.dll installed. ***
+	//
+	// See comments in : ID3D11Device* spoutDirectX::CreateDX11device()
+	//
 
-// REMOVE THIS COMMENT LINE TO ENABLE SDK LAYERS
 /*
 #ifdef _DEBUG
 
@@ -1868,10 +1939,7 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 		}
 		DebugDevice->Release();
 	}
-
 #endif
-
-// REMOVE THIS COMMENT LINE TO ENABLE SDK LAYERS
 */
 
 }
