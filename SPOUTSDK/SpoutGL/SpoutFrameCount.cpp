@@ -96,6 +96,7 @@
 //					  Set local flag only. Do not close sync event on disable.
 //		09.05.25	- Add WaitNewFrame - to be tested
 //					  UpdateSenderFps change m_FrameTimeNumber from 8 to 2
+//		06.07.25	- Add GetSenderName
 //
 // ====================================================================================
 //
@@ -697,8 +698,6 @@ bool spoutFrameCount::WaitNewFrame(DWORD dwTimeout)
 	return false;
 }
 
-
-
 // -----------------------------------------------
 // Function: CleanupFrameCount
 // For class cleanup functions
@@ -735,6 +734,14 @@ void spoutFrameCount::CleanupFrameCount()
 		SpoutLogError("SpoutFrameCount::CleanupFrameCount caused an exception");
 	}
 
+}
+
+// -----------------------------------------------
+// Function: GetSenderName
+// Frame count sender name
+std::string spoutFrameCount::GetSenderName()
+{
+	return m_SenderName;
 }
 
 // =================================================================
