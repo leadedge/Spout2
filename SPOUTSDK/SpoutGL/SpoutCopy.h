@@ -6,7 +6,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2016-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2016-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -38,6 +38,7 @@
 #include <stdio.h> // for debug printf
 #include <gl/gl.h> // For OpenGL definitions
 #include <intrin.h> // for cpuid to test for SSE2
+
 #ifdef _M_ARM64
 #include <sse2neon.h> // for NEON
 #else
@@ -115,7 +116,7 @@ class SPOUT_DLLEXP spoutCopy {
 		
 		// Copy bgra to rgba
 		void bgra2rgba(const void* bgra_source, void *rgba_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
-		
+
 		//
 		// RGBA <> RGB, RGBA <> BGR
 		//
@@ -209,19 +210,26 @@ class SPOUT_DLLEXP spoutCopy {
 		void bgra2bgr (const void* bgra_source, void *bgr_dest,  unsigned int width, unsigned int height, bool bInvert = false) const;
 
 		// SSE capability
-
 		void GetSSE(bool &bSSE2, bool &bSSE3, bool &bSSSE3);
+		bool GetSSE2();
+		bool GetSSE3();
+		bool GetSSSE3();
+
+		// LJ DEBUG
+		void rgba_swap_ssse3(void* __restrict rgbasource, unsigned int width, unsigned int height);
 
 	protected :
 
 		void CheckSSE();
-		bool m_bSSE2;
-		bool m_bSSE3;
-		bool m_bSSSE3;
+		bool m_bSSE2 = false;
+		bool m_bSSE3 = false;
+		bool m_bSSSE3 = false;
 
 		void rgba_bgra(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 		void rgba_bgra_sse2(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 		void rgba_bgra_sse3(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
+		// LJ DEBUG
+		// void rgba_swap_ssse3(void* __restrict rgbasource, unsigned int width, unsigned int height);
 
 };
 

@@ -4,7 +4,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2016-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2016-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -76,9 +76,11 @@
 	19.06.24 - Add ClearAlpha
 	07.02.25 - Add GetSSE to return SSE capability
 	08.05.25 - FlipBuffer - add in-place overload
-
-//
-void spoutCopy::GetSSE
+	26.05.25 - rgba2bgra - invert flag false in sse functions
+	27.05.25 - Add GetSSE2, GetSSE3, GetSSSE3
+	29.05.25 - Add rgba_swap_ssse3
+	01.07.25 - memcpy_sse2 - handle trailing bytes to avoid 16 byte limitation
+			   Modify CopyPixels and FlipBuffer to test for SSE2 only
 
 */
 
@@ -123,19 +125,18 @@ void spoutCopy::CopyPixels(const unsigned char *source, unsigned char *dest,
 	else {
 		// Avoid warning C26474 and use implicit cast where possible
 		if (width < 320) { // Too small for assembler
-			// memcpy(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), Size);
 			memcpy(dest, source, Size);
 		}
-		else if ((Size % 16) == 0 && m_bSSE2) { // 16 byte aligned SSE assembler
-			// memcpy_sse2(reinterpret_cast<void *>(dest),	reinterpret_cast<const void *>(source), Size);
+		else if (m_bSSE2) { // 16 byte aligned SSE assembler
+			// Does not have to be 16 byte aligned
+			// Trailing bytes at the end of the line are handled
 			memcpy_sse2(dest, source, Size);
 		}
-		else if ((Size % 4) == 0) { // 4 byte aligned assembler
+		else if ((Size % 4) == 0) { // 4 byte move function
 			__movsd(reinterpret_cast<unsigned long *>(dest),
 				reinterpret_cast<const unsigned long *>(source), Size / 4);
 		}
 		else { // Default is standard memcpy
-			// memcpy(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), Size);
 			memcpy(dest, source, Size);
 		}
 	}
@@ -163,18 +164,21 @@ void spoutCopy::FlipBuffer(const unsigned char *src,
 
 	for (unsigned int y = 0; y<height; y++) {
 		// Avoid warning C26474 and use implicit cast where possible
-		if (width < 320 || height < 240) // too small for assembler
+		if (width < 320 || height < 240) { // too small for assembler
 			memcpy((dst + line_t), (src + line_s), pitch);
-			// memcpy(reinterpret_cast<void *>(dst + line_t), reinterpret_cast<const void *>(src + line_s), pitch);
-		else if ((pitch % 16) == 0 && m_bSSE2) // use sse assembler function
+		}
+		else if (m_bSSE2) { // use sse function
+			// Does not have to be 16 byte aligned
+			// Trailing bytes at the end of the line are handled
 			memcpy_sse2((dst + line_t), (src + line_s), pitch);
-			// memcpy_sse2(reinterpret_cast<void *>(dst + line_t),	reinterpret_cast<const void *>(src + line_s), pitch);
-		else if ((pitch % 4) == 0) // use 4 byte move assembler function
+		}
+		else if ((pitch % 4) == 0) { // use 4 byte move function
 			__movsd(reinterpret_cast<unsigned long *>(dst + line_t),
 				reinterpret_cast<const unsigned long *>(src + line_s), pitch / 4);
-		else
+		}
+		else {
 			memcpy((dst + line_t), (src + line_s), pitch);
-			// memcpy(reinterpret_cast<void *>(dst + line_t), reinterpret_cast<const void *>(src + line_s), pitch);
+		}
 		line_s += pitch;
 		line_t -= pitch;
 	}
@@ -289,7 +293,10 @@ void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t Size) const
 
 	auto pSrc = static_cast<const char *>(src); // Source buffer
 	auto pDst = static_cast<char *>(dst); // Destination buffer
-	const unsigned int n = (unsigned int)Size >> 7; // Counter = size divided by 128 (8 * 128bit registers)
+
+	const size_t simdSize = 128;
+	const size_t simdCount = Size/simdSize; // Counter = size divided by 128 (8 * 128bit registers)
+	const size_t tailSize = Size % simdSize;
 
 	__m128i Reg0={};
 	__m128i Reg1={};
@@ -299,14 +306,11 @@ void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t Size) const
 	__m128i Reg5={};
 	__m128i Reg6={};
 	__m128i Reg7={};
-	for (unsigned int Index = n; Index > 0; --Index) {
 
-		// SSE2 prefetch
-		_mm_prefetch(pSrc + 256, _MM_HINT_NTA);
-		_mm_prefetch(pSrc + 256 + 64, _MM_HINT_NTA); // ??? TODO : why
+	for (size_t i = 0; i < simdCount; i++) {
 
-		// TODO - research and optimize - minor (0.1msec) speed difference noted
-		// _mm_prefetch(pSrc, _MM_HINT_NTA);
+		// SSE2 prefetch ahead of the current read pointer
+		_mm_prefetch(pSrc + 512, _MM_HINT_NTA);
 
 		// move data from src to registers
 		// 8 x 128 bit (16 bytes each)
@@ -322,9 +326,6 @@ void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t Size) const
 		Reg7 = _mm_load_si128(reinterpret_cast<const __m128i *>(pSrc + 112));
 
 		// move data from registers to dest
-		// TODO
-		// _mm_prefetch((const char*)(pSrc + 256), _MM_HINT_NTA);
-
 		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst), Reg0);
 		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 16), Reg1);
 		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 32), Reg2);
@@ -334,8 +335,13 @@ void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t Size) const
 		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 96), Reg6);
 		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 112), Reg7);
 
-		pSrc += 128;
-		pDst += 128;
+		pSrc += simdSize;
+		pDst += simdSize;
+	}
+
+	// Handle trailing bytes for lines not divisble by 16
+	if (tailSize > 0) {
+		std::memcpy(pDst, pSrc, tailSize);
 	}
 
 }
@@ -489,8 +495,9 @@ void spoutCopy::rgba2bgra(const void* rgba_source, void* bgra_dest,
 void spoutCopy::rgba2bgra(const void *rgba_source, void *bgra_dest,
 	unsigned int width, unsigned int height, unsigned int sourcePitch, bool bInvert) const
 {
-	if (!rgba_source || !bgra_dest)
+	if (!rgba_source || !bgra_dest) {
 		return;
+	}
 
 	for (unsigned int y = 0; y < height; y++) {
 
@@ -515,15 +522,16 @@ void spoutCopy::rgba2bgra(const void *rgba_source, void *bgra_dest,
 			source += (unsigned long)(y * sourcePitch / 4);
 			dest += YxW;
 		}
+
 		// Copy the line
 		if ((width % 16) == 0) { // 16 byte aligned width
 			if (m_bSSE2 && m_bSSSE3) // SSE3 available
-				rgba_bgra_sse3(source, dest, width, 1, bInvert);
+				rgba_bgra_sse3(source, dest, width, 1); // invert flag false
 			else if (m_bSSE2) // SSE2 available
-				rgba_bgra_sse2(source, dest, width, 1, bInvert);
+				rgba_bgra_sse2(source, dest, width, 1);
 		}
 		else {
-			rgba_bgra(source, dest, width, 1, bInvert);
+			rgba_bgra(source, dest, width, 1);
 		}
 	}
 }
@@ -563,12 +571,12 @@ void spoutCopy::rgba2bgra(const void* rgba_source, void* bgra_dest,
 		// Copy the line
 		if ((width % 16) == 0) { // 16 byte aligned width
 			if (m_bSSE2 && m_bSSSE3) // SSE3 available
-				rgba_bgra_sse3(source, dest, width, 1, bInvert);
+				rgba_bgra_sse3(source, dest, width, 1); // invert flag false
 			else if (m_bSSE2) // SSE2 available
-				rgba_bgra_sse2(source, dest, width, 1, bInvert);
+				rgba_bgra_sse2(source, dest, width, 1);
 		}
 		else {
-			rgba_bgra(source, dest, width, 1, bInvert);
+			rgba_bgra(source, dest, width, 1);
 		}
 
 	}
@@ -582,7 +590,6 @@ void spoutCopy::bgra2rgba(const void *bgra_source, void *rgba_dest, unsigned int
 {
 	rgba2bgra(bgra_source, rgba_dest, width, height, bInvert);
 }
-
 
 //
 // Group: RGB/BGR <> RGBA/BGRA
@@ -1473,12 +1480,37 @@ void spoutCopy::bgra2bgr(const void *bgra_source, void *bgr_dest, unsigned int w
 // Function: GetSSE
 // Return SSE2, SSE3 and SSSE3 capability
 //
-void spoutCopy::GetSSE(bool & bSSE2, bool & bSSE3, bool & bSSSE3)
+void spoutCopy::GetSSE(bool &bSSE2, bool &bSSE3, bool &bSSSE3)
 {
-	bSSE2 = m_bSSE2;
-	bSSE3 = m_bSSE3;
+	bSSE2  = m_bSSE2;
+	bSSE3  = m_bSSE3;
 	bSSSE3 = m_bSSSE3;
 }
+
+//---------------------------------------------------------
+// Function: GetSSE2
+//     Return SSE3 capability
+bool spoutCopy::GetSSE2()
+{
+	return m_bSSE2;
+}
+
+//---------------------------------------------------------
+// Function: GetSSE3
+//     Return sSSE3 capability
+bool spoutCopy::GetSSE3()
+{
+	return m_bSSE3;
+}
+
+//---------------------------------------------------------
+// Function: GetSSSE3
+//     Return SSSE3 capability
+bool spoutCopy::GetSSSE3()
+{
+	return m_bSSSE3;
+}
+
 
 //
 // Protected
@@ -1553,8 +1585,7 @@ void spoutCopy::CheckSSE()
 		// SSSE3 = (cpuid02 & (0x1 << 9)
 		m_bSSSE3 = ((CPUInfo[2] & (0x1 << 9)) || false);
 	}
-#endif
-
+	#endif
 }
 
 
@@ -1627,7 +1658,7 @@ void spoutCopy::rgba_bgra_sse2(const void* rgba_source, void* bgra_dest, unsigne
 		if (!source || !dest) return;
 
 		// Cast first to avoid warning C26451: Arithmetic overflow
-		const unsigned long H1YxW = (unsigned long)((height - 1 - y) * width);
+		const unsigned long H1YxW = (unsigned long)((height-1- y) * width);
 		unsigned long YxW = (unsigned long)(y * width);
 
 		// Increment to current line
@@ -1689,8 +1720,8 @@ void spoutCopy::rgba_bgra_sse3(const void* rgba_source, void* bgra_dest, unsigne
 		auto dest = static_cast<unsigned __int32*>(bgra_dest);
 
 		// Cast first to avoid warning C26451: Arithmetic overflow
-		const unsigned long H1YxW = (unsigned long)((height - 1 - y) * width);
-		unsigned long YxW = (unsigned long)(y * width);
+		const unsigned long H1YxW = (unsigned long)((height-1- y)*width);
+		unsigned long YxW = (unsigned long)(y*width);
 
 		// Increment to current line
 		if (bInvert)
@@ -1727,3 +1758,44 @@ void spoutCopy::rgba_bgra_sse3(const void* rgba_source, void* bgra_dest, unsigne
 	}
 
 } // end rgba_bgra_sse3
+
+
+// Swap red and blue components in place
+void spoutCopy::rgba_swap_ssse3(void* __restrict rgba_source, unsigned int width, unsigned int height)
+{
+ 	// Shuffling mask (RGBA -> BGRA) x 4, in reverse byte order (requires SSSE3)
+	static const __m128i mask = _mm_set_epi8(
+		15, 12, 13, 14,
+		11,  8,  9, 10,
+		 7,  4,  5,  6,
+		 3,  0,  1,  2);
+
+	// Process 16-byte blocks (4 pixels at a time)
+    unsigned int numBlocks = width/4;
+	
+	uint8_t* base = static_cast<uint8_t*>(rgba_source);
+	for (unsigned int y = 0; y < height; y++) {
+		// Start of the row
+        uint8_t* row = base + y*width*4;
+        // Process 4 pixels at a time
+        for (unsigned int x = 0; x < numBlocks; ++x) {
+			// Prefetch the next block if not at the last one
+            if (x+1 < numBlocks) {
+                _mm_prefetch(reinterpret_cast<const char*>(row+(x+1)*16), _MM_HINT_T0);
+            }
+            __m128i* src = reinterpret_cast<__m128i*>(row+x*16);
+			// Use loadu/storeu instead of load/store in case
+			// the image buffer pointer is not 16 byte aligned
+            __m128i px = _mm_loadu_si128(src);
+            px = _mm_shuffle_epi8(px, mask);
+            _mm_storeu_si128(src, px);
+        }
+
+        // Process leftover pixels (width not divisible by 4)
+        for (unsigned int x = numBlocks*4; x < width; ++x) {
+            uint8_t* p = row + x * 4;
+            std::swap(p[0], p[2]); // Swap R and B
+        }
+    }
+
+} // end rgba_swap_ssse3
