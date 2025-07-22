@@ -309,6 +309,8 @@
 //		05.03.25	- Add m_bSender flag for sender/receiver
 //					  Set by Spout::CheckSender and also by Spout::InitReceiver
 //					  SetFrameSync/WaitFrameSync - do not block of not initialized
+//		18.05.25	- SelectSender - if SpoutPanel was not found, remove the
+//					  empty sender list return to still display a sender list box 
 //
 // ====================================================================================
 /*
@@ -1135,9 +1137,6 @@ bool Spout::SelectSender(HWND hwnd)
 
 		// create a local sender list
 		std::vector<std::string> senderlist = GetSenderList();
-		if(senderlist.empty())
-			return false;
-
 	
 		// Get the active sender index "selected".
 		// The index is passed in to SpoutMessageBox and used as the current combobox item.
@@ -2193,7 +2192,7 @@ bool Spout::SelectSenderPanel(const char* message)
 	path[0] = 0;
 	if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
 		// Path not registered so find the path of the host program
-		// where SpoutPanel should have been copied
+		// where SpoutPanel can be copied
 		module = GetModuleHandle(NULL);
 		GetModuleFileNameA(module, path, MAX_PATH);
 		_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
