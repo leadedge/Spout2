@@ -240,6 +240,7 @@
 		13.05.25 - Use a local file pointer for freopen_s with AllocConsole
 				   if "standaloneutils" is defined to avoid crash - unknown cause
 		25.05.25 - Add print option to EndTiming
+		22.05.25 - Update SDKversion to 2.007.016
 
 */
 
@@ -287,7 +288,7 @@ namespace spoututils {
 
 	// Spout SDK version number string
 	// Major, minor, release
-	std::string SDKversion = "2.007.015";
+	std::string SDKversion = "2.007.016";
 
 	//
 	// Group: Information
