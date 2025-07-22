@@ -397,7 +397,6 @@ bool spoutFrameCount::IsFrameNew()
 	return m_bIsNewFrame;
 }
 
-
 // -----------------------------------------------
 // Function: GetSenderFps
 // Received frame rate
@@ -405,7 +404,6 @@ double spoutFrameCount::GetSenderFps()
 {
 	return m_SenderFps;
 }
-
 
 // -----------------------------------------------
 // Function: GetSenderFrame
@@ -415,6 +413,13 @@ long spoutFrameCount::GetSenderFrame()
 	return m_FrameCount;
 }
 
+// -----------------------------------------------
+// Function: GetSenderName
+// Frame count sender name
+std::string spoutFrameCount::GetSenderName()
+{
+	return m_SenderName;
+}
 
 // -----------------------------------------------
 // Function: HoldFps
@@ -698,6 +703,8 @@ bool spoutFrameCount::WaitNewFrame(DWORD dwTimeout)
 	return false;
 }
 
+
+
 // -----------------------------------------------
 // Function: CleanupFrameCount
 // For class cleanup functions
@@ -734,14 +741,6 @@ void spoutFrameCount::CleanupFrameCount()
 		SpoutLogError("SpoutFrameCount::CleanupFrameCount caused an exception");
 	}
 
-}
-
-// -----------------------------------------------
-// Function: GetSenderName
-// Frame count sender name
-std::string spoutFrameCount::GetSenderName()
-{
-	return m_SenderName;
 }
 
 // =================================================================
