@@ -169,6 +169,8 @@
 //		24.05.25	- Add CreateDX11Texture overload to create a DirectX texture
 //					  with specific bind and misc flags
 //		27.06.25	- Replace ZeroMemory throughout with {} in stucture declarations
+//		01.08.25	- m_featureLevel default - D3D_FEATURE_LEVEL_11_1
+//					- CreateSharedDX11Texture - remove D3D11_BIND_RENDER_TARGET from bind flags
 //
 // ====================================================================================
 /*
@@ -214,7 +216,7 @@ spoutDirectX::spoutDirectX() {
 	m_pImmediateContext = nullptr;
 	m_bClassDevice		= true;
 	m_driverType		= D3D_DRIVER_TYPE_NULL;
-	m_featureLevel		= D3D_FEATURE_LEVEL_11_0;
+	m_featureLevel		= D3D_FEATURE_LEVEL_11_1;
 
 	// For feature leve 11.1 if available
 	m_pd3dDevice1        = nullptr;
@@ -292,6 +294,7 @@ bool spoutDirectX::OpenDirectX11(ID3D11Device* pDevice)
 	}
 
 	// DirectX 11.1 or later
+	// Create m_pd3dDevice1 and m_pImmediateContext1
 	if (m_featureLevel >= D3D_FEATURE_LEVEL_11_1) {
 		HRESULT hr = m_pd3dDevice->QueryInterface(__uuidof(ID3D11Device1), reinterpret_cast<void**>(&m_pd3dDevice1));
 		if (SUCCEEDED(hr)) {
@@ -428,14 +431,13 @@ ID3D11Device* spoutDirectX::CreateDX11device()
 
 	// These are the feature levels that we will accept.
 	// m_featureLevel is the maximum supported feature level used
-	// 11.0 is the highest level currently supported for Spout
-	// because 11.1 limits compatibility
-	// Note from D3D11 Walbourn examples :
-	//	DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1
-	// Note from NVIDIA forums :
-	//  Not all DirectX 11.1 features are software features.
-	//  Target Independent Rasterization requires hardware support
-	//  so we can not make DX11 GPUs fully DX11.1 complaint.
+	// Note that 11.1 may limit compatibility
+	//  From D3D11 Walbourn examples :
+	//	  DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1
+	//  From NVIDIA forums :
+	//    Not all DirectX 11.1 features are software features.
+	//    Target Independent Rasterization requires hardware support
+	//    so we can not make DX11 GPUs fully DX11.1 complaint.
 	const D3D_FEATURE_LEVEL featureLevels[] =	{
 		D3D_FEATURE_LEVEL_11_1, // 0xb001
 		D3D_FEATURE_LEVEL_11_0, // 0xb000
@@ -561,7 +563,6 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 		// Immediate context is flushed by ReleaseDX11Texture to
 		// destroy any objects whose destruction has been deferred.
 	}
-
 	SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
 	SpoutLogNotice("    pDevice = 0x%.7X, width = %u, height = %u, format = 0x%X (%d)", PtrToUint(pd3dDevice), width, height, format, format);
 
@@ -588,7 +589,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	D3D11_TEXTURE2D_DESC desc{};
 	desc.Width				= width;
 	desc.Height				= height;
-	desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+	desc.BindFlags			= D3D11_BIND_SHADER_RESOURCE;
 	// This texture will be shared
 	// Note that a DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not
 	// compatible with DirectX 9. If compatibility is required, a general named mutex
@@ -659,7 +660,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	}
 
 	// NT handle
-	if (bNThandle && m_featureLevel > D3D_FEATURE_LEVEL_11_0) {
+	if (bNThandle && pd3dDevice->GetFeatureLevel() > D3D_FEATURE_LEVEL_11_0) {
 		SpoutLog("    CreateSharedTexture - NT handle");
 		// The calling application should release the NT handle.
 		pOtherResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &dxShareHandle);
