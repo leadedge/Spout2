@@ -35,12 +35,16 @@ target_link_libraries(Tutorial04
 )
 
 if(MINGW)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -municode")
-  include_directories(Tutorial04 "C:/msys64/mingw64/include/directxmath")
+  target_link_options(Tutorial04 PRIVATE -municode)
+  target_include_directories(Tutorial04 PRIVATE "C:/msys64/mingw64/include/directxmath")
 endif()
 
 # Set dpi awareness
 set_property(TARGET Tutorial04 PROPERTY VS_DPI_AWARE "PerMonitor")
+
+set(SPOUT_OUTPUT_STATIC_LIB "${SPOUT_OUTPUT_STATIC_LIB_PREFIX}SpoutDX${SPOUT_OUTPUT_STATIC_LIB_SUFFIX}")
+set(SPOUT_OUTPUT_SHARED_LIB "${SPOUT_OUTPUT_SHARED_LIB_PREFIX}SpoutDX${SPOUT_OUTPUT_SHARED_LIB_SUFFIX}")
+set(SPOUT_OUTPUT_IMPORT_LIB "${SPOUT_OUTPUT_IMPORT_LIB_PREFIX}SpoutDX${SPOUT_OUTPUT_IMPORT_LIB_SUFFIX}")
 
 # Copy binaries to the BUILD/Binaries/Examples folder
 add_custom_command(TARGET Tutorial04 POST_BUILD
@@ -50,4 +54,4 @@ add_custom_command(TARGET Tutorial04 POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/Tutorial04.fx ${CMAKE_BINARY_DIR}/Binaries/Examples/Tutorial04.fx ) 
 
 add_custom_command(TARGET Tutorial04 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/SpoutDX.dll ) 
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Binaries/${SPOUT_OUTPUT_ARCH_DEST}/${SPOUT_OUTPUT_SHARED_LIB} ${CMAKE_BINARY_DIR}/Binaries/Examples/${SPOUT_OUTPUT_SHARED_LIB} )

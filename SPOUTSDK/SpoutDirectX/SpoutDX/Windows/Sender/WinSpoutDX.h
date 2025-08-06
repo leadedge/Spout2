@@ -1,9 +1,9 @@
 #pragma once
 
-#include "resource.h"
+#include "Resource.h"
 
 // SPOUT
 #include <vector>
-#include "..\..\SpoutDX.h"
+#include "../../SpoutDX.h"
 
 

@@ -42,7 +42,7 @@
 #include "SpoutCopy.h" // for pixel copy
 
 #include <direct.h> // for _getcwd
-#include <TlHelp32.h> // for PROCESSENTRY32
+#include <tlhelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
 
 #pragma warning(disable : 26485)

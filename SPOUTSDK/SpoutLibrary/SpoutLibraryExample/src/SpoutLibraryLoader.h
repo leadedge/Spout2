@@ -48,7 +48,7 @@
 #include "SpoutLibrary.h"
 #include <io.h>
 #include <shlwapi.h>
-#pragma comment(lib, "Shlwapi.lib") // for path functions
+#pragma comment(lib, "shlwapi.lib") // for path functions
 
 struct SpoutLibraryLoader
 {

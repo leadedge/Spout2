@@ -55,8 +55,8 @@
 #include <direct.h> // for _getcwd
 #include <vector>
 #include <string>
-#include <Shellapi.h> // for shellexecute
-#include <Commctrl.h> // For TaskDialogIndirect
+#include <shellapi.h> // for shellexecute
+#include <commctrl.h> // For TaskDialogIndirect
 #include <math.h> // for round
 #include <algorithm> // for string character remove
 
@@ -80,10 +80,10 @@
 #include <thread>
 #endif
 
-#pragma comment(lib, "Shell32.lib") // for shellexecute
-#pragma comment(lib, "Advapi32.lib") // for registry functions
-#pragma comment(lib, "Version.lib") // for version resources where necessary
-#pragma comment(lib, "Comctl32.lib") // For taskdialog
+#pragma comment(lib, "shell32.lib") // for shellexecute
+#pragma comment(lib, "advapi32.lib") // for registry functions
+#pragma comment(lib, "version.lib") // for version resources where necessary
+#pragma comment(lib, "comctl32.lib") // For taskdialog
 
 // TaskDialog requires comctl32.dll version 6
 #ifdef _MSC_VER

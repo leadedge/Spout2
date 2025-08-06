@@ -49,6 +49,7 @@ add_library(SpoutDX12 SHARED
 target_link_libraries(SpoutDX12
    PRIVATE 
      Spout_static
+     d3d12
 )
 
 target_compile_definitions(SpoutDX12
@@ -68,22 +69,9 @@ if(GeneratorisMultiConfig)
 	set(ConfigOutputDirectory $<CONFIG>/)
 endif()
 
-# Win32 or x64 build
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  set(OUTPUT_ARCH_DEST "Win32")
-else()
-  set(OUTPUT_ARCH_DEST "x64")
-endif()
-
-if(MINGW)
-  set(OUTPUT_STATIC_LIB "libSpoutDX12_static.a")
-  set(OUTPUT_SHARED_LIB "libSpoutDX12.dll")
-  set(OUTPUT_IMPORT_LIB "libSpoutDX12.dll.a")
-else()
-  set(OUTPUT_STATIC_LIB "SpoutDX12_static.lib")
-  set(OUTPUT_SHARED_LIB "SpoutDX12.dll")
-  set(OUTPUT_IMPORT_LIB "SpoutDX12.lib")
-endif()
+set(SPOUT_OUTPUT_STATIC_LIB "${SPOUT_OUTPUT_STATIC_LIB_PREFIX}SpoutDX12${SPOUT_OUTPUT_STATIC_LIB_SUFFIX}")
+set(SPOUT_OUTPUT_SHARED_LIB "${SPOUT_OUTPUT_SHARED_LIB_PREFIX}SpoutDX12${SPOUT_OUTPUT_SHARED_LIB_SUFFIX}")
+set(SPOUT_OUTPUT_IMPORT_LIB "${SPOUT_OUTPUT_IMPORT_LIB_PREFIX}SpoutDX12${SPOUT_OUTPUT_IMPORT_LIB_SUFFIX}")
 
 #
 # Copy binaries to the BUILD/Binaries folder
@@ -92,15 +80,15 @@ endif()
 # SpoutDX12 dll
 add_custom_command(TARGET SpoutDX12 POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E 
-  copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}${OUTPUT_IMPORT_LIB} ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_IMPORT_LIB}
+  copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}${SPOUT_OUTPUT_IMPORT_LIB} ${CMAKE_BINARY_DIR}/Binaries/${SPOUT_OUTPUT_ARCH_DEST}/${SPOUT_OUTPUT_IMPORT_LIB}
 )
 add_custom_command(TARGET SpoutDX12 POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E 
-  copy $<TARGET_FILE:SpoutDX12> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_SHARED_LIB}
+  copy $<TARGET_FILE:SpoutDX12> ${CMAKE_BINARY_DIR}/Binaries/${SPOUT_OUTPUT_ARCH_DEST}/${SPOUT_OUTPUT_SHARED_LIB}
 )
 
 # SpoutDX12_static library
 add_custom_command(TARGET SpoutDX12_static POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E 
-  copy $<TARGET_FILE:SpoutDX12_static> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_STATIC_LIB}
+  copy $<TARGET_FILE:SpoutDX12_static> ${CMAKE_BINARY_DIR}/Binaries/${SPOUT_OUTPUT_ARCH_DEST}/${SPOUT_OUTPUT_STATIC_LIB}
 )

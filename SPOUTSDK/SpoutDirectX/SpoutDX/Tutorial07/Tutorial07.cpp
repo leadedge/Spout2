@@ -32,10 +32,10 @@
 #include <directxmath.h>
 #include <directxcolors.h>
 #include "DDSTextureLoader.h"
-#include "resource.h"
+#include "Resource.h"
 
 // SPOUT
-#include "..\..\SpoutDX\SpoutDX.h"
+#include "../../SpoutDX/SpoutDX.h"
 
 using namespace DirectX;
 

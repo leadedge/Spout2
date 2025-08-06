@@ -31,8 +31,16 @@ target_link_libraries(WinSpoutDXsender
     dxguid
 )
 
+if (MINGW)
+  target_link_options(WinSpoutDXsender PRIVATE -municode)
+endif ()
+
 # Set dpi awareness
 set_property(TARGET WinSpoutDXsender PROPERTY VS_DPI_AWARE "PerMonitor")
+
+set(SPOUT_OUTPUT_STATIC_LIB "${SPOUT_OUTPUT_STATIC_LIB_PREFIX}SpoutDX${SPOUT_OUTPUT_STATIC_LIB_SUFFIX}")
+set(SPOUT_OUTPUT_SHARED_LIB "${SPOUT_OUTPUT_SHARED_LIB_PREFIX}SpoutDX${SPOUT_OUTPUT_SHARED_LIB_SUFFIX}")
+set(SPOUT_OUTPUT_IMPORT_LIB "${SPOUT_OUTPUT_IMPORT_LIB_PREFIX}SpoutDX${SPOUT_OUTPUT_IMPORT_LIB_SUFFIX}")
 
 # Copy binaries to the BUILD/Binaries/Examples folder
 add_custom_command(TARGET WinSpoutDXsender POST_BUILD
@@ -42,5 +50,5 @@ add_custom_command(TARGET WinSpoutDXsender POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/koala-on-tree-640.bmp ${CMAKE_BINARY_DIR}/Binaries/Examples/koala-on-tree-640.bmp ) 
 
 add_custom_command(TARGET WinSpoutDXsender POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/SpoutDX.dll ) 		  
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Binaries/${SPOUT_OUTPUT_ARCH_DEST}/${SPOUT_OUTPUT_SHARED_LIB} ${CMAKE_BINARY_DIR}/Binaries/Examples/${SPOUT_OUTPUT_SHARED_LIB} )
 		  

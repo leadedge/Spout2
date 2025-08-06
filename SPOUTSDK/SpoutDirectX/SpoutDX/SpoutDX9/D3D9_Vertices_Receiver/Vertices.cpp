@@ -41,7 +41,7 @@
 #pragma warning( default : 4996 )
 
 // SPOUT
-#include "..\SpoutDX9.h"
+#include "../SpoutDX9.h"
 
 //-----------------------------------------------------------------------------
 // Global variables

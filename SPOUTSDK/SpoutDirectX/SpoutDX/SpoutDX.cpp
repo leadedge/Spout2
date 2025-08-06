@@ -188,7 +188,7 @@
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
-#include "spoutDX.h"
+#include "SpoutDX.h"
 
 //
 // Class: spoutDX

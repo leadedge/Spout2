@@ -52,14 +52,14 @@
 #include "SpoutFrameCount.h"
 #include "SpoutUtils.h"
 #else
-#include "..\..\..\SpoutGL\SpoutCommon.h" // repository folder structure
-#include "..\..\..\SpoutGL\SpoutSenderNames.h"
-#include "..\..\..\SpoutGL\SpoutFrameCount.h"
-#include "..\..\..\SpoutGL\SpoutUtils.h"
+#include "../../../SpoutGL/SpoutCommon.h" // repository folder structure
+#include "../../../SpoutGL/SpoutSenderNames.h"
+#include "../../../SpoutGL/SpoutFrameCount.h"
+#include "../../../SpoutGL/SpoutUtils.h"
 #endif
 
 #include <direct.h> // for _getcwd
-#include <TlHelp32.h> // for PROCESSENTRY32
+#include <tlhelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
 #include <d3d9.h>
 #pragma comment (lib, "d3d9.lib")
