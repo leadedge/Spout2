@@ -4,80 +4,107 @@
 # Started  : 21/07/2024                  |                                     #
 #/-------------------------------------- . -----------------------------------\#
 
+cmake_minimum_required(VERSION 3.15)
+project(SpoutDX9)
+
+set(SpoutDX9_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX9.cpp
+)
+set(SpoutDX9_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX9.h
+)
+
+#/-------------------------------------- . -----------------------------------\#
+#
+# SpoutDX9 object library
+#
+
+add_library(
+		SpoutDX9_obj OBJECT
+		${SpoutDX9_SOURCES}
+		${SpoutDX9_HEADERS}
+)
+target_compile_definitions(
+		SpoutDX9_obj PRIVATE
+		SPOUT_BUILD_DLL
+)
 
 #/-------------------------------------- . -----------------------------------\#
 #
 # SpoutDX9 static library
 #
-set(SpoutDX9sources
-  SpoutDX9.h
-  SpoutDX9.cpp
-  ../../../SpoutGL/SpoutCommon.h
-  ../../../SpoutGL/SpoutCopy.h
-  ../../../SpoutGL/SpoutFrameCount.h
-  ../../../SpoutGL/SpoutSenderNames.h
-  ../../../SpoutGL/SpoutSharedMemory.h
-  ../../../SpoutGL/SpoutUtils.h
-  ../../../SpoutGL/SpoutCopy.cpp
-  ../../../SpoutGL/SpoutFrameCount.cpp
-  ../../../SpoutGL/SpoutSenderNames.cpp
-  ../../../SpoutGL/SpoutSharedMemory.cpp
-  ../../../SpoutGL/SpoutUtils.cpp
+
+add_library(
+		SpoutDX9_static STATIC
+		$<TARGET_OBJECTS:SpoutDX9_obj>
 )
-
-add_library(SpoutDX9_static STATIC ${SpoutDX9sources} )
-target_compile_definitions(SpoutDX9_static PRIVATE SPOUT_BUILD_DLL )
-#/-------------------------------------- . -----------------------------------\#
-
+target_link_libraries(
+		SpoutDX9_static PRIVATE
+		Spout_static
+)
+target_include_directories(
+		SpoutDX9_static PUBLIC
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+		$<INSTALL_INTERFACE:include>
+)
+set_target_properties(
+		SpoutDX9_static PROPERTIES
+		SPOUT_PUBLIC_HEADER "${SpoutDX9_HEADERS}"
+		RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
+		LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+		ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+)
 
 #/-------------------------------------- . -----------------------------------\#
 #
-# SpoutDX9 dynamic link library
+# SpoutDX9 shared library
 #
-add_library(SpoutDX9 SHARED 
-  SpoutDX9.h
-  SpoutDX9.cpp
+
+add_library(
+		SpoutDX9 SHARED
+		$<TARGET_OBJECTS:SpoutDX9_obj>
+)
+target_link_libraries(
+		SpoutDX9 PRIVATE
+		Spout_static
+)
+target_include_directories(
+		SpoutDX9 PUBLIC
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+		$<INSTALL_INTERFACE:include>
+)
+set_target_properties(
+		SpoutDX9 PROPERTIES
+		SPOUT_PUBLIC_HEADER "${SpoutDX9_HEADERS}"
+		RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
+		LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+		ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
 )
 
-target_link_libraries(SpoutDX9
-PRIVATE 
-     Spout_static
-)
-
-target_compile_definitions(SpoutDX9
-  PRIVATE
-    SPOUT_BUILD_DLL
-    SPOUTLIBRARY_EXPORTS
-)
 #/-------------------------------------- . -----------------------------------\#
+#
+# SpoutDX9 install
+#
 
-if(NOT MSVC)
-  target_compile_options(SpoutDX9_static PRIVATE -msse4)
-  target_compile_options(SpoutDX9 PRIVATE -msse4)
-endif()
-
-get_property(GeneratorisMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-if(GeneratorisMultiConfig)
-	set(ConfigOutputDirectory $<CONFIG>/)
-endif()
-
-set(SPOUT_OUTPUT_STATIC_LIB "${SPOUT_OUTPUT_STATIC_LIB_PREFIX}SpoutDX9${SPOUT_OUTPUT_STATIC_LIB_SUFFIX}")
-set(SPOUT_OUTPUT_SHARED_LIB "${SPOUT_OUTPUT_SHARED_LIB_PREFIX}SpoutDX9${SPOUT_OUTPUT_SHARED_LIB_SUFFIX}")
-set(SPOUT_OUTPUT_IMPORT_LIB "${SPOUT_OUTPUT_IMPORT_LIB_PREFIX}SpoutDX9${SPOUT_OUTPUT_IMPORT_LIB_SUFFIX}")
-
-# Copy binaries to the BUILD/Binaries folder
-# SpoutDX9
-add_custom_command(TARGET SpoutDX9 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E 
-  copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}${SPOUT_OUTPUT_IMPORT_LIB} ${CMAKE_BINARY_DIR}/Binaries/${SPOUT_OUTPUT_ARCH_DEST}/${SPOUT_OUTPUT_IMPORT_LIB}
-)
-add_custom_command(TARGET SpoutDX9 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E 
-  copy $<TARGET_FILE:SpoutDX9> ${CMAKE_BINARY_DIR}/Binaries/${SPOUT_OUTPUT_ARCH_DEST}/${SPOUT_OUTPUT_SHARED_LIB}
-)
-
-# SpoutDX9_static
-add_custom_command(TARGET SpoutDX9_static POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E 
-  copy $<TARGET_FILE:SpoutDX9_static> ${CMAKE_BINARY_DIR}/Binaries/${SPOUT_OUTPUT_ARCH_DEST}/${SPOUT_OUTPUT_STATIC_LIB}
-)
+if (NOT SKIP_INSTALL_ALL)
+	if(NOT SKIP_INSTALL_LIBRARIES)
+		install(
+				TARGETS SpoutDX9 SpoutDX9_static
+				EXPORT SpoutTargets
+				ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+		)
+	endif(NOT SKIP_INSTALL_LIBRARIES)
+	if(NOT SKIP_INSTALL_HEADERS)
+		get_target_property(spout_headers Spout SPOUT_PUBLIC_HEADER)
+		get_target_property(spoutdx_headers SpoutDX SPOUT_PUBLIC_HEADER)
+		install(
+				FILES
+				${SpoutDX9_HEADERS}
+				${spout_headers}
+				${spoutdx_headers}
+				DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/SpoutDX/SpoutDX9
+		)
+	endif(NOT SKIP_INSTALL_HEADERS)
+endif (NOT SKIP_INSTALL_ALL)

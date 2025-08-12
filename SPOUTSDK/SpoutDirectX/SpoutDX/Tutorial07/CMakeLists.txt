@@ -8,57 +8,66 @@
 #          : Add specific flags for MingW (vkedwardli)                         #
 #/-------------------------------------- . -----------------------------------\#
 
-add_executable(Tutorial07 WIN32
-  Tutorial07.cpp
-  DDSTextureLoader.cpp
-  DDSTextureLoader.h
-  Tutorial07.rc
-  Resource.h
+cmake_minimum_required(VERSION 3.15)
+project(Tutorial07)
+
+find_package(directxmath CONFIG REQUIRED)
+
+set(Tutorial07_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/Tutorial07.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Tutorial07.rc
+    ${CMAKE_CURRENT_SOURCE_DIR}/DDSTextureLoader.cpp
+)
+set(Tutorial07_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/DDSTextureLoader.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Resource.h
 )
 
-if(MINGW)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -municode")
-  include_directories(Tutorial07 "C:/msys64/mingw64/include/directxmath")
-endif()
-
-target_compile_definitions(Tutorial07
-  PRIVATE
-    SPOUT_IMPORT_DLL
-  _UNICODE
-  UNICODE
+add_executable(
+        ${PROJECT_NAME} WIN32
+        ${Tutorial07_SOURCES}
+        ${Tutorial07_HEADERS}
+)
+target_link_libraries(
+        ${PROJECT_NAME} PRIVATE
+        SpoutDX
+        d3d11
+        d3dcompiler
+        dxguid
+        Microsoft::DirectXMath
 )
 
-target_link_libraries(Tutorial07
-  PRIVATE
-    SpoutDX
-    d3d11
-    d3dcompiler
-    dxguid
+target_compile_definitions(
+        ${PROJECT_NAME} PRIVATE
+        _UNICODE
+        UNICODE
 )
 
-if(MINGW)
-  target_link_options(Tutorial07 PRIVATE -municode)
-  target_include_directories(Tutorial07 PRIVATE "C:/msys64/mingw64/include/directxmath")
-endif()
+if (MINGW)
+  target_link_options(
+          ${PROJECT_NAME} PRIVATE
+          -municode
+  )
+endif (MINGW)
 
-# Set dpi awareness
-set_property(TARGET Tutorial07 PROPERTY VS_DPI_AWARE "PerMonitor")
+set_target_properties(
+        ${PROJECT_NAME} PROPERTIES
+        WIN32_EXECUTABLE TRUE
+        VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        VS_DPI_AWARE "PerMonitor"
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Binaries/Examples
+)
 
-set(SPOUT_OUTPUT_STATIC_LIB "${SPOUT_OUTPUT_STATIC_LIB_PREFIX}SpoutDX${SPOUT_OUTPUT_STATIC_LIB_SUFFIX}")
-set(SPOUT_OUTPUT_SHARED_LIB "${SPOUT_OUTPUT_SHARED_LIB_PREFIX}SpoutDX${SPOUT_OUTPUT_SHARED_LIB_SUFFIX}")
-set(SPOUT_OUTPUT_IMPORT_LIB "${SPOUT_OUTPUT_IMPORT_LIB_PREFIX}SpoutDX${SPOUT_OUTPUT_IMPORT_LIB_SUFFIX}")
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/Tutorial07.fx $<TARGET_FILE_DIR:${PROJECT_NAME}> )
 
-# Copy binaries to the BUILD/Binaries/Examples folder
-add_custom_command(TARGET Tutorial07 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ConfigOutputDirectory}/Tutorial07.exe ${CMAKE_BINARY_DIR}/Binaries/Examples/Tutorial07.exe )
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/seafloor.dds $<TARGET_FILE_DIR:${PROJECT_NAME}> )
 
-add_custom_command(TARGET Tutorial07 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/Tutorial07.fx ${CMAKE_BINARY_DIR}/Binaries/Examples/Tutorial07.fx ) 
-
-add_custom_command(TARGET Tutorial07 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/seafloor.dds ${CMAKE_BINARY_DIR}/Binaries/Examples/seafloor.dds ) 
-
-add_custom_command(TARGET Tutorial07 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Binaries/${SPOUT_OUTPUT_ARCH_DEST}/${SPOUT_OUTPUT_SHARED_LIB} ${CMAKE_BINARY_DIR}/Binaries/Examples/${SPOUT_OUTPUT_SHARED_LIB} )
-
-  
+# Copy SpoutDX runtime library (required by your app)
+add_custom_command(
+        TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:SpoutDX>
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>
+)
