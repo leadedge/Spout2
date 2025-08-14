@@ -104,7 +104,7 @@ if(MINGW)
 	)
 	target_include_directories(
 		${PROJECT_NAME} PRIVATE
-		${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXMath
+		${CMAKE_CURRENT_SOURCE_DIR}/external
 	)	
 endif(MINGW)
 
