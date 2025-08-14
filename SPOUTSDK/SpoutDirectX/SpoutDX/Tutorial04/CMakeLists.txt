@@ -7,11 +7,6 @@
 cmake_minimum_required(VERSION 3.15)
 project(Tutorial04)
 
-# Warning level
-if(MSVC)
-	add_compile_options(/W4)
-endif()
-
 # Source file folders
 set(SPOUTSDK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL)
 set(SPOUTDX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -85,8 +80,8 @@ target_link_libraries(
 		dxgi
 		dxguid
 		psapi
-		version # ???
-		winmm # ???
+		version
+		winmm
 )
 
 if (MSVC)
@@ -100,12 +95,17 @@ endif (MSVC)
 if(MINGW)
 	target_compile_options(
 			${PROJECT_NAME} PRIVATE
+			-msse4
 			-Wall
 	)
 	target_link_options(
 			${PROJECT_NAME} PRIVATE
 			-municode
 	)
+	target_include_directories(
+		${PROJECT_NAME} PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXMath
+	)	
 endif(MINGW)
 
 set_target_properties(
