@@ -7,25 +7,6 @@
 cmake_minimum_required(VERSION 3.15)
 project(Tutorial04)
 
-find_path(
-		DIRECTXMATH_INCLUDE_DIR
-		NAMES DirectXMath.h
-		PATHS
-			"$ENV{DXSDK_DIR}/Include"
-			"C:/mingw/include" # Possible MinGW path
-			"C:/msys64/mingw64/include"
-		PATH_SUFFIXES
-			directxmath
-		DOC "Path to DirectXMath"
-		CACHE PATH "Path to DirectXMath include directory"
-)
-
-if (DIRECTXMATH_INCLUDE_DIR)
-	message(STATUS "Found DirectXMath.h at: ${DIRECTXMATH_INCLUDE_DIR}")
-else()
-	message(FATAL_ERROR "DirectXMath.h not found. Please set DIRECTXMATH_INCLUDE_DIR")
-endif()
-
 # Source file folders
 set(SPOUTSDK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL)
 set(SPOUTDX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -100,8 +81,8 @@ target_link_libraries(
 		dxgi
 		dxguid
 		psapi
-		version # ???
-		winmm # ???
+		version
+		winmm
 )
 
 if (MSVC)
@@ -122,6 +103,10 @@ if(MINGW)
 			${PROJECT_NAME} PRIVATE
 			-municode
 	)
+	target_include_directories(
+		${PROJECT_NAME} PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXMath
+	)	
 endif(MINGW)
 
 set_target_properties(
