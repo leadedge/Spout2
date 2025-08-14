@@ -26,7 +26,7 @@
 #include "D3D12HelloTexture.h"
 
 // SPOUT
-#include "..\SpoutDX12.h"
+#include "../SpoutDX12.h"
 
 // This is a receiver
 spoutDX12 receiver;

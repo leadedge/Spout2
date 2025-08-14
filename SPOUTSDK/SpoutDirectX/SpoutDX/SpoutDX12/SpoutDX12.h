@@ -40,14 +40,14 @@
 #if __has_include("SpoutCommon.h")
 #include "SpoutDX.h" 
 #else
-#include "..\\SpoutDX.h"
+#include "../SpoutDX.h"
 #endif
 
 #include <d3d12.h>
 #include <d3d11on12.h>
 #include <dxgi1_6.h> // for IDXGIFactory6 in GetHardwareAdapter
 #pragma comment (lib, "d3d12.lib")// the Direct3D 11 Library file
-#pragma comment (lib, "DXGI.lib") // for CreateDXGIFactory1
+#pragma comment (lib, "dxgi.lib") // for CreateDXGIFactory1
 
 
 // Copied from Microsoft examples

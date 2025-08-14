@@ -38,7 +38,7 @@
 //
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //-----------------------------------------------------------------------------
-#include <Windows.h>
+#include <windows.h>
 #include <mmsystem.h>
 #include <d3dx9.h>
 #pragma warning( disable : 4996 ) // disable deprecated warning 
@@ -47,12 +47,12 @@
 
 // SPOUT
 // Change paths as required
-#include "..\SpoutDirectX9.h" // for D3D9ex and creating textures
-#include "..\..\..\SpoutGL\SpoutSenderNames.h" // for sender creation and update
-#include "..\..\..\SpoutGL\SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "..\..\..\SpoutGL\SpoutUtils.h" // for logging utilites
+#include "../SpoutDirectX9.h" // for D3D9ex and creating textures
+#include "../../../SpoutGL/SpoutSenderNames.h" // for sender creation and update
+#include "../../../SpoutGL/SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "../../../SpoutGL/SpoutUtils.h" // for logging utilites
 #include <direct.h> // for _getcwd
-#include <TlHelp32.h> // for PROCESSENTRY32
+#include <tlhelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
 
 // SPOUT

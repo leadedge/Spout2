@@ -5,102 +5,108 @@
 # 21/07/24 - Remove SpoutGL cpp files from SpoutDX12sources                    #
 #/-------------------------------------- . -----------------------------------\#
 
+cmake_minimum_required(VERSION 3.15)
+project(SpoutDX12)
+
+set(SpoutDX12_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX12.cpp
+)
+set(SpoutDX12_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX12.h
+)
+
+#/-------------------------------------- . -----------------------------------\#
+#
+# SpoutDX12 object library
+#
+
+add_library(
+		SpoutDX12_obj OBJECT
+		${SpoutDX12_SOURCES}
+		${SpoutDX12_HEADERS}
+)
+target_compile_definitions(
+		SpoutDX12_obj PRIVATE
+		SPOUT_BUILD_DLL
+)
 
 #/-------------------------------------- . -----------------------------------\#
 #
 # SpoutDX12 static library
 #
-set(SpoutDX12sources
-  SpoutDX12.h
-  SpoutDX12.cpp
-  ../SpoutDX.h
-  ../SpoutDX.cpp
-  ../../../SpoutGL/SpoutCommon.h
-  ../../../SpoutGL/SpoutCopy.h
-  ../../../SpoutGL/SpoutDirectX.h
-  ../../../SpoutGL/SpoutFrameCount.h
-  ../../../SpoutGL/SpoutSenderNames.h
-  ../../../SpoutGL/SpoutSharedMemory.h
-  ../../../SpoutGL/SpoutUtils.h
-  ../../../SpoutGL/SpoutCopy.cpp
-  ../../../SpoutGL/SpoutDirectX.cpp
-  ../../../SpoutGL/SpoutFrameCount.cpp
-  ../../../SpoutGL/SpoutSenderNames.cpp
-  ../../../SpoutGL/SpoutSharedMemory.cpp
-  ../../../SpoutGL/SpoutUtils.cpp
+
+add_library(
+		SpoutDX12_static STATIC
+		$<TARGET_OBJECTS:SpoutDX12_obj>
 )
-
-add_library(SpoutDX12_static STATIC ${SpoutDX12sources} )
-target_compile_definitions(SpoutDX12_static PRIVATE SPOUT_BUILD_DLL )
-#/-------------------------------------- . -----------------------------------\#
-
+target_link_libraries(
+		SpoutDX12_static PUBLIC
+		SpoutDX_static
+)
+target_include_directories(
+		SpoutDX12_static PUBLIC
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+		$<INSTALL_INTERFACE:include>
+)
+set_target_properties(
+		SpoutDX12_static PROPERTIES
+		SPOUT_PUBLIC_HEADER "${SpoutDX12_HEADERS}"
+		RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
+		LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+		ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+)
 
 #/-------------------------------------- . -----------------------------------\#
 #
-# SpoutDX12 dynamic link library
+# SpoutDX12 shared library
 #
-add_library(SpoutDX12 SHARED 
-  SpoutDX12.h
-  SpoutDX12.cpp
-  ../SpoutDX.h
-  ../SpoutDX.cpp  
+
+add_library(
+		SpoutDX12 SHARED
+		$<TARGET_OBJECTS:SpoutDX12_obj>
+)
+target_link_libraries(
+		SpoutDX12 PRIVATE
+		SpoutDX_static
+		d3d12
+)
+target_include_directories(
+		SpoutDX12 PUBLIC
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+		$<INSTALL_INTERFACE:include>
+)
+set_target_properties(
+		SpoutDX12 PROPERTIES
+		SPOUT_PUBLIC_HEADER "${SpoutDX12_HEADERS}"
+		RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
+		LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+		ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
 )
 
-target_link_libraries(SpoutDX12
-   PRIVATE 
-     Spout_static
-)
-
-target_compile_definitions(SpoutDX12
-  PRIVATE
-    SPOUT_BUILD_DLL
-    SPOUTLIBRARY_EXPORTS
-)
 #/-------------------------------------- . -----------------------------------\#
-
-if(NOT MSVC)
-  target_compile_options(SpoutDX12_static PRIVATE -msse4)
-  target_compile_options(SpoutDX12 PRIVATE -msse4)
-endif()
-
-get_property(GeneratorisMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-if(GeneratorisMultiConfig)
-	set(ConfigOutputDirectory $<CONFIG>/)
-endif()
-
-# Win32 or x64 build
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  set(OUTPUT_ARCH_DEST "Win32")
-else()
-  set(OUTPUT_ARCH_DEST "x64")
-endif()
-
-if(MINGW)
-  set(OUTPUT_STATIC_LIB "libSpoutDX12_static.a")
-  set(OUTPUT_SHARED_LIB "libSpoutDX12.dll")
-  set(OUTPUT_IMPORT_LIB "libSpoutDX12.dll.a")
-else()
-  set(OUTPUT_STATIC_LIB "SpoutDX12_static.lib")
-  set(OUTPUT_SHARED_LIB "SpoutDX12.dll")
-  set(OUTPUT_IMPORT_LIB "SpoutDX12.lib")
-endif()
-
 #
-# Copy binaries to the BUILD/Binaries folder
+# SpoutDX12 install
 #
 
-# SpoutDX12 dll
-add_custom_command(TARGET SpoutDX12 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E 
-  copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}${OUTPUT_IMPORT_LIB} ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_IMPORT_LIB}
-)
-add_custom_command(TARGET SpoutDX12 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E 
-  copy $<TARGET_FILE:SpoutDX12> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_SHARED_LIB}
-)
-
-# SpoutDX12_static library
-add_custom_command(TARGET SpoutDX12_static POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E 
-  copy $<TARGET_FILE:SpoutDX12_static> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_STATIC_LIB}
-)
+if (NOT SKIP_INSTALL_ALL)
+	if(NOT SKIP_INSTALL_LIBRARIES)
+		install(
+				TARGETS SpoutDX12 SpoutDX12_static
+				EXPORT SpoutTargets
+				ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+		)
+	endif(NOT SKIP_INSTALL_LIBRARIES)
+	if(NOT SKIP_INSTALL_HEADERS)
+		get_target_property(spout_headers Spout SPOUT_PUBLIC_HEADER)
+		get_target_property(spoutdx_headers SpoutDX SPOUT_PUBLIC_HEADER)
+		install(
+				FILES
+				${SpoutDX12_HEADERS}
+				${spout_headers}
+				${spoutdx_headers}
+				DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/SpoutDX/SpoutDX12
+		)
+	endif(NOT SKIP_INSTALL_HEADERS)
+endif (NOT SKIP_INSTALL_ALL)

@@ -341,7 +341,7 @@ void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t Size) const
 
 	// Handle trailing bytes for lines not divisble by 16
 	if (tailSize > 0) {
-		std::memcpy(pDst, pSrc, tailSize);
+		memcpy(pDst, pSrc, tailSize);
 	}
 
 }

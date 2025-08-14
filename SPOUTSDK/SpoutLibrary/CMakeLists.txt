@@ -11,54 +11,64 @@
 #            Old code commented out for reference                              #
 #/-------------------------------------- . -----------------------------------\#                                      #
 
-add_library(SpoutLibrary SHARED 
-  SpoutLibrary.h
-  SpoutLibrary.cpp
+cmake_minimum_required(VERSION 3.15)
+project(SpoutLibrary)
+
+set(SpoutLibrary_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/SpoutLibrary.cpp
+)
+set(SpoutLibrary_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/SpoutLibrary.h
 )
 
-target_link_libraries(SpoutLibrary
-  PRIVATE 
-    Spout_static
+#/-------------------------------------- . -----------------------------------\#
+#
+# SpoutLibrary
+#
+
+add_library(
+		${PROJECT_NAME} SHARED
+		${SpoutLibrary_SOURCES}
+		${SpoutLibrary_HEADERS}
 )
 
-target_compile_definitions(SpoutLibrary
-  PRIVATE
-    SPOUT_BUILD_DLL
+target_link_libraries(
+		${PROJECT_NAME} PRIVATE
+		Spout_static
 )
 
-# get_property(GeneratorisMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-# if(GeneratorisMultiConfig)
-# 	set(ConfigOutputDirectory $<CONFIG>/)
-# endif()
+target_compile_definitions(
+		${PROJECT_NAME} PRIVATE
+		SPOUT_BUILD_DLL
+)
 
-# Win32 or x64 build
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+set_target_properties(
+		SpoutLibrary PROPERTIES
+		SPOUT_PUBLIC_HEADER "${SpoutLibrary_HEADERS}"
+		RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
+		LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+		ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+)
 
-	# Copy Win32 binaries to the BUILD/Binaries folder
-	add_custom_command(TARGET SpoutLibrary POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E 
-		# copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}SpoutLibrary.lib ${CMAKE_BINARY_DIR}/Binaries/Win32/SpoutLibrary.lib
-		copy $<TARGET_LINKER_FILE:SpoutLibrary> ${CMAKE_BINARY_DIR}/Binaries/Win32/$<TARGET_LINKER_FILE_NAME:SpoutLibrary>
-	)
-	add_custom_command(TARGET SpoutLibrary POST_BUILD
-	    COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:SpoutLibrary> ${CMAKE_BINARY_DIR}/Binaries/Win32/SpoutLibrary.dll
-	)
+#/-------------------------------------- . -----------------------------------\#
+#
+# SpoutLibrary install
+#
 
-else()
-
-	# Copy x64 binaries to the BUILD/Binaries folder
-	add_custom_command(TARGET SpoutLibrary POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E 
-		# copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}SpoutLibrary.lib ${CMAKE_BINARY_DIR}/Binaries/x64/SpoutLibrary.lib
-		copy $<TARGET_LINKER_FILE:SpoutLibrary> ${CMAKE_BINARY_DIR}/Binaries/x64/$<TARGET_LINKER_FILE_NAME:SpoutLibrary>
-	)
-	add_custom_command(TARGET SpoutLibrary POST_BUILD
-	    COMMAND ${CMAKE_COMMAND} -E 
-		copy $<TARGET_FILE:SpoutLibrary> ${CMAKE_BINARY_DIR}/Binaries/x64/SpoutLibrary.dll
-	)
-
-endif()
-
-
-
+if (NOT SKIP_INSTALL_ALL)
+	if(NOT SKIP_INSTALL_LIBRARIES)
+		install(
+				TARGETS SpoutLibrary
+				EXPORT SpoutTargets
+				ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+		)
+	endif(NOT SKIP_INSTALL_LIBRARIES)
+	if(NOT SKIP_INSTALL_HEADERS)
+		install(
+				FILES ${SpoutLibrary_HEADERS}
+				DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/SpoutLibrary
+		)
+	endif(NOT SKIP_INSTALL_HEADERS)
+endif (NOT SKIP_INSTALL_ALL)

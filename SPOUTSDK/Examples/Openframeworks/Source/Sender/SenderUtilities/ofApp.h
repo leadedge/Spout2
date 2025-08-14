@@ -21,7 +21,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "..\..\..\apps\SpoutGL\SpoutSender.h"
+#include "../../../apps/SpoutGL/SpoutSender.h"
 
 // disable warning conversion from 'size_t' to 'int' for ofxXmlSettings
 // Addon is in the common project file and used for the sync example
