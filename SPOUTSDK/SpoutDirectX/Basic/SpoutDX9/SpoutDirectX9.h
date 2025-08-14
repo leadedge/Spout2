@@ -31,7 +31,7 @@
 #ifndef __spoutDirectX9__ 
 #define __spoutDirectX9__
 
-#include "..\..\..\SpoutGL\SpoutCommon.h"
+#include "../../../SpoutGL/SpoutCommon.h"
 #include <d3d9.h>
 #pragma comment (lib, "d3d9.lib")
 

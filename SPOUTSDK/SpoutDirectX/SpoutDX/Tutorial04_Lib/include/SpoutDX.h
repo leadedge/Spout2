@@ -53,19 +53,19 @@
 #include "SpoutCopy.h"
 #include "SpoutUtils.h"
 #else
-#include "..\..\SpoutGL\SpoutCommon.h" // repository folder structure
-#include "..\..\SpoutGL\SpoutDirectX.h"
-#include "..\..\SpoutGL\SpoutSenderNames.h"
-#include "..\..\SpoutGL\SpoutFrameCount.h"
-#include "..\..\SpoutGL\SpoutCopy.h"
-#include "..\..\SpoutGL\SpoutUtils.h"
+#include "../../SpoutGL/SpoutCommon.h" // repository folder structure
+#include "../../SpoutGL/SpoutDirectX.h"
+#include "../../SpoutGL/SpoutSenderNames.h"
+#include "../../SpoutGL/SpoutFrameCount.h"
+#include "../../SpoutGL/SpoutCopy.h"
+#include "../../SpoutGL/SpoutUtils.h"
 #endif
 
 #include <direct.h> // for _getcwd
-#include <TlHelp32.h> // for PROCESSENTRY32
+#include <tlhelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
 #include <psapi.h> // for GetModuleFileNameExA
-#pragma comment(lib, "Psapi.lib")
+#pragma comment(lib, "psapi.lib")
 
 class SPOUT_DLLEXP spoutDX {
 

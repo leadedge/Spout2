@@ -28,9 +28,9 @@
 #define _receiver
 
 #ifdef _receiver
-#include "..\SpoutGL\SpoutReceiver.h"
+#include "../SpoutGL/SpoutReceiver.h"
 #else
-#include "..\SpoutGL\SpoutSender.h"
+#include "../SpoutGL/SpoutSender.h"
 #endif
 
 using namespace ci;
