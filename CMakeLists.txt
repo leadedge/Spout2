@@ -14,6 +14,8 @@
 #            Add compiler include_directory and /Zc:preprocessor define        #
 # 20/07/24 - Add SpoutDX12 library                                             #
 # 21/07/24 - Add SpoutDX9 library                                              #
+# 14/08/25 - mingw-w64 Linux cross build compatibility PR #122                 #
+#          - Remove Examples option from library build                         #  
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -44,8 +46,6 @@ OPTION(SPOUT_NO_GLOBAL_WARNING "" ${SPOUT_NO_GLOBAL_WARNING_default})
 OPTION(SPOUT_BUILD_ARM "Build for Windows on ARM" OFF)
 OPTION(SPOUT_BUILD_CMT "For Visual Studio - build /MT to link runtime libraries" ON)
 OPTION(SPOUT_BUILD_LIBRARY "Build C-compatible cross compiler library" ON)
-# The SpoutDX CMakeLists needs this option
-OPTION(SPOUT_BUILD_SPOUTDX_EXAMPLES "Build SpoutDX examples" OFF)
 OPTION(SPOUT_BUILD_SPOUTDX "Build SpoutDX DirectX 9/11/12 libraries" OFF)
 # Install option check boxes
 OPTION(SKIP_INSTALL_ALL "Install headers and libraries" OFF) # Default do not skip all install

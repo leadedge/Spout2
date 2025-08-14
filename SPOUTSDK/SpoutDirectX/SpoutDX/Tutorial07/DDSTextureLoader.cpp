@@ -130,7 +130,7 @@ namespace
         resource->SetPrivateData(WKPDID_D3DDebugObjectName, TNameLength - 1, name);
     #else
         UNREFERENCED_PARAMETER(resource);
-        //UNREFERENCED_PARAMETER(name);
+        UNREFERENCED_PARAMETER(name);
     #endif
     }
 

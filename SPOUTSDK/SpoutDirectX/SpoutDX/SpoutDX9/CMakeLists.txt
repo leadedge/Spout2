@@ -2,6 +2,7 @@
 # Filename : CMakeList.txt               | SpoutDX9 CMakesList                 #
 # Author   : Lynn Jarvis                 |                                     #
 # Started  : 21/07/2024                  |                                     #
+# 14/08/25 : mingw-w64 Linux cross build compatibility PR #122                 #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)

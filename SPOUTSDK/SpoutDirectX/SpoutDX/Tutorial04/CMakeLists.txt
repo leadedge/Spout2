@@ -1,8 +1,15 @@
-#---------------------------------------------------------------#
-# Filename : CMakeList.txt  | Spout Tutorial04 CMakeList		#
-# Author   : Lynn Jarvis	|								   #
-# Started  : 11/08/2025	 |								   #
-#---------------------------------------------------------------#
+#\-------------------------------------- . -----------------------------------/#
+# Filename : CMakeList.txt               | Spout Tutorial04 CMakeList          #
+# Author   : Alexandre Buge              |                                     #
+# Started  : 08/09/2020 12:00            |                                     #
+# 10/12/23 : Add DPI awareness           |                                     #
+#          : Copy binaries to the BUILD/Binaries/Examples folder.              #
+# 12/12/23 : Remove target_link_libraries "Spout". Not used.                   #
+#          : Add specific flags for MingW (vkedwardli)                         #
+# 14/08/25 : mingw-w64 Linux cross build compatibility PR #122                 #
+#          : Create stand-alone Cmake project                                  # 
+#          : Remove Examples option from library build                         #  
+#/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
 project(Tutorial04)
@@ -105,7 +112,7 @@ if(MINGW)
 	)
 	target_include_directories(
 		${PROJECT_NAME} PRIVATE
-		${CMAKE_CURRENT_SOURCE_DIR}/external
+		${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXMath
 	)	
 endif(MINGW)
 

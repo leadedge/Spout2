@@ -3,6 +3,7 @@
 # Author   : Lynn Jarvis                 |                                     #
 # Started  : 19/07/2024                  |                                     #
 # 21/07/24 - Remove SpoutGL cpp files from SpoutDX12sources                    #
+# 14/08/25 : mingw-w64 Linux cross build compatibility PR #122                 #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)

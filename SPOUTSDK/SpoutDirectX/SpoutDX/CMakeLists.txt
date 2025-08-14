@@ -8,6 +8,8 @@
 # 13/01/23 - Add SpoutDX static library                                        #
 # 24/06/23 - Modifications for MINGW build (PR#93-vkedwardli)                  #
 # 21/07/24 - Remove SpoutGL cpp files from SpoutDXsources                      #
+# 14/08/25 : mingw-w64 Linux cross build compatibility PR #122                 #
+#          : Remove Examples option and from library build                     #  
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -86,18 +88,6 @@ set_target_properties(
 		LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
 		ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
 )
-
-#/-------------------------------------- . -----------------------------------\#
-#
-# SpoutDX examples
-#
-
-if(SPOUT_BUILD_SPOUTDX_EXAMPLES)
-	add_subdirectory(Tutorial04)
-	add_subdirectory(Tutorial07)
-	add_subdirectory(Windows/Receiver)
-	add_subdirectory(Windows/Sender)
-endif()
 
 #/-------------------------------------- . -----------------------------------\#
 #
