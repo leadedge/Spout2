@@ -102,10 +102,15 @@ if (MSVC)
 endif (MSVC)
 
 # Optional: for MinGW or MSYS2 builds
-if(MINGW)
+if (MINGW)
+	if (NOT SPOUT_BUILD_ARM)
+		target_compile_options(
+				${PROJECT_NAME} PRIVATE
+				-msse4)
+	endif (NOT SPOUT_BUILD_ARM)
+
 	target_compile_options(
 			${PROJECT_NAME} PRIVATE
-			-msse4
 			-Wall
 	)
 	target_link_options(
@@ -116,7 +121,7 @@ if(MINGW)
 		${PROJECT_NAME} PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXMath
 	)	
-endif(MINGW)
+endif (MINGW)
 
 set_target_properties(
 		${PROJECT_NAME} PROPERTIES
