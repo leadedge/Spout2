@@ -310,7 +310,9 @@
 //					  Set by Spout::CheckSender and also by Spout::InitReceiver
 //					  SetFrameSync/WaitFrameSync - do not block of not initialized
 //		18.05.25	- SelectSender - if SpoutPanel was not found, remove the
-//					  empty sender list return to still display a sender list box 
+//					  empty sender list return to still display a sender list box
+//		09.08.25	- SetSenderName - add !*sendername check
+//		16.08.25	- Add CloseFrameSync
 //
 // ====================================================================================
 /*
@@ -440,7 +442,7 @@ Spout::~Spout()
 // and update the passed name
 void Spout::SetSenderName(const char* sendername)
 {
-	if (!sendername) {
+	if (!sendername || !*sendername) {
 		// Get executable name as default
 		strcpy_s(m_SenderName, 256, GetExeName().c_str());
 	}
@@ -544,7 +546,7 @@ bool Spout::SendFbo(GLuint FboID, unsigned int fbowidth, unsigned int fboheight,
 		// glGetIntegerv because performance can be affected.
 		if (width == 0 || height == 0) {
 			// Get the viewport size
-			unsigned int vpdims[4]={0};
+			unsigned int vpdims[4]{0};
 			glGetIntegerv(GL_VIEWPORT, (GLint*)vpdims);
 			width  = vpdims[2];
 			height = vpdims[3];
@@ -747,7 +749,6 @@ bool Spout::GetGLDX()
 	return m_bSenderGLDX;
 }
 
-
 //
 // Group: Receiver
 //
@@ -884,14 +885,12 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 {
 	// Return if flagged for update and there is a texture to receive into.
 	// The update flag is reset when the receiving application calls IsUpdated().
-	if (m_bUpdated && TextureID != 0 && TextureTarget != 0) {
+	if (m_bUpdated && TextureID != 0 && TextureTarget != 0)
 		return true;
-	}
 
 	// Make sure OpenGL and DirectX are initialized
-	if (!OpenSpout()) {
+	if (!OpenSpout())
 		return false;
-	}
 
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
@@ -907,11 +906,9 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 		// IsUpdated() returns true and the application re-allocates the receiving texture.
 		if (m_bUpdated) {
 			// If the sender is new or changed, reset shared/linked textures
-			if (m_bTextureShare) {
-				// CreateInterop set "true" for receiver
-				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
-					return false;
-				}
+			// Set "true" for receiver
+			if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
+				return false;
 			}
 			// Return now for the application to test IsUpdated() and 
 			// re-allocate the receiving texture.
@@ -1055,7 +1052,6 @@ unsigned int Spout::GetSenderWidth()
 unsigned int Spout::GetSenderHeight()
 {
 	return m_Height;
-
 }
 
 //---------------------------------------------------------
@@ -1148,7 +1144,7 @@ bool Spout::SelectSender(HWND hwnd)
 		// SpoutMessageBox opens either centered on the cursor position 
 		// or on the application window if the handle is passed in.
 		if (!hwnd) {
-			POINT pt={};
+			POINT pt{};
 			GetCursorPos(&pt);
 			SpoutMessageBoxPosition(pt);
 		}
@@ -1449,10 +1445,18 @@ bool Spout::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 
 // -----------------------------------------------
 // Function: EnableFrameSync
-// Enable / disabley frame sync
+// Enable / disable frame sync
 void Spout::EnableFrameSync(bool bSync)
 {
 	frame.EnableFrameSync(bSync);
+}
+
+// -----------------------------------------------
+// Function: CloseFrameSync
+// Close frame sync
+void Spout::CloseFrameSync()
+{
+	frame.CloseFrameSync();
 }
 
 // -----------------------------------------------
@@ -1561,7 +1565,7 @@ int Spout::GetNumAdapters()
 // Get adapter item name
 bool Spout::GetAdapterName(int index, char *adaptername, int maxchars)
 {
-	char name[256]={};
+	char name[256]{};
 	if (spoutdx.GetAdapterName(index, name, 256)) {
 		strcpy_s(adaptername, maxchars, name);
 		return true;
@@ -1616,7 +1620,7 @@ int Spout::GetSenderAdapter(const char* sendername, char* adaptername, int maxch
 	IDXGIAdapter* pAdapter = nullptr;
 	SpoutLogNotice("Spout::GetSenderAdapter - testing for sender adapter (%s)", sendername);
 
-	SharedTextureInfo info={};
+	SharedTextureInfo info{};
 	if (!sendernames.getSharedInfo(sendername, &info))
 		return -1;
 
@@ -1869,7 +1873,7 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	// SIZE_T DedicatedSystemMemory;
 	// SIZE_T SharedSystemMemory;
 	// LUID AdapterLuid;
-	char output[256]={};
+	char output[256]{};
 	size_t charsConverted = 0;
 	wcstombs_s(&charsConverted, output, 129, adapterinfo.Description, 128);
 	// printf("    Description = [%s]\n", output);
@@ -1886,9 +1890,9 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	// Use Windows functions to look for Intel graphics to see if it is
 	// the same render adapter that was detected with DirectX
 	//
-	char driverdescription[256]={};
-	char driverversion[256]={};
-	char regkey[256]={};
+	char driverdescription[256]{};
+	char driverversion[256]{};
+	char regkey[256]{};
 
 	// Additional info
 	DISPLAY_DEVICE DisplayDevice;
@@ -1993,7 +1997,7 @@ bool Spout::CreateReceiver(char* sendername, unsigned int &width, unsigned int &
 		if (m_bUpdated) {
 			// If the sender is new or changed, create or re-create interop
 			if (m_bTextureShare) {
-				// Flag "true" for receive
+				// CreateInterop set "true" for receiver
 				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 					return false;
 				}
@@ -2067,14 +2071,12 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 
 	// Return if flagged for update
 	// The update flag is reset when the receiving application calls IsUpdated()
-	if (m_bUpdated) {
+	if (m_bUpdated)
 		return true;
-	}
 
 	// Make sure OpenGL and DirectX are initialized
-	if (!OpenSpout()) {
+	if (!OpenSpout())
 		return false;
-	}
 
 	// Check for BGRA support
 	GLenum glformat = glFormat;
@@ -2091,14 +2093,11 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 		// The sender name, width, height, format, shared texture handle and pointer have been retrieved.
 		// m_Width, m_Height, m_dwFormat are updated
 		if (m_bUpdated) {
-
 			// If the sender is new or changed, return to update the receiving texture.
 			// The application detects the change with IsUpdated().
-			if (m_bTextureShare) {
-				// Flag "true" for receive
-				if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
-					return false;
-				}
+			// CreateInterop set "true" for receiver
+			if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
+				return false;
 			}
 			return true;
 		}
@@ -2169,11 +2168,11 @@ bool Spout::SelectSenderPanel(const char* message)
 {
 	HANDLE hMutex1 = NULL;
 	HMODULE module = NULL;
-	char path[MAX_PATH]={};
-	char drive[MAX_PATH]={};
-	char dir[MAX_PATH]={};
-	char fname[MAX_PATH]={};
-	char UserMessage[512]={};
+	char path[MAX_PATH]{};
+	char drive[MAX_PATH]{};
+	char dir[MAX_PATH]{};
+	char fname[MAX_PATH]{};
+	char UserMessage[512]{};
 
 	if (message && *message) {
 		strcpy_s(UserMessage, 512, message); // could be an arg or a user message
@@ -2397,7 +2396,7 @@ bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget,
 				glColor4f(1.f, 1.f, 1.f, 1.f);
 				glEnable(TextureTarget);
 				glBindTexture(TextureTarget, TextureID);
-				GLfloat tc[4][2] = { 0 };
+				GLfloat tc[4][2]{};
 				// Invert texture coord to user requirements
 				if (bInvert) {
 					tc[0][0] = 0.0;   tc[0][1] = max_y;
@@ -2464,27 +2463,29 @@ bool Spout::DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget,
 bool Spout::CheckSender(unsigned int width, unsigned int height)
 {
 	if (width == 0 || height == 0) {
+		SpoutLogWarning("Spout::CheckSender - zero width or height");
 		return false;
 	}
 
 	// The sender needs a name. Default is the executable name
 	// If a sender with this name is already registered,
 	// SetSenderName increments the name : sender_1, sender_2 etc.
-	if (!m_SenderName[0]) {
+	if (!m_SenderName[0])
 		SetSenderName();
-	}
 
 	// If not initialized, create a new sender
 	if (!m_bInitialized) {
 
 		// Make sure that Spout has been initialized and an OpenGL context is available
-		if (!OpenSpout())
+		if (!OpenSpout()) {
+			SpoutLogWarning("Spout::CheckSender - OpenSpout failed");
 			return false;
+		}
 
 		if (m_bTextureShare) {
 			// Create interop for GL/DX transfer
-			// Flag "false" for sender so that a new shared texture and handle are created.
-			// For a receiver the shared texture is created from the sender share handle.
+			//   Flag "false" for sender so that a new shared texture and handle are created.
+			//   For a receiver the shared texture is created from the sender share handle.
 			if (!CreateInterop(width, height, m_dwFormat, false)) {
 				SpoutLogWarning("Spout::CheckSender(%s, %dx%d) - create - CreateInterop failed", m_SenderName, width, height);
 				return false;
@@ -2513,13 +2514,13 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			// SetSenderID writes to the sender shared texture memory
 			// to set sender CPU sharing mode and hardware GL/DX compatibility
 			//
-			// Using CPU sharing methods (m_bCPUshare) - set top bit
-			// 1000 0000 0000 0000 0000 0000 0000 0000
+			// GL/DX compatible hardware (m_bUseGLDX) - set top bit
+			//     1000 0000 0000 0000 0000 0000 0000 0000
+			// CPU sharing methods (m_bCPUshare) - set next bit
+			//     0100 0000 0000 0000 0000 0000 0000 0000
 			//
-			// GL/DX compatible hardware (m_bUseGLDX) - set next to top bit
-			// 0100 0000 0000 0000 0000 0000 0000 0000
-			//
-			// Both bits can be set if GL/DX compatible but the user has selected CPU share mode
+			// Both top two bits can be set if GL/DX compatible
+			// but the user has selected CPU share mode
 			//
 			SetSenderID(m_SenderName, m_bCPUshare, m_bUseGLDX);
 
@@ -2553,7 +2554,7 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 
 		// Update the shared textures and interop
 		if (m_bTextureShare) {
-			// The linked textures cannot be re-sized so have to 
+			// The linked textures cannot be re-sized so have to
 			// be re-created. The interop object handle is then
 			// re-created from the linking of the new textures.
 			// Flag "false" for sender to create a new shared texture.
@@ -2642,7 +2643,7 @@ bool Spout::ReceiveSenderData()
 
 	// An existing connection will have a sender name
 	// Or a name may be set for the receiver to connect to
-	char sendername[256]={};
+	char sendername[256]{};
 	strcpy_s(sendername, 256, m_SenderName);
 
 	// Find the active sender if the global sender name is null
@@ -2673,32 +2674,27 @@ bool Spout::ReceiveSenderData()
 		dxShareHandle = UIntToPtr(info.shareHandle);
 		dwFormat = info.format;
 
-		//
 		// The following flags are informative only
 		// and may be removed in future release
+
+		//
+		// 32 bit partner ID field
 		//
 		// GPU texture share and hardware GL/DX compatible by default
 		m_bSenderCPU  = false;
 		m_bSenderGLDX = true;
 
-		//
-		// 32 bit partner ID field
-		//
-
-		// Top bit only
+		// Top bit
 		//   o Sender is using CPU share methods
-		//   o Hardware GL/DX compatibility undefined - assume false
-		if (info.partnerId == 0x80000000) {
+		if (info.partnerId & 0x80000000) {
 			m_bSenderCPU = true;
-			m_bSenderGLDX = false;
 		}
 
 		//
-		// Next top bit only (top bit not set)
+		// Next top bit
 		//   o Sender hardware is GL/DX compatible
 		//   o Using texture share methods
-		if (info.partnerId == 0x40000000) {
-			m_bSenderCPU = false;
+		if (info.partnerId & 0x40000000) {
 			m_bSenderGLDX = true;
 		}
 
@@ -2719,7 +2715,6 @@ bool Spout::ReceiveSenderData()
 			dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
 		}
 
-
 		// The shared texture handle will be different
 		//   o for texture size or format change
 		//   o for a new sender
@@ -2738,7 +2733,7 @@ bool Spout::ReceiveSenderData()
 				if(spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &m_pSharedTexture, dxShareHandle)) {
 
 					// Get the texture details
-					D3D11_TEXTURE2D_DESC desc={};
+					D3D11_TEXTURE2D_DESC desc{};
 					m_pSharedTexture->GetDesc(&desc);
 
 					// Check for zero size
@@ -2823,7 +2818,7 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 	// If SpoutPanel has been activated, test if the user has clicked OK
 	if (m_bSpoutPanelOpened) { // User has activated spout panel
 
-		char newname[256]={};
+		char newname[256]{};
 
 		// Is SpoutPanel registered ?
 		char path[MAX_PATH]{};
@@ -2842,7 +2837,7 @@ bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 		// SpoutPanel
 		//
 
-		SharedTextureInfo TextureInfo = {};
+		SharedTextureInfo TextureInfo{};
 		HANDLE hMutex = NULL;
 		DWORD dwExitCode = 0;
 		bool bRet = false;

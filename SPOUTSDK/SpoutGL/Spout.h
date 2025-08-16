@@ -167,6 +167,8 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 	// Enable / disable frame sync
 	void EnableFrameSync(bool bSync = true);
+	// Close frame sync
+	void CloseFrameSync();
 	// Check for frame sync option
 	bool IsFrameSyncEnabled();
 
