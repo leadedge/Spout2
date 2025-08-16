@@ -66,7 +66,9 @@ if (SPOUT_BUILD_ARM)
 	File(DOWNLOAD https://github.com/DLTcollab/sse2neon/raw/master/sse2neon.h ${PROJECT_SOURCE_DIR}/SPOUTSDK/sse2neon/sse2neon.h)
 	# Add compiler include_directory and /Zc:preprocessor define
 	include_directories(SPOUTSDK/sse2neon)
-	add_compile_options(/Zc:preprocessor)
+	if (MSVC)
+		add_compile_options(/Zc:preprocessor)
+	endif (MSVC)
 endif (SPOUT_BUILD_ARM)
 
 if (SPOUT_BUILD_CMT AND MSVC)
