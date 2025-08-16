@@ -86,7 +86,7 @@
 //					  Add hwnd argument to centre MessageBox dialog if used.
 //	Version 2.007.014
 //		21.09.24	-Add ReadTextureData
-//					
+//		16.08.25	- Add CloseFrameSync
 //
 // ====================================================================================
 //
@@ -317,6 +317,12 @@ bool SpoutReceiver::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 void SpoutReceiver::EnableFrameSync(bool bSync)
 {
 	spout.EnableFrameSync(bSync);
+}
+
+//---------------------------------------------------------
+void SpoutReceiver::CloseFrameSync()
+{
+	spout.CloseFrameSync();
 }
 
 //---------------------------------------------------------

@@ -81,6 +81,7 @@
 //	Version 2.007.013
 //	Version 2.007.014
 //		21.09.24	-Add ReadTextureData
+//		16.08.25	- Add CloseFrameSync
 //
 // ====================================================================================
 /*
@@ -280,6 +281,12 @@ bool SpoutSender::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 void SpoutSender::EnableFrameSync(bool bSync)
 {
 	spout.EnableFrameSync(bSync);
+}
+
+//---------------------------------------------------------
+void SpoutSender::CloseFrameSync()
+{
+	spout.CloseFrameSync();
 }
 
 //---------------------------------------------------------
