@@ -16,6 +16,8 @@
 # 21/07/24 - Add SpoutDX9 library                                              #
 # 14/08/25 - mingw-w64 Linux cross build compatibility PR #122                 #
 #          - Remove Examples option from library build                         #  
+# 16/08/25 - ARM -Add compiler include_directory                               #
+#            and /Zc:preprocessor define PR #124                               #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)

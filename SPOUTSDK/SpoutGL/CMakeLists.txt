@@ -15,6 +15,7 @@
 # 09/08/23 - Add comctl32 to SpoutLink library list (PR#96-scribam)            #
 # 16/12/23 - Remove shlwapi from Spoutlink list                                #
 # 20/12/23 - SpoutMessageBox changes in SpoutUtils for MinGW build             #
+# 16/08/25 - Do not add -msse4 on ARM build PR #123                            #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)

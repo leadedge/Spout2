@@ -8,7 +8,8 @@
 #          : Add specific flags for MingW (vkedwardli)                         #
 # 14/08/25 : mingw-w64 Linux cross build compatibility PR #122                 #
 #          : Create stand-alone Cmake project                                  # 
-#          : Remove Examples option from library build                         #  
+#          : Remove Examples option from library build                         #
+# 16/08/25 : Do not add -msse4 on ARM build PR #123                            # 
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
