@@ -16,45 +16,41 @@ The SpoutGL folder and contents must be copied to the Openframeworks "apps" fold
 	             .
 		     . Spout SDK source files
 	             .
-	          Openframeworks <- copy the entire Openframeworks folder here
-                  ofSpoutExample.sln
-                  ofSpoutExample.vcxproj
-                  ofSpoutExample.vcxproj.filters
-                  bin <- application files are generated here
-                  Binaries <- application files are accumulated here
-                  src <- the required source files
-                  Source <- example source files
-                  CopySource.bat <- To select the example of interest
-                  CopyExe.bat <- The project copies the application files to "Binaries"
-                  msbuild.md <- Details for using MSBuild
-                  Build.bat <- Build project with MSBuild
-                  Build-All.bat <- Build all examples with MSBuild
-
+	          ofSpoutExamples <- copy the ofSpoutExamples folder here (in the SpoutGL folder)
+                ofSpoutExamples.sln
+				  Receiver
+				    ReceiverData
+					ReceiverGraphics
+					ReceiverMultiple
+					ReceiverSync
+				  Sender
+				    SenderData
+					SenderGraphics
+					SenderSync
+					SenderUtilities
+					SenderVideo
+					SenderWebcam
 - Open the solution file with Visual Studio 2022 and set to "Release" and "x64".
 - The first time the project is used, re-build "openframeworkslib".\
 This ensures that the Openframeworks library is created with the correct build type.
-- Build the application "Release/x64".
+- Build the library "Release/x64".\
+A "dll" folder is created in the ofSpoutExamples folder. This is used by all projects to copy the required dlls to the executable folder.
 
-After build, the example executable files are copied to "Openframeworks\Binaries".
-
-### Source files
-
-The "src" folder contains files for a the example.\
-The "Sources" folder contains examples for both Sender and Receiver.\
-"ofApp.cpp" and "ofApp.h" are copied the example "src" folder.
-
-Open "CopySource.bat" to select the required example and Rebuild the project.
+After build of the Openframeworks library, each example project can be selected indpendently.
+Right click on the example and "Set as Startup Project". The top level "ofExamples" solution
+can also be selected for build. This will build all the example projects.\
+Applications are accumulated in the project "Binaries" folder.
 
 ### C++17 pre-processor definition
 
 Openframeworks 12.0 requires C++ Language Standard C++17.
 This causes an error with D3D11.h due to std::byte definition conflict
 due to the use of "using namespace std" in ofMain.h. To avoid this
-a preprocessor definition _HAS_STD_BYTE=0 is included in the project.
+a preprocessor definition _HAS_STD_BYTE=0 is included in the example projects.
 
 ### MSBuild
 
-Refer to "msbuild.md" for using MSBuild with the example project instead of the Visual Studio IDE.
+Refer to "msbuild.md" for using MSBuild instead of the Visual Studio IDE.
 
 
 
