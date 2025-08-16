@@ -87,12 +87,12 @@ target_include_directories(
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 
-if (MINGW)
+if (MINGW AND NOT SPOUT_BUILD_ARM)
 	target_compile_options(
 			Spout_obj PRIVATE
 			-msse4
 	)
-endif (MINGW)
+endif (MINGW AND NOT SPOUT_BUILD_ARM)
 
 #/-------------------------------------- . -----------------------------------\#
 #
