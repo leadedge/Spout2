@@ -6,17 +6,28 @@
 // Adapted for SPOUT input (https://spout.zeal.co/)
 // from C++ Direct3D samples provided with the Microsoft DirectX SDK (June 2010)
 // C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Samples\C++\Direct3D\Tutorials
+//   Tut02_Vertices
+//   https://github.com/microsoft/DirectX-SDK-Samples/tree/main/C%2B%2B/Direct3D/Tutorials/Tut02_Vertices
 //
 // This is a a triangle vertices example modified for a 4 vertex quad
 // so that a received texture can be displayed.
-// Search on "SPOUT" for additions to your own application.
 //
-// This is a Spout receiver using the SpoutDX9 support class :
+// The project "D3D9_Vertices_Receiver" is a Spout receiver
+// using the SpoutDX9 support class :
 //
 //		bool spoutDX::ReceiveDX9texture(LPDIRECT3DTEXTURE9 pTexture)
 //
-// See also the corresponding sender example
+// Search on "// SPOUT" for additions required for your own application.
 //
+// See also the corresponding sender adapted from the same project
+//   "D3D9_Vertices_Sender"
+//
+// A compute shader in SpoutDX9shaders.hpp is used to allow sender formats
+// other than DXGI_FORMAT_B8G8R8A8_UNORM. Shaders are enabled if the file
+// exists and is included by SpoutDX9.h. Shaders are optional and
+// are not enabled if the file is not found. For this example, the file
+// is in the same folder as SpoutDX9.h.
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
 // Desc: In this tutorial, we are rendering some vertices. This introduces the
@@ -41,7 +52,8 @@
 #pragma warning( default : 4996 )
 
 // SPOUT
-#include "../SpoutDX9.h"
+#include "..\SpoutDX9.h"
+#include "resource.h" // for icon
 
 //-----------------------------------------------------------------------------
 // Global variables
@@ -198,8 +210,6 @@ VOID Cleanup()
 
 }
 
-
-
 //-----------------------------------------------------------------------------
 // Name: Render()
 // Desc: Draws the scene
@@ -207,15 +217,14 @@ VOID Cleanup()
 VOID Render()
 {
     // Clear the backbuffer to black
-    g_pd3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB( 0, 0, 0 ), 1.0f, 0 );
+	g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB( 0, 0, 0 ), 1.0f, 0 );
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// SPOUT
 	//
 	// Receive a sender texture
-	// ReceiveDX9Texture looks after sender detection and change
+	// ReceiveDX9Texture looks after sender detection and size or format change
 	if (receiver.ReceiveDX9Texture(g_pReceivedTexture)) {
-
 		//
 		// Sender details can be retrieved with :
 		//		const char * GetSenderName();
@@ -226,9 +235,8 @@ VOID Render()
 		//		long GetSenderFrame();
 		//		double GetSenderFps();
 		//
-
 		// Do anything else you require with the received texture here
-
+		//
 	}
 	else {
 		// A sender was not found or the connected sender closed.
@@ -237,27 +245,27 @@ VOID Render()
 		g_pReceivedTexture = nullptr;
 	}
 
-	// Use the sender's texture for rendering if it has been received
+	// Render the sender's texture  if it has been received
 	if (g_pReceivedTexture) {
 
 		// Begin the scene
-		if (SUCCEEDED(g_pd3dDevice->BeginScene()))
-		{
+		if (SUCCEEDED(g_pd3dDevice->BeginScene())) {
+
 			// Setup our texture.
 			g_pd3dDevice->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
 			g_pd3dDevice->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-			g_pd3dDevice->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);   //Ignored
+			g_pd3dDevice->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE); //Ignored
 
+			// The received sender texture
 			g_pd3dDevice->SetTexture(0, g_pReceivedTexture);
 
 			g_pd3dDevice->SetStreamSource(0, g_pVB, 0, sizeof(TexturedVertex));
 			g_pd3dDevice->SetFVF(D3DFVF_TRIVERTEX);
 			g_pd3dDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, g_ListCount);
-
-			// End the scene
-			g_pd3dDevice->EndScene();
 		}
 
+		// End the scene
+		g_pd3dDevice->EndScene();
 	}
 
 	// Present the backbuffer contents to the display
@@ -277,7 +285,7 @@ LRESULT WINAPI MsgProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )
 		// SPOUT
 		// Right click to open SpoutPanel and select a sender
 		// Centre on the cursor position
-	case WM_RBUTTONDOWN:
+		case WM_RBUTTONDOWN:
 			receiver.SelectSender();
 			break;
 	
@@ -300,14 +308,21 @@ INT WINAPI wWinMain( HINSTANCE hInst, HINSTANCE, LPWSTR, INT )
     UNREFERENCED_PARAMETER( hInst );
 
     // Register the window class
-    WNDCLASSEX wc =
+	// Modification - document and add icon
+	HICON hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICON));
+	WNDCLASSEX wc =
     {
-        sizeof( WNDCLASSEX ), CS_CLASSDC, MsgProc, 0L, 0L,
-        GetModuleHandle( NULL ), NULL, NULL, NULL, NULL,
-        L"D3D Tutorial", NULL
+        sizeof(WNDCLASSEX),
+		CS_CLASSDC,                  // style
+		MsgProc,                     // lpfnWndProc
+		0L, 0L,                      // cbClsExtra, cbWndExtra
+        GetModuleHandle(NULL),       // hInstance
+		hIcon,                       // hIcon
+		LoadCursor(NULL, IDC_ARROW), // hCursor
+		NULL, NULL,                  // hbrBackground, lpszMenuName
+        L"D3D Tutorial",             // lpszClassName
+		NULL                         // hIconSm
     };
-	// This prevents the hourglass from getting stuck
-	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     RegisterClassEx( &wc );
 
     // Create the application's window
