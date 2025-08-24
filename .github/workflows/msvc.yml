@@ -1,0 +1,19 @@
+name: MSVC
+
+on: [ push, pull_request ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ Win32, x64, ARM64 ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure CMake
+        run: |
+          $SPOUT_BUILD_ARM = ("${{ matrix.arch }}" -eq "ARM64") ? 'ON' : 'OFF'
+          cmake -B build -A ${{ matrix.arch }} -DSPOUT_BUILD_SPOUTDX=ON -DSPOUT_BUILD_ARM="$SPOUT_BUILD_ARM"
+      - name: Build
+        run: cmake --build build

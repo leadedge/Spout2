@@ -1,0 +1,27 @@
+name: MSYS2
+
+on: [ push, pull_request ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sys: [ mingw32, mingw64, ucrt64, clang64 ]
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.sys }}
+          update: true
+          pacboy:
+            cmake:p
+            toolchain:p
+      - uses: actions/checkout@v4
+      - name: Configure CMake
+        run: cmake -B build -DSPOUT_BUILD_SPOUTDX=ON
+      - name: Build
+        run: cmake --build build
