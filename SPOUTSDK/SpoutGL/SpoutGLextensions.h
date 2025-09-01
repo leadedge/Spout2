@@ -97,6 +97,7 @@
 // For use together with Spout source files
 #include "SpoutCommon.h" // for legacyOpenGL define and Utils
 #include <stdint.h> // for _uint32 etc
+
 // ===================== GLEW ======================
 // set this to use GLEW instead of dynamic load of extensions
 // #define USE_GLEW	
@@ -118,6 +119,9 @@
 // Only used for testing
 #define USE_COPY_EXTENSIONS
 
+// GL memory extensions
+#define USE_GLMEMORY_EXTENSIONS
+
 // Compute shader extensions
 // Remove for Processing library build (JSpoutLib)
 #define USE_COMPUTE_EXTENSIONS
@@ -135,7 +139,7 @@
 	#include <GL/glew.h>
 	#include <GL/wglew.h> // wglew.h and glxew.h, which define the available WGL and GLX extensions
 #else
-	#include <GL/gl.h>
+	#include <GL/GL.h>
 	#ifndef USE_FBO_EXTENSIONS
 		// For Max/Msp Jitter
 		#include "jit.gl.h"
@@ -308,8 +312,9 @@ enum ExtLogLevel {
 #define GLEXT_SUPPORT_SWAP			 16
 #define GLEXT_SUPPORT_BGRA			 32
 #define GLEXT_SUPPORT_COPY			 64
-#define GLEXT_SUPPORT_COMPUTE		128
-#define GLEXT_SUPPORT_CONTEXT       256
+#define GLEXT_SUPPORT_GLMEMORY		128
+#define GLEXT_SUPPORT_COMPUTE		256
+#define GLEXT_SUPPORT_CONTEXT       512
 
 //-----------------------------------------------------
 // GL consts that are needed and aren't present in GL.h
@@ -404,6 +409,7 @@ extern PFNWGLDXUNLOCKOBJECTSNVPROC			wglDXUnlockObjectsNV;
 #ifdef USE_FBO_EXTENSIONS
 #define GL_INVALID_FRAMEBUFFER_OPERATION_EXT                0x0506
 #define GL_FRAMEBUFFER_UNDEFINED_EXT						0x8219
+#define GL_FRAMEBUFFER_UNDEFINED							0x8219
 #define GL_MAX_RENDERBUFFER_SIZE_EXT                        0x84E8
 #define GL_FRAMEBUFFER_BINDING_EXT                          0x8CA6
 #define GL_RENDERBUFFER_BINDING_EXT                         0x8CA7
@@ -788,6 +794,10 @@ extern glTextureStorage2DPROC glTextureStorage2D;
 typedef void (APIENTRY * glCreateTexturesPROC) (GLenum target, GLsizei n, GLuint* textures);
 extern glCreateTexturesPROC glCreateTextures;
 
+// - - - - - - - - - - - - - -
+//    GL memory extensions
+// - - - - - - - - - - - - - -
+//
 // https://registry.khronos.org/OpenGL/extensions/EXT/EXT_external_objects.txt
 // void CreateMemoryObjectsEXT(sizei n,	uint* memoryObjects);
 // void DeleteMemoryObjectsEXT(sizei n, const uint* memoryObjects);
@@ -829,10 +839,8 @@ extern glCreateBuffersPROC glCreateBuffers;
 typedef void (APIENTRY* glBindBufferBasePROC) (GLenum target, GLuint index, GLuint buffer);
 extern glBindBufferBasePROC glBindBufferBase;
 
-
-
-
-// LJ DEBUG : TODO
+// TODO
+// Shader extensions
 #define GL_SHADER_STORAGE_BARRIER_BIT                 0x2000
 #define GL_SHADER_STORAGE_BUFFER                      0x90D2
 #define GL_SHADER_STORAGE_BUFFER_BINDING              0x90D3
@@ -863,6 +871,9 @@ extern glBindBufferBasePROC glBindBufferBase;
 #endif
 #ifndef GL_HANDLE_TYPE_D3D11_IMAGE_EXT
 #define GL_HANDLE_TYPE_D3D11_IMAGE_EXT                0x958B
+#endif
+#ifndef GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT
+#define GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT            0x958C
 #endif
 
 
@@ -910,6 +921,7 @@ bool loadBLITextension();
 bool loadSwapExtensions();
 bool loadPBOextensions();
 bool loadCopyExtensions();
+bool loadGLmemoryExtensions();
 bool loadComputeShaderExtensions();
 bool loadContextExtension();
 bool isExtensionSupported(const char *extension);

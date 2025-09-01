@@ -68,6 +68,9 @@
 //			28.09.24	- SpoutGLextensions.h - add #define GL_TEXTURE_SWIZZLE_RGBA
 //			22.10.24	- Add glIsMemoryObjectEXT, glCreateBuffers
 //			25.03.25	- ExtLog - changed "standalone" to "standaloneExtensions"
+//			07.08.25	- SpoutGLextensions.h - add #define GL_FRAMEBUFFER_UNDEFINED
+//						  Correct glTextureStorageMem2DEXT
+//			30.08.25	- Add GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT
 //
 /*
 	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
@@ -196,6 +199,9 @@ glGetUniformLocationPROC glGetUniformLocation = NULL;
 glTextureStorage2DPROC   glTextureStorage2D  = NULL;
 glCreateTexturesPROC     glCreateTextures    = NULL;
 
+//---------------------------
+// OpenGL memory extensions
+//---------------------------
 glCreateMemoryObjectsEXTPROC        glCreateMemoryObjectsEXT = NULL;
 glDeleteMemoryObjectsEXTPROC        glDeleteMemoryObjectsEXT = NULL;
 glTexStorageMem2DEXTPROC            glTexStorageMem2DEXT = NULL;
@@ -207,7 +213,6 @@ glGetMemoryObjectParameterivEXTPROC glGetMemoryObjectParameterivEXT = NULL;
 glIsMemoryObjectEXTPROC             glIsMemoryObjectEXT = NULL;
 glCreateBuffersPROC                 glCreateBuffers = NULL;
 glBindBufferBasePROC                glBindBufferBase = NULL;
-
 
 //---------------------------
 // Context creation extension
@@ -455,6 +460,55 @@ bool loadCopyExtensions()
 
 }
 
+bool loadGLmemoryExtensions() {
+
+#ifdef USE_GLMEMORY_EXTENSIONS
+
+	#ifdef USE_GLEW
+	if (glImportMemoryWin32HandleEXT)
+		return true;
+	else
+		return false;
+#else
+	// 
+	glTextureStorage2D           = (glTextureStorage2DPROC)wglGetProcAddress("glTextureStorage2D");
+	glCreateTextures             = (glCreateTexturesPROC)wglGetProcAddress("glCreateTextures");
+	//
+	glCreateMemoryObjectsEXT     = (glCreateMemoryObjectsEXTPROC)wglGetProcAddress("glCreateMemoryObjectsEXT");
+	glDeleteMemoryObjectsEXT     = (glDeleteMemoryObjectsEXTPROC)wglGetProcAddress("glDeleteMemoryObjectsEXT");
+	glTexStorageMem2DEXT         = (glTexStorageMem2DEXTPROC)wglGetProcAddress("glTexStorageMem2DEXT");
+	glTextureStorageMem2DEXT     = (glTextureStorageMem2DEXTPROC)wglGetProcAddress("glTextureStorageMem2DEXT");
+	glImportMemoryWin32HandleEXT = (glImportMemoryWin32HandleEXTPROC)wglGetProcAddress("glImportMemoryWin32HandleEXT");
+	glBufferStorageMemEXT        = (glBufferStorageMemEXTPROC)wglGetProcAddress("glBufferStorageMemEXT");
+	glMemoryObjectParameterivEXT = (glMemoryObjectParameterivEXTPROC)wglGetProcAddress("glMemoryObjectParameterivEXT");
+	glGetMemoryObjectParameterivEXT = (glGetMemoryObjectParameterivEXTPROC)wglGetProcAddress("glGetMemoryObjectParameterivEXT");
+	glIsMemoryObjectEXT          = (glIsMemoryObjectEXTPROC)wglGetProcAddress("glIsMemoryObjectEXT");
+
+	if(glTextureStorage2D != NULL
+		&& glCreateTextures != NULL
+		&& glCreateMemoryObjectsEXT != NULL
+		&& glDeleteMemoryObjectsEXT != NULL
+		&& glTexStorageMem2DEXT != NULL
+		&& glTextureStorageMem2DEXT != NULL
+		&& glImportMemoryWin32HandleEXT != NULL
+		&& glBufferStorageMemEXT != NULL
+		&& glMemoryObjectParameterivEXT != NULL
+		&& glGetMemoryObjectParameterivEXT != NULL
+		&& glIsMemoryObjectEXT != NULL)	{
+			return true;
+	}
+	else {
+		printf("loadGLmemoryExtensions failed\n");
+		return false;
+	}
+#endif
+
+#else
+	// GL memory extensions defined elsewhere
+	return true;
+#endif
+
+}
 
 bool loadComputeShaderExtensions()
 {
@@ -487,19 +541,22 @@ bool loadComputeShaderExtensions()
 	glUniform1i        = (glUniform1iPROC)wglGetProcAddress("glUniform1i");
 	glUniform1f        = (glUniform1fPROC)wglGetProcAddress("glUniform1f");
 	glGetUniformLocation = (glGetUniformLocationPROC)wglGetProcAddress("glGetUniformLocation");
+	// LJ DEBUG
+	/*
 	glTextureStorage2D   = (glTextureStorage2DPROC)wglGetProcAddress("glTextureStorage2D");
 	glCreateTextures     = (glCreateTexturesPROC)wglGetProcAddress("glCreateTextures");
-
 	// These could be separated
 	glCreateMemoryObjectsEXT     = (glCreateMemoryObjectsEXTPROC)wglGetProcAddress("glCreateMemoryObjectsEXT");
 	glDeleteMemoryObjectsEXT     = (glDeleteMemoryObjectsEXTPROC)wglGetProcAddress("glDeleteMemoryObjectsEXT");
 	glTexStorageMem2DEXT         = (glTexStorageMem2DEXTPROC)wglGetProcAddress("glTexStorageMem2DEXT");
-	glTextureStorageMem2DEXT     = (glTextureStorageMem2DEXTPROC)wglGetProcAddress("glTexStorageMem2DEXT");
+	glTextureStorageMem2DEXT     = (glTextureStorageMem2DEXTPROC)wglGetProcAddress("glTextureStorageMem2DEXT");
 	glImportMemoryWin32HandleEXT = (glImportMemoryWin32HandleEXTPROC)wglGetProcAddress("glImportMemoryWin32HandleEXT");
 	glBufferStorageMemEXT        = (glBufferStorageMemEXTPROC)wglGetProcAddress("glBufferStorageMemEXT");
 	glMemoryObjectParameterivEXT = (glMemoryObjectParameterivEXTPROC)wglGetProcAddress("glMemoryObjectParameterivEXT");
 	glGetMemoryObjectParameterivEXT = (glGetMemoryObjectParameterivEXTPROC)wglGetProcAddress("glGetMemoryObjectParameterivEXT");
 	glIsMemoryObjectEXT          = (glIsMemoryObjectEXTPROC)wglGetProcAddress("glIsMemoryObjectEXT");
+	*/
+
 	glCreateBuffers              = (glCreateBuffersPROC)wglGetProcAddress("glCreateBuffers");
 	glBindBufferBase             = (glBindBufferBasePROC)wglGetProcAddress("glBindBufferBase");
 
@@ -526,7 +583,6 @@ bool loadComputeShaderExtensions()
 		&& glGetUniformLocation != NULL
 		&& glTextureStorage2D != NULL
 		&& glCreateTextures != NULL
-		// For testing - could be separated
 		&& glCreateMemoryObjectsEXT != NULL
 		&& glDeleteMemoryObjectsEXT != NULL
 		&& glTexStorageMem2DEXT != NULL
@@ -680,6 +736,13 @@ unsigned int loadGLextensions() {
 		ExtLog(SPOUT_EXT_LOG_WARNING, "loadGLextensions : loadCopyExtensions fail");
 	}
 
+	if (loadGLmemoryExtensions()) {
+		caps |= GLEXT_SUPPORT_GLMEMORY;
+	}
+	else {
+		ExtLog(SPOUT_EXT_LOG_WARNING, "loadGLextensions : loadGLmemoryExtensions fail");
+	}
+
 	if (loadComputeShaderExtensions()) {
 		caps |= GLEXT_SUPPORT_COMPUTE;
 	}
@@ -795,7 +858,7 @@ void ExtLog(ExtLogLevel level, const char* format, ...)
 	va_start(args, format);
 
 #ifdef standaloneExtensions
-	char currentLog[512]={};
+	char currentLog[512]{};
 	vsprintf_s(currentLog, 512, format, args);
 	std::string logstring;
 	logstring = "SpoutGLextensions : ";
