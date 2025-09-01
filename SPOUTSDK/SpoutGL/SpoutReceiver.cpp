@@ -150,7 +150,7 @@ SpoutReceiver::~SpoutReceiver()
 }
 
 //---------------------------------------------------------
-void SpoutReceiver::SetReceiverName(const char * SenderName)
+void SpoutReceiver::SetReceiverName(const char* SenderName)
 {
 	spout.SetReceiverName(SenderName);
 }
@@ -213,7 +213,7 @@ DWORD SpoutReceiver::GetSenderFormat()
 }
 
 //---------------------------------------------------------
-const char * SpoutReceiver::GetSenderName()
+const char* SpoutReceiver::GetSenderName()
 {
 	return spout.GetSenderName();
 }
@@ -308,7 +308,7 @@ void SpoutReceiver::SetFrameSync(const char* SenderName)
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
+bool SpoutReceiver::WaitFrameSync(const char* SenderName, DWORD dwTimeout)
 {
 	return spout.WaitFrameSync(SenderName, dwTimeout);
 }
@@ -446,13 +446,13 @@ int SpoutReceiver::GetNumAdapters()
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::GetAdapterName(int index, char *adaptername, int maxchars)
+bool SpoutReceiver::GetAdapterName(int index, char* adaptername, int maxchars)
 {
 	return spout.GetAdapterName(index, adaptername, maxchars);
 }
 
 //---------------------------------------------------------
-char * SpoutReceiver::AdapterName()
+char* SpoutReceiver::AdapterName()
 {
 	return spout.AdapterName();
 }
@@ -606,7 +606,7 @@ void SpoutReceiver::SetShareMode(int mode)
 //
 
 //---------------------------------------------------------
-bool SpoutReceiver::GetHostPath(const char *sendername, char *hostpath, int maxchars)
+bool SpoutReceiver::GetHostPath(const char* sendername, char* hostpath, int maxchars)
 {
 	return spout.GetHostPath(sendername, hostpath, maxchars);
 }
@@ -731,19 +731,19 @@ bool SpoutReceiver::ReceiveTexture(char* name, unsigned int &width, unsigned int
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::ReceiveImage(unsigned char *pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
+bool SpoutReceiver::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, GLuint HostFbo)
 {
 	return spout.ReceiveImage(pixels, glFormat, bInvert, HostFbo);
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::SelectSenderPanel(const char *message)
+bool SpoutReceiver::SelectSenderPanel(const char* message)
 {
 	return spout.SelectSenderPanel(message);
 }
 
 //---------------------------------------------------------
-bool SpoutReceiver::CheckSenderPanel(char *sendername, int maxchars)
+bool SpoutReceiver::CheckSenderPanel(char* sendername, int maxchars)
 {
 	return spout.CheckSpoutPanel(sendername, maxchars);
 }

@@ -43,7 +43,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	//   The application will not connect to any other  unless the user selects one
 	//   If that sender closes, the application will wait for the nominated sender to open 
 	//   If no name is specified, the receiver will connect to the active sender
-	void SetReceiverName(const char * sendername = nullptr);
+	void SetReceiverName(const char* sendername = nullptr);
 	// Get sender for connection
 	bool GetReceiverName(char* SenderName, int maxchars = 256);
 	// Close receiver and release resources ready to connect to another sender
@@ -73,7 +73,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	//   This can be queried to process texture data only for new frames
 	bool IsFrameNew();
 	// Received sender name
-	const char * GetSenderName();
+	const char* GetSenderName();
 	// Received sender width
 	unsigned int GetSenderWidth();
 	// Received sender height
@@ -110,7 +110,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// Signal sync event 
 	void SetFrameSync(const char* SenderName);
 	// Wait or test for a sync event
-	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+	bool WaitFrameSync(const char* SenderName, DWORD dwTimeout = 0);
 	// Enable / disable frame sync
 	void EnableFrameSync(bool bSync = true);
 	// Close frame sync
@@ -176,9 +176,9 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// The number of graphics adapters in the system
 	int GetNumAdapters();
 	// Get adapter item name
-	bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
+	bool GetAdapterName(int index, char* adaptername, int maxchars = 256);
 	// Current adapter name
-	char * AdapterName();
+	char* AdapterName();
 	// Get current adapter index
 	int GetAdapter();
 	// Get the description and output display name of the current adapter
@@ -246,7 +246,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	//
 
 	// The path of the host that produced the sender
-	bool GetHostPath(const char *sendername, char *hostpath, int maxchars);
+	bool GetHostPath(const char* sendername, char* hostpath, int maxchars);
 	// Vertical sync status
 	int GetVerticalSync();
 	// Lock to monitor vertical sync
@@ -311,7 +311,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	//   Optional message argument
 	bool SelectSenderPanel(const char* message = nullptr);
 	// Receiver detect sender selection
-	bool CheckSenderPanel(char *sendername, int maxchars = 256);
+	bool CheckSenderPanel(char* sendername, int maxchars = 256);
 
 
 	// Legacy OpenGL Draw function

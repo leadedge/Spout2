@@ -190,7 +190,7 @@ bool SpoutSender::IsInitialized()
 }
 
 //---------------------------------------------------------
-const char * SpoutSender::GetName()
+const char* SpoutSender::GetName()
 {
 	return spout.GetName();
 }
@@ -272,7 +272,7 @@ void SpoutSender::SetFrameSync(const char* SenderName)
 }
 
 //---------------------------------------------------------
-bool SpoutSender::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
+bool SpoutSender::WaitFrameSync(const char* SenderName, DWORD dwTimeout)
 {
 	return spout.WaitFrameSync(SenderName, dwTimeout);
 }
@@ -301,13 +301,13 @@ bool SpoutSender::IsFrameSyncEnabled()
 //
 
 //---------------------------------------------------------
-bool SpoutSender::WriteMemoryBuffer(const char *name, const char* data, int length)
+bool SpoutSender::WriteMemoryBuffer(const char* name, const char* data, int length)
 {
 	return spout.WriteMemoryBuffer(name, data, length);
 }
 
 //---------------------------------------------------------
-bool SpoutSender::CreateMemoryBuffer(const char *name, int length)
+bool SpoutSender::CreateMemoryBuffer(const char* name, int length)
 {
 	return spout.CreateMemoryBuffer(name,length);
 }
@@ -427,13 +427,13 @@ int SpoutSender::GetNumAdapters()
 }
 
 //---------------------------------------------------------
-bool SpoutSender::GetAdapterName(int index, char *adaptername, int maxchars)
+bool SpoutSender::GetAdapterName(int index, char* adaptername, int maxchars)
 {
 	return spout.GetAdapterName(index, adaptername, maxchars);
 }
 
 //---------------------------------------------------------
-char * SpoutSender::AdapterName()
+char* SpoutSender::AdapterName()
 {
 	return spout.AdapterName();
 }
@@ -586,7 +586,7 @@ void SpoutSender::SetShareMode(int mode)
 //
 
 //---------------------------------------------------------
-bool SpoutSender::GetHostPath(const char *sendername, char *hostpath, int maxchars)
+bool SpoutSender::GetHostPath(const char* sendername, char* hostpath, int maxchars)
 {
 	return spout.GetHostPath(sendername, hostpath, maxchars);
 }
