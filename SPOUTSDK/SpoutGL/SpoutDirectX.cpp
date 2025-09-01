@@ -171,6 +171,11 @@
 //		27.06.25	- Replace ZeroMemory throughout with {} in stucture declarations
 //		01.08.25	- m_featureLevel default - D3D_FEATURE_LEVEL_11_1
 //					- CreateSharedDX11Texture - remove D3D11_BIND_RENDER_TARGET from bind flags
+//		09.08.25	- Change all "={}" initializations back to "{}"
+//		10.08.25	- ReleaseDX11Texture - remove warning for no texture
+//		28.08.25	- CreateSharedDX11Texture - add warnings for handle creation
+//					  D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX option separated
+//		31.08.25	- FlushWait - default device and context
 //
 // ====================================================================================
 /*
@@ -564,7 +569,8 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 		// destroy any objects whose destruction has been deferred.
 	}
 	SpoutLogNotice("spoutDirectX::CreateSharedDX11Texture");
-	SpoutLogNotice("    pDevice = 0x%.7X, width = %u, height = %u, format = 0x%X (%d)", PtrToUint(pd3dDevice), width, height, format, format);
+	SpoutLogNotice("    pDevice = 0x%.7X, width = %u, height = %u, format = 0x%X (%d), keyed = %d, NThandle = %d",
+		PtrToUint(pd3dDevice), width, height, format, format, bKeyed, bNThandle);
 
 	// Use the format passed in
 	// If that is zero or DX9 format, use the default format
@@ -576,12 +582,14 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	//		Textures must be 2D
 	//		Only 1 mip level is allowed
 	//		Texture must have default usage
-	//		Texture must be write only	- ?? LJ ??
+	//		Texture must be write only
 	//		MSAA textures are not allowed
 	//		Bind flags must have SHADER_RESOURCE and RENDER_TARGET set
-	//		Only R10G10B10A2_UNORM, R16G16B16A16_FLOAT and R8G8B8A8_UNORM formats are allowed - ?? LJ ??
+	//		Only R10G10B10A2_UNORM, R16G16B16A16_FLOAT and R8G8B8A8_UNORM formats are allowed
+	// Note :
+	// This means you can only share D3D9 textures that map to these formats
+	// D3DFMT_A8R8G8B8 is used - see SpoutDX9.cpp
 	//		If a shared texture is updated on one device ID3D11DeviceContext::Flush must be called on that device **
-
 	// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476903%28v=vs.85%29.aspx
 	// To share a resource between two Direct3D 11 devices the resource must have been created
 	// with the D3D11_RESOURCE_MISC_SHARED flag, if it was created using the ID3D11Device interface.
@@ -589,21 +597,28 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	D3D11_TEXTURE2D_DESC desc{};
 	desc.Width				= width;
 	desc.Height				= height;
-	desc.BindFlags			= D3D11_BIND_SHADER_RESOURCE;
+	desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 	// This texture will be shared
-	// Note that a DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not
-	// compatible with DirectX 9. If compatibility is required, a general named mutex
-	// should be used for all texture types. This is the default.
-	if (bKeyed)
-		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
-	else
-		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
-	// An NT handle is created only if the bNThandle argument is specified
+	// An NT handle is created if the bNThandle argument is specified
 	// and the graphics hardware supports D3D_FEATURE_LEVEL_11_1
 	if (bNThandle && m_featureLevel > D3D_FEATURE_LEVEL_11_0) {
-		SpoutLog("    spoutDirectX::CreateSharedDX11Texture : D3D11_RESOURCE_MISC_SHARED_NTHANDLE");
-		desc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
+		if (bKeyed)
+			desc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
 	}
+	else if (bKeyed) {
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+	}
+	else {
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+	}
+
+	// Note that a DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not
+	// compatible with DirectX 9 and a general named mutex should be used.
+	// if (bKeyed)
+		// desc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+
+	
 	desc.CPUAccessFlags		= 0;
 	desc.Format				= texformat;
 	desc.Usage				= D3D11_USAGE_DEFAULT;
@@ -638,17 +653,17 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 		return false;
 	}
 
-	// Get the texture share handle so that for an NT handle
-	// it can be saved  in sender shared memory for receivers to pick up.
 	ID3D11Texture2D* pTexture = *ppSharedTexture;
 	if (!pTexture) {
 		SpoutLogError("spoutDirectX::CreateSharedDX11Texture - failed to create texture");
 		return false;
 	}
 
-	// When sharing a resource between two Direct3D 10/11 devices the unique handle 
-	// of the resource can be obtained by querying the resource for the IDXGIResource 
-	// interface and then calling GetSharedHandle (or CreateSharedHandle).
+	// Get the texture share handle. 
+	// Specification note :
+	//   When sharing a resource between two Direct3D 10/11 devices the unique handle 
+	//   of the resource can be obtained by querying the resource for the IDXGIResource 
+	//   interface and then calling GetSharedHandle or CreateSharedHandle.
 	IDXGIResource1* pOtherResource(NULL);
 	if (FAILED(pTexture->QueryInterface(__uuidof(IDXGIResource), (void**)&pOtherResource))) {
 		SpoutLogWarning("spoutDirectX::CreateSharedDX11Texture - QueryInterface error");
@@ -659,18 +674,36 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 		return false;
 	}
 
+	//
+	// Return the default shared texture handle so that it can be saved
+	// in sender shared memory for receivers to pick up.
+	//
+	bool bRet = true;
+
 	// NT handle
 	if (bNThandle && pd3dDevice->GetFeatureLevel() > D3D_FEATURE_LEVEL_11_0) {
-		SpoutLog("    CreateSharedTexture - NT handle");
-		// The calling application should release the NT handle.
-		pOtherResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &dxShareHandle);
+		// The calling application should release the handle.
+		if(SUCCEEDED(pOtherResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &dxShareHandle))) {
+			SpoutLogNotice("    pTexture [0x%8.8X] (%dx%d format 0x%X) : NT share handle = [0x%8.8X]",
+				PtrToUint(*ppSharedTexture), width, height, texformat, LOWORD(dxShareHandle));
+		}
+		else {
+			SpoutLogWarning("    could not create NT share handle");
+			bRet = false;
+		}
 	}
 	else {
-		// Return the shared texture handle if bNThandle is not specified.
-		// If bNThandle is not specified and the graphics hardware supports D3D_FEATURE_LEVEL_11_1,
-		// GetSharedHandle can still be used even though CreateSharedHandle is recommended.
+		// If the graphics hardware supports D3D_FEATURE_LEVEL_11_1, GetSharedHandle
+		// can still be used even though CreateSharedHandle is recommended.
 		// https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiresource-getsharedhandle
-		pOtherResource->GetSharedHandle(&dxShareHandle);
+		if (SUCCEEDED(pOtherResource->GetSharedHandle(&dxShareHandle))) {
+			SpoutLogNotice("    pTexture [0x%8.8X] (%dx%d format 0x%X) : dxShareHandle = [0x%8.8X]",
+				PtrToUint(*ppSharedTexture), width, height, texformat, LOWORD(dxShareHandle));
+		}
+		else {
+			SpoutLogWarning("    could not create share handle");
+			bRet = false;
+		}
 	}
 
 	pOtherResource->Release();
@@ -678,10 +711,7 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 	pOtherResource = nullptr;
 	pTexture = nullptr;
 
-	SpoutLogNotice("    pTexture [0x%8.8X] (%dx%d format 0x%X) : dxShareHandle = [0x%8.8X]",
-		PtrToUint(*ppSharedTexture), width, height, texformat, LOWORD(dxShareHandle) );
-
-	return true;
+	return bRet;
 
 }
 
@@ -733,7 +763,7 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 	res = pd3dDevice->CreateTexture2D(&desc, NULL, ppTexture);
 
 	if (FAILED(res)) {
-		char tmp[256]={};
+		char tmp[256]{};
 		const int error = static_cast<int>((LOWORD(res)));
 		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11Texture ERROR - %d (0x%.X) : ", error, error);
 		switch (res) {
@@ -808,7 +838,7 @@ bool spoutDirectX::CreateDX11Texture(ID3D11Device* pd3dDevice,
 	res = pd3dDevice->CreateTexture2D(&desc, NULL, ppTexture);
 
 	if (FAILED(res)) {
-		char tmp[256]={};
+		char tmp[256]{};
 		const int error = static_cast<int>((LOWORD(res)));
 		sprintf_s(tmp, 256, "spoutDirectX::CreateDX11Texture ERROR - %d (0x%.X) : ", error, error);
 		switch (res) {
@@ -936,8 +966,8 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	}
 
 	// Can get sender format here
-	// ID3D11Texture2D * texturePointer = *ppSharedTexture;
-	// D3D11_TEXTURE2D_DESC td ={};
+	// ID3D11Texture2D* texturePointer = *ppSharedTexture;
+	// D3D11_TEXTURE2D_DESC td {};
 	// texturePointer->GetDesc(&td);
 	// printf("td.Format = %d\n", td.Format);
 	// 87 - DXGI_FORMAT_B8G8R8A8_UNORM
@@ -951,9 +981,6 @@ bool spoutDirectX::OpenDX11shareHandle(ID3D11Device* pDevice, ID3D11Texture2D** 
 	// printf("td.SampleDesc Quality = %d\n", td.SampleDesc.Quality);
 	// printf("td.BindFlags = %d\n", td.BindFlags);
 	// printf("td.MiscFlags = %d\n", td.MiscFlags); // D3D11_RESOURCE_MISC_SHARED (2)
-
-	SpoutLogNotice("spoutDirectX::OpenDX11shareHandle - OK");
-
 	return true;
 
 }
@@ -982,8 +1009,6 @@ unsigned long spoutDirectX::ReleaseDX11Texture(ID3D11Device* pd3dDevice, ID3D11T
 	if (!pd3dDevice || !pTexture) {
 		if (!pd3dDevice)
 			SpoutLogWarning("spoutDirectX::ReleaseDX11Texture - no device");
-		if (!pTexture)
-			SpoutLogWarning("spoutDirectX::ReleaseDX11Texture - no texture");
 		return 0;
 	}
 
@@ -1096,6 +1121,8 @@ void spoutDirectX::Flush()
 //     Flush immediate context command queue and wait for completion
 void spoutDirectX::FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext)
 {
+	if (!pd3dDevice) pd3dDevice = GetDX11Device();
+	if (!pImmediateContext) pImmediateContext = GetDX11Context();
 	if (!pd3dDevice || !pImmediateContext)
 		return;
 
@@ -1153,7 +1180,7 @@ int spoutDirectX::GetNumAdapters()
 {
 	IDXGIFactory1* _dxgi_factory1 = nullptr;
 	IDXGIAdapter1* adapter1_ptr = nullptr;
-	DXGI_ADAPTER_DESC1 desc={0};
+	DXGI_ADAPTER_DESC1 desc{};
 	UINT32 i = 0;
 	UINT32 nAdapters = 0;
 
@@ -1199,7 +1226,7 @@ int spoutDirectX::GetNumAdapters()
 //---------------------------------------------------------
 // Function: GetAdapterName
 //     Get the name of an adapter index
-bool spoutDirectX::GetAdapterName(int index, char *adaptername, int maxchars)
+bool spoutDirectX::GetAdapterName(int index, char* adaptername, int maxchars)
 {
 	if (!adaptername)
 		return false;
@@ -1247,9 +1274,9 @@ int spoutDirectX::GetAdapterIndex(const char* adaptername)
 
 	IDXGIFactory1* _dxgi_factory1 = nullptr;
 	IDXGIAdapter* adapter1_ptr = nullptr;
-	DXGI_ADAPTER_DESC desc={};
+	DXGI_ADAPTER_DESC desc{};
 	size_t charsConverted = 0;
-	char name[256]={}; // Maximum size of desc.Description in bytes (WCHAR 128)
+	char name[256]{}; // Maximum size of desc.Description in bytes (WCHAR 128)
 
 	if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&_dxgi_factory1))) {
 		SpoutLogError("spoutDirectX::GetAdapterIndex - Could not create CreateDXGIFactory1");
@@ -1293,7 +1320,7 @@ int spoutDirectX::GetAdapter()
 //     Set required graphics adapter for output
 bool spoutDirectX::SetAdapter(int index)
 {
-	char adaptername[128]={};
+	char adaptername[128]{};
 	IDXGIAdapter* pAdapter = nullptr;
 
 	// Reset to default
@@ -1471,7 +1498,7 @@ bool spoutDirectX::FindNVIDIA(int& nAdapter)
 {
 	IDXGIFactory1* _dxgi_factory1 = nullptr;
 	IDXGIAdapter* adapter1_ptr = nullptr;
-	DXGI_ADAPTER_DESC desc={};
+	DXGI_ADAPTER_DESC desc{};
 	UINT32 i = 0;
 	bool bFound = false;
 
@@ -1482,7 +1509,7 @@ bool spoutDirectX::FindNVIDIA(int& nAdapter)
 	for (i = 0; _dxgi_factory1->EnumAdapters(i, &adapter1_ptr) != DXGI_ERROR_NOT_FOUND; i++) {
 		if (!adapter1_ptr) break;
 		adapter1_ptr->GetDesc(&desc);
-		DXGI_OUTPUT_DESC desc_out={};
+		DXGI_OUTPUT_DESC desc_out{};
 		IDXGIOutput* p_output = nullptr;
 		// TODO 
 		// if(adapter1_ptr->EnumOutputs(0, &p_output ) == DXGI_ERROR_NOT_FOUND) {
@@ -1580,7 +1607,7 @@ int spoutDirectX::GetPerformancePreference(const char* path)
 	}
 
 #ifdef NTDDI_WIN10_RS4
-	char exepath[MAX_PATH]={};
+	char exepath[MAX_PATH]{};
 	// No path specified - get the current application path
 	if (!path) {
 		if (GetModuleFileNameA(NULL, exepath, MAX_PATH) <= 0) {
@@ -1594,7 +1621,7 @@ int spoutDirectX::GetPerformancePreference(const char* path)
 
 	// A valid sender application path will have a drive letter and terminate with ".exe"
 	if(IsApplicationPath(exepath)) {
-		char prefs[256]={};
+		char prefs[256]{};
 		int preference = 0;
 		if (ReadPathFromRegistry(HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences", exepath, prefs, 256)) {
 			std::string pr = prefs;
@@ -1633,7 +1660,7 @@ bool spoutDirectX::SetPerformancePreference(int preference, const char* path)
 	}
 
 #ifdef NTDDI_WIN10_RS4
-	char exepath[MAX_PATH]={};
+	char exepath[MAX_PATH]{};
 	// No path specified - get the current application path
 	if (!path) {
 		if (GetModuleFileNameA(NULL, exepath, MAX_PATH) <= 0) {
@@ -1658,7 +1685,7 @@ bool spoutDirectX::SetPerformancePreference(int preference, const char* path)
 			SpoutLogNotice("spoutDirectX::SetPerformancePreference - none");
 		SpoutLogNotice("    [%s]", path);
 
-		char prefs[256]={};
+		char prefs[256]{};
 		if (preference == -1) {
 			// Remove preference
 			if (RemovePathFromRegistry(HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences", exepath)) {
@@ -1827,7 +1854,7 @@ bool spoutDirectX::SetPreferredAdapter(int preference)
 		SpoutLogNotice("spoutDirectX::SetPreferredAdapter - unspecified");
 
 	// Get the name of the preferred adapter
-	char adaptername[256]={};
+	char adaptername[256]{};
 	if (GetPreferredAdapterName(preference, adaptername, 256)) {
 		// Find it's index in the list of adapters
 		const int index = GetAdapterIndex(adaptername);
@@ -1848,7 +1875,7 @@ bool spoutDirectX::SetPreferredAdapter(int preference)
 bool spoutDirectX::IsPreferenceAvailable()
 {
 #ifdef NTDDI_WIN10_RS4
-	char build[128]={};
+	char build[128]{};
 	if (ReadPathFromRegistry(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentBuildNumber", build, 128)) {
 		if (atoi(build) >= 17134)
 			return true;
@@ -1894,7 +1921,7 @@ void spoutDirectX::DebugLog(ID3D11Device* pd3dDevice, const char* format, ...)
 	// Suppress warning 26826 to use vsprintf_s
 #pragma warning(disable:26485)
 	// Construct the log now to avoid UNREFERENCED_PARAMETER warning if the block below is disabled
-	char dlog[128]={};
+	char dlog[128]{};
 	va_list args;
 	va_start(args, format);
 	// An explicit cast to the decayed pointer type prevents the warning
