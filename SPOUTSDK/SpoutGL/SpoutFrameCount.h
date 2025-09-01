@@ -114,7 +114,7 @@ class SPOUT_DLLEXP spoutFrameCount {
 	//
 
 	// Create named mutex for a sender
-	bool CreateAccessMutex(const char * SenderName);
+	bool CreateAccessMutex(const char* SenderName);
 	// Close the texture access mutex.
 	void CloseAccessMutex();
 	// Test access using a named mutex
@@ -131,7 +131,7 @@ class SPOUT_DLLEXP spoutFrameCount {
 	// Set sync event 
 	void SetFrameSync(const char* name);
 	// Wait or test for a sync event
-	bool WaitFrameSync(const char *name, DWORD dwTimeout = 0);
+	bool WaitFrameSync(const char* name, DWORD dwTimeout = 0);
 	// Close sync event
 	void CloseFrameSync();
 	// Check for existence of the sender frame sync event
