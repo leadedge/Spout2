@@ -81,6 +81,7 @@
 	29.05.25 - Add rgba_swap_ssse3
 	01.07.25 - memcpy_sse2 - handle trailing bytes to avoid 16 byte limitation
 			   Modify CopyPixels and FlipBuffer to test for SSE2 only
+	28.08.25 - Add SaveTextureToBMP - save texture to file for testing
 
 */
 
@@ -258,10 +259,12 @@ void spoutCopy::RemovePadding(const unsigned char *source, unsigned char *dest,
 // Clear alpha of rgba image pixels to the required value
 void spoutCopy::ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha) const
 {
-	unsigned char* pixels = src;
-	for (unsigned int i = 0; i<width*height; i++) {
-		*(pixels + 3) = alpha; // alpha is the last of the 4 bytes
-		pixels += 4; // move the pointer along to the next rgba pixel
+	if (src) {
+		unsigned char * pixels = src;
+		for (unsigned int i = 0; i < width * height; i++) {
+			*(pixels + 3) = alpha; // alpha is the last of the 4 bytes
+			pixels += 4; // move the pointer along to the next rgba pixel
+		}
 	}
 }
 
@@ -1799,3 +1802,125 @@ void spoutCopy::rgba_swap_ssse3(void* __restrict rgba_source, unsigned int width
     }
 
 } // end rgba_swap_ssse3
+
+//
+// Save texture to file for testing
+// DXGI_FORMAT_R8G8B8A8_UNORM or DXGI_FORMAT_B8G8R8A8_UNORM only
+//
+// Usage :
+// if (bDoOnce) {
+//   First frame is black - set nFrameDelay 2 or greater
+//   if(nFrameDelay > 0)
+//     nFrameDelay--;
+//   if (nFrameDelay == 0) {
+//     std::string filepath = GetExePath();
+//     filepath += "test-texture.bmp";
+//     spoutcopy.SaveTextureToBMP(spoutdx.GetDX11Context(), m_pSharedTexture, filepath);
+//     bDoOnce = false;
+//   }
+// }
+//
+bool spoutCopy::SaveTextureToBMP(ID3D11DeviceContext* context, ID3D11Texture2D* texture, std::string filePath)
+{
+	if (!context || !texture) {
+		printf("spoutCopy::SaveTextureToBMP - no context or no texture.\n");
+		return false;
+	}
+
+	printf("spoutCopy::SaveTextureToBMP - saving [%s]\n", filePath.c_str());
+
+    // Get texture description
+    D3D11_TEXTURE2D_DESC desc;
+    texture->GetDesc(&desc);
+
+ 	if (!(desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM || desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM))  {
+        printf("spoutCopy::SaveTextureToBMP - RGBA/BGRA formats supported.\n");
+        return false;
+    }
+
+    // Create staging texture
+    ID3D11Device* device = nullptr;
+    context->GetDevice(&device);
+
+    D3D11_TEXTURE2D_DESC stagingDesc = desc;
+    stagingDesc.Usage = D3D11_USAGE_STAGING;
+    stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    stagingDesc.BindFlags = 0;
+    stagingDesc.MiscFlags = 0;
+
+    ID3D11Texture2D* stagingTexture = nullptr;
+    if (FAILED(device->CreateTexture2D(&stagingDesc, nullptr, &stagingTexture)))
+    {
+		printf("spoutCopy::SaveTextureToBMP - could not create staging texture.\n");
+        device->Release();
+        return false;
+    }
+    device->Release();
+
+    context->CopyResource(stagingTexture, texture);
+
+    D3D11_MAPPED_SUBRESOURCE mapped = {};
+    if (FAILED(context->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &mapped)))
+    {
+		printf("spoutCopy::SaveTextureToBMP - could not map staging texture.\n");
+        stagingTexture->Release();
+        return false;
+    }
+
+    int width = static_cast<int>(desc.Width);
+    int height = static_cast<int>(desc.Height);
+    int rowPitch = static_cast<int>(mapped.RowPitch);
+    const uint8_t* srcData = static_cast<const uint8_t*>(mapped.pData);
+
+    std::vector<uint8_t> pixelData(width * height * 4);
+    for (int y = 0; y < height; ++y) {
+        const uint8_t* srcRow = srcData + rowPitch * y;
+        uint8_t* dstRow = pixelData.data() + (height - 1 - y) * width * 4;
+        for (int x = 0; x < width; ++x) {
+			// BGRA default input format
+			// BGRA required for windows bitmap
+            dstRow[x * 4 + 0] = srcRow[x * 4 + 0]; // B
+            dstRow[x * 4 + 1] = srcRow[x * 4 + 1]; // G
+            dstRow[x * 4 + 2] = srcRow[x * 4 + 2]; // R
+            dstRow[x * 4 + 3] = srcRow[x * 4 + 3]; // A
+        }
+    }
+
+    context->Unmap(stagingTexture, 0);
+    stagingTexture->Release();
+
+	BITMAPFILEHEADER fileHeader{};
+	BITMAPINFOHEADER infoHeader{};
+
+	// Set the size  
+	infoHeader.biSize = sizeof(BITMAPINFOHEADER);
+	infoHeader.biPlanes = 1;
+	infoHeader.biBitCount = 32;
+	infoHeader.biClrImportant = 0;
+	infoHeader.biClrUsed = 0;
+	infoHeader.biCompression = BI_RGB;
+    infoHeader.biWidth = width;
+    infoHeader.biHeight = height;
+
+	fileHeader.bfType = 0x4D42; // 'BM'
+    fileHeader.bfReserved1 = 0;
+    fileHeader.bfReserved2 = 0;
+    fileHeader.bfOffBits = 14 + 40; // size of headers
+	// Offset to the RGBQUAD  
+	fileHeader.bfOffBits = sizeof(BITMAPFILEHEADER)+sizeof(BITMAPINFOHEADER);;
+	// Total size of image including size of headers  
+    fileHeader.bfSize = fileHeader.bfOffBits + static_cast<uint32_t>(pixelData.size());
+
+    std::ofstream file(filePath, std::ios::binary);
+	if (!file) {
+		printf("spoutCopy::SaveTextureToBMP - file open failed.\n");
+		return false;
+	}
+
+    file.write(reinterpret_cast<const char*>(&fileHeader), sizeof(fileHeader));
+    file.write(reinterpret_cast<const char*>(&infoHeader), sizeof(infoHeader));
+    file.write(reinterpret_cast<const char*>(pixelData.data()), pixelData.size());
+
+    return true;
+
+}

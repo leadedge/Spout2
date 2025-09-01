@@ -48,6 +48,11 @@
 #include <cmath> // For compatibility with Clang. PR#81
 #include <stdint.h> // for _uint32 etc
 
+// For save texture to bitmap testing function
+#include <d3d11.h>
+#include <fstream>
+#include <vector>
+
 class SPOUT_DLLEXP spoutCopy {
 
 	public:
@@ -189,13 +194,11 @@ class SPOUT_DLLEXP spoutCopy {
 			unsigned int width, unsigned int height,
 			unsigned int dest_pitch, bool bInvert) const;
 
-
 		// Experimental SSE RGB to BGRA
 		// Single line
 		void rgb_to_bgrx_sse(unsigned int npixels, const void* rgb_source, void* bgrx_out) const;
 		// Full height
 		void rgb_to_bgra_sse3(void* rgb_source, void* rgba_dest, unsigned int width, unsigned int height) const;
-
 
 		// Copy BGR to BGRA
 		void bgr2bgra (const void* bgr_source,  void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
@@ -215,8 +218,8 @@ class SPOUT_DLLEXP spoutCopy {
 		bool GetSSE3();
 		bool GetSSSE3();
 
-		// LJ DEBUG
-		void rgba_swap_ssse3(void* __restrict rgbasource, unsigned int width, unsigned int height);
+		// Save texture to file for testing
+		bool SaveTextureToBMP(ID3D11DeviceContext* context, ID3D11Texture2D* texture, std::string filePath);
 
 	protected :
 
@@ -228,8 +231,8 @@ class SPOUT_DLLEXP spoutCopy {
 		void rgba_bgra(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 		void rgba_bgra_sse2(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
 		void rgba_bgra_sse3(const void *rgba_source, void *bgra_dest, unsigned int width, unsigned int height, bool bInvert = false) const;
-		// LJ DEBUG
-		// void rgba_swap_ssse3(void* __restrict rgbasource, unsigned int width, unsigned int height);
+		// Swap red and blue components in place
+		void rgba_swap_ssse3(void* __restrict rgbasource, unsigned int width, unsigned int height);
 
 };
 
