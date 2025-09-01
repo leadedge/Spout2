@@ -72,6 +72,7 @@ SpoutSharedMemory::SpoutSharedMemory()
 	m_pName = NULL;
 	m_size = 0;
 	m_lockCount = 0;
+
 }
 
 SpoutSharedMemory::~SpoutSharedMemory()
@@ -184,7 +185,7 @@ bool SpoutSharedMemory::Open(const char* name)
 	}
 
 	m_hMap = OpenFileMappingA(FILE_MAP_ALL_ACCESS, false, (LPCSTR)name);
-	if (m_hMap == NULL) {
+	if (!m_hMap) {
 		return false;
 	}
 
