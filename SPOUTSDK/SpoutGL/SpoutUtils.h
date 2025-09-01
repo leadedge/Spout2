@@ -36,7 +36,7 @@
 
 // Enable this define to use independently of Spout source files
 // See also the stand alone define in SpoutGLextensions
-// #define standaloneUtils
+#define standaloneUtils
 
 #ifdef standaloneUtils
 #define SPOUT_DLLEXP
@@ -120,11 +120,11 @@ namespace spoututils {
 	// Get SDK version number string e.g. "2.007.000"
 	// Optional - return as a single number
 	// e.g. 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
-	std::string SPOUT_DLLEXP GetSDKversion(int * number = nullptr);
+	std::string SPOUT_DLLEXP GetSDKversion(int* number = nullptr);
 
 	// Get the user Spout version from the registry
 	// Optional - return as a single number
-	std::string SPOUT_DLLEXP GetSpoutVersion(int * number = nullptr);
+	std::string SPOUT_DLLEXP GetSpoutVersion(int* number = nullptr);
 
 	// Computer type
 	bool SPOUT_DLLEXP IsLaptop();
@@ -154,7 +154,7 @@ namespace spoututils {
 	// Open console window.
 	// A console window opens without logs.
 	// Useful for debugging with console output.
-	void SPOUT_DLLEXP OpenSpoutConsole(const char *title = nullptr);
+	void SPOUT_DLLEXP OpenSpoutConsole(const char* title = nullptr);
 	
 	// Close console window.
 	// The optional warning displays a MessageBox if user notification is required.
@@ -241,10 +241,10 @@ namespace spoututils {
 
 	// MessageBox dialog with optional timeout.
 	// The dialog closes itself if a timeout is specified.
-	int SPOUT_DLLEXP SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0);
+	int SPOUT_DLLEXP SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0);
 
 	// MessageBox with variable arguments
-	int SPOUT_DLLEXP SpoutMessageBox(const char * caption, const char* format, ...);
+	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, const char* format, ...);
 	
 	// MessageBox with variable arguments and icon, buttons
 	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, UINT uType, const char* format, ...);
@@ -304,30 +304,30 @@ namespace spoututils {
 	//
 
 	// Read subkey DWORD value
-	bool SPOUT_DLLEXP ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue);
+	bool SPOUT_DLLEXP ReadDwordFromRegistry(HKEY hKey, const char* subkey, const char* valuename, DWORD* pValue);
 	
 	// Write subkey DWORD value
-	bool SPOUT_DLLEXP WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue);
+	bool SPOUT_DLLEXP WriteDwordToRegistry(HKEY hKey, const char* subkey, const char* valuename, DWORD dwValue);
 	
 	// Read subkey character string
-	bool SPOUT_DLLEXP ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath, DWORD dwSize = MAX_PATH);
+	bool SPOUT_DLLEXP ReadPathFromRegistry(HKEY hKey, const char* subkey, const char* valuename, char* filepath, DWORD dwSize = MAX_PATH);
 	
 	// Write subkey character string
-	bool SPOUT_DLLEXP WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath);
+	bool SPOUT_DLLEXP WritePathToRegistry(HKEY hKey, const char* subkey, const char* valuename, const char* filepath);
 	
 	// Write subkey binary hex data string
-	bool SPOUT_DLLEXP WriteBinaryToRegistry(HKEY hKey, const char *subkey, const char *valuename, const unsigned char *hexdata, DWORD nchars);
+	bool SPOUT_DLLEXP WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars);
 
 	// Remove subkey value name
-	bool SPOUT_DLLEXP RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename);
+	bool SPOUT_DLLEXP RemovePathFromRegistry(HKEY hKey, const char* subkey, const char* valuename);
 	
 	// Delete a subkey and its values.
 	//   It must be a subkey of the key that hKey identifies, but it cannot have subkeys.  
 	//   Note that key names are not case sensitive.  
-	bool SPOUT_DLLEXP RemoveSubKey(HKEY hKey, const char *subkey);
+	bool SPOUT_DLLEXP RemoveSubKey(HKEY hKey, const char* subkey);
 	
 	// Find subkey
-	bool SPOUT_DLLEXP FindSubKey(HKEY hKey, const char *subkey);
+	bool SPOUT_DLLEXP FindSubKey(HKEY hKey, const char* subkey);
 
 	//
 	// Timing functions
@@ -361,7 +361,7 @@ namespace spoututils {
 		// Local functions
 		void _logtofile(bool append = false);
 		std::string _getLogPath();
-		std::string _getLogFilePath(const char *filename);
+		std::string _getLogFilePath(const char* filename);
 		std::string _levelName(SpoutLogLevel level);
 		// Taskdialog for SpoutMessageBox
 		int MessageTaskDialog(HWND hWnd, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
