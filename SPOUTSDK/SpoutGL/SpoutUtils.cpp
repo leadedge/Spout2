@@ -246,6 +246,8 @@
 				   Correct RegOpenKeyExA options arg from NULL to 0
 				   Correct RegCreateKeyExA reserved arg from NULL to 0
 				   MessageBoxTimeoutA - add return value for else
+		06.09.25 - Add executable name to log file
+
 */
 
 #include "SpoutUtils.h"
@@ -1714,9 +1716,17 @@ namespace spoututils {
 					logFile << "   " << tmp << std::endl;
 				}
 				else {
-					logFile << "========================" << std::endl;
-					logFile << "    Spout log file" << std::endl;
-					logFile << "========================" << std::endl;
+					logFile << "========================================" << std::endl;
+					logFile << " Spout log file ";
+					size_t bs = logPath.find_last_of("\\");
+					if(bs == std::string::npos)
+						bs = logPath.find_last_of("/");
+					if (bs != std::string::npos) {
+						std::string logName = "\"" + logPath.substr(bs+1) + "\"";
+						logFile << logName.c_str();
+					}
+					logFile << std::endl;
+					logFile << "========================================" << std::endl;
 					logFile << " " << tmp << std::endl;
 				}
 				logFile.close();
