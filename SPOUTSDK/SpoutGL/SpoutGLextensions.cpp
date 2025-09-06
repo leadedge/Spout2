@@ -71,6 +71,7 @@
 //			07.08.25	- SpoutGLextensions.h - add #define GL_FRAMEBUFFER_UNDEFINED
 //						  Correct glTextureStorageMem2DEXT
 //			30.08.25	- Add GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT
+//			02.09.25	- Add GL_HANDLE_TYPE_OPAQUE_IMAGE_KMT_EXT
 //
 /*
 	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
@@ -541,24 +542,8 @@ bool loadComputeShaderExtensions()
 	glUniform1i        = (glUniform1iPROC)wglGetProcAddress("glUniform1i");
 	glUniform1f        = (glUniform1fPROC)wglGetProcAddress("glUniform1f");
 	glGetUniformLocation = (glGetUniformLocationPROC)wglGetProcAddress("glGetUniformLocation");
-	// LJ DEBUG
-	/*
-	glTextureStorage2D   = (glTextureStorage2DPROC)wglGetProcAddress("glTextureStorage2D");
-	glCreateTextures     = (glCreateTexturesPROC)wglGetProcAddress("glCreateTextures");
-	// These could be separated
-	glCreateMemoryObjectsEXT     = (glCreateMemoryObjectsEXTPROC)wglGetProcAddress("glCreateMemoryObjectsEXT");
-	glDeleteMemoryObjectsEXT     = (glDeleteMemoryObjectsEXTPROC)wglGetProcAddress("glDeleteMemoryObjectsEXT");
-	glTexStorageMem2DEXT         = (glTexStorageMem2DEXTPROC)wglGetProcAddress("glTexStorageMem2DEXT");
-	glTextureStorageMem2DEXT     = (glTextureStorageMem2DEXTPROC)wglGetProcAddress("glTextureStorageMem2DEXT");
-	glImportMemoryWin32HandleEXT = (glImportMemoryWin32HandleEXTPROC)wglGetProcAddress("glImportMemoryWin32HandleEXT");
-	glBufferStorageMemEXT        = (glBufferStorageMemEXTPROC)wglGetProcAddress("glBufferStorageMemEXT");
-	glMemoryObjectParameterivEXT = (glMemoryObjectParameterivEXTPROC)wglGetProcAddress("glMemoryObjectParameterivEXT");
-	glGetMemoryObjectParameterivEXT = (glGetMemoryObjectParameterivEXTPROC)wglGetProcAddress("glGetMemoryObjectParameterivEXT");
-	glIsMemoryObjectEXT          = (glIsMemoryObjectEXTPROC)wglGetProcAddress("glIsMemoryObjectEXT");
-	*/
-
-	glCreateBuffers              = (glCreateBuffersPROC)wglGetProcAddress("glCreateBuffers");
-	glBindBufferBase             = (glBindBufferBasePROC)wglGetProcAddress("glBindBufferBase");
+	glCreateBuffers      = (glCreateBuffersPROC)wglGetProcAddress("glCreateBuffers");
+	glBindBufferBase     = (glBindBufferBasePROC)wglGetProcAddress("glBindBufferBase");
 
 	if(glCreateProgram != NULL
 		&& glCreateShader != NULL

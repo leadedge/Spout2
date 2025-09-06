@@ -863,6 +863,9 @@ extern glBindBufferBasePROC glBindBufferBase;
 #ifndef GL_HANDLE_TYPE_OPAQUE_WIN32_EXT
 #define GL_HANDLE_TYPE_OPAQUE_WIN32_EXT               0x9587
 #endif
+#ifndef GL_HANDLE_TYPE_OPAQUE_IMAGE_KMT_EXT
+#define GL_HANDLE_TYPE_OPAQUE_IMAGE_KMT_EXT           0x9588
+#endif
 #ifndef GL_HANDLE_TYPE_D3D12_TILEPOOL_EXT
 #define GL_HANDLE_TYPE_D3D12_TILEPOOL_EXT             0x9589
 #endif
