@@ -276,6 +276,11 @@ enum ExtLogLevel {
 #define GL_BGRA                        0x80E1
 #endif
 
+#ifndef GL_BGRA8_EXT
+#define GL_BGRA8_EXT                   0x93A1
+#endif
+
+
 // RGBA <> BGRA
 #ifndef GL_TEXTURE_SWIZZLE_RGBA
 #define GL_TEXTURE_SWIZZLE_RGBA        0x8E46
@@ -672,12 +677,17 @@ extern glFenceSyncPROC      glFenceSyncEXT;
 //-------------------
 // Copy extensions
 //-------------------
+
+#ifndef GL_INTERNALFORMAT_SUPPORTED
+#define GL_INTERNALFORMAT_SUPPORTED 0x826F
+#endif
+
 #ifdef USE_COPY_EXTENSIONS
 typedef void (APIENTRY * PFNGLCOPYIMAGESUBDATAPROC)(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth);
 extern PFNGLCOPYIMAGESUBDATAPROC glCopyImageSubData;
 
-typedef void(APIENTRY * glGetInternalFormativPROC)(GLenum target, GLenum internalfrmat, GLenum pname, GLsizei buffSize, GLint *params);
-extern glGetInternalFormativPROC glGetInternalFormativ;
+typedef void(APIENTRY * glGetInternalformativPROC)(GLenum target, GLenum internalfrmat, GLenum pname, GLsizei buffSize, GLint *params);
+extern glGetInternalformativPROC glGetInternalformativ;
 #endif // USE_COPY_EXTENSIONS
 
 //---------------------------
@@ -859,6 +869,7 @@ extern glBindBufferBasePROC glBindBufferBase;
 #define GL_PROTECTED_MEMORY_OBJECT_EXT                0x959B
 #endif
 
+// https://registry.khronos.org/OpenGL/extensions/EXT/EXT_external_objects_win32.txt
 // Accepted by the <handleType> parameter of ImportMemoryWin32HandleEXT(), ImportMemoryWin32NameEXT()
 #ifndef GL_HANDLE_TYPE_OPAQUE_WIN32_EXT
 #define GL_HANDLE_TYPE_OPAQUE_WIN32_EXT               0x9587

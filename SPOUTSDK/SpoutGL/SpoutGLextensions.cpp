@@ -72,6 +72,8 @@
 //						  Correct glTextureStorageMem2DEXT
 //			30.08.25	- Add GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT
 //			02.09.25	- Add GL_HANDLE_TYPE_OPAQUE_IMAGE_KMT_EXT
+//			09.09.25	- Correct glGetInternalFormativ to glGetInternalformativ
+//						  Define GL_BGRA8_EXT
 //
 /*
 	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
@@ -169,7 +171,7 @@ glFenceSyncPROC							glFenceSync						= NULL;
 //-------------------
 #ifdef USE_COPY_EXTENSIONS
 PFNGLCOPYIMAGESUBDATAPROC glCopyImageSubData = NULL;
-glGetInternalFormativPROC glGetInternalFormativ = NULL;
+glGetInternalformativPROC glGetInternalformativ = NULL;
 #endif
 
 //---------------------------
@@ -445,8 +447,8 @@ bool loadCopyExtensions()
 
 	// Copy extensions
 	glCopyImageSubData = (PFNGLCOPYIMAGESUBDATAPROC)wglGetProcAddress("glCopyImageSubData");
-	glGetInternalFormativ = (glGetInternalFormativPROC)wglGetProcAddress("glGetInternalFormativ");
-	if (glCopyImageSubData != NULL) {
+	glGetInternalformativ = (glGetInternalformativPROC)wglGetProcAddress("glGetInternalformativ");
+	if (glCopyImageSubData != NULL && glGetInternalformativ != NULL) {
 		return true;
 	}
 	else {
