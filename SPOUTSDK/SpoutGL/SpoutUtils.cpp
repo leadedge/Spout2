@@ -2121,7 +2121,7 @@ namespace spoututils {
 			// TDF_POSITION_RELATIVE_TO_WINDOW Indicates that the task dialog is
 			// centered relative to the window specified by hwndParent.
 			// If hwndParent is NULL, the dialog is centered on the monitor.
-			config.dwFlags            = TDF_POSITION_RELATIVE_TO_WINDOW | TDF_SIZE_TO_CONTENT | TDF_CALLBACK_TIMER | TDF_ENABLE_HYPERLINKS;
+			config.dwFlags  = TDF_POSITION_RELATIVE_TO_WINDOW | TDF_SIZE_TO_CONTENT | TDF_CALLBACK_TIMER | TDF_ENABLE_HYPERLINKS;
 			if ((dwButtons & MB_RIGHT) == MB_RIGHT)
 				config.dwFlags |= TDF_RTL_LAYOUT;
 			
