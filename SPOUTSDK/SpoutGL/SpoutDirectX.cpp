@@ -176,6 +176,8 @@
 //		28.08.25	- CreateSharedDX11Texture - add warnings for handle creation
 //					  D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX option separated
 //		31.08.25	- FlushWait - default device and context
+//		11.09.25	- Correct Keyed shared texture misc flag in CreateSharedDX11texture
+//					  Remove redundant final Flush from FlushWait
 //
 // ====================================================================================
 /*
@@ -615,9 +617,6 @@ bool spoutDirectX::CreateSharedDX11Texture(ID3D11Device* pd3dDevice,
 
 	// Note that a DirectX 11 texture with D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX is not
 	// compatible with DirectX 9 and a general named mutex should be used.
-	// if (bKeyed)
-		// desc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
-
 	
 	desc.CPUAccessFlags		= 0;
 	desc.Format				= texformat;
@@ -1159,7 +1158,6 @@ void spoutDirectX::Wait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediat
 			Sleep(0);
 		}
 		pQuery->Release();
-		pImmediateContext->Flush();
 	}
 }
 
