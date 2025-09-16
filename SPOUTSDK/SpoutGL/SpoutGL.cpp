@@ -198,7 +198,7 @@
 //					  Set by Spout::CheckSender and also by Spout::InitReceiver
 //					  Used in destructor for ReleaseSenderName
 //					  SetVerticalSync - add comments in header file
-//		05.05.25	- CreateOpenGL- rreturn silently if a context exists
+//		05.05.25	- CreateOpenGL- return silently if a context exists
 //
 // ====================================================================================
 //

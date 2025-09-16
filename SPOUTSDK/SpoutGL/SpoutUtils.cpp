@@ -247,6 +247,7 @@
 				   Correct RegCreateKeyExA reserved arg from NULL to 0
 				   MessageBoxTimeoutA - add return value for else
 		06.09.25 - Add executable name to log file
+		16.09.25 - Update version to 2.007.017
 
 */
 
@@ -294,7 +295,7 @@ namespace spoututils {
 
 	// Spout SDK version number string
 	// Major, minor, release
-	std::string SDKversion = "2.007.016";
+	std::string SDKversion = "2.007.017";
 
 	//
 	// Group: Information
