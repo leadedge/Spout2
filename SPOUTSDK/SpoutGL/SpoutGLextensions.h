@@ -140,6 +140,7 @@
 	#include <GL/wglew.h> // wglew.h and glxew.h, which define the available WGL and GLX extensions
 #else
 	#include <GL/GL.h>
+	#include <cstdint> // For MingW
 	#ifndef USE_FBO_EXTENSIONS
 		// For Max/Msp Jitter
 		#include "jit.gl.h"
@@ -275,7 +276,9 @@ enum ExtLogLevel {
 #ifndef GL_BGRA
 #define GL_BGRA                        0x80E1
 #endif
-
+#ifndef GL_BGRA8
+#define GL_BGRA8                       0x93A1
+#endif
 #ifndef GL_BGRA8_EXT
 #define GL_BGRA8_EXT                   0x93A1
 #endif
@@ -284,6 +287,15 @@ enum ExtLogLevel {
 // RGBA <> BGRA
 #ifndef GL_TEXTURE_SWIZZLE_RGBA
 #define GL_TEXTURE_SWIZZLE_RGBA        0x8E46
+#endif
+#ifndef GL_TEXTURE_SWIZZLE_R
+#define GL_TEXTURE_SWIZZLE_R           0x8E42
+#endif
+#ifndef GL_TEXTURE_SWIZZLE_G
+#define GL_TEXTURE_SWIZZLE_G           0x8E43
+#endif
+#ifndef GL_TEXTURE_SWIZZLE_B
+#define GL_TEXTURE_SWIZZLE_B           0x8E44
 #endif
 
 // OpenGL floating point formats

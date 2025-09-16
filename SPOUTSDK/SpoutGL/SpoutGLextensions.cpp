@@ -74,6 +74,8 @@
 //			02.09.25	- Add GL_HANDLE_TYPE_OPAQUE_IMAGE_KMT_EXT
 //			09.09.25	- Correct glGetInternalFormativ to glGetInternalformativ
 //						  Define GL_BGRA8_EXT
+//			15.09.25	- Add GL_TEXTURE_SWIZZLE_R, G, B
+//			16.09-25	- SpoutGLextensions.h - add #include <cstdint> for MingW
 //
 /*
 	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
