@@ -1,3 +1,110 @@
+===========================================\
+16.09.25\
+Cumulative update from beta branch
+
+Version 2.007.017
+
+Spout.cpp
+- 05.03.25	- Add m_bSender flag for sender/receiver
+    Set by Spout::CheckSender and also by Spout::InitReceiver
+    SetFrameSync/WaitFrameSync - do not block of not initialized
+- 18.05.25	- SelectSender - if SpoutPanel was not found, remove the
+    empty sender list return to still display a sender list box
+- 09.08.25	- SetSenderName - add !*sendername check
+- 16.08.25	- Add CloseFrameSync
+
+SpoutCopy.cpp
+- 08.05.25 - FlipBuffer - add in-place overload
+- 26.05.25 - rgba2bgra - invert flag false in sse functions
+- 27.05.25 - Add GetSSE2, GetSSE3, GetSSSE3
+- 29.05.25 - Add rgba_swap_ssse3
+- 01.07.25 - memcpy_sse2 - handle trailing bytes to avoid 16 byte limitation
+   Modify CopyPixels and FlipBuffer to test for SSE2 only
+- 28.08.25 - Add SaveTextureToBMP - save texture to file for testing
+
+SpoutDirectX.cpp
+- 20.03.25	- CreateDX11StagingTexture - remove console print of texture format
+- 19.05.25	- Add D3D11_BIND_UNORDERED_ACCESS to CreateSharedTexture bindflags
+- 22.05.25	- Remove ClearState from Flush and FlushWait for use of shaders
+- 24.05.25	- Add CreateDX11Texture overload to create a DirectX texture
+     with specific bind and misc flags
+- 27.06.25	- Replace ZeroMemory throughout with {} in stucture declarations
+- 01.08.25	- m_featureLevel default - D3D_FEATURE_LEVEL_11_1
+	 CreateSharedDX11Texture - remove D3D11_BIND_RENDER_TARGET from bind flags
+- 09.08.25	- Change all "={}" initializations back to "{}"
+- 10.08.25	- ReleaseDX11Texture - remove warning for no texture
+- 28.08.25	- CreateSharedDX11Texture - add warnings for handle creation
+     D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX option separated
+- 31.08.25	- FlushWait - default device and context
+- 11.09.25	- Correct Keyed shared texture misc flag in CreateSharedDX11texture
+     Remove redundant final Flush from FlushWait
+	 
+SpoutFrameCount.cpp
+- 05.03.25	- SetFrameSync/WaitFrameSync - add empty sendername check
+- 06.04.25	- CheckFrameSync - check for existence of the sender frame sync event
+   EnableFrameSync - default is disabled in constructor
+   (the application must enable sync events)
+   Set local flag only. Do not close sync event on disable.
+- 09.05.25	- Add WaitNewFrame - to be tested
+   UpdateSenderFps change m_FrameTimeNumber from 8 to 2
+- 06.07.25	- Add GetSenderName
+- 30.07.25	- CheckTextureAccess - return if null texture
+- 09.08.25	- Change all initializations to "{}"
+- 28.08.25	- CheckTextureAccess - do not block if texture is null
+
+SpoutGL.cpp
+- 03.03.25	- Move "#include <algorithm>" in header to SpoutUtils.h (PR #120)
+- 05.03.25	- Add m_bSender flag for sender/receiver
+    Set by Spout::CheckSender and also by Spout::InitReceiver
+    Used in destructor for ReleaseSenderName
+    SetVerticalSync - add comments in header file
+- 05.05.25	- CreateOpenGL- return silently if a context exists
+
+SpoutGLextensions.cpp
+- 25.03.25	- ExtLog - changed "standalone" to "standaloneExtensions"
+- 07.08.25	- SpoutGLextensions.h - add #define GL_FRAMEBUFFER_UNDEFINED
+    Correct glTextureStorageMem2DEXT
+- 30.08.25	- Add GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT
+- 02.09.25	- Add GL_HANDLE_TYPE_OPAQUE_IMAGE_KMT_EXT
+- 09.09.25	- Correct glGetInternalFormativ to glGetInternalformativ
+    Define GL_BGRA8_EXT
+- 15.09.25	- Add GL_TEXTURE_SWIZZLE_R, G, B
+- 16.09-25	- SpoutGLextensions.h - add #include <cstdint> for MingW
+
+SpoutReceiver.cpp
+- 16.08.25	- Add CloseFrameSync
+
+SpoutSender.cpp
+- 16.08.25	- Add CloseFrameSync
+
+SpoutSendernames.cpp
+
+SpoutSharedMemory.cpp
+
+SpoutUtils.cpp
+- 04.03.25 - Add #include <algorithm> to SpoutUtils.h (PR #120)
+- 07.03.25 - MessageTaskDialog -
+		   Add global "hwndTask" to return if TaskDialog is open.
+		   Move modeless check to first.
+		   Disable modeless mode after SpoutPanel open so it is one-off.
+		   Window handle is HWND passed in or specified by SpoutMessageBoxWindow.
+- 08.03.25 - Add missing SPOUT_DLLEXP to SpoutMessageBoxIcon and SpoutMessageBoxButton
+- 09.03.25 - Change function names from RemoveName and RemovePath to
+		   GetPath and GetName to modify the path argument and return a string
+- 27.03.25 - Remove messagebox from GetName
+- 20.04.25 - Correct GetExeName to return GetName
+		   Correct GetExePath to return GetPath
+- 13.05.25 - Use a local file pointer for freopen_s with AllocConsole
+		   if "standaloneutils" is defined to avoid crash - unknown cause
+- 25.05.25 - Add print option to EndTiming
+- 22.05.25 - Update SDKversion to 2.007.016
+- 09.08.25 - Change all "={}" initializations back to "{}"
+- 01.09.25 - Correct GetFileVersionInfoA dwHandle arg from NULL to 0
+		   Correct RegOpenKeyExA options arg from NULL to 0
+		   Correct RegCreateKeyExA reserved arg from NULL to 0
+		   MessageBoxTimeoutA - add return value for else
+- 06.09.25 - Add executable name to log file
+- 16.09.25 - Update version to 2.007.017 for master update from beta
 
 ===========================================\
 01.03.25\
