@@ -2,6 +2,8 @@
 // Microsoft Visual C++ generated include file.
 // Used by Textures.rc
 //
+// SPOUT
+#define IDI_ICON	200
 
 // Next default values for new objects
 // 
