@@ -162,11 +162,13 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Frame rate control
 	void HoldFps(int fps);
 	// Signal sync event 
-	void SetFrameSync(const char* SenderName);
+	void SetFrameSync(const char* name = nullptr);
 	// Wait or test for a sync event
 	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 	// Enable / disable frame sync
 	void EnableFrameSync(bool bSync = true);
+	// Close frame sync
+	void CloseFrameSync();
 	// Check for frame sync option
 	bool IsFrameSyncEnabled();
 
@@ -266,7 +268,6 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	bool DrawToSharedTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, float max_x = 1.0, float max_y = 1.0, float aspect = 1.0, bool bInvert = false, GLuint HostFBO = 0);
 #endif // #endif legacyOpenGL
 
-
 protected:
 
 	// Sender creation and change
@@ -283,6 +284,7 @@ protected:
 	// Graphics adapter name
 	char m_AdapterName[256];
 	bool m_bAdapt; // Receiver adapt to the sender adapter
+
 
 };
 

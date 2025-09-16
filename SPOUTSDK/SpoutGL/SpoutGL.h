@@ -42,9 +42,8 @@
 #include "SpoutCopy.h" // for pixel copy
 
 #include <direct.h> // for _getcwd
-#include <TlHelp32.h> // for PROCESSENTRY32
+#include <tlhelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
-#include <algorithm> // for string character remove
 
 #pragma warning(disable : 26485)
 
@@ -135,6 +134,9 @@ class SPOUT_DLLEXP spoutGL {
 	// Vertical sync status
 	int GetVerticalSync();
 	// Lock to monitor vertical sync
+	//   1 - wait for 1 cycle vertical refresh
+	//   0 - buffer swaps are not synchronized to a video frame
+	//  -1 - adaptive vsync
 	bool SetVerticalSync(int interval = 1);
 	// Get Spout version
 	int GetSpoutVersion();
@@ -160,14 +162,21 @@ class SPOUT_DLLEXP spoutGL {
 	// DX11 texture read
 	//  o Copy from the shared DX11 texture to a DX11 texture
 	bool ReadTexture(ID3D11Texture2D** texture);
+
 	// DX11 texture write
 	//  o Copy a DX11 texture to the shared DX11 texture
 	bool WriteTexture(ID3D11Texture2D** texture);
-	// DX11 texture write with readback to OpenGL texture
+
+	// DX11 texture write with readback to OpenGL
 	//   o Copy a DX11 texture to the DX11 shared texture
 	//   o Copy the linked OpenGL texture back to an OpenGL texture
 	bool WriteTextureReadback(ID3D11Texture2D** texture, GLuint TextureID, GLuint TextureTarget,
 		unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO = 0);
+
+	// Copy a region of the DX11 texture
+	bool WriteTextureReadback(ID3D11Texture2D ** texture, GLuint TextureID, GLuint TextureTarget,
+		unsigned int xoffset, unsigned int yoffset, unsigned int width, unsigned int height,
+		bool bInvert, GLuint HostFBO = 0);
 
 	// Initialize OpenGL and DX11
 	//     o Load extensions and check for availability and function
@@ -407,10 +416,11 @@ protected :
 	HGLRC m_hRc;
 
 	// Status flags
-	bool m_bConnected;
-	bool m_bUpdated;
-	bool m_bInitialized;
-	bool m_bGLDXdone; // Compatibility test done
+	bool m_bConnected;   // Receiver connected to a sender
+	bool m_bUpdated;     // Receiver update flag
+	bool m_bInitialized; // Receiver or sender initialization
+	bool m_bSender;      // Sender or receiver
+	bool m_bGLDXdone;    // Compatibility test done
 
 	// Sharing modes
 	bool m_bAuto;         // Auto share mode - user set

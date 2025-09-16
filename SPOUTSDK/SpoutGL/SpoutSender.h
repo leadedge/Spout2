@@ -63,7 +63,7 @@ class SPOUT_DLLEXP SpoutSender {
 	// Sender status
 	bool IsInitialized();
 	// Sender name
-	const char * GetName();
+	const char* GetName();
 	// Sender width
 	unsigned int GetWidth();
 	// Sender height
@@ -94,9 +94,11 @@ class SPOUT_DLLEXP SpoutSender {
 	// Signal sync event 
 	void SetFrameSync(const char* SenderName);
 	// Wait or test for a sync event
-	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+	bool WaitFrameSync(const char* SenderName, DWORD dwTimeout = 0);
 	// Enable / disable frame sync
 	void EnableFrameSync(bool bSync = true);
+	// Close frame sync
+	void CloseFrameSync();
 	// Check for frame sync option
 	bool IsFrameSyncEnabled();
 
@@ -106,9 +108,9 @@ class SPOUT_DLLEXP SpoutSender {
 	//
 
 	// Write data
-	bool WriteMemoryBuffer(const char *name, const char* data, int length);
+	bool WriteMemoryBuffer(const char* name, const char* data, int length);
 	// Create a shared memory buffer
-	bool CreateMemoryBuffer(const char *name, int length);
+	bool CreateMemoryBuffer(const char* name, int length);
 	// Delete a shared memory buffer
 	bool DeleteMemoryBuffer();
 	// Get the size of a shared memory buffer
@@ -164,9 +166,9 @@ class SPOUT_DLLEXP SpoutSender {
 	// The number of graphics adapters in the system
 	int GetNumAdapters();
 	// Get adapter item name
-	bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
+	bool GetAdapterName(int index, char* adaptername, int maxchars = 256);
 	// Current adapter name
-	char * AdapterName();
+	char* AdapterName();
 	// Get current adapter index
 	int GetAdapter();
 	// Get the description and output display name of the current adapter
@@ -234,7 +236,7 @@ class SPOUT_DLLEXP SpoutSender {
 	//
 
 	// The path of the host that produced the sender
-	bool GetHostPath(const char *sendername, char *hostpath, int maxchars);
+	bool GetHostPath(const char* sendername, char* hostpath, int maxchars);
 	// Vertical sync status
 	int  GetVerticalSync();
 	// Lock to monitor vertical sync
@@ -285,7 +287,7 @@ class SPOUT_DLLEXP SpoutSender {
 	//
 
 	// Create a sender
-	bool CreateSender(const char *Sendername, unsigned int width = 0, unsigned int height = 0, DWORD dwFormat = 0);
+	bool CreateSender(const char* Sendername, unsigned int width = 0, unsigned int height = 0, DWORD dwFormat = 0);
 	// Update a sender
 	bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
 

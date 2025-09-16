@@ -193,6 +193,12 @@
 //		07.10.24	- Remove unused flags m_bMirror and m_bSwapRB
 //		08.10.24	- Initialize OpenGL version class variable in constructor
 //					  Add GetGLversion()
+//		03.03.25	- Move "#include <algorithm>" in header to SpoutUtils.h (PR #120)
+//		05.03.25	- Add m_bSender flag for sender/receiver
+//					  Set by Spout::CheckSender and also by Spout::InitReceiver
+//					  Used in destructor for ReleaseSenderName
+//					  SetVerticalSync - add comments in header file
+//		05.05.25	- CreateOpenGL- return silently if a context exists
 //
 // ====================================================================================
 //
@@ -242,9 +248,9 @@ spoutGL::spoutGL()
 	m_bCPUshare = false; // Texture share assumed by default
 	m_bSenderCPU = false;
 	m_bSenderGLDX = true;
-	
 	m_bConnected = false;
 	m_bInitialized = false;
+	m_bSender = true; // Sender or receiver (default sender)
 	m_bSpoutPanelOpened = false;
 	m_bSpoutPanelActive = false;
 	m_bUpdated = false;
@@ -352,9 +358,9 @@ spoutGL::~spoutGL()
 {
 	try {
 
-		// Specify sender only for name release
+		// Sender only for sender name release
 		// if not already done by the application
-		if (m_bInitialized && !m_bConnected)
+		if (m_bInitialized && m_bSender)
 			sendernames.ReleaseSenderName(m_SenderName);
 
 		// Close 2.006 or buffer shared memory if used
@@ -878,91 +884,89 @@ std::string spoutGL::GLformatName(GLint glformat)
 //
 bool spoutGL::CreateOpenGL(HWND hwnd)
 {
-	if (!wglGetCurrentContext()) {
+	// Return silently if a context exists
+	if (wglGetCurrentContext())
+		return true;
 
-		m_hdc = nullptr;
-		m_hwndButton = nullptr;
-		m_hRc = nullptr;
+	m_hdc = nullptr;
+	m_hwndButton = nullptr;
+	m_hRc = nullptr;
 
-		if (hwnd == nullptr) {
-			// We only need an OpenGL context with no render window because we don't draw to it
-			// so create an invisible dummy button window. This is then independent from the host
-			// program window (GetForegroundWindow). If SetPixelFormat has been called on the
-			// host window it cannot be called again. This caused a problem in Mapio.
-			// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
-			//
-			// CS_OWNDC allocates a unique device context for each window in the class. 
-			//
-			if (!m_hwndButton || !IsWindow(m_hwndButton)) {
-				m_hwndButton = CreateWindowA("BUTTON",
-					"SpoutOpenGL",
-					WS_OVERLAPPEDWINDOW | CS_OWNDC,
-					0, 0, 32, 32,
-					NULL, NULL, NULL, NULL);
-			}
-
-			if (!m_hwndButton) {
-				SpoutLogError("spoutGL::CreateOpenGL - no hwnd");
-				return false;
-			}
-		}
-		else {
-			m_hwndButton = hwnd;
+	if (hwnd == nullptr) {
+		// We only need an OpenGL context with no render window because we don't draw to it
+		// so create an invisible dummy button window. This is then independent from the host
+		// program window (GetForegroundWindow). If SetPixelFormat has been called on the
+		// host window it cannot be called again. This caused a problem in Mapio.
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
+		//
+		// CS_OWNDC allocates a unique device context for each window in the class. 
+		//
+		if (!m_hwndButton || !IsWindow(m_hwndButton)) {
+			m_hwndButton = CreateWindowA("BUTTON",
+				"SpoutOpenGL",
+				WS_OVERLAPPEDWINDOW | CS_OWNDC,
+				0, 0, 32, 32,
+				NULL, NULL, NULL, NULL);
 		}
 
-		m_hdc = GetDC(m_hwndButton);
-		if (!m_hdc) {
-			SpoutLogError("spoutGL::CreateOpenGL - no hdc");
-			CloseOpenGL();
+		if (!m_hwndButton) {
+			SpoutLogError("spoutGL::CreateOpenGL - no hwnd");
 			return false;
 		}
-
-		// https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-pixelformatdescriptor
-		PIXELFORMATDESCRIPTOR pfd;
-		ZeroMemory(&pfd, sizeof(pfd));
-		pfd.nSize = sizeof(pfd);
-		pfd.nVersion = 1;
-		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-		pfd.iPixelType = PFD_TYPE_RGBA;
-		pfd.cColorBits = 32;
-		pfd.cDepthBits = 16;
-		pfd.iLayerType = PFD_MAIN_PLANE;
-		const int iFormat = ChoosePixelFormat(m_hdc, &pfd);
-		if (!iFormat) {
-			SpoutLogError("spoutGL::CreateOpenGL - pixel format error");
-			CloseOpenGL();
-			return false;
-		}
-
-		if (!SetPixelFormat(m_hdc, iFormat, &pfd)) {
-			const DWORD dwError = GetLastError();
-			// 2000 (0x7D0) The pixel format is invalid.
-			// Caused by repeated call of the SetPixelFormat function
-			char temp[128]={};
-			sprintf_s(temp, "spoutGL::CreateOpenGL - SetPixelFormat Error %lu (0x%4.4lX)", dwError, dwError);
-			SpoutLogError("%s", temp);
-			CloseOpenGL();
-			return false;
-		}
-
-		m_hRc = wglCreateContext(m_hdc);
-		if (!m_hRc) {
-			SpoutLogError("spoutGL::CreateOpenGL - could not create OpenGL context");
-			CloseOpenGL();
-			return false;
-		}
-
-		wglMakeCurrent(m_hdc, m_hRc);
-		if (!wglGetCurrentContext()) {
-			SpoutLogError("spoutGL::CreateOpenGL - no OpenGL context");
-			CloseOpenGL();
-			return false;
-		}
-		SpoutLogNotice("    OpenGL window created OK");
 	}
 	else {
-		SpoutLogNotice("    OpenGL context exists");
+		m_hwndButton = hwnd;
 	}
+
+	m_hdc = GetDC(m_hwndButton);
+	if (!m_hdc) {
+		SpoutLogError("spoutGL::CreateOpenGL - no hdc");
+		CloseOpenGL();
+		return false;
+	}
+
+	// https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-pixelformatdescriptor
+	PIXELFORMATDESCRIPTOR pfd;
+	ZeroMemory(&pfd, sizeof(pfd));
+	pfd.nSize = sizeof(pfd);
+	pfd.nVersion = 1;
+	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+	pfd.iPixelType = PFD_TYPE_RGBA;
+	pfd.cColorBits = 32;
+	pfd.cDepthBits = 16;
+	pfd.iLayerType = PFD_MAIN_PLANE;
+	const int iFormat = ChoosePixelFormat(m_hdc, &pfd);
+	if (!iFormat) {
+		SpoutLogError("spoutGL::CreateOpenGL - pixel format error");
+		CloseOpenGL();
+		return false;
+	}
+
+	if (!SetPixelFormat(m_hdc, iFormat, &pfd)) {
+		const DWORD dwError = GetLastError();
+		// 2000 (0x7D0) The pixel format is invalid.
+		// Caused by repeated call of the SetPixelFormat function
+		char temp[128]={};
+		sprintf_s(temp, "spoutGL::CreateOpenGL - SetPixelFormat Error %lu (0x%4.4lX)", dwError, dwError);
+		SpoutLogError("%s", temp);
+		CloseOpenGL();
+		return false;
+	}
+
+	m_hRc = wglCreateContext(m_hdc);
+	if (!m_hRc) {
+		SpoutLogError("spoutGL::CreateOpenGL - could not create OpenGL context");
+		CloseOpenGL();
+		return false;
+	}
+
+	wglMakeCurrent(m_hdc, m_hRc);
+	if (!wglGetCurrentContext()) {
+		SpoutLogError("spoutGL::CreateOpenGL - no OpenGL context");
+		CloseOpenGL();
+		return false;
+	}
+	SpoutLogNotice("    OpenGL window created OK");
 
 	// Load the extensions (returns true if already loaded)
 	if (!LoadGLextensions()) {
@@ -978,6 +982,7 @@ bool spoutGL::CreateOpenGL(HWND hwnd)
 	return true;
 
 }
+
 
 //---------------------------------------------------------
 // Function: CloseOpenGL
@@ -1849,11 +1854,11 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 		return false;
 	}
 
-	// No new frame, do not block
 	// GetNewFrame updates sender frame count and fps
 	if (!frame.GetNewFrame()) {
 		return true;
 	}
+	// No new frame, do not block
 
 	// Read the shared texture if the sender has produced a new frame
 	bool bRet = true; // Error only if texture read fails
@@ -1993,8 +1998,9 @@ bool spoutGL::ReadGLDXpixels(unsigned char* pixels,
 		return false;
 
 	// No new frame, do not block
-	if (!frame.GetNewFrame())
+	if (!frame.GetNewFrame()) {
 		return true;
+	}
 
 	// Read texture pixels for a new frame
 	bool bRet = true; // Error only if pixel read fails
@@ -3904,11 +3910,12 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	if (m_fbo == 0)
 		glGenFramebuffersEXT(1, &m_fbo);
 
-	// Bind the FBO for both read and wrtie (READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
+	// Bind the FBO for both read and write (READ_FRAMEBUFFER_EXT and DRAW_FRAMEBUFFER_EXT)
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 
 	// Attach the Source texture to the first attachment point of the color buffer
 	glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
+	// Set attachment 0 to read for the copy
 	glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
 
 	// Attach destination texture to second attachment point
@@ -3966,6 +3973,8 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 
 	// Restore the previous fbo - default is 0
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+
+
 
 	// To show errors for code debugging
 	// GLerror();
@@ -4271,48 +4280,69 @@ bool spoutGL::WriteTextureReadback(ID3D11Texture2D** texture,
 	unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
 {
-	// Only for DX11 mode
-	if (!texture || !spoutdx.GetDX11Context()) {
-		SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) failed");
-		if (!texture)
-			SpoutLogWarning("    ID3D11Texture2D** NULL");
-		if (!spoutdx.GetDX11Context())
-			SpoutLogVerbose("    pImmediateContext NULL");
+	// Zero offsets
+	return WriteTextureReadback(texture, TextureID, TextureTarget,
+		0, 0, width, height, bInvert, HostFBO);
+}
+
+// Copy a region of the DX11 texture
+bool spoutGL::WriteTextureReadback(ID3D11Texture2D ** texture,
+	GLuint TextureID, GLuint TextureTarget,
+	unsigned int xoffset, unsigned int yoffset,
+	unsigned int width, unsigned int height,
+	bool bInvert, GLuint HostFBO)
+{
+	if (!texture) {
+		SpoutLogWarning("spoutGL::WriteTextureReadback : ID3D11Texture2D** NULL");
 		return false;
 	}
 
-	if (!m_hInteropDevice || !m_hInteropObject) {
-		SpoutLogWarning("spoutGL::WriteTextureReadback() no GL/DX interop\n	m_hInteropObject = 0x%7.7X - m_hInteropDevice = 0x%7.7X", PtrToUint(m_hInteropDevice), PtrToUint(m_hInteropObject));
+	// Make sure that Spout has been initialized using CreateSender
+	// to set up a DirectX device and interop for GL/DX transfer
+	if(!m_bInitialized) {
+		SpoutLogWarning("spoutGL::WriteTextureReadback : Spout not intialized");
 		return false;
 	}
 
 	bool bRet = false;
 	D3D11_TEXTURE2D_DESC desc = { 0 };
-
 	(*texture)->GetDesc(&desc);
-	if (desc.Width != m_Width || desc.Height != m_Height) {
-		SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) sizes do not match");
-		SpoutLogWarning("    texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_Width, m_Height);
-		return false;
-	}
+
+	// Get the region to copy
+	D3D11_BOX sourceRegion={};
+	sourceRegion.left    = xoffset;
+	sourceRegion.right   = xoffset+width;
+	sourceRegion.top     = yoffset;
+	sourceRegion.bottom  = yoffset+height;
+	sourceRegion.front   = 0;
+	sourceRegion.back    = 1;
+
+	// Check the texture and region sizes
+	if (sourceRegion.right >= desc.Width) sourceRegion.right = desc.Width;
+	if (sourceRegion.bottom >= desc.Height) sourceRegion.bottom = desc.Height;
 
 	// Wait for access to the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		bRet = true;
 		
-		// Copy the DirectX texture to the shared texture
-		spoutdx.GetDX11Context()->CopyResource(m_pSharedTexture, *texture);
+		// Copy the DirectX texture region to the shared texture
+		spoutdx.GetDX11Context()->CopySubresourceRegion(m_pSharedTexture, 0, 0, 0, 0, *texture, 0, &sourceRegion);
+
 		// Flush after update of the shared texture on this device
 		spoutdx.GetDX11Context()->Flush();
 
 		// Copy the linked OpenGL texture back to the user texture
 		if (width != m_Width || height != m_Height) {
 			SpoutLogWarning("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) sizes do not match");
-			SpoutLogWarning("    OpenGL texture (%dx%d) : sender (%dx%d)", desc.Width, desc.Height, m_Width, m_Height);
+			SpoutLogWarning("    OpenGL texture (%dx%d) : sender [%s] (%dx%d)",
+				width, height, m_SenderName, m_Width, m_Height);
+			printf("spoutGL::WriteTextureReadback(ID3D11Texture2D** texture) sizes do not match\n");
+			printf("    OpenGL texture (%dx%d) : sender [%s] (%dx%d)\n",
+				width, height, m_SenderName, m_Width, m_Height);
 			bRet = false;
 		}
 		else if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
-			// Copy the shared texture (m_glTexture) to the user texture
+			// Copy the OpenGL shared texture (m_glTexture) to the user texture
 			bRet = CopyTexture(m_glTexture, GL_TEXTURE_2D, TextureID, TextureTarget, width, height, bInvert, HostFBO);
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
 			if (!bRet)
@@ -4326,5 +4356,5 @@ bool spoutGL::WriteTextureReadback(ID3D11Texture2D** texture,
 	}
 
 	return bRet;
-}
 
+}

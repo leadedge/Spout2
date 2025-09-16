@@ -97,6 +97,7 @@
 // For use together with Spout source files
 #include "SpoutCommon.h" // for legacyOpenGL define and Utils
 #include <stdint.h> // for _uint32 etc
+
 // ===================== GLEW ======================
 // set this to use GLEW instead of dynamic load of extensions
 // #define USE_GLEW	
@@ -118,6 +119,9 @@
 // Only used for testing
 #define USE_COPY_EXTENSIONS
 
+// GL memory extensions
+#define USE_GLMEMORY_EXTENSIONS
+
 // Compute shader extensions
 // Remove for Processing library build (JSpoutLib)
 #define USE_COMPUTE_EXTENSIONS
@@ -132,10 +136,11 @@
 // Allow for use of Glew instead of dynamic load of extensions
 //------------------------------------------------------------
 #ifdef USE_GLEW
-	#include <GL\glew.h>
-	#include <GL\wglew.h> // wglew.h and glxew.h, which define the available WGL and GLX extensions
+	#include <GL/glew.h>
+	#include <GL/wglew.h> // wglew.h and glxew.h, which define the available WGL and GLX extensions
 #else
-	#include <GL\GL.h>
+	#include <GL/GL.h>
+	#include <cstdint> // For MingW
 	#ifndef USE_FBO_EXTENSIONS
 		// For Max/Msp Jitter
 		#include "jit.gl.h"
@@ -271,10 +276,26 @@ enum ExtLogLevel {
 #ifndef GL_BGRA
 #define GL_BGRA                        0x80E1
 #endif
+#ifndef GL_BGRA8
+#define GL_BGRA8                       0x93A1
+#endif
+#ifndef GL_BGRA8_EXT
+#define GL_BGRA8_EXT                   0x93A1
+#endif
+
 
 // RGBA <> BGRA
 #ifndef GL_TEXTURE_SWIZZLE_RGBA
 #define GL_TEXTURE_SWIZZLE_RGBA        0x8E46
+#endif
+#ifndef GL_TEXTURE_SWIZZLE_R
+#define GL_TEXTURE_SWIZZLE_R           0x8E42
+#endif
+#ifndef GL_TEXTURE_SWIZZLE_G
+#define GL_TEXTURE_SWIZZLE_G           0x8E43
+#endif
+#ifndef GL_TEXTURE_SWIZZLE_B
+#define GL_TEXTURE_SWIZZLE_B           0x8E44
 #endif
 
 // OpenGL floating point formats
@@ -308,8 +329,9 @@ enum ExtLogLevel {
 #define GLEXT_SUPPORT_SWAP			 16
 #define GLEXT_SUPPORT_BGRA			 32
 #define GLEXT_SUPPORT_COPY			 64
-#define GLEXT_SUPPORT_COMPUTE		128
-#define GLEXT_SUPPORT_CONTEXT       256
+#define GLEXT_SUPPORT_GLMEMORY		128
+#define GLEXT_SUPPORT_COMPUTE		256
+#define GLEXT_SUPPORT_CONTEXT       512
 
 //-----------------------------------------------------
 // GL consts that are needed and aren't present in GL.h
@@ -404,6 +426,7 @@ extern PFNWGLDXUNLOCKOBJECTSNVPROC			wglDXUnlockObjectsNV;
 #ifdef USE_FBO_EXTENSIONS
 #define GL_INVALID_FRAMEBUFFER_OPERATION_EXT                0x0506
 #define GL_FRAMEBUFFER_UNDEFINED_EXT						0x8219
+#define GL_FRAMEBUFFER_UNDEFINED							0x8219
 #define GL_MAX_RENDERBUFFER_SIZE_EXT                        0x84E8
 #define GL_FRAMEBUFFER_BINDING_EXT                          0x8CA6
 #define GL_RENDERBUFFER_BINDING_EXT                         0x8CA7
@@ -666,12 +689,17 @@ extern glFenceSyncPROC      glFenceSyncEXT;
 //-------------------
 // Copy extensions
 //-------------------
+
+#ifndef GL_INTERNALFORMAT_SUPPORTED
+#define GL_INTERNALFORMAT_SUPPORTED 0x826F
+#endif
+
 #ifdef USE_COPY_EXTENSIONS
 typedef void (APIENTRY * PFNGLCOPYIMAGESUBDATAPROC)(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth);
 extern PFNGLCOPYIMAGESUBDATAPROC glCopyImageSubData;
 
-typedef void(APIENTRY * glGetInternalFormativPROC)(GLenum target, GLenum internalfrmat, GLenum pname, GLsizei buffSize, GLint *params);
-extern glGetInternalFormativPROC glGetInternalFormativ;
+typedef void(APIENTRY * glGetInternalformativPROC)(GLenum target, GLenum internalfrmat, GLenum pname, GLsizei buffSize, GLint *params);
+extern glGetInternalformativPROC glGetInternalformativ;
 #endif // USE_COPY_EXTENSIONS
 
 //---------------------------
@@ -788,6 +816,10 @@ extern glTextureStorage2DPROC glTextureStorage2D;
 typedef void (APIENTRY * glCreateTexturesPROC) (GLenum target, GLsizei n, GLuint* textures);
 extern glCreateTexturesPROC glCreateTextures;
 
+// - - - - - - - - - - - - - -
+//    GL memory extensions
+// - - - - - - - - - - - - - -
+//
 // https://registry.khronos.org/OpenGL/extensions/EXT/EXT_external_objects.txt
 // void CreateMemoryObjectsEXT(sizei n,	uint* memoryObjects);
 // void DeleteMemoryObjectsEXT(sizei n, const uint* memoryObjects);
@@ -829,10 +861,8 @@ extern glCreateBuffersPROC glCreateBuffers;
 typedef void (APIENTRY* glBindBufferBasePROC) (GLenum target, GLuint index, GLuint buffer);
 extern glBindBufferBasePROC glBindBufferBase;
 
-
-
-
-// LJ DEBUG : TODO
+// TODO
+// Shader extensions
 #define GL_SHADER_STORAGE_BARRIER_BIT                 0x2000
 #define GL_SHADER_STORAGE_BUFFER                      0x90D2
 #define GL_SHADER_STORAGE_BUFFER_BINDING              0x90D3
@@ -851,9 +881,13 @@ extern glBindBufferBasePROC glBindBufferBase;
 #define GL_PROTECTED_MEMORY_OBJECT_EXT                0x959B
 #endif
 
+// https://registry.khronos.org/OpenGL/extensions/EXT/EXT_external_objects_win32.txt
 // Accepted by the <handleType> parameter of ImportMemoryWin32HandleEXT(), ImportMemoryWin32NameEXT()
 #ifndef GL_HANDLE_TYPE_OPAQUE_WIN32_EXT
 #define GL_HANDLE_TYPE_OPAQUE_WIN32_EXT               0x9587
+#endif
+#ifndef GL_HANDLE_TYPE_OPAQUE_IMAGE_KMT_EXT
+#define GL_HANDLE_TYPE_OPAQUE_IMAGE_KMT_EXT           0x9588
 #endif
 #ifndef GL_HANDLE_TYPE_D3D12_TILEPOOL_EXT
 #define GL_HANDLE_TYPE_D3D12_TILEPOOL_EXT             0x9589
@@ -863,6 +897,9 @@ extern glBindBufferBasePROC glBindBufferBase;
 #endif
 #ifndef GL_HANDLE_TYPE_D3D11_IMAGE_EXT
 #define GL_HANDLE_TYPE_D3D11_IMAGE_EXT                0x958B
+#endif
+#ifndef GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT
+#define GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT            0x958C
 #endif
 
 
@@ -910,6 +947,7 @@ bool loadBLITextension();
 bool loadSwapExtensions();
 bool loadPBOextensions();
 bool loadCopyExtensions();
+bool loadGLmemoryExtensions();
 bool loadComputeShaderExtensions();
 bool loadContextExtension();
 bool isExtensionSupported(const char *extension);

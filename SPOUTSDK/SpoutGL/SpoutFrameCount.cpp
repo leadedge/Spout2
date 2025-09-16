@@ -89,6 +89,17 @@
 //		31.12.23	- Add comments to clarify the purpose of "EnableFrameSync"
 //	Version 2.007.014
 //		04.07.24	- SetNewFrame - add m_hCountSemaphore to initial check
+//		05.03.25	- SetFrameSync/WaitFrameSync - add empty sendername check
+//		06.04.25	- CheckFrameSync - check for existence of the sender frame sync event
+//					  EnableFrameSync - default is disabled in constructor
+//					  (the application must enable sync events)
+//					  Set local flag only. Do not close sync event on disable.
+//		09.05.25	- Add WaitNewFrame - to be tested
+//					  UpdateSenderFps change m_FrameTimeNumber from 8 to 2
+//		06.07.25	- Add GetSenderName
+//		30.07.25	- CheckTextureAccess - return if null texture
+//		09.08.25	- Change all initializations to "{}"
+//		28.08.25	- CheckTextureAccess - do not block if texture is null
 //
 // ====================================================================================
 //
@@ -162,9 +173,11 @@ spoutFrameCount::spoutFrameCount()
 	m_bCountDisabled = false;
 
 	// Sync enabled/disabled
-	// Enable/disable frame sync using "EnableFrameSync"
-	// Default is enabled.
-	m_bFrameSync = true;
+	// Enable/disable frame sync functions using "EnableFrameSync"
+	// If enabled, SetFrameSync and WaitFrameSync will create an event if not already.
+	// Default is disabled (the application must enable sync events).
+	m_bFrameSync = false;
+
 
 #ifdef USE_CHRONO
 
@@ -395,7 +408,6 @@ double spoutFrameCount::GetSenderFps()
 	return m_SenderFps;
 }
 
-
 // -----------------------------------------------
 // Function: GetSenderFrame
 // Received frame count
@@ -404,6 +416,13 @@ long spoutFrameCount::GetSenderFrame()
 	return m_FrameCount;
 }
 
+// -----------------------------------------------
+// Function: GetSenderName
+// Frame count sender name
+std::string spoutFrameCount::GetSenderName()
+{
+	return m_SenderName;
+}
 
 // -----------------------------------------------
 // Function: HoldFps
@@ -581,8 +600,9 @@ bool spoutFrameCount::GetNewFrame()
 	m_bIsNewFrame = true;
 
 	// Count will still be zero for apps that do not set a frame count
-	if (framecount == 0)
+	if (framecount == 0) {
 		return true;
+	}
 
 	// If this count and the last are the same, the sender has not
 	// produced a new frame and incremented the counter.
@@ -596,16 +616,97 @@ bool spoutFrameCount::GetNewFrame()
 	// Update the sender fps calculations.
 	//
 	// The sender might have produced more than one frame if the receiver is slower.
-	// Pass the number of frames produced since the last. If m_LastFrameCount = 0, 
+	// Pass the number of frames produced since the last. If m_LastFrameCount = 0,
 	// the receiver has just started. Give it a frame to get the next frame count.
-	if(m_LastFrameCount > 0)
+	if (m_LastFrameCount > 0)
 		UpdateSenderFps(framecount - m_LastFrameCount);
 
+	// Update the last count
 	m_LastFrameCount = framecount;
 
 	return true;
 
 }
+
+// -----------------------------------------------
+// Function: WaitNewFrame
+// Check the frame count semaphore and wait for a new frame
+// dwTimeout - timeout of poll loop in milliseconds
+// To be tested
+bool spoutFrameCount::WaitNewFrame(DWORD dwTimeout)
+{
+	// Return silently if frame count is disabled
+	if (!m_bFrameCount || m_bCountDisabled || !m_hCountSemaphore)
+		return true;
+
+	long framecount = 0;
+	DWORD dwWaitResult = 0;
+	m_bIsNewFrame = false;
+
+	// Maximize Windows timer resolution
+	StartTimePeriod();
+
+	// Start timeout
+	StartTiming();
+	do {
+		// Access the frame count semaphore
+		// WaitForSingleObject decrements the semaphore's count by one.
+		dwWaitResult = WaitForSingleObject(m_hCountSemaphore, 0);
+		switch (dwWaitResult) {
+			case WAIT_OBJECT_0:
+				// Call ReleaseSemaphore with a release count of 1 to return it
+				// to what it was before the wait and record the previous count.
+				// The next time round, the count will be increased if the sender
+				// incremented it with SetNewFrame.
+				if (ReleaseSemaphore(m_hCountSemaphore, 1, &framecount) == false) {
+					SpoutLogError("spoutFrameCount::WaitNewFrame - ReleaseSemaphore failed");
+					return true; // do not block
+				}
+			case WAIT_ABANDONED :
+				SpoutLogWarning("SpoutFrameCount::WaitNewFrame - WAIT_ABANDONED");
+				break;
+			case WAIT_FAILED :
+				SpoutLogWarning("SpoutFrameCount::WaitNewFrame - WAIT_FAILED");
+				break;
+			default :
+				break;
+		}
+		
+		if (framecount == 0) {
+			SpoutLogWarning("SpoutFrameCount::WaitNewFrame - zero frame count");
+			m_bIsNewFrame = false;
+			EndTimePeriod();
+			return false;
+		}
+		// If this count is greater than the last, the sender has produced a new frame.
+		if (framecount > m_LastFrameCount) {
+			// Update the global frame count
+			m_FrameCount = framecount;
+			// Update the sender fps calculations.
+			if (m_LastFrameCount > 0)
+				UpdateSenderFps(framecount - m_LastFrameCount);
+			// Update the last count
+			m_LastFrameCount = framecount;
+			// Set the new frame flag
+			m_bIsNewFrame = true;
+			// Break the wait loop and return
+			EndTimePeriod();
+			return true;
+		}
+		// Sleep 4 msec (1/4 frame) to prevent high CPU usage
+		// (std::chrono sleep cannot be used because it affects StartTiming and EndTiming)
+		Sleep(4);
+
+	} while (EndTiming() < dwTimeout);
+
+	// Wait failed to get a new frame
+	m_bIsNewFrame = false;
+	EndTimePeriod();
+
+	return false;
+}
+
+
 
 // -----------------------------------------------
 // Function: CleanupFrameCount
@@ -664,6 +765,10 @@ void spoutFrameCount::CleanupFrameCount()
 //
 bool spoutFrameCount::CheckTextureAccess(ID3D11Texture2D* D3D11texture)
 {
+	// Do not block if the texture is null
+	if(!D3D11texture)
+		return true;
+
 	// Test for a keyed mutex.
 	// If no texture was passed in, the function returns false
 	if (IsKeyedMutex(D3D11texture)) {
@@ -710,13 +815,13 @@ bool spoutFrameCount::AllowTextureAccess(ID3D11Texture2D* D3D11texture)
 // If that sender does not have a mutex, one will be created
 // and will always be available to the receiver.
 //
-bool spoutFrameCount::CreateAccessMutex(const char *SenderName)
+bool spoutFrameCount::CreateAccessMutex(const char* SenderName)
 {
 	if (!SenderName)
 		return false;
 
 	DWORD errnum = 0;
-	char szMutexName[512]={};
+	char szMutexName[512]{};
 	HANDLE hMutex = NULL;
 
 	// Create the mutex name to control access to the shared texture
@@ -842,7 +947,7 @@ bool spoutFrameCount::IsKeyedMutex(ID3D11Texture2D* D3D11texture)
 {
 	// Approximately 1.5 microseconds
 	if (D3D11texture) {
-		D3D11_TEXTURE2D_DESC desc={};
+		D3D11_TEXTURE2D_DESC desc{};
 		D3D11texture->GetDesc(&desc);
 		if (desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX) {
 			return true;
@@ -862,11 +967,11 @@ bool spoutFrameCount::IsKeyedMutex(ID3D11Texture2D* D3D11texture)
 // Signal sync event.
 //
 // Creates a named sync event and sets for test.
-void spoutFrameCount::SetFrameSync(const char *sendername)
+void spoutFrameCount::SetFrameSync(const char* sendername)
 {
-	// Return if sync is disabled by "EnableFrameSync"
+	// Return if sync is not enabled by "EnableFrameSync(true)"
 	// or there is no sender name to open the event.
-	if (!m_bFrameSync || !sendername)
+	if (!m_bFrameSync || !sendername || !*sendername)
 		return;
 
 	// Create the sync event if not already
@@ -887,14 +992,14 @@ void spoutFrameCount::SetFrameSync(const char *sendername)
 // Wait or test for named sync event.
 //
 // Wait until the sync event is signalled or the timeout elapses.
-bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
+bool spoutFrameCount::WaitFrameSync(const char* sendername, DWORD dwTimeout)
 {
-	// Return if sync is disabled by "EnableFrameSync"
+	// Return if sync is not enabled by "EnableFrameSync(true)"
 	// or there is no sender name to open the event.
-	if (!m_bFrameSync || !sendername) 
+	if (!m_bFrameSync || !sendername || !*sendername) 
 		return false;
 
-	char SyncEventName[256]={};
+	char SyncEventName[256]{};
 	sprintf_s(SyncEventName, 256, "%s_Sync_Event", sendername);
 
 	HANDLE hSyncEvent = OpenEventA(
@@ -904,7 +1009,7 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 
 	if (!hSyncEvent) {
 		// Do not block if the sender or receiver
-		// has not created a sync event
+		// has not created a sync event using SetFrameSync
 		return true;
 	}
 
@@ -935,7 +1040,6 @@ bool spoutFrameCount::WaitFrameSync(const char *sendername, DWORD dwTimeout)
 
 }
 
-
 // -----------------------------------------------
 // Function: CloseFrameSync
 // Close event for sync to frame rate.
@@ -948,6 +1052,37 @@ void spoutFrameCount::CloseFrameSync()
 	}
 }
 
+// -----------------------------------------------
+// Function: CheckFrameSync
+// Check for existence of the sender frame sync event
+bool spoutFrameCount::CheckFrameSync()
+{
+	// Test for the named sync event for this sender
+	char SyncEventName[256]{};
+	sprintf_s(SyncEventName, 256, "%s_Sync_Event", m_SenderName);
+	HANDLE hSyncEvent = OpenEventA(EVENT_ALL_ACCESS, TRUE, SyncEventName);
+	if (!hSyncEvent)
+		return false;
+	CloseHandle(hSyncEvent);
+	return true;
+}
+
+
+// -----------------------------------------------
+// Enable/disable frame sync option
+// This is a flag to allow or bypass SetFrameSync and WaitFrameSync.
+// Default is disabled (the application must enable sync events).
+void spoutFrameCount::EnableFrameSync(bool bSync)
+{
+	m_bFrameSync = bSync;
+}
+
+// -----------------------------------------------
+// Return frame sync option
+bool spoutFrameCount::IsFrameSyncEnabled()
+{
+	return m_bFrameSync;
+}
 
 // ===============================================================================
 //                                Protected
@@ -999,9 +1134,10 @@ bool spoutFrameCount::CheckKeyedAccess(ID3D11Texture2D* pTexture)
 					SpoutLogError("spoutDirectX::CheckKeyedAccess : E_FAIL");
 					break;
 				default:
+					SpoutLogError("spoutDirectX::CheckKeyedAccess - default error : 0x%X\n", hr);
+					// 0x887A0001 - DXGI_ERROR_INVALID_CALL
 					break;
 			}
-
 			// Error
 			pDXGIKeyedMutex->ReleaseSync(0);
 			pDXGIKeyedMutex->Release();
@@ -1061,15 +1197,14 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 
 			// Could have been more than one frame
 			m_FrameTimeNumber += static_cast<double>(framecount);
-
-			if (m_FrameTimeNumber > 8) {
+			if (m_FrameTimeNumber > 2) {
 				// Calculate average frames per second and m_SenderFps
 				// (default fps is system refresh rate)
 				const double avgframetime = m_FrameTimeTotal/m_FrameTimeNumber;
 				if (avgframetime > 0.0001) {
-					const double fps2 = (1.0 / avgframetime);
+					const double fps2 = (1.0/avgframetime);
 					// Damping to stabilise
-					m_SenderFps = 0.95*m_SenderFps + 0.05*fps2;
+					m_SenderFps = 0.95 * m_SenderFps + 0.05 * fps2;
 				}
 				m_FrameTimeTotal = 0.0;
 				m_FrameTimeNumber = 0.0;
@@ -1103,7 +1238,7 @@ void spoutFrameCount::UpdateSenderFps(long framecount)
 // supported by the system (usually 1 msec)
 void spoutFrameCount::StartTimePeriod()
 {
-	TIMECAPS tc={};
+	TIMECAPS tc{};
 	m_PeriodMin = 0; // To allow for errors
 	MMRESULT mres = timeGetDevCaps(&tc, sizeof(TIMECAPS));
 	if (mres == MMSYSERR_NOERROR) {
@@ -1168,7 +1303,7 @@ void spoutFrameCount::OpenFrameSync(const char* SenderName)
 	// The system automatically resets the event state to nonsignalled
 	// after a single waiting thread has been released.
 	//
-	char SyncEventName[256]={};
+	char SyncEventName[256]{};
 	sprintf_s(SyncEventName, 256, "%s_Sync_Event", SenderName);
 	HANDLE hSyncEvent = CreateEventA(
 		NULL,  // Attributes
@@ -1192,25 +1327,6 @@ void spoutFrameCount::OpenFrameSync(const char* SenderName)
 
 	m_hSyncEvent = hSyncEvent;
 
-}
-
-// -----------------------------------------------
-// Enable / disable frame sync
-// This is an independent flag that can be used to
-// bypass SetFrameSync and WaitFrameSync temporarily.
-// Default is enabled.
-void spoutFrameCount::EnableFrameSync(bool bSync)
-{
-	m_bFrameSync = bSync;
-	if (!m_bFrameSync)
-		CloseFrameSync();
-}
-
-// -----------------------------------------------
-// Check for frame sync option
-bool spoutFrameCount::IsFrameSyncEnabled()
-{
-	return m_bFrameSync;
 }
 
 // ===============================================================================
