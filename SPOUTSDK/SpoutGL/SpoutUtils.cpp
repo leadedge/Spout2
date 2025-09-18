@@ -248,6 +248,7 @@
 				   MessageBoxTimeoutA - add return value for else
 		06.09.25 - Add executable name to log file
 		16.09.25 - Update version to 2.007.017
+		18.09.25 - Temporary change to 2.007.100 for experimental GL memory
 
 */
 
@@ -295,7 +296,8 @@ namespace spoututils {
 
 	// Spout SDK version number string
 	// Major, minor, release
-	std::string SDKversion = "2.007.017";
+	std::string SDKversion = "2.007.100"; // Temporary change for GL memory
+	// std::string SDKversion = "2.007.017"; // 16-09-25
 
 	//
 	// Group: Information

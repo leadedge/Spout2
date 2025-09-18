@@ -88,7 +88,6 @@ struct SharedTextureInfo {		// 280 bytes total
 static const char* GUID_queue = "AB5C33D6-3654-43F9-85F6-F54872B0460B";
 
 
-
 class SPOUT_DLLEXP spoutSenderNames {
 
 	public:
@@ -116,7 +115,7 @@ class SPOUT_DLLEXP spoutSenderNames {
 		//
 
 		// Retrieve the sender name list as a set of names
-		bool GetSenderNames(std::set<std::string> *sendernames);
+		bool GetSenderNames(std::set<std::string>* sendernames);
 		// Number of senders in the list
 		int  GetSenderCount();
 		// Sender item name
@@ -144,8 +143,15 @@ class SPOUT_DLLEXP spoutSenderNames {
 		bool GetSenderInfo (const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
 		// Set sender information
 		bool SetSenderInfo (const char* sendername, unsigned int width, unsigned int height, HANDLE dxShareHandle, DWORD dwFormat);
-		// Set sender PartnerID field with "CPU" sharing method and GL/DX compatibility
-		bool SetSenderID(const char *sendername, bool bCPU, bool bGLDX);
+		// Set sender PartnerID field with "CPU" sharing method
+		// GL/DX compatibility and use of GL memory functions
+		bool SetSenderID(const char* sendername, bool bCPU, bool bGLDX, bool bGLmemory);
+		// Set sender usage field
+		bool SetSenderUsage(const char* sendername, uint32_t usage);
+		// Get sender usage field
+		uint32_t GetSenderUsage(const char* sendername);
+
+
 		// Generic sender map info read (returned in a shared texture information structure)
 		bool getSharedInfo (const char* sendername, SharedTextureInfo* info);
 		// Generic sender map info write
@@ -160,11 +166,11 @@ class SPOUT_DLLEXP spoutSenderNames {
 		// Set the active sender - the first retrieved by a receiver
 		bool SetActiveSender (const char* sendername);
 		// Get the current active sender
-		bool GetActiveSender (char *sendername, const int maxlength = SpoutMaxSenderNameLen);
+		bool GetActiveSender (char* sendername, const int maxlength = SpoutMaxSenderNameLen);
 		// Get active sender information
 		bool GetActiveSenderInfo (SharedTextureInfo* info);
 		// Return details of the current active sender
-		bool FindActiveSender (char *activename, unsigned int& width, unsigned int& height, HANDLE& hSharehandle, DWORD& dwFormat, const int maxlength = SpoutMaxSenderNameLen);
+		bool FindActiveSender (char* activename, unsigned int& width, unsigned int& height, HANDLE& hSharehandle, DWORD& dwFormat, const int maxlength = SpoutMaxSenderNameLen);
 
 		//
 		// Functions to Create, Find or Update a sender
@@ -193,7 +199,7 @@ protected:
 		// Active sender management
 		bool setActiveSenderName (const char* SenderName);
 		// bool getActiveSenderName (char SenderName[SpoutMaxSenderNameLen]);
-		bool getActiveSenderName (char *SenderName, const int maxlength = SpoutMaxSenderNameLen);
+		bool getActiveSenderName (char* SenderName, const int maxlength = SpoutMaxSenderNameLen);
 
 		// Goes through the full list of sender names and cleans up
 		// any that shouldn't still be around
@@ -201,7 +207,7 @@ protected:
 
 		// Functions to manage shared memory map access
 		static void readSenderSetFromBuffer(const char* buffer, std::set<std::string>& SenderNames, int maxSenders);
-		static void	writeBufferFromSenderSet(const std::set<std::string>& SenderNames, char *buffer, int maxSenders);
+		static void	writeBufferFromSenderSet(const std::set<std::string>& SenderNames, char* buffer, int maxSenders);
 
 		SpoutSharedMemory m_senderNames;
 		SpoutSharedMemory m_activeSender;

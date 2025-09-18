@@ -130,7 +130,7 @@ class SPOUT_DLLEXP spoutGL {
 	//
 
 	// The path of the host that produced the sender
-	bool GetHostPath(const char *sendername, char *hostpath, int maxchars);
+	bool GetHostPath(const char* sendername, char* hostpath, int maxchars);
 	// Vertical sync status
 	int GetVerticalSync();
 	// Lock to monitor vertical sync
@@ -153,7 +153,7 @@ class SPOUT_DLLEXP spoutGL {
 		void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
 		GLenum dataformat, GLenum datatype, bool bInvert = false, GLuint HostFBO = 0);
 	// Correct for image stride
-	void RemovePadding(const unsigned char *source, unsigned char *dest,
+	void RemovePadding(const unsigned char* source, unsigned char* dest,
 		unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
 
 	// OpenGL error reporting
@@ -174,7 +174,7 @@ class SPOUT_DLLEXP spoutGL {
 		unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO = 0);
 
 	// Copy a region of the DX11 texture
-	bool WriteTextureReadback(ID3D11Texture2D ** texture, GLuint TextureID, GLuint TextureTarget,
+	bool WriteTextureReadback(ID3D11Texture2D** texture, GLuint TextureID, GLuint TextureTarget,
 		unsigned int xoffset, unsigned int yoffset, unsigned int width, unsigned int height,
 		bool bInvert, GLuint HostFBO = 0);
 
@@ -214,11 +214,12 @@ class SPOUT_DLLEXP spoutGL {
 	// Class initialization status
 	bool IsSpoutInitialized();
 	// Perform tests for GL/DX interop availability and compatibility
-	bool GLDXready();
+	bool GLDXready(bool bRetest = false);
 	// Set host path to sender shared memory
-	bool SetHostPath(const char *sendername);
-	// Set sender PartnerID field with CPU sharing method and GL/DX compatibility
-	bool SetSenderID(const char *sendername, bool bCPU, bool bGLDX);
+	bool SetHostPath(const char* sendername);
+	// Set sender PartnerID field with CPU sharing method
+	// GL/DX compatibility and use of GL memory functions
+	bool SetSenderID(const char* sendername, bool bCPU, bool bGLDX, bool bGLmemory);
 	
 	//
 	// 2.006 compatibility
@@ -236,14 +237,15 @@ class SPOUT_DLLEXP spoutGL {
 	//
 
 	bool LoadGLextensions();
-	bool IsGLDXavailable(); // GL/DX interop extensions supported
-	bool IsBLITavailable(); // fbo blit extensions available
-	bool IsSWAPavailable(); // swap extensions available
-	bool IsBGRAavailable(); // bgra extensions available
-	bool IsCOPYavailable(); // copy extensions available
-	bool IsPBOavailable();  // pbo extensions supported
+	bool IsGLDXavailable();    // Nvidia GL/DX interop extensions supported
+	bool IsBLITavailable();    // fbo blit extensions available
+	bool IsSWAPavailable();    // swap extensions available
+	bool IsBGRAavailable();    // bgra extensions available
+	bool IsCOPYavailable();    // copy extensions available
+	bool IsGLMEMavailable();   // Khronos GL memory extensions supported
+	bool IsPBOavailable();     // pbo extensions supported
 	bool IsCONTEXTavailable(); // Context extension supported
-	float GetGLversion(); // OpenGL version - 3.0, 4.0, 4.6 etc
+	float GetGLversion();      // OpenGL version - 3.0, 4.0, 4.6 etc
 
 	//
 	// Legacy OpenGL functions
@@ -259,19 +261,25 @@ class SPOUT_DLLEXP spoutGL {
 	// Public for special use
 	//
 
-	// Link a shared DirectX texture to an OpenGL texture
-	HANDLE LinkGLDXtextures(void* pDXdevice, void* pSharedTexture, GLuint glTextureID);
-	// Return a handle to the the DX/GL interop device
+	bool InteropReady(); // Ready for either NVidia or GL memory GL/DX interop
+	bool GetNVready();   // Using Nvidia WGL_NV_DX interop
+	bool GetGLready();   // Khronos GL memory capable
+	// Nvidia WGL_NV_DX usage (for testing)
+	bool GetNVusage();
+	void SetNVusage(bool bReady);
+
+
+	// Return a handle to the the Nvidia GL/DX interop device
 	HANDLE GetInteropDevice();
-	// Return a handle to the the DX/GL interop ojject
+	// Return a handle to the the Nvidia GL/DX interop ojject
 	HANDLE GetInteropObject();
 	// Pointer to the shared DirectX texture
 	ID3D11Texture2D* GetDXsharedTexture();
 	// Create OpenGL texture
 	void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height);
-	// Copy OpenGL to shared DirectX 11 texture via CPU
+	// Copy OpenGL to shared DirectX 11 shared texture via CPU
 	bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
-	// Copy from shared DX11 texture to OpenGL via CPU
+	// Copy from shared DX11 texture to OpenGL shared texture via CPU
 	bool ReadDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	// Read from an OpenGL texture to and RGBA buffer using pbo
 	bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
@@ -289,15 +297,15 @@ class SPOUT_DLLEXP spoutGL {
 	//
 
 	// Write data to shared memory
-	bool WriteMemoryBuffer(const char *name, const char* data, int length);
+	bool WriteMemoryBuffer(const char* name, const char* data, int length);
 	// Read data from shared memory
 	int ReadMemoryBuffer(const char* name, char* data, int maxlength);
 	// Create a shared memory buffer
-	bool CreateMemoryBuffer(const char *name, int length);
+	bool CreateMemoryBuffer(const char* name, int length);
 	// Delete a shared memory buffer
 	bool DeleteMemoryBuffer();
 	// Get the number of bytes available for data transfer
-	int GetMemoryBufferSize(const char *name);
+	int GetMemoryBufferSize(const char* name);
 
 	//
 	// For external access
@@ -317,11 +325,31 @@ protected :
 	// For 2.006(receive only) / WriteMemoryBuffer / ReadMemoryBuffer
 	SpoutSharedMemory memoryshare;
 
+	//
 	// GL/DX functions
+	//
+
+	// Link a shared DirectX texture to an OpenGL texture
 	bool CreateInterop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive);
-	HRESULT LockInteropObject(HANDLE hDevice, HANDLE *hObject);
-	HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE *hObject);
-	void CleanupGL(); // Free OpenGL resources
+
+	// Nvidia WGL_NV_DX interop
+	HANDLE LinkGLDXtextures(void* pDXdevice, void* pSharedTexture, GLuint glTextureID);
+
+	// Khronos OpenGL memory GL/DX interop
+	bool LinkGLDXmemoryTextures(unsigned int width, unsigned int height, DXGI_FORMAT dxFormat,
+		HANDLE texhandle,    // D3D11 texture handle
+		GLuint glMemObj,     // GL memory object for D3D11 texture import
+		GLuint glTextureID); // GL texture backed by the memory object
+
+	// Lock/unlock interop resoources
+	HRESULT LockInteropObject(HANDLE hDevice, HANDLE* hObject);
+	HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE* hObject);
+
+	 // Free OpenGL resources
+	void CleanupGL();
+
+	// Check OpenGL texture format for BGRA swizzle
+	void CheckOpenGLformat(GLuint TextureID, GLuint TextureTarget);
 
 	// OpenGL texture create
 	void CheckOpenGLTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
@@ -336,30 +364,26 @@ protected :
 	bool ReadGLDXpixels(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFBO = 0);
 	
 	// PBOs for OpenGL pixel copy
-	int m_nBuffers;
+	int m_nBuffers = 2;
 
 	// UnloadTexturePixels
-	GLuint m_pbo[4];
-	int PboIndex;
-	int NextPboIndex;
+	GLuint m_pbo[4]{};
+	int PboIndex = 0;
+	int NextPboIndex = 0;
 
 	// LoadTexturePixels
-	GLuint m_loadpbo[4];
-	int PboLoadIndex;
-	int NextPboLoadIndex;
-	
-	// OpenGL <-> DX11
-	// WriteDX11texture - public
-	// ReadDX11texture  - public
-	
+	GLuint m_loadpbo[4]{};
+	int PboLoadIndex = 0;
+	int NextPboLoadIndex = 0;
+		
 	// Pixels <-> DX11
 	bool WriteDX11pixels(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
-	bool ReadDX11pixels(unsigned char * pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
+	bool ReadDX11pixels(unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
 	bool WritePixelData(const unsigned char* pixels, ID3D11Texture2D* pStagingTexture, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert);
 	bool ReadPixelData(ID3D11Texture2D* pStagingTexture, unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat, bool bInvert);
 
 	// Staging textures for DX11 CPU copy
-	ID3D11Texture2D* m_pStaging[2];
+	ID3D11Texture2D* m_pStaging[2]{};
 	int m_Index;
 	int m_NextIndex;
 	bool CheckStagingTextures(unsigned int width, unsigned int height, int nTextures);
@@ -367,14 +391,13 @@ protected :
 	// 2.006 shared memory
 	bool ReadMemoryTexture(const char* sendername, GLuint TexID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
 	bool ReadMemoryPixels(const char* sendername, unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
-	bool WriteMemoryPixels(const char *sendername, const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
+	bool WriteMemoryPixels(const char* sendername, const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
 
 	// Utility
 	bool OpenDeviceKey(const char* key, int maxsize, char* description, char* version);
 	void trim(char* s);
 
 	// Errors
-	void DoDiagnostics(const char *error);
 	void PrintFBOstatus(GLenum status);
 
 	//
@@ -382,74 +405,89 @@ protected :
 	//
 
 	// Sender/Receiver
-	char m_SenderName[256];
-	char m_SenderNameSetup[256];
-	unsigned int m_Width;
-	unsigned int m_Height;
+	char m_SenderName[256]{};
+	char m_SenderNameSetup[256]{};
+	unsigned int m_Width = 0;
+	unsigned int m_Height = 0;
 
 	// Utility
-	GLuint m_fbo; // Fbo used for OpenGL functions
-	GLuint m_TexID; // Class texture used for invert copy
-	unsigned int m_TexWidth;
-	unsigned int m_TexHeight;
-	DWORD m_TexFormat;
+	GLuint m_fbo = 0;   // Fbo used for OpenGL functions
+	GLuint m_TexID = 0; // Class texture used for invert copy
+	unsigned int m_TexWidth = 0;
+	unsigned int m_TexHeight = 0;
+	DWORD m_TexFormat = GL_RGBA;
 
 	// Shared texture
-	GLuint m_glTexture; // OpenGL shared texture
-	ID3D11Texture2D* m_pSharedTexture; // DirectX shared texture
-	HANDLE m_dxShareHandle; // DirectX shared texture handle
-	DXGI_FORMAT m_DX11format; // DirectX 11 shared texture format
-	DWORD m_dwFormat; // DWORD texture format used throughout
+	// Common for Nidia or Khronos GL interop
+	GLuint m_glTexture = 0; // OpenGL shared texture
+	ID3D11Texture2D* m_pSharedTexture = nullptr; // DirectX shared texture
+	HANDLE m_dxShareHandle = nullptr; // DirectX shared texture handle
+	DXGI_FORMAT m_DX11format = DXGI_FORMAT_B8G8R8A8_UNORM; // DirectX 11 shared texture format
+	DWORD m_dwFormat = DXGI_FORMAT_B8G8R8A8_UNORM; // DWORD texture format used throughout
 
 	// GL/DX interop
-	HANDLE m_hInteropDevice; // Handle to the DX/GL interop device
-	HANDLE m_hInteropObject; // Handle to the DX/GL interop object (the shared texture)
-	bool m_bInteropFailed = false; // Interop failure flag to avoid repeats
+	HANDLE m_hInteropDevice = nullptr; // Handle to the Nvidia interop device
+	HANDLE m_hInteropObject = nullptr; // Handle to the Nvidia interop object
+	GLuint m_glMemObj = 0;             // Khronos OpenGL memory object
+	GLenum m_glFormat = GL_BGRA8_EXT;  // OpenGL internal format used for glTextureStorageMem2DEXT
+	bool m_bInteropFailed = false;     // Interop failure flag to avoid repeats
 
 	// General
-	HWND m_hWnd; // OpenGL window
-	int m_SpoutVersion; // Spout version
+	HWND m_hWnd = nullptr;  // OpenGL window
+	int m_SpoutVersion = 0; // Spout version
 
 	// For CreateOpenGL and CloseOpenGL
-	HDC m_hdc;
-	HWND m_hwndButton;
-	HGLRC m_hRc;
+	HDC m_hdc = nullptr;
+	HWND m_hwndButton = nullptr;
+	HGLRC m_hRc = nullptr;
 
 	// Status flags
-	bool m_bConnected;   // Receiver connected to a sender
-	bool m_bUpdated;     // Receiver update flag
-	bool m_bInitialized; // Receiver or sender initialization
-	bool m_bSender;      // Sender or receiver
-	bool m_bGLDXdone;    // Compatibility test done
+	bool m_bConnected    = false; // Receiver connected to a sender
+	bool m_bUpdated      = false; // Receiver update flag
+	bool m_bInitialized  = false; // Receiver or sender initialization
+	bool m_bSender       = true;  // Sender or receiver
+	bool m_bGLDXdone     = false; // Compatibility test has been done
 
 	// Sharing modes
-	bool m_bAuto;         // Auto share mode - user set
-	bool m_bCPU;          // Global CPU mode - user set
-	bool m_bUseGLDX;      // Hardware GL/DX interop compatibility
-	bool m_bTextureShare; // Using texture sharing methods
-	bool m_bCPUshare;     // Using CPU sharing methods
-	bool m_bMemoryShare;  // Using 2.006 memoryshare methods
-	
-	// Sender sharing modes
-	bool m_bSenderCPU;    // Sender using CPU sharing methods
-	bool m_bSenderGLDX;   // Sender hardware GL/DX compatibility
+	bool m_bAuto         = true;  // Auto share mode - user set
+	bool m_bCPU          = false; // Global CPU mode - user set
+
+	bool m_bGLDX         = false; // Nvidia GL/DX interop compatible
+	bool m_bGLmemory     = false; // Khronos GL memory compatible
+	bool m_bNThandle    = false;  // NT handle required for import
+	bool m_bUseGLDX      = false; // Use Nvidia GL/DX interop
+	bool m_bTextureShare = true;  // Using texture sharing methods
+	bool m_bCPUshare     = false; // Using CPU sharing methods
+	bool m_bMemoryShare  = false; // Using 2.006 memoryshare methods
+
+	// Received sender sharing methods from sender info
+	bool m_bSenderCPU      = false; // Sender using CPU sharing methods
+	bool m_bSenderGLDX     = true;  // Sender Nvidia hardware GL/DX compatibility
+	bool m_bSenderGLmemory = false; // Sender using Khronos GL memory functions for GL/DX interop
 
 	// For SpoutPanel sender selection
-	bool m_bSpoutPanelOpened;
-	bool m_bSpoutPanelActive;
-	SHELLEXECUTEINFOA m_ShExecInfo;
+	bool m_bSpoutPanelOpened = false;
+	bool m_bSpoutPanelActive = false;
+	SHELLEXECUTEINFOA m_ShExecInfo{};
 
 	// OpenGL extensions
-	unsigned int m_caps;
-	bool m_bGLDXavailable;
-	bool m_bFBOavailable;
-	bool m_bBLITavailable;
-	bool m_bPBOavailable;
-	bool m_bSWAPavailable;
-	bool m_bBGRAavailable;
-	bool m_bCOPYavailable;
-	bool m_bCONTEXTavailable;
-	bool m_bExtensionsLoaded;
+	unsigned int m_caps = 0;
+	bool m_bGLDXavailable    = false;
+	bool m_bGLMEMavailable   = false;
+	bool m_bFBOavailable     = false;
+	bool m_bBLITavailable    = false;
+	bool m_bPBOavailable     = false;
+	bool m_bSWAPavailable    = false;
+	bool m_bBGRAavailable    = false;
+	bool m_bCOPYavailable    = false;
+	bool m_bCONTEXTavailable = false;
+	bool m_bExtensionsLoaded = false;
+
+	// For timing tests
+	double sumtime   = 0.0;
+	double numtime   = 0.0;
+	double avgtime   = 0.0;
+	double numframes = 0.0;
 
 };
 
