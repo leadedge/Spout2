@@ -1,19 +1,19 @@
-BUILD folder for generating Spout libraries using CMake\
+## Tools for assessment of OpenGL external memory interop
 
-Build the *ALL_BUILD* project for a comprehensive build.\
-Binaries are copied to a *Binaries* sub-folder.\
-Win32 - files for 32 bit build\
-x64 - files for 64 bit build
+These tools allow assessment of compatibility and performance.\
+Reports are welcomed and will help to assess whether this is a useful addition.\
+They can be contributed using the "Report" button from the demo sender or receiver or discussed here by opening an issue.
 
-  - Spout - the Spout SDK as a dll
-  - SpoutLibrary - C-compatible library dll
-  - SpoutDX - the SpoutDX support class as a dll
-  - Spout_static - the Spout SDK as a static library
-
-Build the INSTALL project separately for convenience.\
-An INSTALL folder is created by the build.\
+SPOUT-2007-100.zip
+1) Demo Sender and receiver with options for 
+- selecting interop method
+- sending diagnostic reports
+2) Settings dialog with options for selecting interop method
+- SpoutSettings.exe
 
 
+Spout-SDK-binaries_2-007-100.zip
+- Prebuilt library binary files\
+Spout.dll/Spout.lib/Spout_static.lib
 
-
-   
+	
