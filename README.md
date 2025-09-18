@@ -1,31 +1,15 @@
-[Spout](https://spout.zeal.co/) is a video frame sharing system for Microsoft Windows, which allows applications to share OpenGL textures in a similar way to [Syphon](https://github.com/Syphon) for the Mac.
+## OpenGL external memory interop
 
-Spout supports DirectX 9, DirectX 11, DirectX 12 and OpenGL textures and includes a developer SDK and sample applications.
+The Spout library has been developed using the [WGL_NV_DX interop](https://registry.khronos.org/OpenGL/extensions/NV/WGL_NV_DX_interop2.txt) extensions, developed and maintained by Nvidia, for transfer of textures between DirectX and OpenGL.
 
-For questions and suggestions please contact the [Spout Discourse Group](https://spout.discourse.group/). Please reserve repository Issues for code development.
+More recently, [GL_EXT_memory_object](https://registry.khronos.org/OpenGL/extensions/EXT/EXT_external_objects.txt) extensions with multi-vendor support and maintained by the Khronos Group have been released and can also be used as an interop method.
 
-Documentation
-- [Spout SDK for OpenGL](https://spoutgl-site.netlify.app/)
-- [SpoutLibrary - C compatible library](https://spoutlibrary-site.netlify.app/)
-- [Spout for DirectX - DirectX support classes](https://spoutdx-site.netlify.app/)
+These extensions are based on the concept of memory objects introduced by the Vulkan API and provide potential for future development.
 
-Further pdf documents and examples can be found in the relevant folders.\
-For general questions please visit the [Spout Discourse group](https://spout.discourse.group)
+This branch includes source code with the OpenGL memory object extensions used as alternative to the NVidia interop. Changes are limited to SpoutGL.cpp with a minor change to Spout.cpp. Other source files remain the same.
 
-Pull requests
+OpenGL memory is used if the NVidia interop fails or the GL memory option is selected using "SpoutSettings". There is no change in functionality and older applications are not affected. Textures are shared between applications using either interop method.
 
-Please make all pull requests from the beta branch.
+However, the extent of support GL_EXT_memory extensions is possibly low compared to NVidia interop which has been established since 2010, and practical advantage could be minimal. 
 
-Donations
-
-Your support will help the project to continue and develop.\
-Become a [GitHub Sponsor](https://github.com/sponsors/leadedge) and show your support.\
-Or make a donation :\
-[![](https://www.paypalobjects.com/en_AU/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=P4P4QJZBT87PJ)  
-
-
-
-
-
-
-
+The tools provided with this branch allow assessment of compatibility and performance. Reports are welcomed and will help to assess whether this is a useful addition. They can be contributed using the "Report" button from the demo sender or receiver or discussed here by opening an issue.
