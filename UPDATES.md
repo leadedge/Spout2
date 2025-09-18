@@ -1,4 +1,25 @@
 ===========================================\
+18.09.25\
+Experimental branch - updates from Master
+
+Spout.cpp
+- 28.08.25 - Update SelectSenderPanel to open file in exe folder by default
+- 01.09.25 - Correct CreateToolhelp32Snapshot processid arg from NULL to 0\
+    Remove m_bAdapt flag - no longer used
+- 02.09.25 - CheckSender - add GL memory option to SetSenderID
+ 
+SpoutGL.cpp\
+05.08.25 - Add null pixels check to ReadGLDXpixels\
+07.08.25 - PrintFBOstatus\
+    change GL_FRAMEBUFFER_UNDEFINED_EXT to GL_FRAMEBUFFER_UNDEFINED\
+08.08.25 - Add Khronos GL/DX interop using GL memory extensions.\
+    Avoids dependence on Nvidia. Option to activate in SpoutSettings.\
+09.08.25 - Change all "={}" initializations back to "{}"\
+31.08.25 - Remove DoDiagnostics - never used\
+01.09.25 - Correct RegOpenKeyExA options arg from NULL to 0\
+02.09.25 - Change all spoutdx.GetDX11Context()->Flush() to spoutdx.Flush()\
+
+===========================================\
 16.09.25\
 Cumulative update from beta branch
 
