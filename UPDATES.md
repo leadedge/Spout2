@@ -59,6 +59,11 @@ SpoutGL.cpp
     Used in destructor for ReleaseSenderName
     SetVerticalSync - add comments in header file
 - 05.05.25	- CreateOpenGL- return silently if a context exists
+- 05.08.25	- Add null pixels check to ReadGLDXpixels
+-31.08.25	- Remove DoDiagnostics - never used
+- 01.09.25	- Correct RegOpenKeyExA options arg from NULL to 0
+- 02.09.25	- Change all spoutdx.GetDX11Context()->Flush() to spoutdx.Flush()
+- 08.10.25	- CopyTexture - allow for different texture sizes with dual fbo blit
 
 SpoutGLextensions.cpp
 - 25.03.25	- ExtLog - changed "standalone" to "standaloneExtensions"
