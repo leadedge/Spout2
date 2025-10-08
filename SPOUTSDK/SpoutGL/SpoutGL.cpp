@@ -199,6 +199,11 @@
 //					  Used in destructor for ReleaseSenderName
 //					  SetVerticalSync - add comments in header file
 //		05.05.25	- CreateOpenGL- return silently if a context exists
+//		05.08.25	- Add null pixels check to ReadGLDXpixels
+//		31.08.25	- Remove DoDiagnostics - never used
+//		01.09.25	- Correct RegOpenKeyExA options arg from NULL to 0
+//		02.09.25	- Change all spoutdx.GetDX11Context()->Flush() to spoutdx.Flush()
+//		08.10.25	- CopyTexture - allow for different texture sizes with dual fbo blit
 //
 // ====================================================================================
 //
@@ -1274,8 +1279,6 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 		// A DirectX texture is opened from the sender share handle.
 		if (!m_dxShareHandle || !m_pSharedTexture) {
 			SpoutLogError("spoutGL::CreateInterop - no receiver texture handle");
-			// Write diagnostics to a log file
-			DoDiagnostics("spoutGL::CreateInterop - no receiver texture handle");
 			// Set interop failure flag to avoid repeats (cleared in CleaunpInterop)
 			m_bInteropFailed = true;
 			return false;
@@ -1301,7 +1304,6 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 				sprintf_s(tmp, 256, "spoutGL::CreateInterop - sender CreateSharedDX11Texture failed (%ux%u format 0x%X)",
 					width, height, format);
 				SpoutLogFatal(tmp);
-				DoDiagnostics(tmp);
 				// Set interop failure flag to avoid repeats (cleared in CleaunpInterop)
 				m_bInteropFailed = true;
 				return false;
@@ -1330,8 +1332,6 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 	m_hInteropObject = LinkGLDXtextures((void*)spoutdx.GetDX11Device(), pLinkedTexture, m_glTexture);
 	if (!m_hInteropObject) {
 		SpoutLogFatal("spoutGL::CreateInterop - LinkGLDXtextures failed");
-		// Write diagnostics to a log file
-		DoDiagnostics("spoutGL::CreateInterop - LinkGLDXtextures failed");
 		// Set interop failure flag to avoid repeats (cleared in CleaunpInterop)
 		m_bInteropFailed = true;
 		return false;
@@ -1941,7 +1941,7 @@ bool spoutGL::SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsig
 	else if (TextureID > 0) {
 		// If there is a valid texture passed in, copy to the
 		// shared texture (m_glTexture), inverting as necessary.
-		// Both textures must be the same size but can have different formats.
+		// Textures can have different size and formats.
 		bRet = CopyTexture(TextureID, TextureTarget, m_glTexture, GL_TEXTURE_2D, width, height, bInvert, HostFBO);
 	}
 	return bRet;
@@ -1993,8 +1993,12 @@ bool spoutGL::ReadGLDXpixels(unsigned char* pixels,
 {
 	if (!m_hInteropDevice || !m_hInteropObject)
 		return false;
+	
+	// No shared DX11 texture, no copy
+	if(!m_pSharedTexture)
+		return false;
 
-	if (width != m_Width || height != m_Height)
+	if (!pixels || width != m_Width || height != m_Height)
 		return false;
 
 	// No new frame, do not block
@@ -2334,7 +2338,7 @@ bool spoutGL::ReadDX11texture(GLuint TextureID, GLuint TextureTarget,
 	if (m_dwFormat == 28) glFormat = GL_RGBA;
 
 	// Make sure the GPU is ready to access the staging texture 
-	spoutdx.GetDX11Context()->Flush();
+	spoutdx.Flush();
 
 	// Map the staging texture to access the sender pixels
 	if (SUCCEEDED(spoutdx.GetDX11Context()->Map(m_pStaging[0], 0, D3D11_MAP_READ, 0, &mappedSubResource))) {
@@ -2676,7 +2680,7 @@ bool spoutGL::WriteDX11pixels(const unsigned char* pixels,
 		WritePixelData(pixels, m_pStaging[0], width, height, glFormat, bInvert);
 		// Copy from the staging texture to the sender shared texture (GPU)
 		spoutdx.GetDX11Context()->CopyResource(m_pSharedTexture, m_pStaging[0]);
-		spoutdx.GetDX11Context()->Flush();
+		spoutdx.Flush();
 		frame.SetNewFrame();
 		frame.AllowTextureAccess(m_pSharedTexture);
 		return true;
@@ -2740,7 +2744,7 @@ bool spoutGL::WritePixelData(const unsigned char* pixels, ID3D11Texture2D* pStag
 	// Map the resource so we can access the pixels
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource={};
 	// Make sure all commands are done before mapping the staging texture
-	spoutdx.GetDX11Context()->Flush();
+	spoutdx.Flush();
 	// Map waits for GPU access
 	const HRESULT hr = spoutdx.GetDX11Context()->Map(pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
 	if (SUCCEEDED(hr)) {
@@ -2814,7 +2818,7 @@ bool spoutGL::ReadPixelData(ID3D11Texture2D* pStagingTexture, unsigned char* pix
 	// Map the resource so we can access the pixels
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource={};
 	// Make sure all commands are done before mapping the staging texture
-	spoutdx.GetDX11Context()->Flush();
+	spoutdx.Flush();
 	// Map waits for GPU access
 	const HRESULT hr = spoutdx.GetDX11Context()->Map(pStagingTexture, 0, D3D11_MAP_READ, 0, &mappedSubResource);
 	if (SUCCEEDED(hr)) {
@@ -3397,7 +3401,7 @@ bool spoutGL::OpenDeviceKey(const char* key, int maxsize, char* description, cha
 	}
 
 	// Open the key to find the adapter details
-	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, SubKey.c_str(), NULL, KEY_READ, &hRegKey) == 0) {
+	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, SubKey.c_str(), 0, KEY_READ, &hRegKey) == 0) {
 
 		dwSize = 256;
 		// Adapter name
@@ -3431,146 +3435,6 @@ void spoutGL::trim(char* s) {
 	// https://docs.microsoft.com/en-us/visualstudio/code-quality/c26451
 	const size_t l1 = (size_t)l + 1;
 	memmove(s, p, l1);
-}
-
-//
-// Errors
-//
-
-// Perform diagnostics and write the results to a log file
-void spoutGL::DoDiagnostics(const char *error = nullptr)
-{
-	// Create a log file using the executable or dll name
-	// (See SpoutUtils GetExeName)
-	char logname[MAX_PATH]={};
-	strcpy_s(logname, MAX_PATH, GetExeName().c_str());
-	strcat_s(logname, MAX_PATH, "_diagnostics.log");
-
-	// Show a line break for any existing log
-	SpoutLogNotice("\n");
-
-	// Create the diagnostic log file
-	EnableSpoutLogFile(logname);
-
-	// Show the error if provided
-	if(error)
-		SpoutLogNotice("spoutGL::DoDiagnostics %s", error);
-	else
-		SpoutLogNotice("spoutGL::DoDiagnostics");
-
-	// Get the Spout version as a single number
-	// For example : 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
-	const int spoutVersion = GetSpoutVersion();
-	if (spoutVersion > 0) {
-		if (spoutVersion <= 2007) {
-			SpoutLogNotice("Spout Version - 2.00%1d", (spoutVersion - 2000));
-		}
-		else {
-			SpoutLogNotice("Spout Version - %s", GetSDKversion().c_str());
-		}
-	}
-	else if (spoutVersion == 0) {
-		SpoutLogNotice("Spout Version - 2.004 or earlier");
-	}
-
-	// Check DirectX device
-	if (!GetDX11Device()) {
-		SpoutLogWarning("DirectX 11 device not available");
-	}
-	else {
-		SpoutLogNotice("DirectX 11 device available");
-	}
-
-	//
-	// Identify the computer and graphics systems
-	//
-
-	// Computer/laptop detection
-	char computername[16]={};
-	DWORD nchars = 16;
-	GetComputerNameA(computername, &nchars);
-	if (IsLaptop()) SpoutLogNotice("Laptop system (%s)", computername);
-	else SpoutLogNotice("Desktop system (%s)", computername);
-
-	// Check the vendor of the primary GPU currently in use
-	SpoutLogNotice("Graphics : %s", (char*)glGetString(GL_VENDOR));
-	// Find the primary adapter and display names
-	char adapter[256]={};
-	char display[256]={};
-	spoutdx.GetAdapterInfo(adapter, display, 256);
-	if (adapter && adapter[0]) {
-		trim(adapter);
-		SpoutLogNotice("%s", adapter);
-	}
-
-	// Secondary adapter
-	const int nadapters = spoutdx.GetNumAdapters();
-	if (nadapters > 1) {
-		spoutdx.GetAdapterName(1, adapter, 256);
-		SpoutLogNotice("Secondary : %s", adapter);
-	}
-
-	// The display output
-	if (display && display[0]) {
-		trim(display);
-		SpoutLogNotice("Display : %s", display);
-	}
-
-	// If DirectX is OK, check for availabilty of the GL/DX extensions.
-	// The NV_DX_interop extensions will fail if the graphics driver does not support them
-	if (GetDX11Device()) {
-		if (wglGetProcAddress("wglDXOpenDeviceNV")) { // extensions can be loaded
-			SpoutLogNotice("NV_DX_interop extensions available");
-			// Load the extensions (returns true if already loaded)
-			if (!LoadGLextensions()) {
-				SpoutLogWarning("OpenGL extensions failed to load");
-				SpoutLogWarning("    Graphics not texture share compatible");
-			}
-			else {
-				// It is possible that extensions load OK but that the GL/DX interop functions fail.
-				// This has been noted on dual graphics machines with the NVIDIA Optimus driver.
-				// Check OpenGL GL/DX extension functionsand create an interop device for success
-				if (GetDX11Device()) {
-					// Test compatibility
-					// Repeat the test if already done
-					m_bGLDXdone = false;
-					if (!GLDXready()) {
-						SpoutLogWarning("OpenGL/DX11 texture sharing failed");
-					}
-					else {
-						SpoutLogNotice("OpenGL/DX11 texture sharing succeeded");
-					}
-				}
-				else {
-					SpoutLogWarning("DX11 initialization failed");
-				}
-
-				// Show compatibility
-				if (IsGLDXready()) {
-					SpoutLogNotice("Compatible for OpenGL texture sharing");
-				}
-				else {
-					SpoutLogWarning("Not compatible for OpenGL texture sharing");
-					SpoutLogWarning("    CPU system memory used as backup");
-				}
-			} // loaded extensions OK
-		}
-		else {
-			// The extensions required for texture access are not available.
-			SpoutLogWarning("NV_DX_interop extensions not supported");
-			SpoutLogWarning("    Graphics not texture share compatible");
-		}
-		
-	}
-
-	SpoutLogNotice("End Diagnostics");
-	if(!GetSpoutLogPath().empty())
-		SpoutLogNotice("%s\n", GetSpoutLogPath().c_str());
-
-	// Close the log file
-	// Console logging remains for testing
-	DisableSpoutLogFile();
-
 }
 
 void spoutGL::PrintFBOstatus(GLenum status)
@@ -3896,16 +3760,104 @@ int spoutGL::GetSpoutVersion()
 //---------------------------------------------------------
 // Function: CopyTexture
 //   Copy OpenGL texture with optional invert
-//   Textures must be the same size but can have different formats.
+//   Textures can have different sizes or formats
 //
 bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	GLuint DestID, GLuint DestTarget, unsigned int width, unsigned int height,
 	bool bInvert, GLuint HostFBO)
 {
+	// Get the destination texture dimensions
+	int w = 0, h = 0;
+	glBindTexture(DestTarget, DestID);
+	glGetTexLevelParameteriv(DestTarget, 0, GL_TEXTURE_WIDTH, &w);
+	glGetTexLevelParameteriv(DestTarget, 0, GL_TEXTURE_HEIGHT, &h);
+	glBindTexture(DestTarget, 0);
+
+	// Unsigned int to match function arguments
+	unsigned int texWidth = w;
+	unsigned int texHeight = h;
+
+	if (texWidth != width || texHeight != height && m_bBLITavailable) {
+
+		//
+		// Dual fbo blit for different sizes
+		//
+
+		// Create an fbo if not already for the source
+		if (m_fbo == 0)
+			glGenFramebuffersEXT(1, &m_fbo);
+
+		// Create a second fbo for the destination
+		GLuint fbo2 = 0;
+		glGenFramebuffersEXT(1, &fbo2);
+
+		// Bind the source FBO for read
+		glBindFramebufferEXT(GL_READ_FRAMEBUFFER, m_fbo);
+
+		// Attach the Source texture to the first attachment point of the color buffer
+		glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
+
+		// Set attachment 0 to read for the copy
+		glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
+
+		// Bind the destination FBO for draw
+		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER, fbo2);
+
+		// Attach destination texture to second attachment point
+		glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
+		glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
+
+		// Check the fbo status for completeness first
+		const GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+		if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+			if (bInvert) {
+				// Copy one texture buffer to the other while flipping upside down
+				glBlitFramebufferEXT(0, 0, // srcX0, srcY0,
+					width, height, // srcX1, srcY1
+					0, texHeight,  // dstX0, dstY0,
+					texWidth, 0,   // dstX1, dstY1,
+					GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			}
+			else {
+				// Do not flip during blit
+				glBlitFramebufferEXT(0, 0, // srcX0, srcY0,
+					width, height,       // srcX1, srcY1
+					0, 0,                // dstX0, dstY0,
+					texWidth, texHeight, // dstX1, dstY1,
+					GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			}
+		}
+		else {
+			// TODO : prevent repeats
+			PrintFBOstatus(status);
+			glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+			glDeleteFramebuffersEXT(1, &fbo2);
+			return false;
+		}
+
+		// Restore default draw
+		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
+
+		// Unbind the color attachments
+		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1, DestTarget, 0, 0);
+		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0, SourceTarget, 0, 0);
+
+		// Restore the previous fbo - default is 0
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
+
+		// Delete the temporary fbo
+		glDeleteFramebuffersEXT(1, &fbo2);
+
+		// To show errors for code debugging
+		// GLerror();
+
+		return true;
+	}
+
 	//
 	// Single fbo blit
 	//
-
 	// Create an fbo if not already
 	if (m_fbo == 0)
 		glGenFramebuffersEXT(1, &m_fbo);
@@ -3914,15 +3866,16 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
 
 	// Attach the Source texture to the first attachment point of the color buffer
-	glFramebufferTexture2DEXT(READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
+	glFramebufferTexture2DEXT(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, SourceTarget, SourceID, 0);
+
 	// Set attachment 0 to read for the copy
 	glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
 
 	// Attach destination texture to second attachment point
-	glFramebufferTexture2DEXT(DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
+	glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, DestTarget, DestID, 0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT1_EXT);
 
-	// CHeck the fbo status for completeness first
+	// Check the fbo status for completeness first
 	const GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
 		if (m_bBLITavailable) {
@@ -3973,8 +3926,6 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 
 	// Restore the previous fbo - default is 0
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFBO);
-
-
 
 	// To show errors for code debugging
 	// GLerror();
@@ -4258,7 +4209,7 @@ bool spoutGL::WriteTexture(ID3D11Texture2D** texture)
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		spoutdx.GetDX11Context()->CopyResource(m_pSharedTexture, *texture);
 		// Flush after update of the shared texture on this device
-		spoutdx.GetDX11Context()->Flush();
+		spoutdx.Flush();
 		// Increment the sender frame counter
 		frame.SetNewFrame();
 		// Release mutex and allow access to the texture
@@ -4329,7 +4280,7 @@ bool spoutGL::WriteTextureReadback(ID3D11Texture2D ** texture,
 		spoutdx.GetDX11Context()->CopySubresourceRegion(m_pSharedTexture, 0, 0, 0, 0, *texture, 0, &sourceRegion);
 
 		// Flush after update of the shared texture on this device
-		spoutdx.GetDX11Context()->Flush();
+		spoutdx.Flush();
 
 		// Copy the linked OpenGL texture back to the user texture
 		if (width != m_Width || height != m_Height) {
