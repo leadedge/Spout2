@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\ofApp.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Spout.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutCopy.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutDirectX.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutFrameCount.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGL.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutGLextensions.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutReceiver.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutSender.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutSenderNames.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutSharedMemory.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SpoutUtils.cpp">
+      <Filter>SpoutGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\addons\ofxXmlSettings\src\ofxXmlSettings.cpp">
+      <Filter>ofxXmlSettings\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\addons\ofxXmlSettings\libs\tinyxml.cpp">
+      <Filter>ofxXmlSettings\libs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\addons\ofxXmlSettings\libs\tinyxmlerror.cpp">
+      <Filter>ofxXmlSettings\libs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\addons\ofxXmlSettings\libs\tinyxmlparser.cpp">
+      <Filter>ofxXmlSettings\libs</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{d8376475-7454-4a24-b08a-aac121d3ad6f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SpoutGL">
+      <UniqueIdentifier>{234e5b0d-e1ec-4fc4-8393-00efd8035a1c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ofxXmlSettings">
+      <UniqueIdentifier>{881c3346-0c50-4d00-bbe7-d0775b9d9d1a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ofxXmlSettings\libs">
+      <UniqueIdentifier>{4f5ee78d-b6bf-433e-a2e1-3fc4b4555f14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ofxXmlSettings\src">
+      <UniqueIdentifier>{e6182c71-a7a1-4958-9da1-98ccd6fc40fe}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\ofApp.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutCommon.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Spout.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutCopy.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutDirectX.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutFrameCount.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGL.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutGLextensions.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutReceiver.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutSender.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutSenderNames.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutSharedMemory.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SpoutUtils.h">
+      <Filter>SpoutGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\addons\ofxXmlSettings\src\ofxXmlSettings.h">
+      <Filter>ofxXmlSettings\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\addons\ofxXmlSettings\libs\tinyxml.h">
+      <Filter>ofxXmlSettings\libs</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="icon.rc" />
+  </ItemGroup>
+</Project>
