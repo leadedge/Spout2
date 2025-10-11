@@ -162,6 +162,8 @@
 //		22.10.24	- SelectSender - remove message string line feed for SpoutPanel
 //		20.03.25	- SendImage - optional line pitch
 //					  SpoutMessageBox overload, optional timeout without instruction
+//		11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
+//					  change NULL argument to 0, Change hRes = NULL to hRes = 0
 //
 // ====================================================================================
 /*
@@ -2758,7 +2760,7 @@ bool spoutDX::SelectSenderPanel(const char* message)
 			pEntry.dwSize = sizeof(pEntry);
 			bool done = false;
 			// Take a snapshot of all processes and threads in the system
-			HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPALL, NULL);
+			HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPALL, 0);
 			if (hProcessSnap == INVALID_HANDLE_VALUE) {
 				SpoutLogError("spoutDX::OpenSpoutPanel - CreateToolhelp32Snapshot error");
 			}
@@ -2788,7 +2790,7 @@ bool spoutDX::SelectSenderPanel(const char* message)
 						if (!done)
 							hRes = Process32Next(hProcessSnap, &pEntry); // Get the next process
 						else
-							hRes = NULL; // found SpoutPanel
+							hRes = 0; // found SpoutPanel
 					}
 					CloseHandle(hProcessSnap);
 				}
