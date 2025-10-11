@@ -25,6 +25,7 @@
 //		15.07.24	- SelectSender - after cast of window handle to long 
 //					  convert to a string of 8 characters without new line
 //		29.08.24	- ReadDX9texture - remove !frame.IsFrameCountEnabled() condition
+//		11.10.25	- CreateSharedDX9Texture - change switch (LOWORD(res)) to switch (res)
 //
 // ====================================================================================
 /*
@@ -852,7 +853,7 @@ bool spoutDX9::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int 
 		sprintf_s(tmp, 256, "spoutDX9::CreateSharedDX9Texture(0x%.7X, %d, %d, %d, 0x%.7X, 0x%.7X)\n", PtrToUint(pDevice), width, height, format, PtrToUint(pTexture), LOWORD(dxHandle));
 		strcat_s(tmp, 256, "Error");
 		// sprintf_s(tmp, 256, "spoutDX9::CreateSharedDX9Texture error %d (0x%.X) - ", LOWORD(res), LOWORD(res) );
-		switch (LOWORD(res)) {
+		switch (res) {
 		case ERROR_INVALID_PARAMETER:
 			strcat_s(tmp, 256, "    ERROR_INVALID_PARAMETER");
 			break;
@@ -1301,7 +1302,7 @@ bool spoutDX9::SelectSenderPanel(const char* message)
 			pEntry.dwSize = sizeof(pEntry);
 			bool done = false;
 			// Take a snapshot of all processes and threads in the system
-			HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPALL, NULL);
+			HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPALL, 0);
 			if (hProcessSnap == INVALID_HANDLE_VALUE) {
 				SpoutLogError("spoutDX::OpenSpoutPanel - CreateToolhelp32Snapshot error");
 			}
@@ -1331,7 +1332,7 @@ bool spoutDX9::SelectSenderPanel(const char* message)
 						if (!done)
 							hRes = Process32Next(hProcessSnap, &pEntry); // Get the next process
 						else
-							hRes = NULL; // found SpoutPanel
+							hRes = 0; // found SpoutPanel
 					}
 					CloseHandle(hProcessSnap);
 				}
