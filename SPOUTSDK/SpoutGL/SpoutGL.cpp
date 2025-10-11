@@ -204,6 +204,7 @@
 //		01.09.25	- Correct RegOpenKeyExA options arg from NULL to 0
 //		02.09.25	- Change all spoutdx.GetDX11Context()->Flush() to spoutdx.Flush()
 //		08.10.25	- CopyTexture - allow for different texture sizes with dual fbo blit
+//		11.10.25	- CopyTexture - correct conditional size check
 //
 // ====================================================================================
 //
@@ -3777,8 +3778,9 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	unsigned int texWidth = w;
 	unsigned int texHeight = h;
 
-	if (texWidth != width || texHeight != height && m_bBLITavailable) {
-
+	// If the width or height are different and if blit is available		
+	// use a dual fbo blit to fit the source to the destination
+	if ((texWidth != width || texHeight != height) && m_bBLITavailable) {
 		//
 		// Dual fbo blit for different sizes
 		//

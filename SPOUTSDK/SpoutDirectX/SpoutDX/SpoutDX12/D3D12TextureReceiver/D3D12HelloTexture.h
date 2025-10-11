@@ -35,8 +35,6 @@ public:
 	// SPOUT
 	// 's' or Right mouse click to select sender
 	virtual void OnKeyUp(UINT8 key);
-    // LJ DEBUG
-    // virtual void SelectSender(HWND hwnd = nullptr);
 
 private:
     static const UINT FrameCount = 2;

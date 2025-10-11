@@ -23,7 +23,7 @@
 #include "D3D12HelloTriangle.h"
 
 // SPOUT
-#include "..\SpoutDX12.h"
+#include "../SpoutDX12.h"
 spoutDX12 sender;
 ComPtr<ID3D11Resource> m_wrappedBackBuffers[3]; // D3D12 backbuffers wrapped for use with D3D11
 

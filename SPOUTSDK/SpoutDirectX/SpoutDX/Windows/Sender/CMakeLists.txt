@@ -7,40 +7,52 @@
 # 12/12/23 : Remove target_link_libraries "Spout". Not used.                   #
 #/-------------------------------------- . -----------------------------------\#
 
-add_executable(WinSpoutDXsender WIN32
-  framework.h
-  targetver.h
-  Resource.h
-  WinSpoutDX.h
-  WinSpoutDX.cpp
-  WinSpoutDX.rc
+cmake_minimum_required(VERSION 3.15)
+project(WinSpoutDXsender)
+
+set(WinSpoutDXsender_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/WinSpoutDX.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/WinSpoutDX.rc
+)
+set(WinSpoutDXsender_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/framework.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/targetver.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Resource.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/WinSpoutDX.h
 )
 
-target_compile_definitions(WinSpoutDXsender
-  PRIVATE
-    SPOUT_IMPORT_DLL
-  _UNICODE
-  UNICODE
+add_executable(
+        ${PROJECT_NAME} WIN32
+        ${WinSpoutDXsender_SOURCES}
+        ${WinSpoutDXsender_HEADERS}
+)
+target_compile_definitions(
+        ${PROJECT_NAME} PRIVATE
+        _UNICODE
+        UNICODE
+)
+target_link_libraries(
+        ${PROJECT_NAME} PRIVATE
+        SpoutDX
+        d3d11
+        d3dcompiler
+        dxguid
 )
 
-target_link_libraries(WinSpoutDXsender
-  PRIVATE
-    SpoutDX
-    d3d11
-    d3dcompiler
-    dxguid
+if (MINGW)
+  target_link_options(
+          ${PROJECT_NAME} PRIVATE
+          -municode
+  )
+endif (MINGW)
+
+set_target_properties(
+        ${PROJECT_NAME} PROPERTIES
+        WIN32_EXECUTABLE TRUE
+        VS_DPI_AWARE "PerMonitor"
+        VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Binaries/Examples
 )
 
-# Set dpi awareness
-set_property(TARGET WinSpoutDXsender PROPERTY VS_DPI_AWARE "PerMonitor")
-
-# Copy binaries to the BUILD/Binaries/Examples folder
-add_custom_command(TARGET WinSpoutDXsender POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ConfigOutputDirectory}/WinSpoutDXsender.exe ${CMAKE_BINARY_DIR}/Binaries/Examples/WinSpoutDXsender.exe )
-
-add_custom_command(TARGET WinSpoutDXsender POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/koala-on-tree-640.bmp ${CMAKE_BINARY_DIR}/Binaries/Examples/koala-on-tree-640.bmp ) 
-
-add_custom_command(TARGET WinSpoutDXsender POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/SpoutDX.dll ${CMAKE_BINARY_DIR}/Binaries/Examples/SpoutDX.dll ) 		  
-		  
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/koala-on-tree-640.bmp $<TARGET_FILE_DIR:${PROJECT_NAME}> )

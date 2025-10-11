@@ -159,10 +159,15 @@
 //		15.07.24	- SelectSender - after cast of window handle to long 
 //					  convert to a string of 8 characters without new line
 //		28.07.24	- Change to #if __has_include("SpoutCommon.h") in Spout.h
+//		22.10.24	- SelectSender - remove message string line feed for SpoutPanel
+//		20.03.25	- SendImage - optional line pitch
+//					  SpoutMessageBox overload, optional timeout without instruction
+//		11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
+//					  change NULL argument to 0, Change hRes = NULL to hRes = 0
 //
 // ====================================================================================
 /*
-	Copyright (c) 2014-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -185,7 +190,7 @@
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
-#include "spoutDX.h"
+#include "SpoutDX.h"
 
 //
 // Class: spoutDX
@@ -597,11 +602,11 @@ bool spoutDX::SendTexture(ID3D11Texture2D* pTexture,
 	return true;
 }
 
-
 //---------------------------------------------------------
 // Function: SendImage
 // Send pixel image
-bool spoutDX::SendImage(const unsigned char * pData, unsigned int width, unsigned int height)
+// Optional line pitch
+bool spoutDX::SendImage(const unsigned char * pData, unsigned int width, unsigned int height, unsigned int pitch)
 {
 	// Quit if no data
 	if (!pData)
@@ -611,10 +616,15 @@ bool spoutDX::SendImage(const unsigned char * pData, unsigned int width, unsigne
 	if (!CheckSender(width, height, m_dwFormat))
 		return false;
 
+	// Line length
+	unsigned int rowpitch = width*4;
+	if(pitch > 0)
+		rowpitch = pitch;
+
 	// Check the sender mutex for access the shared texture
 	if (frame.CheckTextureAccess(m_pSharedTexture)) {
 		// Update the shared texture resource with the pixel buffer
-		m_pImmediateContext->UpdateSubresource(m_pSharedTexture, 0, NULL, pData, m_Width*4, 0);
+		m_pImmediateContext->UpdateSubresource(m_pSharedTexture, 0, NULL, pData, rowpitch, 0);
 		// Flush the command queue because the shared texture has been updated on this device
 		m_pImmediateContext->Flush();
 		// Signal a new frame while the mutex is locked
@@ -916,7 +926,6 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 	if (m_bUpdated)
 		return true;
 
-
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
 
@@ -931,7 +940,6 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 			return true;
 		}
 
-
 		// The receiving pixel buffer is created after the first update
 		// So check here instead of at the beginning
 		if (!pixels)
@@ -940,7 +948,6 @@ bool spoutDX::ReceiveImage(unsigned char * pixels,
 		// No staging textures - no copy
 		if (!m_pStaging[0] || !m_pStaging[1])
 			return false;
-
 
 		//
 		// Found a sender
@@ -1032,7 +1039,7 @@ bool spoutDX::SelectSender(HWND hwnd)
 		// Window handle is an 32 bit unsigned value
 		// Cast to long of 8 characters without new line
 		msg = new char[256];
-		sprintf_s(msg, 256, "%8.8ld\n", HandleToLong(hwnd));
+		sprintf_s(msg, 256, "%8.8ld", HandleToLong(hwnd));
 	}
 
 	if (!SelectSenderPanel(msg)) {
@@ -2148,7 +2155,6 @@ int spoutDX::SpoutMessageBox(const char* caption, UINT uType, const char* format
 
 }
 
-// LJ DEBUG
 int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
 {
 	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
@@ -2505,7 +2511,7 @@ void spoutDX::CreateReceiver(const char * SenderName, unsigned int width, unsign
 //
 // bRGB    - pixel data is RGB instead of RGBA
 // bInvert - flip the image
-// bSwap   - swap red/blue (BGRA/RGBA). Not available for re-sample
+// bSwap   - swap red/blue (BGRA/RGBA or BGR/RGB). Not available for re-sample
 //
 bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* destpixels,
 	unsigned int width, unsigned int height, bool bRGB, bool bInvert, bool bSwap)
@@ -2540,7 +2546,8 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 					spoutcopy.rgba2rgba(mappedSubResource.pData, destpixels, width, height, mappedSubResource.RowPitch, bInvert);
 			}
 		}
-		else if (m_dwFormat == 28) { // RGBA - DXGI_FORMAT_R8G8B8A8_UNORM
+		// RGB/BGR pixel buffer
+		else if (m_dwFormat == 28) { // RGBA texture - DXGI_FORMAT_R8G8B8A8_UNORM
 			//
 			// RGBA texture to BGR/RGB pixels
 			// BGR is default, RGB is swapped
@@ -2559,7 +2566,7 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 					mappedSubResource.RowPitch, bInvert, m_bMirror, !bSwap); // reverse swap flag for RGBA
 			}
 		}
-		else {
+		else { // BGRA texture - DXGI_FORMAT_B8G8R8A8_UNORM (0x57, 87)
 			//
 			// BGRA texture to BGR/RGB pixels
 			// BGR is default, RGB is swapped
@@ -2571,7 +2578,8 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 					mappedSubResource.RowPitch, width, height, bInvert, m_bMirror, bSwap);
 			}
 			else {
-				// Approx 5 msec at 1920x1080
+				// SSE3 approx 2.5 msec at 1920x1080, 1 msec at 1280x720
+				// Byte copy approx 9 msec at 1920x1080, 4 msec at 1280x720
 				spoutcopy.rgba2rgb(mappedSubResource.pData, destpixels, m_Width, m_Height,
 					mappedSubResource.RowPitch, bInvert, m_bMirror, bSwap);
 			}
@@ -2670,7 +2678,7 @@ bool spoutDX::SelectSenderPanel(const char* message)
 	}
 	else {
 		// Send the receiver graphics adapter index by default
-		strcpy_s(UserMessage, MAX_PATH, std::to_string(GetAdapter()).c_str());
+		strcpy_s(UserMessage, 512, std::to_string(GetAdapter()).c_str());
 	}
 
 	// The selected sender is then the "Active" sender and this receiver switches to it.
@@ -2752,7 +2760,7 @@ bool spoutDX::SelectSenderPanel(const char* message)
 			pEntry.dwSize = sizeof(pEntry);
 			bool done = false;
 			// Take a snapshot of all processes and threads in the system
-			HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPALL, NULL);
+			HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPALL, 0);
 			if (hProcessSnap == INVALID_HANDLE_VALUE) {
 				SpoutLogError("spoutDX::OpenSpoutPanel - CreateToolhelp32Snapshot error");
 			}
@@ -2782,7 +2790,7 @@ bool spoutDX::SelectSenderPanel(const char* message)
 						if (!done)
 							hRes = Process32Next(hProcessSnap, &pEntry); // Get the next process
 						else
-							hRes = NULL; // found SpoutPanel
+							hRes = 0; // found SpoutPanel
 					}
 					CloseHandle(hProcessSnap);
 				}

@@ -38,7 +38,7 @@
 #include <vector>
 #include <d3d11.h>
 #pragma comment (lib, "d3d11.lib") // for keyed mutex texture access
-#pragma comment (lib, "Winmm.lib") // for timer resolution functions 
+#pragma comment (lib, "winmm.lib") // for timer resolution functions 
 
 using namespace spoututils;
 

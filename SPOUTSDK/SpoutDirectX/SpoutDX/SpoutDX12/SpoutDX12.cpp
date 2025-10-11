@@ -559,19 +559,19 @@ ID3D12Device* spoutDX12::CreateDX12device()
 	if (!m_pAdapterDX12) {
 		IDXGIFactory1* factory1 = nullptr;
 		if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory1)))
-			return false;
+			return nullptr;
 		GetHardwareAdapter(factory1, &m_pAdapterDX12);
 		factory1->Release();
 	}
 	
 	hRes = D3D12CreateDevice(m_pAdapterDX12,
 		D3D_FEATURE_LEVEL_11_0,
-		_uuidof(ID3D12Device),
+		__uuidof(ID3D12Device),
 		(void **)&pd3dDevice12);
 
 	if (FAILED(hRes)) {
 		SpoutLogError("spoutDX12::CreateDX12device fail");
-		return false;
+		return nullptr;
 	}
 	SpoutLogNotice("spoutDX12::CreateDX12device - 0x%.7X", PtrToUint(pd3dDevice12));
 
@@ -616,7 +616,7 @@ void spoutDX12::GetHardwareAdapter(IDXGIFactory1* pFactory, IDXGIAdapter1** ppAd
 
 			// Check to see whether the adapter supports Direct3D 12, but don't create the
 			// actual device yet.
-			if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, _uuidof(ID3D12Device), nullptr)))
+			if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), nullptr)))
 			{
 				break;
 			}
@@ -640,7 +640,7 @@ void spoutDX12::GetHardwareAdapter(IDXGIFactory1* pFactory, IDXGIAdapter1** ppAd
 			// actual device yet.
 			HRESULT hr = D3D12CreateDevice(adapter,
 				D3D_FEATURE_LEVEL_11_0,
-				_uuidof(ID3D12Device),
+				__uuidof(ID3D12Device),
 				nullptr);
 
 			if (SUCCEEDED(hr))

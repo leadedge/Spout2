@@ -15,34 +15,41 @@
 # 09/08/23 - Add comctl32 to SpoutLink library list (PR#96-scribam)            #
 # 16/12/23 - Remove shlwapi from Spoutlink list                                #
 # 20/12/23 - SpoutMessageBox changes in SpoutUtils for MinGW build             #
+# 16/08/25 - Do not add -msse4 on ARM build PR #123                            #
+# 11/10/25 - mingw-w64 Linux cross build compatibility                         #
+#            Refactor CMake - PR #122                                          #
 #/-------------------------------------- . -----------------------------------\#
 
-set(SpoutSources
-  Spout.h
-  SpoutCommon.h
-  SpoutCopy.h
-  SpoutDirectX.h
-  SpoutFrameCount.h
-  SpoutGL.h
-  SpoutGLextensions.h
-  SpoutReceiver.h
-  SpoutSender.h
-  SpoutSenderNames.h
-  SpoutSharedMemory.h
-  SpoutUtils.h
-  Spout.cpp
-  SpoutCopy.cpp
-  SpoutDirectX.cpp
-  SpoutFrameCount.cpp
-  SpoutGL.cpp
-  SpoutGLextensions.cpp
-  SpoutReceiver.cpp
-  SpoutSender.cpp
-  SpoutSenderNames.cpp
-  SpoutSharedMemory.cpp
-  SpoutUtils.cpp
- )
+cmake_minimum_required(VERSION 3.15)
 
+# Project sources and headers
+set(Spout_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/Spout.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutCopy.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDirectX.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutFrameCount.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutGL.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutGLextensions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutReceiver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutSender.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutSenderNames.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutSharedMemory.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutUtils.cpp
+)
+set(Spout_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/Spout.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutCommon.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutCopy.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDirectX.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutFrameCount.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutGL.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutGLextensions.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutReceiver.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutSender.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutSenderNames.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutSharedMemory.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutUtils.h
+)
 set(SpoutLink
     opengl32
     kernel32
@@ -60,65 +67,71 @@ set(SpoutLink
     odbccp32
     d3d9
     d3d11
-    DXGI
-    Version
+    dxgi
+    version
+    winmm
 )
 
-if(MINGW)
-  set(SpoutLink ${SpoutLink} winmm)
-endif()
+#--------------------------------------
+# Spout static library
+#--------------------------------------
+add_library(Spout_static STATIC ${Spout_SOURCES} ${Spout_HEADERS})
+target_compile_definitions(Spout_static PRIVATE SPOUT_BUILD_STATIC)
+target_link_libraries(Spout_static PUBLIC ${SpoutLink})
+target_include_directories(Spout_static PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+set_target_properties(Spout_static PROPERTIES
+    VS_FOLDER "Spout_staticlib"
+    SPOUT_PUBLIC_HEADER "${Spout_HEADERS}"
+    RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
+    LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+)
 
-add_library(Spout_static STATIC ${SpoutSources} )
-target_link_libraries(Spout_static PRIVATE  ${SpoutLink} )
-target_compile_definitions(Spout_static PRIVATE SPOUT_BUILD_DLL)
-
-add_library(Spout SHARED ${SpoutSources} )
-target_link_libraries(Spout PRIVATE  ${SpoutLink} )
+#--------------------------------------
+# Spout shared library (DLL)
+#--------------------------------------
+add_library(Spout SHARED ${Spout_SOURCES} ${Spout_HEADERS})
 target_compile_definitions(Spout PRIVATE SPOUT_BUILD_DLL)
-
-if(NOT MSVC)
-  target_compile_options(Spout_static PRIVATE -msse4)
-  target_compile_options(Spout PRIVATE -msse4)
-endif()
-
-get_property(GeneratorisMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-if(GeneratorisMultiConfig)
-	set(ConfigOutputDirectory $<CONFIG>/)
-endif()
-
-# Win32 or x64 build
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  set(OUTPUT_ARCH_DEST "Win32")
-else()
-  set(OUTPUT_ARCH_DEST "x64")
-endif()
-
-if(MINGW)
-  set(OUTPUT_STATIC_LIB "libSpout_static.a")
-  set(OUTPUT_SHARED_LIB "libSpout.dll")
-  set(OUTPUT_IMPORT_LIB "libSpout.dll.a")
-else()
-  set(OUTPUT_STATIC_LIB "Spout_static.lib")
-  set(OUTPUT_SHARED_LIB "Spout.dll")
-  set(OUTPUT_IMPORT_LIB "Spout.lib")
- endif()
-
-# Copy binaries to the BUILD/Binaries folder
-# Spout
-add_custom_command(TARGET Spout POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E 
-  copy $<TARGET_FILE:Spout> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_SHARED_LIB}
+target_link_libraries(Spout PRIVATE ${SpoutLink})
+target_include_directories(Spout PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
-add_custom_command(TARGET Spout POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E 
-  copy ${CMAKE_CURRENT_BINARY_DIR}/${ConfigOutputDirectory}${OUTPUT_IMPORT_LIB} ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_IMPORT_LIB}
+set_target_properties(Spout PROPERTIES
+    VS_FOLDER "Spout_dll"
+    SPOUT_PUBLIC_HEADER "${Spout_HEADERS}"
+    RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
+    LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
 )
 
-# Spout_static
-add_custom_command(TARGET Spout_static POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E 
-  copy $<TARGET_FILE:Spout_static> ${CMAKE_BINARY_DIR}/Binaries/${OUTPUT_ARCH_DEST}/${OUTPUT_STATIC_LIB}
-)
+# Optional: MinGW SSE4 optimization (applies to both libs)
+if (MINGW AND NOT SPOUT_BUILD_ARM)
+    target_compile_options(Spout_static PRIVATE -msse4)
+    target_compile_options(Spout PRIVATE -msse4)
+endif()
 
-
-
+#--------------------------------------
+# Install rules
+#--------------------------------------
+if (NOT SKIP_INSTALL_ALL)
+    if(NOT SKIP_INSTALL_LIBRARIES)
+        install(
+            TARGETS Spout Spout_static
+            EXPORT SpoutTargets
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        )
+    endif()
+    if(NOT SKIP_INSTALL_HEADERS)
+	
+        install(
+            FILES ${Spout_HEADERS}
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/SpoutGL
+        )
+    endif()
+endif()

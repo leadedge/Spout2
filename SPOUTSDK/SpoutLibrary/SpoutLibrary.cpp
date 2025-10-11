@@ -114,7 +114,7 @@
 //				   Remove GetSpoutVersion
 //
 /*
-		Copyright (c) 2016-2024, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2025, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -139,7 +139,7 @@
 
 #include <stdio.h>
 #include "SpoutLibrary.h"
-#include "..\SpoutGL\Spout.h"
+#include "../SpoutGL/Spout.h"
 
 #include <d3d11.h>
 #pragma comment (lib, "d3d11.lib")// the Direct3D 11 Library file
@@ -1671,12 +1671,12 @@ std::string SPOUTImpl::GetExeName()
 
 void SPOUTImpl::RemovePath(std::string& path)
 {
-	return spoututils::RemovePath(path);
+	path = spoututils::GetName(path);
 }
 
 void SPOUTImpl::RemoveName(std::string& path)
 {
-	return spoututils::RemoveName(path);
+	path = spoututils::GetPath(path);
 }
 
 void SPOUTImpl::StartTiming()

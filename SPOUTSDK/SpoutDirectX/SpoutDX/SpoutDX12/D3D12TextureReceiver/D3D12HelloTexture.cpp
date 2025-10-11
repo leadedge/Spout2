@@ -1,7 +1,7 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Adapted for SPOUT output (https://spout.zeal.co/)
 // 
-// This is a receiver using "spoutDX12" and "spoutDX" support class
+// This is a receiver using "spoutDX12" and "spoutDX" classes
 //
 // Using spoutDX12.UpdateWrappedResource(ID3D11Resource* pWrappedResource, ID3D11Resource *pResource);
 //
@@ -26,7 +26,7 @@
 #include "D3D12HelloTexture.h"
 
 // SPOUT
-#include "..\SpoutDX12.h"
+#include "../SpoutDX12.h"
 
 // This is a receiver
 spoutDX12 receiver;
@@ -51,7 +51,7 @@ D3D12HelloTexture::D3D12HelloTexture(UINT width, UINT height, std::wstring name)
 void D3D12HelloTexture::OnInit()
 {
 	// SPOUT
-	// OpenSpoutConsole(); // Console only for debugging
+	OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
 
 	LoadPipeline();
@@ -280,18 +280,17 @@ void D3D12HelloTexture::LoadAssets()
         // Define the geometry for a triangle.
         Vertex triangleVertices[] =
         {
-     		// SPOUT
-			// It's too small.
-			// Fill the screen so that a typical 16::9 sender is not distorted.
-			{ {  0.0f,  1.0f, 0.0f }, { 0.5f, 0.0f } },
-			{ {  1.0f, -1.0f, 0.0f }, { 1.0f, 1.0f } },
-			{ { -1.0f, -1.0f, 0.0f }, { 0.0f, 1.0f } }
+            // SPOUT - full quad instead of a triangle
+            // See below - IASetPrimitiveTopology and DrawInstanced
+            Vertex{{-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f}}, // Top left
+            Vertex{{ 1.0f,  1.0f, 0.0f}, {1.0f, 0.0f}}, // Top right
+            Vertex{{-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f}}, // Bottom left
+            Vertex{{ 1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}}  // Bottom right
 			/*
 			{ {  0.0f,   0.4f * m_aspectRatio, 0.0f }, { 0.5f, 0.0f } },
 			{ {  0.4f,  -0.4f * m_aspectRatio, 0.0f }, { 1.0f, 1.0f } },
 			{ { -0.4f,  -0.4f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f } }
-			*/
-
+    		*/
 		};
 
         const UINT vertexBufferSize = sizeof(triangleVertices);
@@ -512,7 +511,7 @@ void D3D12HelloTexture::OnRender()
 				g_pReceivedResource12->Release();
 			g_pReceivedResource12 = nullptr;
 
-			// Create a D3D12 texture resource to use for the SRV
+            // Create a D3D12 texture resource to use for the SRV
 			DXGI_FORMAT texformat = receiver.GetSenderFormat();
 			receiver.CreateDX12texture(m_device.Get(),
 				receiver.GetSenderWidth(),
@@ -602,14 +601,15 @@ void D3D12HelloTexture::PopulateCommandList()
     m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
     // Record commands.
-    // const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-	// SPOUT
-	// Make it brown so that we can see the blue backgound of the HelloTriangle sender
-	const float clearColor[] = { 0.4f, 0.1f, 0.0f, 1.0f };
+    const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-    m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    // SPOUT - full quad
+    // m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-    m_commandList->DrawInstanced(3, 1, 0, 0);
+    // SPOUT - full quad
+    // m_commandList->DrawInstanced(3, 1, 0, 0);
+    m_commandList->DrawInstanced(4, 1, 0, 0);
 
     // Indicate that the back buffer will now be used to present.
     m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));

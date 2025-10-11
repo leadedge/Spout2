@@ -4,7 +4,7 @@
 
 			Sender and receiver for DirectX applications
 
-	Copyright (c) 2014-2024 Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2025 Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -53,19 +53,19 @@
 #include "SpoutCopy.h"
 #include "SpoutUtils.h"
 #else
-#include "..\..\SpoutGL\SpoutCommon.h" // repository folder structure
-#include "..\..\SpoutGL\SpoutDirectX.h"
-#include "..\..\SpoutGL\SpoutSenderNames.h"
-#include "..\..\SpoutGL\SpoutFrameCount.h"
-#include "..\..\SpoutGL\SpoutCopy.h"
-#include "..\..\SpoutGL\SpoutUtils.h"
+#include "../../SpoutGL/SpoutCommon.h" // repository folder structure
+#include "../../SpoutGL/SpoutDirectX.h"
+#include "../../SpoutGL/SpoutSenderNames.h"
+#include "../../SpoutGL/SpoutFrameCount.h"
+#include "../../SpoutGL/SpoutCopy.h"
+#include "../../SpoutGL/SpoutUtils.h"
 #endif
 
 #include <direct.h> // for _getcwd
-#include <TlHelp32.h> // for PROCESSENTRY32
+#include <tlhelp32.h> // for PROCESSENTRY32
 #include <tchar.h> // for _tcsicmp
 #include <psapi.h> // for GetModuleFileNameExA
-#pragma comment(lib, "Psapi.lib")
+#pragma comment(lib, "psapi.lib")
 
 class SPOUT_DLLEXP spoutDX {
 
@@ -101,9 +101,9 @@ class SPOUT_DLLEXP spoutDX {
 	// Send part of a texture
 	bool SendTexture(ID3D11Texture2D* pTexture,
 		unsigned int xoffset, unsigned int yoffset,
-		unsigned int width, unsigned int height); 
-	// Send an image
-	bool SendImage(const unsigned char * pData, unsigned int width, unsigned int height);
+		unsigned int width, unsigned int height);
+	// Send an image - optional row pitch
+	bool SendImage(const unsigned char * pData, unsigned int width, unsigned int height, unsigned int pitch = 0);
 	// Sender status
 	bool IsInitialized();
 	// Sender name
@@ -285,7 +285,6 @@ class SPOUT_DLLEXP spoutDX {
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds = 0);
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text);
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected);
-
 
 	//
 	// Data sharing
