@@ -18,13 +18,16 @@
 #          - Remove Examples option from library build                         #  
 # 16/08/25 - ARM -Add compiler include_directory                               #
 #            and /Zc:preprocessor define PR #124                               #
+# 11/10/25 - mingw-w64 Linux cross build compatibility                         #
+#            Refactor CMake - PR #122                                          #
+#            Update version number to 2.007.017                                #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
 
 project(Spout 
 	LANGUAGES CXX 
-	VERSION 2.0
+	VERSION 2.007.017
 	HOMEPAGE_URL https://spout.zeal.co
 )
 
