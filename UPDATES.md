@@ -1,8 +1,10 @@
 ===========================================\
-16.09.25\
+11.10.25\
 Cumulative update from beta branch
 
 Version 2.007.017
+
+Update Cmake files for modern CMake (PR #122)
 
 Spout.cpp
 - 05.03.25	- Add m_bSender flag for sender/receiver
@@ -12,6 +14,8 @@ Spout.cpp
     empty sender list return to still display a sender list box
 - 09.08.25	- SetSenderName - add !*sendername check
 - 16.08.25	- Add CloseFrameSync
+- 11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
+  change NULL argument to 0, Change hRes = NULL to hRes = 0
 
 SpoutCopy.cpp
 - 08.05.25 - FlipBuffer - add in-place overload
@@ -38,6 +42,17 @@ SpoutDirectX.cpp
 - 31.08.25	- FlushWait - default device and context
 - 11.09.25	- Correct Keyed shared texture misc flag in CreateSharedDX11texture
      Remove redundant final Flush from FlushWait
+
+SpoutDX.cpp
+- 22.10.24	- SelectSender - remove message string line feed for SpoutPanel
+- 20.03.25	- SendImage - optional line pitch
+  SpoutMessageBox overload, optional timeout without instruction
+- 11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
+  change NULL argument to 0, Change hRes = NULL to hRes = 0
+
+SpoutDX9.cpp
+- 29.08.24	- ReadDX9texture - remove !frame.IsFrameCountEnabled() condition
+- 11.10.25	- CreateSharedDX9Texture - change switch (LOWORD(res)) to switch (res)
 	 
 SpoutFrameCount.cpp
 - 05.03.25	- SetFrameSync/WaitFrameSync - add empty sendername check
@@ -64,7 +79,8 @@ SpoutGL.cpp
 - 01.09.25	- Correct RegOpenKeyExA options arg from NULL to 0
 - 02.09.25	- Change all spoutdx.GetDX11Context()->Flush() to spoutdx.Flush()
 - 08.10.25	- CopyTexture - allow for different texture sizes with dual fbo blit
-
+- 11.10.25	- CopyTexture - correct conditional size check
+ 
 SpoutGLextensions.cpp
 - 25.03.25	- ExtLog - changed "standalone" to "standaloneExtensions"
 - 07.08.25	- SpoutGLextensions.h - add #define GL_FRAMEBUFFER_UNDEFINED
