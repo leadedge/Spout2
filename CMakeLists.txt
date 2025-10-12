@@ -14,205 +14,116 @@
 #            Add compiler include_directory and /Zc:preprocessor define        #
 # 20/07/24 - Add SpoutDX12 library                                             #
 # 21/07/24 - Add SpoutDX9 library                                              #
+# 14/08/25 - mingw-w64 Linux cross build compatibility PR #122                 #
+#          - Remove Examples option from library build                         #  
+# 16/08/25 - ARM -Add compiler include_directory                               #
+#            and /Zc:preprocessor define PR #124                               #
+# 11/10/25 - mingw-w64 Linux cross build compatibility                         #
+#            Refactor CMake - PR #122                                          #
+#            Update version number to 2.007.017                                #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
 
 project(Spout 
 	LANGUAGES CXX 
-	VERSION 2.0
+	VERSION 2.007.017
 	HOMEPAGE_URL https://spout.zeal.co
 )
 
-# ensure lib and dll will be in the working directories of executables
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin/${CMAKE_GENERATOR})
-set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin/${CMAKE_GENERATOR})
-set (SMODE_PDB_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/pdb/${CMAKE_GENERATOR})
+include(GNUInstallDirs)
 
-if(NOT WIN32)
-  message(STATUS "Spout is not supported outside of MS Windows")
-  return()
+# Artifact default output directory
+set(SPOUT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+
+# Install default output directory
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+	set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/INSTALL CACHE PATH "..." FORCE)
 endif()
 
+if ("${PROJECT_NAME}" STREQUAL "${CMAKE_PROJECT_NAME}")
+	set(SPOUT_NO_GLOBAL_WARNING ON)
+else ("${PROJECT_NAME}" STREQUAL "${CMAKE_PROJECT_NAME}")
+	set(SPOUT_NO_GLOBAL_WARNING OFF)
+endif ("${PROJECT_NAME}" STREQUAL "${CMAKE_PROJECT_NAME}")
 
+OPTION(SPOUT_NO_GLOBAL_WARNING "" ${SPOUT_NO_GLOBAL_WARNING_default})
 OPTION(SPOUT_BUILD_ARM "Build for Windows on ARM" OFF)
-if(SPOUT_BUILD_ARM)
-	# Use SS2NEON so SIMD code doesn't have to be rewritten for ARM
-	# Download sse2neon.h
-	File(DOWNLOAD https://github.com/DLTcollab/sse2neon/raw/master/sse2neon.h ${PROJECT_SOURCE_DIR}/SPOUTSDK/sse2neon/sse2neon.h)
-	# Add compiler include_directory and /Zc:preprocessor define
-	include_directories(SPOUTSDK/sse2neon)
-	add_compile_options(/Zc:preprocessor)
-endif()
-
-
 OPTION(SPOUT_BUILD_CMT "For Visual Studio - build /MT to link runtime libraries" ON)
-if(SPOUT_BUILD_CMT)
-	# https://gitlab.kitware.com/cmake/cmake/-/issues/18390
-	if(MSVC)
-		add_compile_options(
-			$<$<CONFIG:>:/MT> #---------|
-			$<$<CONFIG:Debug>:/MTd> #---|-- Statically link the runtime libraries
-			$<$<CONFIG:Release>:/MT> #--|
-		)
-	endif()
-endif()
-
-add_subdirectory(SPOUTSDK/SpoutGL)
-
 OPTION(SPOUT_BUILD_LIBRARY "Build C-compatible cross compiler library" ON)
-if(SPOUT_BUILD_LIBRARY)
-  add_subdirectory(SPOUTSDK/SpoutLibrary)
-endif()
-
-# The SpoutDX CMakeLists needs this option
-OPTION(SPOUT_BUILD_SPOUTDX_EXAMPLES "Build SpoutDX examples" OFF)
-
 OPTION(SPOUT_BUILD_SPOUTDX "Build SpoutDX DirectX 9/11/12 libraries" OFF)
-if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
-add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX)
-add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX12)
-add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX9)
-endif()
-
 # Install option check boxes
 OPTION(SKIP_INSTALL_ALL "Install headers and libraries" OFF) # Default do not skip all install
 OPTION(SKIP_INSTALL_HEADERS "Install headers" OFF)
 OPTION(SKIP_INSTALL_LIBRARIES "Install libraries" OFF)
 
-include(GNUInstallDirs)
+if (NOT WIN32)
+	message(FATAL_ERROR "Spout is not supported outside of MS Windows")
+endif (NOT WIN32)
 
-# Install default output folder
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-	set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/INSTALL CACHE PATH "..." FORCE)
-endif()
+if (SPOUT_BUILD_ARM)
+	if (NOT SPOUT_NO_GLOBAL_WARNING)
+		message(WARNING "sse2neon will be added globally")
+	endif (NOT SPOUT_NO_GLOBAL_WARNING)
 
-# Install options
-if(NOT SKIP_INSTALL_ALL)
+	# Use SS2NEON so SIMD code doesn't have to be rewritten for ARM
+	# Download sse2neon.h
+	File(DOWNLOAD https://github.com/DLTcollab/sse2neon/raw/master/sse2neon.h ${PROJECT_SOURCE_DIR}/SPOUTSDK/sse2neon/sse2neon.h)
+	# Add compiler include_directory and /Zc:preprocessor define
+	include_directories(SPOUTSDK/sse2neon)
+	if (MSVC)
+		add_compile_options(/Zc:preprocessor)
+	endif (MSVC)
+endif (SPOUT_BUILD_ARM)
 
-	if(NOT SKIP_INSTALL_LIBRARIES)
+if (SPOUT_BUILD_CMT AND MSVC)
+	if (NOT SPOUT_NO_GLOBAL_WARNING)
+		message(WARNING "MSVC runtime will be set to static globally")
+	endif (NOT SPOUT_NO_GLOBAL_WARNING)
 
-		set(Spout2InstallTargets Spout Spout_static)
+	# https://gitlab.kitware.com/cmake/cmake/-/issues/18390
+	add_compile_options(
+		$<$<CONFIG:>:/MT> #---------|
+		$<$<CONFIG:Debug>:/MTd> #---|-- Statically link the runtime libraries
+		$<$<CONFIG:Release>:/MT> #--|
+	)
+endif (SPOUT_BUILD_CMT AND MSVC)
 
-		if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
-			list(APPEND Spout2InstallTargets SpoutDX SpoutDX_static)
-			list(APPEND Spout2InstallTargets SpoutDX12 SpoutDX12_static)
-			list(APPEND Spout2InstallTargets SpoutDX9 SpoutDX9_static)
-		endif()
+add_subdirectory(SPOUTSDK/SpoutGL)
 
-		if(SPOUT_BUILD_LIBRARY)
-			list(APPEND Spout2InstallTargets SpoutLibrary)
-		endif()
+if (SPOUT_BUILD_LIBRARY)
+  add_subdirectory(SPOUTSDK/SpoutLibrary)
+endif (SPOUT_BUILD_LIBRARY)
 
-		install(
-			TARGETS
-				${Spout2InstallTargets}
-			EXPORT
-				spout2-targets
-			LIBRARY
-				DESTINATION ${CMAKE_INSTALL_LIBDIR}
-			ARCHIVE
-				DESTINATION ${CMAKE_INSTALL_LIBDIR}
-			RUNTIME
-				DESTINATION ${CMAKE_INSTALL_BINDIR}
-			INCLUDES
-				DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-		)
+if (SPOUT_BUILD_SPOUTDX)
+	add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX)
+	add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX9)
+	add_subdirectory(SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX12)
+endif (SPOUT_BUILD_SPOUTDX)
 
-		install(
-			EXPORT
-				spout2-targets
-			DESTINATION
-				${CMAKE_INSTALL_LIBDIR}/cmake/spout2
-			NAMESPACE
-				Spout2::
-		)
+if (NOT SKIP_INSTALL_ALL AND NOT SKIP_INSTALL_LIBRARIES)
+	include(CMakePackageConfigHelpers)
 
-		install(
-			FILES
-				${CMAKE_CURRENT_SOURCE_DIR}/spout2-config.cmake
-			DESTINATION
-				${CMAKE_INSTALL_LIBDIR}/cmake/spout2
-		)
-		
-	endif()
+	write_basic_package_version_file(
+			"${CMAKE_CURRENT_BINARY_DIR}/spout2-config-version.cmake"
+			VERSION ${PROJECT_VERSION}
+			COMPATIBILITY SameMajorVersion
+	)
 
+	configure_package_config_file(
+			"${CMAKE_CURRENT_SOURCE_DIR}/spout2-config.cmake.in"
+			"${CMAKE_CURRENT_BINARY_DIR}/spout2-config.cmake"
+			INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spout2
+	)
 
-	if(NOT SKIP_INSTALL_HEADERS)
-	
-		install(
-			FILES
-				SPOUTSDK/SpoutGL/Spout.h
-				SPOUTSDK/SpoutGL/SpoutCommon.h
-				SPOUTSDK/SpoutGL/SpoutCopy.h
-				SPOUTSDK/SpoutGL/SpoutDirectX.h
-				SPOUTSDK/SpoutGL/SpoutFrameCount.h
-				SPOUTSDK/SpoutGL/SpoutGL.h
-				SPOUTSDK/SpoutGL/SpoutGLextensions.h
-				SPOUTSDK/SpoutGL/SpoutReceiver.h
-				SPOUTSDK/SpoutGL/SpoutSender.h
-				SPOUTSDK/SpoutGL/SpoutSenderNames.h
-				SPOUTSDK/SpoutGL/SpoutSharedMemory.h
-				SPOUTSDK/SpoutGL/SpoutUtils.h
-			DESTINATION
-				${CMAKE_INSTALL_PREFIX}/include/SpoutGL
-		)
-
-		if(SPOUT_BUILD_SPOUTDX OR SPOUT_BUILD_SPOUTDX_EXAMPLES)
-			install(
-				# SpoutDX
-				FILES
-				SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX.h
-				SPOUTSDK/SpoutGL/SpoutCommon.h
-				SPOUTSDK/SpoutGL/SpoutCopy.h
-				SPOUTSDK/SpoutGL/SpoutDirectX.h
-				SPOUTSDK/SpoutGL/SpoutFrameCount.h
-				SPOUTSDK/SpoutGL/SpoutSenderNames.h
-				SPOUTSDK/SpoutGL/SpoutSharedMemory.h
-				SPOUTSDK/SpoutGL/SpoutUtils.h
-				DESTINATION
-					${CMAKE_INSTALL_PREFIX}/include/SpoutDX
-
-			)
-			install(
-				# SpoutDX12
-				FILES
-				SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX12/SpoutDX12.h
-				SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX.h
-				SPOUTSDK/SpoutGL/SpoutCommon.h
-				SPOUTSDK/SpoutGL/SpoutCopy.h
-				SPOUTSDK/SpoutGL/SpoutDirectX.h
-				SPOUTSDK/SpoutGL/SpoutFrameCount.h
-				SPOUTSDK/SpoutGL/SpoutSenderNames.h
-				SPOUTSDK/SpoutGL/SpoutSharedMemory.h
-				SPOUTSDK/SpoutGL/SpoutUtils.h
-				DESTINATION
-					${CMAKE_INSTALL_PREFIX}/include/SpoutDX12
-			)
-			install(
-				# SpoutDX9
-				FILES
-				SPOUTSDK/SpoutDirectX/SpoutDX/SpoutDX9/SpoutDX9.h
-				SPOUTSDK/SpoutGL/SpoutCommon.h
-				SPOUTSDK/SpoutGL/SpoutFrameCount.h
-				SPOUTSDK/SpoutGL/SpoutSenderNames.h
-				SPOUTSDK/SpoutGL/SpoutSharedMemory.h
-				SPOUTSDK/SpoutGL/SpoutUtils.h
-				DESTINATION
-					${CMAKE_INSTALL_PREFIX}/include/SpoutDX9						
-			)			
-		endif()	
-
-		if(SPOUT_BUILD_LIBRARY)
-			install(
-				FILES
-					SPOUTSDK/SpoutLibrary/SpoutLibrary.h
-				DESTINATION
-					${CMAKE_INSTALL_PREFIX}/include/SpoutLibrary
-			)
-		endif()
-
-	endif()
-
-endif()
-
+	install(EXPORT SpoutTargets
+		FILE spout2-targets.cmake
+		NAMESPACE Spout2::
+		DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spout2
+	)
+	install(FILES
+		"${CMAKE_CURRENT_BINARY_DIR}/spout2-config.cmake"
+		"${CMAKE_CURRENT_BINARY_DIR}/spout2-config-version.cmake"
+		DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spout2
+	)
+endif (NOT SKIP_INSTALL_ALL AND NOT SKIP_INSTALL_LIBRARIES)
