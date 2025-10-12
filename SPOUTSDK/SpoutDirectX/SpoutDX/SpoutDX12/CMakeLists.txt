@@ -75,7 +75,7 @@ if (NOT SKIP_INSTALL_ALL)
             FILES
                 ${SpoutDX12_HEADERS}
                 ${spoutdx_headers}
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}SpoutDX12
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/SpoutDX12
         )
     endif()
 endif()
