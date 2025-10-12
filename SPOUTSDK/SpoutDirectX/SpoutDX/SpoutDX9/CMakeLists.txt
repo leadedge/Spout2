@@ -78,7 +78,7 @@ if (NOT SKIP_INSTALL_ALL)
         install(
             FILES
                 ${SpoutDX9_HEADERS}
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}SpoutDX9
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/SpoutDX9
         )
     endif()
 endif()
