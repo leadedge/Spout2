@@ -112,6 +112,12 @@
 //		31.07.24   Add GetSenderTexture, GetCurrentModule, GetExeVersion,
 //				   GetExePath, GetExeName, RemovePath, RemoveName
 //				   Remove GetSpoutVersion
+//		13.10.25   Add GetReceiverName, SelectSender, CloseFrameSync, IsFrameSyncEnabled
+//				   DisableSpoutLogFile, RemoveSpoutLogFile, DisableSpoutLog, DisableLogs,
+//				   EnableLogs, LogsEnabled, LogFileEnabled, GetSpoutLogPath, ReadTextureData,
+//				   WriteBinaryToRegistry, Update SelectSenderPanel, GetExepath
+//				   Rename : RemoveName->GetPath, RemovePath->GetName
+//		13.10.25   Rebuild with SDK version 2.007.017 /MD and /MT using CMake
 //
 /*
 		Copyright (c) 2016-2025, Lynn Jarvis. All rights reserved.
@@ -301,10 +307,14 @@ private: // Spout SDK functions
 	//     As for SendTexture, the ID of a currently bound fbo can be passed in.
 	//
 	bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
-	
+
+	// Function: IsInitialized
+	// Sender status
+	virtual bool IsInitialized();
+
 	// Function: GetName
 	// Sender name
-	const char * GetName();
+	const char* GetName();
 	
 	// Function: GetWidth
 	// Sender width
@@ -363,6 +373,10 @@ private: // Spout SDK functions
 	//   - If that sender closes, the receiver will wait for the nominated sender to open. 
 	//   - If no name is specified, the receiver will connect to the active sender.
 	void SetReceiverName(const char * SenderName = nullptr);
+
+	// Function: GetReceiverName
+	// Get sender for connection
+	bool GetReceiverName(char* SenderName, int maxchars = 256);
 
 	// Function: ReleaseReceiver
 	// Close receiver and release resources ready to connect to another sender
@@ -479,10 +493,14 @@ private: // Spout SDK functions
 	// Function: GetSenderList
 	// Return a list of current senders
 	std::vector<std::string> GetSenderList();
-	
+
 	// Function: SelectSender
 	// Open sender selection dialog
-	void SelectSender();
+	void SelectSender(HWND hwnd = NULL);
+
+	// Function: SelectSenderPanel
+	// Open sender selection dialog with optional message - 2.006 compatibility
+	void SelectSenderPanel(const char* message);
 
 	//
 	// Group: Frame counting
@@ -519,6 +537,14 @@ private: // Spout SDK functions
 	// Function: EnableFrameSync
 	// Enable / disable frame sync
 	void EnableFrameSync(bool bSync = true);
+
+	// Function: CloseFrameSync
+	// Close frame sync
+	void CloseFrameSync();
+
+	// Function: IsFrameSyncEnabled
+	// Check for frame sync option
+	bool IsFrameSyncEnabled();
 
 	// Function: GetVerticalSync
 	// Vertical sync status
@@ -639,6 +665,38 @@ private: // Spout SDK functions
 	// You can find and examine the log file after the application has run.
 	void EnableSpoutLogFile(const char *filename, bool append = false);
 
+	// Function: DisableSpoutLogFile
+	// Disable logging to file
+	void DisableSpoutLogFile();
+
+	// Function: RemoveSpoutLogFile
+	// Remove a log file
+	void RemoveSpoutLogFile(const char* filename);
+
+	// Function: DisableSpoutLog
+	// Disable logging to console and file
+	void DisableSpoutLog();
+
+	// Function: DisableLogs
+	// Disable logging temporarily
+	void DisableLogs();
+
+	// Function: EnableLogs
+	// Enable logging again
+	void EnableLogs();
+
+	// Function: LogsEnabled
+	// Are console logs enabled
+	bool LogsEnabled();
+
+	// Function: LogFileEnabled
+	// Is file logging enabled
+	bool LogFileEnabled();
+
+	// Function: GetSpoutLogPath
+	// Return the full log file path
+	std::string GetSpoutLogPath();
+
 	// Function: GetSpoutLog
 	// Return the log file as a string
 	std::string GetSpoutLog();
@@ -646,10 +704,6 @@ private: // Spout SDK functions
 	// Function: ShowSpoutLogs
 	// Show the log file folder in Windows Explorer
 	void ShowSpoutLogs();
-
-	// Function: DisableSpoutLog
-	// Disable logging to console and file
-	void DisableSpoutLog();
 
 	// Function: SetSpoutLogLevel
 	// Set the current log level
@@ -684,16 +738,25 @@ private: // Spout SDK functions
 	//
 	// Used where a Windows MessageBox would interfere with the application GUI.  
 	// The dialog closes itself if a timeout is specified.
-	int SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0);
+	int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0);
 
 	// Function: SpoutMessageBox
 	// MessageBox with variable arguments
 	int SpoutMessageBox(const char* caption, const char* format, ...);
 
 	// Function: SpoutMessageBox
+	// MessageBox with variable arguments and icon, buttons
+	int SpoutMessageBox(const char* caption, UINT uType, const char * format, ...);
+
+	// Function: SpoutMessageBox
 	// MessageBox dialog with standard arguments.
 	// Replaces an existing MessageBox call.
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
+
+	// Function: SpoutMessageBox
+	// MessageBox dialog with standard arguments
+	// including taskdialog main instruction large text
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds = 0);
 
 	// Function: SpoutMessageBox
 	// MessageBox dialog with an edit control for text input
@@ -734,10 +797,17 @@ private: // Spout SDK functions
 	// Window handle for SpoutMessageBox where not specified
 	void SpoutMessageBoxWindow(HWND hWnd);
 
+	// Function: SpoutMessageBoxPosition
+	// Position to point SpoutMessageBox
+	void SpoutMessageBoxPosition(POINT pt);
+
 	// Function: CopyToClipBoard
 	// Copy text to the clipboard
 	bool CopyToClipBoard(HWND hwnd, const char* caps);
 
+	// Function: OpenSpoutLogs
+	// Open logs folder
+	bool OpenSpoutLogs();
 
 	//
 	// Group: Registry utilities
@@ -758,7 +828,11 @@ private: // Spout SDK functions
 	// Function: WritePathToRegistry
 	// Write subkey character string
 	bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath);
-	
+
+	// Function: WriteBinaryToRegistry
+	// Write subkey binary hex data string
+	bool WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars);
+
 	// Function: RemovePathFromRegistry
 	// Remove subkey value name
 	bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename);
@@ -780,7 +854,7 @@ private: // Spout SDK functions
 	// ---------------------------------------------------------
 	// Function: GetSDKversion
 	// Spout SDK version.
-	std::string GetSDKversion();
+	std::string GetSDKversion(int* pNumber);
 
 	// ---------------------------------------------------------
 	// Function: IsLaptop
@@ -802,7 +876,7 @@ private: // Spout SDK functions
 	// ---------------------------------------------------------
 	// Function: GetExePath
 	// Get executable or dll path
-	std::string GetExePath();
+	std::string GetExePath(bool bFull);
 
 	// ---------------------------------------------------------
 	// Function: GetExeName
@@ -810,35 +884,34 @@ private: // Spout SDK functions
 	std::string GetExeName();
 
 	// ---------------------------------------------------------
-	// Function: RemovePath
-	// Remove path and return the file name
-	void RemovePath(std::string& path);
+	// Function: GetPath
+	// Remove file name and return the path
+	std::string GetPath(std::string fullpath);
 
 	// ---------------------------------------------------------
-	// Function: RemoveName
-	// Remove file name and return the path
-	void RemoveName(std::string& path);
+	// Function: GetName
+	// Remove path and return the file name
+	std::string GetName(std::string fullpath);
 
 	//
 	// Group: Timing utilities
 	//
 
+	// ---------------------------------------------------------
 	// Function: StartTiming
 	// Start timing interval
 	void StartTiming();
 
+	// ---------------------------------------------------------
 	// Function: EndTiming
-	// Return timing interval
-	double EndTiming();
+	// Stop timing and return milliseconds or microseconds elapsed
+	// (microseconds default)
+	double EndTiming(bool microseconds, bool bPrint);
 	
 	//
 	// Group: OpenGL shared texture
 	//
 
-	// Function: IsInitialized
-	// Initialization status
-	bool IsInitialized();
-	
 	// Function: BindSharedTexture
 	// Bind OpenGL shared texture
 	bool BindSharedTexture();
@@ -967,11 +1040,6 @@ private: // Spout SDK functions
 	//  0 - texture, 1 - memory, 2 - CPU
 	void SetShareMode(int mode);
 
-	// Function: SelectSender
-	// Open sender selection dialog
-	//  2.006 compatibility only. Use SelectSender()
-	void SelectSenderPanel();
-
 	//
 	// Group: Graphics compatibility
 	//
@@ -1004,11 +1072,19 @@ private: // Spout SDK functions
 	
 	// Function: AdapterName
 	// Current adapter name
-	char * AdapterName();
+	char* AdapterName();
 	
 	// Function: GetAdapter
 	// Get adapter index
 	int GetAdapter();
+
+	// Function: GetAdapterInfo
+	// Get the description and output display name of the current adapter
+	bool GetAdapterInfo(char* description, char* output, int maxchars);
+
+	// Function: GetAdapterInfo
+	// Get the description and output display name for a given adapter
+	bool GetAdapterInfo(int index, char* description, char* output, int maxchars);
 	
 	//
 	// Group: Graphics preference
@@ -1117,6 +1193,12 @@ private: // Spout SDK functions
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0);
 
+	// Function: ReadTextureData
+	// Copy OpenGL texture data to a pixel buffer
+	bool ReadTextureData(GLuint SourceID, GLuint SourceTarget,
+		void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
+		GLenum dataformat, GLenum datatype, bool bInvert = false, GLuint HostFBO = false);
+
 	//
 	// Formats
 	//
@@ -1205,7 +1287,12 @@ bool SPOUTImpl::SendImage(const unsigned char* pixels, unsigned int width, unsig
 	return spout->SendImage(pixels, width, height, glFormat, bInvert);
 }
 
-const char * SPOUTImpl::GetName()
+bool SPOUTImpl::IsInitialized()
+{
+	return spout->IsInitialized();
+}
+
+const char* SPOUTImpl::GetName()
 {
 	return spout->GetName();
 }
@@ -1253,6 +1340,11 @@ bool SPOUTImpl::GetGLDX()
 void SPOUTImpl::SetReceiverName(const char* SenderName)
 {
 	spout->SetReceiverName(SenderName);
+}
+
+bool SPOUTImpl::GetReceiverName(char* SenderName, int maxchars)
+{
+	return spout->GetReceiverName(SenderName, maxchars);
 }
 
 void SPOUTImpl::ReleaseReceiver()
@@ -1345,9 +1437,14 @@ std::vector<std::string> SPOUTImpl::GetSenderList()
 	return spout->GetSenderList();
 }
 
-void SPOUTImpl::SelectSender()
+void SPOUTImpl::SelectSender(HWND hwnd)
 {
-	spout->SelectSender();
+	spout->SelectSender(hwnd);
+}
+
+void SPOUTImpl::SelectSenderPanel(const char* message)
+{
+	spout->SelectSenderPanel(message);
 }
 
 //
@@ -1394,6 +1491,17 @@ void SPOUTImpl::EnableFrameSync(bool bSync)
 {
 	return spout->EnableFrameSync(bSync);
 }
+
+void SPOUTImpl::CloseFrameSync()
+{
+	spout->CloseFrameSync();
+}
+
+bool SPOUTImpl::IsFrameSyncEnabled()
+{
+	return spout->IsFrameSyncEnabled();
+}
+
 
 int SPOUTImpl::GetVerticalSync()
 {
@@ -1460,6 +1568,46 @@ void SPOUTImpl::EnableSpoutLogFile(const char* filename, bool append)
 	spoututils::EnableSpoutLogFile(filename, append);
 }
 
+void SPOUTImpl::DisableSpoutLogFile()
+{
+	spoututils::DisableSpoutLog();
+}
+
+void SPOUTImpl::DisableLogs()
+{
+	spoututils::DisableLogs();
+}
+
+void SPOUTImpl::RemoveSpoutLogFile(const char* filename)
+{
+	spoututils::RemoveSpoutLogFile(filename);
+}
+
+void SPOUTImpl::DisableSpoutLog()
+{
+	spoututils::DisableSpoutLog();
+}
+
+void SPOUTImpl::EnableLogs()
+{
+	spoututils::EnableLogs();
+}
+
+bool SPOUTImpl::LogsEnabled()
+{
+	return spoututils::LogsEnabled();
+}
+
+bool SPOUTImpl::LogFileEnabled()
+{
+	return spoututils::LogFileEnabled();
+}
+
+std::string SPOUTImpl::GetSpoutLogPath()
+{
+	return spoututils::GetSpoutLogPath();
+}
+
 std::string SPOUTImpl::GetSpoutLog()
 {
 	return spoututils::GetSpoutLog();
@@ -1468,11 +1616,6 @@ std::string SPOUTImpl::GetSpoutLog()
 void SPOUTImpl::ShowSpoutLogs()
 {
 	spoututils::ShowSpoutLogs();
-}
-
-void SPOUTImpl::DisableSpoutLog()
-{
-	spoututils::DisableSpoutLog();
 }
 
 void SPOUTImpl::SetSpoutLogLevel(SpoutLibLogLevel level)
@@ -1528,6 +1671,11 @@ void SPOUTImpl::SpoutLogFatal(const char* format, ...)
 	va_end(args);
 }
 
+int SPOUTImpl::SpoutMessageBox(const char * message, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(message, dwMilliseconds);
+}
+
 int SPOUTImpl::SpoutMessageBox(const char* caption, const char* format, ...)
 {
 	std::string strmessage;
@@ -1550,14 +1698,36 @@ int SPOUTImpl::SpoutMessageBox(const char* caption, const char* format, ...)
 
 }
 
-int SPOUTImpl::SpoutMessageBox(const char * message, DWORD dwMilliseconds)
+int SPOUTImpl::SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
 {
-	return spoututils::SpoutMessageBox(message, dwMilliseconds);
+	std::string strmessage;
+	std::string strcaption;
+	char logChars[1024]={};
+
+	// Construct the message
+	va_list args;
+	va_start(args, format);
+	vsprintf_s(logChars, 1024, format, args);
+	strmessage = logChars;
+	va_end(args);
+
+	if (caption && *caption)
+		strcaption = caption;
+	else
+		strcaption = "Message";
+
+	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), uType, 0);
+
 }
 
 int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
 {
 	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
+}
+
+int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, instruction, dwMilliseconds);
 }
 
 int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
@@ -1569,6 +1739,8 @@ int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT u
 {
 	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, items, index);
 }
+
+
 
 void SPOUTImpl::SpoutMessageBoxIcon(HICON hIcon)
 {
@@ -1596,13 +1768,24 @@ void SPOUTImpl::SpoutMessageBoxWindow(HWND hWnd)
 	spoututils::SpoutMessageBoxWindow(hWnd);
 }
 
+void SPOUTImpl::SpoutMessageBoxPosition(POINT pt)
+{
+	spoututils::SpoutMessageBoxPosition(pt);
+}
 
 bool SPOUTImpl::CopyToClipBoard(HWND hwnd, const char* caps)
 {
 	return spoututils::CopyToClipBoard(hwnd, caps);
 }
 
+bool SPOUTImpl::OpenSpoutLogs()
+{
+	return spoututils::OpenSpoutLogs();
+}
+
+//
 // Registry utilities
+//
 
 bool SPOUTImpl::ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue)
 {
@@ -1624,6 +1807,11 @@ bool SPOUTImpl::WritePathToRegistry(HKEY hKey, const char *subkey, const char *v
 	return spoututils::WritePathToRegistry(hKey, subkey, valuename, filepath);
 }
 
+bool SPOUTImpl::WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars)
+{
+	return spoututils::WriteBinaryToRegistry(hKey, subkey, valuename, hexdata, nchars);
+}
+
 bool SPOUTImpl::RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename)
 {
 	return spoututils::RemovePathFromRegistry(hKey, subkey, valuename);
@@ -1639,9 +1827,9 @@ bool SPOUTImpl::FindSubKey(HKEY hKey, const char *subkey)
 	return spoututils::FindSubKey(hKey, subkey);
 }
 
-std::string SPOUTImpl::GetSDKversion()
+std::string SPOUTImpl::GetSDKversion(int* pNumber)
 {
-	return spoututils::GetSDKversion();
+	return spoututils::GetSDKversion(pNumber);
 }
 
 bool SPOUTImpl::IsLaptop()
@@ -1659,9 +1847,9 @@ std::string SPOUTImpl::GetExeVersion(const char* path)
 	return spoututils::GetExeVersion(path);
 }
 
-std::string SPOUTImpl::GetExePath()
+std::string SPOUTImpl::GetExePath(bool bFull)
 {
-	return spoututils::GetExePath();
+	return spoututils::GetExePath(bFull);
 }
 
 std::string SPOUTImpl::GetExeName()
@@ -1669,14 +1857,14 @@ std::string SPOUTImpl::GetExeName()
 	return spoututils::GetExeName();
 }
 
-void SPOUTImpl::RemovePath(std::string& path)
+std::string SPOUTImpl::GetPath(std::string fullpath)
 {
-	path = spoututils::GetName(path);
+	return spoututils::GetPath(fullpath);
 }
 
-void SPOUTImpl::RemoveName(std::string& path)
+std::string SPOUTImpl::GetName(std::string fullpath)
 {
-	path = spoututils::GetPath(path);
+	return spoututils::GetName(fullpath);
 }
 
 void SPOUTImpl::StartTiming()
@@ -1684,14 +1872,9 @@ void SPOUTImpl::StartTiming()
 	spoututils::StartTiming();
 }
 
-double SPOUTImpl::EndTiming()
+double SPOUTImpl::EndTiming(bool microseconds, bool bPrint)
 {
-	return spoututils::EndTiming();
-}
-
-bool SPOUTImpl::IsInitialized()
-{
-	return spout->IsSpoutInitialized();
+	return spoututils::EndTiming(microseconds, bPrint);
 }
 
 bool SPOUTImpl::BindSharedTexture()
@@ -1844,11 +2027,6 @@ void SPOUTImpl::SetShareMode(int mode)
 	spout->SetShareMode(mode);
 }
 
-void SPOUTImpl::SelectSenderPanel()
-{
-	spout->SelectSender();
-}
-
 //
 // Graphics compatibility
 //
@@ -1890,6 +2068,17 @@ char * SPOUTImpl::AdapterName()
 int SPOUTImpl::GetAdapter()
 {
 	return spout->GetAdapter();
+}
+
+bool SPOUTImpl::GetAdapterInfo(char* description, char* output, int maxchars)
+{
+	return spout->GetAdapterInfo(description, output, maxchars);
+}
+
+// LJ DEBUG
+bool SPOUTImpl::GetAdapterInfo(int index, char* description, char* output, int maxchars)
+{
+	return spout->GetAdapterInfo(index, description, output, maxchars);
 }
 
 // Windows 10+ SDK required
@@ -1949,6 +2138,16 @@ bool SPOUTImpl::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 	return spout->CopyTexture(SourceID, SourceTarget, DestID, DestTarget,
 								width, height, bInvert, HostFBO);
 }
+
+bool SPOUTImpl::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
+		void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
+		GLenum dataformat, GLenum datatype, bool bInvert, GLuint HostFBO)
+{
+	return spout->ReadTextureData(SourceID, SourceTarget,
+		data, width, height, rowpitch,
+		dataformat, datatype, bInvert, HostFBO);
+}
+
 
 //
 // Formats
