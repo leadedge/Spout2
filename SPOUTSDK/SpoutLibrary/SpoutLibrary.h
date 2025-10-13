@@ -1,3 +1,5 @@
+// SpoutMessageBox(struct HWND__ *,char const *,char const *,unsigned int,
+// SpoutMessageBox(HWND *,char const *,char const *,unsigned int,
 //
 //	SpoutLibrary.dll
 //
@@ -122,8 +124,10 @@ struct SPOUTLIBRARY
 	virtual bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0) = 0;
 	// Send image pixels
 	virtual bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false) = 0;
+	// Sender status
+	virtual bool IsInitialized() = 0;
 	// Sender name
-	virtual const char * GetName() = 0;
+	virtual const char* GetName() = 0;
 	// Sender width
 	virtual unsigned int GetWidth() = 0;
 	// Sender height
@@ -148,6 +152,8 @@ struct SPOUTLIBRARY
 	//   If that sender closes, the receiver will wait for the nominated sender to open 
 	//   If no name is specified, the receiver will connect to the active sender
 	virtual void SetReceiverName(const char* SenderName = nullptr) = 0;
+	// Get sender for connection
+	virtual bool GetReceiverName(char* SenderName, int maxchars = 256) = 0;
 	// Close receiver and release resources ready to connect to another sender
 	virtual void ReleaseReceiver() = 0;
 	// Receive texture
@@ -173,7 +179,7 @@ struct SPOUTLIBRARY
 	//   This can be queried to process texture data only for new frames
 	virtual bool IsFrameNew() = 0;
 	// Get sender name
-	virtual const char * GetSenderName() = 0;
+	virtual const char* GetSenderName() = 0;
 	// Get sender width
 	virtual unsigned int GetSenderWidth() = 0;
 	// Get sender height
@@ -197,7 +203,9 @@ struct SPOUTLIBRARY
 	// Return a list of current senders
 	virtual std::vector<std::string> GetSenderList() = 0;
 	// Open sender selection dialog
-	virtual void SelectSender() = 0;
+	virtual void SelectSender(HWND hwnd = NULL) = 0;
+	// Open sender selection dialog with optional message - 2.006 compatibility
+	virtual void SelectSenderPanel(const char* message) = 0;
 
 	//
 	// Frame count
@@ -219,6 +227,10 @@ struct SPOUTLIBRARY
 	virtual bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0) = 0;
 	// Enable / disable frame sync
 	virtual void EnableFrameSync(bool bSync = true) = 0;
+	// Close frame sync
+	virtual void CloseFrameSync() = 0;
+	// Check for frame sync option
+	virtual bool IsFrameSyncEnabled() = 0;
 	// Vertical sync status
 	virtual int GetVerticalSync() = 0;
 	// Lock to monitor vertical sync
@@ -251,12 +263,27 @@ struct SPOUTLIBRARY
 	virtual void EnableSpoutLog() = 0;
 	// Enable spout log to a file with optional append
 	virtual void EnableSpoutLogFile(const char* filename, bool bappend = false) = 0;
+	// Disable logging to file
+	virtual void DisableSpoutLogFile() = 0;
+	// Remove a log file
+	virtual void RemoveSpoutLogFile(const char* filename = nullptr) = 0;
+	// Disable logging to console and file
+	virtual void DisableSpoutLog() = 0;
+	// Disable logging temporarily
+	virtual void DisableLogs() = 0;
+	// Enable logging again
+	virtual void EnableLogs() = 0;
+	// Are console logs enabled
+	virtual bool LogsEnabled() = 0;
+	// Is file logging enabled
+	virtual bool LogFileEnabled() = 0;
+	// Return the full log file path
+	virtual std::string GetSpoutLogPath() = 0;
 	// Return the log file as a string
 	virtual std::string GetSpoutLog() = 0;
 	// Show the log file folder in Windows Explorer
 	virtual void ShowSpoutLogs() = 0;
-	// Disable logging
-	virtual void DisableSpoutLog() = 0;
+
 	// Set the current log level
 	// SPOUT_LOG_SILENT  - Disable all messages
 	// SPOUT_LOG_VERBOSE - Show all messages
@@ -285,16 +312,22 @@ struct SPOUTLIBRARY
 	// MessageBox dialog with optional timeout
 	//   Used where a Windows MessageBox would interfere with the application GUI
 	//   The dialog closes itself if a timeout is specified
-	virtual int SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0) = 0;
+	virtual int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0) = 0;
 	// MessageBox dialog with variable arguments
 	virtual int SpoutMessageBox(const char* caption, const char* format, ...) = 0;
+	// MessageBox with variable arguments and icon, buttons
+	virtual int SpoutMessageBox(const char* caption, UINT uType, const char* format, ...) = 0;
 	// MessageBox dialog with standard arguments
 	//   Replaces an existing MessageBox call
 	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0) = 0;
+	// MessageBox dialog with standard arguments
+	//   including taskdialog main instruction large text
+	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption,  UINT uType, const char* instruction, DWORD dwMilliseconds = 0) = 0;
 	// MessageBox dialog with an edit control for text input
 	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text) = 0;
 	// MessageBox dialog with a combobox control for item selection
 	virtual	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected) = 0;
+
 	// Custom icon for SpoutMessageBox from resources
 	virtual void SpoutMessageBoxIcon(HICON hIcon) = 0;
 	// Custom icon for SpoutMessageBox from file
@@ -305,8 +338,12 @@ struct SPOUTLIBRARY
 	virtual void SpoutMessageBoxModeless(bool bMode = true) = 0;
 	// Window handle for SpoutMessageBox where not specified
 	virtual void SpoutMessageBoxWindow(HWND hWnd) = 0;
+	// Position to point SpoutMessageBox
+	virtual void SpoutMessageBoxPosition(POINT pt) = 0;
 	// Copy text to the clipboard
 	virtual bool CopyToClipBoard(HWND hwnd, const char* caps) = 0;
+	// Open logs folder
+	virtual bool OpenSpoutLogs() = 0;
 
 	//
 	// Registry utilities
@@ -319,6 +356,8 @@ struct SPOUTLIBRARY
 	virtual bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath) = 0;
 	// Write subkey character string
 	virtual bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath) = 0;
+	// Write subkey binary hex data string
+	virtual bool WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars) = 0;
 	// Remove subkey value name
 	virtual bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename) = 0;
 	// Delete a subkey and its values.
@@ -332,7 +371,8 @@ struct SPOUTLIBRARY
 	// Information
 	//
 	// Get SDK version number string e.g. "2.007.000"
-	virtual std::string GetSDKversion() = 0;
+	// Optional - return as a single number
+	virtual std::string GetSDKversion(int* pNumber = nullptr) = 0;
 	// Computer type
 	virtual bool IsLaptop() = 0;
 	// Get the module handle of an executable or dll
@@ -340,24 +380,25 @@ struct SPOUTLIBRARY
 	// Get executable or dll version
 	virtual std::string GetExeVersion(const char* path) = 0;
 	// Get executable or dll path
-	virtual std::string GetExePath() = 0;
+	virtual std::string GetExePath(bool bFull = false) = 0;
 	// Get executable or dll name
 	virtual std::string GetExeName() = 0;
-	// Remove path and return the file name
-	virtual void RemovePath(std::string& path) = 0;
 	// Remove file name and return the path
-	virtual void RemoveName(std::string& path) = 0;
+	virtual std::string GetPath(std::string fullpath) = 0;
+	// Remove path and return the file name
+	virtual std::string GetName(std::string fullpath) = 0;
 
 	//
 	// Timing utilities
 	//
+	// Start timing period
 	virtual void StartTiming() = 0;
-	virtual double EndTiming() = 0;
+
+	// Stop timing and return milliseconds or microseconds elapsed.
+	// (microseconds default).
+	virtual double EndTiming(bool microseconds = false, bool bPrint = false) = 0;
 
 	// -----------------------------------------
-
-	// Initialization status
-	virtual bool IsInitialized() = 0;
 	// Bind OpenGL shared texture
 	virtual bool BindSharedTexture() = 0;
 	// Un-bind OpenGL shared texture
@@ -430,8 +471,6 @@ struct SPOUTLIBRARY
 	// Set user share mode
 	//  0 - texture, 1 - memory, 2 - CPU
 	virtual void SetShareMode(int mode) = 0;
-	// Open sender selection dialog
-	virtual void SelectSenderPanel() = 0;
 
 	//
 	// Graphics compatibility
@@ -453,9 +492,13 @@ struct SPOUTLIBRARY
 	// Adapter item name
 	virtual bool GetAdapterName(int index, char *adaptername, int maxchars) = 0;
 	// Return current adapter name
-	virtual char * AdapterName() = 0;
+	virtual char* AdapterName() = 0;
 	// Get adapter index 
 	virtual int GetAdapter() = 0;
+	// Get the description and output display name of the current adapter
+	virtual bool GetAdapterInfo(char* description, char* output, int maxchars = 0) = 0;
+	// Get the description and output display name for a given adapter
+	virtual bool GetAdapterInfo(int index, char* description, char* output, int maxchars = 0) = 0;
 
 	//
 	// Graphics preference
@@ -494,11 +537,15 @@ struct SPOUTLIBRARY
 	// Close OpenGL window
 	virtual bool CloseOpenGL() = 0;
 	// Copy OpenGL texture with optional invert
-	//   Textures must be the same size
+	//   Textures can be different sizes
 	virtual bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,
 		bool bInvert = false, GLuint HostFBO = 0) = 0;
+	// Copy OpenGL texture data to a pixel buffer
+	virtual bool ReadTextureData(GLuint SourceID, GLuint SourceTarget,
+		void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
+		GLenum dataformat, GLenum datatype, bool bInvert = false, GLuint HostFBO = false) = 0;
 
 	//
 	// Formats
