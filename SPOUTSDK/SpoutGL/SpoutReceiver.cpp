@@ -87,6 +87,9 @@
 //	Version 2.007.014
 //		21.09.24	-Add ReadTextureData
 //		16.08.25	- Add CloseFrameSync
+//  Version 2.007.017
+//		13.10.25	- Add GetSenderTexture, GetSenderTexture
+//					  replace GetSpoutVersion with GetSDKversion
 //
 // ====================================================================================
 //
@@ -246,6 +249,12 @@ long SpoutReceiver::GetSenderFrame()
 HANDLE SpoutReceiver::GetSenderHandle()
 {
 	return spout.GetSenderHandle();
+}
+
+//---------------------------------------------------------
+ID3D11Texture2D* SpoutReceiver::GetSenderTexture()
+{
+	return spout.GetSenderTexture();
 }
 
 //---------------------------------------------------------
@@ -624,9 +633,9 @@ bool SpoutReceiver::SetVerticalSync(bool bSync)
 }
 
 //---------------------------------------------------------
-int SpoutReceiver::GetSpoutVersion()
+std::string SpoutReceiver::GetSDKversion(int* pNumber)
 {
-	return spout.GetSpoutVersion();
+	return GetSDKversion(pNumber); // SpoutUtils
 }
 
 //

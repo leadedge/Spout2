@@ -86,6 +86,8 @@ class SPOUT_DLLEXP SpoutReceiver {
 	long GetSenderFrame();
 	// Received sender share handle
 	HANDLE GetSenderHandle();
+	// Received sender texture
+	ID3D11Texture2D* GetSenderTexture();
 	// Received sender sharing method
 	bool GetSenderCPU();
 	// Received sender GL/DX hardware compatibility
@@ -254,8 +256,9 @@ class SPOUT_DLLEXP SpoutReceiver {
 	//   0 - buffer swaps are not synchronized to a video frame
 	//  -1 - adaptive vsync
 	bool SetVerticalSync(bool bSync = true);
-	// Get Spout version
-	int GetSpoutVersion();
+	// Get SDK version number string e.g. "2.007.000"
+	// Optional - return as a single number
+	std::string GetSDKversion(int* pNumber = nullptr);
 
 	//
 	// OpenGL utilities
@@ -268,7 +271,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// Close OpenGL window
 	bool CloseOpenGL();
 	// Copy OpenGL texture with optional invert
-	//   Textures must be the same size
+	//   Textures can be different sizes
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,
