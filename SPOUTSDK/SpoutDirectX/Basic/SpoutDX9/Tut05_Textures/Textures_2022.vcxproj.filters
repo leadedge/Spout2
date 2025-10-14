@@ -57,9 +57,6 @@
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutUtils.h">
       <Filter>SpoutSDK</Filter>
     </ClInclude>
-    <ClInclude Include="..\SpoutDX9shaders.hpp">
-      <Filter>SpoutDX9</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CLInclude Include="resource.h">

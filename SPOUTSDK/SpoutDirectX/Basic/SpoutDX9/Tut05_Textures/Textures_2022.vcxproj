@@ -396,7 +396,6 @@
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutSharedMemory.h" />
     <ClInclude Include="..\..\..\..\SpoutGL\SpoutUtils.h" />
     <ClInclude Include="..\SpoutDirectX9.h" />
-    <ClInclude Include="..\SpoutDX9shaders.hpp" />
     <CLInclude Include="resource.h" />
     <ResourceCompile Include="Textures.rc" />
   </ItemGroup>
