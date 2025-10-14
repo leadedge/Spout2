@@ -635,7 +635,7 @@ bool SpoutReceiver::SetVerticalSync(bool bSync)
 //---------------------------------------------------------
 std::string SpoutReceiver::GetSDKversion(int* pNumber)
 {
-	return GetSDKversion(pNumber); // SpoutUtils
+	return spoututils::GetSDKversion(pNumber); // SpoutUtils
 }
 
 //
