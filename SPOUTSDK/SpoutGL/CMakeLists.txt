@@ -83,7 +83,7 @@ target_include_directories(Spout_static PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 set_target_properties(Spout_static PROPERTIES
-    VS_FOLDER "Spout_staticlib"
+	VS_FOLDER "Spout_static"
     SPOUT_PUBLIC_HEADER "${Spout_HEADERS}"
     RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
     LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
@@ -101,7 +101,8 @@ target_include_directories(Spout PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 set_target_properties(Spout PROPERTIES
-    VS_FOLDER "Spout_dll"
+    # VS_FOLDER "Spout_dll"
+	VS_FOLDER "Spout"
     SPOUT_PUBLIC_HEADER "${Spout_HEADERS}"
     RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
     LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
