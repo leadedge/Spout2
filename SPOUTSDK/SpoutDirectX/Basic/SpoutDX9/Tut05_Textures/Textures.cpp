@@ -36,23 +36,8 @@
 //		SpoutUtils.cpp
 //		SpoutDirectX9.cpp
 //
-// A compute shader in SpoutDX9shaders.hpp is used to allow receiving from
-// senders with texture formats other than DXGI_FORMAT_B8G8R8A8_UNORM.
-//
-// Shaders are optional :
-//   o enabled if the file exists and is included by SpoutDirectX9.h.
-//   o not enabled if the file is not found.
-//
-// For this example, the file is in the same folder as SpoutDirectX9.h
-// Rename or remove "SpoutDX9shaders.hpp" and to build without shaders.
-// "Project > Rescan Solution" and "Build > Rebuild Solution" may then
-// be required for Visual Studio to reset the source files.
-// "__spoutDX9shaders__" is defined if the file is included.
-//
-//
 // Revisions :
 //	20.06.25	- Change rendering to fill the window
-//				  Conditional texture creation depending on use of shaders
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
@@ -413,10 +398,8 @@ VOID Render()
 			bSpoutInitialized = true;
 		}
 
-		// If not using shaders for format conversion, the D3D9 texture
-		// is a local copy of the sender shared texture and only has to
-		// be created once or when the sender size changes.
-		#ifndef __spoutDX9shaders__
+		// The D3D9 texture is a local copy of the sender shared texture
+		// and only has to be created once or when the sender size changes.
 
 		// Check for size or format change
 		if (g_Width != width || g_Height != height || g_Format != dwFormat) {
@@ -465,43 +448,6 @@ VOID Render()
 
 			} // Accessed sender's shared texture
 		} // Size changed
-		#else
-		//
-		// Access the sender shared texture
-		if (frame.CheckTextureAccess()) {
-
-			// Optionally check whether the sender has produced a new frame.
-			// This is not required, but will avoid un-necessary processing.
-			if (frame.GetNewFrame()) {
-
-				// The sender's shared texture can be safely accessed.
-				// Create a new texture using the share handle from FindSender above
-				// This does not have to be shared but it doesn't matter if it is.
-				if (g_pSenderTexture) g_pSenderTexture->Release();
-				g_pSenderTexture = nullptr;
-
-				//
-				// Create a D3D9 texture from the D3D11 share handle
-				// A sender format DXGI_FORMAT_B8G8R8A8_UNORM is required.
-				// If SpoutDX9shaders.hpp is are available, other texture formats
-				// can be used. The D3D11 sender texture is copied to a BGRA texture
-				// and a handle to that used for "CreateTexture" instead of the
-				// original sender shared texture handle.
-				// (see spoutDirectX9::CreateSharedDX9Texture)
-				//
-				spoutdx9.CreateSharedDX9Texture(g_pd3dDevice,
-					width, height,
-					D3DFMT_A8R8G8B8, // Format compatible with D3D11
-					g_pSenderTexture, // D3D9 copy of the sender texture
-					dxShareHandle);
-
-			} // Accessed sender shared texture
-
-			// Allow texture access even if it was not a new frame
-			frame.AllowTextureAccess();
-
-		} // New frame
-		#endif
 
 		// A copy of the sender shared texture (g_pSenderTexture)
 		// has been updated and is used for rendering below.
@@ -726,7 +672,7 @@ INT WINAPI wWinMain( HINSTANCE hInst, HINSTANCE, LPWSTR, INT )
 	bSpoutInitialized = false;
 
 	// Optionally enable Spout logging
-	OpenSpoutConsole(); // Console only without logs for debugging
+	// OpenSpoutConsole(); // Console only without logs for debugging
 	// EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("D3D9_Textures.log"); // Log to file
 	// Default log file path is "C:\Users\username\AppData\Roaming\Spout\"
