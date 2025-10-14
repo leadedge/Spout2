@@ -4,7 +4,7 @@
 
 	Functions to manage DirectX 11 texture sharing
 
-	Copyright (c) 2014 - 2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014 - 2025, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -59,6 +59,7 @@
 #pragma comment (lib, "d3d11.lib")// the Direct3D 11 Library file
 #pragma comment (lib, "dxgi.lib") // for CreateDXGIFactory1
 
+
 using namespace spoututils;
 
 class SPOUT_DLLEXP spoutDirectX {
@@ -92,9 +93,15 @@ class SPOUT_DLLEXP spoutDirectX {
 		//
 
 		// Create a DirectX11 shared texture
-		bool CreateSharedDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppSharedTexture, HANDLE &dxShareHandle, bool bKeyed = false, bool bNThandle = false);
+		bool CreateSharedDX11Texture(ID3D11Device* pDevice,
+			unsigned int width, unsigned int height, DXGI_FORMAT format,
+			ID3D11Texture2D** ppSharedTexture, HANDLE &dxShareHandle,
+			bool bKeyed = false, bool bNThandle = false);
 		// Create a DirectX texture which is not shared
 		bool CreateDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** ppTexture);
+		// Create a DirectX texture with specific bind and misc flags 
+		bool CreateDX11Texture(ID3D11Device* pDevice, unsigned int width, unsigned int height,
+			DXGI_FORMAT format, UINT bindFlags, UINT miscFlags, ID3D11Texture2D** ppTexture);
 		// Create a DirectX 11 staging texture for read and write
 		bool CreateDX11StagingTexture(ID3D11Device* pDevice, unsigned int width, unsigned int height, DXGI_FORMAT format, ID3D11Texture2D** pStagingTexture);
 		// Retrieve the pointer of a DirectX11 shared texture
@@ -113,7 +120,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Flush immediate context command queue
 		void Flush();
 		// Flush immediate context command queue and wait for completion
-		void FlushWait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext);
+		void FlushWait(ID3D11Device* pd3dDevice = nullptr, ID3D11DeviceContext* pImmediateContext = nullptr);
 		// Wait for completion after flush
 		void Wait(ID3D11Device* pd3dDevice, ID3D11DeviceContext* pImmediateContext);
 
@@ -124,7 +131,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Get the number of graphics adapters in the system
 		int GetNumAdapters();
 		// Get the name of an adapter index
-		bool GetAdapterName(int index, char *adaptername, int maxchars);
+		bool GetAdapterName(int index, char* adaptername, int maxchars);
 		// Get the index of an adapter name
 		int GetAdapterIndex(const char* adaptername);
 		// Get the current adapter index
@@ -142,12 +149,9 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Find the index of the NVIDIA adapter in a multi-adapter system
 		bool FindNVIDIA(int &nAdapter);
 
-
-// Windows 10 Vers 1803, build 17134 or later
-#ifdef NTDDI_WIN10_RS4
-
 		//
 		// Graphics preference
+		// Windows 10 Vers 1803, build 17134 or later
 		//
 
 		// Get the Windows graphics preference for an application
@@ -163,8 +167,6 @@ class SPOUT_DLLEXP spoutDirectX {
 		// Is the path a valid application
 		bool IsApplicationPath(const char* path);
 
-#endif
-
 	protected:
 
 		void DebugLog(ID3D11Device* pd3dDevice, const char* format, ...);
@@ -177,6 +179,7 @@ class SPOUT_DLLEXP spoutDirectX {
 		D3D_FEATURE_LEVEL		m_featureLevel;
 		ID3D11Device1*          m_pd3dDevice1;
 		ID3D11DeviceContext1*   m_pImmediateContext1;
+
 
 };
 
