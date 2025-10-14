@@ -4,7 +4,7 @@
 
 				Frame counting management
 
-	Copyright (c) 2019-2024. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2019-2025. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification,
 	are permitted provided that the following conditions are met:
@@ -72,10 +72,13 @@ class SPOUT_DLLEXP spoutFrameCount {
 	bool IsFrameCountEnabled();
 	// Is the received frame new
 	bool IsFrameNew();
+
 	// Received frame rate
 	double GetSenderFps();
 	// Received frame count
 	long GetSenderFrame();
+	// Frame count sender name
+	std::string GetSenderName();
 	// Frame rate control
 	void HoldFps(int fps);
 
@@ -85,8 +88,13 @@ class SPOUT_DLLEXP spoutFrameCount {
 
 	// Sender increment the semaphore count
 	void SetNewFrame();
+
 	// Receiver read the semaphore count
 	bool GetNewFrame();
+
+	// Receiver wait on semaphore update
+	bool WaitNewFrame(DWORD dwTimeout);
+
 	// For class cleanup functions
 	void CleanupFrameCount();
 
@@ -106,7 +114,7 @@ class SPOUT_DLLEXP spoutFrameCount {
 	//
 
 	// Create named mutex for a sender
-	bool CreateAccessMutex(const char * SenderName);
+	bool CreateAccessMutex(const char* SenderName);
 	// Close the texture access mutex.
 	void CloseAccessMutex();
 	// Test access using a named mutex
@@ -123,10 +131,12 @@ class SPOUT_DLLEXP spoutFrameCount {
 	// Set sync event 
 	void SetFrameSync(const char* name);
 	// Wait or test for a sync event
-	bool WaitFrameSync(const char *name, DWORD dwTimeout = 0);
+	bool WaitFrameSync(const char* name, DWORD dwTimeout = 0);
 	// Close sync event
 	void CloseFrameSync();
-	// Enable / disable frame sync
+	// Check for existence of the sender frame sync event
+	bool CheckFrameSync();
+	// Enable/disable frame sync
 	void EnableFrameSync(bool bSync = true);
 	// Check for frame sync option
 	bool IsFrameSyncEnabled();

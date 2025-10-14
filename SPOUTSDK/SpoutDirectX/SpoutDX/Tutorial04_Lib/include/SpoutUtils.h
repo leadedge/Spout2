@@ -6,7 +6,7 @@
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-		Copyright (c) 2017-2024, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2017-2025, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -34,7 +34,18 @@
 #ifndef __spoutUtils__ // standard way as well
 #define __spoutUtils__
 
-#include "SpoutCommon.h"
+// Enable this define to use independently of Spout source files
+// See also the stand alone define in SpoutGLextensions
+// #define standaloneUtils
+
+#ifdef standaloneUtils
+#define SPOUT_DLLEXP
+#else
+// For use together with Spout source files
+#include "SpoutCommon.h" // for legacyOpenGL define and Utils
+#include <stdint.h> // for _uint32 etc
+#endif
+
 #include <windows.h>
 #include <stdio.h> // for console
 #include <iostream> // std::cout, std::end
@@ -47,6 +58,7 @@
 #include <shellapi.h> // for shellexecute
 #include <commctrl.h> // For TaskDialogIndirect
 #include <math.h> // for round
+#include <algorithm> // for string character remove
 
 //
 // C++11 timer is only available for MS Visual Studio 2015 and above.
@@ -73,16 +85,13 @@
 #pragma comment(lib, "version.lib") // for version resources where necessary
 #pragma comment(lib, "comctl32.lib") // For taskdialog
 
+// TaskDialog requires comctl32.dll version 6
 #ifdef _MSC_VER
 // https://learn.microsoft.com/en-us/windows/win32/controls/cookbook-overview
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
-
-
-// For custom SpoutMessageBox button
-#define MB_USERBUTTON 0x00000007L
 
 // SpoutUtils
 namespace spoututils {
@@ -109,7 +118,13 @@ namespace spoututils {
 	//
 
 	// Get SDK version number string e.g. "2.007.000"
-	std::string SPOUT_DLLEXP GetSDKversion();
+	// Optional - return as a single number
+	// e.g. 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
+	std::string SPOUT_DLLEXP GetSDKversion(int* number = nullptr);
+
+	// Get the user Spout version from the registry
+	// Optional - return as a single number
+	std::string SPOUT_DLLEXP GetSpoutVersion(int* number = nullptr);
 
 	// Computer type
 	bool SPOUT_DLLEXP IsLaptop();
@@ -121,16 +136,16 @@ namespace spoututils {
 	std::string SPOUT_DLLEXP GetExeVersion(const char* path);
 
 	// Get executable or dll path
-	std::string SPOUT_DLLEXP GetExePath();
+	std::string SPOUT_DLLEXP GetExePath(bool bFull = false);
 
 	// Get executable or dll name
 	std::string SPOUT_DLLEXP GetExeName();
 
-	// Remove path and return the file name
-	void SPOUT_DLLEXP RemovePath(std::string& path);
-
 	// Remove file name and return the path
-	void SPOUT_DLLEXP RemoveName(std::string& path);
+	std::string SPOUT_DLLEXP GetPath(std::string fullpath);
+
+	// Remove path and return the file name
+	std::string SPOUT_DLLEXP GetName(std::string fullpath);
 
 	//
 	// Console management
@@ -139,7 +154,7 @@ namespace spoututils {
 	// Open console window.
 	// A console window opens without logs.
 	// Useful for debugging with console output.
-	void SPOUT_DLLEXP OpenSpoutConsole();
+	void SPOUT_DLLEXP OpenSpoutConsole(const char* title = nullptr);
 	
 	// Close console window.
 	// The optional warning displays a MessageBox if user notification is required.
@@ -148,7 +163,7 @@ namespace spoututils {
 	// Enable logging to the console.
 	// Logs are displayed in a console window.  
 	// Useful for program development.
-	void SPOUT_DLLEXP EnableSpoutLog();
+	void SPOUT_DLLEXP EnableSpoutLog(const char* title = nullptr);
 
 	// Enable logging to a file with optional append.
 	// As well as a console window, you can output logs to a text file. 
@@ -226,10 +241,10 @@ namespace spoututils {
 
 	// MessageBox dialog with optional timeout.
 	// The dialog closes itself if a timeout is specified.
-	int SPOUT_DLLEXP SpoutMessageBox(const char * message, DWORD dwMilliseconds = 0);
+	int SPOUT_DLLEXP SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0);
 
 	// MessageBox with variable arguments
-	int SPOUT_DLLEXP SpoutMessageBox(const char * caption, const char* format, ...);
+	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, const char* format, ...);
 	
 	// MessageBox with variable arguments and icon, buttons
 	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, UINT uType, const char* format, ...);
@@ -238,7 +253,6 @@ namespace spoututils {
 	// Replaces an existing MessageBox call.
 	// uType options : standard MessageBox buttons and icons
 	// MB_USERICON - use together with SpoutMessageBoxIcon
-	// MB_USERBUTTON - use together with SpoutMessageBoxButton
 	// Hyperlinks can be included in the content using HTML format.
 	// For example : <a href=\"https://spout.zeal.co/\">Spout home page</a>
 	// Only double quotes are supported and must be escaped.
@@ -258,7 +272,8 @@ namespace spoututils {
 	// MessageBox dialog with a combobox control for item selection
 	// Can be used in place of a specific application resource dialog
 	// Properties the same as the edit control
-	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int &selected);
+	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType,
+		std::vector<std::string> items, int &selected);
 
 	// Custom icon for SpoutMessageBox from resources
 	void SPOUT_DLLEXP SpoutMessageBoxIcon(HICON hIcon);
@@ -270,7 +285,7 @@ namespace spoututils {
 	void SPOUT_DLLEXP SpoutMessageBoxButton(int ID, std::wstring title);
 
 	// Activate modeless mode using SpoutPanel.exe
-	void SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode = true);
+	bool SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode = true);
 
 	// Window handle for SpoutMessageBox where not specified
 	void SPOUT_DLLEXP SpoutMessageBoxWindow(HWND hWnd);
@@ -279,7 +294,7 @@ namespace spoututils {
 	void SPOUT_DLLEXP SpoutMessageBoxPosition(POINT pt);
 
 	// Copy text to the clipboard
-	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* caps);
+	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* text);
 
 	// Open logs folder
 	bool SPOUT_DLLEXP OpenSpoutLogs();
@@ -289,30 +304,30 @@ namespace spoututils {
 	//
 
 	// Read subkey DWORD value
-	bool SPOUT_DLLEXP ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue);
+	bool SPOUT_DLLEXP ReadDwordFromRegistry(HKEY hKey, const char* subkey, const char* valuename, DWORD* pValue);
 	
 	// Write subkey DWORD value
-	bool SPOUT_DLLEXP WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue);
+	bool SPOUT_DLLEXP WriteDwordToRegistry(HKEY hKey, const char* subkey, const char* valuename, DWORD dwValue);
 	
 	// Read subkey character string
-	bool SPOUT_DLLEXP ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath, DWORD dwSize = MAX_PATH);
+	bool SPOUT_DLLEXP ReadPathFromRegistry(HKEY hKey, const char* subkey, const char* valuename, char* filepath, DWORD dwSize = MAX_PATH);
 	
 	// Write subkey character string
-	bool SPOUT_DLLEXP WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath);
+	bool SPOUT_DLLEXP WritePathToRegistry(HKEY hKey, const char* subkey, const char* valuename, const char* filepath);
 	
 	// Write subkey binary hex data string
-	bool SPOUT_DLLEXP WriteBinaryToRegistry(HKEY hKey, const char *subkey, const char *valuename, const unsigned char *hexdata, DWORD nchars);
+	bool SPOUT_DLLEXP WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars);
 
 	// Remove subkey value name
-	bool SPOUT_DLLEXP RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename);
+	bool SPOUT_DLLEXP RemovePathFromRegistry(HKEY hKey, const char* subkey, const char* valuename);
 	
 	// Delete a subkey and its values.
 	//   It must be a subkey of the key that hKey identifies, but it cannot have subkeys.  
 	//   Note that key names are not case sensitive.  
-	bool SPOUT_DLLEXP RemoveSubKey(HKEY hKey, const char *subkey);
+	bool SPOUT_DLLEXP RemoveSubKey(HKEY hKey, const char* subkey);
 	
 	// Find subkey
-	bool SPOUT_DLLEXP FindSubKey(HKEY hKey, const char *subkey);
+	bool SPOUT_DLLEXP FindSubKey(HKEY hKey, const char* subkey);
 
 	//
 	// Timing functions
@@ -328,7 +343,7 @@ namespace spoututils {
 	// Stop timing and return milliseconds or microseconds elapsed.
 	// (microseconds default).
 	// Code console output can be enabled for quick timing tests.
-	double SPOUT_DLLEXP EndTiming(bool microseconds = false);
+	double SPOUT_DLLEXP EndTiming(bool microseconds = false, bool bPrint = false);
 	// Microseconds elapsed since epoch
 	double SPOUT_DLLEXP ElapsedMicroseconds();
 #else
@@ -346,7 +361,7 @@ namespace spoututils {
 		// Local functions
 		void _logtofile(bool append = false);
 		std::string _getLogPath();
-		std::string _getLogFilePath(const char *filename);
+		std::string _getLogFilePath(const char* filename);
 		std::string _levelName(SpoutLogLevel level);
 		// Taskdialog for SpoutMessageBox
 		int MessageTaskDialog(HWND hWnd, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
@@ -365,6 +380,8 @@ namespace spoututils {
 		bool OpenSpoutPanel(const char* message);
 		// Application window
 		HWND hwndMain = NULL;
+		// Taskdialog window to prevent multiple open
+		HWND hwndTask = NULL;
 		// Position for TaskDialog window centre
 		POINT TDcentre = {};
 		// For topmost
@@ -374,9 +391,11 @@ namespace spoututils {
 		bool bModeless = false; // Default use local TaskDialogIndirect
 		// For custom icon
 		HICON hTaskIcon = NULL;
+
 		// For custom buttons
 		std::vector<int>TDbuttonID;
 		std::vector<std::wstring>TDbuttonTitle;
+
 		// Main instruction text
 		std::wstring wstrInstruction;
 
