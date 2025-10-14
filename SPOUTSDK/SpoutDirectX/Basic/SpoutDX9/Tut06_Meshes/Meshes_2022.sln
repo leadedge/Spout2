@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Meshes", "Meshes_2017.vcxproj", "{D3D09006-96D0-4629-88B8-122C0256058C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Meshes", "Meshes_2022.vcxproj", "{D3D09006-96D0-4629-88B8-122C0256058C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
