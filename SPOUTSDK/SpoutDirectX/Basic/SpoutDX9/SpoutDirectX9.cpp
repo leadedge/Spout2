@@ -271,8 +271,6 @@ bool spoutDirectX9::CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned
 		return false;
 	}
 
-	printf("spoutDirectX9::CreateSharedDX9Texture(0x%7X, %d, %d, %d, 0x%.7X, 0x%.7X)\n", PtrToUint(pDevice), width, height, format, PtrToUint(dxTexture), LOWORD(dxShareHandle) );
-
 	if(dxTexture) dxTexture->Release();
 
 	HRESULT res = pDevice->CreateTexture(width,
