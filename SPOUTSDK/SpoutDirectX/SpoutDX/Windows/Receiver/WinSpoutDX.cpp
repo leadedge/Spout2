@@ -15,9 +15,14 @@
    Search on "SPOUT" for additions.
    Compare with the DirectX 11 Tutorial07 example using ReceveTexture.
 
+   The Visual Studio 2022 project in the same folder as WinSpoutDX.cpp
+   uses source files for SpoutDX. If a project is generated using Cmake,
+   the Visual Studio solution generated in the "build" folder uses the
+   SpoutDX_static library.
+
 =========================================================================
 
-                 Copyright(C) 2020-2024 Lynn Jarvis.
+                 Copyright(C) 2020-2025 Lynn Jarvis.
 
 This program is free software : you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
@@ -46,8 +51,7 @@ WCHAR szWindowClass[MAX_LOADSTRING]{}; // the main window class name
 
 // SPOUT
 spoutDX receiver;                      // Receiver object
-// LJ DEBUG
-static HWND g_hWnd = NULL;                    // Window handle
+HWND g_hWnd = NULL;                    // Window handle
 unsigned char *pixelBuffer = nullptr;  // Receiving pixel buffer
 unsigned char *bgraBuffer = nullptr;   // Conversion buffer if required
 unsigned char g_SenderName[256]{};     // Received sender name
