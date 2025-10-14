@@ -29,7 +29,7 @@
 //
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //-----------------------------------------------------------------------------
-#include <windows.h>
+#include <Windows.h>
 #include <mmsystem.h>
 #include <d3dx9.h>
 #pragma warning( disable : 4996 ) // disable deprecated warning 
@@ -39,17 +39,17 @@
 
 // SPOUT
 // Change paths as required
-#include "../SpoutDirectX9.h" // for D3D9ex and creating textures
-#include "../../../SpoutGL/SpoutSenderNames.h" // for sender creation and update
-#include "../../../SpoutGL/SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "../../../SpoutGL/SpoutUtils.h" // for logging utilites
+#include "..\SpoutDirectX9.h" // for D3D9ex and creating textures
+#include "..\..\..\SpoutGL\SpoutSenderNames.h" // for sender creation and update
+#include "..\..\..\SpoutGL\SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "..\..\..\SpoutGL\SpoutUtils.h" // for logging utilites
 
 // SPOUT
 spoutSenderNames sender;
 spoutDirectX9 spoutdx9;
 spoutFrameCount frame;
 
-char g_SenderName[256];
+char g_SenderName[256]{};
 unsigned int g_Width = 0;
 unsigned int g_Height = 0;
 LPDIRECT3DTEXTURE9 g_pSharedTexture = nullptr; // Texture to be shared
@@ -338,9 +338,10 @@ VOID Render()
 	if (SUCCEEDED(hr)) {
 
 		// Get the texture details
-		D3DSURFACE_DESC desc;
+		D3DSURFACE_DESC desc{};
 		ZeroMemory(&desc, sizeof(desc));
 		pBackBuffer->GetDesc(&desc);
+
 		// Now that we have the backbuffer, we can create a sender
 		// Formats compatible with OpenGL applications are D3DFMT_A8R8G8B8 or D3DFMT_X8R8G8B8
 		if (desc.Width > 0 && desc.Height > 0
