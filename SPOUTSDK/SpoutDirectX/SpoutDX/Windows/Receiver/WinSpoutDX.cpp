@@ -15,10 +15,7 @@
    Search on "SPOUT" for additions.
    Compare with the DirectX 11 Tutorial07 example using ReceveTexture.
 
-   The Visual Studio 2022 project in the same folder as WinSpoutDX.cpp
-   uses source files for SpoutDX. If a project is generated using Cmake,
-   the Visual Studio solution generated in the "build" folder uses the
-   SpoutDX_static library.
+   The Visual Studio 2022 project uses source files for SpoutDX.
 
 =========================================================================
 
