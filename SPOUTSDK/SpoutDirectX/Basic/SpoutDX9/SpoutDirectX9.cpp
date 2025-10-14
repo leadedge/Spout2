@@ -10,6 +10,7 @@
 //		09.10.20	- separated from SpoutDirectX class
 //		23.01.21	- Create DX9 examples
 //		23.01.21	- Change d3dpp.EnableAutoDepthStencil to TRUE so examples work
+//		14-10-25	- CreateDX9device - Set the backbuffer size to that of the window if passed in
 //
 // ====================================================================================
 /*
@@ -57,7 +58,7 @@ spoutDirectX9::~spoutDirectX9() {
 bool spoutDirectX9::OpenDirectX9(HWND hWnd)
 {
 	HWND fgWnd = NULL;
-	char fgwndName[MAX_PATH];
+	char fgwndName[MAX_PATH]{}; // Ensure null terminated
 
 	SpoutLogNotice("spoutDirectX9::OpenDirectX9 - hWnd = 0x%.7X", PtrToUint(hWnd) );
 
@@ -99,7 +100,8 @@ bool spoutDirectX9::OpenDirectX9(HWND hWnd)
 		// period to elapse if the receiving thread appears to not respond or "hangs."
 		if (SendMessageTimeoutA(fgWnd, WM_GETTEXT, MAX_PATH, (LPARAM)fgwndName, SMTO_ABORTIFHUNG, 128, NULL) != 0) {
 			// Returns the full path - get just the window name
-			PathStripPathA(fgwndName);
+			spoututils::GetName(fgwndName); // avoid shlwapi
+			// PathStripPathA(fgwndName);
 			if (fgwndName[0]) {
 				if (strstr(fgwndName, "Resolume") != NULL // Is resolume in the window title ?
 					&& strstr(fgwndName, "magic") == NULL) { // Make sure it is not a user named magic project.
@@ -140,20 +142,30 @@ IDirect3DDevice9Ex* spoutDirectX9::CreateDX9device(IDirect3D9Ex* pD3D, HWND hWnd
 
 	SpoutLogNotice("spoutDirectX::CreateDX9device - adapter = %u, hWnd = 0x%.7X", AdapterIndex, PtrToUint(hWnd) );
 
-
     ZeroMemory(&d3dpp, sizeof(d3dpp));
     d3dpp.Windowed		= true;						// windowed and not full screen
     d3dpp.SwapEffect	= D3DSWAPEFFECT_DISCARD;	// discard old frames
     d3dpp.hDeviceWindow	= hWnd;						// set the window to be used by D3D
 
+	// Defult backbuffer is 1920x1080 if no window handle
+	// Set a dummy resolution - we don't render anything
+	UINT BackBufferWidth = 1920;
+	UINT BackBufferHeight = 1080;
+
+	// Set the backbuffer size to that of the window if passed in
+	if (hWnd) {
+		RECT rect{};
+		GetWindowRect(hWnd, &rect);
+		BackBufferWidth = (UINT)(rect.right - rect.left);
+		BackBufferHeight = (UINT)(rect.bottom - rect.top);
+	}
 	// D3DFMT_UNKNOWN can be specified for the BackBufferFormat while in windowed mode. 
 	// This tells the runtime to use the current display-mode format and eliminates
 	// the need to call GetDisplayMode. 
 	d3dpp.BackBufferFormat		 = D3DFMT_UNKNOWN;
 
-	// Set a dummy resolution - we don't render anything
-    d3dpp.BackBufferWidth		 = 1920;
-    d3dpp.BackBufferHeight		 = 1080;
+    d3dpp.BackBufferWidth		 = BackBufferWidth;
+    d3dpp.BackBufferHeight		 = BackBufferHeight;
 	d3dpp.EnableAutoDepthStencil = TRUE;
 	d3dpp.AutoDepthStencilFormat = D3DFMT_D24S8;
 	d3dpp.BackBufferCount		 = 1;
