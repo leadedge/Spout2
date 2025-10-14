@@ -149,7 +149,7 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT
 
 	// Optionally enable Spout logging
-	OpenSpoutConsole(); // Console only without logs for debugging
+	// OpenSpoutConsole(); // Console only without logs for debugging
 	// EnableSpoutLog(); // Log to console
 	// EnableSpoutLogFile("Tutorial07.log"); // Log to file
 	// Default log file path is "C:\Users\username\AppData\Roaming\Spout\"
