@@ -309,7 +309,7 @@ INT WINAPI wWinMain( HINSTANCE hInst, HINSTANCE, LPWSTR, INT )
 
     // Register the window class
 	// Modification - document and add icon
-	HICON hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICON));
+	HICON hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_MAIN_ICON));
 	WNDCLASSEX wc =
     {
         sizeof(WNDCLASSEX),
