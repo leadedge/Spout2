@@ -42,6 +42,7 @@
 
 // SPOUT
 #include "../SpoutDX9.h"
+#include "resource.h" // for icon
 
 //-----------------------------------------------------------------------------
 // Global variables
@@ -306,12 +307,23 @@ INT WINAPI wWinMain( HINSTANCE hInst, HINSTANCE, LPWSTR, INT )
     UNREFERENCED_PARAMETER( hInst );
 
     // Register the window class
-    WNDCLASSEX wc =
+	// Modification - document and add icon
+	HICON hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_MAIN_ICON));
+   WNDCLASSEX wc =
     {
-        sizeof( WNDCLASSEX ), CS_CLASSDC, MsgProc, 0L, 0L,
-        GetModuleHandle( NULL ), NULL, NULL, NULL, NULL,
-        L"D3D Tutorial", NULL
+        sizeof(WNDCLASSEX),
+		CS_CLASSDC,                  // style
+		MsgProc,                     // lpfnWndProc
+		0L, 0L,                      // cbClsExtra, cbWndExtra
+        GetModuleHandle(NULL),       // hInstance
+		hIcon,                       // hIcon
+		LoadCursor(NULL, IDC_ARROW), // hCursor
+		NULL, NULL,                  // hbrBackground, lpszMenuName
+        L"D3D Tutorial",             // lpszClassName
+		NULL                         // hIconSm
     };
+    RegisterClassEx( &wc );
+
 	// This prevents the hourglass from getting stuck
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     RegisterClassEx( &wc );
