@@ -14,10 +14,6 @@ project(SpoutDX9)
 # Source and header files
 set(SpoutDX9_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX9.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutFrameCount.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutSenderNames.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutSharedMemory.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutUtils.cpp
 )
 set(SpoutDX9_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX9.h
@@ -57,7 +53,7 @@ target_include_directories(SpoutDX9 PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 set_target_properties(SpoutDX9 PROPERTIES
-	VS_FOLDER "SpoutDX9"
+    VS_FOLDER "SpoutDX9_dll"
     SPOUT_PUBLIC_HEADER "${SpoutDX9_HEADERS}"
     RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
     LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
