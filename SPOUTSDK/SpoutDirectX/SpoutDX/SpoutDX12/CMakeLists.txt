@@ -48,7 +48,7 @@ target_include_directories(SpoutDX12 PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 set_target_properties(SpoutDX12 PROPERTIES
-	VS_FOLDER "SpoutDX12"
+    VS_FOLDER "SpoutDX12_dll"
     SPOUT_PUBLIC_HEADER "${SpoutDX12_HEADERS}"
     RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
     LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib

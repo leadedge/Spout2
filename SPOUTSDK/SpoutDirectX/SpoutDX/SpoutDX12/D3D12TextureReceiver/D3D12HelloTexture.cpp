@@ -51,7 +51,7 @@ D3D12HelloTexture::D3D12HelloTexture(UINT width, UINT height, std::wstring name)
 void D3D12HelloTexture::OnInit()
 {
 	// SPOUT
-	OpenSpoutConsole(); // Console only for debugging
+	// OpenSpoutConsole(); // Console only for debugging
 	// EnableSpoutLog(); // Log to console
 
 	LoadPipeline();
