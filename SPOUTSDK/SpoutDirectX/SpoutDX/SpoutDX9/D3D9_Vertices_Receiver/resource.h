@@ -3,6 +3,8 @@
 // Used by Vertices.rc
 //
 
+#define IDI_MAIN_ICON 2
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
