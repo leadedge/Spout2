@@ -144,7 +144,9 @@ class SPOUT_DLLEXP spoutGL {
 	//
 	// Utility
 	//
-	
+
+	// Create OpenGL texture
+	void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height);
 	// Copy OpenGL texture with optional invert
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget, GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
@@ -155,6 +157,8 @@ class SPOUT_DLLEXP spoutGL {
 	// Correct for image stride
 	void RemovePadding(const unsigned char *source, unsigned char *dest,
 		unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
+	// Clear alpha of rgba image pixels to the required value
+	void ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha);
 
 	// OpenGL error reporting
 	bool GLerror();
@@ -267,8 +271,11 @@ class SPOUT_DLLEXP spoutGL {
 	HANDLE GetInteropObject();
 	// Pointer to the shared DirectX texture
 	ID3D11Texture2D* GetDXsharedTexture();
+
+	// LJ DEBUG
 	// Create OpenGL texture
-	void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height);
+	// void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height);
+
 	// Copy OpenGL to shared DirectX 11 texture via CPU
 	bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	// Copy from shared DX11 texture to OpenGL via CPU
