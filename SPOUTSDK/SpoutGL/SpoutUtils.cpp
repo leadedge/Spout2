@@ -312,9 +312,10 @@ namespace spoututils {
 		std::string str = SDKversion;
 		if (!str.empty() && pNumber) {
 			// Remove all "." chars
-			str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
+			std::string nstr = str;
+			nstr.erase(std::remove(nstr.begin(), nstr.end(), '.'), nstr.end());
 			// integer from string e.g. 2007009
-			*pNumber = std::stoi(str);
+			*pNumber = std::stoi(nstr.c_str());
 		}
 		// Return the version string
 		return str;
