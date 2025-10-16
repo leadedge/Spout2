@@ -307,17 +307,17 @@ namespace spoututils {
 	// Get SDK version number string e.g. "2.007.000"
 	// Optional - return as a single number
 	// e.g. 2.006 = 2006, 2.007 = 2007, 2.007.009 = 2007009
-	std::string GetSDKversion(int* number) {
-		if (number) {
-			// Version number string e.g. "2.007.009"
-			std::string str = SDKversion;
+	std::string GetSDKversion(int* pNumber) {
+		// Version number string e.g. "2.007.009"
+		std::string str = SDKversion;
+		if (!str.empty() && pNumber) {
 			// Remove all "." chars
 			str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
 			// integer from string e.g. 2007009
-			*number = std::stoi(str);
+			*pNumber = std::stoi(str);
 		}
 		// Return the version string
-		return SDKversion;
+		return str;
 	}
 
 	// ---------------------------------------------------------
