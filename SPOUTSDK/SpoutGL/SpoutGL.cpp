@@ -205,6 +205,7 @@
 //		02.09.25	- Change all spoutdx.GetDX11Context()->Flush() to spoutdx.Flush()
 //		08.10.25	- CopyTexture - allow for different texture sizes with dual fbo blit
 //		11.10.25	- CopyTexture - correct conditional size check
+//		15.10.25	- Add ClearAlpha
 //
 // ====================================================================================
 //
@@ -1755,38 +1756,6 @@ void spoutGL::CheckOpenGLTexture(GLuint &texID, GLenum GLformat, unsigned int wi
 			m_TexFormat = (DWORD)GLformat;
 	}
 }
-
-// Initialize OpenGL texture
-void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height)
-{
-	if (texID != 0) glDeleteTextures(1, &texID);
-	glGenTextures(1, &texID);
-
-	// Get current texture binding
-	GLint texturebinding=0;
-	glGetIntegerv(GL_TEXTURE_BINDING_2D, &texturebinding);
-
-	// For glTexImage2D the internal texture format is GL_RGBA8,
-	// "GLformat" is the format of the pixel data provided and
-	// "type" is the data type of the pixel data
-
-	// Pixel data type
-	GLenum type = GL_UNSIGNED_BYTE; // 8 bit RGBA
-	if (GLformat == GL_RGBA16) // Bit depth 16 bits
-		type = GL_UNSIGNED_SHORT;
-	else if (GLformat == GL_RGBA16F || GLformat == GL_RGBA32F) // float
-		type = GL_FLOAT;
-
-	glBindTexture(GL_TEXTURE_2D, texID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GLformat, type, NULL);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, texturebinding);
-
-}
-
 
 //
 // COPY AN OPENGL TEXTURE TO THE SHARED OPENGL TEXTURE
@@ -3758,6 +3727,37 @@ int spoutGL::GetSpoutVersion()
 // Group: Utilities
 //
 
+// Initialize OpenGL texture
+void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height)
+{
+	if (texID != 0) glDeleteTextures(1, &texID);
+	glGenTextures(1, &texID);
+
+	// Get current texture binding
+	GLint texturebinding=0;
+	glGetIntegerv(GL_TEXTURE_BINDING_2D, &texturebinding);
+
+	// For glTexImage2D the internal texture format is GL_RGBA8,
+	// "GLformat" is the format of the pixel data provided and
+	// "type" is the data type of the pixel data
+
+	// Pixel data type
+	GLenum type = GL_UNSIGNED_BYTE; // 8 bit RGBA
+	if (GLformat == GL_RGBA16) // Bit depth 16 bits
+		type = GL_UNSIGNED_SHORT;
+	else if (GLformat == GL_RGBA16F || GLformat == GL_RGBA32F) // float
+		type = GL_FLOAT;
+
+	glBindTexture(GL_TEXTURE_2D, texID);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GLformat, type, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, texturebinding);
+
+}
+
 //---------------------------------------------------------
 // Function: CopyTexture
 //   Copy OpenGL texture with optional invert
@@ -4141,6 +4141,13 @@ void spoutGL::RemovePadding(const unsigned char *source, unsigned char *dest,
 	spoutcopy.RemovePadding(source, dest, width, height, stride, glFormat);
 }
 
+//---------------------------------------------------------
+// Function: ClearAlpha
+// Clear alpha of rgba image pixels to the required value
+void spoutGL::ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha)
+{
+	spoutcopy.ClearAlpha(src, width, height, alpha);
+}
 
 //
 // Group : DX11 texture copy versions
