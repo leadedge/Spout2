@@ -71,6 +71,7 @@ int window_height = 0;
 SPOUTLIBRARY* receiver;                 // SpoutLibrary object
 HWND g_hWnd = NULL;                     // Window handle
 unsigned char* g_pixelBuffer = nullptr; // Receiving pixel buffer
+GLuint g_TextureGL = 0;                 // ReceiveTexture example
 char g_SenderName[256]{};               // Received sender name
 unsigned int g_SenderWidth = 0;         // Received sender width
 unsigned int g_SenderHeight = 0;        // Received sender height
@@ -143,9 +144,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// Many other options are available but are not repeated in this example.
 	// Refer to SpoutLibary.h for more options
 	//
-	
-	// Set the name in the Window caption
-	// LJ DEBUG SetWindowTextA(g_hWnd, sender->GetName());
+
 	// ----------------------------------
 
     // Main message loop:
@@ -163,14 +162,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// ----------------------------------
 	// SPOUT
 
-	// Release the receiving pixel buffer
-	if (g_pixelBuffer) delete[] g_pixelBuffer;
+	if (g_pixelBuffer)
+		delete[] g_pixelBuffer;
+
+	if(g_TextureGL)
+		glDeleteTextures(1, &g_TextureGL);
 
 	// Release the receiver
 	receiver->ReleaseReceiver();
-
-	// Release OpenGL resources
-	receiver->CloseOpenGL();	// ----------------------------------
+	
+	// Release OpenGL
+	receiver->CloseOpenGL();
+	// ----------------------------------
 
     return (int) msg.wParam;
 }
@@ -181,8 +184,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 void Render()
 {
 	//
-	// ReceiveImage connects to and receives from a sender
-	// and handles sender detection, receiver creation and update.
+	// ReceiveImage and ReceiveTexture connect to and receive from a sender
+	// and handle sender detection, receiver creation and update.
 	//
 	// For successful receive, sender details can be retrieved with
 	//		const char* GetSenderName();
@@ -196,21 +199,14 @@ void Render()
 	// Connection can be tested at any time with 
 	//		bool IsConnected();
 	//
-
-	// ----------------------------------------------------------------------------
 	// Compare with the Openframeworks ofSpoutExample "Receiver > Graphics" example
 	// for additional options :
+	
+
 	//
-	// 1) Allocate the receiving texture with an OpenGL format
-	//	  compatible with the sender DirectX shared texture format.
-	//	  The Format can be GL_RGBA, GL_RGBA16, GL_RGBA16F or GL_RGBA32F.
-	//			glformat = receiver->GLDXformat();
+	// OPTION 1) - Receive image pixels
 	//
-	// 2) Receive a sender OpenGL shared texture to access directly
-	//		The example copies from the shared texture.
-	//		The texture binding may also be used directly for rendering.
 	//
-	// ----------------------------------------------------------------------------
 
 	//
 	// Get pixels from the sender shared texture
@@ -221,6 +217,7 @@ void Render()
 	//
 	// Because Windows bitmaps are bottom-up, the pixel buffer is flipped
 	// here ready for WM_PAINT but it could also be drawn upside down.
+	/*
 	if (receiver->ReceiveImage(g_pixelBuffer, GL_BGRA, true)) {
 		// IsUpdated() returns true if the sender has changed
 		if (receiver->IsUpdated()) {
@@ -234,8 +231,40 @@ void Render()
 			if (g_pixelBuffer) delete[] g_pixelBuffer;
 			unsigned int buffersize = g_SenderWidth * g_SenderHeight * 4;
 			g_pixelBuffer = new unsigned char[buffersize];
-			// Do anything else necessary for the application here
 		}
+	}
+	*/
+
+	//
+	// OPTION 2) - Receive texture
+	//
+	if (receiver->ReceiveTexture(g_TextureGL, GL_TEXTURE_2D)) {
+		// IsUpdated() returns true if the sender has changed
+		if (receiver->IsUpdated()) {
+			// Update the sender name - it could be different
+			strcpy_s((char *)g_SenderName, 256, receiver->GetSenderName());
+			// Update globals
+			g_SenderWidth = receiver->GetSenderWidth();
+			g_SenderHeight = receiver->GetSenderHeight();
+			g_SenderFormat = receiver->GetSenderFormat();
+			// Allocate or re-allocate the receiving texture
+			if(g_TextureGL)	glDeleteTextures(1, &g_TextureGL);
+			// Specify GL_BGRA for this example to match with Windows bitmap draw in WM_PAINT.
+			receiver->InitTexture(g_TextureGL, GL_BGRA, g_SenderWidth, g_SenderHeight);
+			// And the pixel buffer for WM_PAINT
+			if (g_pixelBuffer) delete[] g_pixelBuffer;
+			unsigned int buffersize = g_SenderWidth * g_SenderHeight * 4;
+			g_pixelBuffer = new unsigned char[buffersize];
+			// Return here because the texture will be empty
+			// The sender texture is received on the next frame
+			return;
+		}
+
+		// Read pixels from the texture for WM_PAINT
+		receiver->ReadTextureData(g_TextureGL, GL_TEXTURE_2D, g_pixelBuffer,
+			g_SenderWidth, g_SenderHeight, g_SenderWidth*4,
+			GL_BGRA, GL_UNSIGNED_BYTE, true);
+
 	}
 
 	// Trigger a re-paint to draw the pixel buffer - see WM_PAINT
@@ -250,7 +279,6 @@ void Render()
 
 }
 // ----------------------------------
-
 
 //
 //  FUNCTION: MyRegisterClass()
