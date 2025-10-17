@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36408.4 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SpoutLibrarySender", "SpoutLibrarySender.vcxproj", "{2BF87148-9F20-4979-8382-CD0800EF6806}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2BF87148-9F20-4979-8382-CD0800EF6806}.Debug|x64.ActiveCfg = Debug|x64
+		{2BF87148-9F20-4979-8382-CD0800EF6806}.Debug|x64.Build.0 = Debug|x64
+		{2BF87148-9F20-4979-8382-CD0800EF6806}.Debug|x86.ActiveCfg = Debug|Win32
+		{2BF87148-9F20-4979-8382-CD0800EF6806}.Debug|x86.Build.0 = Debug|Win32
+		{2BF87148-9F20-4979-8382-CD0800EF6806}.Release|x64.ActiveCfg = Release|x64
+		{2BF87148-9F20-4979-8382-CD0800EF6806}.Release|x64.Build.0 = Release|x64
+		{2BF87148-9F20-4979-8382-CD0800EF6806}.Release|x86.ActiveCfg = Release|Win32
+		{2BF87148-9F20-4979-8382-CD0800EF6806}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4CC1329B-992C-47E5-8E71-AF816CD02876}
+	EndGlobalSection
+EndGlobal

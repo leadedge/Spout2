@@ -117,6 +117,8 @@
 //				   EnableLogs, LogsEnabled, LogFileEnabled, GetSpoutLogPath, ReadTextureData,
 //				   WriteBinaryToRegistry, Update SelectSenderPanel, GetExepath
 //				   Rename : RemoveName->GetPath, RemovePath->GetName
+//		15.10.25   Update CreateOpenGL - add hwnd argument
+//				   Add InitTexture, ClearAlpha
 //		13.10.25   Rebuild with SDK version 2.007.017 /MD and /MT using CMake
 //
 /*
@@ -169,55 +171,76 @@
 //	http://www.codeproject.com/Articles/28969/HowTo-Export-C-classes-from-a-DLL
 //
 // Group: Building the library
-// 
-// The "VS2017" folder contains Visual Studio projects to build the dll.
 //
-// The Spout SDK source files should be located in a folder "SpoutGL" two levels above the project folder.
-// 
-// Open the SpoutLibrary solution, change to "Release" and build the project.
-// SpoutLibrary.dll and SpoutLibrary.lib will be in the Win32\Release or x64\Release folder.
-// 
-// Also refer to "Building the libraries.pdf" for details on building the libraries using CMake.
+// To build the library using CMake.
 //
+// Refer to "Building the libraries.pdf" at the root of the repository.
+//
+// To build using Visual Studio 2022.
+// 
+// This folder contains a Visual Studio 2022 project to build the dll.
+//
+// The OpenGL source files used should be located in a "SpoutGL" folder
+//
+// at the same level as the project folder.
+// 
+// o SpoutGL
+// o SpoutLibrary
+//
+// Open the SpoutLibrary solution file with Visual Studio 2022
+//
+// change to "Release" "x64" and build the project.
+//
+// SpoutLibrary.dll and SpoutLibrary.lib are copied to the Binaries folder.
+// 
 // Group: Building applications with the library
 //
 // o Include SpoutLibrary.h in your application header file.
 // o Include SpoutLibrary.lib in your project for the linker.
 // o Include SpoutLibrary.dll in the application executable folder.
-// 
 //
-// All functions are the same as described for in the Spout SDK documentation.
+// All functions are the same as described in the Spout SDK documentation.
 //
 // Group: Using the library
 //
-// Refer to the source code of the SpoutLibrary example.
-//
+// Refer to the source code of the SpoutLibrary examples.
 //
 // 1) Include SpoutLibrary.h in your application header file
 // 
 // --- Code
 // #include "SpoutLibrary.h"
 // ---
-// 
-// 2) create a spout sender object pointer
+//
+// 2) Specify SpoutLibrary.lib for the linker
+//
+// --- Code
+// #pragma comment(lib, "libs/SpoutLibrary.lib")
+// ---
+//
+// 3) Create a SpoutLibrary object
 // 
 // --- Code
-// SPOUTLIBRARY * sender;
+// SPOUTLIBRARY* sender;
 // ---
 // 
-// 3) Create an instance of the library
+// 4) Create an instance of the library
 // 
 // --- Code
 // sender = GetSpout();
 // ---
 // 
-// 4) Use the object as usual :
+// 5) Use functions with the library pointer
 // 
 // --- Code
 // sender->SendTexture(...) etc.
 // ---
-// 
-// Compare with the graphics sender example using the Spout SDK source files.
+//
+// All functions are the same as documented in the Spout SDK documentation.
+//
+// Changes from the Spout SDK examples are minor.
+//
+// Compare the source code for details.
+//
 
 
 class SPOUTImpl : public SPOUTLIBRARY
@@ -1051,7 +1074,12 @@ private: // Spout SDK functions
 	// Function: SetAutoShare
 	// Set auto GPU/CPU share depending on compatibility
 	void SetAutoShare(bool bAuto = true);
-	
+
+	// Function: SetCPUShare
+	// Set application CPU share
+	// (re-test GL/DX compatibility if set to false)
+	void SetCPUshare(bool bCPU = true);
+
 	// Function: IsGLDXready
 	// OpenGL texture share compatibility
 	bool IsGLDXready();
@@ -1179,11 +1207,15 @@ private: // Spout SDK functions
 	// Create an OpenGL window and context for situations where there is none.
 	//   Not used if applications already have an OpenGL context.
 	//   Always call CloseOpenGL afterwards.
-	bool CreateOpenGL();
+	bool CreateOpenGL(HWND hwnd = nullptr);
 	
 	// Function: CloseOpenGL
 	// Close OpenGL window
 	bool CloseOpenGL();
+
+	// Function: InitTexture
+	// Create OpenGL texture
+	void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height);
 	
 	// Function: CopyTexture
 	// Copy OpenGL texture with optional invert
@@ -1198,6 +1230,10 @@ private: // Spout SDK functions
 	bool ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 		void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
 		GLenum dataformat, GLenum datatype, bool bInvert = false, GLuint HostFBO = false);
+
+	// Function: ClearAlpha
+	// Clear alpha of rgba image pixels to the required value
+	void ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha);
 
 	//
 	// Formats
@@ -2041,6 +2077,11 @@ void SPOUTImpl::SetAutoShare(bool bAuto)
 	spout->SetAutoShare(bAuto);
 }
 
+void SPOUTImpl::SetCPUshare(bool bCPU)
+{
+	spout->SetCPUshare(bCPU);
+}
+
 bool SPOUTImpl::IsGLDXready()
 {
 	return spout->IsGLDXready();
@@ -2120,14 +2161,19 @@ bool SPOUTImpl::IsApplicationPath(const char* path)
 // OpenGL utilities
 //
 
-bool SPOUTImpl::CreateOpenGL()
+bool SPOUTImpl::CreateOpenGL(HWND hwnd)
 {
-	return spout->CreateOpenGL();
+	return spout->CreateOpenGL(hwnd);
 }
 
 bool SPOUTImpl::CloseOpenGL()
 {
 	return spout->CloseOpenGL();
+}
+
+void SPOUTImpl::InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height)
+{
+	spout->InitTexture(texID, GLformat, width, height);
 }
 
 bool SPOUTImpl::CopyTexture(GLuint SourceID, GLuint SourceTarget,
@@ -2146,6 +2192,14 @@ bool SPOUTImpl::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 	return spout->ReadTextureData(SourceID, SourceTarget,
 		data, width, height, rowpitch,
 		dataformat, datatype, bInvert, HostFBO);
+}
+
+//---------------------------------------------------------
+// Function: ClearAlpha
+// Clear alpha of rgba image pixels to the required value
+void SPOUTImpl::ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha)
+{
+	spout->ClearAlpha(src, width, height, alpha);
 }
 
 
