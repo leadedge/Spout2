@@ -207,10 +207,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	if (g_pixelBuffer) 
 		delete[] g_pixelBuffer;
 
+	if(g_TextureGL)
+		glDeleteTextures(1, &g_TextureGL);
+
 	// Release the sender
 	sender->ReleaseSender();
 
-	// Release OpenGL resources
+	// Release OpenGL
 	sender->CloseOpenGL();
 	// ----------------------------------
 
