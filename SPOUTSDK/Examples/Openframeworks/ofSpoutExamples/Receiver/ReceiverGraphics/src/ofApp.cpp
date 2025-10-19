@@ -116,9 +116,18 @@ void ofApp::draw() {
 	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
 		// Update the receiving texture if the sender name, size or format is different
 		if (receiver.IsUpdated()) {
-			// Allocate the receiving texture with an OpenGL format
-			// compatible with the sender DirectX shared texture format.
-			// Format can be GL_RGBA, GL_RGBA16, GL_RGBA16F or GL_RGBA32F.
+			
+			//
+			// Allocate or re-allocate the receiving texture
+			//
+			// o The width and height can be any value
+			//   and the texture can be pre-allocated.
+			//   Typically the sender dimensions are used
+			//   and the texture is allocated here.
+			// o The texture OpenGL format must be compatible with the
+			//   sender DirectX shared texture format. It can be
+			//   GL_RGBA, GL_RGBA16, GL_RGBA16F or GL_RGBA32F.
+			//
 			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), receiver.GLDXformat());
 			return; // Return now because the texture will empty
 		}
