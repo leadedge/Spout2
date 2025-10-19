@@ -101,7 +101,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// The receiver will only connect to that sender.
 	// The user can over-ride this by selecting another.
 	// receiver.SetReceiverName("Spout DX11 Sender");
-	
+		
 	// Main message loop:
 	MSG msg = { 0 };
 	while (WM_QUIT != msg.message)
@@ -186,32 +186,49 @@ void Render()
 		}
 	}
 	*/
-
+	
 	//
 	// OPTION 2) - Receive texture
 	//
 	if (receiver.ReceiveTexture(g_TextureGL, GL_TEXTURE_2D)) {
+
 		// IsUpdated() returns true if the sender has changed
 		if (receiver.IsUpdated()) {
+
 			// Update the sender name - it could be different
 			strcpy_s((char *)g_SenderName, 256, receiver.GetSenderName());
-			// Update globals
-			g_SenderWidth = receiver.GetSenderWidth();
-			g_SenderHeight = receiver.GetSenderHeight();
-			g_SenderFormat = receiver.GetSenderFormat();
+
+			//
 			// Allocate or re-allocate the receiving texture
+			//
+			// o The width and height can be any value
+			//   and the texture can be pre-allocated.
+			//   Typically the sender dimensions are used
+			//   and the texture is allocated here.
+			// o The format must be GL_RGBA GL_RGBA8 or GL_BGRA
+			//   (8 bit pixel data type) in this example to match
+			//   with the Windows bitmap in WM_PAINT.
+			//
+
+			// Update the receiving texture
 			if(g_TextureGL)	glDeleteTextures(1, &g_TextureGL);
-			// Specify GL_BGRA for this example to match with Windows bitmap draw in WM_PAINT.
-			receiver.InitTexture(g_TextureGL, GL_BGRA, g_SenderWidth, g_SenderHeight);
+			g_SenderWidth  = receiver.GetSenderWidth();
+			g_SenderHeight = receiver.GetSenderHeight();
+			receiver.InitTexture(g_TextureGL, GL_RGBA, g_SenderWidth, g_SenderHeight);
+
 			// And the pixel buffer for WM_PAINT
 			if (g_pixelBuffer) delete[] g_pixelBuffer;
 			unsigned int buffersize = g_SenderWidth * g_SenderHeight * 4;
 			g_pixelBuffer = new unsigned char[buffersize];
+
 			// Return here because the texture will be empty
 			// The sender texture is received on the next frame
 			return;
 		}
-		// Read pixels from the texture for WM_PAINT
+		// Read pixels from the texture
+		// For this example, specify GL_BGRA pixel data format and
+		// unsigned byte type to match with the Windows bitmap in WM_PAINT.
+		// Invert true for bottom-up Windows bitmap.
 		receiver.ReadTextureData(g_TextureGL, GL_TEXTURE_2D, g_pixelBuffer,
 			g_SenderWidth, g_SenderHeight, g_SenderWidth*4,
 			GL_BGRA, GL_UNSIGNED_BYTE, true);
