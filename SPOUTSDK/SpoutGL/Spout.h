@@ -105,7 +105,8 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	//   the receiving texture if it has changed dimensions
 	//   For no change, copy the sender shared texture to the application texture
 	//   The texture must be RGBA of dimension (width * height) 
-	bool ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert = false, GLuint HostFbo = 0);
+	bool ReceiveTexture(GLuint TextureID, GLuint TextureTarget,
+		bool bInvert = false, GLuint HostFbo = 0);
 	// Receive image pixels
 	//   Connect to a sender and inform the application to update
 	//   the receiving buffer if it has changed dimensions

@@ -264,11 +264,12 @@ spoutGL::spoutGL()
 	m_bGLDXdone = false; // Compatibility test not done yet
 
 	m_glTexture = 0;
-	m_TexID = 0;
+	m_fbo = 0;
+	m_TexID = 0; // Class texture for invert
 	m_TexWidth = 0;
 	m_TexHeight = 0;
-	m_TexFormat = GL_RGBA;
-	m_fbo = 0;
+	m_DestWidth = 0; // Destination texture dimensions for SpoutCopy
+	m_DestHeight = 0;
 
 	m_dxShareHandle = NULL; // Shared texture handle
 	m_pSharedTexture = nullptr; // DX11 shared texture
@@ -1348,7 +1349,8 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 	m_Height = height;
 
 	// Create an fbo if not already
-	// A utility texture (m_TexID) will be created later if needed for texture invert
+	// A utility texture (m_TexID) will be created
+	// later if needed for texture invert
 	if (m_fbo == 0)	glGenFramebuffersEXT(1, &m_fbo);
 
 	// Important to reset PBO indices
@@ -1725,8 +1727,18 @@ void spoutGL::CleanupGL()
 	m_Index = 0;
 	m_NextIndex = 0;
 
+	// Sender
 	m_Width = 0;
 	m_Height = 0;
+
+	// Class texture dimensions and format
+	m_TexWidth = 0;
+	m_TexHeight = 0;
+	m_TexFormat = (DWORD)GL_RGBA;
+
+	// Destination texture dimensions for SpoutCopy
+	m_DestWidth = 0;
+	m_DestHeight = 0;
 
 	// ReleaseReceiver calls CleanupGL before restoring m_SenderName
 	// ReleaseSender clears the name
@@ -1815,9 +1827,8 @@ bool spoutGL::ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned i
 
 	// No texture read or zero OpenGL texture (allowed for by ReceiveTexture)
 	// the shared texture can be accessed directly
-	if (TextureID == 0) {
+	if (TextureID == 0)
 		return true;
-	}
 
 	// width and height must be the same as the shared texture
 	if (width != m_Width || height != m_Height) {
@@ -3764,23 +3775,42 @@ void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, un
 //   Textures can have different sizes or formats
 //
 bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
-	GLuint DestID, GLuint DestTarget, unsigned int width, unsigned int height,
-	bool bInvert, GLuint HostFBO)
-{
-	// Get the destination texture dimensions
-	int w = 0, h = 0;
-	glBindTexture(DestTarget, DestID);
-	glGetTexLevelParameteriv(DestTarget, 0, GL_TEXTURE_WIDTH, &w);
-	glGetTexLevelParameteriv(DestTarget, 0, GL_TEXTURE_HEIGHT, &h);
-	glBindTexture(DestTarget, 0);
+	GLuint DestID, GLuint DestTarget, // Destination texture
+	unsigned int width, unsigned int height, // Source dimensions
+	bool bInvert, GLuint HostFBO) {
 
-	// Unsigned int to match function arguments
-	unsigned int texWidth = w;
-	unsigned int texHeight = h;
+	// Check for zero texture ID
+	if (DestID == 0 || DestTarget == 0)
+		return false;
+	
+	// Test the destination texture dimensions
+	// Cleared by ReleaseReceiver -> CleanupGL
+	if (m_DestWidth == 0 || m_DestHeight == 0) {
+		int w = 0, h = 0;
+		glBindTexture(DestTarget, DestID);
+		// Clear existing errors
+		while (glGetError() != GL_NO_ERROR);
+		glGetTexLevelParameteriv(DestTarget, 0, GL_TEXTURE_WIDTH, &w);
+		// Return If the texture has not been allocated
+		if (glGetError() != GL_NO_ERROR || w == 0) {
+			glBindTexture(DestTarget, 0);
+			return false;
+		}
+		glGetTexLevelParameteriv(DestTarget, 0, GL_TEXTURE_HEIGHT, &h);
+		glBindTexture(DestTarget, 0);
+		// Destination texture dimensions
+		m_DestWidth  = (unsigned int)w;
+		m_DestHeight = (unsigned int)h;
+	}
+
+	// The destination texture must be allocated
+	if (m_DestWidth == 0 || m_DestHeight == 0)
+		return false;
 
 	// If the width or height are different and if blit is available		
 	// use a dual fbo blit to fit the source to the destination
-	if ((texWidth != width || texHeight != height) && m_bBLITavailable) {
+	if ((m_DestWidth != width || m_DestHeight != height) && m_bBLITavailable) {
+
 		//
 		// Dual fbo blit for different sizes
 		//
@@ -3815,17 +3845,17 @@ bool spoutGL::CopyTexture(GLuint SourceID, GLuint SourceTarget,
 			if (bInvert) {
 				// Copy one texture buffer to the other while flipping upside down
 				glBlitFramebufferEXT(0, 0, // srcX0, srcY0,
-					width, height, // srcX1, srcY1
-					0, texHeight,  // dstX0, dstY0,
-					texWidth, 0,   // dstX1, dstY1,
+					width, height,   // srcX1, srcY1
+					0, m_DestHeight, // dstX0, dstY0,
+					m_DestWidth, 0,  // dstX1, dstY1,
 					GL_COLOR_BUFFER_BIT, GL_NEAREST);
 			}
 			else {
 				// Do not flip during blit
-				glBlitFramebufferEXT(0, 0, // srcX0, srcY0,
-					width, height,       // srcX1, srcY1
-					0, 0,                // dstX0, dstY0,
-					texWidth, texHeight, // dstX1, dstY1,
+				glBlitFramebufferEXT(0, 0,     // srcX0, srcY0,
+					width, height,             // srcX1, srcY1
+					0, 0,                      // dstX0, dstY0,
+					m_DestWidth, m_DestHeight, // dstX1, dstY1,
 					GL_COLOR_BUFFER_BIT, GL_NEAREST);
 			}
 		}

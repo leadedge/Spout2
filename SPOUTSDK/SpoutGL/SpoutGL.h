@@ -271,11 +271,6 @@ class SPOUT_DLLEXP spoutGL {
 	HANDLE GetInteropObject();
 	// Pointer to the shared DirectX texture
 	ID3D11Texture2D* GetDXsharedTexture();
-
-	// LJ DEBUG
-	// Create OpenGL texture
-	// void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height);
-
 	// Copy OpenGL to shared DirectX 11 texture via CPU
 	bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	// Copy from shared DX11 texture to OpenGL via CPU
@@ -381,7 +376,6 @@ protected :
 	void trim(char* s);
 
 	// Errors
-	void DoDiagnostics(const char *error);
 	void PrintFBOstatus(GLenum status);
 
 	//
@@ -397,9 +391,13 @@ protected :
 	// Utility
 	GLuint m_fbo; // Fbo used for OpenGL functions
 	GLuint m_TexID; // Class texture used for invert copy
+	// Class texture dimensions and format
 	unsigned int m_TexWidth;
 	unsigned int m_TexHeight;
 	DWORD m_TexFormat;
+	// Destination texture dimensions for SpoutCopy
+	unsigned int m_DestWidth;
+	unsigned int m_DestHeight;
 
 	// Shared texture
 	GLuint m_glTexture; // OpenGL shared texture
