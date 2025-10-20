@@ -549,8 +549,21 @@ struct SPOUTLIBRARY
 	virtual bool ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 		void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
 		GLenum dataformat, GLenum datatype, bool bInvert = false, GLuint HostFBO = false) = 0;
+
+	//
+	// Pixel buffer utilities
+	//
+
 	// Clear alpha of rgba image pixels to the required value
 	virtual void ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha) = 0;
+	// Flip a pixel buffer from source to destination
+	virtual void FlipBuffer(const unsigned char*src, unsigned char* dst,
+		unsigned int width, unsigned int height,
+		GLenum glFormat = GL_RGBA) = 0;
+	// Flip a pixel buffer in place
+	virtual void FlipBuffer(unsigned char* src,
+		unsigned int width, unsigned int height,
+		GLenum glFormat = GL_RGBA) = 0;
 
 	//
 	// Formats
