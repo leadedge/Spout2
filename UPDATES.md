@@ -1,6 +1,6 @@
 ===========================================\
-11.10.25\
-Cumulative update from beta branch
+20.10.25\
+Cumulative update
 
 Version 2.007.017
 
@@ -80,6 +80,7 @@ SpoutGL.cpp
 - 02.09.25	- Change all spoutdx.GetDX11Context()->Flush() to spoutdx.Flush()
 - 08.10.25	- CopyTexture - allow for different texture sizes with dual fbo blit
 - 11.10.25	- CopyTexture - correct conditional size check
+- 15.10.25	- Add ClearAlpha
  
 SpoutGLextensions.cpp
 - 25.03.25	- ExtLog - changed "standalone" to "standaloneExtensions"
@@ -94,7 +95,9 @@ SpoutGLextensions.cpp
 
 SpoutReceiver.cpp
 - 16.08.25	- Add CloseFrameSync
-
+- 13.10.25	- Add GetSenderTexture, GetSenderTexture
+ 	replace GetSpoutVersion with GetSDKversion
+	
 SpoutSender.cpp
 - 16.08.25	- Add CloseFrameSync
 
@@ -125,7 +128,7 @@ SpoutUtils.cpp
 		   Correct RegCreateKeyExA reserved arg from NULL to 0
 		   MessageBoxTimeoutA - add return value for else
 - 06.09.25 - Add executable name to log file
-- 16.09.25 - Update version to 2.007.017 for master update from beta
+- 16.09.25 - Update version to 2.007.017
 
 ===========================================\
 01.03.25\
