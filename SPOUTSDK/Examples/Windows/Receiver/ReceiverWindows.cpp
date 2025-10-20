@@ -169,24 +169,22 @@ void Render()
 	//
 	// Because Windows bitmaps are bottom-up, the pixel buffer is flipped
 	// here ready for WM_PAINT but it could also be drawn upside down.
-	/*
-	if (receiver->ReceiveImage(g_pixelBuffer, GL_BGRA, true)) {
+	if (receiver.ReceiveImage(g_pixelBuffer, GL_BGRA, true)) {
 		// IsUpdated() returns true if the sender has changed
-		if (receiver->IsUpdated()) {
+		if (receiver.IsUpdated()) {
 			// Update the sender name - it could be different
-			strcpy_s((char *)g_SenderName, 256, receiver->GetSenderName());
+			strcpy_s((char *)g_SenderName, 256, receiver.GetSenderName());
 			// Update globals
-			g_SenderWidth = receiver->GetSenderWidth();
-			g_SenderHeight = receiver->GetSenderHeight();
-			g_SenderFormat = receiver->GetSenderFormat();
+			g_SenderWidth = receiver.GetSenderWidth();
+			g_SenderHeight = receiver.GetSenderHeight();
+			g_SenderFormat = receiver.GetSenderFormat();
 			// Update the receiving buffer
 			if (g_pixelBuffer) delete[] g_pixelBuffer;
-			unsigned int buffersize = g_SenderWidth * g_SenderHeight * 4;
-			g_pixelBuffer = new unsigned char[buffersize];
+			g_pixelBuffer = new unsigned char[g_SenderWidth*g_SenderHeight*4];
 		}
 	}
-	*/
 	
+	/*
 	//
 	// OPTION 2) - Receive texture
 	//
@@ -218,14 +216,14 @@ void Render()
 
 			// And the pixel buffer for WM_PAINT
 			if (g_pixelBuffer) delete[] g_pixelBuffer;
-			unsigned int buffersize = g_SenderWidth * g_SenderHeight * 4;
-			g_pixelBuffer = new unsigned char[buffersize];
+			g_pixelBuffer = new unsigned char[g_SenderWidth*g_SenderHeight*4];
 
 			// Return here because the texture will be empty
 			// The sender texture is received on the next frame
 			return;
 		}
 		// Read pixels from the texture
+		// Copy is optimised using OpenGL pixel buffers if available.
 		// For this example, specify GL_BGRA pixel data format and
 		// unsigned byte type to match with the Windows bitmap in WM_PAINT.
 		// Invert true for bottom-up Windows bitmap.
@@ -233,6 +231,57 @@ void Render()
 			g_SenderWidth, g_SenderHeight, g_SenderWidth*4,
 			GL_BGRA, GL_UNSIGNED_BYTE, true);
 	}
+	*/
+
+	/*
+	//
+	// Option 3 : Receive an OpenGL shared texture to access directly.
+	//
+	// Only if compatible for GL/DX interop or else BindSharedTexture fails.
+	// For this example, read pixels from the shared texture. 
+	// The texture binding can be be used directly for other functions.
+	//
+	if (receiver.ReceiveTexture()) {
+		// Update the receiving pixel buffer if the received size has changed
+		if (receiver.IsUpdated()) {
+			g_SenderWidth  = receiver.GetSenderWidth();
+			g_SenderHeight = receiver.GetSenderHeight();
+			if (g_pixelBuffer) delete[] g_pixelBuffer;
+			g_pixelBuffer = new unsigned char[g_SenderWidth*g_SenderHeight*4];
+		}
+		// 1. Get access to the sender DirectX shared texture
+		// 2. Lock the interop to get access to the linked OpenGL texture
+		// 3. Bind the OpenGL texture
+		if (receiver.BindSharedTexture()) {
+
+			// ------------------------------------------------
+			// With the sender OpenGL texture bound,
+			// read the texture to pixels using glGetTexImage
+			// as an example of using low level OpenGL functions.
+			// Specify GL_BGRA for the returned data for WM_PAINT.
+			// In this example only 4 component unsigned byte
+			// data is suitable, Other sender formats will fail.
+			glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA,
+				GL_UNSIGNED_BYTE, (void*)g_pixelBuffer);
+			// Flip the pixel buffer in place because
+			// DirectX and OpenGL texture origins are inverted
+			receiver.spoutcopy.FlipBuffer(g_pixelBuffer,
+				g_SenderWidth, g_SenderHeight, GL_BGRA);
+			// ------------------------------------------------
+
+			// For other formats, ReadTextureData can be used
+			// receiver.ReadTextureData(receiver.GetSharedTextureID(),
+				// GL_TEXTURE_2D, g_pixelBuffer,
+				// g_SenderWidth, g_SenderHeight, g_SenderWidth*4,
+				// GL_BGRA, GL_UNSIGNED_BYTE, true);
+
+			// 1. Un-bind the OpenGL texture
+			// 2. Unlock the interop
+			// 3. Release access to texture
+			receiver.UnBindSharedTexture();
+		}
+	}
+	*/
 
 	// Trigger a re-paint to draw the pixel buffer - see WM_PAINT
 	InvalidateRect(g_hWnd, NULL, FALSE);
