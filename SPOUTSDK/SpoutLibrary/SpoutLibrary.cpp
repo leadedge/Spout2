@@ -120,6 +120,7 @@
 //		15.10.25   Update CreateOpenGL - add hwnd argument
 //				   Add InitTexture, ClearAlpha
 //		13.10.25   Rebuild with SDK version 2.007.017 /MD and /MT using CMake
+//		20.10.28   Add FlipBuffer
 //
 /*
 		Copyright (c) 2016-2025, Lynn Jarvis. All rights reserved.
@@ -1236,7 +1237,22 @@ private: // Spout SDK functions
 	void ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha);
 
 	//
-	// Formats
+	//  Group: Pixel buffer utilities
+	//
+
+	// Function: FlipBuffer
+	// Flip a pixel buffer from source to destination
+	void FlipBuffer(const unsigned char *src, unsigned char *dst,
+		unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA);
+
+	// Function: FlipBuffer
+	// Flip a pixel buffer in place
+	void FlipBuffer(unsigned char* src,
+		unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA);
+
+
+	//
+	//  Group: Formats
 	//
 
 	// Get sender DX11 shared texture format
@@ -2101,7 +2117,7 @@ bool SPOUTImpl::GetAdapterName(int index, char *adaptername, int maxchars)
 	return spout->GetAdapterName(index, adaptername, maxchars);
 }
 
-char * SPOUTImpl::AdapterName()
+char* SPOUTImpl::AdapterName()
 {
 	return spout->AdapterName();
 }
@@ -2116,7 +2132,6 @@ bool SPOUTImpl::GetAdapterInfo(char* description, char* output, int maxchars)
 	return spout->GetAdapterInfo(description, output, maxchars);
 }
 
-// LJ DEBUG
 bool SPOUTImpl::GetAdapterInfo(int index, char* description, char* output, int maxchars)
 {
 	return spout->GetAdapterInfo(index, description, output, maxchars);
@@ -2194,12 +2209,26 @@ bool SPOUTImpl::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 		dataformat, datatype, bInvert, HostFBO);
 }
 
-//---------------------------------------------------------
-// Function: ClearAlpha
-// Clear alpha of rgba image pixels to the required value
+
+//
+// Pixel buffer utilities
+//
+
 void SPOUTImpl::ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha)
 {
 	spout->ClearAlpha(src, width, height, alpha);
+}
+
+void SPOUTImpl::FlipBuffer(const unsigned char* src, unsigned char* dst,
+	unsigned int width, unsigned int height, GLenum glFormat)
+{
+	spout->spoutcopy.FlipBuffer(src, dst, width, height, glFormat);
+}
+
+void SPOUTImpl::FlipBuffer(unsigned char* src,
+		unsigned int width, unsigned int height, GLenum glFormat)
+{
+	spout->spoutcopy.FlipBuffer(src, width, height, glFormat);
 }
 
 
@@ -2207,37 +2236,31 @@ void SPOUTImpl::ClearAlpha(unsigned char* src, unsigned int width, unsigned int 
 // Formats
 //
 
-//---------------------------------------------------------
 DXGI_FORMAT SPOUTImpl::GetDX11format()
 {
 	return spout->GetDX11format();
 }
 
-//---------------------------------------------------------
 void SPOUTImpl::SetDX11format(DXGI_FORMAT textureformat)
 {
 	spout->SetDX11format(textureformat);
 }
 
-//---------------------------------------------------------
 DXGI_FORMAT SPOUTImpl::DX11format(GLint glformat)
 {
 	return spout->DX11format(glformat);
 }
 
-//---------------------------------------------------------
 GLint SPOUTImpl::GLDXformat(DXGI_FORMAT textureformat)
 {
 	return spout->GLDXformat(textureformat);
 }
 
-//---------------------------------------------------------
 GLint SPOUTImpl::GLformat(GLuint TextureID, GLuint TextureTarget)
 {
 	return spout->GLformat(TextureID, TextureTarget);
 }
 
-//---------------------------------------------------------
 std::string SPOUTImpl::GLformatName(GLint glformat)
 {
 	return spout->GLformatName(glformat);
@@ -2258,7 +2281,7 @@ void SPOUTImpl::CloseDirectX()
 	spout->CloseDirectX();
 }
 
-bool SPOUTImpl::OpenDirectX11(void * pDevice)
+bool SPOUTImpl::OpenDirectX11(void* pDevice)
 {
 	// A cast from void* can use static_cast
 	return spout->OpenDirectX11(static_cast<ID3D11Device*>(pDevice));
@@ -2269,13 +2292,13 @@ void SPOUTImpl::CloseDirectX11()
 	spout->spoutdx.CloseDirectX11();
 }
 
-void * SPOUTImpl::GetDX11Device()
+void* SPOUTImpl::GetDX11Device()
 {
 	// void cast conversion can be implicit
 	return spout->GetDX11Device();
 }
 
-void * SPOUTImpl::GetDX11Context()
+void* SPOUTImpl::GetDX11Context()
 {
 	// void cast conversion can be implicit
 	return spout->GetDX11Device();
