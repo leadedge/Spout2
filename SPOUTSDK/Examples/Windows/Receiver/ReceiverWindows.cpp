@@ -109,8 +109,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	// Pre-allocate a receiving texture for "Option 3"
 	// This can be any size or format
-	g_SenderWidth  = 1280;
-	g_SenderHeight = 720;
+	g_SenderWidth  = 1920;
+	g_SenderHeight = 1080;
 	receiver.InitTexture(g_TextureGL, GL_RGBA, g_SenderWidth, g_SenderHeight);
 	// And the pixel buffer for WM_PAINT
 	g_pixelBuffer = new unsigned char[g_SenderWidth*g_SenderHeight*4];
@@ -173,6 +173,7 @@ void Render()
 	// OPTION 1) - Receive image pixels
 	//
 
+	/*
 	//
 	// Get pixels from the sender shared texture
 	//
@@ -196,6 +197,7 @@ void Render()
 			g_pixelBuffer = new unsigned char[g_SenderWidth*g_SenderHeight*4];
 		}
 	}
+	*/
 
 	/*
 	//
@@ -247,7 +249,6 @@ void Render()
 	}
 	*/
 
-	/*
 	//
 	// Option 3 : Receive to a pre-allocated OpenGL texture
 	//
@@ -263,7 +264,6 @@ void Render()
 			g_SenderWidth, g_SenderHeight, g_SenderWidth*4,
 			GL_BGRA, GL_UNSIGNED_BYTE, true);
 	}
-	*/
 
 	/*
 	//
@@ -594,10 +594,14 @@ void ShowSenderInfo(HDC hdc)
 	DrawString(str, hdc, 0x00FFFFFF, 20, 20);
 
 	// Show the receiving resolution
-	str = "Receiving resolution :  ";
-	str += std::to_string(g_SenderWidth); str += "x";
-	str += std::to_string(g_SenderHeight);
-	DrawString(str, hdc, 0x00FFFFFF, 20, 45);
+	if (g_SenderWidth != receiver.GetSenderWidth()
+		|| g_SenderHeight != receiver.GetSenderHeight()) {
+			str = "Receiving resolution :  ";
+			str += std::to_string(g_SenderWidth);
+			str += "x";
+			str += std::to_string(g_SenderHeight);
+			DrawString(str, hdc, 0x00FFFFFF, 20, 45);
+	}
 
 	RECT rc{};
 	GetClientRect(g_hWnd, &rc);
