@@ -59,6 +59,13 @@ void ofApp::setup(){
 	// Other options
 	// Refer to the graphics sender example
 	//
+
+	// Pre-allocate a receiving texture for "Option 3"
+	// This can be any size or format
+	g_SenderWidth = 1280;
+	g_SenderHeight = 720;
+	myTexture.allocate(g_SenderWidth, g_SenderHeight, GL_RGBA);
+
 	// ==========================================
 
 
@@ -110,8 +117,33 @@ void ofApp::draw() {
 	//		bool IsConnected();
 	//
 
+	/*
 	//
-	// Option 1 : Receive texture
+	// Option 1 : Receive pixel data
+	//
+	// Received pixel format can be GL_RGBA, GL_BGRA, GL_RGB or GL_BGR
+	// Change it here for testing
+	GLint glformat = GL_RGBA;
+	if (receiver.ReceiveImage(myImage.getPixels().getData(), glformat)) {
+		// Update the receiving image if the received size has changed
+		if (receiver.IsUpdated()) {
+			g_SenderWidth = receiver.GetSenderWidth();
+			g_SenderHeight = receiver.GetSenderHeight();
+			// Re-allocated myImage to a compatible format
+			if (glformat == GL_RGB || glformat == GL_BGR)
+				myImage.allocate(g_SenderWidth, g_SenderHeight, OF_IMAGE_COLOR);
+			else
+				myImage.allocate(g_SenderWidth, g_SenderHeight, OF_IMAGE_COLOR_ALPHA);
+			return; // Return now because the image will empty
+		}
+		// ofImage update is necessary because the pixels have been changed
+		myImage.update();
+		myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
+	}
+	*/
+
+	//
+	// Option 2 : Receive texture
 	//
 	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
 		// Update the receiving texture if the sender name, size or format is different
@@ -128,7 +160,9 @@ void ofApp::draw() {
 			//   sender DirectX shared texture format. It can be
 			//   GL_RGBA, GL_RGBA16, GL_RGBA16F or GL_RGBA32F.
 			//
-			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), receiver.GLDXformat());
+			g_SenderWidth = receiver.GetSenderWidth();
+			g_SenderHeight = receiver.GetSenderHeight();
+			myTexture.allocate(g_SenderWidth, g_SenderHeight, receiver.GLDXformat());
 			return; // Return now because the texture will empty
 		}
 		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
@@ -136,40 +170,35 @@ void ofApp::draw() {
 
 	/*
 	//
-	// Option 2 : Receive pixel data
+	// Option 3 : Receive to a pre-allocated OpenGL texture
 	//
-	// Received pixel format can be GL_RGBA, GL_BGRA, GL_RGB or GL_BGR
-	// Change it here for testing
-	GLint glformat = GL_RGBA;
-	if (receiver.ReceiveImage(myImage.getPixels().getData(), glformat)) {
-		// Update the receiving image if the received size has changed
-		if (receiver.IsUpdated()) {
-			// Re-allocated myImage to a compatible format
-			if (glformat == GL_RGB || glformat == GL_BGR)
-				myImage.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), OF_IMAGE_COLOR);
-			else
-				myImage.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), OF_IMAGE_COLOR_ALPHA);
-			return; // Return now because the image will empty
-		}
-		// ofImage update is necessary because the pixels have been changed
-		myImage.update();
-		myImage.draw(0, 0, ofGetWidth(), ofGetHeight());
+	// The sender texture is fitted to the receiving texture size
+	//
+	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
+		//
+		// IsUpdated() returns true if the sender has changed
+		// It is optional for a pre-allocated texture.
+		//
+		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
 	*/
 
 	/*
 	//
-	// Option 3 : Receive an OpenGL shared texture to access directly.
+	// Option 4 : Receive an OpenGL shared texture to access directly.
 	//
 	// Only if compatible for GL/DX interop or else BindSharedTexture fails.
 	// For this example, copy from the shared texture. For other applications
 	// the texture binding may be used directly for rendering.
 	//
 	if (receiver.ReceiveTexture()) {
-		// Update the receiving texture if the received size has changed
+
+		// IsUpdated() returns true if the sender has changed
+		// It is optional if accessing the sender texture directly
+		// Here the receiving texture size is retrieved for on-screen display
 		if (receiver.IsUpdated()) {
-			myTexture.allocate(receiver.GetSenderWidth(), receiver.GetSenderHeight(), receiver.GLDXformat());
-			return; // Return now because the texture will empty
+			g_SenderWidth  = receiver.GetSenderWidth();
+			g_SenderHeight = receiver.GetSenderHeight();
 		}
 		// Bind to get access to the shared texture
 		if (receiver.BindSharedTexture()) {
@@ -177,7 +206,7 @@ void ofApp::draw() {
 			receiver.CopyTexture(receiver.GetSharedTextureID(), GL_TEXTURE_2D,
 				myTexture.getTextureData().textureID,
 				myTexture.getTextureData().textureTarget,
-				receiver.GetSenderWidth(), receiver.GetSenderHeight());
+				g_SenderWidth, g_SenderHeight);
 			// Draw the Openframeworks texture
 			myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 			// Un-bind to release access to the shared texture
@@ -244,6 +273,12 @@ void ofApp::showInfo() {
 			str += " - fps : " + ofToString((int)roundf(ofGetFrameRate()));
 		}
 		DrawString(str, 10, 40);
+
+		// Show the receiving resolution
+		str = "Receiving resolution :  ";
+		str += std::to_string(g_SenderWidth); str += "x";
+		str += std::to_string(g_SenderHeight);
+		DrawString(str, 10, 60);
 
 		str = "Left or Right click - select sender : Space - hide info";
 		DrawString(str, ofGetWidth()/2 - 225, ofGetHeight() - 14);

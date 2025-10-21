@@ -35,6 +35,8 @@ class ofApp : public ofBaseApp{
 		SpoutReceiver receiver; // A Spout receiver object
 		ofTexture myTexture; // Receiving texture
 		ofImage myImage; // Receiving image
+		unsigned int g_SenderWidth = 0; // Received sender width
+		unsigned int g_SenderHeight = 0; // Received sender height
 		void showInfo();
 		bool bShowInfo = true;
 
