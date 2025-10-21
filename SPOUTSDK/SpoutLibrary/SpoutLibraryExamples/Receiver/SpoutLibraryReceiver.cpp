@@ -78,6 +78,8 @@ char g_SenderName[256]{};               // Received sender name
 unsigned int g_SenderWidth = 0;         // Received sender width
 unsigned int g_SenderHeight = 0;        // Received sender height
 DWORD g_SenderFormat = 0;               // Received sender format
+bool bShowInfo = true;                  // Show onscreen details
+double g_SenderFps = 0.0;               // Sender framerate
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -87,6 +89,8 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 
 // SPOUT
 void Render();
+void ShowSenderInfo(HDC hdc); // Show sender information on screen
+void DrawString(std::string str, HDC hdc, COLORREF col, int xpos, int ypos); // Draw text
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -132,7 +136,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// Logging functions
 	// Refer to the "SpoutLibrary" source code for further details.
 	//
-	// receiver->OpenSpoutConsole(); // Empty console for debugging
+	receiver->OpenSpoutConsole(); // Empty console for debugging
 	receiver->EnableSpoutLog(); // Enable console logging to detect Spout warnings and errors
 	// Log the Spout SDK version number e.g. "2.007.000"
 	printf("Spout version : %s\n", receiver->GetSDKversion().c_str());
@@ -146,6 +150,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// Many other options are available but are not repeated in this example.
 	// Refer to SpoutLibary.h for more options
 	//
+
+	// Pre-allocate a receiving texture for "Option 3"
+	// This can be any size or format
+	g_SenderWidth  = 1280;
+	g_SenderHeight = 720;
+	// Specify GL_BGRA for this example to match with Windows bitmap draw in WM_PAINT.
+	receiver->InitTexture(g_TextureGL, GL_BGRA, g_SenderWidth, g_SenderHeight);
+	// And the pixel buffer for WM_PAINT
+	g_pixelBuffer = new unsigned char[g_SenderWidth*g_SenderHeight*4];
 
 	// ----------------------------------
 
@@ -203,7 +216,6 @@ void Render()
 	//
 	// Compare with the Openframeworks ofSpoutExample "Receiver > Graphics" example
 	// for additional options :
-	
 
 	//
 	// OPTION 1) - Receive image pixels
@@ -219,7 +231,7 @@ void Render()
 	//
 	// Because Windows bitmaps are bottom-up, the pixel buffer is flipped
 	// here ready for WM_PAINT but it could also be drawn upside down.
-	/*
+	//
 	if (receiver->ReceiveImage(g_pixelBuffer, GL_BGRA, true)) {
 		// IsUpdated() returns true if the sender has changed
 		if (receiver->IsUpdated()) {
@@ -235,7 +247,6 @@ void Render()
 			g_pixelBuffer = new unsigned char[buffersize];
 		}
 	}
-	*/
 
 	/*
 	//
@@ -246,14 +257,27 @@ void Render()
 		if (receiver->IsUpdated()) {
 			// Update the sender name - it could be different
 			strcpy_s((char *)g_SenderName, 256, receiver->GetSenderName());
-			// Update globals
+			
+			//
+			// Allocate or re-allocate the receiving texture
+			//
+			// o The width and height can be any value
+			//   and the texture can be pre-allocated.
+			//   Typically the sender dimensions are used
+			//   and the texture is allocated here.
+			// o The format must be GL_RGBA GL_RGBA8 or GL_BGRA
+			//   (8 bit pixel data type) in this example to match
+			//   with the Windows bitmap in WM_PAINT.
+			//
+
+			// Update the receiving texture
+			if(g_TextureGL)	glDeleteTextures(1, &g_TextureGL);
 			g_SenderWidth = receiver->GetSenderWidth();
 			g_SenderHeight = receiver->GetSenderHeight();
 			g_SenderFormat = receiver->GetSenderFormat();
-			// Allocate or re-allocate the receiving texture
-			if(g_TextureGL)	glDeleteTextures(1, &g_TextureGL);
 			// Specify GL_BGRA for this example to match with Windows bitmap draw in WM_PAINT.
 			receiver->InitTexture(g_TextureGL, GL_BGRA, g_SenderWidth, g_SenderHeight);
+
 			// And the pixel buffer for WM_PAINT
 			if (g_pixelBuffer) delete[] g_pixelBuffer;
 			unsigned int buffersize = g_SenderWidth * g_SenderHeight * 4;
@@ -263,7 +287,11 @@ void Render()
 			return;
 		}
 
-		// Read pixels from the texture for WM_PAINT
+		// Read pixels from the texture
+		// Copy is optimised using OpenGL pixel buffers if available.
+		// For this example, specify GL_BGRA pixel data format and
+		// unsigned byte type to match with the Windows bitmap in WM_PAINT.
+		// Invert true for bottom-up Windows bitmap.
 		receiver->ReadTextureData(g_TextureGL, GL_TEXTURE_2D, g_pixelBuffer,
 			g_SenderWidth, g_SenderHeight, g_SenderWidth*4,
 			GL_BGRA, GL_UNSIGNED_BYTE, true);
@@ -271,15 +299,37 @@ void Render()
 	}
 	*/
 
+	/*
 	//
-	// Option 3 : Receive an OpenGL shared texture to access directly.
+	// Option 3 : Receive to a pre-allocated OpenGL texture
+	//
+	// The sender texture is fitted to the receiving texture size
+	//
+	if (receiver->ReceiveTexture(g_TextureGL, GL_TEXTURE_2D)) {
+		//
+		// IsUpdated() returns true if the sender has changed
+		// It is optional for a pre-allocated texture.
+		//
+		// Read pixels from the texture
+		receiver->ReadTextureData(g_TextureGL, GL_TEXTURE_2D, g_pixelBuffer,
+			g_SenderWidth, g_SenderHeight, g_SenderWidth*4,
+			GL_BGRA, GL_UNSIGNED_BYTE, true);
+	}
+	*/
+
+	/*
+	//
+	// Option 4 : Receive an OpenGL shared texture to access directly.
 	//
 	// Only if compatible for GL/DX interop or else BindSharedTexture fails.
 	// For this example, read pixels from the shared texture. 
 	// The texture binding can be be used directly for other functions.
 	//
 	if (receiver->ReceiveTexture()) {
-		// Update the receiving pixel buffer if the received size has changed
+
+		// IsUpdated() returns true if the sender has changed
+		// It is optional if accessing the sender texture directly
+		// but here the receiving pixel buffer has to be re-allocated
 		if (receiver->IsUpdated()) {
 			g_SenderWidth  = receiver->GetSenderWidth();
 			g_SenderHeight = receiver->GetSenderHeight();
@@ -318,6 +368,7 @@ void Render()
 			receiver->UnBindSharedTexture();
 		}
 	}
+	*/
 
 	// Trigger a re-paint to draw the pixel buffer - see WM_PAINT
 	InvalidateRect(g_hWnd, NULL, FALSE);
@@ -468,18 +519,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (IsIconic(hWnd))
 				break;
 
-			PAINTSTRUCT ps;
+			PAINTSTRUCT ps{};
 			HDC hdc = BeginPaint(hWnd, &ps);
 
-			// SPOUT
+			RECT dr{};
+			GetClientRect(hWnd, &dr);
+				
+			// Create a double buffer so that both image and text
+			// can be drawn o a memory DC to avoid flicker.
+			HDC hdcMem = CreateCompatibleDC(hdc);
+			int ndcmem = SaveDC(hdcMem);
+			HBITMAP hbmMem = CreateCompatibleBitmap(hdc, (dr.right-dr.left), (dr.bottom-dr.top));
+			SelectObject(hdcMem, hbmMem);
+
+			//
+			// Draw the received image
+			//
 			if (g_pixelBuffer) {
-
-				//
-				// Draw the received image
-				//
-
-				RECT dr{};
-				GetClientRect(hWnd, &dr);
 
 				// No sender - draw default background
 				if (!receiver->IsConnected()) {
@@ -490,27 +546,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				else {
 					BITMAPINFO bmi{};
 					bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-					bmi.bmiHeader.biSizeImage = (LONG)(g_SenderWidth * g_SenderHeight * 4); // Pixel buffer size
-					bmi.bmiHeader.biWidth = (LONG)g_SenderWidth;   // Width of buffer
-					bmi.bmiHeader.biHeight = (LONG)g_SenderHeight;  // Height of buffer
+					bmi.bmiHeader.biSizeImage = (LONG)(g_SenderWidth*g_SenderHeight*4); // Pixel buffer size
+					bmi.bmiHeader.biWidth  = (LONG)g_SenderWidth;  // Width of buffer
+					bmi.bmiHeader.biHeight = (LONG)g_SenderHeight; // Height of buffer (bottom up)
 					bmi.bmiHeader.biPlanes = 1;
 					bmi.bmiHeader.biBitCount = 32;
 					bmi.bmiHeader.biCompression = BI_RGB;
-					//
-					// ReceiveImage receives data of format GL_BGRA
-					// which matches with StretchDIBits. If received data is RGBA,
-					// the extended BITMAPV4HEADER bitmap info header can be used
-					// but is not necessary here.
-					//
-					// StretchDIBits adapts the pixel buffer received from the sender
-					// to the window size. The sender can be resized or changed.
-					//
-					SetStretchBltMode(hdc, COLORONCOLOR); // Fastest method
-					StretchDIBits(hdc,
-							0, 0, (dr.right - dr.left), (dr.bottom - dr.top), // destination rectangle 
-							0, 0, g_SenderWidth, g_SenderHeight, // source rectangle 
-							g_pixelBuffer,
-							&bmi, DIB_RGB_COLORS, SRCCOPY);
+
+					// Draw into the memory DC
+					// The received texture format is BGRA, compatible with StretchDIBits
+					// StretchDIBits adapts the pixel buffer to the window size.
+					// Setting the blit mode is necessary here
+					SetStretchBltMode(hdcMem, STRETCH_DELETESCANS);
+					StretchDIBits(hdcMem,
+						0, 0, (dr.right - dr.left), (dr.bottom - dr.top),
+						0, 0, g_SenderWidth, g_SenderHeight, g_pixelBuffer,
+						&bmi, DIB_RGB_COLORS, SRCCOPY);
+
+					// Draw information text
+					if (bShowInfo) ShowSenderInfo(hdcMem);
+
+					// Copy the double buffer to screen
+					BitBlt(hdc, 0, 0, (dr.right-dr.left), (dr.bottom-dr.top), hdcMem, 0, 0, SRCCOPY);
+					
+					// Clean up
+					RestoreDC(hdcMem, ndcmem);
+					DeleteObject(hbmMem);
+					DeleteDC(hdcMem);
+
 				}
 			}
 			EndPaint(hWnd, &ps);
@@ -525,7 +588,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		receiver->SelectSender();
 		break;
 
-    case WM_DESTROY:
+	case WM_KEYUP:
+		// SPACEBAR to hide/show on-screen info
+		if(wParam == 0x20)
+			bShowInfo = !bShowInfo;
+		break;
+
+	case WM_DESTROY:
         PostQuitMessage(0);
         break;
     default:
@@ -533,3 +602,79 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
+
+
+void ShowSenderInfo(HDC hdc)
+{
+	std::string str = "[";
+	str += receiver->GetSenderName();
+	str += "]  :  ";
+	str += std::to_string(receiver->GetSenderWidth()); str += "x";
+	str += std::to_string(receiver->GetSenderHeight());
+
+	// Sender texture format
+	DWORD dwformat = receiver->GetSenderFormat();
+	str += "   ";
+	// Formats can be :
+	// 87 - DXGI_FORMAT_B8G8R8A8_UNORM (default)
+	// 28 - DXGI_FORMAT_R8G8B8A8_UNORM
+	// 24 - DXGI_FORMAT_R10G10B10A2_UNORM
+	// 11 - DXGI_FORMAT_R16G16B16A16_UNORM
+	// 10 - DXGI_FORMAT_R16G16B16A16_FLOAT
+	// 02 - DXGI_FORMAT_R32G32B32A32_FLOAT
+	switch (dwformat) {
+		case 87: str += "8 bit BGRA";	break;
+		case 28: str += "8 bit RGBA";	break;
+		case 24: str += "10 bit RGBA";	break;
+		case 11: str += "16 bit RGBA";	break;
+		case 10: str += "16 bit RGBA float"; break;
+		case 02: str += "32 bit RGBA float"; break;
+	}
+
+	// Show sender fps and framecount if selected
+	if (receiver->GetSenderFrame() > 0) {
+		str += "   fps ";
+		// Average to stabilise fps display
+		g_SenderFps = g_SenderFps*.85 + 0.15*receiver->GetSenderFps();
+		// Round first or integer cast will truncate to the whole part
+		str += std::to_string((int)(round(g_SenderFps)));
+		str += "   frame  ";
+		str += std::to_string(receiver->GetSenderFrame());
+	}
+	// White text (can be any colour (00 BB GG RR) hex)
+	// e.g. red = 0x000000FF
+	DrawString(str, hdc, 0x00FFFFFF, 20, 20);
+
+	// Show the receiving resolution
+	str = "Receiving resolution :  ";
+	str += std::to_string(g_SenderWidth); str += "x";
+	str += std::to_string(g_SenderHeight);
+	DrawString(str, hdc, 0x00FFFFFF, 20, 45);
+
+	RECT rc{};
+	GetClientRect(g_hWnd, &rc);
+	str = "Right button - select sender  :  Space - hide info";
+	DrawString(str, hdc, 0x00FFFFFF, 100, rc.bottom-35);
+
+}
+
+void DrawString(std::string str, HDC hdc, COLORREF col, int xpos, int ypos)
+{
+	HFONT hFont, hOldFont;
+	hFont = (HFONT)GetStockObject(SYSTEM_FONT);
+	if (hFont) {
+		hOldFont = (HFONT)SelectObject(hdc, hFont);
+		if (hOldFont) {
+			// Text colour
+			COLORREF oldText = SetTextColor(hdc, col);
+			// Transparent background
+			SetBkMode(hdc, TRANSPARENT);
+			// Display the text string
+			TextOutA(hdc, xpos, ypos, str.c_str(), (int)str.length());
+			SetTextColor(hdc, oldText);
+			SelectObject(hdc, hOldFont);
+			DeleteObject(hOldFont);
+		}
+		DeleteObject(hFont);
+	}
+} // end text draw
