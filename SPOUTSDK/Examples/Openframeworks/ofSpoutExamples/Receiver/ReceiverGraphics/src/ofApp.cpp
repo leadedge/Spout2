@@ -274,12 +274,15 @@ void ofApp::showInfo() {
 		}
 		DrawString(str, 10, 40);
 
-		// Show the receiving resolution
-		str = "Receiving resolution :  ";
-		str += std::to_string(g_SenderWidth); str += "x";
-		str += std::to_string(g_SenderHeight);
-		DrawString(str, 10, 60);
-
+		// Show the receiving resolution if different
+		if (g_SenderWidth != receiver.GetSenderWidth()
+			|| g_SenderHeight != receiver.GetSenderHeight()) {
+				str = "Receiving resolution :  ";
+				str += std::to_string(g_SenderWidth);
+				str += "x";
+				str += std::to_string(g_SenderHeight);
+				DrawString(str, 10, 60);
+		}
 		str = "Left or Right click - select sender : Space - hide info";
 		DrawString(str, ofGetWidth()/2 - 225, ofGetHeight() - 14);
 
