@@ -315,6 +315,10 @@
 //		16.08.25	- Add CloseFrameSync
 //		11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
 //					  change NULL argument to 0, Change hRes = NULL to hRes = 0
+//		21.10.25	- Remove initial update check from ReceiveTexture and ReceiveImage
+//					  The update flag is reset on the next call to ReceiveSenderData.
+//					  Calling IsUpdated is optional if receiving to a pre-allocated
+//					  texture or accessing the sender texture directly.
 //
 // ====================================================================================
 /*
@@ -444,6 +448,10 @@ Spout::~Spout()
 // and update the passed name
 void Spout::SetSenderName(const char* sendername)
 {
+
+	// LJ DEBUG
+	printf("SetSenderName [%s]\n", sendername);
+
 	if (!sendername || !*sendername) {
 		// Get executable name as default
 		strcpy_s(m_SenderName, 256, GetExeName().c_str());
@@ -452,17 +460,24 @@ void Spout::SetSenderName(const char* sendername)
 		strcpy_s(m_SenderName, 256, sendername);
 	}
 
+	printf("m_SenderName [%s]\n", m_SenderName);
+
 	// Create an incremented name if a sender with this name is already registered,
 	// Although this function precedes SpoutSenderNames::RegisterSenderName,
 	// a further increment is not applied when a sender with the new name is created.
 	char name[256]{};
 	strcpy_s(name, 256, m_SenderName);
 	if (sendernames.FindSenderName(name)) {
+
+		printf("found [%s]\n", name);
+
 		int i = 1;
 		do {
 			sprintf_s(name, 256, "%s_%d", m_SenderName, i);
 			i++;
+			printf("i = %d [%s]\n", i, name);
 		} while (sendernames.FindSenderName(name));
+
 		// Re-set the global sender name
 		strcpy_s(m_SenderName, 256, name);
 	}
@@ -866,7 +881,7 @@ bool Spout::ReceiveTexture()
 //   Copy from the sender shared texture if there is a texture to receive into.
 //   The receiving OpenGL texture can only be RGBA of dimension (width * height)
 //   and must be re-allocated for sender size change. Return if flagged for update.
-//   The update flag is reset when the receiving application calls IsUpdated().
+//   The update flag is reset on the next call to ReceiveSenderData.
 //
 //   If no arguments are passed :
 //
@@ -885,11 +900,6 @@ bool Spout::ReceiveTexture()
 //
 bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
-	// Return if flagged for update and the receiving texture is not pre-allocated.
-	// The update flag is reset when the receiving application calls IsUpdated().
-	if (m_bUpdated)
-		return true;
-
 	// Make sure OpenGL and DirectX are initialized
 	if (!OpenSpout())
 		return false;
@@ -912,10 +922,13 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 			if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 				return false;
 			}
+			//
 			// Return now for the application to test IsUpdated() and 
 			// re-allocate the receiving texture.
+			//
 			// m_bUpdated is reset to false on the next call to 
 			// ReceiveSenderData until the sender changes size again.
+			//
 			return true;
 		}
 
@@ -2071,11 +2084,6 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 	// The receiving pixel buffer is created after the first update
 	// so the pixel pointer can be NULL here
 
-	// Return if flagged for update
-	// The update flag is reset when the receiving application calls IsUpdated()
-	if (m_bUpdated)
-		return true;
-
 	// Make sure OpenGL and DirectX are initialized
 	if (!OpenSpout())
 		return false;
@@ -2095,8 +2103,13 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 		// The sender name, width, height, format, shared texture handle and pointer have been retrieved.
 		// m_Width, m_Height, m_dwFormat are updated
 		if (m_bUpdated) {
-			// If the sender is new or changed, return to update the receiving texture.
-			// The application detects the change with IsUpdated().
+			//
+			// Return now for the application to test IsUpdated() and 
+			// re-allocate the receiving texture.
+			//
+			// m_bUpdated is reset to false on the next call to 
+			// ReceiveSenderData until the sender changes size again.
+			//
 			// CreateInterop set "true" for receiver
 			if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 				return false;
