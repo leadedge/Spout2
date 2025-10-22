@@ -315,9 +315,9 @@
 //		16.08.25	- Add CloseFrameSync
 //		11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
 //					  change NULL argument to 0, Change hRes = NULL to hRes = 0
-//		21.10.25	- Remove initial update check form ReceiveTexture and ReceiveImage
+//		21.10.25	- Remove initial update check from ReceiveTexture and ReceiveImage
 //					  The update flag is reset on the next call to ReceiveSenderData.
-//					  Calling IsUpdated is optional if receiveing to a pre-allocated
+//					  Calling IsUpdated is optional if receiving to a pre-allocated
 //					  texture or accessing the sender texture directly.
 //
 // ====================================================================================
