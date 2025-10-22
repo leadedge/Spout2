@@ -206,6 +206,7 @@
 //		08.10.25	- CopyTexture - allow for different texture sizes with dual fbo blit
 //		11.10.25	- CopyTexture - correct conditional size check
 //		15.10.25	- Add ClearAlpha
+//		21.10.25	- ReadTextureData - add SourceID null check
 //
 // ====================================================================================
 //
@@ -3991,6 +3992,9 @@ bool spoutGL::ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 	void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
 	GLenum dataformat, GLenum datatype, bool bInvert, GLuint HostFBO)
 {
+	if (SourceID == 0)
+		return false;
+
 	// Pixel data type must match the source texture format
 	GLint texformat = GLformat(SourceID, SourceTarget);
 
