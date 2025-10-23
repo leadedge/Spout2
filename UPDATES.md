@@ -7,15 +7,19 @@ Version 2.007.017
 Update Cmake files for modern CMake (PR #122)
 
 Spout.cpp
-- 05.03.25	- Add m_bSender flag for sender/receiver
-    Set by Spout::CheckSender and also by Spout::InitReceiver
+- 05.03.25	- Add m_bSender flag for sender/receiver\
+    Set by Spout::CheckSender and also by Spout::InitReceiver\
     SetFrameSync/WaitFrameSync - do not block of not initialized
-- 18.05.25	- SelectSender - if SpoutPanel was not found, remove the
+- 18.05.25	- SelectSender - if SpoutPanel was not found, remove the\
     empty sender list return to still display a sender list box
 - 09.08.25	- SetSenderName - add !*sendername check
 - 16.08.25	- Add CloseFrameSync
-- 11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
+- 11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot\
   change NULL argument to 0, Change hRes = NULL to hRes = 0
+- 21.10.25	- Remove initial update check from ReceiveTexture and ReceiveImage\
+  The update flag is reset on the next call to ReceiveSenderData.\
+  Calling IsUpdated is optional if receiving to a pre-allocated\
+  texture or accessing the sender texture directly.
 
 SpoutCopy.cpp
 - 08.05.25 - FlipBuffer - add in-place overload
@@ -81,6 +85,7 @@ SpoutGL.cpp
 - 08.10.25	- CopyTexture - allow for different texture sizes with dual fbo blit
 - 11.10.25	- CopyTexture - correct conditional size check
 - 15.10.25	- Add ClearAlpha
+- 21.10.25	- ReadTextureData - add SourceID null check
  
 SpoutGLextensions.cpp
 - 25.03.25	- ExtLog - changed "standalone" to "standaloneExtensions"
