@@ -448,10 +448,6 @@ Spout::~Spout()
 // and update the passed name
 void Spout::SetSenderName(const char* sendername)
 {
-
-	// LJ DEBUG
-	printf("SetSenderName [%s]\n", sendername);
-
 	if (!sendername || !*sendername) {
 		// Get executable name as default
 		strcpy_s(m_SenderName, 256, GetExeName().c_str());
@@ -460,22 +456,16 @@ void Spout::SetSenderName(const char* sendername)
 		strcpy_s(m_SenderName, 256, sendername);
 	}
 
-	printf("m_SenderName [%s]\n", m_SenderName);
-
 	// Create an incremented name if a sender with this name is already registered,
 	// Although this function precedes SpoutSenderNames::RegisterSenderName,
 	// a further increment is not applied when a sender with the new name is created.
 	char name[256]{};
 	strcpy_s(name, 256, m_SenderName);
 	if (sendernames.FindSenderName(name)) {
-
-		printf("found [%s]\n", name);
-
 		int i = 1;
 		do {
 			sprintf_s(name, 256, "%s_%d", m_SenderName, i);
 			i++;
-			printf("i = %d [%s]\n", i, name);
 		} while (sendernames.FindSenderName(name));
 
 		// Re-set the global sender name
