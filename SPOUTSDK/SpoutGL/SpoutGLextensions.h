@@ -139,7 +139,7 @@
 	#include <GL/glew.h>
 	#include <GL/wglew.h> // wglew.h and glxew.h, which define the available WGL and GLX extensions
 #else
-	#include <GL/GL.h>
+	#include <GL/gl.h>
 	#include <cstdint> // For MingW
 	#ifndef USE_FBO_EXTENSIONS
 		// For Max/Msp Jitter
