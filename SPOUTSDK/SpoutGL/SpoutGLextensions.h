@@ -23,6 +23,7 @@
 //					   to match with Glew.h
 //			18.01.25 - Rename "standalone" to "StandAloneExtensions"
 //					   to avoid naming conflicts
+//			26.10.25 - Fix opengl header name #130 (change GL.h to gl.h)
 //
 //			All changes now documented in SpoutGLextensions.cpp
 //
