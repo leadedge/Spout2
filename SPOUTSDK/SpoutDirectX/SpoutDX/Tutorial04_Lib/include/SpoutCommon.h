@@ -91,10 +91,10 @@
 //
 #if defined _M_ARM64
 #include <memory.h>
-inline void __movsd(unsigned long* Destination,
+extern "C" inline void __movsd(unsigned long* Destination,
 	const unsigned long* Source, size_t Count)
 {
-	memcpy(Destination, Source, Count);
+	memcpy(Destination, Source, Count * sizeof(*Source));
 }
 #endif
 
