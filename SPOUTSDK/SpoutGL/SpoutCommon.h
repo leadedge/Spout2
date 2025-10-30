@@ -37,6 +37,7 @@
 03.07.23	- Remove _MSC_VER condition from SPOUT_DLLEXP define
 			  (#PR93  Fix MinGW error (beta branch)
 07.12.23	- using namespace spoututils moved from SpoutGL.h
+30.10.25	- Remove __movsd re-definition function for ARM
 
 
 */
@@ -84,19 +85,5 @@
 #if defined(_MSC_VER)
 #pragma warning(disable:26812) // unscoped enums
 #endif
-
-//
-// For ARM build
-// __movsd intrinsic not defined
-//
-#if defined _M_ARM64
-#include <memory.h>
-extern "C" inline void __movsd(unsigned long* Destination,
-	const unsigned long* Source, size_t Count)
-{
-	memcpy(Destination, Source, Count * sizeof(*Source));
-}
-#endif
-
 
 #endif
