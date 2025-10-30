@@ -39,11 +39,23 @@
 #include <GL/gl.h> // For OpenGL definitions
 #include <intrin.h> // for cpuid to test for SSE2
 
-#ifdef _M_ARM64
-#include <sse2neon.h> // for NEON
-#else
-#include <emmintrin.h> // for SSE2
-#include <tmmintrin.h> // for SSSE3
+#if defined(_M_IX86) || defined(_M_X64)
+	#include <emmintrin.h> // for SSE2
+	#include <tmmintrin.h> // for SSSE3
+	#if defined(__GNUC__) || (defined(__clang__) && defined(_MSC_VER))
+		#define SPOUT_TARGET_SSE2 __attribute__((__target__("sse2")))
+		#define SPOUT_TARGET_SSSE3 __attribute__((__target__("ssse3")))
+	#endif
+#elif defined(_M_ARM64)
+	#include <sse2neon.h> // for NEON
+#endif
+
+#ifndef SPOUT_TARGET_SSE2
+#define SPOUT_TARGET_SSE2
+#endif
+
+#ifndef SPOUT_TARGET_SSSE3
+#define SPOUT_TARGET_SSSE3
 #endif
 #include <cmath> // For compatibility with Clang. PR#81
 #include <stdint.h> // for _uint32 etc

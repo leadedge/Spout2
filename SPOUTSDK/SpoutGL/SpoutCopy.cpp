@@ -303,7 +303,7 @@ void spoutCopy::ClearAlpha(unsigned char* src, unsigned int width, unsigned int 
 //---------------------------------------------------------
 // Function: memcpy_sse2
 // SSE2 version of memcpy
-void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t size) const
+SPOUT_TARGET_SSE2 void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t size) const
 {
     if (!dst || !src || size == 0)
         return;
@@ -942,7 +942,7 @@ void spoutCopy::rgb2bgra(const void *rgb_source, void *bgra_dest,
 // Function: rgb_to_bgrx_sse
 // Experimental pending testing
 // Single line function
-void spoutCopy::rgb_to_bgrx_sse(unsigned int npixels, const void* rgb_source, void* bgrx_dest) const
+SPOUT_TARGET_SSSE3 void spoutCopy::rgb_to_bgrx_sse(unsigned int npixels, const void* rgb_source, void* bgrx_dest) const
 {
 	const __m128i* in_vec = static_cast<const __m128i*>(rgb_source);
 	__m128i* out_vec = static_cast<__m128i*>(bgrx_dest);
@@ -1042,7 +1042,7 @@ void spoutCopy::rgb_to_bgra_sse3 (
 //---------------------------------------------------------
 // Function: rgba_to_rgb_sse3
 //
-void spoutCopy::rgba_to_rgb_sse3(const void* rgba_source, void* rgb_dest,
+SPOUT_TARGET_SSSE3 void spoutCopy::rgba_to_rgb_sse3(const void* rgba_source, void* rgb_dest,
     unsigned int width, unsigned int height, unsigned int rgba_pitch,
     bool bInvert, bool bSwapRB) const
 {
@@ -1081,11 +1081,11 @@ void spoutCopy::rgba_to_rgb_sse3(const void* rgba_source, void* rgb_dest,
 	//                9  8  6  5  4  2  1  0 14 13 12 10  9  8  6  5
 	//                        in_vec[2]       |     in_vec[1]
 	// out_vec[2]    Bp Gp Rp Bo Go Ro Bn Gn Rn Bm Gm Rm Bl Gl Rl Bk
-	//               14 13 12 10  9  8  6  5  4  2  1  0 14 13 12 10  
+	//               14 13 12 10  9  8  6  5  4  2  1  0 14 13 12 10
 	//                        in_vec[3]                   | in_vec[2]
 
     // Precompute SSSE3 shuffle masks outside the loop
-    // -1 means “ignore this byte”
+    // -1 means ï¿½ignore this byteï¿½
 
 	// ----------------------
 	// RGB output masks
@@ -1584,7 +1584,7 @@ void spoutCopy::rgba_bgra(const void* rgba_source, void* bgra_dest,
 //
 // All instructions SSE2.
 //
-void spoutCopy::rgba_bgra_sse2(const void* rgba_source, void* bgra_dest, unsigned int width, unsigned int height, bool bInvert) const
+SPOUT_TARGET_SSE2 void spoutCopy::rgba_bgra_sse2(const void* rgba_source, void* bgra_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
 
 	if (!rgba_source)
@@ -1646,13 +1646,13 @@ void spoutCopy::rgba_bgra_sse2(const void* rgba_source, void* bgra_dest, unsigne
 } // end rgba_bgra_sse2
 
 //
-//	Adapted from a Gist snippet by Aurélien Vallée (NewbiZ) http://newbiz.github.io/
+//	Adapted from a Gist snippet by Aurï¿½lien Vallï¿½e (NewbiZ) http://newbiz.github.io/
 //
 //	https://gist.github.com/NewbiZ/5541524
 //
 //	Approximately 15% faster than SSE2 function
 //
-void spoutCopy::rgba_bgra_sse3(const void* rgba_source, void* bgra_dest, unsigned int width, unsigned int height, bool bInvert) const
+SPOUT_TARGET_SSSE3 void spoutCopy::rgba_bgra_sse3(const void* rgba_source, void* bgra_dest, unsigned int width, unsigned int height, bool bInvert) const
 {
 	// Shuffling mask (RGBA -> BGRA) x 4, in reverse byte order
 	static const __m128i m = _mm_set_epi8(15, 12, 13, 14, 11, 8, 9, 10, 7, 4, 5, 6, 3, 0, 1, 2);
@@ -1705,7 +1705,7 @@ void spoutCopy::rgba_bgra_sse3(const void* rgba_source, void* bgra_dest, unsigne
 
 
 // Swap red and blue components in place
-void spoutCopy::rgba_swap_ssse3(void* __restrict rgba_source, unsigned int width, unsigned int height)
+SPOUT_TARGET_SSSE3 void spoutCopy::rgba_swap_ssse3(void* __restrict rgba_source, unsigned int width, unsigned int height)
 {
  	// Shuffling mask (RGBA -> BGRA) x 4, in reverse byte order (requires SSSE3)
 	static const __m128i mask = _mm_set_epi8(

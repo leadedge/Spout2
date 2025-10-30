@@ -109,12 +109,6 @@ set_target_properties(Spout PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
 )
 
-# Optional: MinGW SSSE3 optimization (applies to both libs)
-if (MINGW AND NOT SPOUT_BUILD_ARM)
-    target_compile_options(Spout_static PUBLIC -mssse3)
-    target_compile_options(Spout PUBLIC -mssse3)
-endif()
-
 #--------------------------------------
 # Install rules
 #--------------------------------------

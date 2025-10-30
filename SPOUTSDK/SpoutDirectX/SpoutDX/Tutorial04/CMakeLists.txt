@@ -104,12 +104,6 @@ endif (MSVC)
 
 # Optional: for MinGW or MSYS2 builds
 if (MINGW)
-	if (NOT SPOUT_BUILD_ARM)
-		target_compile_options(
-				${PROJECT_NAME} PRIVATE
-				-mssse3)
-	endif (NOT SPOUT_BUILD_ARM)
-
 	target_compile_options(
 			${PROJECT_NAME} PRIVATE
 			-Wall
