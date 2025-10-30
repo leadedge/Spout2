@@ -82,6 +82,7 @@
 	01.07.25 - memcpy_sse2 - handle trailing bytes to avoid 16 byte limitation
 			   Modify CopyPixels and FlipBuffer to test for SSE2 only
 	28.08.25 - Add SaveTextureToBMP - save texture to file for testing
+	30.10.25 - SpoutCopy, FlipBuffer, RemovePadding - conditional _M_ARM64 __movsd
 
 */
 
@@ -133,10 +134,12 @@ void spoutCopy::CopyPixels(const unsigned char *source, unsigned char *dest,
 			// Trailing bytes at the end of the line are handled
 			memcpy_sse2(dest, source, Size);
 		}
+		#ifndef _M_ARM64 // __movsd intrinsic not defined
 		else if ((Size % 4) == 0) { // 4 byte move function
 			__movsd(reinterpret_cast<unsigned long *>(dest),
 				reinterpret_cast<const unsigned long *>(source), Size / 4);
 		}
+		#endif
 		else { // Default is standard memcpy
 			memcpy(dest, source, Size);
 		}
@@ -173,10 +176,12 @@ void spoutCopy::FlipBuffer(const unsigned char *src,
 			// Trailing bytes at the end of the line are handled
 			memcpy_sse2((dst + line_t), (src + line_s), pitch);
 		}
+		#ifndef _M_ARM64 // __movsd intrinsic not defined
 		else if ((pitch % 4) == 0) { // use 4 byte move function
 			__movsd(reinterpret_cast<unsigned long *>(dst + line_t),
 				reinterpret_cast<const unsigned long *>(src + line_s), pitch / 4);
 		}
+		#endif
 		else {
 			memcpy((dst + line_t), (src + line_s), pitch);
 		}
@@ -235,18 +240,17 @@ void spoutCopy::RemovePadding(const unsigned char *source, unsigned char *dest,
 	for (unsigned int y = 0; y < height; y++) {
 		// Avoid warning C26474 and use implicit cast where possible
 		if (pitch < 320 || stride < 320) { // too small for assembler
-			// memcpy(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), pitch);
 			memcpy(dest, source, pitch);
 		}
 		else if ((pitch % 16) == 0 && (stride % 16) == 0 && m_bSSE2) { // use sse
-			// memcpy_sse2(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), pitch);
 			memcpy_sse2(dest, source, pitch);
 		}
+		#ifndef _M_ARM64 // __movsd intrinsic not defined
 		else if ((pitch % 4) == 0 && (stride % 4) == 0) { // 4 byte move
 			__movsd(reinterpret_cast<unsigned long *>(dest), reinterpret_cast<const unsigned long *>(source), pitch/4);
 		}
+		#endif
 		else {
-			// memcpy(reinterpret_cast<void *>(dest), reinterpret_cast<const void *>(source), pitch);
 			memcpy(dest, source, pitch);
 		}
 		source += stride;
