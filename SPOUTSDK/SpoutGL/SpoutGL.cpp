@@ -207,10 +207,11 @@
 //		11.10.25	- CopyTexture - correct conditional size check
 //		15.10.25	- Add ClearAlpha
 //		21.10.25	- ReadTextureData - add SourceID null check
+//		05.01.26	- BindSharedTexture - AllowTextureAcces only on fail. Issue #133,
 //
 // ====================================================================================
 //
-//	Copyright (c) 2021-2025, Lynn Jarvis. All rights reserved.
+//	Copyright (c) 2021-2026, Lynn Jarvis. All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without modification, 
 //	are permitted provided that the following conditions are met:
@@ -425,10 +426,10 @@ bool spoutGL::BindSharedTexture()
 		else {
 			// Release interop lock and allow texture access for fail
 			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+			// Release mutex and allow access to the texture
+			frame.AllowTextureAccess(m_pSharedTexture);
 			bRet = false;
 		}
-		// Release mutex and allow access to the texture
-		frame.AllowTextureAccess(m_pSharedTexture);
 	}
 
 	return bRet;
