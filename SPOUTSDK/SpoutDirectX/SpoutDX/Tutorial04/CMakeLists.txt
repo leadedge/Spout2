@@ -105,7 +105,7 @@ if (MINGW)
 	if (NOT SPOUT_BUILD_ARM)
 		target_compile_options(
 				${PROJECT_NAME} PRIVATE
-				-msse4)
+				-mssse3)
 	endif (NOT SPOUT_BUILD_ARM)
 
 	target_compile_options(
