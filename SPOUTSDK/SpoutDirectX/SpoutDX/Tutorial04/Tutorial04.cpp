@@ -23,6 +23,9 @@
 // requirements for a Spout sender to handle size changes.
 //
 // 24.04.23 - remove redundant OpenDirectX11 from ResetDevice
+// 19.01.26 - correct "if( !g_hWnd )" > "if(!g_hWnd){return E_FAIL}"
+//			- remove usused WM_PAINT in WndProc
+//			- use UINT_MAX instead of -1 for lpdis->itemID test
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //
@@ -228,8 +231,9 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
 							CW_USEDEFAULT, CW_USEDEFAULT,
 							rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance, nullptr);
 
-    if( !g_hWnd )
+    if(!g_hWnd) {
         return E_FAIL;
+	}
 
 	//
 	// SPOUT
@@ -707,10 +711,7 @@ void ResetDevice()
 //--------------------------------------------------------------------------------------
 LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
-    PAINTSTRUCT ps;
-    HDC hdc;
-
-    switch( message )  {
+     switch( message )  {
 
 		case WM_COMMAND :
 			// Parse the menu selections:
@@ -750,12 +751,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			break;
 		// =====================================================================
 		*/
-
-	    case WM_PAINT:
-		    hdc = BeginPaint( hWnd, &ps );
-			EndPaint( hWnd, &ps );
-			break;
-
 		case WM_DESTROY:
 			PostQuitMessage( 0 );
 			break;
@@ -922,7 +917,8 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_DRAWITEM:
 		// The blue hyperlink
 		lpdis = (LPDRAWITEMSTRUCT)lParam;
-		if (lpdis->itemID == -1) break;
+		if (lpdis->itemID == UINT_MAX) break;
+
 		SetTextColor(lpdis->hDC, RGB(6, 69, 173));
 		switch (lpdis->CtlID) {
 		case IDC_SPOUT_URL:
