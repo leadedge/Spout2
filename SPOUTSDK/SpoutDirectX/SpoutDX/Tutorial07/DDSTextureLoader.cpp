@@ -15,7 +15,7 @@
 //
 // 19.01.26 - add "default" to GetSurfaceInfo fmt switch
 //			- add "default return DDS_ALPHA_MODE_PREMULTIPLIED" to GetAlphaMode switch
-//			- Remove UNREFERENCED_PARAMETER(name) from namespace
+//			- Remove UNREFERENCED_PARAMETER(name) from namespace for MingW
 //--------------------------------------------------------------------------------------
 
 #include "DDSTextureLoader.h"
@@ -133,6 +133,9 @@ namespace
     #if defined(_DEBUG) || defined(PROFILE)
         resource->SetPrivateData(WKPDID_D3DDebugObjectName, TNameLength - 1, name);
     #else
+		#if defined(_MSC_VER)
+		UNREFERENCED_PARAMETER(name);
+		#endif
         UNREFERENCED_PARAMETER(resource);
     #endif
     }
