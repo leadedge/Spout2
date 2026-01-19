@@ -9,7 +9,9 @@
 # 14/08/25 : mingw-w64 Linux cross build compatibility PR #122                 #
 #          : Create stand-alone Cmake project                                  # 
 #          : Remove Examples option from library build                         #
-# 16/08/25 : Do not add -msse4 on ARM build PR #123                            # 
+# 16/08/25 : Do not add -msse4 on ARM build PR #123                            #
+# 15/01/26 : Use target compile options "-mssse3" instead of "-msse4" (PR#134) # 
+# 19/01/26 : Suppress unused variables and functions for MingW                 #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -105,7 +107,7 @@ if (MINGW)
 	if (NOT SPOUT_BUILD_ARM)
 		target_compile_options(
 				${PROJECT_NAME} PRIVATE
-				-msse4)
+				-mssse3)
 	endif (NOT SPOUT_BUILD_ARM)
 
 	target_compile_options(
@@ -119,7 +121,21 @@ if (MINGW)
 	target_include_directories(
 		${PROJECT_NAME} PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/external/DirectXMath
-	)	
+	)
+
+	# Suppress unused variables and functions
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-variable")
+	
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-but-set-variable")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-but-set-variable")
+	
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
+	
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
+	
 endif (MINGW)
 
 set_target_properties(
