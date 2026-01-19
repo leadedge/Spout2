@@ -12,6 +12,10 @@
 //
 // http://go.microsoft.com/fwlink/?LinkId=248926
 // http://go.microsoft.com/fwlink/?LinkId=248929
+//
+// 19.01.26 - add "default" to GetSurfaceInfo fmt switch
+//			- add "default return DDS_ALPHA_MODE_PREMULTIPLIED" to GetAlphaMode switch
+//			- Remove UNREFERENCED_PARAMETER(name) from namespace
 //--------------------------------------------------------------------------------------
 
 #include "DDSTextureLoader.h"
@@ -130,7 +134,6 @@ namespace
         resource->SetPrivateData(WKPDID_D3DDebugObjectName, TNameLength - 1, name);
     #else
         UNREFERENCED_PARAMETER(resource);
-        UNREFERENCED_PARAMETER(name);
     #endif
     }
 
@@ -477,7 +480,13 @@ namespace
             planar = true;
             bpe = 4;
             break;
+			
+		default:
+			break;
+			
         }
+		
+		
 
         if (bc)
         {
@@ -1513,6 +1522,8 @@ namespace
                 case DDS_ALPHA_MODE_OPAQUE:
                 case DDS_ALPHA_MODE_CUSTOM:
                     return mode;
+				default:
+					return DDS_ALPHA_MODE_UNKNOWN;
                 }
             }
             else if ((MAKEFOURCC('D', 'X', 'T', '2') == header->ddspf.fourCC)
