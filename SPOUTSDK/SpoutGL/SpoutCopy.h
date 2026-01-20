@@ -6,7 +6,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2016-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2016-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -38,20 +38,23 @@
 #include <stdio.h> // for debug printf
 #include <GL/gl.h> // For OpenGL definitions
 #include <intrin.h> // for cpuid to test for SSE2
+#include <cmath> // For compatibility with Clang. PR#81
+#include <stdint.h> // for _uint32 etc
+#include <cstring> // for std::memcpy
+#include <algorithm> // for std::swap
+// For SaveTextureToBMP
+#include <d3d11.h>
+#include <fstream>
+#include <vector>
 
+// SSE
 #ifdef _M_ARM64
 #include <sse2neon.h> // for NEON
 #else
 #include <emmintrin.h> // for SSE2
 #include <tmmintrin.h> // for SSSE3
 #endif
-#include <cmath> // For compatibility with Clang. PR#81
-#include <stdint.h> // for _uint32 etc
 
-// For save texture to bitmap testing function
-#include <d3d11.h>
-#include <fstream>
-#include <vector>
 
 class SPOUT_DLLEXP spoutCopy {
 
@@ -146,16 +149,11 @@ class SPOUT_DLLEXP spoutCopy {
 			unsigned int destWidth, unsigned int destHeight,
 			bool bInvert = false, bool bMirror = false, bool bSwapRB = false) const;
 
-		// Copy RGBA to BGR allowing for source and destination pitch
-		void rgba2bgrResample(const void* source, void* dest,
-			unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
-			unsigned int destWidth, unsigned int destHeight, bool bInvert = false) const;
-
 		//
 		// SSE3 function
 		//
+
 		// RGBA to RGB/BGR with source line pitch 
-		//
 		void rgba_to_rgb_sse3(const void* rgba_source, void* rgb_dest,
 			unsigned int width, unsigned int height,
 			unsigned int rgba_pitch, // line byte pitch
@@ -218,7 +216,7 @@ class SPOUT_DLLEXP spoutCopy {
 		bool GetSSE3();
 		bool GetSSSE3();
 
-		// Save texture to file for testing
+		// Save D3D11 texture to file
 		bool SaveTextureToBMP(ID3D11DeviceContext* context, ID3D11Texture2D* texture, std::string filePath);
 
 	protected :

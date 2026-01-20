@@ -4,7 +4,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2016-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2016-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -83,6 +83,16 @@
 			   Modify CopyPixels and FlipBuffer to test for SSE2 only
 	28.08.25 - Add SaveTextureToBMP - save texture to file for testing
 	30.10.25 - SpoutCopy, FlipBuffer, RemovePadding - conditional _M_ARM64 __movsd
+	04.01.26 - Optimize memcpy_sse2
+	08.01.26 - rgba2rgba - copy the whole RGBA image if stride = width*4
+	16.01.26 - rgba2rgb - change m_bSSE3 requirement to m_bSSSE3 for rgba_to_rgb_sse3
+	18.01.26 - Optimize rgba2rgbResample.
+			 - 2.3 msec 1920x1080 > 1280 x 1024 (x2 speed gain)
+			 -   Avoid floating-point floor in inner loop
+			 -   Precompute mapping tables
+			 -   Precompute source row offset
+			 - Remove rgba2bgrResample
+	20.01.26 - CheckSSE() cleanup, header file claanup
 
 */
 
@@ -137,7 +147,7 @@ void spoutCopy::CopyPixels(const unsigned char *source, unsigned char *dest,
 		#ifndef _M_ARM64 // __movsd intrinsic not defined
 		else if ((Size % 4) == 0) { // 4 byte move function
 			__movsd(reinterpret_cast<unsigned long *>(dest),
-				reinterpret_cast<const unsigned long *>(source), Size / 4);
+				reinterpret_cast<const unsigned long *>(source), Size/4);
 		}
 		#endif
 		else { // Default is standard memcpy
@@ -179,7 +189,7 @@ void spoutCopy::FlipBuffer(const unsigned char *src,
 		#ifndef _M_ARM64 // __movsd intrinsic not defined
 		else if ((pitch % 4) == 0) { // use 4 byte move function
 			__movsd(reinterpret_cast<unsigned long *>(dst + line_t),
-				reinterpret_cast<const unsigned long *>(src + line_s), pitch / 4);
+				reinterpret_cast<const unsigned long *>(src + line_s), pitch/4);
 		}
 		#endif
 		else {
@@ -287,69 +297,58 @@ void spoutCopy::ClearAlpha(unsigned char* src, unsigned int width, unsigned int 
 // And a more recent comprehensive study :
 // Video : https://level1techs.com/video/level1-diagnostic-fixing-our-memcpy-troubles-looking-glass//
 // Source : https://github.com/level1wendell/memcpy_sse and others.
+// 04.01.26 - code further optimized
 //
 
 //---------------------------------------------------------
 // Function: memcpy_sse2
 // SSE2 version of memcpy
-void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t Size) const
+void spoutCopy::memcpy_sse2(void* dst, const void* src, size_t size) const
 {
+    if (!dst || !src || size == 0)
+        return;
 
-	if (!dst || !src)
-		return;
+	char* pDst = reinterpret_cast<char*>(dst);
+    const char* pSrc = reinterpret_cast<const char*>(src);
 
-	auto pSrc = static_cast<const char *>(src); // Source buffer
-	auto pDst = static_cast<char *>(dst); // Destination buffer
+    // Align destination to 16 bytes for _mm_stream_si128
+    uintptr_t dstAddr = reinterpret_cast<uintptr_t>(pDst);
+    size_t preAlign = dstAddr & 0xF; // bytes to next 16-byte boundary
 
-	const size_t simdSize = 128;
-	const size_t simdCount = Size/simdSize; // Counter = size divided by 128 (8 * 128bit registers)
-	const size_t tailSize = Size % simdSize;
+    if (preAlign) {
+        size_t head = 16 - preAlign;
+        if (head > size) head = size;
+        for (size_t i = 0; i < head; i++)
+            pDst[i] = pSrc[i];
+        pDst += head;
+        pSrc += head;
+        size -= head;
+    }
 
-	__m128i Reg0={};
-	__m128i Reg1={};
-	__m128i Reg2={};
-	__m128i Reg3={};
-	__m128i Reg4={};
-	__m128i Reg5={};
-	__m128i Reg6={};
-	__m128i Reg7={};
+    // Copy main blocks 16 bytes at a time
+    size_t blocks = size/16;
+    size_t tail = size % 16;
 
-	for (size_t i = 0; i < simdCount; i++) {
+    for (size_t i = 0; i < blocks; i++) {
 
-		// SSE2 prefetch ahead of the current read pointer
-		_mm_prefetch(pSrc + 512, _MM_HINT_NTA);
+		// Prefetch every 16 blocks = 256 bytes
+        if (i % 16 == 0)
+            _mm_prefetch(pSrc + 256, _MM_HINT_NTA);
 
-		// move data from src to registers
-		// 8 x 128 bit (16 bytes each)
-		// Increment source pointer by 16 bytes each
-		// for a total of 128 bytes per cycle
-		Reg0 = _mm_load_si128(reinterpret_cast<const __m128i *>(pSrc));
-		Reg1 = _mm_load_si128(reinterpret_cast<const __m128i *>(pSrc + 16));
-		Reg2 = _mm_load_si128(reinterpret_cast<const __m128i *>(pSrc + 32));
-		Reg3 = _mm_load_si128(reinterpret_cast<const __m128i *>(pSrc + 48));
-		Reg4 = _mm_load_si128(reinterpret_cast<const __m128i *>(pSrc + 64));
-		Reg5 = _mm_load_si128(reinterpret_cast<const __m128i *>(pSrc + 80));
-		Reg6 = _mm_load_si128(reinterpret_cast<const __m128i *>(pSrc + 96));
-		Reg7 = _mm_load_si128(reinterpret_cast<const __m128i *>(pSrc + 112));
+        __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc));
+        _mm_stream_si128(reinterpret_cast<__m128i*>(pDst), data);
 
-		// move data from registers to dest
-		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst), Reg0);
-		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 16), Reg1);
-		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 32), Reg2);
-		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 48), Reg3);
-		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 64), Reg4);
-		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 80), Reg5);
-		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 96), Reg6);
-		_mm_stream_si128(reinterpret_cast<__m128i *>(pDst + 112), Reg7);
+        pSrc += 16;
+        pDst += 16;
+    }
 
-		pSrc += simdSize;
-		pDst += simdSize;
-	}
+    // Commit streaming stores
+    _mm_sfence();
 
-	// Handle trailing bytes for lines not divisble by 16
-	if (tailSize > 0) {
-		memcpy(pDst, pSrc, tailSize);
-	}
+	// Handle trailing bytes
+	// (lines not divisible by 16)
+	if (tail > 0)
+		memcpy(pDst, pSrc, tail);
 
 }
 
@@ -366,6 +365,13 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 	if (!rgba_source || !rgba_dest)
 		return;
 
+	// Copy the whole RGBA image if stride = width*4
+	if (sourcePitch == width*4) {
+		CopyPixels((const unsigned char*)rgba_source, (unsigned char*)rgba_dest,
+			width, height, GL_RGBA, bInvert);
+		return;
+	}
+
 	for (unsigned int y = 0; y < height; y++) {
 
 		// Start of buffers
@@ -378,8 +384,8 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 		// Casting first avoids warning C26451: Arithmetic overflow with VS2022 code review
 		// https://docs.microsoft.com/en-us/visualstudio/code-quality/c26451
 		unsigned long YxW            = (unsigned long)(y * width);
-		const unsigned long YxSP4    = (unsigned long)(y * sourcePitch / 4);
-		const unsigned long InvYxSP4 = (unsigned long)((height - 1 - y) * sourcePitch / 4);
+		const unsigned long YxSP4    = (unsigned long)(y * sourcePitch/4);
+		const unsigned long InvYxSP4 = (unsigned long)((height-1- y) * sourcePitch/4);
 
 		// Increment to current line
 		// pitch is line length in bytes. Divide by 4 to get the width in rgba pixels.
@@ -418,25 +424,26 @@ void spoutCopy::rgba2rgba(const void* rgba_source, void* rgba_dest,
 		// Increment to current line
 		// Pitch is line length in bytes. Divide by 4 to get the width in rgba pixels.
 		if (bInvert) {
-			source += (unsigned long)((height - 1 - y)*sourcePitch / 4);
-			dest   += (unsigned long)(y * destPitch / 4); // dest is not inverted
+			source += (unsigned long)((height-1- y)*sourcePitch/4);
+			dest   += (unsigned long)(y*destPitch/4); // dest is not inverted
 		}
 		else {
-			source += (unsigned long)(y * sourcePitch / 4);
-			dest   += (unsigned long)(y * destPitch / 4);
+			source += (unsigned long)(y*sourcePitch/4);
+			dest   += (unsigned long)(y*destPitch/4);
 		}
 		// Copy the line as fast as possible
 		CopyPixels((const unsigned char*)source, (unsigned char*)dest, width, 1);
 	}
 }
 
-// Adapted from :
-// http://tech-algorithm.com/articles/nearest-neighbor-image-scaling/
-// http://www.cplusplus.com/forum/general/2615/#msg10482
-
 //---------------------------------------------------------
 // Function: rgba2rgbaResample
 // Copy rgba buffers of differing size
+//
+// Adapted from :
+//     http://tech-algorithm.com/articles/nearest-neighbor-image-scaling/
+//     http://www.cplusplus.com/forum/general/2615/#msg10482
+//
 void spoutCopy::rgba2rgbaResample(const void* source, void* dest,
 	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
 	unsigned int destWidth, unsigned int destHeight, bool bInvert) const
@@ -446,9 +453,10 @@ void spoutCopy::rgba2rgbaResample(const void* source, void* dest,
 	if (!srcBuffer || !dstBuffer)
 		return;
 
-	// horizontal and vertical ratios between the original image and the to be scaled image
-	const float x_ratio = (float)sourceWidth / (float)destWidth;
-	const float y_ratio = (float)sourceHeight / (float)destHeight;
+	// horizontal and vertical ratios between
+	// the original image and the to be scaled image
+	const float x_ratio = (float)sourceWidth/(float)destWidth;
+	const float y_ratio = (float)sourceHeight/(float)destHeight;
 	float px = 0.0f;
 	float py = 0.0f;
 	unsigned int i =- 0;
@@ -522,11 +530,11 @@ void spoutCopy::rgba2bgra(const void *rgba_source, void *bgra_dest,
 		if (bInvert) {
 			// Pitch is line length in bytes.
 			// Divide by 4 to get the line width in rgba pixels.
-			source += ((height - 1 - y) * sourcePitch / 4);
+			source += ((height-1-y)*sourcePitch/4);
 			dest += YxW; // dest is not inverted
 		}
 		else {
-			source += (unsigned long)(y * sourcePitch / 4);
+			source += (unsigned long)(y*sourcePitch/4);
 			dest += YxW;
 		}
 
@@ -562,17 +570,17 @@ void spoutCopy::rgba2bgra(const void* rgba_source, void* bgra_dest,
 			return;
 
 		// Cast first to avoid warning C26451: Arithmetic overflow
-		unsigned long YxDP = (unsigned long)(y * destPitch / 4);
+		unsigned long YxDP = (unsigned long)(y*destPitch/4);
 
 		// Increment to current line.
 		// Pitch is line length in bytes.
 		// Divide by 4 to get the line width in rgba pixels.
 		if (bInvert) {
-			source += (unsigned long)((height - 1 - y) * sourcePitch / 4);
+			source += (unsigned long)((height-1-y)*sourcePitch/4);
 			dest += YxDP; // dest is not inverted
 		}
 		else {
-			source += (unsigned long)(y * sourcePitch / 4);
+			source += (unsigned long)(y*sourcePitch/4);
 			dest += YxDP;
 		}
 		// Copy the line
@@ -607,26 +615,24 @@ void spoutCopy::bgra2rgba(const void *bgra_source, void *rgba_dest, unsigned int
 // Copy RGBA to RGB or BGR allowing for source line pitch using the fastest method
 //
 void spoutCopy::rgba2rgb(const void* rgba_source, void* rgb_dest,
-	unsigned int width, unsigned int height,
-	unsigned int rgba_pitch, bool bInvert, bool bMirror, bool bSwapRB) const
+	unsigned int width, unsigned int height, unsigned int rgba_pitch,
+	bool bInvert, bool bMirror, bool bSwapRB) const
 {
 	// Start of buffers
 	auto rgba = static_cast<const unsigned char*>(rgba_source); // rgba/bgra
-	auto rgb = static_cast<unsigned char*>(rgb_dest); // rgb/bgr
+	auto rgb  = static_cast<unsigned char*>(rgb_dest); // rgb/bgr
 	if (!rgb || !rgba)
 		return;
 
 	//
 	// SSE3 copy
-	// No mirror option, image size 16 bit byte aligned, SSE3 intrinsics support
-	//
-	// Timing tests show more than twice as fast
+	// Image size 16 bit byte aligned, SSSE3 intrinsics
 	// (Intel(R) Core(TM) i7-3770K CPU @ 3.50GHz)
 	//
 	// SSE
-	//   1280x720    1.6 msec
-	//   1920x1080   3.7 msec
-	//   3840x2160  14.0 msec
+	//   1280x720    1.3 msec
+	//   1920x1080   2.7 msec
+	//   3840x2160  13.0 msec
 	// Byte copy
 	//   1280x720    4.0 msec
 	//   1920x1080   9.3 msec
@@ -634,7 +640,7 @@ void spoutCopy::rgba2rgb(const void* rgba_source, void* rgb_dest,
 	//
 	unsigned int pitch = rgba_pitch;
 	if(pitch == 0) pitch = width*4;
-	if (!bMirror && width >= 320 && (width % 16) == 0 && m_bSSE3) {
+	if (!bMirror && width >= 320 && (width % 16) == 0 && m_bSSSE3) {
 		rgba_to_rgb_sse3(rgba_source, rgb_dest, width, height, pitch, bInvert, bSwapRB);
 		return;
 	}
@@ -1032,185 +1038,136 @@ void spoutCopy::rgb_to_bgra_sse3 (
 
 } // end rgb_to_bgra_sse3
 
-//
-// =====================================================================================
-
 
 //---------------------------------------------------------
 // Function: rgba_to_rgb_sse3
 //
 void spoutCopy::rgba_to_rgb_sse3(const void* rgba_source, void* rgb_dest,
-	unsigned int width, unsigned int height, unsigned int rgba_pitch,
-	bool bInvert, bool bSwapRB) const
+    unsigned int width, unsigned int height, unsigned int rgba_pitch,
+    bool bInvert, bool bSwapRB) const
 {
-	const __m128i* in_vec = static_cast<const __m128i*>(rgba_source); // rgba
-	__m128i* out_vec = static_cast<__m128i*>(rgb_dest); // rgb
+    const __m128i* in_vec = static_cast<const __m128i*>(rgba_source); // RGBA input
+    __m128i* out_vec = static_cast<__m128i*>(rgb_dest);               // RGB output
 
-	if (!out_vec || !in_vec)
-		return;
+    if (!in_vec || !out_vec)
+        return;
 
-	// RGB dest does not have padding
-	unsigned int rgbsize = width*height*3;
-	unsigned int rgbpitch = width*3;
+    unsigned int rgbsize = width * height * 3;
+    unsigned int rgbpitch = width * 3;
+    unsigned int rgba_padding = rgba_pitch - width * 4;
 
-	// Dest and source must be the same dimensions otherwise
-	unsigned int rgba_padding = rgba_pitch-width*4; // byte line padding
+    // Flip image option: move to the beginning of the last RGB line
+    if (bInvert) {
+        out_vec += rgbsize/16;  // end of RGB buffer
+        out_vec -= rgbpitch/16; // beginning of last RGB line
+    }
 
-	// Flip image option, move to the beginning of the last rgb line
-	if (bInvert) {
-		out_vec += rgbsize/16; // end of rgb buffer
-		out_vec -= rgbpitch/16; // beginning of the last rgb line
-	}
+    unsigned int w = width/16;
 
-	unsigned int w = width/16;
-	for (unsigned int y = 0; y < height; y++) {
+	//
+	// RGBA in 4x16 = 64 bytes (4 pixels at 4 bytes each = 16 bytes)
+	//               0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+	// in_vec[0]    Ra Ga Ba Xa Rb Gb Bb Xb Rc Gc Bc Xc Rd Gd Bd Xd
+	// in_vec[1]    Re Ge Be Xe Rf Gf Bf Xf Rg Gg Bg Xg Rh Gh Bh Xh
+	// in_vec[2]    Ri Gi Bi Xi Rj Gj Bj Xj Rk Gk Bk Xk Rl Gl Bl Xl
+	// in_vec[3]    Rm Gm Bm Xm Rn Gn Bn Xn Ro Go Bo Xo Rp Gp Bp Xp
+	//
+	// RGB out  3x16 = 48 bytes (4 pixels at 3 bytes each = 12 bytes)
+	//
+	// out_vec[0]    Rf Be Ge Re Bd Gd Rd Bc Gc Rc Bb Gb Rb Ba Ga Ra
+	//                4  2  1  0 14 13 12 10  9  8  6  5  4  2  1  0
+	//                 in_vec[1] |            in_vec[0]            |
+	// out_vec[1]    Gk Rk Bj Gj Rj Bi Gi Ri Bh Gh Rh Bg Gg Rg Bf Gf
+	//                9  8  6  5  4  2  1  0 14 13 12 10  9  8  6  5
+	//                        in_vec[2]       |     in_vec[1]
+	// out_vec[2]    Bp Gp Rp Bo Go Ro Bn Gn Rn Bm Gm Rm Bl Gl Rl Bk
+	//               14 13 12 10  9  8  6  5  4  2  1  0 14 13 12 10  
+	//                        in_vec[3]                   | in_vec[2]
 
-		while (w-- > 0) {
+    // Precompute SSSE3 shuffle masks outside the loop
+    // -1 means “ignore this byte”
 
-			__m128i in0={};
-			__m128i in1={};
-			__m128i in2={};
-			__m128i in3={};
+	// ----------------------
+	// RGB output masks
+	// ----------------------
+	static const __m128i shuffle_masks_rgb[6] = {
 
-			__m128i out0={};
-			__m128i out1={};
+		// First 16 RGB bytes: out0 = in0 lower 16 bytes, out1 = in1 lower 16 bytes
+		_mm_set_epi8(-1,-1,-1,-1,14,13,12,10, 9, 8, 6, 5, 4, 2, 1, 0), // out0
+		_mm_set_epi8( 4, 2, 1, 0,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1), // out1
 
-			in0 = in_vec[0];   // First 128 bits RGBA
-			in1 = in_vec[1];   // Second 128 bits RGBA
-			in2 = in_vec[2];   // Third 128 bits RGBA
-			in3 = in_vec[3];   // Fourth 128 bits RGBA
+		// Second 16 RGB bytes
+		_mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,14,13,12,10, 9, 8, 6, 5), // out0
+		_mm_set_epi8( 9, 8, 6, 5, 4, 2, 1, 0,-1,-1,-1,-1,-1,-1,-1,-1), // out1
 
-			if (!bSwapRB) {
-				
-				// RGBA > RGB
+		// Third 16 RGB bytes
+		_mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,14,13,12,10), // out0
+		_mm_set_epi8(14,13,12,10, 9, 8, 6, 5, 4, 2, 1, 0,-1,-1,-1,-1)  // out1
+	};
 
-				//
-				// RGBA in 4x16 = 64 bytes (4 pixels at 4 bytes each = 16 bytes)
-				//               0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
-				// in_vec[0]    Ra Ga Ba Xa Rb Gb Bb Xb Rc Gc Bc Xc Rd Gd Bd Xd
-				// in_vec[1]    Re Ge Be Xe Rf Gf Bf Xf Rg Gg Bg Xg Rh Gh Bh Xh
-				// in_vec[2]    Ri Gi Bi Xi Rj Gj Bj Xj Rk Gk Bk Xk Rl Gl Bl Xl
-				// in_vec[3]    Rm Gm Bm Xm Rn Gn Bn Xn Ro Go Bo Xo Rp Gp Bp Xp
+	// ----------------------
+	// BGR output masks
+	// ----------------------
+	static const __m128i shuffle_masks_bgr[6] = {
 
-				//
-				// RGB out  3x16 = 48 bytes (4 pixels at 3 bytes each = 12 bytes)
-				//
-				// out_vec[0]    Rf Be Ge Re Bd Gd Rd Bc Gc Rc Bb Gb Rb Ba Ga Ra
-				//                4  2  1  0 14 13 12 10  9  8  6  5  4  2  1  0
-				//                 in_vec[1] |            in_vec[0]            |
-				// out_vec[1]    Gk Rk Bj Gj Rj Bi Gi Ri Bh Gh Rh Bg Gg Rg Bf Gf
-				//                9  8  6  5  4  2  1  0 14 13 12 10  9  8  6  5
-				//                        in_vec[2]       |     in_vec[1]
-				// out_vec[2]    Bp Gp Rp Bo Go Ro Bn Gn Rn Bm Gm Rm Bl Gl Rl Bk
-				//               14 13 12 10  9  8  6  5  4  2  1  0 14 13 12 10  
-				//                        in_vec[3]                   | in_vec[2]
+		// First 16 BGR bytes
+		_mm_set_epi8(-1,-1,-1,-1,12,13,14, 8, 9,10, 4, 5, 6, 0, 1, 2), // out0
+		_mm_set_epi8( 6, 0, 1, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1), // out1
 
-				// First 16 RGB bytes
-				// out_vec[0]    Rf Be Ge Re Bd Gd Rd Bc Gc Rc Bb Gb Rb Ba Ga Ra
-				//                4  2  1  0 14 13 12 10  9  8  6  5  4  2  1  0
-				//                 in_vec[1] |            in_vec[0]            |
-				out0 = _mm_shuffle_epi8(in0,
-					_mm_set_epi8('\xff', '\xff', '\xff', '\xff', 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0));
-				out1 = _mm_shuffle_epi8(in1,
-					_mm_set_epi8(4, 2, 1, 0, '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff'));
-				out_vec[0] = _mm_or_si128(out0, out1);
+		// Second 16 BGR bytes
+		_mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,12,13,14, 8, 9,10, 4, 5), // out0
+		_mm_set_epi8( 9,10, 4, 5, 6, 0, 1, 2,-1,-1,-1,-1,-1,-1,-1,-1), // out1
 
-				// Second 16 RGB bytes
-				// out_vec[1]    Gk Rk Bj Gj Rj Bi Gi Ri Bh Gh Rh Bg Gg Rg Bf Gf
-				//                9  8  6  5  4  2  1  0 14 13 12 10  9  8  6  5
-				//                        in_vec[2]       |     in_vec[1]
-				out0 = _mm_shuffle_epi8(in1,
-					_mm_set_epi8('\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', 14, 13, 12, 10, 9, 8, 6, 5));
-				out1 = _mm_shuffle_epi8(in2,
-					_mm_set_epi8(9, 8, 6, 5, 4, 2, 1, 0, '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff'));
-				out_vec[1] = _mm_or_si128(out0, out1);
+		// Third 16 BGR bytes
+		_mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,12,13,14, 8), // out0
+		_mm_set_epi8(12,13,14, 8, 9,10, 4, 5, 6, 0, 1, 2,-1,-1,-1,-1)  // out1
+	};
 
-				// Third 16 RGB bytes
-				// out_vec[2]    Bp Gp Rp Bo Go Ro Bn Gn Rn Bm Gm Rm Bl Gl Rl Bk
-				//               14 13 12 10  9  8  6  5  4  2  1  0 14 13 12 10  
-				//                        in_vec[3]                   | in_vec[2]
-				out0 = _mm_shuffle_epi8(in2,
-					_mm_set_epi8('\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', 14, 13, 12, 10));
-				out1 = _mm_shuffle_epi8(in3,
-					_mm_set_epi8(14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0, '\xff', '\xff', '\xff', '\xff'));
-				out_vec[2] = _mm_or_si128(out0, out1);
-			}  // end RGBA >RGB
-			else {
 
-				// RGBA > BGR
+    for (unsigned int y = 0; y < height; y++) {
 
-				//
-				// RGBA in 4x16 = 64 bytes (4 pixels at 4 bytes each = 16 bytes)
-				//               0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
-				// in_vec[0]    Ra Ga Ba Xa Rb Gb Bb Xb Rc Gc Bc Xc Rd Gd Bd Xd
-				// in_vec[1]    Re Ge Be Xe Rf Gf Bf Xf Rg Gg Bg Xg Rh Gh Bh Xh
-				// in_vec[2]    Ri Gi Bi Xi Rj Gj Bj Xj Rk Gk Bk Xk Rl Gl Bl Xl
-				// in_vec[3]    Rm Gm Bm Xm Rn Gn Bn Xn Ro Go Bo Xo Rp Gp Bp Xp
+        unsigned int wline = w;
+        while (wline-- > 0) {
 
-				//
-				// BGR out  3x16 = 48 bytes (4 pixels at 3 bytes each = 12 bytes)
-				//
-				// out_vec[0]    Bf Re Ge Be Rd Gd Bd Rc Gc Bc Rb Gb Bb Ra Ga Ba
-				//                6  0  1  2 12 13 14  8  9 10  4  5  6  0  1  2
-				//                 in_vec[1] |            in_vec[0]            |
-				// out_vec[1]    Gk Bk Rj Gj Bj Ri Gi Bi Rh Gh Bh Rg Gg Bg Rf Gf
-				//                9 10  4  5  6  0  1  2 12 13 14  8  9 10  4  5
-				//                        in_vec[2]       |     in_vec[1]
-				// out_vec[2]    Rp Gp Bp Ro Go Bo Rn Gn Bn Rm Gm Bm Rl Gl Bl Rk
-				//               12 13 14  8  9 10  4  5  6  0  1  2 12 13 14  8  
-				//                        in_vec[3]                   | in_vec[2]
+            // Load 4x16 bytes RGBA (4 pixels per __m128i)
+            __m128i in0 = in_vec[0];
+            __m128i in1 = in_vec[1];
+            __m128i in2 = in_vec[2];
+            __m128i in3 = in_vec[3];
 
-				// First 16 BGR bytes
-				// out_vec[0]    Rf Be Ge Re Bd Gd Rd Bc Gc Rc Bb Gb Rb Ba Ga Ra
-				//                6  0  1  2 12 13 14  8  9 10  4  5  6  0  1  2
-				//                 in_vec[1] |            in_vec[0]            |
-				out0 = _mm_shuffle_epi8(in0,
-					_mm_set_epi8('\xff', '\xff', '\xff', '\xff', 12, 13, 14, 8, 9, 10, 4, 5, 6, 0, 1, 2));
-				out1 = _mm_shuffle_epi8(in1,
-					_mm_set_epi8(6, 0, 1, 2, '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff'));
-				out_vec[0] = _mm_or_si128(out0, out1);
+            const __m128i* masks = bSwapRB ? shuffle_masks_bgr : shuffle_masks_rgb;
 
-				// Second 16 BGR bytes
-				// out_vec[1]    Gk Rk Bj Gj Rj Bi Gi Ri Bh Gh Rh Bg Gg Rg Bf Gf
-				//                9 10  4  5  6  0  1  2 12 13 14  8  9 10  4  5
-				//                        in_vec[2]      |     in_vec[1]
-				out0 = _mm_shuffle_epi8(in1,
-					_mm_set_epi8('\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', 12, 13, 14, 8, 9, 10, 4, 5));
-				out1 = _mm_shuffle_epi8(in2,
-					_mm_set_epi8(9, 10, 4, 5, 6, 0, 1, 2, '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff'));
-				out_vec[1] = _mm_or_si128(out0, out1);
+            // First 16 RGB bytes
+            __m128i out0 = _mm_shuffle_epi8(in0, masks[0]);
+            __m128i out1 = _mm_shuffle_epi8(in1, masks[1]);
+            out_vec[0] = _mm_or_si128(out0, out1);
 
-				// Third 16 BGR bytes
-				// out_vec[2]    Bp Gp Rp Bo Go Ro Bn Gn Rn Bm Gm Rm Bl Gl Rl Bk
-				//               12 13 14  8  9 10  4  5  6  0  1  2 12 13 14  8  
-				//                        in_vec[3]                  | in_vec[2]
-				out0 = _mm_shuffle_epi8(in2,
-					_mm_set_epi8('\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', '\xff', 12, 13, 14, 8));
-				out1 = _mm_shuffle_epi8(in3,
-					_mm_set_epi8(12, 13, 14, 8, 9, 10, 4, 5, 6, 0, 1, 2, '\xff', '\xff', '\xff', '\xff'));
-				out_vec[2] = _mm_or_si128(out0, out1);
+            // Second 16 RGB bytes
+            out0 = _mm_shuffle_epi8(in1, masks[2]);
+            out1 = _mm_shuffle_epi8(in2, masks[3]);
+            out_vec[1] = _mm_or_si128(out0, out1);
 
-			} // end RGBA > BGR
+            // Third 16 RGB bytes
+            out0 = _mm_shuffle_epi8(in2, masks[4]);
+            out1 = _mm_shuffle_epi8(in3, masks[5]);
+            out_vec[2] = _mm_or_si128(out0, out1);
 
-			in_vec  += 4; // RGBA 4x16
-			out_vec += 3; // RGB  3x16
+            in_vec  += 4; // Advance 4 RGBA registers
+            out_vec += 3; // Advance 3 RGB registers
+        }
 
-		} // done the line
+        // Reset width for next line
+        wline = w;
 
-		// Reset width
-		w = width/16;
-		
-		// Allow for padding at the end of the rgba source line
-		in_vec += rgba_padding/16;
+        // Skip padding in source line
+        in_vec += rgba_padding/16;
 
-		// move up a line for invert
-		if (bInvert) {
-			out_vec -= w*3*2;
-		}
-
-	}
-
-} // end rgba_to_rgb_sse
+        // Adjust for inverted output
+        if (bInvert) {
+            out_vec -= w*3*2;
+        }
+    }
+} // end rgba_to_rgb_sse3
 
 
 //---------------------------------------------------------
@@ -1324,94 +1281,72 @@ void spoutCopy::rgba2bgr(const void *rgba_source, void *bgr_dest,
 
 } // end rgba2bgr
 
+
 //---------------------------------------------------------
 // Function: rgba2rgbResample
 //
 void spoutCopy::rgba2rgbResample(const void* source, void* dest,
-	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
-	unsigned int destWidth, unsigned int destHeight, bool bInvert, bool bMirror, bool bSwapRB) const
+    unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
+    unsigned int destWidth, unsigned int destHeight,
+    bool bInvert, bool bMirror, bool bSwapRB) const
 {
+    if (!source || !dest) return;
 
-	const unsigned char* srcBuffer = (unsigned char*)source; // bgra source
-	unsigned char* dstBuffer = (unsigned char*)dest; // bgr dest
-	if (!srcBuffer || !dstBuffer)
-		return;
+    const unsigned char* srcBuffer = (const unsigned char*)source;
+    unsigned char* dstBuffer = (unsigned char*)dest;
 
-	const float x_ratio = (float)sourceWidth / (float)destWidth;
-	const float y_ratio = (float)sourceHeight / (float)destHeight;
+    // Precompute X/Y mapping tables
+    std::vector<unsigned int> xTable(destWidth);
+    std::vector<unsigned int> yTable(destHeight);
 
-	// Swap red and blue option
-	int ir = 0; int ig = 1; int ib = 2;
-	if (bSwapRB) {
-		ir = 2; ib = 0;
-	}
+    const float x_ratio = float(sourceWidth)/float(destWidth);
+    const float y_ratio = float(sourceHeight)/float(destHeight);
 
-	float px = 0.0f;
-	float py = 0.0f;
-	unsigned int i = 0;
-	unsigned int j = 0;
-	unsigned int pixel = 0;
-	int nearestMatch = 0;
-	for (i = 0; i < destHeight; i++) {
-		for (j = 0; j < destWidth; j++) {
-			px = floor((float)j*x_ratio);
-			py = floor((float)i*y_ratio);
+    for (unsigned int j = 0; j < destWidth; j++)
+        xTable[j] = min((unsigned int)(j * x_ratio), sourceWidth - 1);
 
-			if (bMirror) {
-				if (bInvert)
-					pixel = (destHeight - i - 1)*destWidth * 3 + (destWidth - j - 1) * 3; // flip horizontally
-				else
-					pixel = i * destWidth * 3 + (destWidth - j - 1) * 3;
-			}
-			else {
-				if (bInvert)
-					pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
-				else
-					pixel = i * destWidth * 3 + j * 3;
-			}
+    for (unsigned int i = 0; i < destHeight; i++)
+        yTable[i] = min((unsigned int)(i * y_ratio), sourceHeight - 1);
 
-			nearestMatch = (int)(py*sourcePitch + px * 4);
-			dstBuffer[pixel + ir] = srcBuffer[nearestMatch + 0];
-			dstBuffer[pixel + ig] = srcBuffer[nearestMatch + 1];
-			dstBuffer[pixel + ib] = srcBuffer[nearestMatch + 2];
-		}
-	}
-}
+    // Precompute source row offsets
+    std::vector<unsigned int> rowOffset(destHeight);
+    for (unsigned int i = 0; i < destHeight; i++)
+        rowOffset[i] = yTable[i] * sourcePitch;
 
-//---------------------------------------------------------
-// Function: rgba2bgrResample
-//
-void spoutCopy::rgba2bgrResample(const void* source, void* dest,
-	unsigned int sourceWidth, unsigned int sourceHeight, unsigned int sourcePitch,
-	unsigned int destWidth, unsigned int destHeight, bool bInvert) const
-{
-	const unsigned char* srcBuffer = (unsigned char*)source; // bgra source
-	unsigned char* dstBuffer = (unsigned char*)dest; // bgr dest
-	if (!srcBuffer || !dstBuffer)
-		return;
+    // Channel indices
+    int ir = bSwapRB ? 2 : 0;
+    int ig = 1;
+    int ib = bSwapRB ? 0 : 2;
 
-	const float x_ratio = (float)sourceWidth / (float)destWidth;
-	const float y_ratio = (float)sourceHeight / (float)destHeight;
-	float px = 0.0f;
-	float py = 0.0f;
-	unsigned int i = 0;
-	unsigned int j = 0;
-	unsigned int pixel = 0;
-	int nearestMatch = 0;
-	for (i = 0; i < destHeight; i++) {
-		for (j = 0; j < destWidth; j++) {
-			px = std::floor((float)j*x_ratio);
-			py = std::floor((float)i*y_ratio);
-			if (bInvert)
-				pixel = (destHeight - i - 1)*destWidth * 3 + j * 3; // flip vertically
-			else
-				pixel = i * destWidth * 3 + j * 3;
-			nearestMatch = (int)(py*sourcePitch + px * 4);
-			dstBuffer[pixel + 2] = srcBuffer[nearestMatch + 0];
-			dstBuffer[pixel + 1] = srcBuffer[nearestMatch + 1];
-			dstBuffer[pixel + 0] = srcBuffer[nearestMatch + 2];
-		}
-	}
+    for (unsigned int i = 0; i < destHeight; i++) {
+
+        unsigned char* dstRow = dstBuffer+i*destWidth*3;
+        if (bInvert)
+            dstRow = dstBuffer + (destHeight-i-1)*destWidth*3;
+
+        unsigned int srcRowOffset = rowOffset[i];
+
+		if (!bMirror) {
+            for (unsigned int j = 0; j < destWidth; j++) {
+                unsigned int srcIndex = srcRowOffset+xTable[j]*4;
+                unsigned int dstIndex = j*3;
+                dstRow[dstIndex + ir] = srcBuffer[srcIndex + 0];
+                dstRow[dstIndex + ig] = srcBuffer[srcIndex + 1];
+                dstRow[dstIndex + ib] = srcBuffer[srcIndex + 2];
+            }
+        }
+        else {
+            for (unsigned int j = 0; j < destWidth; j++) {
+                unsigned int srcIndex = srcRowOffset+xTable[j]*4;
+				// Write pixels in reverse order
+                unsigned int dstIndex = (destWidth-j-1)*3;
+                dstRow[dstIndex + ir] = srcBuffer[srcIndex + 0];
+                dstRow[dstIndex + ig] = srcBuffer[srcIndex + 1];
+                dstRow[dstIndex + ib] = srcBuffer[srcIndex + 2];
+            }
+        }
+
+    }
 }
 
 //---------------------------------------------------------
@@ -1562,35 +1497,37 @@ bool spoutCopy::GetSSSE3()
 // ECX - CPUInfo[2]
 // EDX - CPUInfo[3]
 //
-// For intrinsics and SSE : https://software.intel.com/sites/landingpage/IntrinsicsGuide/
+// For intrinsics and SSE
+// https://software.intel.com/sites/landingpage/IntrinsicsGuide/
+//
+// Compatible for MSVC(32/64), MinGW-w64(32/64) clang-cl targeting Windows
 //
 void spoutCopy::CheckSSE()
 {
-#ifdef _M_ARM64 // All SSE will be routed to NEON
+#ifdef _M_ARM64
+	// All SSE will be routed to NEON
 	m_bSSE2 = true;
 	m_bSSE3 = true;
 	m_bSSSE3 = true;
 #else
-	// An array of four integers that contains the information returned
-	// in EAX (0), EBX (1), ECX (2), and EDX (3) about supported features of the CPU.
+	// An array of four integers that contains the information
+	// returned in EAX (0), EBX (1), ECX (2), and EDX (3)
+	// about supported features of the CPU.
 	int CPUInfo[4] ={-1, -1, -1, -1};
-
-	//-- Get number of valid info ids
+	// Get number of valid info ids
 	__cpuid(CPUInfo, 0);
-	const int nIds = CPUInfo[0];
-
-	//-- Get info for id "1"
-	if (nIds >= 1) {
+	// Get info for id "1"
+	if (CPUInfo[0] >= 1) {
 		// SSE2 | [bit 26] EDX
 		// SSE2 = (cpuid03 & (0x1 << 26))
 		__cpuid(CPUInfo, 1); // EAX = 1 for __cpuid
-		m_bSSE2 = ((CPUInfo[3] & (0x1 << 26)) || false);
+		m_bSSE2 = ((CPUInfo[3] & (1 << 26)) != 0);
 		// SSE3 | [bit 0] ECX
 		// SSE3 = (cpuid02 & (0x1)
-		m_bSSE3 = ((CPUInfo[2] & (0x1)) || false);
+		m_bSSE3 = ((CPUInfo[2] & (1 << 0)) != 0);
 		// SSSE3 | [bit 9] ECX
 		// SSSE3 = (cpuid02 & (0x1 << 9)
-		m_bSSSE3 = ((CPUInfo[2] & (0x1 << 9)) || false);
+		m_bSSSE3 = ((CPUInfo[2] & (1 << 9)) != 0);
 	}
 	#endif
 }
@@ -1785,7 +1722,7 @@ void spoutCopy::rgba_swap_ssse3(void* __restrict rgba_source, unsigned int width
 		// Start of the row
         uint8_t* row = base + y*width*4;
         // Process 4 pixels at a time
-        for (unsigned int x = 0; x < numBlocks; ++x) {
+        for (unsigned int x = 0; x < numBlocks; x++) {
 			// Prefetch the next block if not at the last one
             if (x+1 < numBlocks) {
                 _mm_prefetch(reinterpret_cast<const char*>(row+(x+1)*16), _MM_HINT_T0);
@@ -1799,7 +1736,7 @@ void spoutCopy::rgba_swap_ssse3(void* __restrict rgba_source, unsigned int width
         }
 
         // Process leftover pixels (width not divisible by 4)
-        for (unsigned int x = numBlocks*4; x < width; ++x) {
+        for (unsigned int x = numBlocks*4; x < width; x++) {
             uint8_t* p = row + x * 4;
             std::swap(p[0], p[2]); // Swap R and B
         }
@@ -1876,11 +1813,11 @@ bool spoutCopy::SaveTextureToBMP(ID3D11DeviceContext* context, ID3D11Texture2D* 
     int rowPitch = static_cast<int>(mapped.RowPitch);
     const uint8_t* srcData = static_cast<const uint8_t*>(mapped.pData);
 
-    std::vector<uint8_t> pixelData(width * height * 4);
-    for (int y = 0; y < height; ++y) {
-        const uint8_t* srcRow = srcData + rowPitch * y;
-        uint8_t* dstRow = pixelData.data() + (height - 1 - y) * width * 4;
-        for (int x = 0; x < width; ++x) {
+    std::vector<uint8_t> pixelData(width*height*4);
+    for (int y = 0; y < height; y++) {
+        const uint8_t* srcRow = srcData+rowPitch*y;
+        uint8_t* dstRow = pixelData.data()+(height-1-y)*width*4;
+        for (int x = 0; x < width; x++) {
 			// BGRA default input format
 			// BGRA required for windows bitmap
             dstRow[x * 4 + 0] = srcRow[x * 4 + 0]; // B
