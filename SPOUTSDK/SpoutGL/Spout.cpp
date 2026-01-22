@@ -319,11 +319,12 @@
 //					  The update flag is reset on the next call to ReceiveSenderData.
 //					  Calling IsUpdated is optional if receiving to a pre-allocated
 //					  texture or accessing the sender texture directly.
+//		22.01.26	- Review - update copyright year
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
