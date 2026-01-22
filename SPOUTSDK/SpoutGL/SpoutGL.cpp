@@ -207,7 +207,8 @@
 //		11.10.25	- CopyTexture - correct conditional size check
 //		15.10.25	- Add ClearAlpha
 //		21.10.25	- ReadTextureData - add SourceID null check
-//		05.01.26	- BindSharedTexture - AllowTextureAcces only on fail. Issue #133,
+//		05.01.26	- BindSharedTexture - AllowTextureAcces only on fail. Issue #133
+//		22.01.26	- Review - update copyright year
 //
 // ====================================================================================
 //
