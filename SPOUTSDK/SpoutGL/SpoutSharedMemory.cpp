@@ -10,7 +10,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -37,9 +37,6 @@
 
 #include "SpoutSharedMemory.h"
 
-#include <assert.h>
-#include <string>
-
 // ====================================================================================
 //		Revisions :
 //
@@ -53,6 +50,7 @@
 //	07.12.23 - Remove unused <d3d9.h> from header
 //	Version 2.007.013
 //	Version 2.007.014
+//	2.01.26	- Move includes to header. Review - update copyright year
 //
 // ====================================================================================
 
