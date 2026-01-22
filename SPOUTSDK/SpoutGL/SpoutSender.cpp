@@ -82,6 +82,7 @@
 //	Version 2.007.014
 //		21.09.24	-Add ReadTextureData
 //		16.08.25	- Add CloseFrameSync
+//		22.01.26	- Review - update copyright year
 //
 // ====================================================================================
 /*
