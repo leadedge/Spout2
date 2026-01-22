@@ -40,7 +40,6 @@
 30.10.25	- Remove __movsd re-definition function for ARM
 22.01.26	- Review - update copyright year
 
-
 */
 
 #pragma once
@@ -86,19 +85,5 @@
 #if defined(_MSC_VER)
 #pragma warning(disable:26812) // unscoped enums
 #endif
-
-//
-// For ARM build
-// __movsd intrinsic not defined
-//
-#if defined _M_ARM64
-#include <memory.h>
-inline void __movsd(unsigned long* Destination,
-	const unsigned long* Source, size_t Count)
-{
-	memcpy(Destination, Source, Count);
-}
-#endif
-
 
 #endif
