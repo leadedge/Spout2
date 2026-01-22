@@ -9,7 +9,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2017-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2017-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -248,6 +248,11 @@
 				   MessageBoxTimeoutA - add return value for else
 		06.09.25 - Add executable name to log file
 		16.09.25 - Update version to 2.007.017
+		13.12.25 - SpoutMessageBox edit control - allow for both IDOK and IDYES
+		18.12.25 - SpoutMessageBox with custom buttons - allow for Cancel (MB_CANCEL)
+				   Add #define MB_CANCEL TDCBF_CANCEL_BUTTON to SpoutUtils.h
+		19.12.25 - SpoutMessageBox edit control - remove conditions for get text from control string
+		22.01.26 - Review - update copyright year
 
 */
 
@@ -268,7 +273,6 @@
 //
 // Refer to source code for documentation.
 //
-
 
 namespace spoututils {
 
@@ -379,7 +383,13 @@ namespace spoututils {
 	//
 	// This method is necessary if the process is a dll
 	//
+	// The "GetCurrentModule" argument is the address of this
+	// function inside a loaded module (exe or dll).
+	// GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS returns a handle
+	// (HMODULE) to that module.
+	//
 	// https://gist.github.com/davidruhmann/8008844
+	//
 	HMODULE GetCurrentModule()
 	{
 		const DWORD flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
@@ -1129,7 +1139,7 @@ namespace spoututils {
 		stredit = text;
 		int iret = MessageTaskDialog(hwnd, content.c_str(), caption, uType, dwTimeout);
 		// Get text from global edit control string
-		if (iret == IDOK) text = stredit;
+		text = stredit;
 		stredit.clear();
 		bEdit = false;
 		return iret;
@@ -1158,7 +1168,7 @@ namespace spoututils {
 		comboitems = items;
 		comboindex = index;
 		int iret = MessageTaskDialog(hwnd, content.c_str(), caption, uType, dwTimeout);
-		if (iret == IDOK) index = comboindex;
+		index = comboindex;
 		comboitems.clear();
 		comboindex = 0;
 		bCombo = false;
@@ -2013,12 +2023,18 @@ namespace spoututils {
 					buttons[i].nButtonID = TDbuttonID[i];
 					buttons[i].pszButtonText = TDbuttonTitle[i].c_str();
 				}
-				// Final button is OK
-				// CANCEL/YES/NO etc have to be added as buttons
-				buttons[i].nButtonID = IDOK;
-				buttons[i].pszButtonText = L"OK";
+				if (dwButtons == MB_CANCEL) {
+					buttons[i].nButtonID = IDCANCEL;
+					buttons[i].pszButtonText = L"Cancel";
+				}
+				else {
+					// Final button default is OK
+					// YES/NO etc have to be added as buttons
+					buttons[i].nButtonID = IDOK;
+					buttons[i].pszButtonText = L"OK";
+				}
+
 			}
-			// }
 			else {
 				//
 				// Common buttons
@@ -2120,6 +2136,7 @@ namespace spoututils {
 			}
 
 			config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
+
 			// TDF_POSITION_RELATIVE_TO_WINDOW Indicates that the task dialog is
 			// centered relative to the window specified by hwndParent.
 			// If hwndParent is NULL, the dialog is centered on the monitor.
@@ -2495,6 +2512,7 @@ namespace spoututils {
 			return bRet;
 
 		} // end OpenSpoutPanel
+
 
 	} // end private namespace
 

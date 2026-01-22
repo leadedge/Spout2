@@ -6,7 +6,7 @@
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-		Copyright (c) 2017-2025, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2017-2026, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -55,6 +55,7 @@
 #include <direct.h> // for _getcwd
 #include <vector>
 #include <string>
+
 #include <shellapi.h> // for shellexecute
 #include <commctrl.h> // For TaskDialogIndirect
 #include <math.h> // for round
@@ -92,6 +93,9 @@
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
+
+// For cancel button only together with custom buttons
+#define MB_CANCEL TDCBF_CANCEL_BUTTON
 
 // SpoutUtils
 namespace spoututils {
