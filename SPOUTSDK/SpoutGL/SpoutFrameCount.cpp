@@ -100,11 +100,12 @@
 //		30.07.25	- CheckTextureAccess - return if null texture
 //		09.08.25	- Change all initializations to "{}"
 //		28.08.25	- CheckTextureAccess - do not block if texture is null
+//		22.01.26	- Review - update copyright year
 //
 // ====================================================================================
 //
 /*
-	Copyright (c) 2019-2025. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2019-2026. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
