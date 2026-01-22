@@ -23,13 +23,12 @@
 //					   to match with Glew.h
 //			18.01.25 - Rename "standalone" to "StandAloneExtensions"
 //					   to avoid naming conflicts
-//			26.10.25 - Fix opengl header name #130 (change GL.h to gl.h)
 //
 //			All changes now documented in SpoutGLextensions.cpp
 //
 /*
 
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -140,7 +139,7 @@
 	#include <GL/glew.h>
 	#include <GL/wglew.h> // wglew.h and glxew.h, which define the available WGL and GLX extensions
 #else
-	#include <GL/gl.h>
+	#include <GL/GL.h>
 	#include <cstdint> // For MingW
 	#ifndef USE_FBO_EXTENSIONS
 		// For Max/Msp Jitter

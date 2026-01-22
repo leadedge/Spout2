@@ -76,9 +76,10 @@
 //						  Define GL_BGRA8_EXT
 //			15.09.25	- Add GL_TEXTURE_SWIZZLE_R, G, B
 //			16.09-25	- SpoutGLextensions.h - add #include <cstdint> for MingW
+//			22.01.26	- Review - update copyright year
 //
 /*
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
