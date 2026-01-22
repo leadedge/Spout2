@@ -178,11 +178,12 @@
 //		31.08.25	- FlushWait - default device and context
 //		11.09.25	- Correct Keyed shared texture misc flag in CreateSharedDX11texture
 //					  Remove redundant final Flush from FlushWait
+//		22.01.26	- Review - update copyright year
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2025. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
