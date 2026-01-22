@@ -9,7 +9,7 @@
 	https://github.com/mbechard	
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -39,6 +39,9 @@
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
 
+// LJ DEBUG
+#include "SpoutUtils.h"
+
 #include <windowsx.h>
 #include <wingdi.h>
 #include <set>
@@ -52,6 +55,10 @@
 #ifdef _M_ARM64
 #include <sse2neon.h> // For ARM
 #endif
+
+// LJ DEBUG
+using namespace spoututils;
+
 
 // 100 msec wait for events
 #define SPOUT_WAIT_TIMEOUT 100

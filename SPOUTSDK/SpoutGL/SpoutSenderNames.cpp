@@ -111,9 +111,10 @@
 	20.06.24 - Add GetSenderIndex
 	23.08.24 - GetSenderInfo, SetSenderID - initialize SharedTextureInfo
 	30.10.25 - Remove __movsd. Timing tests show no performance gain.
-
+	22.01.26 - Review - update copyright year
+	
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
