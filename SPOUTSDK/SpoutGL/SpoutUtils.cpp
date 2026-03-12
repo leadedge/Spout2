@@ -253,6 +253,8 @@
 				   Add #define MB_CANCEL TDCBF_CANCEL_BUTTON to SpoutUtils.h
 		19.12.25 - SpoutMessageBox edit control - remove conditions for get text from control string
 		22.01.26 - Review - update copyright year
+		12.03.26 - Add SpoutMessageBoxWidth
+
 
 */
 
@@ -1275,6 +1277,14 @@ namespace spoututils {
 	}
 
 	// ---------------------------------------------------------
+	// Function: SpoutMessageBoxWidth
+	// Width of SpoutMessageBox - default (0) is auto
+	void SPOUT_DLLEXP SpoutMessageBoxWidth(int width)
+	{
+		TDwidth = width;
+	}
+
+	// ---------------------------------------------------------
 	// Function: CopyToClipBoard
 	// Copy text to the clipboard
 	bool CopyToClipBoard(HWND hwnd, const char* text)
@@ -2135,7 +2145,9 @@ namespace spoututils {
 				config.dwCommonButtons = dwCommonButtons;
 			}
 
-			config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
+			// LJ DEBUG
+			// config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
+			config.cxWidth = TDwidth;
 
 			// TDF_POSITION_RELATIVE_TO_WINDOW Indicates that the task dialog is
 			// centered relative to the window specified by hwndParent.
@@ -2186,6 +2198,9 @@ namespace spoututils {
 			// Clear dialog user position
 			TDcentre.x = 0;
 			TDcentre.y = 0;
+
+			// Clear manual width to default 0 (auto)
+			TDwidth = 0;
 
 			// Return button pressed
 			// IDCANCEL, IDNO, IDOK, IDRETRY, IDYES
