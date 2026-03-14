@@ -209,6 +209,8 @@
 //		21.10.25	- ReadTextureData - add SourceID null check
 //		05.01.26	- BindSharedTexture - AllowTextureAcces only on fail. Issue #133
 //		22.01.26	- Review - update copyright year
+//		31.01.26	- Constructor - m_SpoutVersion
+//					  get the current version number if not found in the registry
 //
 // ====================================================================================
 //
@@ -335,10 +337,12 @@ spoutGL::spoutGL()
 
 	// Find version number from the registry
 	// Set by Spout Installer (2005, 2006, etc.) or by SpoutSettings for 2.007 and later
+	m_SpoutVersion = 0;
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Version", &dwValue)) {
 		m_SpoutVersion = (int)dwValue;
 	}
-	else {
+
+	if(m_SpoutVersion == 0) {
 		// Get number string e.g. "2.007.009"
 		std::string str = GetSDKversion();
 		// Remove all "." chars
