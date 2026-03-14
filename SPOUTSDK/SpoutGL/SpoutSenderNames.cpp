@@ -111,7 +111,8 @@
 	20.06.24 - Add GetSenderIndex
 	23.08.24 - GetSenderInfo, SetSenderID - initialize SharedTextureInfo
 	30.10.25 - Remove __movsd. Timing tests show no performance gain.
-	22.01.26 - Review - update copyright year
+	22.01.26 - Add "using namespace spoututils" to header
+			   Review - update copyright year
 	
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.

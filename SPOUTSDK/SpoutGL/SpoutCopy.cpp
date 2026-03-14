@@ -282,8 +282,6 @@ void spoutCopy::ClearAlpha(unsigned char* src, unsigned int width, unsigned int 
 	}
 }
 
-
-
 //
 // Fast memcpy.
 //
