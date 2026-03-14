@@ -2145,8 +2145,7 @@ namespace spoututils {
 				config.dwCommonButtons = dwCommonButtons;
 			}
 
-			// LJ DEBUG
-			// config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
+			// Default 0 (auto width) - requires TDF_SIZE_TO_CONTENT
 			config.cxWidth = TDwidth;
 
 			// TDF_POSITION_RELATIVE_TO_WINDOW Indicates that the task dialog is
