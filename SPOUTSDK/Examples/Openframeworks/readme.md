@@ -36,7 +36,7 @@ This ensures that the Openframeworks library is created with the correct build t
 - Build the library "Release/x64".\
 A "dll" folder is created in the ofSpoutExamples folder. This is used by all projects to copy the required dlls to the executable folder.
 
-After build of the Openframeworks library, each example project can be selected indpendently.
+After build of the Openframeworks library, each example project can be selected independently.
 Right click on the example and "Set as Startup Project". The top level "ofExamples" solution
 can also be selected for build. This will build all the example projects.\
 Applications are accumulated in the project "Binaries" folder.
