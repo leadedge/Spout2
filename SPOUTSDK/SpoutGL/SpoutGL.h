@@ -50,7 +50,6 @@
 // Used throughout
 using namespace spoututils;
 
-
 class SPOUT_DLLEXP spoutGL {
 
 	public:
@@ -147,6 +146,13 @@ class SPOUT_DLLEXP spoutGL {
 
 	// Create OpenGL texture
 	void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height);
+	// Create fbo
+	bool CreateFbo(GLuint& FboID);
+	// Delete fbo
+	void DeleteFbo(GLuint& FboID);
+	// Attach texture to fbo
+	GLint AttachTexture(GLuint& FboID, GLuint& TextureID);
+
 	// Copy OpenGL texture with optional invert
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget, GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
@@ -159,7 +165,6 @@ class SPOUT_DLLEXP spoutGL {
 		unsigned int width, unsigned int height, unsigned int stride, GLenum glFormat = GL_RGBA);
 	// Clear alpha of rgba image pixels to the required value
 	void ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha);
-
 	// OpenGL error reporting
 	bool GLerror();
 
@@ -209,10 +214,13 @@ class SPOUT_DLLEXP spoutGL {
 	GLint GLformat(GLuint TextureID, GLuint TextureTarget);
 	// Return OpenGL texture format description
 	std::string GLformatName(GLint glformat = 0);
+
 	// Create an OpenGL window and context for situations where there is none.
-	//   Not used if applications already have an OpenGL context.
+	//   Not necessary if an OpenGL context is already available.
 	//   Always call CloseOpenGL afterwards.
 	bool CreateOpenGL(HWND hwnd = nullptr);
+	// Create OpenGL of specified version
+	bool CreateGLversion(HWND hwnd, double version);
 	// Close OpenGL window
 	bool CloseOpenGL();
 	// Class initialization status
