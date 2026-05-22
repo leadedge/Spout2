@@ -296,12 +296,22 @@ namespace spoututils {
 
 	// Position to centre SpoutMessageBox
 	void SPOUT_DLLEXP SpoutMessageBoxPosition(POINT pt);
-
-	// Width of SpoutMessageBox - default is auto
-	void SPOUT_DLLEXP SpoutMessageBoxWidth(int width);
+		
+	// Allow dialog cancel
+	// Adds an 'X' to the caption
+	// and allows close and cancel with :
+	//   Esc, Alt+F4 or the caption X
+	// Closing in this way returns IDCANCEL.
+	//   true  - add 'X'
+	//   false - remove 'X'
+	void SPOUT_DLLEXP SpoutMessageBoxCancel(bool bCancel);
 
 	// Copy text to the clipboard
 	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* text);
+
+	// Copy image to the clipboard
+	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const unsigned char* data,
+		unsigned int format, int width, int height);
 
 	// Open logs folder
 	bool SPOUT_DLLEXP OpenSpoutLogs();
@@ -391,11 +401,10 @@ namespace spoututils {
 		HWND hwndTask = NULL;
 		// Position for TaskDialog window centre
 		POINT TDcentre = {};
-		// Width of TaskDialog - default (0) is auto
-		int TDwidth = 0;
 		// For topmost
 		HWND hwndTop = NULL;
 		bool bTopMost = false;
+		int nAllowCancel = 0; // Caption 'X' for cancel
 		// Modeless TaskDialog by way of OpenSpoutPanel
 		bool bModeless = false; // Default use local TaskDialogIndirect
 		// For custom icon

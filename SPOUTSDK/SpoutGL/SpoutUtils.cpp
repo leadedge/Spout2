@@ -252,9 +252,12 @@
 		18.12.25 - SpoutMessageBox with custom buttons - allow for Cancel (MB_CANCEL)
 				   Add #define MB_CANCEL TDCBF_CANCEL_BUTTON to SpoutUtils.h
 		19.12.25 - SpoutMessageBox edit control - remove conditions for get text from control string
-		22.01.26 - Review - update copyright year
-		12.03.26 - Add SpoutMessageBoxWidth
-
+		14.04.26 - MessageTaskDialog - change "if (dwButtons == MB_CANCEL)
+				   to "if ((dwButtons & MB_CANCEL) == MB_CANCEL)"
+		19.04.26 - Add CopyToClipBoard overload for image data
+				   Remove SPOUT_DLLEXP from functions in SpoutUtils.cpp
+				   Use SPOUT_DLLEXP for header declarations only
+		21.05.26 - SpoutMessageBoxCancel to add a caption 'X'
 
 */
 
@@ -1071,7 +1074,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBox
 	// MessageBox with variable arguments and icon, buttons
-	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
+	int SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
 	{
 		std::string strmessage;
 		std::string strcaption;
@@ -1123,7 +1126,7 @@ namespace spoututils {
 	//   o For message content, the control is in the footer area
 	//   o If no message, the control is in the main content area
 	//   o All SpoutMessageBox functions such as user icon and buttons are available
-	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
 	{
 		// For edit control creation
 		bEdit = true;
@@ -1152,7 +1155,7 @@ namespace spoututils {
 	// MessageBox dialog with a combobox control for item selection
 	// Can be used in place of a specific application resource dialog
 	// Properties the same as the edit control
-	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType,
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType,
 		std::vector<std::string> items, int& index)
 	{
 		// For combobox creation
@@ -1182,7 +1185,7 @@ namespace spoututils {
 	// Function: SpoutMessageBoxIcon
 	// Custom icon for SpoutMessageBox from resources
 	// Use together with MB_USERICON
-	void SPOUT_DLLEXP SpoutMessageBoxIcon(HICON hIcon)
+	void SpoutMessageBoxIcon(HICON hIcon)
 	{
 		hTaskIcon = hIcon;
 	}
@@ -1191,7 +1194,7 @@ namespace spoututils {
 	// Function: SpoutMessageBoxIcon
 	// Custom icon for SpoutMessageBox from file
 	// Use together with MB_USERICON
-	bool SPOUT_DLLEXP SpoutMessageBoxIcon(std::string iconfile)
+	bool SpoutMessageBoxIcon(std::string iconfile)
 	{
 		hTaskIcon = reinterpret_cast<HICON>(LoadImageA(nullptr, iconfile.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE));
 		return (hTaskIcon != nullptr);
@@ -1200,7 +1203,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxButton
 	// Custom button for SpoutMessageBox
-	void SPOUT_DLLEXP SpoutMessageBoxButton(int ID, std::wstring title)
+	void SpoutMessageBoxButton(int ID, std::wstring title)
 	{
 		TDbuttonID.push_back(ID);
 		TDbuttonTitle.push_back(title);
@@ -1211,7 +1214,7 @@ namespace spoututils {
 	// Enable modeless functionality using SpoutPanel.exe
 	// Used where a Windows MessageBox would interfere with the application GUI.
 	// Depends on SpoutPanel.exe version 2.072 or greater distributed with Spout release.
-	bool SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode)
+	bool SpoutMessageBoxModeless(bool bMode)
 	{
 		// If setting modeless, find the path for SpoutPanel.exe
 		if (bMode) {
@@ -1263,7 +1266,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxWindow
 	// Window handle for SpoutMessageBox where not specified
-	void SPOUT_DLLEXP SpoutMessageBoxWindow(HWND hWnd)
+	void SpoutMessageBoxWindow(HWND hWnd)
 	{
 		hwndMain = hWnd;
 	}
@@ -1271,17 +1274,27 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxPosition
 	// Position to centre SpoutMessageBox
-	void SPOUT_DLLEXP SpoutMessageBoxPosition(POINT pt)
+	void SpoutMessageBoxPosition(POINT pt)
 	{
 		TDcentre = pt;
 	}
 
 	// ---------------------------------------------------------
-	// Function: SpoutMessageBoxWidth
-	// Width of SpoutMessageBox - default (0) is auto
-	void SPOUT_DLLEXP SpoutMessageBoxWidth(int width)
+	// Function: SpoutMessageBoxCancel
+	// Adds an 'X' to the caption for MB_OK and MB_YESNO
+	// to align with the behaviour of a conventional MessageBox.
+	// Allows close and cancel with :
+	//   Esc, Alt+F4 or the caption X
+	// Closing in this way returns IDCANCEL
+	//       true    - add 'X'
+	//       false   - remove 'X'
+	//       default - add 'X' only if there is a CANCEL button
+	void SpoutMessageBoxCancel(bool bCancel)
 	{
-		TDwidth = width;
+		if(bCancel)
+			nAllowCancel =  1; // Add 'X'
+		else
+			nAllowCancel = -1; // Remove 'X'
 	}
 
 	// ---------------------------------------------------------
@@ -1295,8 +1308,12 @@ namespace spoututils {
 
 		if (text[0] && strlen(text) > 16) {
 			if (OpenClipboard(hwnd)) {
+				// Removes current clipboard contents
+				// and free previously stored clipboard data
 				EmptyClipboard();
 				size_t len = (strlen(text) + 1) * sizeof(char);
+				// GMEM_DDESHARE is a 16-bit Windows/early Win32 compatibility flag.
+				// GMEM_MOVEABLE gives Windows control of the memory.
 				// Use GMEM_MOVEABLE instead of GMEM_DDESHARE to avoid crash on repeat
 				// GlobalUnlock then returns false but ignore
 				clipbuffer = GlobalAlloc(GMEM_MOVEABLE, len); // No crash but GlobalUnlock fails
@@ -1308,14 +1325,150 @@ namespace spoututils {
 						bret = true;
 					}
 					GlobalUnlock(clipbuffer);
-					GlobalFree(clipbuffer);
 					clipbuffer = nullptr;
 					buffer = nullptr;
 				}
 				CloseClipboard();
 			}
 		}
+		// Leave clipbuffer allocated
 		return bret;
+	}
+
+	// ---------------------------------------------------------
+	// Function: CopyToClipBoard
+	// Copy image data to the clipboard
+	//	format : GL_RGBA(0x1908), GL_RGB(0x1907), GL_BGRA(0x80E1), GL_BGR(0x80E0)
+	//	BGRA and BGR are compatible with Windows DIB for most efficient copy
+	bool CopyToClipBoard(HWND hwnd, const unsigned char* data,
+		unsigned int format, int width,	int height)
+	{
+		if (!data || width <= 0 || height <= 0)
+			return false;
+
+		// GL_RGB  0x1907
+		// GL_RGBA 0x1908
+		// GL_BGR  0x80E0
+		// GL_BGRA 0x80E1
+		#ifndef GL_RGB 
+			#define GL_RGB 0x1907
+		#endif
+		#ifndef GL_RGBA
+			#define GL_RGBA 0x1908
+		#endif
+		#ifndef GL_BGR
+			#define GL_BGR 0x80E0
+		#endif
+		#ifndef GL_BGRA 
+			#define GL_BGRA 0x80E1
+		#endif
+
+		int srcChannels = 0;
+		switch (format) {
+			case GL_RGBA:
+			case GL_BGRA:
+				srcChannels = 4;
+				break;
+			case GL_RGB:
+			case GL_BGR:
+				srcChannels = 3;
+				break;
+			default:
+				return false;
+		}
+		const int dstChannels   = srcChannels;   // 3 or 4
+		const int bytesPerPixel = dstChannels; // 24 or 32
+
+		// DIB rows must be aligned to 4 bytes
+		int dstStride = ((width*bytesPerPixel+3)/4)*4;
+		size_t imageSize = dstStride*height;
+		size_t totalSize = sizeof(BITMAPINFOHEADER) + imageSize;
+		HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, totalSize);
+		if (!hMem)
+			return false;
+
+		unsigned char* base = (unsigned char*)GlobalLock(hMem);
+		if (!base) {
+			GlobalFree(hMem);
+			return false;
+		}
+
+		// Use BITMAPINFOHEADER instead of BITMAPV5HEADER
+		// for compatibility with older programs
+
+		// Fill BITMAPINFOHEADER
+		BITMAPINFOHEADER* bi = (BITMAPINFOHEADER*)base;
+		bi->biSize = sizeof(BITMAPINFOHEADER);
+		bi->biWidth  = width;
+		bi->biHeight = height; // bottom up (image must be pre-flipped)
+		bi->biPlanes = 1;
+		bi->biBitCount = (WORD)(bytesPerPixel*8);
+		bi->biCompression = BI_RGB;
+		bi->biSizeImage = (DWORD)imageSize;
+		bi->biXPelsPerMeter = 0;
+		bi->biYPelsPerMeter = 0;
+		bi->biClrUsed = 0;
+		bi->biClrImportant = 0;
+		unsigned char* dst = base + sizeof(BITMAPINFOHEADER);
+
+		if ((format == GL_BGRA && dstStride == width*4)
+		||  (format == GL_BGR   && dstStride == width*3)) {
+			// No conversion (BGRA or BGR) and no padding - full image copy
+			memcpy(dst, data, (size_t)width*height*bytesPerPixel);
+		} // end full image
+		else {
+			// Conversion and/or padding - copy row by row
+			for (int y = 0; y < height; y++) {
+				const unsigned char* srcRow = data + y*width*srcChannels;
+				unsigned char* dstRow = dst + y*dstStride;
+				for (int x = 0; x < width; x++) {
+					const unsigned char* s = srcRow + x*srcChannels;
+					unsigned char* d = dstRow + x*dstChannels;
+					switch (format) {
+						case 0x80E1:
+							// Already correct
+							memcpy(d, s, 4);
+							break;
+						case GL_RGBA:
+							d[0] = s[2]; // B
+							d[1] = s[1]; // G
+							d[2] = s[0]; // R
+							d[3] = s[3]; // A
+							break;
+						case GL_BGR:
+							memcpy(d, s, 3);
+							break;
+						case GL_RGB:
+							d[0] = s[2]; // B
+							d[1] = s[1]; // G
+							d[2] = s[0]; // R
+							break;
+					} // end format
+				} // end line
+				// Padding bytes
+				if (dstStride > width*bytesPerPixel) {
+					memset(dstRow + width*bytesPerPixel, 0,
+						dstStride - width*bytesPerPixel);
+				}
+			} // end row
+		} // end conversion and padding
+
+		GlobalUnlock(hMem);
+		if (!OpenClipboard(hwnd)) {
+			GlobalFree(hMem);
+			return false;
+		}
+		EmptyClipboard();
+		if (!SetClipboardData(CF_DIB, hMem)) {
+			CloseClipboard();
+			GlobalFree(hMem);
+			return false;
+		}
+
+		CloseClipboard();
+
+		// Leave hMem allocated
+		return true;
 	}
 
 	// ---------------------------------------------------------
@@ -2033,7 +2186,7 @@ namespace spoututils {
 					buttons[i].nButtonID = TDbuttonID[i];
 					buttons[i].pszButtonText = TDbuttonTitle[i].c_str();
 				}
-				if (dwButtons == MB_CANCEL) {
+				if ((dwButtons & MB_CANCEL) == MB_CANCEL) {
 					buttons[i].nButtonID = IDCANCEL;
 					buttons[i].pszButtonText = L"Cancel";
 				}
@@ -2145,8 +2298,7 @@ namespace spoututils {
 				config.dwCommonButtons = dwCommonButtons;
 			}
 
-			// Default 0 (auto width) - requires TDF_SIZE_TO_CONTENT
-			config.cxWidth = TDwidth;
+			config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
 
 			// TDF_POSITION_RELATIVE_TO_WINDOW Indicates that the task dialog is
 			// centered relative to the window specified by hwndParent.
@@ -2159,6 +2311,12 @@ namespace spoututils {
 				config.dwFlags        |= TDF_USE_HICON_MAIN; // User icon
 			config.pfCallback         = reinterpret_cast<PFTASKDIALOGCALLBACK>(TDcallbackProc);
 			config.lpCallbackData     = reinterpret_cast<LONG_PTR>(&dwMilliseconds);
+
+			// Adds an 'X' to the caption without a CANCEL button
+			// Allows close and cancel with : Esc, Alt+F4 or 'X'
+			// Closing in this way returns IDCANCEL.
+			if(nAllowCancel == 1)
+				config.dwFlags  |= TDF_ALLOW_DIALOG_CANCELLATION;
 	
 			if (bTopMost) {
 				// Get the first visible window in the Z order
@@ -2198,8 +2356,8 @@ namespace spoututils {
 			TDcentre.x = 0;
 			TDcentre.y = 0;
 
-			// Clear manual width to default 0 (auto)
-			TDwidth = 0;
+			// Clear caption cancel option
+			nAllowCancel = 0;
 
 			// Return button pressed
 			// IDCANCEL, IDNO, IDOK, IDRETRY, IDYES
@@ -2238,6 +2396,13 @@ namespace spoututils {
 				// or when an icon is set for the taskdialog content
 				SendMessage(hwnd, WM_SETICON, ICON_BIG, NULL);
 				SendMessage(hwnd, WM_SETICON, ICON_SMALL, NULL);
+
+				// Remove 'X' from the caption
+				if (nAllowCancel == -1) {
+			        LONG style = GetWindowLong(hwnd, GWL_STYLE);
+					style &= ~WS_SYSMENU; // Remove system menu (includes 'X')
+					SetWindowLong(hwnd, GWL_STYLE, style);
+				}
 
 				// Dialog Window size and position
 				GetWindowRect(hwnd, &rect);
