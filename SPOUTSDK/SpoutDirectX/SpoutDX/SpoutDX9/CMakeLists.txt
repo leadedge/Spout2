@@ -14,18 +14,9 @@ project(SpoutDX9)
 # Source and header files
 set(SpoutDX9_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX9.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutFrameCount.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutSenderNames.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutSharedMemory.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutUtils.cpp
 )
 set(SpoutDX9_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX9.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutCommon.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutFrameCount.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutSenderNames.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutSharedMemory.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutUtils.h
 )
 
 #--------------------------------------

@@ -21,22 +21,9 @@ project(SpoutDX)
 # Source and header files
 set(SpoutDX_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutCopy.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutDirectX.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutFrameCount.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutSenderNames.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutSharedMemory.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutUtils.cpp
 )
 set(SpoutDX_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutCommon.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutCopy.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutDirectX.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutFrameCount.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutSenderNames.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutSharedMemory.h
-	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutUtils.h
 )
 
 #--------------------------------------
