@@ -5,6 +5,9 @@
 # 14/08/25 : mingw-w64 Linux cross build compatibility PR #122                 #
 # 11/10/25 - mingw-w64 Linux cross build compatibility                         #
 #            Refactor CMake - PR #122                                          #
+# 24/06/26 - Remove source files from SpoutDX9_SOURCES and SpoutDX9_HEADERS    #
+#            Add source files to SpoutDX9_static SOURCES and HEADERS           #
+#            To fix duplicate symbol linker errors (PR #138)                   #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -14,12 +17,21 @@ project(SpoutDX9)
 # Source and header files
 set(SpoutDX9_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX9.cpp
+)
+
+set(SpoutDX9_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX9.h
+)
+
+set(SpoutDX9_static_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX9.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutFrameCount.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutSenderNames.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutSharedMemory.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutUtils.cpp
 )
-set(SpoutDX9_HEADERS
+
+set(SpoutDX9_static_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX9.h
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutCommon.h
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../SpoutGL/SpoutFrameCount.h
@@ -31,7 +43,7 @@ set(SpoutDX9_HEADERS
 #--------------------------------------
 # SpoutDX9 static library
 #--------------------------------------
-add_library(SpoutDX9_static STATIC ${SpoutDX9_SOURCES} ${SpoutDX9_HEADERS})
+add_library(SpoutDX9_static STATIC ${SpoutDX9_static_SOURCES} ${SpoutDX9_static_HEADERS})
 target_compile_definitions(SpoutDX9_static PRIVATE SPOUT_BUILD_STATIC)
 target_link_libraries(SpoutDX9_static PRIVATE Spout_static)
 target_include_directories(SpoutDX9_static PUBLIC
@@ -40,7 +52,7 @@ target_include_directories(SpoutDX9_static PUBLIC
 )
 set_target_properties(SpoutDX9_static PROPERTIES
     VS_FOLDER "SpoutDX9_static"
-    SPOUT_PUBLIC_HEADER "${SpoutDX9_HEADERS}"
+    SPOUT_PUBLIC_HEADER "${SpoutDX9_static_HEADERS}"
     RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
     LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
     ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib

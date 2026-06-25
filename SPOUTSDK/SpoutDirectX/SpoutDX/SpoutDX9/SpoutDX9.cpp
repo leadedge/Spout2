@@ -26,11 +26,12 @@
 //					  convert to a string of 8 characters without new line
 //		29.08.24	- ReadDX9texture - remove !frame.IsFrameCountEnabled() condition
 //		11.10.25	- CreateSharedDX9Texture - change switch (LOWORD(res)) to switch (res)
+//		24.06.25	- Add SpoutUtils namespace functions for dll access
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2020-2025. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2020-2026. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -804,6 +805,112 @@ void spoutDX9::SetMaxSenders(int maxSenders)
 	sendernames.SetMaxSenders(maxSenders);
 }
 
+//
+// SpoutUtils namespace functions for dll access
+//
+
+void spoutDX9::OpenSpoutConsole()
+{
+	spoututils::OpenSpoutConsole();
+}
+
+void spoutDX9::CloseSpoutConsole(bool bWarning)
+{
+	spoututils::CloseSpoutConsole(bWarning);
+}
+
+void spoutDX9::EnableSpoutLog()
+{
+	spoututils::EnableSpoutLog();
+}
+
+void spoutDX9::EnableSpoutLogFile(const char* filename, bool append)
+{
+	spoututils::EnableSpoutLogFile(filename, append);
+}
+
+void spoutDX9::DisableSpoutLogFile()
+{
+	spoututils::DisableSpoutLogFile();
+}
+
+void spoutDX9::DisableSpoutLog()
+{
+	spoututils::DisableSpoutLog();
+}
+
+void spoutDX9::SpoutLog(const char* format, ...) {
+	spoututils::SpoutLog(format);
+}
+
+void spoutDX9::SpoutLogNotice(const char* format, ...)
+{
+	spoututils::SpoutLogNotice(format);
+}
+
+void spoutDX9::SpoutLogWarning(const char* format, ...)
+{
+	spoututils::SpoutLogWarning(format);
+}
+
+void spoutDX9::SpoutLogError(const char* format, ...)
+{
+	spoututils::SpoutLogError(format);
+}
+
+void spoutDX9::SpoutLogFatal(const char* format, ...)
+{
+	spoututils::SpoutLogFatal(format);
+}
+
+int spoutDX9::SpoutMessageBox(const char* message, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(message, dwMilliseconds);
+}
+
+int spoutDX9::SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
+{
+	std::string strmessage;
+	std::string strcaption;
+	char logChars[1024]={};
+
+	// Construct the message
+	va_list args;
+	va_start(args, format);
+	vsprintf_s(logChars, 1024, format, args);
+	strmessage = logChars;
+	va_end(args);
+
+	if (caption && *caption)
+		strcaption = caption;
+	else
+		strcaption = "Message";
+
+	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), uType, 0);
+
+}
+
+int spoutDX9::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
+}
+
+int spoutDX9::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, instruction, dwMilliseconds);
+}
+
+int spoutDX9::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, text);
+}
+
+int spoutDX9::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, items, selected);
+}
+
+
 
 //---------------------------------------------------------
 // Function: HoldFps
@@ -1304,13 +1411,13 @@ bool spoutDX9::SelectSenderPanel(const char* message)
 			// Take a snapshot of all processes and threads in the system
 			HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPALL, 0);
 			if (hProcessSnap == INVALID_HANDLE_VALUE) {
-				SpoutLogError("spoutDX::OpenSpoutPanel - CreateToolhelp32Snapshot error");
+				SpoutLogError("spoutDX9::OpenSpoutPanel - CreateToolhelp32Snapshot error");
 			}
 			else {
 				// Retrieve information about the first process
 				BOOL hRes = Process32First(hProcessSnap, &pEntry);
 				if (!hRes) {
-					SpoutLogError("spoutDX::OpenSpoutPanel - Process32First error");
+					SpoutLogError("spoutDX9::OpenSpoutPanel - Process32First error");
 					CloseHandle(hProcessSnap);
 				}
 				else {

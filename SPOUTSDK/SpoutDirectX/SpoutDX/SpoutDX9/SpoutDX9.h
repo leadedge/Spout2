@@ -4,7 +4,7 @@
 
 	Functions to manage DirectX 9 texture sharing
 
-	Copyright (c) 2020-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2020-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -177,6 +177,29 @@ class SPOUT_DLLEXP spoutDX9 {
 		//
 		// COMMON
 		//
+
+		//
+		// SpoutUtils namespace functions for dll access
+		//
+		void OpenSpoutConsole();
+		void CloseSpoutConsole(bool bWarning = false);
+		void EnableSpoutLog();
+		void EnableSpoutLogFile(const char* filename, bool append = false);
+		void DisableSpoutLogFile();
+		void DisableSpoutLog();
+
+		void SpoutLog(const char* format, ...);
+		void SpoutLogNotice(const char* format, ...);
+		void SpoutLogWarning(const char* format, ...);
+		void SpoutLogError(const char* format, ...);
+		void SpoutLogFatal(const char* format, ...);
+
+		int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0);
+		int SpoutMessageBox(const char* caption, UINT uType, const char* format, ...);
+		int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
+		int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds = 0);
+		int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text);
+		int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected);
 
 		// Hold frame rate
 		void HoldFps(int fps);
