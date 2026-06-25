@@ -171,11 +171,18 @@ int WINAPI wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// SPOUT
 	//
 
+	//
 	// Optionally enable logging to catch Spout warnings and errors
-	// OpenSpoutConsole(); // Console only for debugging
-	// EnableSpoutLog(); // Log to console
-	// EnableSpoutLogFile(); // Log to file
-	// SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
+	//
+	// If the application is built using SpoutDX source files
+	// the spoutUtils namespace is used, but if using a library
+	// SpoutDX.lib or SpoutDX_static.lib, the spoutDX class
+	// versions of these functions must be used.
+
+	// sender.OpenSpoutConsole(); // Console only for debugging
+	// sender.EnableSpoutLog(); // Log to console
+	// sender.EnableSpoutLogFile(); // Log to file
+	// sender.SetSpoutLogLevel(SPOUT_LOG_WARNING); // show only warnings and errors
 
 	if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
         return 0;
@@ -780,11 +787,11 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			if (wParam == 32) {
 				if (sender.frame.IsFrameSyncEnabled()) {
 					sender.frame.EnableFrameSync(false);
-					SpoutLog("Sync disabled");
+					sender.SpoutLog("Sync disabled");
 				}
 				else {
 					sender.frame.EnableFrameSync(true);
-					SpoutLog("Sync enabled");
+					sender.SpoutLog("Sync enabled");
 				}
 			}
 			break;
@@ -1015,7 +1022,7 @@ void SelectAdapter()
 		// Set the selected adapter if different
 		if (selectedadapter != currentadapter) {
 
-			SpoutLogNotice("Tutorial04 : selectedadapter = %d, currentadapter = %d", selectedadapter, currentadapter);
+			sender.SpoutLogNotice("Tutorial04 : selectedadapter = %d, currentadapter = %d", selectedadapter, currentadapter);
 
 			// A new sender using the selected adapter will be created
 			// on the first SendTexture call (Requires 2.007)

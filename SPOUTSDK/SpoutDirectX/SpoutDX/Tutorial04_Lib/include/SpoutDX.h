@@ -279,6 +279,13 @@ class SPOUT_DLLEXP spoutDX {
 	void EnableSpoutLogFile(const char* filename, bool append = false);
 	void DisableSpoutLogFile();
 	void DisableSpoutLog();
+
+	void SpoutLog(const char* format, ...);
+	void SpoutLogNotice(const char* format, ...);
+	void SpoutLogWarning(const char* format, ...);
+	void SpoutLogError(const char* format, ...);
+	void SpoutLogFatal(const char* format, ...);
+
 	int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0);
 	int SpoutMessageBox(const char* caption, UINT uType, const char* format, ...);
 	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
