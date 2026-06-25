@@ -164,10 +164,12 @@
 //					  SpoutMessageBox overload, optional timeout without instruction
 //		11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
 //					  change NULL argument to 0, Change hRes = NULL to hRes = 0
+//		13.05.26	- Remove FlushWait from ReadPixelData. Map waits for GPU access.
+//		24.06.25	- Add SpoutLog wrapper functions
 //
 // ====================================================================================
 /*
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -786,8 +788,9 @@ bool spoutDX::ReceiveTexture()
 {
 	// Return if flagged for update
 	// The update flag is reset when the receiving application calls IsUpdated()
-	if (m_bUpdated)
+	if (m_bUpdated) {
 		return true;
+	}
 
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
@@ -799,7 +802,10 @@ bool spoutDX::ReceiveTexture()
 
 		// The sender name, width, height, format, shared texture handle and pointer have been retrieved.
 		if (m_bUpdated) {
-			m_bUpdated = false; // Reset for ReceiveSenderData
+
+			// LJ DEBUG
+			// m_bUpdated = false; // Reset for ReceiveSenderData
+
 			// Update the receiving class texture.
 			if (!CheckTexture(m_Width, m_Height, m_dwFormat))
 				return false;
@@ -2128,6 +2134,30 @@ void spoutDX::DisableSpoutLog()
 	spoututils::DisableSpoutLog();
 }
 
+void spoutDX::SpoutLog(const char* format, ...) {
+	spoututils::SpoutLog(format);
+}
+
+void spoutDX::SpoutLogNotice(const char* format, ...)
+{
+	spoututils::SpoutLogNotice(format);
+}
+
+void spoutDX::SpoutLogWarning(const char* format, ...)
+{
+	spoututils::SpoutLogWarning(format);
+}
+
+void spoutDX::SpoutLogError(const char* format, ...)
+{
+	spoututils::SpoutLogError(format);
+}
+
+void spoutDX::SpoutLogFatal(const char* format, ...)
+{
+	spoututils::SpoutLogFatal(format);
+}
+
 int spoutDX::SpoutMessageBox(const char* message, DWORD dwMilliseconds)
 {
 	return spoututils::SpoutMessageBox(message, dwMilliseconds);
@@ -2521,9 +2551,7 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 
 	// Map the staging texture resource so we can access the pixels
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource={};
-	// Make sure all commands are done before mapping the staging texture
-	spoutdx.FlushWait(m_pd3dDevice, m_pImmediateContext);
-	// Map waits for GPU access
+	// Map waits for GPU access and blocks until done with any pending writes.
 	const HRESULT hr = m_pImmediateContext->Map(pStagingSource, 0, D3D11_MAP_READ, 0, &mappedSubResource);
 	if (SUCCEEDED(hr)) {
 		// Copy the staging texture pixels to the user buffer

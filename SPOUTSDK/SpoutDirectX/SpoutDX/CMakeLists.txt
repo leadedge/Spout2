@@ -12,6 +12,9 @@
 #          : Remove Examples option and from library build                     #  
 # 11/10/25 - mingw-w64 Linux cross build compatibility                         #
 #            Refactor CMake - PR #122                                          #
+# 24/06/26 - Remove source files from SpoutDX_SOURCES and SpoutDX_HEADERS      #
+#            Add source files to SpoutDX_static SOURCES and HEADERS            #
+#            To fix duplicate symbol linker errors (PR #138)                   #
 #/-------------------------------------- . -----------------------------------\#
 
 cmake_minimum_required(VERSION 3.15)
@@ -21,6 +24,13 @@ project(SpoutDX)
 # Source and header files
 set(SpoutDX_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX.cpp
+)
+set(SpoutDX_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX.h
+)
+
+set(SpoutDX_static_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutCopy.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutDirectX.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutFrameCount.cpp
@@ -28,7 +38,7 @@ set(SpoutDX_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutSharedMemory.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutUtils.cpp
 )
-set(SpoutDX_HEADERS
+set(SpoutDX_static_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/SpoutDX.h
 	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutCommon.h
 	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutCopy.h
@@ -39,10 +49,12 @@ set(SpoutDX_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/../../SpoutGL/SpoutUtils.h
 )
 
+
 #--------------------------------------
 # SpoutDX static library
 #--------------------------------------
-add_library(SpoutDX_static STATIC ${SpoutDX_SOURCES} ${SpoutDX_HEADERS})
+add_library(SpoutDX_static STATIC ${SpoutDX_static_SOURCES}
+${SpoutDX_static_HEADERS})
 target_compile_definitions(SpoutDX_static PRIVATE SPOUT_BUILD_STATIC)
 target_link_libraries(SpoutDX_static PUBLIC Spout_static)
 target_include_directories(SpoutDX_static PUBLIC
@@ -51,7 +63,7 @@ target_include_directories(SpoutDX_static PUBLIC
 )
 set_target_properties(SpoutDX_static PROPERTIES
     VS_FOLDER "SpoutDX_static"
-    SPOUT_PUBLIC_HEADER "${SpoutDX_HEADERS}"
+    SPOUT_PUBLIC_HEADER "${SpoutDX_static_HEADERS}"
     RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
     LIBRARY_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
     ARCHIVE_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/lib
@@ -68,7 +80,6 @@ target_include_directories(SpoutDX PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 set_target_properties(SpoutDX PROPERTIES
-    # VS_FOLDER "SpoutDX_dll"
 	VS_FOLDER "SpoutDX"
     SPOUT_PUBLIC_HEADER "${SpoutDX_HEADERS}"
     RUNTIME_OUTPUT_DIRECTORY ${SPOUT_BINARY_DIR}/bin
@@ -95,7 +106,6 @@ if (NOT SKIP_INSTALL_ALL)
         install(
             FILES
                 ${SpoutDX_HEADERS}
-                # ${spout_headers}
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/SpoutDX
         )
     endif()
