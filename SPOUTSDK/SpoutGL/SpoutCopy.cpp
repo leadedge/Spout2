@@ -1301,10 +1301,10 @@ void spoutCopy::rgba2rgbResample(const void* source, void* dest,
     const float y_ratio = float(sourceHeight)/float(destHeight);
 
     for (unsigned int j = 0; j < destWidth; j++)
-        xTable[j] = min((unsigned int)(j * x_ratio), sourceWidth - 1);
+        xTable[j] = std::min((unsigned int)(j * x_ratio), sourceWidth - 1);
 
     for (unsigned int i = 0; i < destHeight; i++)
-        yTable[i] = min((unsigned int)(i * y_ratio), sourceHeight - 1);
+        yTable[i] = std::min((unsigned int)(i * y_ratio), sourceHeight - 1);
 
     // Precompute source row offsets
     std::vector<unsigned int> rowOffset(destHeight);

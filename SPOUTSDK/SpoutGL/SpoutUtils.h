@@ -46,6 +46,8 @@
 #include <stdint.h> // for _uint32 etc
 #endif
 
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
 #include <windows.h>
 #include <stdio.h> // for console
 #include <iostream> // std::cout, std::end
@@ -60,6 +62,7 @@
 #include <commctrl.h> // For TaskDialogIndirect
 #include <math.h> // for round
 #include <algorithm> // for string character remove
+#include <timeapi.h> // for timeGetDevCaps, timeBeginPeriod, timeEndPeriod
 
 //
 // C++11 timer is only available for MS Visual Studio 2015 and above.
