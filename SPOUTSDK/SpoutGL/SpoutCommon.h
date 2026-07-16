@@ -39,6 +39,8 @@
 07.12.23	- using namespace spoututils moved from SpoutGL.h
 30.10.25	- Remove __movsd re-definition function for ARM
 22.01.26	- Review - update copyright year
+31.05.26	- Include SpoutUtils.h last
+//			  Add note concerning "using namespace spoututils"
 
 */
 
@@ -62,9 +64,6 @@
 	#endif
 #endif
 
-// Common utility functions namespace
-#include "SpoutUtils.h"
-
 //
 // This definition enables legacy OpenGL rendering code
 // used for shared texture Draw functions in SpoutGLDXinterop.cpp
@@ -85,5 +84,12 @@
 #if defined(_MSC_VER)
 #pragma warning(disable:26812) // unscoped enums
 #endif
+
+// Common utility functions namespace
+#include "SpoutUtils.h"
+
+// Using "namespace spoututils is included
+// in class header files where required
+
 
 #endif
