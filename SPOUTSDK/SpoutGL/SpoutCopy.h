@@ -36,12 +36,14 @@
 #include "SpoutCommon.h"
 #include <windows.h>
 #include <stdio.h> // for debug printf
-#include <GL/gl.h> // For OpenGL definitions
+#include <GL/gl.h> // for OpenGL definitions
 #include <intrin.h> // for cpuid to test for SSE2
-#include <cmath> // For compatibility with Clang. PR#81
+#include <cmath> // for compatibility with Clang. PR#81
 #include <stdint.h> // for _uint32 etc
+#include <cstdint> // for std::uint32_t etc
 #include <cstring> // for std::memcpy
 #include <algorithm> // for std::swap
+
 // For SaveTextureToBMP
 #include <d3d11.h>
 #include <fstream>
@@ -51,8 +53,9 @@
 #ifdef _M_ARM64
 #include <sse2neon.h> // for NEON
 #else
-#include <emmintrin.h> // for SSE2
-#include <tmmintrin.h> // for SSSE3
+// Header for x86 SIMD intrinsics
+// SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2
+#include <immintrin.h>
 #endif
 
 

@@ -86,13 +86,12 @@
 	04.01.26 - Optimize memcpy_sse2
 	08.01.26 - rgba2rgba - copy the whole RGBA image if stride = width*4
 	16.01.26 - rgba2rgb - change m_bSSE3 requirement to m_bSSSE3 for rgba_to_rgb_sse3
-	18.01.26 - Optimize rgba2rgbResample.
-			 - 2.3 msec 1920x1080 > 1280 x 1024 (x2 speed gain)
-			 -   Avoid floating-point floor in inner loop
-			 -   Precompute mapping tables
-			 -   Precompute source row offset
-			 - Remove rgba2bgrResample
-	20.01.26 - CheckSSE() cleanup, header file claanup
+	18.01.26 - Optimize rgba2rgbResample. - Remove rgba2bgrResample
+	20.01.26 - CheckSSE() - conditional compile options for GNUC/MINGW32/MINGW64
+	28.06.26 - NOMINMAX define in SpoutUtils.h for std::min
+			   instead of min in rgba2rgbResample - PR #139
+	04.07.26 - Include <immintrin.h> instead of both
+			   <emmintrin.h> and <tmmintrin.h>
 
 */
 
@@ -112,7 +111,6 @@ spoutCopy::spoutCopy() {
 	m_bSSSE3 = false;
 	CheckSSE(); // SSE available - sets m_bSSE2, m_bSSE3, m_bSSSE3
 }
-
 
 spoutCopy::~spoutCopy() {
 
