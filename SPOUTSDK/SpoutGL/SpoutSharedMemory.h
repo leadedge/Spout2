@@ -41,6 +41,7 @@
 #include <wingdi.h>
 #include <assert.h>
 #include <string>
+
 using namespace spoututils;
 
 //
