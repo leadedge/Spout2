@@ -179,6 +179,7 @@
 //		11.09.25	- Correct Keyed shared texture misc flag in CreateSharedDX11texture
 //					  Remove redundant final Flush from FlushWait
 //		22.01.26	- Review - update copyright year
+//		16.07.26 - move using namespace spoututils from header to class file
 //
 // ====================================================================================
 /*
@@ -208,6 +209,8 @@
 */
 
 #include "SpoutDirectX.h"
+
+using namespace spoututils;
 
 //
 // Class: spoutDirectX
