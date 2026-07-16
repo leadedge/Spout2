@@ -83,6 +83,7 @@
 //		21.09.24	-Add ReadTextureData
 //		16.08.25	- Add CloseFrameSync
 //		22.01.26	- Review - update copyright year
+//		15.07.26	- HoldFps - change from int to double
 //
 // ====================================================================================
 /*
@@ -261,7 +262,7 @@ bool SpoutSender::IsFrameCountEnabled()
 }
 
 //---------------------------------------------------------
-void SpoutSender::HoldFps(int fps)
+void SpoutSender::HoldFps(double fps)
 {
 	spout.HoldFps(fps);
 }
