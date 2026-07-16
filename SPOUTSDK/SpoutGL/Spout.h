@@ -161,7 +161,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Return frame count status
 	bool IsFrameCountEnabled();
 	// Frame rate control
-	void HoldFps(int fps);
+	void HoldFps(double fps);
 	// Signal sync event 
 	void SetFrameSync(const char* name = nullptr);
 	// Wait or test for a sync event
