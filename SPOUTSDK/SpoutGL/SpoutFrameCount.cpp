@@ -101,6 +101,7 @@
 //		09.08.25	- Change all initializations to "{}"
 //		28.08.25	- CheckTextureAccess - do not block if texture is null
 //		22.01.26	- Review - update copyright year
+//		15.07.26	- HoldFps - change from int to double
 //
 // ====================================================================================
 //
@@ -444,18 +445,19 @@ std::string spoutFrameCount::GetSenderName()
 //   function immediately after you are finished using the timer services. An application 
 //   can make multiple timeBeginPeriod calls as long as each call is matched with a call
 //   to timeEndPeriod.
-// 
-void spoutFrameCount::HoldFps(int fps)
+//
+void spoutFrameCount::HoldFps(double fps)
 {
 	// Unlikely but return anyway
-	if (fps <= 0)
+	// if (fps <= 0)
+	if (fps <= 0.0)
 		return;
 
 	// Reduce Windows timer period to minimum
 	StartTimePeriod();
 
 	// Target frame time
-	const double target = (1000000.0/static_cast<double>(fps))/1000.0; // msec
+	const double target = (1000000.0/fps)/1000.0; // msec
 
 #ifdef USE_CHRONO
 

@@ -40,14 +40,14 @@
 #pragma comment (lib, "d3d11.lib") // for keyed mutex texture access
 #pragma comment (lib, "winmm.lib") // for timer resolution functions 
 
-using namespace spoututils;
-
 // USE_CHRONO is defined in SpoutUtils.h
 // Note comments about using an early platform toolset
 #ifdef USE_CHRONO
 #include <chrono> // c++11 timer
 #include <thread>
 #endif
+
+using namespace spoututils;
 
 class SPOUT_DLLEXP spoutFrameCount {
 
@@ -80,7 +80,7 @@ class SPOUT_DLLEXP spoutFrameCount {
 	// Frame count sender name
 	std::string GetSenderName();
 	// Frame rate control
-	void HoldFps(int fps);
+	void HoldFps(double fps);
 
 	//
 	// Used by other classes
