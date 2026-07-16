@@ -38,7 +38,6 @@
 
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
-using namespace spoututils;
 
 #include <windowsx.h>
 #include <wingdi.h>

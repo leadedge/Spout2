@@ -113,6 +113,7 @@
 	30.10.25 - Remove __movsd. Timing tests show no performance gain.
 	22.01.26 - Add "using namespace spoututils" to header
 			   Review - update copyright year
+	16.07.26 - move using namespace spoututils from header to class file
 	
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
@@ -141,6 +142,8 @@
 */
 #include "SpoutSenderNames.h"
 #include <assert.h>
+
+using namespace spoututils;
 
 //
 // Class: spoutSenderNames
