@@ -214,6 +214,9 @@
 //		06.04.26	- Add CreateFbo DeleteFbo and AttachTexture
 //		11.04.26	- LoadGLextensions - show OpenGL version
 //		22.05.26	- Add CreateGLversion - create OpenGL of specified version
+//		04.07.26	- GLDXformat - cast d3dformat switch to int to avoid
+//					  different enum warning. Check that enum values are unique.
+//		16.07.26 - move using namespace spoututils from header to class file
 //
 // ====================================================================================
 //
@@ -241,6 +244,8 @@
 //
 
 #include "SpoutGL.h"
+
+using namespace spoututils;
 
 // ================================================
 
@@ -800,32 +805,32 @@ GLint spoutGL::GLDXformat(DXGI_FORMAT textureformat)
 		d3dformat = m_DX11format;
 
 	GLint glformat = GL_RGBA;
-	switch (d3dformat) {
+	switch ((int)d3dformat) {
 		// DirectX 9
-		case D3DFMT_A8R8G8B8:
-		case D3DFMT_X8R8G8B8:
+		case D3DFMT_A8R8G8B8: // 21
+		case D3DFMT_X8R8G8B8: // 22
 		// DirectX 11
-		case DXGI_FORMAT_B8G8R8X8_UNORM:
-		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM: // 88
+		case DXGI_FORMAT_B8G8R8A8_UNORM: // 87
 			glformat = GL_RGBA;
 			break;
-		case DXGI_FORMAT_R8G8B8A8_SNORM:
-		case DXGI_FORMAT_R8G8B8A8_UNORM:
-		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_SNORM: // 31
+		case DXGI_FORMAT_R8G8B8A8_UNORM: // 28
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: // 29
 			glformat = GL_RGBA8;
 			break;
-		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R10G10B10A2_UNORM: // 24
 			glformat = GL_RGB10_A2;
 			break;
-		case DXGI_FORMAT_R16G16B16A16_SNORM:
-		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_SNORM: // 13
+		case DXGI_FORMAT_R16G16B16A16_UNORM: // 11
 			glformat = GL_RGBA16;
 			break;
-		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT: // 10
 			glformat = GL_RGBA16F;
 			break;
-		case DXGI_FORMAT_R32G32B32_FLOAT:
-		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_R32G32B32_FLOAT: // 6
+		case DXGI_FORMAT_R32G32B32A32_FLOAT: // 2
 			glformat = GL_RGBA32F;
 			break;
 		default:

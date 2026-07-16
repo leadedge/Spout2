@@ -47,9 +47,6 @@
 
 #pragma warning(disable : 26485)
 
-// Used throughout
-using namespace spoututils;
-
 class SPOUT_DLLEXP spoutGL {
 
 	public:
