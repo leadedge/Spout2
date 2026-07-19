@@ -29,6 +29,7 @@ The SpoutGL folder and contents must be copied to the Openframeworks "apps" fold
 					SenderSync
 					SenderUtilities
 					SenderVideo
+					SenderVideoAudio
 					SenderWebcam
 - Open the solution file with Visual Studio 2022 and set to "Release" and "x64".
 - The first time the project is used, re-build "openframeworkslib".\
