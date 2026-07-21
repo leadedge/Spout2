@@ -23,6 +23,7 @@
 #include "ofMain.h"
 #include "ofxWinMenu.h" // Windows menu
 #include "../../../apps/SpoutGL/Spout.h" // Spout SDK
+#include <format> // for time display
 
 class ofApp : public ofBaseApp{
 	public:
@@ -63,6 +64,9 @@ class ofApp : public ofBaseApp{
 		std::string m_videopath;         // The full video path
 		double m_FrameRate = 30.0;       // Video frame rate
 		double m_SenderFps = 0.0;        // For fps display averaging
+		double m_Duration = 0.0;         // Video duration
+		long m_Frames = 0;               // Total number of frames
+		long m_FramesRead = 0;           // Number of frames read from the pipe
 		FILE *m_pipein = nullptr;        // Pipe for FFmpeg video
 		std::string m_codecName;         // Codec name
 		std::string m_input;             // Input string to FFmpeg video
@@ -75,10 +79,6 @@ class ofApp : public ofBaseApp{
 		std::vector<int> audiosamples;    // Sequence of sample numbers per frame
 		std::vector<char> m_audioBuffer;  // The audio buffer used in audioOut TODO
 		std::vector<int16_t> m_pcmBuffer; // PCM data buffer used in audioOut
-
-		// LJ DEBUG
-		std::atomic<double> audioClock = 0.0;
-
 		int m_nChannels = 0;              // Number of channels (2 for stereo) 
 		int m_sampleRate = 0;             // Audio sample rate
 
@@ -92,4 +92,5 @@ class ofApp : public ofBaseApp{
 		bool ffprobe(std::string filePath);   // Get video file information
 		void ResetWindow();
 		void ShowInfo();
+		std::string ffdownloadstr(); // FFmpeg download string for messagebox
 };

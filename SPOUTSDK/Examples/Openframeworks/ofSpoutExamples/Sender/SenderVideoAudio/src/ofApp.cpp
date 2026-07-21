@@ -12,12 +12,14 @@
 	The example may be useful for further reference :
 
 	o Using ofxWinMenu to create a window menu
+	o Setting an icon from a Windows dll
 	o Detecting non-client area mouse press
     o FFprobe to read video file details
     o FFmpeg with a pipe to decode video and audio frames
     o Openframeworks dragEvent for drag and drop
 	o Openframeworks soundstream and audioOut
 	o Fps control using "HoldFps" with FFmpeg constant frame rate
+	o Video duration, frame counter and progress bar
 	o Draw and position ofTrueTypeFont text
     o SetSenderName, SendImage, LoadTexturePixels and ReleaseSender
 	o Utility OpenSpoutConsole and SpoutMessageBox functions
@@ -69,21 +71,30 @@ void ofApp::setup(){
 	m_ffmpegPath = m_exePath;
 	m_ffmpegPath += "/data/ffmpeg/ffmpeg.exe";
 	if (_access(m_ffmpegPath.c_str(), 0) == -1) {
-		MessageBoxA(NULL, "FFmpeg not found", "Warning", MB_OK | MB_TOPMOST);
+		// FFmpeg download instructions
+		// Keep the dialog open with "?noclose" in the url
+		// and topmost so that the instructions remain visible
+		// See ffdownloadstr()
+		std::string str = "FFmpeg not found\n\n" + ffdownloadstr();
+		SpoutMessageBoxIconSmall();
+		SpoutMessageBox(NULL, str.c_str(), "FFmpeg", MB_ICONWARNING | MB_TOPMOST | MB_OK);
 	}
-
-	// Look for FFprobe.exe
-	std::string ffpath = m_exePath;
-	ffpath += "/data/ffmpeg/ffprobe.exe";
-	if (_access(ffpath.c_str(), 0) == -1) {
-		MessageBoxA(NULL, "FFprobe not found", "Warning", MB_OK | MB_TOPMOST);
+	else {
+		// FFmpeg found
+		// Look for FFprobe.exe
+		std::string ffpath = m_exePath;
+		ffpath += "/data/ffmpeg/ffprobe.exe";
+		if (_access(ffpath.c_str(), 0) == -1) {
+			std::string str = "FFprobe not found\n\n" + ffdownloadstr();
+			SpoutMessageBoxIconSmall();
+			SpoutMessageBox(NULL, str.c_str(), "FFprobe", MB_ICONWARNING | MB_TOPMOST | MB_OK);
+		}
 	}
-
 	// Main window handle
 	m_hWnd = ofGetWin32Window();
 
-	// Set a custom window icon
-	HICON hIcon = reinterpret_cast<HICON>(LoadImageA(nullptr, "bin/data/Spout.ico", IMAGE_ICON, 16, 16, LR_LOADFROMFILE));
+	// Set a custom icon from C:\Windows\System32\imageres.dll
+	HICON hIcon = ExtractWindowsIcon(5201, "imageres.dll");
 	SendMessage(m_hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 	SendMessage(m_hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
 
@@ -136,8 +147,8 @@ void ofApp::update() {
 
 
 //--------------------------------------------------------------
-void ofApp::draw() {
-
+void ofApp::draw()
+{
 	ofBackground(0);
 	ofSetColor(255);
 
@@ -163,7 +174,7 @@ void ofApp::draw() {
 	// Read a video frame from the FFmpeg input pipe
 	if(!bPaused) {
 		if (m_pipein && m_pixelBuffer && m_SenderWidth > 0 && m_SenderHeight > 0) {
-			if(fread(m_pixelBuffer, 1, m_SenderWidth * m_SenderHeight * 4, m_pipein) == 0) {
+			if(fread(m_pixelBuffer, 1, m_SenderWidth*m_SenderHeight*4, m_pipein) == 0) {
 				// fread = 0 means the end of the file
 				// Stop audio and draw
 				bNCmousePressed = true;
@@ -179,8 +190,10 @@ void ofApp::draw() {
 				bNCmousePressed = false;
 				// Start soundstream
 				soundStream.start();
+				m_FramesRead = 0;
 				return;
 			}
+			m_FramesRead++;
 		}
 		// Send the video pixels
 		sender.SendImage(m_pixelBuffer, m_SenderWidth, m_SenderHeight, GL_BGRA);
@@ -198,10 +211,9 @@ void ofApp::draw() {
 		if(bShowInfo)
 			ShowInfo();
 	}
-
 	sender.HoldFps(m_FrameRate);
-
 }
+
 
 //--------------------------------------------------------------
 void ofApp::exit() {
@@ -249,6 +261,8 @@ void ofApp::keyPressed(int key)
 			// Cancel paused
 			bPaused = false;
 			soundStream.start();
+			// Reset frame counter
+			m_FramesRead = 0;
 		}
 	}
 
@@ -289,7 +303,7 @@ void ofApp::audioOut(ofSoundBuffer &buffer)
 	// by the audio callback and the PCM data buffer are
 	// established when soundstream is set up.
 	//
-	if (m_audioPipe) {
+	if (m_audioPipe && m_FramesRead > 0) { // wait until draw reads a frame
 		size_t bytesRead = fread(m_pcmBuffer.data(), 1, m_pcmBuffer.size()*sizeof(int16_t), m_audioPipe);
 		if (bytesRead > 0) {
 			// For the sound to come from the speakers
@@ -340,8 +354,13 @@ bool ofApp::OpenVideo(std::string filePath)
 	// Cancel paused
 	bPaused = false;
 
+	// Reset counters
+	m_Frames = 0;
+	m_FramesRead = 0;
+	m_Duration = 0.0;
+
 	// Get information from the movie file using ffprobe
-	// Sets the width and height globals
+	// Sets the width, height and duration globals
 	if (!ffprobe(filePath)) {
 		MessageBoxA(NULL, "FFprobe error", "Warning", MB_OK);
 		return false;
@@ -648,30 +667,35 @@ void ofApp::appMenuFunction(string title, bool bChecked)
 		about += "      mouse press. The source code may be useful for further reference\n\n";
 
 		about += "      FFmpeg.exe and FFprobe.exe are required.\n";
-		about += "        * Go to <a href=\"https://github.com/GyanD/codexffmpeg/releases\">https://github.com/GyanD/codexffmpeg/releases</a>\n";
-		about += "        * Choose the \"Essentials\" build.\n";
-		about += "          for example : ffmpeg-8.1.2-essentials_build.zip\n";
-		about += "        * Download the archive and unzip to a convenient folder.\n";
-		about += "        * Copy bin/FFmpeg.exe and bin/FFprobe.exe to\n";
-		about += "          the application \"bin/data/ffmpeg\" folder.\n\n";
-
-		HICON hIcon = reinterpret_cast<HICON>(LoadImageA(nullptr, "bin/data/Spout.ico", IMAGE_ICON, 16, 16, LR_LOADFROMFILE));
+		about += "      Select the \"FFmpeg\" button below for more information\n";
 
 		// Icon in the caption rather than the dialog window
 		SpoutMessageBoxIconSmall();
-		SpoutMessageBoxIcon(hIcon);
-		SpoutMessageBoxButton(1000, L"Options");
-		if (SpoutMessageBox(NULL, about.c_str(), "About", MB_USERICON | MB_OK) == 1000) {
-			std::string str = "File > Open video   - Select a video file\n";
-			str += "File > Video folder - open folder of the last video\n";
-			str += "Output > Mute   - mute speakers\n";
-			str += "Output > Resize - limit video to 1280 width (resets)\n";
-			str += "  Fmpeg pipe read (fread) can be too slow with images\n";
-			str += "  1920 or more width, typically 10-14 msec at 1920x1080\n";
-			str += "  compared to 3-4 msec at 1280x720, and audio can drift\n";
-			str += "  out sync. This option limits output width to 1280 while\n";
-			str += "  preserving aspect ratio. The output frame rate is also\n";
-			str += "  limited to 30fps. FFmpeg drops frames to keep that rate.\n";
+		SpoutMessageBoxButton(1000, L"FFmpeg");
+		SpoutMessageBoxButton(2000, L"Options");
+
+		int iRet = SpoutMessageBox(NULL, about.c_str(), "FFmpeg", MB_ICONINFORMATION | MB_OK);
+		if(iRet == 1000) {
+			// FFmpeg download instructions
+			// Keep the dialog open with "?noclose" in the url
+			// and topmost so that the instructions remain visible
+			// See ffdownloadstr()
+			std::string str = "Downloading FFmpeg\n\n" + ffdownloadstr();
+			SpoutMessageBoxIconSmall();
+			SpoutMessageBox(NULL, str.c_str(), "FFmpeg", MB_ICONINFORMATION | MB_TOPMOST | MB_OK);
+		}
+		else if (iRet == 2000) {
+			std::string str = "        File > Open video   - Select a video file\n";
+			str += "        File > Video folder - open folder of the last video\n";
+			str += "        Output > Mute   - mute speakers\n";
+			str += "        Output > Resize - limit video to 1280 width (resets)\n";
+			str += "          Fmpeg pipe read (fread) can be too slow with images\n";
+			str += "          1920 or more width, typically 10-14 msec at 1920x1080\n";
+			str += "          compared to 3-4 msec at 1280x720, and audio can drift\n";
+			str += "          out sync. This option limits output width to 1280 while\n";
+			str += "          preserving aspect ratio. The output frame rate is also\n";
+			str += "          limited to 30fps. FFmpeg drops frames to keep that rate.\n";
+			SpoutMessageBoxIconSmall();
 			SpoutMessageBox(NULL, str.c_str(), "Options", MB_ICONINFORMATION | MB_OK);
 		}
 
@@ -748,15 +772,48 @@ bool ofApp::ffprobe(std::string videoPath)
 	m_SenderHeight = 0;
 
 	// Find the first video stream
-	char stream[32]{};
+	char stream[100]{};
 	for (int i=0; i<10; i++) { // arbritrary maximum
-		sprintf_s(stream, 32, "streams.stream.%d", i);
+		sprintf_s(stream, 100, "streams.stream.%d", i);
 		if (GetPrivateProfileStringA((LPCSTR)stream, (LPSTR)"codec_type", (LPSTR)"0", (LPSTR)tmp, 8, initfile) > 0) {
 			if (strcmp(tmp, "video") == 0) {
 				if (GetPrivateProfileStringA((LPCSTR)stream, (LPSTR)"width", NULL, (LPSTR)tmp, 8, initfile) > 0)
 					m_SenderWidth = atoi(tmp);
 				if (GetPrivateProfileStringA((LPCSTR)stream, (LPSTR)"height", NULL, (LPSTR)tmp, 8, initfile) > 0)
 					m_SenderHeight = atoi(tmp);
+				if (GetPrivateProfileStringA((LPCSTR)stream, (LPSTR)"duration", NULL, (LPSTR)tmp, 10, initfile) > 0)
+					m_Duration = atof(tmp);
+
+				// Duration is in seconds
+				// N/A - try tags
+				if (strcmp(tmp, "N/A") == 0) {
+					// Try [streams.stream.0.tags]
+					// DURATION=00\:55\:15.314000000
+					if (GetPrivateProfileStringA((LPCSTR)"streams.stream.0.tags", (LPSTR)"DURATION", (LPSTR)"-1", (LPSTR)tmp, MAX_PATH, initfile) > 0) {
+						// Remove FFprobe escaping: "\:" -> ":"
+						std::string str = tmp;
+						size_t pos = 0;
+						while ((pos = str.find("\\:")) != std::string::npos) {
+							str.replace(pos, 2, ":");
+						}
+						// strip the fractional seconds
+						str = str.substr(0, str.find('.'));
+						// Convert to seconds
+						int hrs = 0;
+						int mins = 0;
+						int secs = 0;
+						char colon1, colon2;
+						std::stringstream ss(str);
+						ss >> hrs >> colon1 >> mins >> colon2 >> secs;
+						m_Duration = (hrs*3600.0+mins*60.0+secs);
+					}
+				}
+
+				// Total number of frames
+				if (m_Duration > 0.0 && m_FrameRate > 0.0) {
+					m_Frames = (long)(m_Duration * m_FrameRate);
+				}
+
 				dwResult = GetPrivateProfileStringA((LPCSTR)"streams.stream.0", (LPSTR)"r_frame_rate", (LPSTR)"30/1", (LPSTR)tmp, 11, initfile);
 				if (dwResult == 0)
 					dwResult = GetPrivateProfileStringA((LPCSTR)"streams.stream.0", (LPSTR)"avm_frame_rate", (LPSTR)"30/1", (LPSTR)tmp, 11, initfile);
@@ -772,10 +829,11 @@ bool ofApp::ffprobe(std::string videoPath)
 				// Video codec name
 				if(GetPrivateProfileStringA((LPCSTR)"streams.stream.0", (LPSTR)"codec_name", (LPSTR)"0", (LPSTR)tmp, 20, initfile))
 					m_codecName = tmp;
-				break;
+					break;
 			}
 		}
-	} // end video
+
+	} // end all streams
 
 	// Audio
 	for (int i=0; i<10; i++) { // arbritrary maximum
@@ -831,11 +889,48 @@ void ofApp::ResetWindow()
 //--------------------------------------------------------------
 void ofApp::ShowInfo()
 {
+	std::string totaltime;
+	// Progress bar
+	if (m_Frames > 0L && m_FramesRead > 0L) {
+		// printf("Frames = %ld of %ld\n", m_FramesRead, m_Frames);
+		ofSetColor(204); // Light grey total
+		ofDrawRectRounded(0, ofGetHeight()-15, ofGetWidth(), 9, 3);
+		ofSetColor(40, 125, 204); // VLC blue
+		ofDrawRectRounded(0, ofGetHeight()-15, ofGetWidth()*m_FramesRead/m_Frames, 9, 3);
+		ofSetColor(255);
+
+		totaltime = std::format("{:02}:{:02}", (int)m_Duration/60, (int)m_Duration%60);
+
+	}
+
 	std::string str ="'P' - play/pause : 'R' - restart : 'C' - close : '  ' - show info";
+	if (!totaltime.empty()) {
+		int framesec = (int)(m_Duration * m_FramesRead / m_Frames);
+		std::string frametime = std::format("{:02}:{:02}", framesec / 60, (int)framesec % 60);
+		str += " : " + frametime + " of " + totaltime;
+	}
+
 	int strwidth = myFont.stringWidth(str);
 	int xpos = (ofGetWidth())/2 - strwidth/2;
-	int ypos = ofGetHeight()-15;
+	int ypos = ofGetHeight()-25;
 	myFont.drawString(str, xpos, ypos);
 }
+
+
+//--------------------------------------------------------------
+// FFmpeg download string for messagebox
+std::string ofApp::ffdownloadstr()
+{
+	// Keep the dialog open with "?noclose" in the url
+	std::string str = "        * Go to <a href=\"https://github.com/GyanD/codexffmpeg/releases?noclose\">https://github.com/GyanD/codexffmpeg/releases</a>\n";
+	str += "        * Choose the \"Essentials\" build.\n";
+	str += "          for example : ffmpeg-8.1.2-essentials_build.zip\n";
+	str += "        * Download the archive and unzip to a convenient folder.\n";
+	str += "        * Copy bin/FFmpeg.exe and bin/FFprobe.exe to\n";
+	str += "          the application \"bin/data/ffmpeg\" folder.\n\n";
+	return str;
+}
+
+
 
 // ... the end
