@@ -282,6 +282,10 @@
 				   SpoutUtils functions are always compiled exported
 				   Remove unused startcount, endcount, m_FrameStart
 				   Update StartTiming/EndTiming
+		21.07.26 - TDN_HYPERLINK_CLICKED
+				   Look for - "noclose" for the dialog to remain open
+				   The application url includes "noclose" and is of the form
+				   <a href=\"https://github.com?noclose\">https://github.com</a>
 
 */
 
@@ -3011,6 +3015,7 @@ namespace spoututils {
 			//   TDN_HYPERLINK_CLICKED indicates that a hyperlink has been selected.
 			//   lParam - Pointer to a wide-character string containing the URL of the hyperlink.
 			if (uNotification == TDN_HYPERLINK_CLICKED) {
+				
 				SHELLEXECUTEINFOW sei{};
 				sei.cbSize = sizeof(sei);
 				sei.hwnd = NULL;
@@ -3020,7 +3025,14 @@ namespace spoututils {
 				if (!ShellExecuteExW(&sei)) {
 					return S_FALSE;
 				}
-				SendMessage(hwnd, TDM_CLICK_BUTTON, IDOK, 0);
+
+				// Look for - "noclose" for the dialog to remain open
+				std::wstring wstr(reinterpret_cast<LPCWSTR>(lParam));
+				if (wstr.find(L"noclose") == std::wstring::npos) {
+					// Close dialog if not found
+					SendMessage(hwnd, TDM_CLICK_BUTTON, IDOK, 0);
+				}
+				// Found "noclose" - leave dialog open
 			}
 #endif
 			return S_OK;
