@@ -1075,14 +1075,18 @@ void spoutSenderNames::readSenderSetFromBuffer(const char* buffer, std::set<std:
 		// At the end of the map there will be a null in the data.
 		// Must use a character array to ensure testing for null.
 		strncpy_s(name, buf, SpoutMaxSenderNameLen);
-		if(name[0] > 0) {
+		// Cast to unsigned char before the comparison. char is signed on MSVC, so a
+		// name whose first byte is >= 0x80 (e.g. a UTF-8 / non-ASCII sender name) is
+		// negative and would be dropped here, and would also end the loop early and
+		// hide any senders stored after it.
+		if((unsigned char)name[0] > 0) {
 			// insert name into set
 			SenderNames.insert(&name[0]);
 		}
 		// increment by 256 bytes for the next name
 		buf += SpoutMaxSenderNameLen;
 		i++;
-	} while (name[0] > 0 && i < maxSenders); // maxSenders has to be passed because this function is static
+	} while ((unsigned char)name[0] > 0 && i < maxSenders); // maxSenders has to be passed because this function is static
 
 }
 
