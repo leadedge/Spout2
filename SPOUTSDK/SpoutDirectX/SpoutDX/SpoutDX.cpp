@@ -165,7 +165,10 @@
 //		11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
 //					  change NULL argument to 0, Change hRes = NULL to hRes = 0
 //		13.05.26	- Remove FlushWait from ReadPixelData. Map waits for GPU access.
-//		24.06.25	- Add SpoutLog wrapper functions
+//		24.06.26	- Add SpoutLog wrapper functions
+//		26.06.26	- Modify CMakeLists.txt to enable dll exports for spoututils
+//					  and remove wrapper functions
+//		22.09.26	- Change HoldFps from int to double
 //
 // ====================================================================================
 /*
@@ -1229,7 +1232,7 @@ long spoutDX::GetSenderFrame()
 // Function: HoldFps
 // Frame rate control
 //    Desired frames per second
-void spoutDX::HoldFps(int fps)
+void spoutDX::HoldFps(double fps)
 {
 	frame.HoldFps(fps);
 }
@@ -2098,114 +2101,6 @@ void spoutDX::CheckSenderFormat(char * sendername)
 			sendernames.SetActiveSender(sendername);
 	}
 }
-
-
-//
-// SpoutUtils namespace functions for dll access
-//
-
-void spoutDX::OpenSpoutConsole()
-{
-	spoututils::OpenSpoutConsole();
-}
-
-void spoutDX::CloseSpoutConsole(bool bWarning)
-{
-	spoututils::CloseSpoutConsole(bWarning);
-}
-
-void spoutDX::EnableSpoutLog()
-{
-	spoututils::EnableSpoutLog();
-}
-
-void spoutDX::EnableSpoutLogFile(const char* filename, bool append)
-{
-	spoututils::EnableSpoutLogFile(filename, append);
-}
-
-void spoutDX::DisableSpoutLogFile()
-{
-	spoututils::DisableSpoutLogFile();
-}
-
-void spoutDX::DisableSpoutLog()
-{
-	spoututils::DisableSpoutLog();
-}
-
-void spoutDX::SpoutLog(const char* format, ...) {
-	spoututils::SpoutLog(format);
-}
-
-void spoutDX::SpoutLogNotice(const char* format, ...)
-{
-	spoututils::SpoutLogNotice(format);
-}
-
-void spoutDX::SpoutLogWarning(const char* format, ...)
-{
-	spoututils::SpoutLogWarning(format);
-}
-
-void spoutDX::SpoutLogError(const char* format, ...)
-{
-	spoututils::SpoutLogError(format);
-}
-
-void spoutDX::SpoutLogFatal(const char* format, ...)
-{
-	spoututils::SpoutLogFatal(format);
-}
-
-int spoutDX::SpoutMessageBox(const char* message, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(message, dwMilliseconds);
-}
-
-int spoutDX::SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
-{
-	std::string strmessage;
-	std::string strcaption;
-	char logChars[1024]={};
-
-	// Construct the message
-	va_list args;
-	va_start(args, format);
-	vsprintf_s(logChars, 1024, format, args);
-	strmessage = logChars;
-	va_end(args);
-
-	if (caption && *caption)
-		strcaption = caption;
-	else
-		strcaption = "Message";
-
-	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), uType, 0);
-
-}
-
-int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
-}
-
-int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, instruction, dwMilliseconds);
-}
-
-int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, text);
-}
-
-int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, items, selected);
-}
-
-
 
 //
 // PRIVATE
