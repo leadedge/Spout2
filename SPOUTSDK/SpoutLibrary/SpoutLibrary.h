@@ -4,7 +4,7 @@
 //	Spout SDK dll compatible with any C++ compiler
 //
 /*
-		Copyright (c) 2016-2025, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2026, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -29,11 +29,8 @@
 */
 #pragma once
 
-#ifdef _MSC_VER
-#pragma warning(disable : 26433) // Function should be marked with 'override'
-#endif
-
 // for definitions
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <string>
 #include <vector>
@@ -57,10 +54,13 @@ typedef unsigned int GLenum;
 
 #define SPOUTLIBRARY_EXPORTS // defined for this DLL. The application imports rather than exports
 
-#ifdef SPOUTLIBRARY_EXPORTS
-#define SPOUTAPI __declspec(dllexport)
+
+#ifdef SPOUT_BUILD_STATIC
+	#define SPOUTAPI
+#elif defined(SPOUTLIBRARY_EXPORTS)
+	#define SPOUTAPI __declspec(dllexport)
 #else
-#define SPOUTAPI __declspec(dllimport)
+	#define SPOUTAPI __declspec(dllimport)
 #endif
 
 // Local log level definitions for SetSpoutLogLevel.
@@ -88,6 +88,7 @@ enum SpoutLibLogLevel {
 	SPOUT_LOG_FATAL,
 	SPOUT_LOG_NONE
 };
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -216,7 +217,7 @@ struct SPOUTLIBRARY
 	// Return frame count status
 	virtual bool IsFrameCountEnabled() = 0;
 	// Sender frame rate control
-	virtual void HoldFps(int fps) = 0;
+	virtual void HoldFps(double fps) = 0;
 	// Get system refresh rate
 	virtual double GetRefreshRate() = 0;
 	// Signal sync event 
@@ -250,153 +251,9 @@ struct SPOUTLIBRARY
 	virtual int GetMemoryBufferSize(const char *name) = 0;
 
 	//
-	// Log utilities
+	// OpenGL shared texture
 	//
-
-	// Open console for debugging
-	virtual void OpenSpoutConsole() = 0;
-	// Close console
-	virtual void CloseSpoutConsole(bool bWarning = false) = 0;
-	// Enable spout log to the console
-	virtual void EnableSpoutLog() = 0;
-	// Enable spout log to a file with optional append
-	virtual void EnableSpoutLogFile(const char* filename, bool bappend = false) = 0;
-	// Disable logging to file
-	virtual void DisableSpoutLogFile() = 0;
-	// Remove a log file
-	virtual void RemoveSpoutLogFile(const char* filename = nullptr) = 0;
-	// Disable logging to console and file
-	virtual void DisableSpoutLog() = 0;
-	// Disable logging temporarily
-	virtual void DisableLogs() = 0;
-	// Enable logging again
-	virtual void EnableLogs() = 0;
-	// Are console logs enabled
-	virtual bool LogsEnabled() = 0;
-	// Is file logging enabled
-	virtual bool LogFileEnabled() = 0;
-	// Return the full log file path
-	virtual std::string GetSpoutLogPath() = 0;
-	// Return the log file as a string
-	virtual std::string GetSpoutLog() = 0;
-	// Show the log file folder in Windows Explorer
-	virtual void ShowSpoutLogs() = 0;
-
-	// Set the current log level
-	// SPOUT_LOG_SILENT  - Disable all messages
-	// SPOUT_LOG_VERBOSE - Show all messages
-	// SPOUT_LOG_NOTICE  - Show information messages - default
-	// SPOUT_LOG_WARNING - Something might go wrong
-	// SPOUT_LOG_ERROR   - Something did go wrong
-	// SPOUT_LOG_FATAL   - Something bad happened
-	virtual void SetSpoutLogLevel(SpoutLibLogLevel level) = 0;
-	// General purpose log
-	virtual void SpoutLog(const char* format, ...) = 0;
-	// Verbose - show log for SPOUT_LOG_VERBOSE or above
-	virtual void SpoutLogVerbose(const char* format, ...) = 0;
-	// Notice - show log for SPOUT_LOG_NOTICE or above
-	virtual void SpoutLogNotice(const char* format, ...) = 0;
-	// Warning - show log for SPOUT_LOG_WARNING or above
-	virtual void SpoutLogWarning(const char* format, ...) = 0;
-	// Error - show log for SPOUT_LOG_ERROR or above
-	virtual void SpoutLogError(const char* format, ...) = 0;
-	// Fatal - always show log
-	virtual void SpoutLogFatal(const char* format, ...) = 0;
-
-	//
-	// MessageBox dialog
-	//
-
-	// MessageBox dialog with optional timeout
-	//   Used where a Windows MessageBox would interfere with the application GUI
-	//   The dialog closes itself if a timeout is specified
-	virtual int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0) = 0;
-	// MessageBox dialog with variable arguments
-	virtual int SpoutMessageBox(const char* caption, const char* format, ...) = 0;
-	// MessageBox with variable arguments and icon, buttons
-	virtual int SpoutMessageBox(const char* caption, UINT uType, const char* format, ...) = 0;
-	// MessageBox dialog with standard arguments
-	//   Replaces an existing MessageBox call
-	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0) = 0;
-	// MessageBox dialog with standard arguments
-	//   including taskdialog main instruction large text
-	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption,  UINT uType, const char* instruction, DWORD dwMilliseconds = 0) = 0;
-	// MessageBox dialog with an edit control for text input
-	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text) = 0;
-	// MessageBox dialog with a combobox control for item selection
-	virtual	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected) = 0;
-
-	// Custom icon for SpoutMessageBox from resources
-	virtual void SpoutMessageBoxIcon(HICON hIcon) = 0;
-	// Custom icon for SpoutMessageBox from file
-	virtual bool SpoutMessageBoxIcon(std::string iconfile) = 0;
-	// Custom button for SpoutMessageBox
-	virtual void SpoutMessageBoxButton(int ID, std::wstring title) = 0;
-	// Activate modeless mode using SpoutPanel.exe
-	virtual void SpoutMessageBoxModeless(bool bMode = true) = 0;
-	// Window handle for SpoutMessageBox where not specified
-	virtual void SpoutMessageBoxWindow(HWND hWnd) = 0;
-	// Position to point SpoutMessageBox
-	virtual void SpoutMessageBoxPosition(POINT pt) = 0;
-	// Copy text to the clipboard
-	virtual bool CopyToClipBoard(HWND hwnd, const char* caps) = 0;
-	// Open logs folder
-	virtual bool OpenSpoutLogs() = 0;
-
-	//
-	// Registry utilities
-	//
-	// Read subkey DWORD value
-	virtual bool ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue) = 0;
-	// Write subkey DWORD value
-	virtual bool WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue) = 0;
-	// Read subkey character string
-	virtual bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath) = 0;
-	// Write subkey character string
-	virtual bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath) = 0;
-	// Write subkey binary hex data string
-	virtual bool WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars) = 0;
-	// Remove subkey value name
-	virtual bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename) = 0;
-	// Delete a subkey and its values.
-	//   It must be a subkey of the key that hKey identifies, but it cannot have subkeys.  
-	//   Note that key names are not case sensitive.  
-	virtual bool RemoveSubKey(HKEY hKey, const char *subkey) = 0;
-	// Find subkey
-	virtual bool FindSubKey(HKEY hKey, const char *subkey) = 0;
-
-	//
-	// Information
-	//
-	// Get SDK version number string e.g. "2.007.000"
-	// Optional - return as a single number
-	virtual std::string GetSDKversion(int* pNumber = nullptr) = 0;
-	// Computer type
-	virtual bool IsLaptop() = 0;
-	// Get the module handle of an executable or dll
-	virtual HMODULE GetCurrentModule() = 0;
-	// Get executable or dll version
-	virtual std::string GetExeVersion(const char* path) = 0;
-	// Get executable or dll path
-	virtual std::string GetExePath(bool bFull = false) = 0;
-	// Get executable or dll name
-	virtual std::string GetExeName() = 0;
-	// Remove file name and return the path
-	virtual std::string GetPath(std::string fullpath) = 0;
-	// Remove path and return the file name
-	virtual std::string GetName(std::string fullpath) = 0;
-
-	//
-	// Timing utilities
-	//
-	// Start timing period
-	virtual void StartTiming() = 0;
-
-	// Stop timing and return milliseconds or microseconds elapsed.
-	// (microseconds default).
-	virtual double EndTiming(bool microseconds = false, bool bPrint = false) = 0;
-
-	// -----------------------------------------
+	
 	// Bind OpenGL shared texture
 	virtual bool BindSharedTexture() = 0;
 	// Un-bind OpenGL shared texture
@@ -598,9 +455,78 @@ struct SPOUTLIBRARY
 
 	// Return the class context
 	virtual void* GetDX11Context() = 0;
-	
+
+	//
+	// Utilities
+	//
+	// SpoutUtils namespace functions
+	// Refer to SpoutUtils.h for function details
+	//
+	virtual void OpenSpoutConsole() = 0;
+	virtual void CloseSpoutConsole(bool bWarning = false) = 0;
+	virtual void EnableSpoutLog() = 0;
+	virtual void EnableSpoutLogFile(const char* filename, bool bappend = false) = 0;
+	virtual void DisableSpoutLogFile() = 0;
+	virtual void RemoveSpoutLogFile(const char* filename = nullptr) = 0;
+	virtual void DisableSpoutLog() = 0;
+	virtual void DisableLogs() = 0;
+	virtual void EnableLogs() = 0;
+	virtual bool LogsEnabled() = 0;
+	virtual bool LogFileEnabled() = 0;
+	virtual std::string GetSpoutLogPath() = 0;
+	virtual std::string GetSpoutLog() = 0;
+	virtual void ShowSpoutLogs() = 0;
+	virtual void SetSpoutLogLevel(SpoutLibLogLevel level) = 0;
+	virtual void SpoutLog(const char* format, ...) = 0;
+	virtual void SpoutLogVerbose(const char* format, ...) = 0;
+	virtual void SpoutLogNotice(const char* format, ...) = 0;
+	virtual void SpoutLogWarning(const char* format, ...) = 0;
+	virtual void SpoutLogError(const char* format, ...) = 0;
+	virtual void SpoutLogFatal(const char* format, ...) = 0;
+	virtual int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0) = 0;
+	virtual int SpoutMessageBox(const char* caption, const char* format, ...) = 0;
+	virtual int SpoutMessageBox(const char* caption, UINT uType, const char* format, ...) = 0;
+	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0) = 0;
+	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption,  UINT uType, const char* instruction, DWORD dwMilliseconds = 0) = 0;
+	virtual int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text) = 0;
+	virtual	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected) = 0;
+	virtual void SpoutMessageBoxIcon(HICON hIcon) = 0;
+	virtual bool SpoutMessageBoxIcon(std::string iconfile) = 0;
+	virtual void SpoutMessageBoxButton(int ID, std::wstring title) = 0;
+	virtual void SpoutMessageBoxModeless(bool bMode = true) = 0;
+	virtual void SpoutMessageBoxWindow(HWND hWnd) = 0;
+	virtual void SpoutMessageBoxPosition(POINT pt) = 0;
+	virtual	void SpoutMessageBoxAllowCancel(bool bCancel = true, bool bRetain = false) = 0;
+	virtual bool CopyToClipBoard(HWND hwnd, const char* caps) = 0;
+	virtual bool OpenSpoutLogs() = 0;
+	virtual bool ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue) = 0;
+	virtual bool WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue) = 0;
+	virtual bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath) = 0;
+	virtual bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath) = 0;
+	virtual bool WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars) = 0;
+	virtual bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename) = 0;
+	virtual bool RemoveSubKey(HKEY hKey, const char *subkey) = 0;
+	virtual bool FindSubKey(HKEY hKey, const char *subkey) = 0;
+	virtual std::string GetSDKversion(int* pNumber = nullptr) = 0;
+	virtual bool IsLaptop() = 0;
+	virtual HMODULE GetCurrentModule() = 0;
+	virtual std::string GetExeVersion(const char* path) = 0;
+	virtual std::string GetExePath(bool bFull = false) = 0;
+	virtual std::string GetExeName() = 0;
+	virtual std::string GetPath(std::string fullpath) = 0;
+	virtual std::string GetName(std::string fullpath) = 0;
+	virtual void StartTiming() = 0;
+	virtual double EndTiming(bool microseconds = false, bool bPrint = false) = 0;
+
+
 	// Library release function
     virtual void Release() = 0;
+
+protected:
+
+	// Destructor to allow SpoutLibrary delete
+	virtual ~SPOUTLIBRARY() = default;
+
 
 };
 

@@ -5,6 +5,7 @@
 //
 //	Based on the CodeProject "HowTo: Export C++ classes from a DLL" by Alex Blekhman.
 //	http://www.codeproject.com/Articles/28969/HowTo-Export-C-classes-from-a-DLL
+//  https://web.archive.org/web/20250831095225/https://www.codeproject.com/Articles/28969/HowTo-Export-C-classes-from-a-DLL
 //
 //		30.03.16 - Build for 2.005 release - VS2012 /MT
 //		13.05.16 - Rearrange folders - rebuild 2.005 - VS2012 /MT
@@ -81,7 +82,7 @@
 //				   Corrected SpoutLog to use _dolog
 //		01.11.22 - Add SetPreferredAdapter, GetSDKversion, IsLaptop
 //		03.11.22 - Add IsPreferenceAvailable
-//		25.22.33 - Revise SpoutSenderNmaes UpdateSenderFps / HoldFps
+//		22.11.23 - Revise SpoutSenderNames UpdateSenderFps / HoldFps
 //				   Add GetRefreshRate
 //		30.11.22 - Add IsApplicationPath
 //		22.12.22 - Compiler compatibility check
@@ -121,9 +122,23 @@
 //				   Add InitTexture, ClearAlpha
 //		13.10.25   Rebuild with SDK version 2.007.017 /MD and /MT using CMake
 //		20.10.28   Add FlipBuffer
+//		29.06.26   Add SpoutMessageBoxAllowCancel
+//		03.07.26   Add destructor to allow SpoutLibrary object delete
+//				   Initialize spout object with nullptr
+//		04.07.26   All function declarations in cpp file "override"
+//				   Destructor declaration protected in header file
+//				   Destructor deletes the spout object in cpp file
+//				   Release() function deletes "this" only
+//				   CMakeLists.txt uses Spout SDK source files for static build
+//		05.07.26   Remove SpoutUtils wrapper functions.
+//				   Namespace is available directly with CMake change.
+//				   Add #define WIN32_LEAN_AND_MEAN to header.
+//		06.07.26   Remove override warning disable 26433 from header.
+//		22.07.26   Restore SpoutUtils wrapper functions.
+//		22.09.26 - Change HoldFps from int to double
 //
 /*
-		Copyright (c) 2016-2025, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2016-2026, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -196,62 +211,64 @@
 // 
 // Group: Building applications with the library
 //
-// o Include SpoutLibrary.h in your application header file.
-// o Include SpoutLibrary.lib in your project for the linker.
-// o Include SpoutLibrary.dll in the application executable folder.
+// o Include SpoutLibrary.h in the application header file.
+// o Include SpoutLibrary.lib or SpoutLibary_static.lib
+//   in the project for the linker.
+// o Include SpoutLibrary.dll in the application executable
+//   folder if using the shared library
 //
 // All functions are the same as described in the Spout SDK documentation.
 //
 // Group: Using the library
 //
+// 1) Include SpoutLibrary.h in the application header file
+//        #include "SpoutLibrary.h"
+// 2) Specify SpoutLibrary.lib for the linker, either shared or static
+//    SpoutLibrary.dll is required in the application executable folder
+//    if using a shared library
+//    Shared
+//        #pragma comment(lib, "libs/SpoutLibrary.lib")
+//    Static
+//        #pragma comment(lib, "libs/SpoutLibrary_static.lib")
+//
+// SpoutLibrary can be used in two ways
+//	o Using a library pointer - legacy method
+//	o Using a library object  - class method
+//
+// o Library pointer - legacy method
+//	 For compatibility with existing projects
+//		1) Create a SpoutLibrary pointer
+//			SPOUTLIBRARY* sender;
+//		2) Create an instance of the library
+//			sender = GetSpout();
+//		3) Use functions with the library pointer
+//			sender->SendTexture(...) etc.
+//		4) Release the library on exit
+//			sender->Release();
+//
+// o Library object - class method
+//	 For code compatibility with Spout classes
+//		1) Create a SpoutLibrary object
+//			SpoutLib sender;
+//		3) Use functions with the library object
+//			sender.SendTexture(...) etc.
+//
 // Refer to the source code of the SpoutLibrary examples.
-//
-// 1) Include SpoutLibrary.h in your application header file
-// 
-// --- Code
-// #include "SpoutLibrary.h"
-// ---
-//
-// 2) Specify SpoutLibrary.lib for the linker
-//
-// --- Code
-// #pragma comment(lib, "libs/SpoutLibrary.lib")
-// ---
-//
-// 3) Create a SpoutLibrary object
-// 
-// --- Code
-// SPOUTLIBRARY* sender;
-// ---
-// 
-// 4) Create an instance of the library
-// 
-// --- Code
-// sender = GetSpout();
-// ---
-// 
-// 5) Use functions with the library pointer
-// 
-// --- Code
-// sender->SendTexture(...) etc.
-// ---
-//
-// All functions are the same as documented in the Spout SDK documentation.
-//
+// All functions are the same as documented in the Spout SDK.
 // Changes from the Spout SDK examples are minor.
 //
-// Compare the source code for details.
-//
-
 
 class SPOUTImpl : public SPOUTLIBRARY
 {
 
 public:
 
-	// Spout SDK functions object for this class
+	// Spout SDK functions object pointer for the SPOUTImpl class
 	// Initialize in GetSpout()
-	Spout * spout;
+	Spout* spout = nullptr;
+
+	// Destructor
+	~SPOUTImpl() override { delete spout; }
 
 private: // Spout SDK functions
 
@@ -281,17 +298,17 @@ private: // Spout SDK functions
 	//     If no name is specified, the executable name is used. 
 	//     Thereafter, all sending functions create and update a sender
 	//     based on the size passed and the name that has been set
-	void SetSenderName(const char* sendername = nullptr);
+	void SetSenderName(const char* sendername = nullptr) override;
 
 	// Function: SetSenderFormat
 	// Set the sender DX11 shared texture format
-	void SetSenderFormat(DWORD dwFormat);
+	void SetSenderFormat(DWORD dwFormat) override;
 
 	// Function: ReleaseSender
 	// Close receiver and release resources.
 	//
 	// A new sender is created or updated by all sending functions
-	void ReleaseSender(DWORD dwMsec = 0);
+	void ReleaseSender(DWORD dwMsec = 0) override;
 
 	// Function: SendFbo
 	// Send texture attached to fbo
@@ -301,7 +318,7 @@ private: // Spout SDK functions
 	//   For example, if the application is using only a portion of the allocated texture space,  
 	//   such as for Freeframe plugins. (The 2.006 equivalent is DrawToSharedTexture)
 	//
-	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true);
+	bool SendFbo(GLuint FboID, unsigned int width, unsigned int height, bool bInvert = true) override;
 
 	// Function: SendTexture
 	// Send OpenGL texture
@@ -317,7 +334,7 @@ private: // Spout SDK functions
 	//     if it is currently bound, then that binding is restored. Otherwise the
 	//     binding is lost.
 	//
-	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
+	bool SendTexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0) override;
 
 	// Function: SendImage
 	// Send pixel image
@@ -330,46 +347,46 @@ private: // Spout SDK functions
 	//
 	//     As for SendTexture, the ID of a currently bound fbo can be passed in.
 	//
-	bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false);
+	bool SendImage(const unsigned char* pixels, unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA, bool bInvert = false) override;
 
 	// Function: IsInitialized
 	// Sender status
-	virtual bool IsInitialized();
+	virtual bool IsInitialized() override;
 
 	// Function: GetName
 	// Sender name
-	const char* GetName();
+	const char* GetName() override;
 	
 	// Function: GetWidth
 	// Sender width
-	unsigned int GetWidth();
+	unsigned int GetWidth() override;
 	
 	// Function: GetHeight
 	// Sender height
-	unsigned int GetHeight();
+	unsigned int GetHeight() override;
 	
 	// Function: GetFps
 	// Sender frame rate
-	double GetFps();
+	double GetFps() override;
 	
 	// Function: GetFrame
 	// Sender frame number
-	long GetFrame();
+	long GetFrame() override;
 	
 	// Function: GetHandle
 	// Sender share handle
-	HANDLE GetHandle();
+	HANDLE GetHandle() override;
 
 	// Function: GetCPU
 	// Sender sharing method.
 	// Returns true if the sender is using CPU methods
-	bool GetCPU();
+	bool GetCPU() override;
 
 	// Function: GetGLDX
 	// Sender sharing compatibility.
 	// Returns true if the sender graphics hardware is 
 	// compatible with NVIDIA NV_DX_interop2 extension
-	bool GetGLDX();
+	bool GetGLDX() override;
 
 
 	//
@@ -396,15 +413,15 @@ private: // Spout SDK functions
 	//   - If a name is specified, the receiver will not connect to any other unless the user selects one.
 	//   - If that sender closes, the receiver will wait for the nominated sender to open. 
 	//   - If no name is specified, the receiver will connect to the active sender.
-	void SetReceiverName(const char * SenderName = nullptr);
+	void SetReceiverName(const char * SenderName = nullptr) override;
 
 	// Function: GetReceiverName
 	// Get sender for connection
-	bool GetReceiverName(char* SenderName, int maxchars = 256);
+	bool GetReceiverName(char* SenderName, int maxchars = 256) override;
 
 	// Function: ReleaseReceiver
 	// Close receiver and release resources ready to connect to another sender
-	void ReleaseReceiver();
+	void ReleaseReceiver() override;
 
 	// Function: ReceiveTexture
 	//
@@ -421,14 +438,14 @@ private: // Spout SDK functions
 	//	 initialize GL/DX interop for OpenGL texture access, and update
 	//   the sender shared texture, frame count and framerate.
 	//   The texture can then be accessed using :
-	//		- BindSharedTexture();
-	//		- UnBindSharedTexture();
-	//		- GetSharedTextureID();
+	//		- BindSharedTexture() override;
+	//		- UnBindSharedTexture() override;
+	//		- GetSharedTextureID() override;
 	//
 	//   As for SendTexture, the host fbo argument is optional (default 0)
 	//   but an fbo ID is necessary if it is currently bound, then that binding
 	//   is restored. Otherwise the binding is lost.
-	bool ReceiveTexture(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0);
+	bool ReceiveTexture(GLuint TextureID = 0, GLuint TextureTarget = 0, bool bInvert = false, GLuint HostFbo = 0) override;
 	
 	// Function: ReceiveImage
 	// Copy the sender texture to image pixels.
@@ -442,7 +459,7 @@ private: // Spout SDK functions
 	//    Also the width should be a multiple of 4.
 	//
 	//    As for ReceiveTexture, the ID of a currently bound fbo should be passed in.
-	bool ReceiveImage(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0);
+	bool ReceiveImage(unsigned char *pixels, GLenum glFormat = GL_RGBA, bool bInvert = false, GLuint HostFbo = 0) override;
 	
 	// Function: IsUpdated
 	// Query whether the sender has changed.
@@ -450,81 +467,81 @@ private: // Spout SDK functions
 	//   Must be checked at every cycle before receiving data. 
 	//
 	//   If this is not done, the receiving functions fail.
-	bool IsUpdated();
+	bool IsUpdated() override;
 	
 	// Function: IsConnected
 	// Query sender connection.
 	//
 	//   If the sender closes, receiving functions return false,  
 	//   but connection can be tested at any time.
-	bool IsConnected();
+	bool IsConnected() override;
 	
 	// Function: IsFrameNew
 	// Query received frame status
 	//
 	//   The receiving texture or pixel buffer is refreshed if the sender has produced a new frame  
 	//   This can be queried to process texture data only for new frames
-	bool IsFrameNew();
+	bool IsFrameNew() override;
 	
 	// Function: GetSenderName
 	// Get sender name
-	const char * GetSenderName();
+	const char * GetSenderName() override;
 	
 	// Function: GetSenderWidth
 	// Get sender width
-	unsigned int GetSenderWidth();
+	unsigned int GetSenderWidth() override;
 	
 	// Function: GetSenderHeight
 	// Get sender height
-	unsigned int GetSenderHeight();
+	unsigned int GetSenderHeight() override;
 	
 	// Function: GetSenderFormat
 	// Get sender DirectX texture format
-	DWORD GetSenderFormat();
+	DWORD GetSenderFormat() override;
 	
 	// Function: GetSenderFps
 	// Get sender frame rate
-	double GetSenderFps();
+	double GetSenderFps() override;
 	
 	// Function: GetSenderFrame
 	// Get sender frame number
-	long GetSenderFrame();
+	long GetSenderFrame() override;
 	
 	// Function: GetSenderHandle
 	// Received sender share handle
-	HANDLE GetSenderHandle();
+	HANDLE GetSenderHandle() override;
 
 	// Function: GetSenderTexture
 	// Received sender texture
-	ID3D11Texture2D* GetSenderTexture();
+	ID3D11Texture2D* GetSenderTexture() override;
 	
 	// Function: GetSenderCPU
 	// Received sender sharing mode.
 	// Returns true if the sender is using CPU methods
-	bool GetSenderCPU();
+	bool GetSenderCPU() override;
 
 	// Function: GetSenderGLDX
 	// Received sender sharing compatibility.
 	//     Returns true if the sender graphics hardware is 
 	//     compatible with NVIDIA NV_DX_interop2 extension
-	bool GetSenderGLDX();
+	bool GetSenderGLDX() override;
 
 	// Function: GetHostPath
 	// The path of the host that produced the sender
 	// Retrieved from the description string in the sender info memory map
-	bool GetHostPath(const char* sendername, char* hostpath, int maxchars);
+	bool GetHostPath(const char* sendername, char* hostpath, int maxchars) override;
 
 	// Function: GetSenderList
 	// Return a list of current senders
-	std::vector<std::string> GetSenderList();
+	std::vector<std::string> GetSenderList() override;
 
 	// Function: SelectSender
 	// Open sender selection dialog
-	void SelectSender(HWND hwnd = NULL);
+	void SelectSender(HWND hwnd = NULL) override;
 
 	// Function: SelectSenderPanel
 	// Open sender selection dialog with optional message - 2.006 compatibility
-	void SelectSenderPanel(const char* message);
+	void SelectSenderPanel(const char* message) override;
 
 	//
 	// Group: Frame counting
@@ -532,51 +549,51 @@ private: // Spout SDK functions
 
 	// Function: SetFrameCount
 	// Enable or disable frame counting globally
-	void SetFrameCount(bool bEnable);
+	void SetFrameCount(bool bEnable) override;
 	
 	// Function: DisableFrameCount
 	// Disable frame counting specifically for this application
-	void DisableFrameCount();
+	void DisableFrameCount() override;
 	
 	// Function: IsFrameCountEnabled
 	// Return frame count status
-	bool IsFrameCountEnabled();
+	bool IsFrameCountEnabled() override;
 	
 	// Function: HoldFps
 	// Frame rate control
-	void HoldFps(int fps);
+	void HoldFps(double fps) override;
 
 	// Function: GetRefreshRate
 	// Get system refresh rate
-	double GetRefreshRate();
+	double GetRefreshRate() override;
 	
 	// Function: SetFrameSync
 	// Signal sync event 
-	void SetFrameSync(const char* SenderName);
+	void SetFrameSync(const char* SenderName) override;
 	
 	// Function: WaitFrameSync
 	// Wait or test for a sync event
-	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
+	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0) override;
 
 	// Function: EnableFrameSync
 	// Enable / disable frame sync
-	void EnableFrameSync(bool bSync = true);
+	void EnableFrameSync(bool bSync = true) override;
 
 	// Function: CloseFrameSync
 	// Close frame sync
-	void CloseFrameSync();
+	void CloseFrameSync() override;
 
 	// Function: IsFrameSyncEnabled
 	// Check for frame sync option
-	bool IsFrameSyncEnabled();
+	bool IsFrameSyncEnabled() override;
 
 	// Function: GetVerticalSync
 	// Vertical sync status
-	int GetVerticalSync();
+	int GetVerticalSync() override;
 
 	// Function: SetVerticalSync
 	// Lock to monitor vertical sync
-	bool SetVerticalSync(bool bSync = true);
+	bool SetVerticalSync(bool bSync = true) override;
 
 	//
 	// Group: Data sharing
@@ -598,9 +615,9 @@ private: // Spout SDK functions
 	//   frame rate will be matched exactly to that of the receiver and the 
 	//   receiver will not miss any frames.
 	//
-	//      - void SetFrameSync(const char* SenderName);
-	//      - bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
-	//      - void EnableFrameSync(bool bSync);
+	//      - void SetFrameSync(const char* SenderName) override;
+	//      - bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0) override;
+	//      - void EnableFrameSync(bool bSync) override;
 	//
 	//   WaitFrameSync
 	//   A sender should use this before rendering or sending texture or data and
@@ -626,14 +643,14 @@ private: // Spout SDK functions
 	//
 	//    The map is closed when the sender is released.
 	//
-	bool WriteMemoryBuffer(const char *sendername, const char* data, int length);
+	bool WriteMemoryBuffer(const char *sendername, const char* data, int length) override;
 
 	// Function: ReadMemoryBuffer
 	// Read shared memory to a buffer.
 	//
 	//    Open a memory map and retain the handle.
 	//    The map is closed when the receiver is released.
-	int  ReadMemoryBuffer(const char* sendername, char* data, int maxlength);
+	int  ReadMemoryBuffer(const char* sendername, char* data, int maxlength) override;
 
 	// Function: CreateMemoryBuffer
 	// Create a shared memory buffer.
@@ -642,311 +659,31 @@ private: // Spout SDK functions
 	//    This function should be called before any buffer write
 	//    if the length of the data to send will vary.
 	//    The map is closed when the sender is released.
-	bool CreateMemoryBuffer(const char *name, int length);
+	bool CreateMemoryBuffer(const char *name, int length) override;
 
 	// Function: DeleteMemoryBuffer
 	// Delete a sender shared memory buffer.
-	bool DeleteMemoryBuffer();
+	bool DeleteMemoryBuffer() override;
 
 	// Function: GetMemoryBufferSize
 	// Get the number of bytes available for data transfer.
-	int GetMemoryBufferSize(const char *name);
+	int GetMemoryBufferSize(const char *name) override;
 
-	//
-	// Group: Log utilities
-	//
-
-	// Function: OpenSpoutConsole
-	// Open console window.
-	//
-	// A console window opens without logs.
-	// Useful for debugging with console output.
-	void OpenSpoutConsole();
-
-	// Function: CloseSpoutConsole
-	// Close console window.
-	//
-	// The optional warning displays a MessageBox if user notification is required.
-	void CloseSpoutConsole(bool bWarning = false);
-
-	// Function: EnableSpoutLog
-	// Enable logging to the console.
-	//
-	// Logs are displayed in a console window.  
-	// Useful for program development.
-	void EnableSpoutLog();
-
-	// Function: EnableSpoutLogFile
-	// Enable logging to a file with optional append.
-	//
-	// You can instead, or additionally to a console window,  
-	// specify output to a text file with the extension of your choice  
-	// Example : EnableSpoutLogFile("Sender.log");
-	// The log file is re-created every time the application starts unless you specify to append to the existing one :  
-	// Example : EnableSpoutLogFile("Sender.log", true);
-	// The file is saved in the %AppData% folder unless you specify the full path :  
-	//    C:>Users>username>AppData>Roaming>Spout   
-	// You can find and examine the log file after the application has run.
-	void EnableSpoutLogFile(const char *filename, bool append = false);
-
-	// Function: DisableSpoutLogFile
-	// Disable logging to file
-	void DisableSpoutLogFile();
-
-	// Function: RemoveSpoutLogFile
-	// Remove a log file
-	void RemoveSpoutLogFile(const char* filename);
-
-	// Function: DisableSpoutLog
-	// Disable logging to console and file
-	void DisableSpoutLog();
-
-	// Function: DisableLogs
-	// Disable logging temporarily
-	void DisableLogs();
-
-	// Function: EnableLogs
-	// Enable logging again
-	void EnableLogs();
-
-	// Function: LogsEnabled
-	// Are console logs enabled
-	bool LogsEnabled();
-
-	// Function: LogFileEnabled
-	// Is file logging enabled
-	bool LogFileEnabled();
-
-	// Function: GetSpoutLogPath
-	// Return the full log file path
-	std::string GetSpoutLogPath();
-
-	// Function: GetSpoutLog
-	// Return the log file as a string
-	std::string GetSpoutLog();
-
-	// Function: ShowSpoutLogs
-	// Show the log file folder in Windows Explorer
-	void ShowSpoutLogs();
-
-	// Function: SetSpoutLogLevel
-	// Set the current log level
-	void SetSpoutLogLevel(SpoutLibLogLevel level);
-
-	// Function: SpoutLog
-	// General purpose log
-	void SpoutLog(const char* format, ...);
-
-	// Function: SpoutLogVerbose
-	// Verbose - show log for SPOUT_LOG_VERBOSE or above
-	void SpoutLogVerbose(const char* format, ...);
-
-	// Function: SpoutLogNotice
-	// Notice - show log for SPOUT_LOG_NOTICE or above
-	void SpoutLogNotice(const char* format, ...);
-
-	// Function: SpoutLogWarning
-	// Warning - show log for SPOUT_LOG_WARNING or above
-	void SpoutLogWarning(const char* format, ...);
-
-	// Function: SpoutLogError
-	// Error - show log for SPOUT_LOG_ERROR or above
-	void SpoutLogError(const char* format, ...);
-
-	// Function: SpoutLogFatal
-	// Fatal - always show log
-	void SpoutLogFatal(const char* format, ...);
-
-	// Function: SpoutMessageBox
-	// MessageBox dialog with optional timeout.
-	//
-	// Used where a Windows MessageBox would interfere with the application GUI.  
-	// The dialog closes itself if a timeout is specified.
-	int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0);
-
-	// Function: SpoutMessageBox
-	// MessageBox with variable arguments
-	int SpoutMessageBox(const char* caption, const char* format, ...);
-
-	// Function: SpoutMessageBox
-	// MessageBox with variable arguments and icon, buttons
-	int SpoutMessageBox(const char* caption, UINT uType, const char * format, ...);
-
-	// Function: SpoutMessageBox
-	// MessageBox dialog with standard arguments.
-	// Replaces an existing MessageBox call.
-	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
-
-	// Function: SpoutMessageBox
-	// MessageBox dialog with standard arguments
-	// including taskdialog main instruction large text
-	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds = 0);
-
-	// Function: SpoutMessageBox
-	// MessageBox dialog with an edit control for text input
-	// Can be used in place of a specific application resource dialog
-	//   o For message content, the control is in the footer area
-	//   o If no message, the control is in the main content area
-	//   o All SpoutMessageBox functions such as user icon and buttons are available
-	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text);
-
-	// Function: SpoutMessageBox
-	// MessageBox dialog with a combobox control for item selection
-	// Can be used in place of a specific application resource dialog
-	// Properties the same as the edit control
-	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected);
-
-	// Function: SpoutMessageBoxIcon
-	// Custom icon for SpoutMessageBox from resources
-	// Use together with MB_USERICON
-	void SpoutMessageBoxIcon(HICON hIcon);
-
-	// Function: SpoutMessageBoxIcon
-	// Custom icon for SpoutMessageBox from file
-	// Use together with MB_USERICON
-	bool SpoutMessageBoxIcon(std::string iconfile);
-
-	// Function: SpoutMessageBoxButton
-	// Custom button for SpoutMessageBox
-	// Use together with MB_USERBUTTON
-	void SpoutMessageBoxButton(int ID, std::wstring title);
-
-	// Function: SpoutMessageBoxModeless
-	// Enable modeless functionality using SpoutPanel.exe
-	// Used where a Windows MessageBox would interfere with the application GUI.
-	// Depends on SpoutPanel.exe version 2.072 or greater distributed with Spout release.
-	void SpoutMessageBoxModeless(bool bMode);
-
-	// Function: SpoutMessageBoxWindow
-	// Window handle for SpoutMessageBox where not specified
-	void SpoutMessageBoxWindow(HWND hWnd);
-
-	// Function: SpoutMessageBoxPosition
-	// Position to point SpoutMessageBox
-	void SpoutMessageBoxPosition(POINT pt);
-
-	// Function: CopyToClipBoard
-	// Copy text to the clipboard
-	bool CopyToClipBoard(HWND hwnd, const char* caps);
-
-	// Function: OpenSpoutLogs
-	// Open logs folder
-	bool OpenSpoutLogs();
-
-	//
-	// Group: Registry utilities
-	//
-
-	// Function: ReadDwordFromRegistry
-	// Read subkey DWORD value
-	bool ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue);
-	
-	// Function: WriteDwordToRegistry
-	// Write subkey DWORD value
-	bool WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue);
-	
-	// Function: ReadPathFromRegistry
-	// Read subkey character string
-	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath);
-	
-	// Function: WritePathToRegistry
-	// Write subkey character string
-	bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath);
-
-	// Function: WriteBinaryToRegistry
-	// Write subkey binary hex data string
-	bool WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars);
-
-	// Function: RemovePathFromRegistry
-	// Remove subkey value name
-	bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename);
-	
-	// Function: RemoveSubKey
-	// Delete a subkey and its values.
-	//   It must be a subkey of the key that hKey identifies, but it cannot have subkeys.  
-	//   Note that key names are not case sensitive.  
-	bool RemoveSubKey(HKEY hKey, const char *subkey);
-	
-	// Function: FindSubKey
-	// Find subkey
-	bool FindSubKey(HKEY hKey, const char *subkey);
-
-	//
-	// Group: Information
-	//
-
-	// ---------------------------------------------------------
-	// Function: GetSDKversion
-	// Spout SDK version.
-	std::string GetSDKversion(int* pNumber);
-
-	// ---------------------------------------------------------
-	// Function: IsLaptop
-	// Return whether the system is a laptop.
-	//
-	// Queries power status. Battery power most likely means laptop.
-	bool IsLaptop();
-
-	// ---------------------------------------------------------
-	// Function: GetCurrentModule
-	// Get the module handle of an executable or dll
-	HMODULE GetCurrentModule();
-	
-	// ---------------------------------------------------------
-	// Function: GetExeVersion
-	// Get executable or dll version
-	std::string GetExeVersion(const char* path);
-
-	// ---------------------------------------------------------
-	// Function: GetExePath
-	// Get executable or dll path
-	std::string GetExePath(bool bFull);
-
-	// ---------------------------------------------------------
-	// Function: GetExeName
-	// Get executable or dll name
-	std::string GetExeName();
-
-	// ---------------------------------------------------------
-	// Function: GetPath
-	// Remove file name and return the path
-	std::string GetPath(std::string fullpath);
-
-	// ---------------------------------------------------------
-	// Function: GetName
-	// Remove path and return the file name
-	std::string GetName(std::string fullpath);
-
-	//
-	// Group: Timing utilities
-	//
-
-	// ---------------------------------------------------------
-	// Function: StartTiming
-	// Start timing interval
-	void StartTiming();
-
-	// ---------------------------------------------------------
-	// Function: EndTiming
-	// Stop timing and return milliseconds or microseconds elapsed
-	// (microseconds default)
-	double EndTiming(bool microseconds, bool bPrint);
-	
 	//
 	// Group: OpenGL shared texture
 	//
 
 	// Function: BindSharedTexture
 	// Bind OpenGL shared texture
-	bool BindSharedTexture();
+	bool BindSharedTexture() override;
 	
 	// Function: UnBindSharedTexture
 	// Un-bind OpenGL shared texture
-	bool UnBindSharedTexture();
+	bool UnBindSharedTexture() override;
 	
 	// Function: GetSharedTextureID
 	// OpenGL shared texture ID
-	GLuint GetSharedTextureID();
+	GLuint GetSharedTextureID() override;
 
 	//
 	// Group: Sender names
@@ -954,29 +691,27 @@ private: // Spout SDK functions
 
 	// Function: GetSenderCount
 	// Number of senders
-	int  GetSenderCount();
+	int  GetSenderCount() override;
 	
 	// Function: GetSender
 	// Sender item name in the sender names list
-	bool GetSender(int index, char* sendername, int MaxSize = 256);
+	bool GetSender(int index, char* sendername, int MaxSize = 256) override;
 	
 	// Function: FindSenderName
 	// Find a sender in the sender names list
-	bool FindSenderName(const char* sendername);
+	bool FindSenderName(const char* sendername) override;
 	
 	// Function: GetSenderInfo
 	// Sender information
-	bool GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat);
+	bool GetSenderInfo(const char* sendername, unsigned int &width, unsigned int &height, HANDLE &dxShareHandle, DWORD &dwFormat) override;
 	
 	// Function: GetActiveSender
 	// Current active sender
-	bool GetActiveSender(char* Sendername);
+	bool GetActiveSender(char* Sendername) override;
 	
 	// Function: SetActiveSender
 	// Set sender as active
-	bool SetActiveSender(const char* Sendername);
-
-
+	bool SetActiveSender(const char* Sendername) override;
 
 	//
 	// Group: User registry settings
@@ -985,29 +720,28 @@ private: // Spout SDK functions
 
 	// Function: GetBufferMode
 	// Get user buffering mode
-	bool GetBufferMode();
+	bool GetBufferMode() override;
 	
 	// Function: SetBufferMode
 	// Set application buffering mode
-	void SetBufferMode(bool bActive = true);
+	void SetBufferMode(bool bActive = true) override;
 	
 	// Function: GetBuffers
 	// Get user number of pixel buffers
-	int GetBuffers();
+	int GetBuffers() override;
 	
 	// Function: SetBuffers
 	// Set application number of pixel buffers
-	void SetBuffers(int nBuffers);
+	void SetBuffers(int nBuffers) override;
 	
 	// Function: GetMaxSenders
 	// Get user Maximum senders allowed
-	int GetMaxSenders();
+	int GetMaxSenders() override;
 	
 	// Function: SetMaxSenders
 	// Set user Maximum senders allowed
-	void SetMaxSenders(int maxSenders);
-
-	
+	void SetMaxSenders(int maxSenders) override;
+		
 	//
 	// Group: 2.006 compatibility
 	//
@@ -1016,53 +750,53 @@ private: // Spout SDK functions
 
 	// Function: CreateSender
 	// Create a sender
-	bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0);
+	bool CreateSender(const char *Sendername, unsigned int width, unsigned int height, DWORD dwFormat = 0) override;
 	
 	// Function: UpdateSender
 	// Update a sender
-	bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
+	bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height) override;
 	
 	// Function: CreateReceiver
 	// Create receiver connection
-	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height);
+	bool CreateReceiver(char* Sendername, unsigned int &width, unsigned int &height) override;
 	
 	// Function: CheckReceiver
 	// Check receiver connection
-	bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected);
+	bool CheckReceiver(char* Sendername, unsigned int &width, unsigned int &height, bool &bConnected) override;
 	
 	// Function: GetDX9
 	// Get user DX9 mode
-	bool GetDX9();
+	bool GetDX9() override;
 	
 	// Function: SetDX9
 	// Set user DX9 mode
-	bool SetDX9(bool bDX9 = true);
+	bool SetDX9(bool bDX9 = true) override;
 	
 	// Function: GetMemoryShareMode
 	// Get user memory share mode
-	bool GetMemoryShareMode();
+	bool GetMemoryShareMode() override;
 	
 	// Function: SetMemoryShareMode
 	// Set user memory share mode
-	bool SetMemoryShareMode(bool bMem = true);
+	bool SetMemoryShareMode(bool bMem = true) override;
 	
 	// Function: GetCPUmode
 	// Get user CPU mode
-	bool GetCPUmode();
+	bool GetCPUmode() override;
 	
 	// Function: SetCPUmode
 	// Set user CPU mode
-	bool SetCPUmode(bool bCPU);
+	bool SetCPUmode(bool bCPU) override;
 	
 	// Function: GetShareMode
 	// Get user share mode
 	//  0 - texture, 1 - memory, 2 - CPU
-	int GetShareMode();
+	int GetShareMode() override;
 	
 	// Function: SetShareMode
 	// Set user share mode
 	//  0 - texture, 1 - memory, 2 - CPU
-	void SetShareMode(int mode);
+	void SetShareMode(int mode) override;
 
 	//
 	// Group: Graphics compatibility
@@ -1070,20 +804,20 @@ private: // Spout SDK functions
 
 	// Function: GetAutoShare
 	// Get auto GPU/CPU share depending on compatibility
-	bool GetAutoShare();
+	bool GetAutoShare() override;
 	
 	// Function: SetAutoShare
 	// Set auto GPU/CPU share depending on compatibility
-	void SetAutoShare(bool bAuto = true);
+	void SetAutoShare(bool bAuto = true) override;
 
 	// Function: SetCPUShare
 	// Set application CPU share
 	// (re-test GL/DX compatibility if set to false)
-	void SetCPUshare(bool bCPU = true);
+	void SetCPUshare(bool bCPU = true) override;
 
 	// Function: IsGLDXready
 	// OpenGL texture share compatibility
-	bool IsGLDXready();
+	bool IsGLDXready() override;
 
 	//
 	// Group: Graphics adapter
@@ -1093,27 +827,27 @@ private: // Spout SDK functions
 
 	// Function: GetNumAdapters
 	// The number of graphics adapters in the system
-	int GetNumAdapters();
+	int GetNumAdapters() override;
 	
 	// Function: GetAdapterName
 	// Get adapter item name
-	bool GetAdapterName(int index, char *adaptername, int maxchars);
+	bool GetAdapterName(int index, char *adaptername, int maxchars) override;
 	
 	// Function: AdapterName
 	// Current adapter name
-	char* AdapterName();
+	char* AdapterName() override;
 	
 	// Function: GetAdapter
 	// Get adapter index
-	int GetAdapter();
+	int GetAdapter() override;
 
 	// Function: GetAdapterInfo
 	// Get the description and output display name of the current adapter
-	bool GetAdapterInfo(char* description, char* output, int maxchars);
+	bool GetAdapterInfo(char* description, char* output, int maxchars) override;
 
 	// Function: GetAdapterInfo
 	// Get the description and output display name for a given adapter
-	bool GetAdapterInfo(int index, char* description, char* output, int maxchars);
+	bool GetAdapterInfo(int index, char* description, char* output, int maxchars) override;
 	
 	//
 	// Group: Graphics preference
@@ -1138,7 +872,7 @@ private: // Spout SDK functions
 	//
 	//	 2 - DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
 	//
-	int GetPerformancePreference(const char* path);
+	int GetPerformancePreference(const char* path) override;
 
 	//---------------------------------------------------------
 	// Function: SetPerformancePreference
@@ -1152,7 +886,7 @@ private: // Spout SDK functions
 	//
 	//      2 - High performance
 	//
-	bool SetPerformancePreference(int preference, const char* path);
+	bool SetPerformancePreference(int preference, const char* path) override;
 
 	//---------------------------------------------------------
 	// Function: GetPreferredAdapterName
@@ -1166,7 +900,7 @@ private: // Spout SDK functions
 	//
 	//    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE - (2) External GPU / Discrete GPU
 	//
-	bool GetPreferredAdapterName(int preference, char* adaptername, int maxchars);
+	bool GetPreferredAdapterName(int preference, char* adaptername, int maxchars) override;
 
 	//---------------------------------------------------------
 	// Function: SetPreferredAdapter
@@ -1181,7 +915,7 @@ private: // Spout SDK functions
 	//
 	//    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE - (2) External GPU / Discrete GPU
 	//
-	bool SetPreferredAdapter(int preference);
+	bool SetPreferredAdapter(int preference) override;
 
 	//---------------------------------------------------------
 	// Function: IsPreferenceAvailable()
@@ -1189,7 +923,7 @@ private: // Spout SDK functions
 	//
 	// Settings are available from Windows 10 April 2018 update 
 	// (Version 1803, build 17134) and later.
-	bool IsPreferenceAvailable();
+	bool IsPreferenceAvailable() override;
 
 	//---------------------------------------------------------
 	// Function: IsApplicationPath
@@ -1197,7 +931,7 @@ private: // Spout SDK functions
 	// Is the path a valid application
 	//
 	// A valid application path will have a drive letter and terminate with ".exe"
-	bool IsApplicationPath(const char* path);
+	bool IsApplicationPath(const char* path) override;
 #endif
 
 	//
@@ -1208,15 +942,15 @@ private: // Spout SDK functions
 	// Create an OpenGL window and context for situations where there is none.
 	//   Not used if applications already have an OpenGL context.
 	//   Always call CloseOpenGL afterwards.
-	bool CreateOpenGL(HWND hwnd = nullptr);
+	bool CreateOpenGL(HWND hwnd = nullptr) override;
 	
 	// Function: CloseOpenGL
 	// Close OpenGL window
-	bool CloseOpenGL();
+	bool CloseOpenGL() override;
 
 	// Function: InitTexture
 	// Create OpenGL texture
-	void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height);
+	void InitTexture(GLuint& texID, GLenum GLformat, unsigned int width, unsigned int height) override;
 	
 	// Function: CopyTexture
 	// Copy OpenGL texture with optional invert
@@ -1224,17 +958,17 @@ private: // Spout SDK functions
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,
-		bool bInvert = false, GLuint HostFBO = 0);
+		bool bInvert = false, GLuint HostFBO = 0) override;
 
 	// Function: ReadTextureData
 	// Copy OpenGL texture data to a pixel buffer
 	bool ReadTextureData(GLuint SourceID, GLuint SourceTarget,
 		void* data, unsigned int width, unsigned int height, unsigned int rowpitch,
-		GLenum dataformat, GLenum datatype, bool bInvert = false, GLuint HostFBO = false);
+		GLenum dataformat, GLenum datatype, bool bInvert = false, GLuint HostFBO = false) override;
 
 	// Function: ClearAlpha
 	// Clear alpha of rgba image pixels to the required value
-	void ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha);
+	void ClearAlpha(unsigned char* src, unsigned int width, unsigned int height, unsigned char alpha) override;
 
 	//
 	//  Group: Pixel buffer utilities
@@ -1243,12 +977,12 @@ private: // Spout SDK functions
 	// Function: FlipBuffer
 	// Flip a pixel buffer from source to destination
 	void FlipBuffer(const unsigned char *src, unsigned char *dst,
-		unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA);
+		unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA) override;
 
 	// Function: FlipBuffer
 	// Flip a pixel buffer in place
 	void FlipBuffer(unsigned char* src,
-		unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA);
+		unsigned int width, unsigned int height, GLenum glFormat = GL_RGBA) override;
 
 
 	//
@@ -1256,38 +990,101 @@ private: // Spout SDK functions
 	//
 
 	// Get sender DX11 shared texture format
-	DXGI_FORMAT GetDX11format();
+	DXGI_FORMAT GetDX11format() override;
 	// Set sender DX11 shared texture format
-	void SetDX11format(DXGI_FORMAT textureformat);
+	void SetDX11format(DXGI_FORMAT textureformat) override;
 	// Return OpenGL compatible DX11 format
-	DXGI_FORMAT DX11format(GLint glformat);
+	DXGI_FORMAT DX11format(GLint glformat) override;
 	// Return DX11 compatible OpenGL format
-	GLint GLDXformat(DXGI_FORMAT textureformat = DXGI_FORMAT_UNKNOWN);
+	GLint GLDXformat(DXGI_FORMAT textureformat = DXGI_FORMAT_UNKNOWN) override;
 	// Return OpenGL texture internal format
-	GLint GLformat(GLuint TextureID, GLuint TextureTarget);
+	GLint GLformat(GLuint TextureID, GLuint TextureTarget) override;
 	// Return OpenGL texture format description
-	std::string GLformatName(GLint glformat = 0);
+	std::string GLformatName(GLint glformat = 0) override;
 
 
 	//
 	// Group: DirectX utilities
 	//
 
-	bool OpenDirectX();
-	void CloseDirectX();
+	bool OpenDirectX() override;
+	void CloseDirectX() override;
 	
 	// Function: OpenDirectX11
 	// Initialize and prepare DirectX 11
-	bool OpenDirectX11(void * pDevice = nullptr);
-	void CloseDirectX11();
+	bool OpenDirectX11(void * pDevice = nullptr) override;
+	void CloseDirectX11() override;
 
 	// Function: GetDX11Device
 	// Return the class device
-	void * GetDX11Device();
+	void * GetDX11Device() override;
 
 	// Function: GetDX11Context
 	// Return the class context
-	void * GetDX11Context();
+	void * GetDX11Context() override;
+
+	//
+	// Group: Utilities
+	//
+	// SpoutUtils namespace functions
+	// Refer to SpoutUtils.h for function details
+	//
+	void OpenSpoutConsole();
+	void CloseSpoutConsole(bool bWarning = false);
+	void EnableSpoutLog();
+	void EnableSpoutLogFile(const char *filename, bool append = false);
+	void DisableSpoutLogFile();
+	void RemoveSpoutLogFile(const char* filename);
+	void DisableSpoutLog();
+	void DisableLogs();
+	void EnableLogs();
+	bool LogsEnabled();
+	bool LogFileEnabled();
+	std::string GetSpoutLogPath();
+	std::string GetSpoutLog();
+	void ShowSpoutLogs();
+	void SetSpoutLogLevel(SpoutLibLogLevel level);
+	void SpoutLog(const char* format, ...);
+	void SpoutLogVerbose(const char* format, ...);
+	void SpoutLogNotice(const char* format, ...);
+	void SpoutLogWarning(const char* format, ...);
+	void SpoutLogError(const char* format, ...);
+	void SpoutLogFatal(const char* format, ...);
+	int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0);
+	int SpoutMessageBox(const char* caption, const char* format, ...);
+	int SpoutMessageBox(const char* caption, UINT uType, const char * format, ...);
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds = 0);
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text);
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected);
+	void SpoutMessageBoxIcon(HICON hIcon);
+	bool SpoutMessageBoxIcon(std::string iconfile);
+	void SpoutMessageBoxButton(int ID, std::wstring title);
+	void SpoutMessageBoxModeless(bool bMode);
+	void SpoutMessageBoxWindow(HWND hWnd);
+	void SpoutMessageBoxPosition(POINT pt);
+	void SpoutMessageBoxAllowCancel(bool bCancel = true, bool bRetain = false);
+	bool CopyToClipBoard(HWND hwnd, const char* caps);
+	bool OpenSpoutLogs();
+	bool ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue);
+	bool WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue);
+	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath);
+	bool WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath);
+	bool WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars);
+	bool RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename);
+	bool RemoveSubKey(HKEY hKey, const char *subkey);
+	bool FindSubKey(HKEY hKey, const char *subkey);
+	std::string GetSDKversion(int* pNumber);
+	bool IsLaptop();
+	HMODULE GetCurrentModule();
+	std::string GetExeVersion(const char* path);
+	std::string GetExePath(bool bFull);
+	std::string GetExeName();
+	std::string GetPath(std::string fullpath);
+	std::string GetName(std::string fullpath);
+	void StartTiming();
+	double EndTiming(bool microseconds, bool bPrint);
+
 
 	//
 	// Group: Class release
@@ -1295,7 +1092,7 @@ private: // Spout SDK functions
 
 	// Function: Release
 	// Release the class instance
-	void Release();
+	void Release() override;
 
 };
 
@@ -1519,7 +1316,7 @@ bool SPOUTImpl::IsFrameCountEnabled()
 	return spout->IsFrameCountEnabled();
 }
 
-void SPOUTImpl::HoldFps(int fps)
+void SPOUTImpl::HoldFps(double fps)
 {
 	return spout->HoldFps(fps);
 }
@@ -1589,344 +1386,6 @@ bool SPOUTImpl::DeleteMemoryBuffer()
 int SPOUTImpl::GetMemoryBufferSize(const char *name)
 {
 	return spout->GetMemoryBufferSize(name);
-}
-
-
-//
-// ======================= Logging and registry utilities =======================
-//
-// These functions use the spoututils namespace directly
-//
-
-// Logging
-
-void SPOUTImpl::OpenSpoutConsole()
-{
-	spoututils::OpenSpoutConsole();
-}
-
-void SPOUTImpl::CloseSpoutConsole(bool bWarning)
-{
-	spoututils::CloseSpoutConsole(bWarning);
-}
-
-void SPOUTImpl::EnableSpoutLog()
-{
-	spoututils::EnableSpoutLog();
-}
-
-void SPOUTImpl::EnableSpoutLogFile(const char* filename, bool append)
-{
-	spoututils::EnableSpoutLogFile(filename, append);
-}
-
-void SPOUTImpl::DisableSpoutLogFile()
-{
-	spoututils::DisableSpoutLog();
-}
-
-void SPOUTImpl::DisableLogs()
-{
-	spoututils::DisableLogs();
-}
-
-void SPOUTImpl::RemoveSpoutLogFile(const char* filename)
-{
-	spoututils::RemoveSpoutLogFile(filename);
-}
-
-void SPOUTImpl::DisableSpoutLog()
-{
-	spoututils::DisableSpoutLog();
-}
-
-void SPOUTImpl::EnableLogs()
-{
-	spoututils::EnableLogs();
-}
-
-bool SPOUTImpl::LogsEnabled()
-{
-	return spoututils::LogsEnabled();
-}
-
-bool SPOUTImpl::LogFileEnabled()
-{
-	return spoututils::LogFileEnabled();
-}
-
-std::string SPOUTImpl::GetSpoutLogPath()
-{
-	return spoututils::GetSpoutLogPath();
-}
-
-std::string SPOUTImpl::GetSpoutLog()
-{
-	return spoututils::GetSpoutLog();
-}
-
-void SPOUTImpl::ShowSpoutLogs()
-{
-	spoututils::ShowSpoutLogs();
-}
-
-void SPOUTImpl::SetSpoutLogLevel(SpoutLibLogLevel level)
-{
-	spoututils::SetSpoutLogLevel(static_cast<spoututils::SpoutLogLevel>(level));
-}
-
-void SPOUTImpl::SpoutLog(const char* format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	spoututils::_doLog(spoututils::SPOUT_LOG_NONE, format, args);
-	va_end(args);
-}
-
-void SPOUTImpl::SpoutLogVerbose(const char* format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	spoututils::_doLog(spoututils::SPOUT_LOG_VERBOSE, format, args);
-	va_end(args);
-}
-
-void SPOUTImpl::SpoutLogNotice(const char* format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	spoututils::_doLog(spoututils::SPOUT_LOG_NOTICE, format, args);
-	va_end(args);
-}
-
-void SPOUTImpl::SpoutLogWarning(const char* format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	spoututils::_doLog(spoututils::SPOUT_LOG_WARNING, format, args);
-	va_end(args);
-}
-
-void SPOUTImpl::SpoutLogError(const char* format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	spoututils::_doLog(spoututils::SPOUT_LOG_ERROR, format, args);
-	va_end(args);
-}
-
-void SPOUTImpl::SpoutLogFatal(const char* format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	spoututils::_doLog(spoututils::SPOUT_LOG_FATAL, format, args);
-	va_end(args);
-}
-
-int SPOUTImpl::SpoutMessageBox(const char * message, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(message, dwMilliseconds);
-}
-
-int SPOUTImpl::SpoutMessageBox(const char* caption, const char* format, ...)
-{
-	std::string strmessage;
-	std::string strcaption;
-	char logChars[1024]={};
-
-	// Construct the message
-	va_list args;
-	va_start(args, format);
-	vsprintf_s(logChars, 1024, format, args);
-	strmessage = logChars;
-	va_end(args);
-
-	if (caption && *caption)
-		strcaption = caption;
-	else
-		strcaption = "Message";
-
-	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), MB_OK, 0);
-
-}
-
-int SPOUTImpl::SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
-{
-	std::string strmessage;
-	std::string strcaption;
-	char logChars[1024]={};
-
-	// Construct the message
-	va_list args;
-	va_start(args, format);
-	vsprintf_s(logChars, 1024, format, args);
-	strmessage = logChars;
-	va_end(args);
-
-	if (caption && *caption)
-		strcaption = caption;
-	else
-		strcaption = "Message";
-
-	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), uType, 0);
-
-}
-
-int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
-}
-
-int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, instruction, dwMilliseconds);
-}
-
-int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, text);
-}
-
-int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& index)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, items, index);
-}
-
-
-
-void SPOUTImpl::SpoutMessageBoxIcon(HICON hIcon)
-{
-	spoututils::SpoutMessageBoxIcon(hIcon);
-}
-
-bool SPOUTImpl::SpoutMessageBoxIcon(std::string iconfile)
-{
-	return spoututils::SpoutMessageBoxIcon(iconfile);
-}
-
-void SPOUTImpl::SpoutMessageBoxButton(int ID, std::wstring title)
-{
-	spoututils::SpoutMessageBoxButton(ID, title);
-}
-
-void SPOUTImpl::SpoutMessageBoxModeless(bool bMode)
-{
-	spoututils::SpoutMessageBoxModeless(bMode);
-}
-
-
-void SPOUTImpl::SpoutMessageBoxWindow(HWND hWnd)
-{
-	spoututils::SpoutMessageBoxWindow(hWnd);
-}
-
-void SPOUTImpl::SpoutMessageBoxPosition(POINT pt)
-{
-	spoututils::SpoutMessageBoxPosition(pt);
-}
-
-bool SPOUTImpl::CopyToClipBoard(HWND hwnd, const char* caps)
-{
-	return spoututils::CopyToClipBoard(hwnd, caps);
-}
-
-bool SPOUTImpl::OpenSpoutLogs()
-{
-	return spoututils::OpenSpoutLogs();
-}
-
-//
-// Registry utilities
-//
-
-bool SPOUTImpl::ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue)
-{
-	return spoututils::ReadDwordFromRegistry(hKey, subkey, valuename, pValue);
-}
-
-bool SPOUTImpl::WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue)
-{
-	return spoututils::WriteDwordToRegistry(hKey, subkey, valuename, dwValue);
-}
-
-bool SPOUTImpl::ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath)
-{
-	return spoututils::ReadPathFromRegistry(hKey, subkey, valuename, filepath);
-}
-
-bool SPOUTImpl::WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath)
-{
-	return spoututils::WritePathToRegistry(hKey, subkey, valuename, filepath);
-}
-
-bool SPOUTImpl::WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars)
-{
-	return spoututils::WriteBinaryToRegistry(hKey, subkey, valuename, hexdata, nchars);
-}
-
-bool SPOUTImpl::RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename)
-{
-	return spoututils::RemovePathFromRegistry(hKey, subkey, valuename);
-}
-
-bool SPOUTImpl::RemoveSubKey(HKEY hKey, const char *subkey)
-{
-	return spoututils::RemoveSubKey(hKey, subkey);
-}
-
-bool SPOUTImpl::FindSubKey(HKEY hKey, const char *subkey)
-{
-	return spoututils::FindSubKey(hKey, subkey);
-}
-
-std::string SPOUTImpl::GetSDKversion(int* pNumber)
-{
-	return spoututils::GetSDKversion(pNumber);
-}
-
-bool SPOUTImpl::IsLaptop()
-{
-	return spoututils::IsLaptop();
-}
-
-HMODULE SPOUTImpl::GetCurrentModule()
-{
-	return spoututils::GetCurrentModule();
-}
-
-std::string SPOUTImpl::GetExeVersion(const char* path)
-{
-	return spoututils::GetExeVersion(path);
-}
-
-std::string SPOUTImpl::GetExePath(bool bFull)
-{
-	return spoututils::GetExePath(bFull);
-}
-
-std::string SPOUTImpl::GetExeName()
-{
-	return spoututils::GetExeName();
-}
-
-std::string SPOUTImpl::GetPath(std::string fullpath)
-{
-	return spoututils::GetPath(fullpath);
-}
-
-std::string SPOUTImpl::GetName(std::string fullpath)
-{
-	return spoututils::GetName(fullpath);
-}
-
-void SPOUTImpl::StartTiming()
-{
-	spoututils::StartTiming();
-}
-
-double SPOUTImpl::EndTiming(bool microseconds, bool bPrint)
-{
-	return spoututils::EndTiming(microseconds, bPrint);
 }
 
 bool SPOUTImpl::BindSharedTexture()
@@ -2300,10 +1759,346 @@ void* SPOUTImpl::GetDX11Device()
 
 void* SPOUTImpl::GetDX11Context()
 {
-	// void cast conversion can be implicit
-	return spout->GetDX11Device();
+	return spout->GetDX11Context();
 }
 
+
+// LJ DEBUG
+//
+// Group: Utilities
+//
+void SPOUTImpl::OpenSpoutConsole() {
+	spoututils::OpenSpoutConsole();
+}
+
+void SPOUTImpl::CloseSpoutConsole(bool bWarning)
+{
+	spoututils::CloseSpoutConsole(bWarning);
+}
+
+void SPOUTImpl::EnableSpoutLog()
+{
+	spoututils::EnableSpoutLog();
+}
+
+void SPOUTImpl::EnableSpoutLogFile(const char* filename, bool append)
+{
+	spoututils::EnableSpoutLogFile(filename, append);
+}
+
+void SPOUTImpl::DisableSpoutLogFile()
+{
+	spoututils::DisableSpoutLog();
+}
+
+void SPOUTImpl::DisableLogs()
+{
+	spoututils::DisableLogs();
+}
+
+void SPOUTImpl::RemoveSpoutLogFile(const char* filename)
+{
+	spoututils::RemoveSpoutLogFile(filename);
+}
+
+void SPOUTImpl::DisableSpoutLog()
+{
+	spoututils::DisableSpoutLog();
+}
+
+void SPOUTImpl::EnableLogs()
+{
+	spoututils::EnableLogs();
+}
+
+bool SPOUTImpl::LogsEnabled()
+{
+	return spoututils::LogsEnabled();
+}
+
+bool SPOUTImpl::LogFileEnabled()
+{
+	return spoututils::LogFileEnabled();
+}
+
+std::string SPOUTImpl::GetSpoutLogPath()
+{
+	return spoututils::GetSpoutLogPath();
+}
+
+std::string SPOUTImpl::GetSpoutLog()
+{
+	return spoututils::GetSpoutLog();
+}
+
+void SPOUTImpl::ShowSpoutLogs()
+{
+	spoututils::ShowSpoutLogs();
+}
+
+void SPOUTImpl::SetSpoutLogLevel(SpoutLibLogLevel level)
+{
+	spoututils::SetSpoutLogLevel(static_cast<spoututils::SpoutLogLevel>(level));
+}
+
+void SPOUTImpl::SpoutLog(const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	spoututils::_doLog(spoututils::SPOUT_LOG_NONE, format, args);
+	va_end(args);
+}
+
+void SPOUTImpl::SpoutLogVerbose(const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	spoututils::_doLog(spoututils::SPOUT_LOG_VERBOSE, format, args);
+	va_end(args);
+}
+
+void SPOUTImpl::SpoutLogNotice(const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	spoututils::_doLog(spoututils::SPOUT_LOG_NOTICE, format, args);
+	va_end(args);
+}
+
+void SPOUTImpl::SpoutLogWarning(const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	spoututils::_doLog(spoututils::SPOUT_LOG_WARNING, format, args);
+	va_end(args);
+}
+
+void SPOUTImpl::SpoutLogError(const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	spoututils::_doLog(spoututils::SPOUT_LOG_ERROR, format, args);
+	va_end(args);
+}
+
+void SPOUTImpl::SpoutLogFatal(const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	spoututils::_doLog(spoututils::SPOUT_LOG_FATAL, format, args);
+	va_end(args);
+}
+
+int SPOUTImpl::SpoutMessageBox(const char * message, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(message, dwMilliseconds);
+}
+
+int SPOUTImpl::SpoutMessageBox(const char* caption, const char* format, ...)
+{
+	std::string strmessage;
+	std::string strcaption;
+	char logChars[1024]={};
+
+	// Construct the message
+	va_list args;
+	va_start(args, format);
+	vsprintf_s(logChars, 1024, format, args);
+	strmessage = logChars;
+	va_end(args);
+
+	if (caption && *caption)
+		strcaption = caption;
+	else
+		strcaption = "Message";
+
+	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), MB_OK, 0);
+
+}
+
+int SPOUTImpl::SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
+{
+	std::string strmessage;
+	std::string strcaption;
+	char logChars[1024]={};
+
+	// Construct the message
+	va_list args;
+	va_start(args, format);
+	vsprintf_s(logChars, 1024, format, args);
+	strmessage = logChars;
+	va_end(args);
+
+	if (caption && *caption)
+		strcaption = caption;
+	else
+		strcaption = "Message";
+
+	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), uType, 0);
+
+}
+
+int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
+}
+
+int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, instruction, dwMilliseconds);
+}
+
+int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, text);
+}
+
+int SPOUTImpl::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& index)
+{
+	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, items, index);
+}
+
+
+
+void SPOUTImpl::SpoutMessageBoxIcon(HICON hIcon)
+{
+	spoututils::SpoutMessageBoxIcon(hIcon);
+}
+
+bool SPOUTImpl::SpoutMessageBoxIcon(std::string iconfile)
+{
+	return spoututils::SpoutMessageBoxIcon(iconfile);
+}
+
+void SPOUTImpl::SpoutMessageBoxButton(int ID, std::wstring title)
+{
+	spoututils::SpoutMessageBoxButton(ID, title);
+}
+
+void SPOUTImpl::SpoutMessageBoxModeless(bool bMode)
+{
+	spoututils::SpoutMessageBoxModeless(bMode);
+}
+
+
+void SPOUTImpl::SpoutMessageBoxWindow(HWND hWnd)
+{
+	spoututils::SpoutMessageBoxWindow(hWnd);
+}
+
+void SPOUTImpl::SpoutMessageBoxPosition(POINT pt)
+{
+	spoututils::SpoutMessageBoxPosition(pt);
+}
+
+void SPOUTImpl::SpoutMessageBoxAllowCancel(bool bCancel, bool bRetain)
+{
+	spoututils::SpoutMessageBoxAllowCancel(bCancel, bRetain);
+}
+
+bool SPOUTImpl::CopyToClipBoard(HWND hwnd, const char* caps)
+{
+	return spoututils::CopyToClipBoard(hwnd, caps);
+}
+
+bool SPOUTImpl::OpenSpoutLogs()
+{
+	return spoututils::OpenSpoutLogs();
+}
+
+//
+// Registry utilities
+//
+
+bool SPOUTImpl::ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue)
+{
+	return spoututils::ReadDwordFromRegistry(hKey, subkey, valuename, pValue);
+}
+
+bool SPOUTImpl::WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue)
+{
+	return spoututils::WriteDwordToRegistry(hKey, subkey, valuename, dwValue);
+}
+
+bool SPOUTImpl::ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath)
+{
+	return spoututils::ReadPathFromRegistry(hKey, subkey, valuename, filepath);
+}
+
+bool SPOUTImpl::WritePathToRegistry(HKEY hKey, const char *subkey, const char *valuename, const char *filepath)
+{
+	return spoututils::WritePathToRegistry(hKey, subkey, valuename, filepath);
+}
+
+bool SPOUTImpl::WriteBinaryToRegistry(HKEY hKey, const char* subkey, const char* valuename, const unsigned char* hexdata, DWORD nchars)
+{
+	return spoututils::WriteBinaryToRegistry(hKey, subkey, valuename, hexdata, nchars);
+}
+
+bool SPOUTImpl::RemovePathFromRegistry(HKEY hKey, const char *subkey, const char *valuename)
+{
+	return spoututils::RemovePathFromRegistry(hKey, subkey, valuename);
+}
+
+bool SPOUTImpl::RemoveSubKey(HKEY hKey, const char *subkey)
+{
+	return spoututils::RemoveSubKey(hKey, subkey);
+}
+
+bool SPOUTImpl::FindSubKey(HKEY hKey, const char *subkey)
+{
+	return spoututils::FindSubKey(hKey, subkey);
+}
+
+std::string SPOUTImpl::GetSDKversion(int* pNumber)
+{
+	return spoututils::GetSDKversion(pNumber);
+}
+
+bool SPOUTImpl::IsLaptop()
+{
+	return spoututils::IsLaptop();
+}
+
+HMODULE SPOUTImpl::GetCurrentModule()
+{
+	return spoututils::GetCurrentModule();
+}
+
+std::string SPOUTImpl::GetExeVersion(const char* path)
+{
+	return spoututils::GetExeVersion(path);
+}
+
+std::string SPOUTImpl::GetExePath(bool bFull)
+{
+	return spoututils::GetExePath(bFull);
+}
+
+std::string SPOUTImpl::GetExeName()
+{
+	return spoututils::GetExeName();
+}
+
+std::string SPOUTImpl::GetPath(std::string fullpath)
+{
+	return spoututils::GetPath(fullpath);
+}
+
+std::string SPOUTImpl::GetName(std::string fullpath)
+{
+	return spoututils::GetName(fullpath);
+}
+
+void SPOUTImpl::StartTiming()
+{
+	spoututils::StartTiming();
+}
+
+double SPOUTImpl::EndTiming(bool microseconds, bool bPrint)
+{
+	return spoututils::EndTiming(microseconds, bPrint);
+}
 
 //
 // Class function
@@ -2311,10 +2106,8 @@ void* SPOUTImpl::GetDX11Context()
 
 void SPOUTImpl::Release()
 {
-	// Delete the spout object instance
-	delete(spout);
-	spout = nullptr;
 	// Delete this class instance
+	// Destructor deletes the spout object
 	delete this;
 }
 
@@ -2340,7 +2133,7 @@ void SPOUTImpl::Release()
 extern "C" SPOUTAPI SPOUTHANDLE APIENTRY GetSpout()
 {
 	// The Spout class implementation
-	SPOUTImpl * pSpout = new SPOUTImpl;
+	SPOUTImpl* pSpout = new SPOUTImpl;
 
 	// Create a new spout pointer for this class
 	pSpout->spout = new Spout;
