@@ -296,6 +296,8 @@
 
 #include "SpoutUtils.h"
 
+#include <cstring> // for std::memcpy
+
 //
 // Namespace: spoututils
 //
