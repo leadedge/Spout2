@@ -621,14 +621,8 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 		
 	info.width       = (uint32_t)width;
 	info.height      = (uint32_t)height;
-<<<<<<< HEAD
 	info.shareHandle = PtrToUint(dxShareHandle);
 
-=======
-	info.shareHandle = (uint32_t)(HandleToLong(dxShareHandle));
-	info.format      = (uint32_t)dwFormat;
-	
->>>>>>> 88d4cf65ddeb4ba2ac5628bed928df226c40c483
 	// Texture usage - unused
 	info.usage = 0;
 
