@@ -287,6 +287,7 @@
 				   The application url includes "?noclose" and is of the form
 				   <a href=\"https://github.com?noclose\">https://github.com</a>
 		13.08.26 - Remove "?noclose" from the url in TDN_HYPERLINK_CLICKED
+		21.08.26 - Update ExtractWindowsIcon function to include width and height
 
 */
 
@@ -1694,43 +1695,296 @@ namespace spoututils {
 	//    The icon number is shown beneath the icon image
 	//    and can be used for this function.
 	//
-	HICON ExtractWindowsIcon(int iconNumber, const char* dllName)
+	HICON ExtractWindowsIcon(int iconIndex, const char* dllName, int width, int height)
 	{
 		char path[MAX_PATH]{};
 		UINT length = GetSystemDirectoryA(path, MAX_PATH);
-		if (length > 0 && length < MAX_PATH) {
-			std::string dllPath = std::string(path) + "\\";
-			if (!dllName || !dllName[0])
-				dllPath += "Shell32.dll";
-			else
-				dllPath += dllName;
-			// Does the file exist?
-			if (_access(dllPath.c_str(), 0) != -1) {
-				//
-				// This still applies :
-				//
-				// https://devblogs.microsoft.com/oldnewthing/20100505-00/?p=14153
-				//
-				// In Windows 95, the Extract­Icon function was enhanced so that
-				// you could also specify an icon by its resource ID by passing
-				// its negative as the icon index.
-				//
-				// This behavior is longstanding and still works on Windows 10/11
-				// even though it has been historically under-documented.
-				//
-				// In other words for a negative number, the absolute value is
-				// interpreted as the resource ID. Although -1 for Extract­Icon
-				// returns the number of icons in the file.
-				//
-				HICON hIconLarge = nullptr;
-				// Use a negative number to convert the resource number to an index
-				if (ExtractIconExA(dllPath.c_str(), -iconNumber, &hIconLarge, NULL, 1) != -1) {
-					return hIconLarge;
+		if (length == 0 || length >= MAX_PATH)
+			return nullptr;
+
+		std::string dllPath = std::string(path) + "\\";
+		if (!dllName || !dllName[0])
+			dllPath += "Shell32.dll";
+		else
+			dllPath += dllName;
+
+		//
+		// An icon resource can contain a group of images for several different
+		// display devices. PrivateExtractIcons uses Windows icon-selection
+		// logic for the requested size.
+		//
+		// o For an index of zero, the function extracts the first icon.
+		//
+		// Referring to the following for ExtractIcon -
+		// https://devblogs.microsoft.com/oldnewthing/20100505-00/?p=14153
+		// o For a negative index, the absolute value is interpreted as
+		// the resource ID. This also works with PrivateExtractIconsA
+		// although not documented.
+		//
+		// o If and width and height are zero, and the last flag is also
+		// zero the function returns the first image in the group.
+		//
+		// o For width and height > 0, the function returns the image that
+		// best matches the requested dimensions. If the requested size is not
+		// present, the function chooses another suitable size and scales it.
+		//
+		// o For bit depth, the function automatically selects the most appropriate
+		// icon from the group for the current display device.
+		//   - Select the image closest to the requested size.
+		//   - For multiple images of that size, select one matching the display depth.
+		//   - For no exact match, select the greatest depth that does not exceed the display.
+		//   - If all available depths exceed the display depth, select the lowest one.
+		//
+		HICON hIcon = nullptr;
+		UINT iconId = 0;
+		UINT result = PrivateExtractIconsA(dllPath.c_str(),
+			-iconIndex, width, height,
+			&hIcon, &iconId, 1, 0);
+
+		// iconId is returned as the resource identifier of the icon
+		// that best fits the current display device. This can be
+		// examined if necessary by reading the RT_GROUP_ICON resource
+		// and comparing with GRPICONDIRENTRY::nID values.
+
+		if (result == 1 && hIcon != nullptr)
+			return hIcon;
+		else
+			return nullptr;
+
+	}
+
+	// Save an icon as an ico file at the requested width/height
+	// If swidth or sheight is <= 0, dimension is taken from the icon.
+	bool SaveIconFile(HICON hIcon, const char* filename, int swidth, int sheight)
+	{
+		if (!hIcon || !filename)
+			return false;
+
+		// Determine dimensions
+		int width  = swidth;
+		int height = sheight;
+
+		if (width <= 0 || height <= 0) {
+			ICONINFO ii{};
+			if (!GetIconInfo(hIcon, &ii))
+				return false;
+			BITMAP bm{};
+			if (ii.hbmColor) {
+				GetObject(ii.hbmColor, sizeof(bm), &bm);
+			}
+			else if (ii.hbmMask) {
+				GetObject(ii.hbmMask, sizeof(bm), &bm);
+				// For monochrome icons the mask contains
+				// XOR and AND stacked vertically
+				bm.bmHeight /= 2;
+			}
+			if (width  <= 0) width = bm.bmWidth;
+			if (height <= 0) height = bm.bmHeight;
+			if (ii.hbmColor) DeleteObject(ii.hbmColor);
+			if (ii.hbmMask)  DeleteObject(ii.hbmMask);
+		}
+
+		if (width <= 0 || height <= 0)
+			return false;
+
+		// Create a 32-bit top-down DIB
+		HDC screenDC = GetDC(nullptr);
+		if (!screenDC)
+			return false;
+
+		HDC memDC = CreateCompatibleDC(screenDC);
+		if (!memDC) {
+			ReleaseDC(nullptr, screenDC);
+			return false;
+		}
+
+		BITMAPINFO bi{};
+		bi.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+		bi.bmiHeader.biWidth       = width;
+		bi.bmiHeader.biHeight      = -height; // top-down
+		bi.bmiHeader.biPlanes      = 1;
+		bi.bmiHeader.biBitCount    = 32;
+		bi.bmiHeader.biCompression = BI_RGB;
+
+		void* bits = nullptr;
+		HBITMAP bitmap = CreateDIBSection(screenDC,	&bi,
+			DIB_RGB_COLORS,	&bits, nullptr,	0);
+
+		if (!bitmap) {
+			DeleteDC(memDC);
+			ReleaseDC(nullptr, screenDC);
+			return false;
+		}
+
+		HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
+		if (!oldBitmap) {
+			DeleteObject(bitmap);
+			DeleteDC(memDC);
+			ReleaseDC(nullptr, screenDC);
+			return false;
+		}
+
+		// Clear to transparent
+		const size_t pixelCount = (size_t)width*(size_t)height;
+		memset(bits, 0, pixelCount * 4);
+
+		// Draw icon
+		BOOL drawn = DrawIconEx(memDC, 0, 0, hIcon,
+			width, height, 0, nullptr, DI_NORMAL);
+
+		SelectObject(memDC, oldBitmap);
+
+		if (!drawn) {
+			DeleteObject(bitmap);
+			DeleteDC(memDC);
+			ReleaseDC(nullptr, screenDC);
+			return false;
+		}
+
+		//
+		// Build the ICO image.
+		//
+		// ICO bitmap consists of:
+		//   BITMAPINFOHEADER
+		//   XOR bitmap (32-bit BGRA)
+		//   AND mask (1 bit per pixel)
+		// The bitmap stored in ICO is bottom-up.
+		const int xorStride = width * 4;
+
+		// AND mask is 1 bit/pixel, DWORD aligned.
+		const int andStride = ((width + 31)/32)*4;
+
+		const size_t xorSize = (size_t)xorStride*height;
+		const size_t andSize = (size_t)andStride*height;
+		const size_t imageSize = sizeof(BITMAPINFOHEADER) + xorSize + andSize;
+
+		if (imageSize > UINT32_MAX) {
+			DeleteObject(bitmap);
+			DeleteDC(memDC);
+			ReleaseDC(nullptr, screenDC);
+			return false;
+		}
+
+		std::vector<uint8_t> image(imageSize, 0);
+
+		// ICO bitmap header
+		// Height is double the actual height because
+		// it includes both XOR and AND bitmaps
+		BITMAPINFOHEADER bih{};
+		bih.biSize        = sizeof(BITMAPINFOHEADER);
+		bih.biWidth       = width;
+		bih.biHeight      = height*2;
+		bih.biPlanes      = 1;
+		bih.biBitCount    = 32;
+		bih.biCompression = BI_RGB;
+		bih.biSizeImage   = (DWORD)(xorSize + andSize);
+
+		std::memcpy(image.data(), &bih, sizeof(bih));
+		uint8_t* xorBits = image.data() + sizeof(BITMAPINFOHEADER);
+		uint8_t* andBits = xorBits + xorSize;
+
+		// Copy pixels bottom-up.
+		// DIB_RGB_COLORS gives us BGRA in memory.
+		// ICO's 32-bit XOR bitmap is also BGRA.
+		// No RGB conversion is necessary.
+		const uint8_t* src = (uint8_t*)bits;
+		for (int y = 0; y < height; ++y) {
+			const int srcY = y;                 // top-down source
+			const int dstY = height - 1 - y;    // bottom-up ICO
+			std::memcpy(xorBits+(size_t)dstY*xorStride,
+				src+(size_t)srcY*xorStride,	xorStride);
+		}
+
+		// Construct the AND mask
+		// Transparent pixels = 1, Opaque pixels = 0
+		// Use alpha == 0 as transparent
+		for (int y = 0; y < height; y++) {
+			const int srcY = y;
+			const int dstY = height-1-y;
+			const uint8_t* row = src + (size_t)srcY*xorStride;
+			uint8_t* maskRow = andBits + (size_t)dstY*andStride;
+			for (int x = 0; x < width; x++) {
+				const uint8_t alpha = row[x*4+3];
+				if (alpha == 0) {
+					maskRow[x/8] |= (uint8_t)(0x80 >> (x & 7));
 				}
 			}
 		}
-		return nullptr;
+
+		#pragma pack(push, 1)
+		struct ICONDIR {
+			uint16_t idReserved;
+			uint16_t idType;
+			uint16_t idCount;
+		};
+		struct ICONDIRENTRY {
+			uint8_t  bWidth;
+			uint8_t  bHeight;
+			uint8_t  bColorCount;
+			uint8_t  bReserved;
+			uint16_t wPlanes;
+			uint16_t wBitCount;
+			uint32_t dwBytesInRes;
+			uint32_t dwImageOffset;
+		};
+		#pragma pack(pop)
+
+		// ICO directory.
+		ICONDIR iconDir{};
+		iconDir.idReserved = 0;
+		iconDir.idType     = 1;
+		iconDir.idCount    = 1;
+
+		ICONDIRENTRY entry{};
+		entry.bWidth  = (width >= 256) ? 0 : (uint8_t)width;
+		entry.bHeight =	(height >= 256) ? 0 : (uint8_t)height;
+		entry.bColorCount = 0;
+		entry.bReserved   = 0;
+		entry.wPlanes     = 1;
+		entry.wBitCount   = 32;
+		entry.dwBytesInRes = (uint32_t)imageSize;
+		entry.dwImageOffset = sizeof(ICONDIR) + sizeof(ICONDIRENTRY);
+
+		// Write file
+		FILE* file = nullptr;
+		#ifdef _MSC_VER
+		if (fopen_s(&file, filename, "wb") != 0)
+			file = nullptr;
+		#else
+			file = std::fopen(filename, "wb");
+		#endif
+
+		if (!file) {
+			DeleteObject(bitmap);
+			DeleteDC(memDC);
+			ReleaseDC(nullptr, screenDC);
+			return false;
+		}
+
+		bool success = true;
+
+		if (fwrite(&iconDir, sizeof(iconDir), 1, file) != 1)
+			success = false;
+
+		if (success && fwrite(&entry, sizeof(entry), 1, file) != 1)
+			success = false;
+
+		if (success && fwrite(image.data(), 1, image.size(), file) != image.size())
+			success = false;
+
+		fclose(file);
+
+		DeleteObject(bitmap);
+		DeleteDC(memDC);
+		ReleaseDC(nullptr, screenDC);
+
+		return success;
+
 	}
+
+
+
+
 
 	//
 	// Group: Registry utilities

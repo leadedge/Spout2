@@ -334,8 +334,8 @@ namespace spoututils {
 	// System menu 'X' close button for an application window
 	void SPOUT_DLLEXP EnableWindowClose(HWND hwnd, bool bKeys = true, bool bSystem = true);
 
-	// Extract an icon from a Windows dll (default Shell32.dll) 
-	HICON SPOUT_DLLEXP ExtractWindowsIcon(int iconNumber, const char* dllName = nullptr);
+	// Extract an icon from a Windows dll (default Shell32.dll)
+	HICON SPOUT_DLLEXP ExtractWindowsIcon(int iconNumber, const char* dllName = nullptr, int width = 0, int height = 0);
 
 	//
 	// Registry utilities
