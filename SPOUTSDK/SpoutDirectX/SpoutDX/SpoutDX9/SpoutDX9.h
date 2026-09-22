@@ -173,36 +173,8 @@ class SPOUT_DLLEXP spoutDX9 {
 		// Set maximum senders allowed
 		void SetMaxSenders(int maxSenders);
 
-
-		//
-		// COMMON
-		//
-
-		//
-		// SpoutUtils namespace functions for dll access
-		//
-		void OpenSpoutConsole();
-		void CloseSpoutConsole(bool bWarning = false);
-		void EnableSpoutLog();
-		void EnableSpoutLogFile(const char* filename, bool append = false);
-		void DisableSpoutLogFile();
-		void DisableSpoutLog();
-
-		void SpoutLog(const char* format, ...);
-		void SpoutLogNotice(const char* format, ...);
-		void SpoutLogWarning(const char* format, ...);
-		void SpoutLogError(const char* format, ...);
-		void SpoutLogFatal(const char* format, ...);
-
-		int SpoutMessageBox(const char* message, DWORD dwMilliseconds = 0);
-		int SpoutMessageBox(const char* caption, UINT uType, const char* format, ...);
-		int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds = 0);
-		int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds = 0);
-		int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text);
-		int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected);
-
 		// Hold frame rate
-		void HoldFps(int fps);
+		void HoldFps(double fps);
 		// Create a DirectX9 shared texture
 		bool CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle);
 

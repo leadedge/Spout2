@@ -26,7 +26,10 @@
 //					  convert to a string of 8 characters without new line
 //		29.08.24	- ReadDX9texture - remove !frame.IsFrameCountEnabled() condition
 //		11.10.25	- CreateSharedDX9Texture - change switch (LOWORD(res)) to switch (res)
-//		24.06.25	- Add SpoutUtils namespace functions for dll access
+//		24.06.26	- Add SpoutUtils namespace functions for dll access
+//		26.06.26	- Modify CMakeLists.txt to enable dll exports for spoututils
+//					  and remove wrapper functions
+//		22.09.26	- Change HoldFps from int to double
 //
 // ====================================================================================
 /*
@@ -805,117 +808,10 @@ void spoutDX9::SetMaxSenders(int maxSenders)
 	sendernames.SetMaxSenders(maxSenders);
 }
 
-//
-// SpoutUtils namespace functions for dll access
-//
-
-void spoutDX9::OpenSpoutConsole()
-{
-	spoututils::OpenSpoutConsole();
-}
-
-void spoutDX9::CloseSpoutConsole(bool bWarning)
-{
-	spoututils::CloseSpoutConsole(bWarning);
-}
-
-void spoutDX9::EnableSpoutLog()
-{
-	spoututils::EnableSpoutLog();
-}
-
-void spoutDX9::EnableSpoutLogFile(const char* filename, bool append)
-{
-	spoututils::EnableSpoutLogFile(filename, append);
-}
-
-void spoutDX9::DisableSpoutLogFile()
-{
-	spoututils::DisableSpoutLogFile();
-}
-
-void spoutDX9::DisableSpoutLog()
-{
-	spoututils::DisableSpoutLog();
-}
-
-void spoutDX9::SpoutLog(const char* format, ...) {
-	spoututils::SpoutLog(format);
-}
-
-void spoutDX9::SpoutLogNotice(const char* format, ...)
-{
-	spoututils::SpoutLogNotice(format);
-}
-
-void spoutDX9::SpoutLogWarning(const char* format, ...)
-{
-	spoututils::SpoutLogWarning(format);
-}
-
-void spoutDX9::SpoutLogError(const char* format, ...)
-{
-	spoututils::SpoutLogError(format);
-}
-
-void spoutDX9::SpoutLogFatal(const char* format, ...)
-{
-	spoututils::SpoutLogFatal(format);
-}
-
-int spoutDX9::SpoutMessageBox(const char* message, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(message, dwMilliseconds);
-}
-
-int spoutDX9::SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
-{
-	std::string strmessage;
-	std::string strcaption;
-	char logChars[1024]={};
-
-	// Construct the message
-	va_list args;
-	va_start(args, format);
-	vsprintf_s(logChars, 1024, format, args);
-	strmessage = logChars;
-	va_end(args);
-
-	if (caption && *caption)
-		strcaption = caption;
-	else
-		strcaption = "Message";
-
-	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), uType, 0);
-
-}
-
-int spoutDX9::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
-}
-
-int spoutDX9::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, instruction, dwMilliseconds);
-}
-
-int spoutDX9::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, text);
-}
-
-int spoutDX9::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, items, selected);
-}
-
-
-
 //---------------------------------------------------------
 // Function: HoldFps
 // Frame rate control with desired frames per second.
-void spoutDX9::HoldFps(int fps)
+void spoutDX9::HoldFps(double fps)
 {
 	frame.HoldFps(fps);
 }
