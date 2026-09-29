@@ -94,6 +94,9 @@
 			   <emmintrin.h> and <tmmintrin.h>
 	12.08.26 - memcpy_sse2 - braces around initial pointer check
 			   To avoid "misleading indentation" warning.
+	23.09.26 - SpoutCopy.h - #include <string.h> as per Microsoft docs
+			   instead of <cstring> for memcpy. Also covered by
+			   changes to SpoutUtils.h (included by SpoutCommon.h)
 
 */
 

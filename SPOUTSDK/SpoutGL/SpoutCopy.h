@@ -40,8 +40,8 @@
 #include <intrin.h> // for cpuid to test for SSE2
 #include <cmath> // for compatibility with Clang. PR#81
 #include <stdint.h> // for _uint32 etc
+#include <string.h> // for memcpy
 #include <cstdint> // for std::uint32_t etc
-#include <cstring> // for std::memcpy
 #include <algorithm> // for std::swap
 
 // For SaveTextureToBMP
