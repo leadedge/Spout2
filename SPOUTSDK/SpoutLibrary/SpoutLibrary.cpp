@@ -136,6 +136,7 @@
 //		06.07.26   Remove override warning disable 26433 from header.
 //		22.07.26   Restore SpoutUtils wrapper functions.
 //		22.09.26 - Change HoldFps from int to double
+//		29.09.26 - Add SpoutUtils functions EnableWindowClose, ExtractWindowsIcon
 //
 /*
 		Copyright (c) 2016-2026, Lynn Jarvis. All rights reserved.
@@ -1066,6 +1067,8 @@ private: // Spout SDK functions
 	void SpoutMessageBoxAllowCancel(bool bCancel = true, bool bRetain = false);
 	bool CopyToClipBoard(HWND hwnd, const char* caps);
 	bool OpenSpoutLogs();
+	void EnableWindowClose(HWND hwnd, bool bKeys = true, bool bSystem = true);
+	HICON ExtractWindowsIcon(int iconNumber, const char* dllName = nullptr, int width = 0, int height = 0);
 	bool ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue);
 	bool WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue);
 	bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath);
@@ -2005,6 +2008,16 @@ bool SPOUTImpl::OpenSpoutLogs()
 {
 	return spoututils::OpenSpoutLogs();
 }
+
+void SPOUTImpl::EnableWindowClose(HWND hwnd, bool bKeys, bool bSystem) {
+	spoututils::EnableWindowClose(hwnd, bKeys, bSystem);
+}
+
+HICON SPOUTImpl::ExtractWindowsIcon(int iconNumber, const char* dllName, int width, int height)
+{
+	return spoututils::ExtractWindowsIcon(iconNumber, dllName, width, height);
+}
+
 
 //
 // Registry utilities

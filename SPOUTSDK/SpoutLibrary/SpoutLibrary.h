@@ -499,6 +499,8 @@ struct SPOUTLIBRARY
 	virtual	void SpoutMessageBoxAllowCancel(bool bCancel = true, bool bRetain = false) = 0;
 	virtual bool CopyToClipBoard(HWND hwnd, const char* caps) = 0;
 	virtual bool OpenSpoutLogs() = 0;
+	virtual void EnableWindowClose(HWND hwnd, bool bKeys = true, bool bSystem = true) = 0;
+	virtual HICON ExtractWindowsIcon(int iconNumber, const char* dllName = nullptr, int width = 0, int height = 0) = 0;
 	virtual bool ReadDwordFromRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD *pValue) = 0;
 	virtual bool WriteDwordToRegistry(HKEY hKey, const char *subkey, const char *valuename, DWORD dwValue) = 0;
 	virtual bool ReadPathFromRegistry(HKEY hKey, const char *subkey, const char *valuename, char *filepath) = 0;
