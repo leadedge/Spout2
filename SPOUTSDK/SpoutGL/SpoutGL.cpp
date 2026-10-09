@@ -217,6 +217,7 @@
 //		04.07.26	- GLDXformat - cast d3dformat switch to int to avoid
 //					  different enum warning. Check that enum values are unique.
 //		16.07.26 - move using namespace spoututils from header to class file
+//  Version 2.007.018
 //
 // ====================================================================================
 //

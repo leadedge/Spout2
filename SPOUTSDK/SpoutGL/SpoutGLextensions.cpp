@@ -79,6 +79,7 @@
 //			27.04.26	- SpoutGLextensions.h - Move glCreateTextures and glTextureStorage2D
 //						  from "context" to "memory"
 //			22.05.26	- SpoutGLextensions.h - add UNDEF defines for all extension types
+//  Version 2.007.018
 //
 /*
 	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.

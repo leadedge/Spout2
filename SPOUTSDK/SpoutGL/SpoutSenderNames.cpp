@@ -110,6 +110,7 @@
 	Version 2.007.014
 	20.06.24 - Add GetSenderIndex
 	23.08.24 - GetSenderInfo, SetSenderID - initialize SharedTextureInfo
+	Version 2.007.017
 	30.10.25 - Remove __movsd. Timing tests show no performance gain.
 	22.01.26 - Add "using namespace spoututils" to header
 			   Review - update copyright year
@@ -118,6 +119,8 @@
 			   Cast name to unsigned char to allow for non-ASCII characters
 	12.08.26 - Change to PtrToUint/UintToPtr for SetSenderInfo/GetSenderInfo
 			   instead of HandleToLong/LongToHandle
+	Version 2.007.018
+
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.

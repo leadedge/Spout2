@@ -102,6 +102,7 @@
 //		28.08.25	- CheckTextureAccess - do not block if texture is null
 //		22.01.26	- Review - update copyright year
 //		15.07.26	- HoldFps - change from int to double
+//  Version 2.007.018
 //
 // ====================================================================================
 //

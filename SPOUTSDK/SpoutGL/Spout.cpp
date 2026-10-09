@@ -324,6 +324,7 @@
 //					  to if(!driverdescription[0] || !driverversion[0])
 //					  Remove unused Devices variable
 //		15.07.26	- HoldFps - change from int to double
+//					  Version 2.007.018
 //
 // ====================================================================================
 /*

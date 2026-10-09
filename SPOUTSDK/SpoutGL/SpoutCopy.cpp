@@ -97,6 +97,7 @@
 	23.09.26 - SpoutCopy.h - #include <string.h> as per Microsoft docs
 			   instead of <cstring> for memcpy. Also covered by
 			   changes to SpoutUtils.h (included by SpoutCommon.h)
+	Version 2.007.018
 
 */
 

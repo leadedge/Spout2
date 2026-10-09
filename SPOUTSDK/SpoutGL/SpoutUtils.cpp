@@ -291,6 +291,8 @@
 		23.09.26 - Remove SaveIconFile
 				   SpoutUtils.h - add #include <string.h> and #include <cstring>
 				   SpoutUtils.h - test definition of NOMINMAX to avoid re-definition errors
+		01.10.26 - Update version to 2.007.018
+
 
 */
 
@@ -328,7 +330,7 @@ namespace spoututils {
 
 		// Spout SDK version number string
 		// Major, minor, release
-		std::string SDKversion = "2.007.017";
+		std::string SDKversion = "2.007.018";
 
 		// Local variables
 		bool bEnableLog = false;

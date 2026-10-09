@@ -180,6 +180,7 @@
 //					  Remove redundant final Flush from FlushWait
 //		22.01.26	- Review - update copyright year
 //		16.07.26 - move using namespace spoututils from header to class file
+//	Version 2.007.018
 //
 // ====================================================================================
 /*
