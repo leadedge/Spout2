@@ -119,6 +119,7 @@
 			   Cast name to unsigned char to allow for non-ASCII characters
 	12.08.26 - Change to PtrToUint/UintToPtr for SetSenderInfo/GetSenderInfo
 			   instead of HandleToLong/LongToHandle
+	10.10.26 - SetSenderInfo - restore removed dwFormat
 	Version 2.007.018
 
 
@@ -625,6 +626,7 @@ bool spoutSenderNames::SetSenderInfo(const char* sendername, unsigned int width,
 	info.width       = (uint32_t)width;
 	info.height      = (uint32_t)height;
 	info.shareHandle = PtrToUint(dxShareHandle);
+	info.format      = (uint32_t)dwFormat;
 
 	// Texture usage - unused
 	info.usage = 0;
