@@ -91,7 +91,6 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 
 // SPOUT
 void Render();
-void SendFbo();
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -100,6 +99,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
+
 
 	// Load bitmap from resources
 	g_hBitmap = (HBITMAP)LoadImageA(GetModuleHandle(NULL), MAKEINTRESOURCEA(IDB_WINSPOUTBMP), IMAGE_BITMAP, 0, 0, LR_DEFAULTCOLOR);
@@ -148,7 +148,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	sender.InitTexture(g_TextureGL, GL_BGRA, g_SenderWidth, g_SenderHeight);
 
 	// Create an Fbo for SendFbo
-	glGenFramebuffersEXT(1, &g_FboGL);
+	sender.CreateFbo(g_FboGL);
+
+	// Bind the fbo and attach the texture
+	// (he fbo remains bound)
+	sender.AttachTexture(g_FboGL, g_TextureGL);
+
 
 	//
 	// Give the sender a name
@@ -311,8 +316,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// (not applicable for this example)
 	// See details in the Openframeworks Sender > SenderGraphics example 
 
-	// ---------------------------------------------------------------------------
-
+	// ---------------------------------------------------------
+	// Option - Escape to close
+	// Escape for exit is not detected for a Windows application
+	// and has to be specifically enabled. Handling WM_KEYDOWN
+	// within the application is then not necessary
+	EnableWindowClose(g_hWnd);
 
     // Main message loop:
 	MSG msg = { 0 };
@@ -323,12 +332,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
+		// -----------------------
+		// Render the pixel buffer
 		Render();
 	}
 
-	// ----------------------------------
-	// SPOUT
-
+	// -----------------
+	// Release resources
 	if(g_hBitmap) 
 		DeleteObject(g_hBitmap);
 
@@ -336,22 +346,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		delete[] g_pixelBuffer;
 
 	if (g_TextureGL) 
-		glDeleteBuffers(1, &g_TextureGL);
+		glDeleteTextures(1, &g_TextureGL);
 
-	if (g_FboGL) 
-		glDeleteBuffers(1, &g_FboGL);
+	// Delete the fbo
+	// (unbinds fbo and detaches texture)
+	sender.DeleteFbo(g_FboGL);
 
 	if (g_pixelBuffer) 
 		delete[] g_pixelBuffer;
-
 
 	// Release the sender
 	sender.ReleaseSender();
 
 	// Release OpenGL resources
 	sender.CloseOpenGL();
-
-	// ----------------------------------
 
     return (int) msg.wParam;
 }
@@ -374,17 +382,18 @@ void Render()
 	// SendImage manages sender create and re-size
 	// RGBA, BGRA, RGB, BGR are supported
 	// Windows screen capture pixels are BGRA
-	// sender.SendImage(g_pixelBuffer, g_SenderWidth, g_SenderHeight, GL_BGRA);
+	sender.SendImage(g_pixelBuffer, g_SenderWidth, g_SenderHeight, GL_BGRA);
 
 	// Option 2) - Send texture
 	// In this example, pixels are be loaded to the texture (see WM_PAINT)
 	// In most OpenGL applications, a texture is available directly
 	// See details in the Openframeworks Sender > SenderGraphics example
 	// The texture is initialized GL_BGRA to match Windows pixel format
-	sender.SendTexture(g_TextureGL, GL_TEXTURE_2D, g_SenderWidth, g_SenderHeight, false); // No invert
+	// sender.SendTexture(g_TextureGL, GL_TEXTURE_2D, g_SenderWidth, g_SenderHeight, false); // No invert
 
 	// Option 3) - Send Fbo
-	// SendFbo();
+	// Send the fbo with texture attached
+	// sender.SendFbo(g_FboGL, g_SenderWidth, g_SenderHeight, false);
 
 	// Option to send the default OpenGL framebuffer
 	// is not applicable for this example.
@@ -401,20 +410,6 @@ void Render()
 
 }
 
-// Send fbo (the fbo must be bound)
-void SendFbo() {
-	// Get current fbo binding
-	GLint HostFbo = 0;
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &HostFbo);
-	// Bind the fbo to send
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, g_FboGL);
-	// Attach the texture for sending
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_TextureGL, 0);
-	// Send the fbo (completeness is checked by the function)
-	sender.SendFbo(g_FboGL, g_SenderWidth, g_SenderHeight, false);
-	// Restore previous binding
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, HostFbo);
-}
 
 //
 //  FUNCTION: MyRegisterClass()
@@ -551,14 +546,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
-
-	// ESC to quit
-	case WM_KEYDOWN:
-	{
-		if (wParam == VK_ESCAPE)
-			PostQuitMessage(0);
-		break;
-	}
 
     case WM_PAINT:
         {
