@@ -2,7 +2,7 @@
 
 					SpoutSender.h
 
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -90,7 +90,7 @@ class SPOUT_DLLEXP SpoutSender {
 	// Return frame count status
 	bool IsFrameCountEnabled();
 	// Frame rate control
-	void HoldFps(int fps);
+	void HoldFps(double fps);
 	// Signal sync event 
 	void SetFrameSync(const char* SenderName);
 	// Wait or test for a sync event

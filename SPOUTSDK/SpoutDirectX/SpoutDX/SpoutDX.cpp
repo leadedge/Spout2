@@ -164,10 +164,15 @@
 //					  SpoutMessageBox overload, optional timeout without instruction
 //		11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
 //					  change NULL argument to 0, Change hRes = NULL to hRes = 0
+//		13.05.26	- Remove FlushWait from ReadPixelData. Map waits for GPU access.
+//		24.06.26	- Add SpoutLog wrapper functions
+//		26.06.26	- Modify CMakeLists.txt to enable dll exports for spoututils
+//					  and remove wrapper functions
+//		22.09.26	- Change HoldFps from int to double
 //
 // ====================================================================================
 /*
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -786,8 +791,9 @@ bool spoutDX::ReceiveTexture()
 {
 	// Return if flagged for update
 	// The update flag is reset when the receiving application calls IsUpdated()
-	if (m_bUpdated)
+	if (m_bUpdated) {
 		return true;
+	}
 
 	// Try to receive texture details from a sender
 	if (ReceiveSenderData()) {
@@ -799,7 +805,10 @@ bool spoutDX::ReceiveTexture()
 
 		// The sender name, width, height, format, shared texture handle and pointer have been retrieved.
 		if (m_bUpdated) {
-			m_bUpdated = false; // Reset for ReceiveSenderData
+
+			// LJ DEBUG
+			// m_bUpdated = false; // Reset for ReceiveSenderData
+
 			// Update the receiving class texture.
 			if (!CheckTexture(m_Width, m_Height, m_dwFormat))
 				return false;
@@ -1223,7 +1232,7 @@ long spoutDX::GetSenderFrame()
 // Function: HoldFps
 // Frame rate control
 //    Desired frames per second
-void spoutDX::HoldFps(int fps)
+void spoutDX::HoldFps(double fps)
 {
 	frame.HoldFps(fps);
 }
@@ -2093,90 +2102,6 @@ void spoutDX::CheckSenderFormat(char * sendername)
 	}
 }
 
-
-//
-// SpoutUtils namespace functions for dll access
-//
-
-void spoutDX::OpenSpoutConsole()
-{
-	spoututils::OpenSpoutConsole();
-}
-
-void spoutDX::CloseSpoutConsole(bool bWarning)
-{
-	spoututils::CloseSpoutConsole(bWarning);
-}
-
-void spoutDX::EnableSpoutLog()
-{
-	spoututils::EnableSpoutLog();
-}
-
-void spoutDX::EnableSpoutLogFile(const char* filename, bool append)
-{
-	spoututils::EnableSpoutLogFile(filename, append);
-}
-
-void spoutDX::DisableSpoutLogFile()
-{
-	spoututils::DisableSpoutLogFile();
-}
-
-void spoutDX::DisableSpoutLog()
-{
-	spoututils::DisableSpoutLog();
-}
-
-int spoutDX::SpoutMessageBox(const char* message, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(message, dwMilliseconds);
-}
-
-int spoutDX::SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
-{
-	std::string strmessage;
-	std::string strcaption;
-	char logChars[1024]={};
-
-	// Construct the message
-	va_list args;
-	va_start(args, format);
-	vsprintf_s(logChars, 1024, format, args);
-	strmessage = logChars;
-	va_end(args);
-
-	if (caption && *caption)
-		strcaption = caption;
-	else
-		strcaption = "Message";
-
-	return spoututils::SpoutMessageBox(NULL, strmessage.c_str(), caption, strcaption.c_str(), uType, 0);
-
-}
-
-int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, dwMilliseconds);
-}
-
-int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, const char* instruction, DWORD dwMilliseconds)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, instruction, dwMilliseconds);
-}
-
-int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, text);
-}
-
-int spoutDX::SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::vector<std::string> items, int& selected)
-{
-	return spoututils::SpoutMessageBox(hwnd, message, caption, uType, items, selected);
-}
-
-
-
 //
 // PRIVATE
 //
@@ -2521,9 +2446,7 @@ bool spoutDX::ReadPixelData(ID3D11Texture2D* pStagingSource, unsigned char* dest
 
 	// Map the staging texture resource so we can access the pixels
 	D3D11_MAPPED_SUBRESOURCE mappedSubResource={};
-	// Make sure all commands are done before mapping the staging texture
-	spoutdx.FlushWait(m_pd3dDevice, m_pImmediateContext);
-	// Map waits for GPU access
+	// Map waits for GPU access and blocks until done with any pending writes.
 	const HRESULT hr = m_pImmediateContext->Map(pStagingSource, 0, D3D11_MAP_READ, 0, &mappedSubResource);
 	if (SUCCEEDED(hr)) {
 		// Copy the staging texture pixels to the user buffer

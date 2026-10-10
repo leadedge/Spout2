@@ -207,7 +207,17 @@
 //		11.10.25	- CopyTexture - correct conditional size check
 //		15.10.25	- Add ClearAlpha
 //		21.10.25	- ReadTextureData - add SourceID null check
-//		05.01.26	- BindSharedTexture - AllowTextureAcces only on fail. Issue #133,
+//		05.01.26	- BindSharedTexture - AllowTextureAcces only on fail. Issue #133
+//		22.01.26	- Review - update copyright year
+//		31.01.26	- Constructor - m_SpoutVersion
+//					  get the current version number if not found in the registry
+//		06.04.26	- Add CreateFbo DeleteFbo and AttachTexture
+//		11.04.26	- LoadGLextensions - show OpenGL version
+//		22.05.26	- Add CreateGLversion - create OpenGL of specified version
+//		04.07.26	- GLDXformat - cast d3dformat switch to int to avoid
+//					  different enum warning. Check that enum values are unique.
+//		16.07.26 - move using namespace spoututils from header to class file
+//  Version 2.007.018
 //
 // ====================================================================================
 //
@@ -235,6 +245,8 @@
 //
 
 #include "SpoutGL.h"
+
+using namespace spoututils;
 
 // ================================================
 
@@ -300,7 +312,7 @@ spoutGL::spoutGL()
 	m_bSWAPavailable = false;
 	m_bGLDXavailable = false;
 	m_bCOPYavailable = false;
-	m_bPBOavailable = true; // Assume true until tested by LoadGLextensions
+	m_bPBOavailable  = true; // Assume true until tested by LoadGLextensions
 	m_bCONTEXTavailable = false;
 
 	// PBO support
@@ -334,10 +346,12 @@ spoutGL::spoutGL()
 
 	// Find version number from the registry
 	// Set by Spout Installer (2005, 2006, etc.) or by SpoutSettings for 2.007 and later
+	m_SpoutVersion = 0;
 	if (ReadDwordFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\Spout", "Version", &dwValue)) {
 		m_SpoutVersion = (int)dwValue;
 	}
-	else {
+
+	if(m_SpoutVersion == 0) {
 		// Get number string e.g. "2.007.009"
 		std::string str = GetSDKversion();
 		// Remove all "." chars
@@ -792,32 +806,32 @@ GLint spoutGL::GLDXformat(DXGI_FORMAT textureformat)
 		d3dformat = m_DX11format;
 
 	GLint glformat = GL_RGBA;
-	switch (d3dformat) {
+	switch ((int)d3dformat) {
 		// DirectX 9
-		case D3DFMT_A8R8G8B8:
-		case D3DFMT_X8R8G8B8:
+		case D3DFMT_A8R8G8B8: // 21
+		case D3DFMT_X8R8G8B8: // 22
 		// DirectX 11
-		case DXGI_FORMAT_B8G8R8X8_UNORM:
-		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM: // 88
+		case DXGI_FORMAT_B8G8R8A8_UNORM: // 87
 			glformat = GL_RGBA;
 			break;
-		case DXGI_FORMAT_R8G8B8A8_SNORM:
-		case DXGI_FORMAT_R8G8B8A8_UNORM:
-		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_SNORM: // 31
+		case DXGI_FORMAT_R8G8B8A8_UNORM: // 28
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: // 29
 			glformat = GL_RGBA8;
 			break;
-		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R10G10B10A2_UNORM: // 24
 			glformat = GL_RGB10_A2;
 			break;
-		case DXGI_FORMAT_R16G16B16A16_SNORM:
-		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_SNORM: // 13
+		case DXGI_FORMAT_R16G16B16A16_UNORM: // 11
 			glformat = GL_RGBA16;
 			break;
-		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT: // 10
 			glformat = GL_RGBA16F;
 			break;
-		case DXGI_FORMAT_R32G32B32_FLOAT:
-		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_R32G32B32_FLOAT: // 6
+		case DXGI_FORMAT_R32G32B32A32_FLOAT: // 2
 			glformat = GL_RGBA32F;
 			break;
 		default:
@@ -877,6 +891,7 @@ std::string spoutGL::GLformatName(GLint glformat)
 	return formatname;
 }
 
+
 //---------------------------------------------------------
 // Function: CreateOpenGL
 //
@@ -888,7 +903,7 @@ std::string spoutGL::GLformatName(GLint glformat)
 // Always call CloseOpenGL() on application close.
 //
 // OpenGL support is required.
-// Include in your application header file :
+// Include in the application header file :
 //     #include <gl/GL.h>
 //     #pragma comment (lib, "opengl32.lib")
 //
@@ -903,12 +918,13 @@ bool spoutGL::CreateOpenGL(HWND hwnd)
 	m_hRc = nullptr;
 
 	if (hwnd == nullptr) {
-		// We only need an OpenGL context with no render window because we don't draw to it
-		// so create an invisible dummy button window. This is then independent from the host
-		// program window (GetForegroundWindow). If SetPixelFormat has been called on the
-		// host window it cannot be called again. This caused a problem in Mapio.
-		// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
 		//
+		// Create an invisible dummy button window.
+		// No render window is required because there is no draw to it.
+		// This is then independent from the host program window (GetForegroundWindow).
+		// If SetPixelFormat has been called on the host window it cannot be called again.
+		// This caused a problem in Mapio.
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
 		// CS_OWNDC allocates a unique device context for each window in the class. 
 		//
 		if (!m_hwndButton || !IsWindow(m_hwndButton)) {
@@ -976,7 +992,12 @@ bool spoutGL::CreateOpenGL(HWND hwnd)
 		CloseOpenGL();
 		return false;
 	}
-	SpoutLogNotice("    OpenGL window created OK");
+
+	// Final report
+	int glVersion[2]{};
+	glGetIntegerv(GL_MAJOR_VERSION, &glVersion[0]);
+	glGetIntegerv(GL_MINOR_VERSION, &glVersion[1]);
+	SpoutLogNotice("CreateOpenGL - Version %d.%d", glVersion[0], glVersion[1]);
 
 	// Load the extensions (returns true if already loaded)
 	if (!LoadGLextensions()) {
@@ -984,15 +1005,189 @@ bool spoutGL::CreateOpenGL(HWND hwnd)
 		return false;
 	}
 
-	int glVersion[2] = { 0, 0 };
-	glGetIntegerv(GL_MAJOR_VERSION, &glVersion[0]);
-	glGetIntegerv(GL_MINOR_VERSION, &glVersion[1]);
-	SpoutLogNotice("CreateOpenGL - Version %d.%d", glVersion[0], glVersion[1]);
 
 	return true;
 
 }
 
+//---------------------------------------------------------
+// Function: CreateGLversion
+//
+// Create OpenGL of specified version
+//
+bool spoutGL::CreateGLversion(HWND hwnd, double version)
+{
+	// Return silently if a context exists
+	if (wglGetCurrentContext())
+		return true;
+
+	m_hdc = nullptr;
+	m_hwndButton = nullptr;
+	m_hRc = nullptr;
+
+	if (hwnd == nullptr) {
+		//
+		// We only need an OpenGL context with no render window because we don't draw to it
+		// so create an invisible dummy button window. This is then independent from the host
+		// program window (GetForegroundWindow). If SetPixelFormat has been called on the
+		// host window it cannot be called again. This caused a problem in Mapio.
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/dd369049%28v=vs.85%29.aspx
+		// CS_OWNDC allocates a unique device context for each window in the class.
+		//
+		if (!m_hwndButton || !IsWindow(m_hwndButton)) {
+			m_hwndButton = CreateWindowA("BUTTON",
+				"SpoutOpenGL",
+				WS_OVERLAPPEDWINDOW | CS_OWNDC,
+				0, 0, 32, 32,
+				NULL, NULL, NULL, NULL);
+		}
+
+		if (!m_hwndButton) {
+			SpoutLogError("spoutGL::CreateGLversion - no hwnd");
+			return false;
+		}
+	}
+	else {
+		m_hwndButton = hwnd;
+	}
+
+	m_hdc = GetDC(m_hwndButton);
+	if (!m_hdc) {
+		SpoutLogError("spoutGL::CreateGLversion - no hdc");
+		CloseOpenGL();
+		return false;
+	}
+
+	// https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-pixelformatdescriptor
+	PIXELFORMATDESCRIPTOR pfd;
+	ZeroMemory(&pfd, sizeof(pfd));
+	pfd.nSize = sizeof(pfd);
+	pfd.nVersion = 1;
+	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+	pfd.iPixelType = PFD_TYPE_RGBA;
+	pfd.cColorBits = 32;
+	pfd.cDepthBits = 16;
+	pfd.iLayerType = PFD_MAIN_PLANE;
+	const int iFormat = ChoosePixelFormat(m_hdc, &pfd);
+	if (!iFormat) {
+		SpoutLogError("spoutGL::CreateGLversion - pixel format error");
+		CloseOpenGL();
+		return false;
+	}
+
+	if (!SetPixelFormat(m_hdc, iFormat, &pfd)) {
+		const DWORD dwError = GetLastError();
+		// 2000 (0x7D0) The pixel format is invalid.
+		// Caused by repeated call of the SetPixelFormat function
+		char temp[128]{};
+		sprintf_s(temp, "spoutGL::CreateGLversion - SetPixelFormat Error %lu (0x%4.4lX)", dwError, dwError);
+		SpoutLogError("%s", temp);
+		CloseOpenGL();
+		return false;
+	}
+
+	// Temporary context to load GL extensions
+	HGLRC hRcTemp = wglCreateContext(m_hdc);
+	if (!hRcTemp) {
+		SpoutLogError("spoutGL::CreateGLversion - could not create temp OpenGL context");
+		CloseOpenGL();
+		return false;
+	}
+
+	wglMakeCurrent(m_hdc, hRcTemp);
+	if (!wglGetCurrentContext()) {
+		SpoutLogError("spoutGL::CreateGLversion - no temp OpenGL context");
+		CloseOpenGL();
+		return false;
+	}
+
+
+	// Load the extensions (returns true if already loaded)
+	if (!LoadGLextensions()) {
+		SpoutLogWarning("spoutGL::CreateGLversion - OpenGL extensions failed to load");
+		return false;
+	}
+
+	// Specific version requested
+	int glVersion[2]={0,0}; // Major, Minor
+	if (version > 0.0) {
+
+		// Check the highest available from the driver
+		const GLubyte* versionStr = glGetString(GL_VERSION);
+		int major = 0; int minor = 0;
+		sscanf_s((const char*)versionStr, "%d.%d", &major, &minor);
+		double vers = ((double)major*10+(double)minor)/10.0;
+
+		// Use the version specified if less
+		if(version <= vers)	vers = version;
+		glVersion[0] = (int)vers;
+		glVersion[1] = (int)(round((vers-glVersion[0])*10));
+
+		// Attributes for the real OpenGL context
+		int attribs[9]{};
+        int i = 0;
+        attribs[i++] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+        attribs[i++] = glVersion[0], // Major
+        attribs[i++] = WGL_CONTEXT_MINOR_VERSION_ARB;
+        attribs[i++] = glVersion[1]; // Minor
+        // Profiles only valid for > OpenGL 3.2
+        if (glVersion[0] > 3 || (glVersion[0] == 3 && glVersion[0] >= 2)) {
+            attribs[i++] = WGL_CONTEXT_PROFILE_MASK_ARB;
+            attribs[i++] = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+        }
+        attribs[i++] = 0; // End of attributes
+
+		// Create the real OpenGL context
+		HGLRC glContext = wglCreateContextAttribsARB(m_hdc, 0, attribs);
+		if (glContext) {
+			// Save global context
+			m_hRc = glContext;
+			// Make it current
+			wglMakeCurrent(nullptr, nullptr);
+			wglDeleteContext(hRcTemp);
+			wglMakeCurrent(m_hdc, m_hRc);
+			SpoutLogNotice("spoutGL::CreateGLversion - two pass Version %d.%d", glVersion[0], glVersion[1]);
+		}
+		else {
+			// For failure use the temporary compatibility mode context
+			m_hRc = hRcTemp;
+			SpoutLogError("    Failed to create OpenGL %d.%d context", glVersion[0], glVersion[1]);
+			// Drop through
+		}
+	}
+	else {
+		// Single pass context
+		// wglCreateContext will create a context using the highest OpenGL version
+		// supported by the driver in compatibility mode that supports modern OpenGL
+		// features and maintains support for legacy OpenGL code. Compute Shaders require
+		// OpenGL 4.3 and gl memory functions, OpenGL 4.5./ Support for extensions has to
+		// be tested in any case.
+		m_hRc = hRcTemp;
+		SpoutLogNotice("spoutGL::CreateGLversion - single pass Version");
+	}
+
+	// Final report
+    glGetIntegerv(GL_MAJOR_VERSION, &glVersion[0]);
+    glGetIntegerv(GL_MINOR_VERSION, &glVersion[1]);
+    SpoutLogNotice("Created OpenGL : %d.%d", glVersion[0], glVersion[1]);
+	if (glVersion[0] > 3 || (glVersion[0] == 3 && glVersion[1] >= 2)) {
+		GLint profile = 0;
+		glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profile);
+		if (profile & GL_CONTEXT_COMPATIBILITY_PROFILE_BIT)
+			SpoutLogNotice("Compatibility profile");
+		else if (profile & GL_CONTEXT_CORE_PROFILE_BIT)
+			SpoutLogNotice("Core profile");
+		else
+			SpoutLogNotice("Unknown profile");
+	}
+	else {
+		// OpenGL < 3.2 → profiles don't exist
+		SpoutLogNotice("Pre-3.2 context (compatibility)");
+	}
+
+	return true;
+
+}
 
 //---------------------------------------------------------
 // Function: CloseOpenGL
@@ -1384,6 +1579,7 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 //
 HANDLE spoutGL::LinkGLDXtextures(void* pDXdevice, void* pSharedTexture,  GLuint glTexture)
 {
+
 	HANDLE hInteropObject = nullptr;
 	DWORD dwError = 0;
 	char tmp[128]={};
@@ -3145,6 +3341,9 @@ bool spoutGL::LoadGLextensions()
 		return false;
 	}
 
+	const GLubyte* version = glGetString(GL_VERSION);
+	printf("spoutGL::LoadGLextensions : OpenGL Version: %s\n", version);
+
 	m_bFBOavailable = false;
 	m_bGLDXavailable = false;
 	m_bBLITavailable = false;
@@ -3740,7 +3939,11 @@ int spoutGL::GetSpoutVersion()
 // Group: Utilities
 //
 
-// Initialize OpenGL texture
+
+//---------------------------------------------------------
+// Function: InitTexture
+//	Initialize OpenGL texture
+//
 void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height)
 {
 	if (texID != 0) glDeleteTextures(1, &texID);
@@ -3769,6 +3972,52 @@ void spoutGL::InitTexture(GLuint &texID, GLenum GLformat, unsigned int width, un
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, texturebinding);
 
+}
+
+//---------------------------------------------------------
+// Function: CreateFbo
+//   Create an OpenGL fbo
+//
+bool spoutGL::CreateFbo(GLuint& FboID)
+{
+	glGenFramebuffersEXT(1, &FboID);
+	if(FboID > 0)
+		return true;
+	return false;
+}
+
+//---------------------------------------------------------
+// Function: DeleteFbo
+//   Unbind and delete an OpenGL fbo
+//
+void spoutGL::DeleteFbo(GLuint& FboID)
+{
+	if (FboID > 0) {
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		glDeleteFramebuffersEXT(1, &FboID);
+		FboID = 0;
+	}
+}
+
+//---------------------------------------------------------
+// Function: AttachTexture
+//   Bind an OpenGL fbo and attach a texture
+//   Return the previous fbo binding or -1 for failure
+//
+GLint spoutGL::AttachTexture(GLuint& FboID, GLuint& TextureID)
+{
+	// Get current fbo binding
+	GLint HostFbo = 0;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &HostFbo);
+	// Bind the fbo to send
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, FboID);
+	// Attach the texture for sending
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, TextureID, 0);
+	int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+	if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
+		return -1;
+	}
+	return HostFbo; // Current binding - can be 0
 }
 
 //---------------------------------------------------------
@@ -4183,6 +4432,8 @@ void spoutGL::ClearAlpha(unsigned char* src, unsigned int width, unsigned int he
 {
 	spoutcopy.ClearAlpha(src, width, height, alpha);
 }
+
+
 
 //
 // Group : DX11 texture copy versions

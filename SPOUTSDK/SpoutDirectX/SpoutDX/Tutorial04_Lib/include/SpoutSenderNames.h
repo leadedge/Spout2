@@ -39,6 +39,9 @@
 #include "SpoutCommon.h"
 #include "SpoutSharedMemory.h"
 
+// LJ DEBUG
+#include "SpoutUtils.h"
+
 #include <windowsx.h>
 #include <wingdi.h>
 #include <set>
@@ -52,6 +55,10 @@
 #ifdef _M_ARM64
 #include <sse2neon.h> // For ARM
 #endif
+
+// LJ DEBUG
+using namespace spoututils;
+
 
 // 100 msec wait for events
 #define SPOUT_WAIT_TIMEOUT 100

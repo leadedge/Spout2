@@ -40,8 +40,6 @@
 #include <windowsx.h>
 #include <wingdi.h>
 
-using namespace spoututils;
-
 //
 // Result of memory segment creation
 //

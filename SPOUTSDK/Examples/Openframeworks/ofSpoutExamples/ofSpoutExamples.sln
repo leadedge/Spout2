@@ -29,6 +29,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReceiverSync", "Receiver\Re
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SenderGraphics", "Sender\SenderGraphics\SenderGraphics.vcxproj", "{7FD42DF7-442E-479A-BA76-D0022F99702A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SenderGraphicsLib", "Sender\SenderGraphicsLib\SenderGraphicsLib.vcxproj", "{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -168,6 +170,18 @@ Global
 		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Release|x64.Build.0 = Release|x64
 		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Release|x86.ActiveCfg = Release|x64
 		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Release|x86.Build.0 = Release|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Debug|x64.ActiveCfg = Debug|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Debug|x64.Build.0 = Debug|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Debug|x86.ActiveCfg = Debug|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Debug|x86.Build.0 = Debug|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Profile|x64.ActiveCfg = Release|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Profile|x64.Build.0 = Release|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Profile|x86.ActiveCfg = Release|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Profile|x86.Build.0 = Release|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Release|x64.ActiveCfg = Release|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Release|x64.Build.0 = Release|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Release|x86.ActiveCfg = Release|x64
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -183,6 +197,7 @@ Global
 		{1904CD37-C3EE-48C0-8C97-9E14CBBE6BD8} = {6116FBC4-1408-4E7D-A31A-D398A0177655}
 		{05FC5CCE-55DE-442F-8BFC-910FA3834D4C} = {6116FBC4-1408-4E7D-A31A-D398A0177655}
 		{7FD42DF7-442E-479A-BA76-D0022F99702A} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{34CB9904-40F2-4FC1-8E15-BB43B9B8F40C} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BE8EE3A4-5C7B-4A27-9621-58E2B550774F}

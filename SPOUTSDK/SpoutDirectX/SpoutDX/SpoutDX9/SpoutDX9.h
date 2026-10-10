@@ -4,7 +4,7 @@
 
 	Functions to manage DirectX 9 texture sharing
 
-	Copyright (c) 2020-2024, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2020-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -173,13 +173,8 @@ class SPOUT_DLLEXP spoutDX9 {
 		// Set maximum senders allowed
 		void SetMaxSenders(int maxSenders);
 
-
-		//
-		// COMMON
-		//
-
 		// Hold frame rate
-		void HoldFps(int fps);
+		void HoldFps(double fps);
 		// Create a DirectX9 shared texture
 		bool CreateSharedDX9Texture(IDirect3DDevice9Ex* pDevice, unsigned int width, unsigned int height, D3DFORMAT format, LPDIRECT3DTEXTURE9 &dxTexture, HANDLE &dxShareHandle);
 

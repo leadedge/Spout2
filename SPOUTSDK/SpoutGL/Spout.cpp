@@ -319,11 +319,17 @@
 //					  The update flag is reset on the next call to ReceiveSenderData.
 //					  Calling IsUpdated is optional if receiving to a pre-allocated
 //					  texture or accessing the sender texture directly.
+//		22.01.26	- Review - update copyright year
+//		04.07.26	- GetAdapterInfo - change if(!driverdescription || !driverversion)
+//					  to if(!driverdescription[0] || !driverversion[0])
+//					  Remove unused Devices variable
+//		15.07.26	- HoldFps - change from int to double
+//					  Version 2.007.018
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -1365,7 +1371,7 @@ bool Spout::IsFrameCountEnabled()
 // Function: HoldFps
 // Frame rate control.
 //    Desired frames per second.
-void Spout::HoldFps(int fps)
+void Spout::HoldFps(double fps)
 {
 	frame.HoldFps(fps);
 }
@@ -1907,16 +1913,14 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	//
 	// To select all display devices in the desktop, use only the display devices
 	// that have the DISPLAY_DEVICE_ATTACHED_TO_DESKTOP flag in the DISPLAY_DEVICE structure.
-	int nDevices = 0;
 	for (DWORD i = 0; i < 10; i++) { // should be much less than 10 adapters
 		if (EnumDisplayDevices(NULL, i, &DisplayDevice, 0)) {
 			// This will list all the devices
-			nDevices++;
 			// Get the registry key
 			wcstombs_s(&charsConverted, regkey, 129, (const wchar_t *)DisplayDevice.DeviceKey, 128);
 			// This is the registry key with all the information about the adapter
 			OpenDeviceKey(regkey, 256, driverdescription, driverversion);
-			if (!driverdescription || !driverversion) {
+			if (!driverdescription[0] || !driverversion[0]) {
 				pDXGIDevice->Release();
 				return false;
 			}

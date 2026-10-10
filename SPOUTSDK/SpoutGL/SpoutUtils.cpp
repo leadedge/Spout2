@@ -9,7 +9,7 @@
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	Copyright (c) 2017-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2017-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -248,8 +248,56 @@
 				   MessageBoxTimeoutA - add return value for else
 		06.09.25 - Add executable name to log file
 		16.09.25 - Update version to 2.007.017
+		13.12.25 - SpoutMessageBox edit control - allow for both IDOK and IDYES
+		18.12.25 - SpoutMessageBox with custom buttons - allow for Cancel (MB_CANCEL)
+				   Add #define MB_CANCEL TDCBF_CANCEL_BUTTON to SpoutUtils.h
+		19.12.25 - SpoutMessageBox edit control - remove conditions for get text from control string
+		14.04.26 - MessageTaskDialog - change "if (dwButtons == MB_CANCEL)
+				   to "if ((dwButtons & MB_CANCEL) == MB_CANCEL)"
+		19.04.26 - Add CopyToClipBoard overload for image data
+				   Remove SPOUT_DLLEXP from functions in SpoutUtils.cpp
+				   Use SPOUT_DLLEXP for header declarations only
+		21.05.26 - SpoutMessageBoxAlllowCancel to add or remove system button 'X'
+		24.05.26 - Add SpoutMessageBoxIconSmall for a caption icon
+		26.05.26 - Add ExtractWindowsIcon function
+				   Support MB_ICONQUESTION
+				   Revise TaskDialog code for bCaptionIcon and bAllowCancel
+		29.05.26 - Adapt edit control width to existing text length
+				   Minimum edit and combo control width 240
+		30.05.26 - Move anonymous namespaces out of the header file
+		31.05.26 - Add bRetain argument to SpoutMessageBoxAlllowCancel
+		02.06.26 - OpenSpoutConsole :
+				     Add bDisableCose argument to disable the system menu 'X' button
+				     to prevent inadvertent close. It can still be closed with ALT-F4
+				     Use GetActiveWindow instead of GetForegroundWindow
+				     to get the application window handle
+				     Use SetForegroundWindow instead of SetWindowPos to restore
+				     the main window so that it retains keyboard focus
+		28.06.26 - SpoutUtils.h - add for PR #139
+				     #define NOMINMAX, #define WIN32_LEAN_AND_MEAN #include <timeapi.h>
+					 std::max instead of max in TDcallbackProc
+		29.06.26 - SpoutUtils.h - Direct SPOUT_DLLEXP definition
+				     instead of include SpoutCommon.h
+		03.07.26 - Move SPOUT_DLLEXP definition from SpoutUtils.h to SpoutUtils.cpp
+				   SpoutUtils functions are always compiled exported
+				   Remove unused startcount, endcount, m_FrameStart
+				   Update StartTiming/EndTiming
+		21.07.26 - TDN_HYPERLINK_CLICKED
+				   Look for - "noclose" for the dialog to remain open
+				   The application url includes "?noclose" and is of the form
+				   <a href=\"https://github.com?noclose\">https://github.com</a>
+		13.08.26 - Remove "?noclose" from the url in TDN_HYPERLINK_CLICKED
+		21.08.26 - Update ExtractWindowsIcon function to include width and height
+		23.09.26 - Remove SaveIconFile
+				   SpoutUtils.h - add #include <string.h> and #include <cstring>
+				   SpoutUtils.h - test definition of NOMINMAX to avoid re-definition errors
+		01.10.26 - Update version to 2.007.018
+
 
 */
+
+// SpoutUtils functions are always compiled exported
+#define SPOUT_DLLEXP	__declspec(dllexport)
 
 #include "SpoutUtils.h"
 
@@ -269,33 +317,111 @@
 // Refer to source code for documentation.
 //
 
-
 namespace spoututils {
 
-	// Local variables
-	bool bEnableLog = false;
-	bool bEnableLogFile = false;
-	bool bDoLogs = true;
-	SpoutLogLevel CurrentLogLevel = SPOUT_LOG_NOTICE;
-	FILE* pCout = nullptr; // for log to console
-	std::ofstream logFile; // for log to file
-	std::string logPath; // folder path for the logfile
-	char logChars[1024]{}; // The current log string
-	bool bConsole = false;
-#ifdef USE_CHRONO
-	std::chrono::steady_clock::time_point start;
-	std::chrono::steady_clock::time_point end;
-#endif
-	// PC timer
-	double PCFreq = 0.0;
-	__int64 CounterStart = 0;
-	double startcount = 0.0;
-	double endcount = 0.0;
-	double m_FrameStart = 0.0;
+	//
+	// Private variables and function declaration
+	//
+	namespace
+	{
+		//
+		// Private variables
+		//
 
-	// Spout SDK version number string
-	// Major, minor, release
-	std::string SDKversion = "2.007.017";
+		// Spout SDK version number string
+		// Major, minor, release
+		std::string SDKversion = "2.007.018";
+
+		// Local variables
+		bool bEnableLog = false;
+		bool bEnableLogFile = false;
+		bool bDoLogs = true;
+		SpoutLogLevel CurrentLogLevel = SPOUT_LOG_NOTICE;
+		FILE* pCout = nullptr; // for log to console
+		std::ofstream logFile; // for log to file
+		std::string logPath; // folder path for the logfile
+		char logChars[1024]{}; // The current log string
+		bool bConsole = false;
+	#ifdef USE_CHRONO
+		std::chrono::steady_clock::time_point start;
+		std::chrono::steady_clock::time_point end;
+	#endif
+		// PC timer
+		double PCFreq = 0.0;
+		__int64 CounterStart = 0;
+		// Application window
+		HWND hwndMain = NULL;
+		// Taskdialog window to prevent multiple open
+		HWND hwndTask = NULL;
+		// Position for TaskDialog window centre
+		POINT TDcentre = {};
+		// For topmost
+		HWND hwndTop = NULL;
+		bool bTopMost = false;
+		// Modeless TaskDialog by way of OpenSpoutPanel
+		bool bModeless = false; // Default use local TaskDialogIndirect
+		HICON hTaskIcon = NULL; // For custom icon
+		bool bCaptionIcon = false; // Icon on the caption instead of dialog
+		bool bAllowCancel = false; // System menu 'X' for cancel if no cancel button
+		bool bRetainCancel = false; // Retain allow cancel setting until set again
+		bool bHasCancelButton = false; // Detect a cancel button
+
+		// For custom buttons
+		std::vector<int>TDbuttonID;
+		std::vector<std::wstring>TDbuttonTitle;
+
+		// Main instruction text
+		std::wstring wstrInstruction;
+
+		// For edit text control
+		bool bEdit = false;
+		HWND hEdit = NULL;
+		std::string stredit;
+		#define IDC_TASK_EDIT 101
+
+		// For combo box control
+		bool bCombo = false;
+		HWND hCombo = NULL;
+		std::vector<std::string> comboitems;
+		int comboindex = 0;
+		#define IDC_TASK_COMBO 102
+
+		//
+		// Private function declarations
+		//
+		void _logtofile(bool append = false);
+		std::string _getLogPath();
+		std::string _getLogFilePath(const char* filename);
+		std::string _levelName(SpoutLogLevel level);
+		// Taskdialog for SpoutMessageBox
+		int MessageTaskDialog(HWND hWnd, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
+
+		// To handle the Cancel button within TaskSubclassProc
+		struct TASKSUBCLASSDATA	{
+			bool bAllowCancel; // Allow cancel button
+			bool bAllowSystem; // Allow system menu 'X'
+		};
+
+		// Sub-class to intercept Windows messages for TDcallbackProc
+		LRESULT CALLBACK TaskSubclassProc(HWND hwnd, UINT msg,
+			WPARAM wParam, LPARAM lParam,
+			UINT_PTR subclassID, DWORD_PTR refData);
+
+		// TaskDialogIndirect callback to handle timer, topmost and hyperlinks
+		HRESULT TDcallbackProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData);
+
+#ifndef _MSC_VER
+		// Timeout MessageBox for other compilers
+		int MessageBoxTimeoutA(IN HWND hWnd,
+			IN LPCSTR lpText, IN LPCSTR lpCaption, IN UINT uType,
+			IN WORD wLanguageId, IN DWORD dwMilliseconds);
+#endif
+		// Use ShellExecutEx to open a program
+		bool ExecuteProcess(const char* path, const char* command = nullptr);
+		// Open SpoutPanel with command line for modeless SpoutMessageBox
+		bool OpenSpoutPanel(const char* message);
+
+	} // end anonymous namespace
 
 	//
 	// Group: Information
@@ -372,14 +498,19 @@ namespace spoututils {
 		return false;
 	}
 
-
 	// ---------------------------------------------------------
 	// Function: GetCurrentModule
 	// Get the module handle of a process.
 	//
 	// This method is necessary if the process is a dll
 	//
+	// The "GetCurrentModule" argument is the address of this
+	// function inside a loaded module (exe or dll).
+	// GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS returns a handle
+	// (HMODULE) to that module.
+	//
 	// https://gist.github.com/davidruhmann/8008844
+	//
 	HMODULE GetCurrentModule()
 	{
 		const DWORD flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
@@ -489,7 +620,7 @@ namespace spoututils {
 	// A console window opens without logs.
 	// Useful for debugging with console output.
 	//
-	void OpenSpoutConsole(const char* title)
+	void OpenSpoutConsole(const char* title, bool bDisableClose)
 	{
 		if (!GetConsoleWindow()) {
 
@@ -498,7 +629,7 @@ namespace spoututils {
 			//
 
 			// Get calling process window
-			HWND hwndFgnd = GetForegroundWindow();
+			HWND hwndActive = GetActiveWindow();
 			if (AllocConsole()) {
 				#ifndef standaloneUtils
 					FILE* fp = nullptr;
@@ -507,15 +638,33 @@ namespace spoututils {
 					const errno_t err = freopen_s(&pCout, "CONOUT$", "w", stdout);
 				#endif
 				if (err == 0) {
+					// The default caption title is the executable name
 					std::string name = GetExeName();
+					// Or the supplied name
 					if (title != nullptr) name = title;
 					SetConsoleTitleA(name.c_str());
 					bConsole = true;
-					// Optional - disable close button
-					// HMENU hmenu = GetSystemMenu(GetConsoleWindow(), FALSE);
-					// EnableMenuItem(hmenu, SC_CLOSE, MF_GRAYED);
-					// Bring the main window to the top again
-					SetWindowPos(hwndFgnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+					HWND hConsole = GetConsoleWindow();
+
+					// Disable console close button to prevent inadvertent close
+					// The console window can still be closed with ALT-F4
+					if (bDisableClose) {
+						HMENU hmenu = GetSystemMenu(hConsole, FALSE);
+						EnableMenuItem(hmenu, SC_CLOSE, MF_GRAYED);
+					}
+
+					// Get a generic console icon from imageres.dll
+					HICON hIcon = ExtractWindowsIcon(5323, "imageres.dll");
+					// Option : Set the console icon to that of the application
+					// HICON hIcon = (HICON)GetClassLongPtr(hwndActive, GCLP_HICON);
+					if (hIcon) {
+						SendMessage(hConsole, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+						SendMessage(hConsole, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+					}
+
+					// Set the main window as foreground again
+					SetForegroundWindow(hwndActive);
 				}
 				else {
 					pCout = nullptr;
@@ -1012,8 +1161,27 @@ namespace spoututils {
 		logChars[0]=0;
 		return (int)nBytesWritten;
 	}
-
-
+		
+	// ---------------------------------------------------------
+	// Function: OpenSpoutLogs
+	// Open Spout log folder in Windows explorer
+	bool OpenSpoutLogs()
+	{
+		// Retrieve Spout log path
+		std::string logfolder = _getLogPath();
+		if (!logfolder.empty()) {
+			if (_access(logfolder.c_str(), 0) != -1) {
+				// Open log folder in explorer
+				ShellExecuteA(NULL, "open", logfolder.c_str(), NULL, NULL, SW_SHOWNORMAL);
+				do { } while (!FindWindowA("CabinetWClass", NULL));
+			}
+		}
+		else {
+			SpoutMessageBox(NULL, "Could not create AppData path", "OpenSpoutLogs", MB_OK | MB_TOPMOST | MB_ICONWARNING);
+			return false;
+		}
+		return true;
+	}
 
 	//
 	// Group: MessageBox
@@ -1059,7 +1227,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBox
 	// MessageBox with variable arguments and icon, buttons
-	int SPOUT_DLLEXP SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
+	int SpoutMessageBox(const char* caption, UINT uType, const char* format, ...)
 	{
 		std::string strmessage;
 		std::string strcaption;
@@ -1111,7 +1279,7 @@ namespace spoututils {
 	//   o For message content, the control is in the footer area
 	//   o If no message, the control is in the main content area
 	//   o All SpoutMessageBox functions such as user icon and buttons are available
-	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType, std::string& text)
 	{
 		// For edit control creation
 		bEdit = true;
@@ -1129,7 +1297,7 @@ namespace spoututils {
 		stredit = text;
 		int iret = MessageTaskDialog(hwnd, content.c_str(), caption, uType, dwTimeout);
 		// Get text from global edit control string
-		if (iret == IDOK) text = stredit;
+		text = stredit;
 		stredit.clear();
 		bEdit = false;
 		return iret;
@@ -1140,7 +1308,7 @@ namespace spoututils {
 	// MessageBox dialog with a combobox control for item selection
 	// Can be used in place of a specific application resource dialog
 	// Properties the same as the edit control
-	int SPOUT_DLLEXP SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType,
+	int SpoutMessageBox(HWND hwnd, LPCSTR message, LPCSTR caption, UINT uType,
 		std::vector<std::string> items, int& index)
 	{
 		// For combobox creation
@@ -1158,7 +1326,7 @@ namespace spoututils {
 		comboitems = items;
 		comboindex = index;
 		int iret = MessageTaskDialog(hwnd, content.c_str(), caption, uType, dwTimeout);
-		if (iret == IDOK) index = comboindex;
+		index = comboindex;
 		comboitems.clear();
 		comboindex = 0;
 		bCombo = false;
@@ -1170,7 +1338,7 @@ namespace spoututils {
 	// Function: SpoutMessageBoxIcon
 	// Custom icon for SpoutMessageBox from resources
 	// Use together with MB_USERICON
-	void SPOUT_DLLEXP SpoutMessageBoxIcon(HICON hIcon)
+	void SpoutMessageBoxIcon(HICON hIcon)
 	{
 		hTaskIcon = hIcon;
 	}
@@ -1179,16 +1347,34 @@ namespace spoututils {
 	// Function: SpoutMessageBoxIcon
 	// Custom icon for SpoutMessageBox from file
 	// Use together with MB_USERICON
-	bool SPOUT_DLLEXP SpoutMessageBoxIcon(std::string iconfile)
+	bool SpoutMessageBoxIcon(std::string iconfile)
 	{
 		hTaskIcon = reinterpret_cast<HICON>(LoadImageA(nullptr, iconfile.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE));
 		return (hTaskIcon != nullptr);
 	}
 
 	// ---------------------------------------------------------
+	// Function: SpoutMessageBoxIcon
+	// Extract a windows icon from a dll (default Shell32.dll)
+	// Refer to ExtractWindowsIcon for details
+	bool SPOUT_DLLEXP SpoutMessageBoxIcon(int iconNumber, const char* dllName)
+	{
+		hTaskIcon = ExtractWindowsIcon(iconNumber, dllName);
+		return (hTaskIcon != nullptr);
+	}
+
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBoxIconSmall
+	// Small icon in the caption rather than the dialog window
+	void SpoutMessageBoxIconSmall()
+	{
+		bCaptionIcon = true;
+	}
+
+	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxButton
 	// Custom button for SpoutMessageBox
-	void SPOUT_DLLEXP SpoutMessageBoxButton(int ID, std::wstring title)
+	void SpoutMessageBoxButton(int ID, std::wstring title)
 	{
 		TDbuttonID.push_back(ID);
 		TDbuttonTitle.push_back(title);
@@ -1199,7 +1385,7 @@ namespace spoututils {
 	// Enable modeless functionality using SpoutPanel.exe
 	// Used where a Windows MessageBox would interfere with the application GUI.
 	// Depends on SpoutPanel.exe version 2.072 or greater distributed with Spout release.
-	bool SPOUT_DLLEXP SpoutMessageBoxModeless(bool bMode)
+	bool SpoutMessageBoxModeless(bool bMode)
 	{
 		// If setting modeless, find the path for SpoutPanel.exe
 		if (bMode) {
@@ -1251,7 +1437,7 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxWindow
 	// Window handle for SpoutMessageBox where not specified
-	void SPOUT_DLLEXP SpoutMessageBoxWindow(HWND hWnd)
+	void SpoutMessageBoxWindow(HWND hWnd)
 	{
 		hwndMain = hWnd;
 	}
@@ -1259,10 +1445,41 @@ namespace spoututils {
 	// ---------------------------------------------------------
 	// Function: SpoutMessageBoxPosition
 	// Position to centre SpoutMessageBox
-	void SPOUT_DLLEXP SpoutMessageBoxPosition(POINT pt)
+	void SpoutMessageBoxPosition(POINT pt)
 	{
 		TDcentre = pt;
 	}
+
+	// ---------------------------------------------------------
+	// Function: SpoutMessageBoxAllowCancel
+	//     Adds or removes the system menu 'X' close button.
+	//     By default, an 'X' is only present if there is a CANCEL button.
+	//     This function allows the 'X' to be added for all button combinations
+	//     and aligns with the behaviour of a conventional MessageBox.
+	//     If there is an 'X' present, the dialog responds to 'Esc' and 'ALT-F4'.
+	//     If there is no 'X' or it is disabled, 'Esc' and 'ALT-F4' are ignored.
+	//        bCancel true  - add 'X' for all button combinations (default)
+	//        bCancel false - add 'X' only if there is a CANCEL button
+	//        bRetain true  - retain the current setting until set again
+	//        bRetain false - do not retain the setting after close (default)
+	//     There is always a system menu 'X' for a caption icon.
+	//     It is disabled rather than removed if cancel is not allowed.
+	//     If the function is not called at all, an 'X' is present in the caption
+	//     only if there is a CANCEL button in the dialog
+	//
+	void SpoutMessageBoxAllowCancel(bool bCancel, bool bRetain)
+	{
+		// bCancel false - add 'X' only if there is a Cancel button (default)
+		// bCancel true  - always add 'X'
+		// bRetain false - do not retain the setting
+		// bRetain true  - retain the current setting until set again
+		bAllowCancel  = bCancel;
+		bRetainCancel = bRetain;
+	}
+
+	//
+	// Group: Clipboard utilities
+	//
 
 	// ---------------------------------------------------------
 	// Function: CopyToClipBoard
@@ -1275,8 +1492,12 @@ namespace spoututils {
 
 		if (text[0] && strlen(text) > 16) {
 			if (OpenClipboard(hwnd)) {
+				// Removes current clipboard contents
+				// and free previously stored clipboard data
 				EmptyClipboard();
 				size_t len = (strlen(text) + 1) * sizeof(char);
+				// GMEM_DDESHARE is a 16-bit Windows/early Win32 compatibility flag.
+				// GMEM_MOVEABLE gives Windows control of the memory.
 				// Use GMEM_MOVEABLE instead of GMEM_DDESHARE to avoid crash on repeat
 				// GlobalUnlock then returns false but ignore
 				clipbuffer = GlobalAlloc(GMEM_MOVEABLE, len); // No crash but GlobalUnlock fails
@@ -1288,38 +1509,256 @@ namespace spoututils {
 						bret = true;
 					}
 					GlobalUnlock(clipbuffer);
-					GlobalFree(clipbuffer);
 					clipbuffer = nullptr;
 					buffer = nullptr;
 				}
 				CloseClipboard();
 			}
 		}
+		// Leave clipbuffer allocated
 		return bret;
 	}
 
 	// ---------------------------------------------------------
-	// Function: OpenSpoutLogs
-	// Open Spout log folder in Windows explorer
-	bool OpenSpoutLogs()
+	// Function: CopyToClipBoard
+	// Copy image data to the clipboard
+	//	format : GL_RGBA(0x1908), GL_RGB(0x1907), GL_BGRA(0x80E1), GL_BGR(0x80E0)
+	//	BGRA and BGR are compatible with Windows DIB for most efficient copy
+	bool CopyToClipBoard(HWND hwnd, const unsigned char* data,
+		unsigned int format, int width,	int height)
 	{
-		// Retrieve Spout log path
-		std::string logfolder = _getLogPath();
-		if (!logfolder.empty()) {
-			if (_access(logfolder.c_str(), 0) != -1) {
-				// Open log folder in explorer
-				ShellExecuteA(NULL, "open", logfolder.c_str(), NULL, NULL, SW_SHOWNORMAL);
-				do { } while (!FindWindowA("CabinetWClass", NULL));
-			}
+		if (!data || width <= 0 || height <= 0)
+			return false;
+
+		// GL_RGB  0x1907
+		// GL_RGBA 0x1908
+		// GL_BGR  0x80E0
+		// GL_BGRA 0x80E1
+		#ifndef GL_RGB 
+			#define GL_RGB 0x1907
+		#endif
+		#ifndef GL_RGBA
+			#define GL_RGBA 0x1908
+		#endif
+		#ifndef GL_BGR
+			#define GL_BGR 0x80E0
+		#endif
+		#ifndef GL_BGRA 
+			#define GL_BGRA 0x80E1
+		#endif
+
+		int srcChannels = 0;
+		switch (format) {
+			case GL_RGBA:
+			case GL_BGRA:
+				srcChannels = 4;
+				break;
+			case GL_RGB:
+			case GL_BGR:
+				srcChannels = 3;
+				break;
+			default:
+				return false;
 		}
-		else {
-			SpoutMessageBox(NULL, "Could not create AppData path", "OpenSpoutLogs", MB_OK | MB_TOPMOST | MB_ICONWARNING);
+		const int dstChannels   = srcChannels;   // 3 or 4
+		const int bytesPerPixel = dstChannels; // 24 or 32
+
+		// DIB rows must be aligned to 4 bytes
+		int dstStride = ((width*bytesPerPixel+3)/4)*4;
+		size_t imageSize = dstStride*height;
+		size_t totalSize = sizeof(BITMAPINFOHEADER) + imageSize;
+		HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, totalSize);
+		if (!hMem)
+			return false;
+
+		unsigned char* base = (unsigned char*)GlobalLock(hMem);
+		if (!base) {
+			GlobalFree(hMem);
 			return false;
 		}
+
+		// Use BITMAPINFOHEADER instead of BITMAPV5HEADER
+		// for compatibility with older programs
+
+		// Fill BITMAPINFOHEADER
+		BITMAPINFOHEADER* bi = (BITMAPINFOHEADER*)base;
+		bi->biSize = sizeof(BITMAPINFOHEADER);
+		bi->biWidth  = width;
+		bi->biHeight = height; // bottom up (image must be pre-flipped)
+		bi->biPlanes = 1;
+		bi->biBitCount = (WORD)(bytesPerPixel*8);
+		bi->biCompression = BI_RGB;
+		bi->biSizeImage = (DWORD)imageSize;
+		bi->biXPelsPerMeter = 0;
+		bi->biYPelsPerMeter = 0;
+		bi->biClrUsed = 0;
+		bi->biClrImportant = 0;
+		unsigned char* dst = base + sizeof(BITMAPINFOHEADER);
+
+		if ((format == GL_BGRA && dstStride == width*4)
+		||  (format == GL_BGR   && dstStride == width*3)) {
+			// No conversion (BGRA or BGR) and no padding - full image copy
+			memcpy(dst, data, (size_t)width*height*bytesPerPixel);
+		} // end full image
+		else {
+			// Conversion and/or padding - copy row by row
+			for (int y = 0; y < height; y++) {
+				const unsigned char* srcRow = data + y*width*srcChannels;
+				unsigned char* dstRow = dst + y*dstStride;
+				for (int x = 0; x < width; x++) {
+					const unsigned char* s = srcRow + x*srcChannels;
+					unsigned char* d = dstRow + x*dstChannels;
+					switch (format) {
+						case 0x80E1:
+							// Already correct
+							memcpy(d, s, 4);
+							break;
+						case GL_RGBA:
+							d[0] = s[2]; // B
+							d[1] = s[1]; // G
+							d[2] = s[0]; // R
+							d[3] = s[3]; // A
+							break;
+						case GL_BGR:
+							memcpy(d, s, 3);
+							break;
+						case GL_RGB:
+							d[0] = s[2]; // B
+							d[1] = s[1]; // G
+							d[2] = s[0]; // R
+							break;
+					} // end format
+				} // end line
+				// Padding bytes
+				if (dstStride > width*bytesPerPixel) {
+					memset(dstRow + width*bytesPerPixel, 0,
+						dstStride - width*bytesPerPixel);
+				}
+			} // end row
+		} // end conversion and padding
+
+		GlobalUnlock(hMem);
+		if (!OpenClipboard(hwnd)) {
+			GlobalFree(hMem);
+			return false;
+		}
+		EmptyClipboard();
+		if (!SetClipboardData(CF_DIB, hMem)) {
+			CloseClipboard();
+			GlobalFree(hMem);
+			return false;
+		}
+
+		CloseClipboard();
+
+		// Leave hMem allocated
 		return true;
 	}
 
+	//
+	// Group: Windows utilities
+	//
 
+	// ---------------------------------------------------------
+	// Function: EnableWindowClose
+	// Enable or disable keys Escape or Alt-F4 to quit and the
+	// System menu 'X' close button for an application window
+	void SPOUT_DLLEXP EnableWindowClose(HWND hwnd, bool bKeys, bool bSystem)
+	{
+		HMENU hMenu = GetSystemMenu(hwnd, FALSE);
+
+		// Create data for the sub-class
+		// The data is deleted when the subclass ends
+		auto* data = new TASKSUBCLASSDATA;
+		data->bAllowCancel = bKeys;
+		data->bAllowSystem = bSystem; // Used by SC_CLOSE in the sub-class
+
+		// Enable or disable the System menu 'X' button
+		if(bSystem)
+			EnableMenuItem(hMenu, SC_CLOSE, MF_BYCOMMAND | MF_ENABLED);
+		else
+			EnableMenuItem(hMenu, SC_CLOSE, MF_BYCOMMAND | MF_DISABLED);
+
+		// Enable or disable Escape and 'Alt-F4'
+		// Alt-F4 is still detected even if the 'X' button is disabled
+		// and has to be specifically disabled
+		SetWindowSubclass(hwnd, TaskSubclassProc, 1, reinterpret_cast<DWORD_PTR>(data));
+
+	}
+
+	//---------------------------------------------------------
+	// Function: ExtractWindowsIcon
+	// Extract an icon from a dll file (default Shell32.dll)
+	// These charts are useful :
+	//   https://renenyffenegger.ch/development/Windows/PowerShell/examples/WinAPI/ExtractIconEx/shell32.html
+	//   https://renenyffenegger.ch/development/Windows/PowerShell/examples/WinAPI/ExtractIconEx/imageres.html
+	// However, these icon indices may not apply exactly and can vary.
+	// They can be found using Windows Explorer.
+	//    Browse to the file : for example C:\Windows\System32\Shell32.dll
+	//    ALT-ENTER or Right click > Properties
+	//    Select the \"Icons\" tab and scroll to the required icon
+	//    The icon number is shown beneath the icon image
+	//    and can be used for this function.
+	//
+	HICON ExtractWindowsIcon(int iconIndex, const char* dllName, int width, int height)
+	{
+		char path[MAX_PATH]{};
+		UINT length = GetSystemDirectoryA(path, MAX_PATH);
+		if (length == 0 || length >= MAX_PATH)
+			return nullptr;
+
+		std::string dllPath = std::string(path) + "\\";
+		if (!dllName || !dllName[0])
+			dllPath += "Shell32.dll";
+		else
+			dllPath += dllName;
+
+		//
+		// An icon resource can contain a group of images for several different
+		// display devices. PrivateExtractIcons uses Windows icon-selection
+		// logic for the requested size.
+		//
+		// o For an index of zero, the function extracts the first icon.
+		//
+		// Referring to the following for ExtractIcon -
+		// https://devblogs.microsoft.com/oldnewthing/20100505-00/?p=14153
+		// o For a negative index, the absolute value is interpreted as
+		// the resource ID. This also works with PrivateExtractIconsA
+		// although not documented.
+		//
+		// o If and width and height are zero, and the last flag is also
+		// zero the function returns the first image in the group.
+		//
+		// o For width and height > 0, the function returns the image that
+		// best matches the requested dimensions. If the requested size is not
+		// present, the function chooses another suitable size and scales it.
+		//
+		// o For bit depth, the function automatically selects the most appropriate
+		// icon from the group for the current display device.
+		//   - Select the image closest to the requested size.
+		//   - For multiple images of that size, select one matching the display depth.
+		//   - For no exact match, select the greatest depth that does not exceed the display.
+		//   - If all available depths exceed the display depth, select the lowest one.
+		//
+		HICON hIcon = nullptr;
+		UINT iconId = 0;
+		UINT result = PrivateExtractIconsA(dllPath.c_str(),
+			-iconIndex, width, height,
+			&hIcon, &iconId, 1, 0);
+
+		// iconId is returned as the resource identifier of the icon
+		// that best fits the current display device. This can be
+		// examined if necessary by reading the RT_GROUP_ICON resource
+		// and comparing with GRPICONDIRENTRY::nID values.
+
+		if (result == 1 && hIcon != nullptr)
+			return hIcon;
+		else
+			return nullptr;
+
+	}
+
+	
 	//
 	// Group: Registry utilities
 	//
@@ -1628,15 +2067,13 @@ namespace spoututils {
 #else
 	// Start timing period
 	void StartTiming() {
-		// startcount = GetCounter();
 		StartCounter();
 	}
 
 	// Stop timing and return microseconds elapsed.
 	// Console output can be enabled for quick timing tests.
 	double EndTiming() {
-		endcount = GetCounter();
-		return (endcount-startcount);
+		return EndCounter();
 	}
 #endif
 
@@ -1942,9 +2379,8 @@ namespace spoututils {
 			}
 
 			// Return if TaskDialog is already open
-			if (hwndTask) {
+			if (hwndTask)
 				return 0;
-			}
 
 			// Window handle is HWND passed in or specified by SpoutMessageBoxWindow
 			if (hwndMain)
@@ -2013,12 +2449,18 @@ namespace spoututils {
 					buttons[i].nButtonID = TDbuttonID[i];
 					buttons[i].pszButtonText = TDbuttonTitle[i].c_str();
 				}
-				// Final button is OK
-				// CANCEL/YES/NO etc have to be added as buttons
-				buttons[i].nButtonID = IDOK;
-				buttons[i].pszButtonText = L"OK";
+				if ((dwButtons & MB_CANCEL) == MB_CANCEL) {
+					buttons[i].nButtonID = IDCANCEL;
+					buttons[i].pszButtonText = L"Cancel";
+				}
+				else {
+					// Final button default is OK
+					// YES/NO etc have to be added as buttons
+					buttons[i].nButtonID = IDOK;
+					buttons[i].pszButtonText = L"OK";
+				}
+
 			}
-			// }
 			else {
 				//
 				// Common buttons
@@ -2037,9 +2479,11 @@ namespace spoututils {
 				}
 				else if (dwb == MB_YESNOCANCEL) { // 3
 					dwCommonButtons = TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON;
+					bHasCancelButton = true;
 				}
 				else if (dwb == MB_OKCANCEL) { // 1
 					dwCommonButtons = TDCBF_OK_BUTTON | TDCBF_CANCEL_BUTTON;
+					bHasCancelButton = true;
 				}
 				else {
 					dwCommonButtons = MB_OK;
@@ -2066,45 +2510,90 @@ namespace spoututils {
 			HICON hMainIcon = NULL; // No user icon
 			WCHAR* wMainIcon = nullptr; // No resource icon
 			dwl = dwl & 0xF0; // remove buttons for icons
-			if (dwl == MB_USERICON && hTaskIcon) {
+
+			if ((dwl & MB_USERICON) && hTaskIcon) {
 				// Private SpoutUtils icon handle set by SpoutMessageBoxIcon
 				hMainIcon = hTaskIcon;
 				wMainIcon = nullptr;
 			}
 			else {
+				LPCWSTR lpwIcon = nullptr;
 				switch (dwl) {
-				case MB_ICONINFORMATION: // 0x40
-					wMainIcon = TD_INFORMATION_ICON;
-					break;
-				case MB_ICONWARNING: // 0x30
-					wMainIcon = TD_WARNING_ICON;
-					break;
-				case MB_ICONQUESTION: // 0x20
-					wMainIcon = TD_INFORMATION_ICON;
-					break;
-				case MB_ICONERROR: // 0x10
-					wMainIcon = TD_ERROR_ICON;
-					break;
-				default:
-					// No icon specified
-					wMainIcon = nullptr;
-					break;
+					case MB_ICONINFORMATION: // 0x40
+						wMainIcon = TD_INFORMATION_ICON;
+						lpwIcon = (LPCWSTR)IDI_INFORMATION;
+						break;
+					case MB_ICONWARNING: // 0x30
+						wMainIcon = TD_WARNING_ICON;
+						lpwIcon = (LPCWSTR)IDI_WARNING;
+						break;
+					case MB_ICONERROR: // 0x10
+						wMainIcon = TD_ERROR_ICON;
+						lpwIcon = (LPCWSTR)IDI_ERROR;
+						break;
+
+					// No taskdialog equivalent for ICONQUESTION
+					case MB_ICONQUESTION: // 0x20
+						{
+							wMainIcon = TD_INFORMATION_ICON;
+							lpwIcon = (LPCWSTR)IDI_QUESTION;
+							if (lpwIcon) {
+								HICON hIcon = nullptr;
+								// high-DPI extraction rather than Legacy icons using LoadIcon
+								if (LoadIconMetric(nullptr, lpwIcon, LIM_LARGE, &hIcon) == S_OK) {
+									hTaskIcon = hIcon;
+									hMainIcon = hTaskIcon;
+									wMainIcon = nullptr;
+								}
+								else {
+									hTaskIcon = nullptr;
+								}
+							}
+						}
+						break;
+					default:
+						// No icon specified
+						wMainIcon = nullptr;
+						lpwIcon = nullptr;
+						break;
+				}
+
+				// A caption icon uses the global hTaskIcon handle
+				// Extract the icon handle using lpwIcon determined above
+				if (bCaptionIcon && lpwIcon && dwl != MB_ICONQUESTION) {
+					HICON hIcon = nullptr;
+					// high-DPI extraction rather than Legacy icons using LoadIcon
+					if (LoadIconMetric(nullptr, lpwIcon, LIM_LARGE, &hIcon) == S_OK) {
+						hTaskIcon = hIcon;
+						hMainIcon = hTaskIcon;
+						wMainIcon = nullptr;
+					}
+					else {
+						hTaskIcon = nullptr;
+					}
 				}
 			}
 
-			int nButtonPressed        = 0;
-			int nRadioButton          = 0;
-			TASKDIALOGCONFIG config   = {0};
-			config.cbSize             = sizeof(config);
-			config.hwndParent         = hWnd;
-			config.hInstance          = hInst;
-			config.pszWindowTitle     = wstrCaption.c_str();
-			config.hMainIcon          = hMainIcon;
+			int nButtonPressed      = 0;
+			int nRadioButton        = 0;
+			TASKDIALOGCONFIG config = {0};
+			config.cbSize           = sizeof(config);
+			config.hwndParent       = hWnd;
+			config.hInstance        = hInst;
+			config.pszWindowTitle   = wstrCaption.c_str();
+
+			// config.hMainIcon allows the icon to be in the dialog area.
+			// This is is not enabled for a caption icon, and allows the
+			// icon to be in the caption rather than the main content area.
+			if(!bCaptionIcon)
+				config.hMainIcon = hMainIcon;
+
 			if (!hMainIcon)
-				config.pszMainIcon    = wMainIcon; // Important to remove this
+				config.pszMainIcon = wMainIcon; // Important to remove this
+
 			config.pszMainInstruction = wstrInstruction.c_str();
 			if (content) {
-				config.pszContent         = wstrTemp.c_str();
+				config.pszContent = wstrTemp.c_str();
 			}
 
 			// User buttons in TASKDIALOG_BUTTON buttons
@@ -2119,7 +2608,8 @@ namespace spoututils {
 				config.dwCommonButtons = dwCommonButtons;
 			}
 
-			config.cxWidth            = 0; // auto width - requires TDF_SIZE_TO_CONTENT
+			config.cxWidth = 0; // auto width - requires TDF_SIZE_TO_CONTENT
+
 			// TDF_POSITION_RELATIVE_TO_WINDOW Indicates that the task dialog is
 			// centered relative to the window specified by hwndParent.
 			// If hwndParent is NULL, the dialog is centered on the monitor.
@@ -2128,9 +2618,15 @@ namespace spoututils {
 				config.dwFlags |= TDF_RTL_LAYOUT;
 			
 			if (hMainIcon)
-				config.dwFlags        |= TDF_USE_HICON_MAIN; // User icon
-			config.pfCallback         = reinterpret_cast<PFTASKDIALOGCALLBACK>(TDcallbackProc);
-			config.lpCallbackData     = reinterpret_cast<LONG_PTR>(&dwMilliseconds);
+				config.dwFlags   |= TDF_USE_HICON_MAIN; // User icon
+			config.pfCallback     = reinterpret_cast<PFTASKDIALOGCALLBACK>(TDcallbackProc);
+			config.lpCallbackData = reinterpret_cast<LONG_PTR>(&dwMilliseconds);
+
+			// Adds a system menu 'X' to the caption if there is no CANCEL button
+			// This allows close and cancel with : Esc, Alt+F4 and returns IDCANCEL
+			// NOTE : necessary for a caption icon or the caption icon does not show
+			if(bAllowCancel || bCaptionIcon)
+				config.dwFlags  |= TDF_ALLOW_DIALOG_CANCELLATION;
 	
 			if (bTopMost) {
 				// Get the first visible window in the Z order
@@ -2166,6 +2662,17 @@ namespace spoututils {
 			// Use before calling any of the SpoutMessagebox functions
 			hTaskIcon = nullptr;
 
+			// Clear caption icon option
+			bCaptionIcon = false;
+
+			// Clear allow Cancel option
+			// unless the current setting is to be retained
+			if(!bRetainCancel)
+				bAllowCancel = false;
+
+			// Clear the Cancel button flag
+			bHasCancelButton = false;
+
 			// Clear dialog user position
 			TDcentre.x = 0;
 			TDcentre.y = 0;
@@ -2182,6 +2689,90 @@ namespace spoututils {
 				return IDRETRY;
 #endif
 		}
+
+		//
+		// For a caption icon (see TDN_CREATED)
+		//
+		// Sub-class to intercept Windows messages and disable
+		// 'Esc' and 'ALT-F4' when the system 'X' button is disabled
+		// except when the dialog has a 'Cancel' button.
+		//
+		LRESULT CALLBACK TaskSubclassProc(HWND hwnd, UINT msg,
+			WPARAM wParam, LPARAM lParam,
+			UINT_PTR subclassID,
+			DWORD_PTR refData)
+		{
+			auto* data = reinterpret_cast<TASKSUBCLASSDATA*>(refData);
+		
+			switch (msg) {
+
+				case WM_SYSKEYDOWN:
+					if (wParam == VK_F4) {
+						if (data && !data->bAllowCancel) {
+							return 0; // No Cancel button - disable Alt+F4
+						}
+						else {
+							// Cancel button - enable Alt-F4 to quit
+							PostQuitMessage(0);
+						}
+					}
+					break;
+
+				case WM_SYSCOMMAND:
+					if ((wParam & 0xFFF0) == SC_CLOSE) {
+						if (data && !data->bAllowSystem) {
+							// No System button
+							return 0;
+						}
+					}
+					break;
+
+
+				// Disable ESC to quit
+				// unless there was a 'Cancel' button
+				case WM_KEYDOWN:
+					{
+						if (wParam == VK_ESCAPE) {
+							if (data && !data->bAllowCancel) {
+								// No Cancel button - disable Escape
+								return 0;
+							}
+							else {
+								// Cancel button - quit on Escape
+								PostQuitMessage(0);
+							}
+						}
+					}
+					break;
+
+				case WM_CLOSE:
+					// Ignore close attempts unless there is a 'System' button
+					if (!data || !data->bAllowSystem) {
+						return 0;
+					}
+					break;
+
+				case WM_COMMAND:
+					// Intercept IDCANCEL
+					if (LOWORD(wParam) == IDCANCEL) {
+						if (!data || !data->bAllowCancel) {
+							// No Cancel button
+							return 0;
+						}
+					}
+					break;
+
+				case WM_NCDESTROY:
+					{
+						if(data) delete data;
+						data = nullptr;
+						RemoveWindowSubclass(hwnd, TaskSubclassProc, subclassID);
+					}
+					break;
+			}
+			return DefSubclassProc(hwnd, msg, wParam, lParam);
+		}
+
 
 		HRESULT TDcallbackProc(HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
 		{
@@ -2202,11 +2793,33 @@ namespace spoututils {
 				// Timeout
 				DWORD* pTimeout = reinterpret_cast<DWORD*>(dwRefData); // = tc.lpCallbackData
 
-				// Remove icons from the caption
-				// An icon appears in the caption when using MB_OKCANCEL
-				// or when an icon is set for the taskdialog content
-				SendMessage(hwnd, WM_SETICON, ICON_BIG, NULL);
-				SendMessage(hwnd, WM_SETICON, ICON_SMALL, NULL);
+				// Icon in the caption instead of the dialog window
+				if (bCaptionIcon) {
+					SendMessage(hwndTask, WM_SETICON, ICON_BIG, (LPARAM)hTaskIcon);
+					SendMessage(hwndTask, WM_SETICON, ICON_SMALL, (LPARAM)hTaskIcon);
+				}
+				else {
+					// Remove icons from the caption
+					// An 'X' icon remains in the caption when using MB_OKCANCEL
+					SendMessage(hwnd, WM_SETICON, ICON_BIG, NULL);
+					SendMessage(hwnd, WM_SETICON, ICON_SMALL, NULL);
+				}
+
+				// Remove the system menu 'X' from the caption
+				// It is not present for a dialog icon when bAllowCancel is false
+				// and the TDF_ALLOW_DIALOG_CANCELLATION flag is not set
+				if (!bAllowCancel && bCaptionIcon) {
+					// For a caption icon, disable 'X' in the caption
+					// It cannot be completely removed
+					HMENU hMenu = GetSystemMenu(hwndTask, FALSE);
+					if (hMenu) DeleteMenu(hMenu, SC_CLOSE, MF_BYCOMMAND);
+					// Set a sub-class to intercept Windows messages
+					// to disable 'Esc' and 'ALT-F4'
+					// Except if the dialog has a 'Cancel' button.
+					TASKSUBCLASSDATA* data = new TASKSUBCLASSDATA;
+					data->bAllowCancel = bHasCancelButton;
+					SetWindowSubclass(hwnd, TaskSubclassProc, 1, reinterpret_cast<DWORD_PTR>(data));
+				}
 
 				// Dialog Window size and position
 				GetWindowRect(hwnd, &rect);
@@ -2236,12 +2849,49 @@ namespace spoututils {
 
 					// Taskdialog client size is larger with an icon
 					h = rect.bottom-rect.top;
-					x = rect.left+70;
-					y = rect.top + 3;
-					// Allow for increased height with an icon
-					if (h > 90) y += 20;
-					w = 320;
-					h = 24;
+
+					// Minimum edit control width
+					int textwidth = 240;
+
+					// Adapt edit control width to existing text length (stredit)
+					// Find the length of the text
+					if (!stredit.empty()) {
+						HFONT hFont = (HFONT)SendMessage(hwnd, WM_GETFONT, 0, 0);
+						HDC hdc = GetDC(hwnd);
+						HFONT hOld = (HFONT)SelectObject(hdc, hFont);
+						SIZE sz{};
+						GetTextExtentPoint32A(hdc, stredit.c_str(), (int)stredit.length(), &sz);
+						SelectObject(hdc, hOld);
+						ReleaseDC(hwnd, hdc);
+						// Minimum width is 240
+						// Add padding for edit margins/border
+						textwidth = std::max(textwidth, (int)sz.cx+10);
+					}
+
+					// Increase the dialog width if the edit control exceeds it
+					int dialogwidth = rect.right-rect.left;
+					if (textwidth > dialogwidth) {
+						SetWindowPos(hwnd, NULL, 0, 0, textwidth+100, h, SWP_NOMOVE | SWP_NOZORDER);
+						GetClientRect(hwnd, &rect);
+						dialogwidth = rect.right-rect.left;
+					}
+
+					// Centre the edit control
+					x = (dialogwidth-textwidth)/2;
+
+					// Allow for a main icon
+					if(hTaskIcon && !bCaptionIcon)
+						x += 16;
+
+					// Move down
+					y = 2;
+
+					// Allow for a main icon
+					if(hTaskIcon && !bCaptionIcon)
+						y += 16;
+
+					w = textwidth; // Adapt edit control width to the text
+					h = 24; // Edit control height
 
 					// Look for a timeout of 1000000 as a signal for message content
 					// and position in the the footer area if so.
@@ -2277,7 +2927,6 @@ namespace spoututils {
 					GetClientRect(hwnd, &rect);
 
 					// Taskdialog client size
-					// h = rect.bottom-rect.top;
 					h = rect.bottom - rect.top;
 					x = rect.left+20;
 					y = rect.top;
@@ -2305,7 +2954,7 @@ namespace spoututils {
 					w = 0;
 					if(maxw > 0)
 						w = (int)maxw;
-					if(w < 200) w = 200; // Minimum combo width
+					if(w < 240) w = 240; // Minimum combo width 240
 					int dw = rect.right-rect.left;
 					if (w < dw) {
 						// If the width is less than the dialog adjust the x position 
@@ -2348,10 +2997,6 @@ namespace spoututils {
 						// Display an initial item in the selection field
 						SendMessageA(hCombo, CB_SETCURSEL, (WPARAM)comboindex, (LPARAM)0);
 					}
-
-					// Remove icons from the caption
-					SendMessage(hwnd, WM_SETICON, ICON_BIG, NULL);
-					SendMessage(hwnd, WM_SETICON, ICON_SMALL, NULL);
 
 					// Position on top of content
 					BringWindowToTop(hCombo);
@@ -2398,20 +3043,40 @@ namespace spoututils {
 			//   TDN_HYPERLINK_CLICKED indicates that a hyperlink has been selected.
 			//   lParam - Pointer to a wide-character string containing the URL of the hyperlink.
 			if (uNotification == TDN_HYPERLINK_CLICKED) {
+
+				bool bNoClose = false;
+				// Look for - "?noclose" for the dialog to remain open
+				// Close the dialog if not found
+				std::wstring wstr(reinterpret_cast<LPCWSTR>(lParam));
+				size_t pos = wstr.find(L"?noclose");
+				if (pos != std::wstring::npos) {
+					// Found ?noclose - keep the dialog open
+					bNoClose = true;
+					// Remove "?noclose" from the url
+					wstr = wstr.substr(0, pos);
+				}
+
 				SHELLEXECUTEINFOW sei{};
 				sei.cbSize = sizeof(sei);
 				sei.hwnd = NULL;
 				sei.lpVerb = L"open";
-				sei.lpFile = (LPCWSTR)lParam;
+				sei.lpFile = (LPCWSTR)wstr.c_str();
 				sei.nShow = SW_SHOWNORMAL;
 				if (!ShellExecuteExW(&sei)) {
 					return S_FALSE;
 				}
-				SendMessage(hwnd, TDM_CLICK_BUTTON, IDOK, 0);
+
+				if (!bNoClose) {
+					// Close dialog if "?noclose" not found
+					SendMessage(hwnd, TDM_CLICK_BUTTON, IDOK, 0);
+				}
+				// Found "?noclose" - leave dialog open
+
 			}
 #endif
 			return S_OK;
 		}
+
 
 #ifndef _MSC_VER
 
@@ -2495,6 +3160,7 @@ namespace spoututils {
 			return bRet;
 
 		} // end OpenSpoutPanel
+
 
 	} // end private namespace
 

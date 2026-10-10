@@ -1,4 +1,175 @@
 ===========================================\
+10.10.26\
+Cumulative update
+
+Version 2.007.018
+
+Release files
+
+SpoutSettings
+   Remove memoryshare - possible old 2.006 installations
+   Set DX9 mode to zero in case it is still used by anything
+   Automatic installation of VS runtime if required
+   Add download link for VS runtime installer
+   Add "Runtime library installers" to Windows group
+   For Visual Studio and DirectX runtime installer downloads
+   Version 2.003
+SpoutPanel
+   Centre on host window if handle is passed in
+   Version 3.003
+SpoutSender / SpoutReceiver
+   Add Sender option for either skybox or black transparent background
+   Add Receiver option "Allow blending" to enable blending of alpha
+   Add "Window > Copy" ('Ctrl + C')- clipboard image copy for Receiver
+   Add 'Ctrl + T' key for Receiver and Sender "Window > Show on top"
+   Add 'Ctrl + B' key for Sender "Window > Background" and Receiver "Window > Blending"
+   Add "Help > Options" for keyboard commands and blending details.
+   and update "Help > Info" for both Receiver and Sender
+   Add "Capture" and "Save" menu items for a receiver
+   Add "View > Recorder" for a Receiver to open SpoutRecorder.exe video recorder program
+   Version 2.002
+
+Source files
+
+Spout.cpp
+- 21.10.25	- Remove initial update check from ReceiveTexture and ReceiveImage
+  The update flag is reset on the next call to ReceiveSenderData.
+  Calling IsUpdated is optional if receiving to a pre-allocated
+  texture or accessing the sender texture directly.
+- 22.01.26	- Review - update copyright year
+- 04.07.26	- GetAdapterInfo - change if(!driverdescription || !driverversion)
+  to if(!driverdescription[0] || !driverversion[0])
+  Remove unused Devices variable
+- 15.07.26	- HoldFps - change from int to double
+
+SpoutCopy.cpp
+- 30.10.25 - SpoutCopy, FlipBuffer, RemovePadding - conditional _M_ARM64 __movsd
+- 04.01.26 - Optimize memcpy_sse2
+- 08.01.26 - rgba2rgba - copy the whole RGBA image if stride = width*4
+- 16.01.26 - rgba2rgb - change m_bSSE3 requirement to m_bSSSE3 for rgba_to_rgb_sse3
+- 18.01.26 - Optimize rgba2rgbResample. - Remove rgba2bgrResample
+- 20.01.26 - CheckSSE() - conditional compile options for GNUC/MINGW32/MINGW64
+- 28.06.26 - NOMINMAX define in SpoutUtils.h for std::min
+   instead of min in rgba2rgbResample - PR #139
+- 04.07.26 - Include <immintrin.h> instead of both
+   <emmintrin.h> and <tmmintrin.h>
+- 12.08.26 - memcpy_sse2 - braces around initial pointer check
+   To avoid "misleading indentation" warning.
+- 23.09.26 - SpoutCopy.h - #include <string.h> as per Microsoft docs
+   instead of <cstring> for memcpy. Also covered by
+   changes to SpoutUtils.h (included by SpoutCommon.h)
+
+SpoutDirectX.cpp
+- 22.01.26	- Review - update copyright year
+- 16.07.26 - move using namespace spoututils from header to class file
+
+SpoutDX.cpp
+- 13.05.26	- Remove FlushWait from ReadPixelData. Map waits for GPU access.
+- 24.06.26	- Add SpoutLog wrapper functions
+- 26.06.26	- Modify CMakeLists.txt to enable dll exports for spoututils
+  and remove wrapper functions
+- 22.09.26	- Change HoldFps from int to double
+
+SpoutDX9.cpp
+- 24.06.26	- Add SpoutUtils namespace functions for dll access
+- 26.06.26	- Modify CMakeLists.txt to enable dll exports for spoututils
+  and remove wrapper functions
+- 22.09.26	- Change HoldFps from int to double
+
+SpoutFrameCount.cpp
+- 22.01.26	- Review - update copyright year
+- 15.07.26	- HoldFps - change from int to double
+
+SpoutGL.cpp
+- 21.10.25	- ReadTextureData - add SourceID null check
+- 05.01.26	- BindSharedTexture - AllowTextureAcces only on fail. Issue #133
+- 22.01.26	- Review - update copyright year
+- 31.01.26	- Constructor - m_SpoutVersion
+  get the current version number if not found in the registry
+- 06.04.26	- Add CreateFbo DeleteFbo and AttachTexture
+- 11.04.26	- LoadGLextensions - show OpenGL version
+- 22.05.26	- Add CreateGLversion - create OpenGL of specified version
+- 04.07.26	- GLDXformat - cast d3dformat switch to int to avoid
+  different enum warning. Check that enum values are unique.
+- 16.07.26 - move using namespace spoututils from header to class file
+
+SpoutGLextensions.cpp
+- 27.04.26	- SpoutGLextensions.h - Move glCreateTextures and glTextureStorage2D
+  from "context" to "memory"
+- 22.05.26	- SpoutGLextensions.h - add UNDEF defines for all extension types
+
+SpoutReceiver.cpp
+- 13.10.25	- Add GetSenderTexture, GetSenderTexture
+  replace GetSpoutVersion with GetSDKversion
+- 22.01.26	- Review - update copyright year
+- 15.07.26	- HoldFps - change from int to double
+
+SpoutSender.cpp
+- 22.01.26	- Review - update copyright year
+- 15.07.26	- HoldFps - change from int to double
+
+SpoutSendernames.cpp
+30.10.25 - Remove __movsd. Timing tests show no performance gain.
+22.01.26 - Add "using namespace spoututils" to header
+   Review - update copyright year
+16.07.26 - move using namespace spoututils from header to class file
+30.07.26 - readSenderSetFromBuffer -
+   Cast name to unsigned char to allow for non-ASCII characters
+12.08.26 - Change to PtrToUint/UintToPtr for SetSenderInfo/GetSenderInfo
+   instead of HandleToLong/LongToHandle
+10.10.26 - SetSenderInfo - restore removed dwFormat
+
+SpoutSharedMemory.cpp
+- 02.01.26	- Move includes to header. Review - update copyright year
+
+SpoutUtils.cpp
+- 13.12.25 - SpoutMessageBox edit control - allow for both IDOK and IDYES
+- 18.12.25 - SpoutMessageBox with custom buttons - allow for Cancel (MB_CANCEL)
+  Add #define MB_CANCEL TDCBF_CANCEL_BUTTON to SpoutUtils.h
+- 19.12.25 - SpoutMessageBox edit control - remove conditions for get text from control string
+- 14.04.26 - MessageTaskDialog - change "if (dwButtons == MB_CANCEL)
+  to "if ((dwButtons & MB_CANCEL) == MB_CANCEL)"
+- 19.04.26 - Add CopyToClipBoard overload for image data
+  Remove SPOUT_DLLEXP from functions in SpoutUtils.cpp
+  Use SPOUT_DLLEXP for header declarations only
+- 21.05.26 - SpoutMessageBoxAlllowCancel to add or remove system button 'X'
+- 24.05.26 - Add SpoutMessageBoxIconSmall for a caption icon
+- 26.05.26 - Add ExtractWindowsIcon function
+  Support MB_ICONQUESTION
+  Revise TaskDialog code for bCaptionIcon and bAllowCancel
+- 29.05.26 - Adapt edit control width to existing text length
+  Minimum edit and combo control width 240
+- 30.05.26 - Move anonymous namespaces out of the header file
+- 31.05.26 - Add bRetain argument to SpoutMessageBoxAlllowCancel
+- 02.06.26 - OpenSpoutConsole :
+  Add bDisableCose argument to disable the system menu 'X' button
+    to prevent inadvertent close. It can still be closed with ALT-F4
+  Use GetActiveWindow instead of GetForegroundWindow
+    to get the application window handle
+  Use SetForegroundWindow instead of SetWindowPos to restore
+    the main window so that it retains keyboard focus
+- 28.06.26 - SpoutUtils.h - add for PR #139
+  #define NOMINMAX, #define WIN32_LEAN_AND_MEAN #include <timeapi.h>
+  std::max instead of max in TDcallbackProc
+- 29.06.26 - SpoutUtils.h - Direct SPOUT_DLLEXP definition
+  instead of include SpoutCommon.h
+- 03.07.26 - Move SPOUT_DLLEXP definition from SpoutUtils.h to SpoutUtils.cpp
+  SpoutUtils functions are always compiled exported
+  Remove unused startcount, endcount, m_FrameStart
+  Update StartTiming/EndTiming
+- 21.07.26 - TDN_HYPERLINK_CLICKED
+  Look for - "noclose" for the dialog to remain open
+  The application url includes "?noclose" and is of the form
+  <a href=\"https://github.com?noclose\">https://github.com</a>
+- 13.08.26 - Remove "?noclose" from the url in TDN_HYPERLINK_CLICKED
+- 21.08.26 - Update ExtractWindowsIcon function to include width and height
+- 23.09.26 - Remove SaveIconFile
+  SpoutUtils.h - add #include <string.h> and #include <cstring>
+  SpoutUtils.h - test definition of NOMINMAX to avoid re-definition errors
+- 01.10.26 - Update version to 2.007.018
+
+
+===========================================\
 20.10.25\
 Cumulative update
 
@@ -7,19 +178,15 @@ Version 2.007.017
 Update Cmake files for modern CMake (PR #122)
 
 Spout.cpp
-- 05.03.25	- Add m_bSender flag for sender/receiver\
-    Set by Spout::CheckSender and also by Spout::InitReceiver\
+- 05.03.25	- Add m_bSender flag for sender/receiver
+    Set by Spout::CheckSender and also by Spout::InitReceiver
     SetFrameSync/WaitFrameSync - do not block of not initialized
-- 18.05.25	- SelectSender - if SpoutPanel was not found, remove the\
+- 18.05.25	- SelectSender - if SpoutPanel was not found, remove the
     empty sender list return to still display a sender list box
 - 09.08.25	- SetSenderName - add !*sendername check
 - 16.08.25	- Add CloseFrameSync
-- 11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot\
+- 11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
   change NULL argument to 0, Change hRes = NULL to hRes = 0
-- 21.10.25	- Remove initial update check from ReceiveTexture and ReceiveImage\
-  The update flag is reset on the next call to ReceiveSenderData.\
-  Calling IsUpdated is optional if receiving to a pre-allocated\
-  texture or accessing the sender texture directly.
 
 SpoutCopy.cpp
 - 08.05.25 - FlipBuffer - add in-place overload
@@ -85,7 +252,6 @@ SpoutGL.cpp
 - 08.10.25	- CopyTexture - allow for different texture sizes with dual fbo blit
 - 11.10.25	- CopyTexture - correct conditional size check
 - 15.10.25	- Add ClearAlpha
-- 21.10.25	- ReadTextureData - add SourceID null check
  
 SpoutGLextensions.cpp
 - 25.03.25	- ExtLog - changed "standalone" to "standaloneExtensions"
@@ -134,6 +300,54 @@ SpoutUtils.cpp
 		   MessageBoxTimeoutA - add return value for else
 - 06.09.25 - Add executable name to log file
 - 16.09.25 - Update version to 2.007.017
+
+SpoutLibrary.cpp
+(Accumulated updates not recorded)
+18.03.23 - For MingW compatibility
+   Remove old style include guard from header
+   Test for _MSC_VER for pragma warnings in header
+   Test for NTDDI_WIN10_RS4 define for graphics preferences
+07.04.23   Rebuild with SDK version 2.007.010 - release VS2022 - 32/64 bit /MD
+03.05.23   Add GL_BGRA define to SpoutLibrary.h
+08.07.23   CreateReceiver - remove unused bUseActive flag
+23.07.23   Rebuild with SDK version 2.007.011 - release VS2022 - 32/64 bit /MD
+05.08.23   Add format functions
+28.09.23   Add EnableFrameSync
+   Rebuild with SDK version 2.007.012 - release VS2022 - 32/64 bit /MD
+16.10.23   Add SpoutMessageBoxIcon and SpoutMessageBoxButton
+03.12.23   Rebuild with SDK version 2.007.013 /MD and /MT using CMake
+08.12.23   Rebuild all libraries /MT and /MD with Openframeworks 12.0 files using CMake
+28.12.23   Add SpoutMessageBoxModeless and SpoutMessageBoxWindow
+12.03.24   Restore SpoutMessgaBox with variable arguments
+   Add SpoutMessageBox with text entry and with combobox controls
+12.06.24   Add GetSenderList
+31.07.24   Add GetSenderTexture, GetCurrentModule, GetExeVersion,
+   GetExePath, GetExeName, RemovePath, RemoveName
+   Remove GetSpoutVersion
+13.10.25   Add GetReceiverName, SelectSender, CloseFrameSync, IsFrameSyncEnabled
+   DisableSpoutLogFile, RemoveSpoutLogFile, DisableSpoutLog, DisableLogs,
+   EnableLogs, LogsEnabled, LogFileEnabled, GetSpoutLogPath, ReadTextureData,
+   WriteBinaryToRegistry, Update SelectSenderPanel, GetExepath
+   Rename : RemoveName->GetPath, RemovePath->GetName
+15.10.25   Update CreateOpenGL - add hwnd argument
+   Add InitTexture, ClearAlpha
+13.10.25   Rebuild with SDK version 2.007.017 /MD and /MT using CMake
+20.10.28   Add FlipBuffer
+29.06.26   Add SpoutMessageBoxAllowCancel
+03.07.26   Add destructor to allow SpoutLibrary object delete
+   Initialize spout object with nullptr
+04.07.26   All function declarations in cpp file "override"
+   Destructor declaration protected in header file
+   Destructor deletes the spout object in cpp file
+   Release() function deletes "this" only
+   CMakeLists.txt uses Spout SDK source files for static build
+05.07.26   Remove SpoutUtils wrapper functions.
+   Namespace is available directly with CMake change.
+   Add #define WIN32_LEAN_AND_MEAN to header.
+06.07.26   Remove override warning disable 26433 from header.
+22.07.26   Restore SpoutUtils wrapper functions.
+22.09.26 - Change HoldFps from int to double
+
 
 ===========================================\
 01.03.25\

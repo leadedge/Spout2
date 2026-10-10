@@ -6,7 +6,7 @@
 
 		- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-		Copyright (c) 2017-2025, Lynn Jarvis. All rights reserved.
+		Copyright (c) 2017-2026, Lynn Jarvis. All rights reserved.
 
 		Redistribution and use in source and binary forms, with or without modification, 
 		are permitted provided that the following conditions are met:
@@ -35,18 +35,23 @@
 #define __spoutUtils__
 
 // Enable this define to use independently of Spout source files
-// See also the stand alone define in SpoutGLextensions
+// See also "#define standaloneExtensions" in SpoutGLextensions
 // #define standaloneUtils
-
+//
 #ifdef standaloneUtils
-#define SPOUT_DLLEXP
-#else
-// For use together with Spout source files
-#include "SpoutCommon.h" // for legacyOpenGL define and Utils
-#include <stdint.h> // for _uint32 etc
+	#ifndef SPOUT_DLLEXP
+	#define SPOUT_DLLEXP	__declspec(dllexport)
+	#endif
 #endif
 
-#include <windows.h>
+
+// To avoid re-definition errors
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h> // the first windows.h include
 #include <stdio.h> // for console
 #include <iostream> // std::cout, std::end
 #include <fstream> // for log file
@@ -54,11 +59,15 @@
 #include <io.h> // for _access
 #include <direct.h> // for _getcwd
 #include <vector>
-#include <string>
-#include <shellapi.h> // for shellexecute
+#include <string> // for string functions
+#include <string.h> // for memcpy
+#include <cstring> // for std::memcpy
+#include <stdint.h> // for _uint32 etc
+#include <shellapi.h> // for shellexecute and LoadIconMetric
 #include <commctrl.h> // For TaskDialogIndirect
 #include <math.h> // for round
 #include <algorithm> // for string character remove
+#include <timeapi.h> // for timeGetDevCaps, timeBeginPeriod, timeEndPeriod
 
 //
 // C++11 timer is only available for MS Visual Studio 2015 and above.
@@ -71,7 +80,6 @@
 // PR #84  Fixes for clang
 // PR #114  Fixes for MingW
 #if (defined(_MSC_VER) && (_MSC_VER >= 1900)) || (defined(__cplusplus) && (__cplusplus >= 201103L))
-
 #define USE_CHRONO
 #endif
 
@@ -92,6 +100,9 @@
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
+
+// For cancel button only together with custom buttons
+#define MB_CANCEL TDCBF_CANCEL_BUTTON
 
 // SpoutUtils
 namespace spoututils {
@@ -154,11 +165,17 @@ namespace spoututils {
 	// Open console window.
 	// A console window opens without logs.
 	// Useful for debugging with console output.
-	void SPOUT_DLLEXP OpenSpoutConsole(const char* title = nullptr);
+	//    title - caption title (default executable name)
+	//    bDisableClose - disable the system menu 'X' button
+	void SPOUT_DLLEXP OpenSpoutConsole(const char* title = nullptr, bool bDisableClose = false);
 	
 	// Close console window.
 	// The optional warning displays a MessageBox if user notification is required.
 	void SPOUT_DLLEXP CloseSpoutConsole(bool bWarning = false);
+
+	//
+	// Logging
+	//
 
 	// Enable logging to the console.
 	// Logs are displayed in a console window.  
@@ -235,6 +252,9 @@ namespace spoututils {
 	// Print to console (printf replacement)
 	int SPOUT_DLLEXP _conprint(const char* format, ...);
 
+	// Open logs folder
+	bool SPOUT_DLLEXP OpenSpoutLogs();
+
 	//
 	// MessageBox dialog
 	//
@@ -281,6 +301,9 @@ namespace spoututils {
 	// Custom icon for SpoutMessageBox from file
 	bool SPOUT_DLLEXP SpoutMessageBoxIcon(std::string iconfile);
 
+	// Small icon in the caption rather than the dialog window
+	void SPOUT_DLLEXP SpoutMessageBoxIconSmall();
+
 	// Custom button for SpoutMessageBox
 	void SPOUT_DLLEXP SpoutMessageBoxButton(int ID, std::wstring title);
 
@@ -292,12 +315,32 @@ namespace spoututils {
 
 	// Position to centre SpoutMessageBox
 	void SPOUT_DLLEXP SpoutMessageBoxPosition(POINT pt);
+		
+	// Allow dialog cancel
+	// Adds or removes a system menu 'X' close button for SpoutMessageBox
+	void SPOUT_DLLEXP SpoutMessageBoxAllowCancel(bool bCancel = true, bool bRetain = false);
+
+	//
+	// Clipboard
+	//
 
 	// Copy text to the clipboard
 	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const char* text);
 
-	// Open logs folder
-	bool SPOUT_DLLEXP OpenSpoutLogs();
+	// Copy image to the clipboard
+	bool SPOUT_DLLEXP CopyToClipBoard(HWND hwnd, const unsigned char* data,
+		unsigned int format, int width, int height);
+
+	//
+	// Windows
+	//
+
+	// Enable or disable keys Escape or Alt-F4 to quit and the
+	// System menu 'X' close button for an application window
+	void SPOUT_DLLEXP EnableWindowClose(HWND hwnd, bool bKeys = true, bool bSystem = true);
+
+	// Extract an icon from a Windows dll (default Shell32.dll)
+	HICON SPOUT_DLLEXP ExtractWindowsIcon(int iconNumber, const char* dllName = nullptr, int width = 0, int height = 0);
 
 	//
 	// Registry utilities
@@ -353,67 +396,6 @@ namespace spoututils {
 	void SPOUT_DLLEXP StartCounter();
 	double SPOUT_DLLEXP GetCounter();
 
-	//
-	// Private functions
-	//
-	namespace
-	{
-		// Local functions
-		void _logtofile(bool append = false);
-		std::string _getLogPath();
-		std::string _getLogFilePath(const char* filename);
-		std::string _levelName(SpoutLogLevel level);
-		// Taskdialog for SpoutMessageBox
-		int MessageTaskDialog(HWND hWnd, const char* content, const char* caption, DWORD dwButtons, DWORD dwMilliseconds);
-		// TaskDialogIndirect callback to handle timer, topmost and hyperlinks
-		HRESULT TDcallbackProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData);
-#ifndef _MSC_VER
-		// Timeout MessageBox for other compilers
-		int MessageBoxTimeoutA(IN HWND hWnd,
-			IN LPCSTR lpText, IN LPCSTR lpCaption, IN UINT uType,
-			IN WORD wLanguageId, IN DWORD dwMilliseconds);
-#endif
-
-		// Use ShellExecutEx to open a program
-		bool ExecuteProcess(const char* path, const char* command = nullptr);
-		// Open SpoutPanel with command line for modeless SpoutMessageBox
-		bool OpenSpoutPanel(const char* message);
-		// Application window
-		HWND hwndMain = NULL;
-		// Taskdialog window to prevent multiple open
-		HWND hwndTask = NULL;
-		// Position for TaskDialog window centre
-		POINT TDcentre = {};
-		// For topmost
-		HWND hwndTop = NULL;
-		bool bTopMost = false;
-		// Modeless TaskDialog by way of OpenSpoutPanel
-		bool bModeless = false; // Default use local TaskDialogIndirect
-		// For custom icon
-		HICON hTaskIcon = NULL;
-
-		// For custom buttons
-		std::vector<int>TDbuttonID;
-		std::vector<std::wstring>TDbuttonTitle;
-
-		// Main instruction text
-		std::wstring wstrInstruction;
-
-		// For edit text control
-		bool bEdit = false;
-		HWND hEdit = NULL;
-		std::string stredit;
-		#define IDC_TASK_EDIT 101
-
-		// For combo box control
-		bool bCombo = false;
-		HWND hCombo = NULL;
-		std::vector<std::string> comboitems;
-		int comboindex = 0;
-		#define IDC_TASK_COMBO 102
-
-	}
-
-}
+} // end namespace spoututils
 
 #endif

@@ -26,11 +26,15 @@
 //					  convert to a string of 8 characters without new line
 //		29.08.24	- ReadDX9texture - remove !frame.IsFrameCountEnabled() condition
 //		11.10.25	- CreateSharedDX9Texture - change switch (LOWORD(res)) to switch (res)
+//		24.06.26	- Add SpoutUtils namespace functions for dll access
+//		26.06.26	- Modify CMakeLists.txt to enable dll exports for spoututils
+//					  and remove wrapper functions
+//		22.09.26	- Change HoldFps from int to double
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2020-2025. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2020-2026. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -804,11 +808,10 @@ void spoutDX9::SetMaxSenders(int maxSenders)
 	sendernames.SetMaxSenders(maxSenders);
 }
 
-
 //---------------------------------------------------------
 // Function: HoldFps
 // Frame rate control with desired frames per second.
-void spoutDX9::HoldFps(int fps)
+void spoutDX9::HoldFps(double fps)
 {
 	frame.HoldFps(fps);
 }
@@ -1304,13 +1307,13 @@ bool spoutDX9::SelectSenderPanel(const char* message)
 			// Take a snapshot of all processes and threads in the system
 			HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPALL, 0);
 			if (hProcessSnap == INVALID_HANDLE_VALUE) {
-				SpoutLogError("spoutDX::OpenSpoutPanel - CreateToolhelp32Snapshot error");
+				SpoutLogError("spoutDX9::OpenSpoutPanel - CreateToolhelp32Snapshot error");
 			}
 			else {
 				// Retrieve information about the first process
 				BOOL hRes = Process32First(hProcessSnap, &pEntry);
 				if (!hRes) {
-					SpoutLogError("spoutDX::OpenSpoutPanel - Process32First error");
+					SpoutLogError("spoutDX9::OpenSpoutPanel - Process32First error");
 					CloseHandle(hProcessSnap);
 				}
 				else {

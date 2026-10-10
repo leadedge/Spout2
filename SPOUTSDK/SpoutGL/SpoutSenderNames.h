@@ -9,7 +9,7 @@
 	https://github.com/mbechard	
 
 	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -59,7 +59,6 @@
 // MaxSenders define replaced by a global class variable (Maximum for list of Sender names)
 #define SpoutMaxSenderNameLen 256
 
-
 // The texture information structure that is saved to shared memory
 // and used for communication between senders and receivers
 // uint32_t is used for compatibility between 32bit and 64bit
@@ -86,8 +85,6 @@ struct SharedTextureInfo {		// 280 bytes total
 // Example 
 // {AB5C33D6-3654-43F9-85F6-F54872B0460B}
 static const char* GUID_queue = "AB5C33D6-3654-43F9-85F6-F54872B0460B";
-
-
 
 class SPOUT_DLLEXP spoutSenderNames {
 
