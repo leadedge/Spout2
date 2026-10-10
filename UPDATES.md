@@ -1,69 +1,951 @@
-===================================
+===========================================\
+10.10.26\
+Cumulative update
+
+Version 2.007.018
+
+Release files
+
+SpoutSettings
+   Remove memoryshare - possible old 2.006 installations
+   Set DX9 mode to zero in case it is still used by anything
+   Automatic installation of VS runtime if required
+   Add download link for VS runtime installer
+   Add "Runtime library installers" to Windows group
+   For Visual Studio and DirectX runtime installer downloads
+   Version 2.003
+SpoutPanel
+   Centre on host window if handle is passed in
+   Version 3.003
+SpoutSender / SpoutReceiver
+   Add Sender option for either skybox or black transparent background
+   Add Receiver option "Allow blending" to enable blending of alpha
+   Add "Window > Copy" ('Ctrl + C')- clipboard image copy for Receiver
+   Add 'Ctrl + T' key for Receiver and Sender "Window > Show on top"
+   Add 'Ctrl + B' key for Sender "Window > Background" and Receiver "Window > Blending"
+   Add "Help > Options" for keyboard commands and blending details.
+   and update "Help > Info" for both Receiver and Sender
+   Add "Capture" and "Save" menu items for a receiver
+   Add "View > Recorder" for a Receiver to open SpoutRecorder.exe video recorder program
+   Version 2.002
+
+Source files
+
+Spout.cpp
+- 21.10.25	- Remove initial update check from ReceiveTexture and ReceiveImage
+  The update flag is reset on the next call to ReceiveSenderData.
+  Calling IsUpdated is optional if receiving to a pre-allocated
+  texture or accessing the sender texture directly.
+- 22.01.26	- Review - update copyright year
+- 04.07.26	- GetAdapterInfo - change if(!driverdescription || !driverversion)
+  to if(!driverdescription[0] || !driverversion[0])
+  Remove unused Devices variable
+- 15.07.26	- HoldFps - change from int to double
+
+SpoutCopy.cpp
+- 30.10.25 - SpoutCopy, FlipBuffer, RemovePadding - conditional _M_ARM64 __movsd
+- 04.01.26 - Optimize memcpy_sse2
+- 08.01.26 - rgba2rgba - copy the whole RGBA image if stride = width*4
+- 16.01.26 - rgba2rgb - change m_bSSE3 requirement to m_bSSSE3 for rgba_to_rgb_sse3
+- 18.01.26 - Optimize rgba2rgbResample. - Remove rgba2bgrResample
+- 20.01.26 - CheckSSE() - conditional compile options for GNUC/MINGW32/MINGW64
+- 28.06.26 - NOMINMAX define in SpoutUtils.h for std::min
+   instead of min in rgba2rgbResample - PR #139
+- 04.07.26 - Include <immintrin.h> instead of both
+   <emmintrin.h> and <tmmintrin.h>
+- 12.08.26 - memcpy_sse2 - braces around initial pointer check
+   To avoid "misleading indentation" warning.
+- 23.09.26 - SpoutCopy.h - #include <string.h> as per Microsoft docs
+   instead of <cstring> for memcpy. Also covered by
+   changes to SpoutUtils.h (included by SpoutCommon.h)
+
+SpoutDirectX.cpp
+- 22.01.26	- Review - update copyright year
+- 16.07.26 - move using namespace spoututils from header to class file
+
+SpoutDX.cpp
+- 13.05.26	- Remove FlushWait from ReadPixelData. Map waits for GPU access.
+- 24.06.26	- Add SpoutLog wrapper functions
+- 26.06.26	- Modify CMakeLists.txt to enable dll exports for spoututils
+  and remove wrapper functions
+- 22.09.26	- Change HoldFps from int to double
+
+SpoutDX9.cpp
+- 24.06.26	- Add SpoutUtils namespace functions for dll access
+- 26.06.26	- Modify CMakeLists.txt to enable dll exports for spoututils
+  and remove wrapper functions
+- 22.09.26	- Change HoldFps from int to double
+
+SpoutFrameCount.cpp
+- 22.01.26	- Review - update copyright year
+- 15.07.26	- HoldFps - change from int to double
+
+SpoutGL.cpp
+- 21.10.25	- ReadTextureData - add SourceID null check
+- 05.01.26	- BindSharedTexture - AllowTextureAcces only on fail. Issue #133
+- 22.01.26	- Review - update copyright year
+- 31.01.26	- Constructor - m_SpoutVersion
+  get the current version number if not found in the registry
+- 06.04.26	- Add CreateFbo DeleteFbo and AttachTexture
+- 11.04.26	- LoadGLextensions - show OpenGL version
+- 22.05.26	- Add CreateGLversion - create OpenGL of specified version
+- 04.07.26	- GLDXformat - cast d3dformat switch to int to avoid
+  different enum warning. Check that enum values are unique.
+- 16.07.26 - move using namespace spoututils from header to class file
+
+SpoutGLextensions.cpp
+- 27.04.26	- SpoutGLextensions.h - Move glCreateTextures and glTextureStorage2D
+  from "context" to "memory"
+- 22.05.26	- SpoutGLextensions.h - add UNDEF defines for all extension types
+
+SpoutReceiver.cpp
+- 13.10.25	- Add GetSenderTexture, GetSenderTexture
+  replace GetSpoutVersion with GetSDKversion
+- 22.01.26	- Review - update copyright year
+- 15.07.26	- HoldFps - change from int to double
+
+SpoutSender.cpp
+- 22.01.26	- Review - update copyright year
+- 15.07.26	- HoldFps - change from int to double
+
+SpoutSendernames.cpp
+30.10.25 - Remove __movsd. Timing tests show no performance gain.
+22.01.26 - Add "using namespace spoututils" to header
+   Review - update copyright year
+16.07.26 - move using namespace spoututils from header to class file
+30.07.26 - readSenderSetFromBuffer -
+   Cast name to unsigned char to allow for non-ASCII characters
+12.08.26 - Change to PtrToUint/UintToPtr for SetSenderInfo/GetSenderInfo
+   instead of HandleToLong/LongToHandle
+10.10.26 - SetSenderInfo - restore removed dwFormat
+
+SpoutSharedMemory.cpp
+- 02.01.26	- Move includes to header. Review - update copyright year
+
+SpoutUtils.cpp
+- 13.12.25 - SpoutMessageBox edit control - allow for both IDOK and IDYES
+- 18.12.25 - SpoutMessageBox with custom buttons - allow for Cancel (MB_CANCEL)
+  Add #define MB_CANCEL TDCBF_CANCEL_BUTTON to SpoutUtils.h
+- 19.12.25 - SpoutMessageBox edit control - remove conditions for get text from control string
+- 14.04.26 - MessageTaskDialog - change "if (dwButtons == MB_CANCEL)
+  to "if ((dwButtons & MB_CANCEL) == MB_CANCEL)"
+- 19.04.26 - Add CopyToClipBoard overload for image data
+  Remove SPOUT_DLLEXP from functions in SpoutUtils.cpp
+  Use SPOUT_DLLEXP for header declarations only
+- 21.05.26 - SpoutMessageBoxAlllowCancel to add or remove system button 'X'
+- 24.05.26 - Add SpoutMessageBoxIconSmall for a caption icon
+- 26.05.26 - Add ExtractWindowsIcon function
+  Support MB_ICONQUESTION
+  Revise TaskDialog code for bCaptionIcon and bAllowCancel
+- 29.05.26 - Adapt edit control width to existing text length
+  Minimum edit and combo control width 240
+- 30.05.26 - Move anonymous namespaces out of the header file
+- 31.05.26 - Add bRetain argument to SpoutMessageBoxAlllowCancel
+- 02.06.26 - OpenSpoutConsole :
+  Add bDisableCose argument to disable the system menu 'X' button
+    to prevent inadvertent close. It can still be closed with ALT-F4
+  Use GetActiveWindow instead of GetForegroundWindow
+    to get the application window handle
+  Use SetForegroundWindow instead of SetWindowPos to restore
+    the main window so that it retains keyboard focus
+- 28.06.26 - SpoutUtils.h - add for PR #139
+  #define NOMINMAX, #define WIN32_LEAN_AND_MEAN #include <timeapi.h>
+  std::max instead of max in TDcallbackProc
+- 29.06.26 - SpoutUtils.h - Direct SPOUT_DLLEXP definition
+  instead of include SpoutCommon.h
+- 03.07.26 - Move SPOUT_DLLEXP definition from SpoutUtils.h to SpoutUtils.cpp
+  SpoutUtils functions are always compiled exported
+  Remove unused startcount, endcount, m_FrameStart
+  Update StartTiming/EndTiming
+- 21.07.26 - TDN_HYPERLINK_CLICKED
+  Look for - "noclose" for the dialog to remain open
+  The application url includes "?noclose" and is of the form
+  <a href=\"https://github.com?noclose\">https://github.com</a>
+- 13.08.26 - Remove "?noclose" from the url in TDN_HYPERLINK_CLICKED
+- 21.08.26 - Update ExtractWindowsIcon function to include width and height
+- 23.09.26 - Remove SaveIconFile
+  SpoutUtils.h - add #include <string.h> and #include <cstring>
+  SpoutUtils.h - test definition of NOMINMAX to avoid re-definition errors
+- 01.10.26 - Update version to 2.007.018
+
+
+===========================================\
+20.10.25\
+Cumulative update
+
+Version 2.007.017
+
+Update Cmake files for modern CMake (PR #122)
+
+Spout.cpp
+- 05.03.25	- Add m_bSender flag for sender/receiver
+    Set by Spout::CheckSender and also by Spout::InitReceiver
+    SetFrameSync/WaitFrameSync - do not block of not initialized
+- 18.05.25	- SelectSender - if SpoutPanel was not found, remove the
+    empty sender list return to still display a sender list box
+- 09.08.25	- SetSenderName - add !*sendername check
+- 16.08.25	- Add CloseFrameSync
+- 11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
+  change NULL argument to 0, Change hRes = NULL to hRes = 0
+
+SpoutCopy.cpp
+- 08.05.25 - FlipBuffer - add in-place overload
+- 26.05.25 - rgba2bgra - invert flag false in sse functions
+- 27.05.25 - Add GetSSE2, GetSSE3, GetSSSE3
+- 29.05.25 - Add rgba_swap_ssse3
+- 01.07.25 - memcpy_sse2 - handle trailing bytes to avoid 16 byte limitation
+   Modify CopyPixels and FlipBuffer to test for SSE2 only
+- 28.08.25 - Add SaveTextureToBMP - save texture to file for testing
+
+SpoutDirectX.cpp
+- 20.03.25	- CreateDX11StagingTexture - remove console print of texture format
+- 19.05.25	- Add D3D11_BIND_UNORDERED_ACCESS to CreateSharedTexture bindflags
+- 22.05.25	- Remove ClearState from Flush and FlushWait for use of shaders
+- 24.05.25	- Add CreateDX11Texture overload to create a DirectX texture
+     with specific bind and misc flags
+- 27.06.25	- Replace ZeroMemory throughout with {} in stucture declarations
+- 01.08.25	- m_featureLevel default - D3D_FEATURE_LEVEL_11_1
+	 CreateSharedDX11Texture - remove D3D11_BIND_RENDER_TARGET from bind flags
+- 09.08.25	- Change all "={}" initializations back to "{}"
+- 10.08.25	- ReleaseDX11Texture - remove warning for no texture
+- 28.08.25	- CreateSharedDX11Texture - add warnings for handle creation
+     D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX option separated
+- 31.08.25	- FlushWait - default device and context
+- 11.09.25	- Correct Keyed shared texture misc flag in CreateSharedDX11texture
+     Remove redundant final Flush from FlushWait
+
+SpoutDX.cpp
+- 22.10.24	- SelectSender - remove message string line feed for SpoutPanel
+- 20.03.25	- SendImage - optional line pitch
+  SpoutMessageBox overload, optional timeout without instruction
+- 11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
+  change NULL argument to 0, Change hRes = NULL to hRes = 0
+
+SpoutDX9.cpp
+- 29.08.24	- ReadDX9texture - remove !frame.IsFrameCountEnabled() condition
+- 11.10.25	- CreateSharedDX9Texture - change switch (LOWORD(res)) to switch (res)
+	 
+SpoutFrameCount.cpp
+- 05.03.25	- SetFrameSync/WaitFrameSync - add empty sendername check
+- 06.04.25	- CheckFrameSync - check for existence of the sender frame sync event
+   EnableFrameSync - default is disabled in constructor
+   (the application must enable sync events)
+   Set local flag only. Do not close sync event on disable.
+- 09.05.25	- Add WaitNewFrame - to be tested
+   UpdateSenderFps change m_FrameTimeNumber from 8 to 2
+- 06.07.25	- Add GetSenderName
+- 30.07.25	- CheckTextureAccess - return if null texture
+- 09.08.25	- Change all initializations to "{}"
+- 28.08.25	- CheckTextureAccess - do not block if texture is null
+
+SpoutGL.cpp
+- 03.03.25	- Move "#include <algorithm>" in header to SpoutUtils.h (PR #120)
+- 05.03.25	- Add m_bSender flag for sender/receiver
+    Set by Spout::CheckSender and also by Spout::InitReceiver
+    Used in destructor for ReleaseSenderName
+    SetVerticalSync - add comments in header file
+- 05.05.25	- CreateOpenGL- return silently if a context exists
+- 05.08.25	- Add null pixels check to ReadGLDXpixels
+-31.08.25	- Remove DoDiagnostics - never used
+- 01.09.25	- Correct RegOpenKeyExA options arg from NULL to 0
+- 02.09.25	- Change all spoutdx.GetDX11Context()->Flush() to spoutdx.Flush()
+- 08.10.25	- CopyTexture - allow for different texture sizes with dual fbo blit
+- 11.10.25	- CopyTexture - correct conditional size check
+- 15.10.25	- Add ClearAlpha
+ 
+SpoutGLextensions.cpp
+- 25.03.25	- ExtLog - changed "standalone" to "standaloneExtensions"
+- 07.08.25	- SpoutGLextensions.h - add #define GL_FRAMEBUFFER_UNDEFINED
+    Correct glTextureStorageMem2DEXT
+- 30.08.25	- Add GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT
+- 02.09.25	- Add GL_HANDLE_TYPE_OPAQUE_IMAGE_KMT_EXT
+- 09.09.25	- Correct glGetInternalFormativ to glGetInternalformativ
+    Define GL_BGRA8_EXT
+- 15.09.25	- Add GL_TEXTURE_SWIZZLE_R, G, B
+- 16.09-25	- SpoutGLextensions.h - add #include <cstdint> for MingW
+
+SpoutReceiver.cpp
+- 16.08.25	- Add CloseFrameSync
+- 13.10.25	- Add GetSenderTexture, GetSenderTexture
+ 	replace GetSpoutVersion with GetSDKversion
+	
+SpoutSender.cpp
+- 16.08.25	- Add CloseFrameSync
+
+SpoutSendernames.cpp
+
+SpoutSharedMemory.cpp
+
+SpoutUtils.cpp
+- 04.03.25 - Add #include <algorithm> to SpoutUtils.h (PR #120)
+- 07.03.25 - MessageTaskDialog -
+		   Add global "hwndTask" to return if TaskDialog is open.
+		   Move modeless check to first.
+		   Disable modeless mode after SpoutPanel open so it is one-off.
+		   Window handle is HWND passed in or specified by SpoutMessageBoxWindow.
+- 08.03.25 - Add missing SPOUT_DLLEXP to SpoutMessageBoxIcon and SpoutMessageBoxButton
+- 09.03.25 - Change function names from RemoveName and RemovePath to
+		   GetPath and GetName to modify the path argument and return a string
+- 27.03.25 - Remove messagebox from GetName
+- 20.04.25 - Correct GetExeName to return GetName
+		   Correct GetExePath to return GetPath
+- 13.05.25 - Use a local file pointer for freopen_s with AllocConsole
+		   if "standaloneutils" is defined to avoid crash - unknown cause
+- 25.05.25 - Add print option to EndTiming
+- 22.05.25 - Update SDKversion to 2.007.016
+- 09.08.25 - Change all "={}" initializations back to "{}"
+- 01.09.25 - Correct GetFileVersionInfoA dwHandle arg from NULL to 0
+		   Correct RegOpenKeyExA options arg from NULL to 0
+		   Correct RegCreateKeyExA reserved arg from NULL to 0
+		   MessageBoxTimeoutA - add return value for else
+- 06.09.25 - Add executable name to log file
+- 16.09.25 - Update version to 2.007.017
+
+SpoutLibrary.cpp
+(Accumulated updates not recorded)
+18.03.23 - For MingW compatibility
+   Remove old style include guard from header
+   Test for _MSC_VER for pragma warnings in header
+   Test for NTDDI_WIN10_RS4 define for graphics preferences
+07.04.23   Rebuild with SDK version 2.007.010 - release VS2022 - 32/64 bit /MD
+03.05.23   Add GL_BGRA define to SpoutLibrary.h
+08.07.23   CreateReceiver - remove unused bUseActive flag
+23.07.23   Rebuild with SDK version 2.007.011 - release VS2022 - 32/64 bit /MD
+05.08.23   Add format functions
+28.09.23   Add EnableFrameSync
+   Rebuild with SDK version 2.007.012 - release VS2022 - 32/64 bit /MD
+16.10.23   Add SpoutMessageBoxIcon and SpoutMessageBoxButton
+03.12.23   Rebuild with SDK version 2.007.013 /MD and /MT using CMake
+08.12.23   Rebuild all libraries /MT and /MD with Openframeworks 12.0 files using CMake
+28.12.23   Add SpoutMessageBoxModeless and SpoutMessageBoxWindow
+12.03.24   Restore SpoutMessgaBox with variable arguments
+   Add SpoutMessageBox with text entry and with combobox controls
+12.06.24   Add GetSenderList
+31.07.24   Add GetSenderTexture, GetCurrentModule, GetExeVersion,
+   GetExePath, GetExeName, RemovePath, RemoveName
+   Remove GetSpoutVersion
+13.10.25   Add GetReceiverName, SelectSender, CloseFrameSync, IsFrameSyncEnabled
+   DisableSpoutLogFile, RemoveSpoutLogFile, DisableSpoutLog, DisableLogs,
+   EnableLogs, LogsEnabled, LogFileEnabled, GetSpoutLogPath, ReadTextureData,
+   WriteBinaryToRegistry, Update SelectSenderPanel, GetExepath
+   Rename : RemoveName->GetPath, RemovePath->GetName
+15.10.25   Update CreateOpenGL - add hwnd argument
+   Add InitTexture, ClearAlpha
+13.10.25   Rebuild with SDK version 2.007.017 /MD and /MT using CMake
+20.10.28   Add FlipBuffer
+29.06.26   Add SpoutMessageBoxAllowCancel
+03.07.26   Add destructor to allow SpoutLibrary object delete
+   Initialize spout object with nullptr
+04.07.26   All function declarations in cpp file "override"
+   Destructor declaration protected in header file
+   Destructor deletes the spout object in cpp file
+   Release() function deletes "this" only
+   CMakeLists.txt uses Spout SDK source files for static build
+05.07.26   Remove SpoutUtils wrapper functions.
+   Namespace is available directly with CMake change.
+   Add #define WIN32_LEAN_AND_MEAN to header.
+06.07.26   Remove override warning disable 26433 from header.
+22.07.26   Restore SpoutUtils wrapper functions.
+22.09.26 - Change HoldFps from int to double
+
+
+===========================================\
+01.03.25\
+Cumulative update from beta branch
+
+Version 2.007.016
+
+Spout.cpp
+- 03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
+- 10.09.24	- SelectSenderPanel - test for exe file name for terminate
+- 25.09.24	- Revise ReceiveTexture and extend code comments for sender update
+- 08.01.25	- Add empty senderlist check in SelectSender()
+
+SpoutCopy.cpp
+- 07.02.25	- Add GetSSE to return SSE capability
+
+SpoutDirectX.cpp
+- 03-09-24	- Graphics preference functions available but disabled if not NTDDI_WIN10_RS4
+
+SpoutFrameCount.cpp
+
+SpoutGL.cpp
+- 10.09.24    - ReadTextureData - Create a local OpenGL texture\
+      Read back in the required format\
+      Destructor - specify sender only for name release
+- 21.09.24	- Revise ReadTextureData for buffer pitch, format and type\
+			  Replace ReadTexturePixels with ReadTextureData\
+			  Revise code comments for ReadTextureData
+- 23.09.24	- LoadTetxurePixels - independent pbos and indices\
+			  ReadTextureData - allow zero argument row pitch for RGB/RGBA
+- 25.09.24	- Test with all texture formats. Revise code comments.
+- 01.10.24	- Revise ReadTextureData\
+			  Check that the source texture format matches the pixel data type\
+			  Specify correct format for glReadPixels and glGetTexImage\
+			  CleanupInterop - remove warning if already released
+- 02.10.24	- InitTexture - internal texture format GL_RGBA8
+- 07.10.24	- Remove unused flags m_bMirror and m_bSwapRB
+- 08.10.24	- Initialize OpenGL version class variable in constructor\
+			  Add GetGLversion()
+
+SpoutGLextensions.cpp
+- 28.09.24	- SpoutGLextensions.h - add #define GL_TEXTURE_SWIZZLE_RGBA
+- 22.10.24	- Add glIsMemoryObjectEXT, glCreateBuffers
+
+SpoutReceiver.cpp
+- 21.09.24	-Add ReadTextureData
+
+SpoutSender.cpp
+- 21.09.24	-Add ReadTextureData
+
+SpoutSendernames.cpp
+
+SpoutSharedMemory.cpp
+
+SpoutUtils.cpp
+- 10.09.24 - ReadPathFromRegistry -\
+   "valuename" argument can be null for the(Default) key string
+- 06.10.24 - OpenSpoutConsole, EnableSpoutLog - add optional title argument
+- 22.12.24 - Remove MB_USERBUTTON. Use TDbuttonID.size() instead.\
+   SpoutMessageBoxModeless bool instead of void
+- 07.01.25 - GetExePath - add option for full path with executable name
+- 13.01.25 - Add #standalone define in SpoutUtils.h
+- 18.01.25 - Rename "#standalone" to "#standaloneUtils" to avoid naming conflicts
+- 01.02.25 - Add GetSpoutVersion\
+   OpenSpoutLogs - use _getLogPath\
+   GetSpoutLog - use _getLogFilePath
+- 02.02.25 - GetSDKversion - optional return integer version number\
+   GetSpoutVersion - get the user Spout version string from the registry\
+   optional return integer version number
+- 09.02.25 - Remove debug comments for MB_USERBUTTON (no longer used)
+- 17.02.25 - Adjust combo box width to the longest item string
+   Use CBS_DROPDOWNLIST style for list only
+
+
+===========================================\
+27.08.24\
+Update Master from Beta branch.
+
+Version 2.007.015
+
+1) Additional libraries
+    - SpoutDX12 and SpoutDX9 libraries included in CMake build
+2) Library example
+    - New Tutorial04_Lib example for using libraries
+	- Revise readme files
+3) SpoutDX example solution
+    - New SpoutDX Example.sln to build all SpoutDX examples
+	- Revise source and readme files
+	- Executable files copied to a Binaries/Examples folder
+4) OpenGL examples
+    - Windows
+     -- Basic Windows OpenGL examples without library dependency
+    - Openframeworks
+      -- "CopySource.bat" for easy selection and copy of example source files
+    - MSbuild to automate build
+      -- build.bat - build current example
+	  -- build-all.bat - build all examples
+	  -- Executable files copied to a Binaries folder
+	  -- Separate documentation
+
+Spout.cpp
+- 13.06.24	- SelectSender - open SpoutMessagebox for no senders.
+			  Add OK/CANCEL and test for empty senderlist.
+- 21.06.24	- Add GetSenderIndex
+			  Modify SelectSender to show the active sender as current
+- 03.07.24	- SelectSender - pass hWnd to SpoutPanel command line
+			  for it to open centred on the window
+- 04.07.24	- CheckSpoutPanel - allow for use of SpoutMessageBox
+- 15.07.24	- SelectSender - after cast of window handle to long 
+			  convert to a string of 8 characters without new line
+- 16.07.24	- Add receiver ID3D11Texture2D* GetSenderTexture()
+- 21.08.24	- SetPerformancePreference - remove null path test
+- 23.08.24	- SelectSender - if no SpoutPanel and SpoutMessageBox is used :
+			  test for successful open of the sender share handle
+			   - Warn if NT share handle
+			   - Warn for open failure
+			   - Allow setting preferences for laptop
+			   - Allow sender adapter test for desktop
+			   - Refer to Spout settings if no resolution or a desktop system
+			  Also warn in SpoutPanel
+
+SpoutCopy.cpp
+- 19.06.24 - Add ClearAlpha
+
+SpoutDirectX.cpp
+
+SpoutFrameCount.cpp
+- 04.07.24	- SetNewFrame - add m_hCountSemaphore to initial check
+
+SpoutGL.cpp
+- 26.06.14	- Restore LoadTexturePixels for 20% speed gain
+
+SpoutGLextensions.cpp
+
+SpoutReceiver.cpp
+
+SpoutSender.cpp
+
+SpoutSendernames.cpp
+- 20.06.24 - Add GetSenderIndex
+- 23.08.24 - GetSenderInfo, SetSenderID - initialize SharedTextureInfo
+
+SpoutUtils.cpp
+- 14.06.24 - SpoutUtils.h - PR #114
+		     Correct conditional definition of EndTiming in header file
+		     Allow mingw to define USE_CHRONO if available
+		     Include <math.h> to fix mingw build
+- 01.07.24 - Increase SpoutMessageBox combo width for NDI sender names
+		     Add "SpoutMessageBoxModeless" to warning caption if SpoutPanel not found
+- 02.07.24 - Add SpoutMessageBoxPosition
+- 09.07.24 - TDcallbackProc TDN_CREATED : common rect and coordinates
+- 15.07.24 - Update Spout SDK version
+- 24.07.24 - SpoutMessageBoxModeless - add code comments for SpoutPanel version
+- 06.08.24 - SpoutMessageBox - show initial content in edit box control
+- 08.08.24 - SpoutMessageBox - removed unused WS_HSCROLL in edit box control
+- 10.08.25 - SpoutMessageBox - select all text in the combobox edit field
+- 11.08.24 - Add CBS_HASSTRINGS style to combobox and detect CB_ERR.
+- 16.08.22 - ExecuteProcess, SpoutMessageBoxIcon return conditional value
+			 to avoid warning C4800: 'BOOL': forcing value to bool 'true' or 'false'
+		   - GetSpoutLog - remove null argument check for use of existing log path
+- 20.08.24 - GetSpoutLog - add check for empty filepath
+
+===========================================\
+12.06.24\
+Update Master from Beta branch.
+
+Version 2.007.014
+
+Spout.cpp
+- 14.01.24	- CheckSender - return false if OpenSpout fails
+- 13.02.24	- SelectSenderPanel
+ 			  m_ShExecInfo.lpParameters : receiver graphics adapter index by default
+- 19.04.24	- SelectSenderPanel - allow for unicode build for PROCESSENTRY32
+- 24.04.24	- ReceiveImage - allow for multiple OpenGL formats
+- 06.05.24	- SelectSenderPanel - removed unused "value" variable
+- 21.05.24	- SetSenderName - move sender name increment to SenderNames class
+- 22.05.24	- Add GetReceiverName
+			  CheckSpoutPanel - do not to register twice if already registered
+- 25.05.24	- SetSenderName - remove name increment
+- 08.06.24	- Add GetSenderList
+- 09.06.24	- SelectSender - use SpoutMessageBox if SelectSenderPanel fails
+			  Add hwnd argument to centre MessageBox dialog if used. 
+
+SpoutCopy.cpp
+
+SpoutDirectX.cpp
+- 18.02.24	- GetNumAdapters
+		    Change adapter pointer to IDXGIAdapter1 and use EnumAdapters1
+		    to identify and skip the Basic Render Driver adapter
+
+SpoutFrameCount.cpp
+- 31.12.23	- Add comments to clarify the purpose of "EnableFrameSync"
+
+SpoutGL.cpp
+- 26.02.24	- CreateInterop - check for dimensions out of bounds (> 16384)
+- 06.03.24	- GLerror - add error number
+- 03.04.24	- Add ReadTexturePixels for multiple format and RGB/RGBA textures
+- 08.04.24	- ReadTexturePixels - check OpenGL texture size and return if different
+			  PrintFBOstatus - no warning if complete
+			  InitTexture - corrected internal format
+			  CreateOpenGL - report version created
+- 25.04.24	- Correct GLDXformat for default GL_RGBA
+- 26.04.24	- GLformatName - revise names
+- 06.05.24	- Add more logs for wglDX function failure
+
+SpoutGLextensions.cpp
+- 29.03.24	- Correct glUnmapBufferPROC as Glboolean
+			  Correct glGenBuffersPROC - GLuint* buffers
+- 19.04.24	- Add #ifndef for pre-defined constants WGL_CONTEXT_FLAGS
+			  and GL consts that are not present in GL.h
+
+SpoutReceiver.cpp
+- 22.05.24	- Add GetReceiverName
+- 08.06.24	- SelectSender - bool instead of void
+			- Add GetSenderList
+- 09.06.24	- SelectSender > spout SelectSender instead of SelectSenderPanel
+			  Add hwnd argument to centre MessageBox dialog if used.
+
+SpoutSender.cpp
+
+SpoutSenderNames.cpp
+- 21.05.24 - RegisterSenderName - increment existing sender name
+		   CreateSender/RegisterSenderName remove const for name
+- 22.05.24 - RegisterSenderName add newname condition for name increment
+	
+SpoutSharedMemory.cpp
+
+SpoutUtils.cpp
+- 28.12.23 - SpoutMessageBox - add MB_RIGHT for right aligned text
+- 11.03.24 - Add MessageBox dialog with an edit control for text input
+		    Add MessageBox dialog with a combo box control for item selection
+			Update Taskdialog callback to create the controls and return input
+- 19.03.24 - Add icon/button option for variable arguments
+- 29.03.24 - Correct ReadPathFromRegistry definition for default size argument
+		    Correct EndTiming definition for microseconds argument
+
+SpoutDX.cpp
+02.01.24	- ReadPixelData - wait for command completion using FlushWait
+06.03.24	- SetReceiverName - clear the receiver name if null passed
+13.04.24	- Add SpoutMessageBox functions for dll access
+25.04.24	- Correct SpoutMessageBox(const char* caption, UINT uType, const char* format)
+			to apps though uType
+21.05.24	- CheckSenderFormat remove const from name argument
+22.05.24	  CheckSpoutPanel - Register sender only if not already registered
+23.05.24	- ReadPixelData/ReadTexurePixels - use global m_bSwapRB flag instead of false
+			ReadPixelData - RGBA and BGRA texture data to BGR pixels default, RGB for swap
+25.05.24	- Add SetMirror/SetSwap/GetMirror/GetSwap for SpoutCam instead of using globals directly
+
+
+ofSpoutExample
+	Add utilities sender example
+	
+===========================================\
+25.12.23\
+Update Master from Beta branch.
+
+Version 2.007.013
+
+Spout.cpp
+- 09.10.23 - SelectSenderPanel -if SpoutPanel.exe is not found
+  show a SpoutMessageBox with Spout releases page url
+- 18.10.23 - ReceiveSenderData - check for texture format supported
+  by OpenGL/DirectX interop
+- 07.12.23 - use _access in place of shlwapi Path functions
+Version 2.007.013
+
+SpoutCopy.cpp
+- 07.10.23 - Conditional compile options for _M_ARM64 in CheckSSE and header
+- 20.10.23 - FlipBuffer / CopyPixels - default pitch width*4
+Version 2.007.013
+
+SpoutDirectX.cpp
+- 07.08.23 - Comment out code for debug layers
+- 19.10.23 - GetNumAdapters - remove unused adapter description and output list
+Version 2.007.013
+
+SpoutFrameCount.cpp
+- 03.08.23	- EnableFrameCount, CreateAccessMutex - revise logs
+- 06.08.23	- Add m_SystemFps to avoid repeated calls to GetRefreshRate()
+- 07.08.23	- Add EnableFrameSync/IsFrameSyncEnabled and global option flag
+EnableFrameCount
+- 08.08.23	- correct semaphore name
+EnableFrameSync - close sync event on disable
+- 09.08.23	- WaitFrameSync remove warning log if event not found
+ Change timeout log from error to warning
+- 13.08.23	- EnableFrameCount - correct semaphore name
+Version 2.007.013
+
+SpoutGL.cpp
+- 01.11.23 - CreateInterop - correct uint printf formatting for error message
+  Avoid repeats if interop failure flag is set. Cleared by CleaunpInterop.
+- 30.11.23 - ReadMemoryTexture - remove new frame test
+- 07.12.23 - DoDiagnostics - use spoututils GetExeName
+- 08.12.23 - Remove DXGI_FORMAT_UNKNOWN from DX11format GL>DX11 conversion function
+ Use default DXGI_FORMAT_B8G8R8A8_UNORM
+- 14.12.23 - WriteGLDXpixels - return WriteGLDXtexture instead of true
+ CreateOpenGL return false if extensions fail to load
+Version 2.007.013
+
+SpoutGLextensions.cpp
+- 24.07.23	- Add glMemoryObjectParameterivEXT
+- 30.07.23	- Add GL_RGBA16F, GL_RGB16F, GL_RGBA32F, GL_RGB32F
+- 31.07.23	- Add defines GL_IMPLEMENTATION_COLOR_READ_TYPE, GL_IMPLEMENTATION_COLOR_READ_FORMAT
+- 02.08.23	- Add glGetTextureParameteriv
+- 21.11.23	- Add defines for : GL_MAX_COMPUTE_WORK_GROUP_COUNT, GL_MAX_COMPUTE_WORK_GROUP_SIZE
+  GL_ATTACHED_SHADERS, GL_INFO_LOG_LENGTH
+  Add glGetProgramInfoLog, glGetShaderInfoLog, glGetIntegeri_v
+Version 2.007.013
+
+SpoutReceiver.cpp
+- 04.08.23 - Add format functions
+- 07.08.23 - Add frame sync option functions 
+Version 2.007.013
+
+SpoutSender.cpp
+- 04.08.23 - Add format functions
+- 07.08.23 - Add frame sync option functions
+Version 2.007.013
+
+SpoutSenderNames.cpp
+- 07.10.23 - Conditional compile options for _M_ARM64\
+ Moved additonal includes from cpp to header
+- 28.10.23 - SetSenderInfo - use QueryFullProcessImageNameA
+- 07.12.23 - SetSenderInfo - use spoututils GetEexePath()\
+ Remove unused d3d9.h and d3d11.h from header
+- 16.12.23 - SetSenderInfo - correct buffer size for GetModuleFileNameA
+Version 2.007.013
+	
+SpoutSharedMemory.cpp
+- 07.12.23 - Remove unused <d3d9.h> from header
+Version 2.007.013
+
+SpoutUtils.cpp
+- 01.08.23 - Add MessageTaskDialog instead of dependence on SpoutPanel
+- 04.08.23 - const WCHAR* in MessageTaskDialog
+- 13.08.23 - MessageTaskDialog - remove MB_TOPMOST
+- 20.08.23 - Change TaskdialogcallbackProc to TDcallbackProc to avoid naming conflicts
+- 21.08.23 - MessageTaskDialog - Restore topmost function\
+  Change bTopmost to bTopMost to avoid naming conflicts
+- 23.08.23 - MessageTaskDialog - Fixed topmost recover for calling application
+- 26.08.23 - PFTASKDIALOGCALLBACK cast for TDcallbackProc
+- 04.09.23 - MessageTaskDialog - add MB_ICONINFORMATION option. Default no icon.\
+  Add MB_ICONSTOP and MB_ICONHAND. MB_TOPMOST flag removal only if specified.
+- 05.09.23 - Add SpoutMessageBoxIcon for custom icon
+- 07.09.23 - Add round to ElapsedMicroseconds
+- 08.09.23 - Check TDN_CREATED for taskdialog topmost
+- 11.09.23 - MessageTaskDialog - correct button and icon type detection\
+  Allow for NULL caption
+- 12.09.23 - Add SpoutMessageBox overload including main instruction large text\
+  Correct missing SPOUT_DLLEXP for SpoutMessageBox standard function
+- 12.10.23 - Add SpoutMessageBoxButton and CopyToClipBoard
+- 20.10.23 - Add OpenSpoutLogs to open Spout log folder in Windows explorer
+- 20-11-23 - OpenSpoutLogs() - allow for getenv if not Microsoft compile (PR #105)
+- 22-11-23 - Remove unused buffer length argument from _dupenv_s
+- 01.12.24 - Update Version to "2.007.013"
+- 07.12.23 - Remove SPOUT_DLLEXP from private MessageTaskDialog\
+  Use _access and string find in place of shlwapi path functions
+  Add GetExePath, GetExeName, RemovePath\
+  Revise : _getLogPath(), _getLogFilePath, _logtofile,\
+  EnableSpoutLog, EnableSpoutLogFile, ShowSpoutLogs,\
+  OpenSpoutConsole, GetNVIDIAmode, SetNVIDIAmode
+- 08.12.23 - #ifdef _MSC_VER for linker manifestdependency pragma comment\
+  MessageTaskDialog - correct topmost if a second dialog is opened
+- 15.12.23 - Change to #ifdef _WINDOWS for linker manifestdependency pragma comment\
+  Conditional compile of TaskDialogIndirect for _WINDOWS.\
+  MessageBoxTimeoutA for other compilers.
+- 16.12.23 - Replace #define _WINDOWS with _MSC_VER for conditional compile for Visual Studio\
+  MessageTaskDialog - first argumnent HWND instead of HINSTANCE\
+  SpoutMessageBox - pass in hwnd to MessageTaskDialog\
+  Add TDF_POSITION_RELATIVE_TO_WINDOW to TaskDialogIndirect config flags\
+  TaskDialogIndirect centers on the window if hwnd passed in or the monitor if NULL\
+- 20.12.23 - Remove GetNVIDIAmode, SetNVIDIAmode\
+  ExecuteProcess - use ShellExecuteEx instead of CreateProcess\
+  Add SpoutMessageBoxModless\
+  Restore modeless SpoutMessageBox functionality using SpoutPanel, > v2.72 required.\
+  Call MessageTaskDialog directly in all SpoutMessageBox functions\
+  Use a custom icon if set for SpoutMessageBox functions that do not specify an icon\
+  Clear custom icon handle after TaskDialogIndirect exit\
+  Add SpoutMessageBoxWindow
+- 21.12.23 - Add std::string GetExeVersion()\
+  Revise SpoutMessageBoxModeless to test version of SpoutPanel > 2.072
+- 27.12.23 - Send OK button message to close taskdialog instead of DestroyWindow for URL click
+  Test for custom icon and multiple buttons in MessageTaskDialog
+Version 2.007.013
+				   
+===========================================\
+05.09.23\
+Update Master from Beta branch.
+
+    Version 2.007.012
+
+Spout.cpp
+- 03.08.23	- InitReceiver - set m_DX11format
+- 07.08.23	- Add frame sync option functions
+		   
+SpoutDirectX.cpp
+- 07.08.23	- Comment out code for debug layers
+
+SpoutFrameCount.cpp
+- 03.08.23	- EnableFrameCount, CreateAccessMutex - revise logs
+- 06.08.23	- Add m_SystemFps to avoid repeated calls to GetRefreshRate()
+- 07.08.23	- Add EnableFrameSync/IsFrameSyncEnabled and global option flag\
+		  EnableFrameCount - correct semapohore name
+- 08.08.23	- EnableFrameSync - close sync event on disable
+- 09.08.23	- WaitFrameSync remove warning log if event not found\
+		  Change timeout log from error to warning
+- 13.08.23	- EnableFrameCount - correct semaphore name
+
+SpoutGL.cpp
+- 24.07.23	- Remove  global m_bKeyed flag
+- 31.07.23	- Add OpenGL format functions
+- 04.08.23	- Remove unused compute shaders
+- 28.08.23	- UnloadTexturePixels public
+
+SpoutGLextensions.cpp
+- 24.07.23	- Add glMemoryObjectParameterivEXT
+- 30.07.23	- Add GL_RGBA16F, GL_RGB16F, GL_RGBA32F, GL_RGB32F
+- 31.07.23	- Add defines\
+		GL_IMPLEMENTATION_COLOR_READ_TYPE, GL_IMPLEMENTATION_COLOR_READ_FORMAT
+- 02.08.23	- Add glGetTextureParameteriv
+
+SpoutReceiver.cpp\
+SpoutSender.cpp
+- 04.08.23	- Add format functions
+- 07.08.23	- Add frame sync option functions
+
+SpoutUtils.cpp
+- 01.08.23 - Add MessageTaskDialog instead of dependence on SpoutPanel
+- 04.08.23 - const WCHAR* in MessageTaskDialog
+- 13.08.23 - MessageTaskDialog - remove MB_TOPMOST
+- 20.08.23 - Change TaskdialogcallbackProc to TDcallbackProc to avoid naming conflicts
+- 21.08.23 - MessageTaskDialog - Restore topmost function\
+	Change bTopmost to bTopMost to avoid naming conflicts
+- 23.08.23 - MessageTaskDialog - Fixed topmost recover for calling application
+- 26.08.23 - PFTASKDIALOGCALLBACK cast for TDcallbackProc
+- 04.09.23 - MessageTaskDialog - add MB_ICONINFORMATION option. Default no icon. Add MB_ICONSTOP and MB_ICONHAND. MB_TOPMOST flag removal only if specified.
+- 05.09.23 - Add SpoutMessageBoxIcon for custom icon
+
+============================================\
+23.07.23\
+Update Master from Beta branch.
+
+    Version 2.007.011
+
+Spout.cpp
+- 22.04.23	- Minor code comments cleanup
+- 29.04.23	- ReceiveSenderData - test for incorrect sender dimensions
+- 07.05.23	- CheckSender - release interop device and object to re-create
+- 17.05.23	- ReleaseSender - add m_bInitialized = false and remove from SpoutGL::GleanupG
+- 18.05.23	- ReleaseSender - clear m_SenderName
+- 28.06.23	- Remove bDX9 option from GetAdapterInfo
+- 03.07.23	- CreateReceiver - remove unused bUseActive flag and UNREFERENCED_PARAMETER (#PR93  Fix MinGW error(beta branch)
+- 22.07.23	- ReceiveSenderData - ensure m_pSharedTexture is null if OpenSharedResource failed.
+
+SpoutCopy.cpp
+- 17.04.23 - Add rgba_to_rgb_sse and rgba_to_bgr_sse
+- 18.04.23 - Rename to rgba_to_rgb_sse3 and rgba_to_bgr_sse3. Add bSwapRG to rgba_to_rgb_sse3. Remove rgba_to_bgr_sse3. Add experimental rgb_to_bgra_sse3
+		   
+SpoutDirectX.cpp
+- 24.04.23	- Remove const from 1st arg of ReleaseDX11Texture, ReleaseDX11Device and DebugLog to enable debugging via SDK Layers. ReleaseDX11Device check for release of class device and null the pointer. ReleaseDX11Texture log notice if no outstanding refcount. DebugLog - clean up and add code comments. All object releases - flush context to avoid deferred destruction
+- 28.04.23	- Release d3dInfoQueue in DebugLog
+- 17.05.23	- Add ClearState to FlushWait
+- 18.05.23	- Add Flush() function
+- 22.05.23	- CloseDirectX11 - release immediate context before device. OpenDX11shareHandle - catch OpenSharedResource exeption before testing result
+- 05.06.23	- Allow feature level 11.1 in CreateDX11device. Update logs in ReleaseDX11Texture for refcount
+- 09.06.23	- Add GetDX11FeatureLevel for development
+- 16.06.23	- CreateDX11device - allow for D3D_FEATURE_LEVEL_11_1. CreateSharedDX11Texture - add NT handle argument for development. OpenDirectX11 Save global m_featureLevel for external device. Create ID3D11Device1 and ID3D11DeviceContext1 for D3D_EATURE_LEVEL_11_1. ReleaseDX11Device - release ID3D11Device1 and ID3D11DeviceContext1 if created
+
+SpoutFrameCount.cpp
+- 24.04.23	- Replace m_bDisabled with m_bCountDisabled
+- 03.07.23	- EnableFrameCount, CreateAccessMutex - add detail to logs
+
+SpoutGL.cpp
+- 15.03.23	- If no new sender frame, return true and do not block for all receiving functions to avoid un-necessary Acquire/Release/Lock/Unlock
+- 22.04.23	- Add compute shader utility for OpenGL texture copy. CreateInterop - delete m_glTexture before creating new 
+- 04.05.23	- CopyTexture - detach textures from fbo. Blit method only for texture invert.
+- 07.05.23	- CreateOpenGL - load extensions.
+- 17.05.23	- Remove "m_bInitialized = false" check from CleanupGL and put in release functions
+- 18/05.23	- CleanupGL - Remove m_SenderName clear. Unbind textures before CleanupInterop
+- 19.05.23	- Add GetInteropObject() and GetDXsharedTexture() 
+- 22.05.23	- Remove CleanupInterop from within CleanupGL and use as separate functions
+- 07.06.23	- UnloadTexturePixels - specify number of PBOs created in log
+- 09.06.23	- Use glCopyImageSubData for CopyTexture if no invert
+- 22.06.23	- CreateComputeCopyShader adjust Y workgroup number for aspect ratio
+- 03.07.23	- CreateInterop - code cleanup ReadTextureData - change cast (#PR93)
+- 06.07.23	- Code cleanup
+- 13.07.23	- Make InitTexture public
+- 17.07.23	- CopyTexture - remove glCopyImageSubData due to format limitations. Add SwapRGB utility
+- 18.07.23	- Make GLerror() public
+- 22.07.23	- Some extra checks for null m_pSharedTexture for a receiver
+
+SpoutGLextensions.cpp
+- 20.04.23	- Add compute shader extensions
+- 22.04.23	- Correct EXT_LOG prefix for standalone in ExtLog function
+- 24.04.23	- Add glGetTexParameteriv and glTextureStorage2D
+- 04.05.23	- Define GL_BGRA in case it is used
+- 09.05.23	- Add memory object extensions
+- 16.06.23	- Add glTextureStorageMem2DEXT
+- 24.06.23	- Add glUniform1f
+- 14.07.23	- Add glMemoryBarrier
+- 21.07.23	- Add glGetMemoryObjectParameterivEXT
+
+SpoutReceiver.cpp
+- 06.07.23	- Remove bUseActive from 2.006 CreateReceiver
+
+SpoutSenderNames.cpp
+- 13.07.23 - setActiveSenderName - close any existing active sender map
+
+SpoutSharedMemory.cpp
+- 12.05.23 - Create and Open - Clear ERROR_ALREADY_EXISTS to avoid detection elsewhere.
+
+SpoutUtils.cpp
+- 14.04.23 - Update SDKversion to 2.007.011
+- 24.04.23 - GetTimer - independent start and end variables startcount/endcount
+- 09.05.23 - Yellow console text for warnings and errors
+- 17.05.23 - Set console title to executable name
+- 04-07-23 - _getLogPath() - allow for getenv if not Microsoft compiler (PR #95)
+
+CmakesList.txt - Spout, SpoutGL and SpoutDX
+- Modifications for MINGW build (PR#93-vkedwardli)
+
+===================================\
 07-04-23\
 Update Master from Beta branch.\
 - Version 2.007.010
 
 Cumulative update.
+
 Spout.cpp
-06.01.23 - UIntToPtr for cast of uint32_t to HANDLE
+- 06.01.23 - UIntToPtr for cast of uint32_t to HANDLE
 cast unsigned int array for glGetIntegerv instead of result
 Avoid c-style cast where possible
-08.01.23 - Code review - Use Microsoft Native Recommended rules
-08.03.23 - GetSenderAdapter use SetAdpater instead of SetAdapterPointer
-21.03.23 - ReceiveSenderData - use the format of the D3D11 texture generated
+- 08.01.23 - Code review - Use Microsoft Native Recommended rules
+- 08.03.23 - GetSenderAdapter use SetAdpater instead of SetAdapterPointer
+- 21.03.23 - ReceiveSenderData - use the format of the D3D11 texture generated
 by OpenDX11shareHandle for incorrect sender information.
+
 SpoutCopy.cpp
-02-04-23 - Corrected source pointer increment in rgba2rgba when not inverted
+- 02-04-23 - Corrected source pointer increment in rgba2rgba when not inverted
+
 SpoutDirectX.cpp
-06.01.23 - Correct IsPreferenceAvailable() to pass array length to registry function
-08.01.23 - CreateSharedDX11Texture - option for keyed shared texture
-18.03.23 - CreateDX11StagingTexture - use default DX11 format for zero or DX9 forma
+- 06.01.23 - Correct IsPreferenceAvailable() to pass array length to registry function
+- 08.01.23 - CreateSharedDX11Texture - option for keyed shared texture
+- 18.03.23 - CreateDX11StagingTexture - use default DX11 format for zero or DX9 forma
+
 SpoutFrameCount.cpp
-06.01.23 - CheckKeyedAccess - switch on hr to avoid narrowing cast to DWORD
+- 06.01.23 - CheckKeyedAccess - switch on hr to avoid narrowing cast to DWORD
 Avoid c-style cast where possible
-08.01.23 - CheckTextureAccess/AllowTextureAccess 
+- 08.01.23 - CheckTextureAccess/AllowTextureAccess 
 remove texture check for default null texture
 Code review - Use Microsoft Native Recommended rules
-19.03.23 - WaitFrameSync - do not block if the sender has not created a sync event
-SpoutGLextemsions.cpp
-20.01.23 - Changes to gl definitions for compatibility with Glew
-15.02.23 - SpoutGLextensions.h
-Correct glUnmapBufferPROC from void to GLboolean
-Correct glGenBuffersPROC buffers arg from const
+- 19.03.23 - WaitFrameSync - do not block if the sender has not created a sync event
+
+SpoutGLextensions.cpp
+- 20.01.23 - Changes to gl definitions for compatibility with Glew
+- 15.02.23 - SpoutGLextensions.h
+Correct glUnmapBufferPROC from void to GLboolean. Correct glGenBuffersPROC buffers arg from const
+
 SpoutSenderNames.cpp
-06.01.23 - GetActiveSender, getActiveSenderName, FindActiveSender 
+- 06.01.23 - GetActiveSender, getActiveSenderName, FindActiveSender 
 Change from fixed sendername argument to maxlength (default SpoutMaxSenderNameLen)
-08.01.23 - FindActiveSender - test max length passed
+- 08.01.23 - FindActiveSender - test max length passed
 Code review - Use Microsoft Native Recommended rules
+
 SpoutSharedMemory.cpp
-07.01.23 - Change m_pName from const char* to char* for strdup
+- 07.01.23 - Change m_pName from const char* to char* for strdup
+
 SpoutUtils.cpp
-14.01.23 - OpenSpoutConsole - add MessageBox warning if using a dll
+- 14.01.23 - OpenSpoutConsole - add MessageBox warning if using a dll
 EnableSpoutLog - open console rather than call OpenSpoutConsole
-15.01.23 - Use SpoutMessageBox so it doesn't freeze the application GUI
-16.01.23 - Add SpoutMessageBox caption
-17.01.23 - Add SpoutMessageBox with variable arguments
+- 15.01.23 - Use SpoutMessageBox so it doesn't freeze the application GUI
+- 16.01.23 - Add SpoutMessageBox caption
+- 17.01.23 - Add SpoutMessageBox with variable arguments
 Add ConPrint for SpoutUtils console (printf replacement)
 Remove dll build warning MessageBox.
 Change "ConPrint" to "_conprint" and use Writefile instead of cout.
-18.01.23 - _conprint - cast WriteFile size argument to DWORD
-19.03.23 - Update SDKversion to 2.007.010	
+- 18.01.23 - _conprint - cast WriteFile size argument to DWORD
+- 19.03.23 - Update SDKversion to 2.007.010	
+
 SpoutDX.cpp
-08.01.23 - Add SpoutUtils functions
-23.01.23 - CheckSender - Flush after shared texture release
-17.03.23 - ReceiveSenderData - if there is a valid D3D11 format, use it.
-18.03.23 - CreateDX11StagingTexture - use default DX11 format for zero or DX9 formats
-19.03.23 - Remove redundant CreateDX11StagingTexture and use SpoutDirectX function
+- 08.01.23 - Add SpoutUtils functions
+- 23.01.23 - CheckSender - Flush after shared texture release
+- 17.03.23 - ReceiveSenderData - if there is a valid D3D11 format, use it.
+- 18.03.23 - CreateDX11StagingTexture - use default DX11 format for zero or DX9 formats
+- 19.03.23 - Remove redundant CreateDX11StagingTexture and use SpoutDirectX function
 ReceiveSenderData - create a DX11 receiving texture with compatible format for unknown or DX9 formats.
-21.03.23 - ReceiveSenderData - revert to using the format of the D3D11 texture
+- 21.03.23 - ReceiveSenderData - revert to using the format of the D3D11 texture
 generated by OpenDX11shareHandle for incorrect sender information.		   
+
 SpoutLibrary.cpp
-17.03.23 - SpoutLibrary.h - add redefinitons to avoid include of GL.h 
-Spout.cpp ReceiveSenderData - if there is a valid D3D11 format, use it.
-18.03.23 - For MingW compatibility remove old style include guard from header
+- 17.03.23 - SpoutLibrary.h - add redefinitons to avoid include of GL.h 
+
+Spout.cpp
+-  ReceiveSenderData - if there is a valid D3D11 format, use it.
+- 18.03.23 - For MingW compatibility remove old style include guard from header
 Test for _MSC_VER for pragma warnings in header
 Test for NTDDI_WIN10_RS4 define for graphics preferences
-07.04.23   Rebuild with SDK version 2.007.010 - release VS2022 - 32/64 bit /MD
+- 07.04.23   Rebuild with SDK version 2.007.010 - release VS2022 - 32/64 bit /MD
 
 ===================================
 05-01-23\
