@@ -216,8 +216,11 @@
 //		22.05.26	- Add CreateGLversion - create OpenGL of specified version
 //		04.07.26	- GLDXformat - cast d3dformat switch to int to avoid
 //					  different enum warning. Check that enum values are unique.
-//		16.07.26 - move using namespace spoututils from header to class file
+//		16.07.26	- move using namespace spoututils from header to class file
 //  Version 2.007.018
+//		32.10.16	- Increase buffer size from 128 to 1024 for sprintf_s throughout
+//					  in line with SpoutUtils _dolog to avoid overflow error
+//					  (LinkGLDXtextures Issue #145)
 //
 // ====================================================================================
 //
@@ -972,8 +975,8 @@ bool spoutGL::CreateOpenGL(HWND hwnd)
 		const DWORD dwError = GetLastError();
 		// 2000 (0x7D0) The pixel format is invalid.
 		// Caused by repeated call of the SetPixelFormat function
-		char temp[128]={};
-		sprintf_s(temp, "spoutGL::CreateOpenGL - SetPixelFormat Error %lu (0x%4.4lX)", dwError, dwError);
+		char temp[1024]={};
+		sprintf_s(temp, 1024, "spoutGL::CreateOpenGL - SetPixelFormat Error %lu (0x%4.4lX)", dwError, dwError);
 		SpoutLogError("%s", temp);
 		CloseOpenGL();
 		return false;
@@ -1079,8 +1082,8 @@ bool spoutGL::CreateGLversion(HWND hwnd, double version)
 		const DWORD dwError = GetLastError();
 		// 2000 (0x7D0) The pixel format is invalid.
 		// Caused by repeated call of the SetPixelFormat function
-		char temp[128]{};
-		sprintf_s(temp, "spoutGL::CreateGLversion - SetPixelFormat Error %lu (0x%4.4lX)", dwError, dwError);
+		char temp[1024]{};
+		sprintf_s(temp, 1024, "spoutGL::CreateGLversion - SetPixelFormat Error %lu (0x%4.4lX)", dwError, dwError);
 		SpoutLogError("%s", temp);
 		CloseOpenGL();
 		return false;
@@ -1500,8 +1503,8 @@ bool spoutGL::CreateInterop(unsigned int width, unsigned int height, DWORD dwFor
 				if (m_pSharedTexture) m_pSharedTexture->Release();
 				m_pSharedTexture = nullptr;
 				m_dxShareHandle = nullptr;
-				char tmp[256]{};
-				sprintf_s(tmp, 256, "spoutGL::CreateInterop - sender CreateSharedDX11Texture failed (%ux%u format 0x%X)",
+				char tmp[1024]{};
+				sprintf_s(tmp, 1024, "spoutGL::CreateInterop - sender CreateSharedDX11Texture failed (%ux%u format 0x%X)",
 					width, height, format);
 				SpoutLogFatal(tmp);
 				// Set interop failure flag to avoid repeats (cleared in CleaunpInterop)
@@ -1582,7 +1585,7 @@ HANDLE spoutGL::LinkGLDXtextures(void* pDXdevice, void* pSharedTexture,  GLuint 
 
 	HANDLE hInteropObject = nullptr;
 	DWORD dwError = 0;
-	char tmp[128]={};
+	char tmp[1024]={};
 
 	SpoutLogNotice("spoutGL::LinkGLDXtextures - device 0x%X, texture 0x%X, GL texture %d",
 		PtrToUint(pDXdevice), PtrToUint(pSharedTexture), glTexture);
@@ -1612,25 +1615,25 @@ HANDLE spoutGL::LinkGLDXtextures(void* pDXdevice, void* pSharedTexture,  GLuint 
 	// Report the error if wglDXOpenDeviceNV failed
 	if (!m_hInteropDevice) {
 		dwError = GetLastError();
-		sprintf_s(tmp, 128, "spoutGL::LinkGLDXtextures : wglDXOpenDeviceNV(0x%.7X) no Interop device - error %lu (0x%.X)\n",
+		sprintf_s(tmp, 1024, "spoutGL::LinkGLDXtextures : wglDXOpenDeviceNV(0x%.7X) no Interop device - error %lu (0x%.X)\n",
 			LOWORD(pDXdevice), dwError, LOWORD(dwError));
 		// Other errors reported
 		// 1008, 0x3F0 - ERROR_NO_TOKEN
 		switch (LOWORD(dwError)) {
 		case 0:
-			strcat_s(tmp, 128, "    No error");
+			strcat_s(tmp, 1024, "    No error");
 			break;
 		case ERROR_OPEN_FAILED:
-			strcat_s(tmp, 128, "    Could not open the Direct3D device.");
+			strcat_s(tmp, 1024, "    Could not open the Direct3D device.");
 			break;
 		case ERROR_NOT_SUPPORTED:
 			// This can be caused either by passing in a device from an unsupported DirectX
 			// version, or by passing in a device referencing a display adapter that is
 			// not accessible to the GL.
-			strcat_s(tmp, 128, "    The dxDevice is not supported.");
+			strcat_s(tmp, 1024, "    The dxDevice is not supported.");
 			break;
 		default:
-			strcat_s(tmp, 128, "    Unknown error.");
+			strcat_s(tmp, 1024, "    Unknown error.");
 			break;
 		}
 		SpoutLogError("%s", tmp);
@@ -1663,23 +1666,23 @@ HANDLE spoutGL::LinkGLDXtextures(void* pDXdevice, void* pSharedTexture,  GLuint 
 		// Error codes are 32-bit values, but expected results are in the low word.
 		// 006E is ERROR_OPEN_FAILED (110L)
 		dwError = GetLastError();
-		sprintf_s(tmp, 128, "spoutGL::LinkGLDXtextures - wglDXRegisterObjectNV :error %u, (0x%.X)\n",
+		sprintf_s(tmp, 1024, "spoutGL::LinkGLDXtextures - wglDXRegisterObjectNV :error %u, (0x%.X)\n",
 			LOWORD(dwError), LOWORD(dwError));
 		switch (LOWORD(dwError)) {
 		case 0:
-			strcat_s(tmp, 128, "    No error");
+			strcat_s(tmp, 1024, "    No error");
 		break;
 		case ERROR_INVALID_HANDLE:
-			strcat_s(tmp, 128, "    No GL context is current.");
+			strcat_s(tmp, 1024, "    No GL context is current.");
 			break;
 		case ERROR_INVALID_DATA:
-			strcat_s(tmp, 128, "    Incorrect GL name, type or access parameters.");
+			strcat_s(tmp, 1024, "    Incorrect GL name, type or access parameters.");
 			break;
 		case ERROR_OPEN_FAILED:
-			strcat_s(tmp, 128, "    Failed to open the Direct3D resource.");
+			strcat_s(tmp, 1024, "    Failed to open the Direct3D resource.");
 			break;
 		default:
-			strcat_s(tmp, 128, "    Unknown error.");
+			strcat_s(tmp, 1024, "    Unknown error.");
 			break;
 		}
 		SpoutLogError("%s", tmp);
@@ -3566,8 +3569,8 @@ bool spoutGL::OpenDeviceKey(const char* key, int maxsize, char* description, cha
 	DWORD dwSize = 0;
 	DWORD dwKey = 0;
 
-	char output[256]={};
-	strcpy_s(output, 256, key);
+	char output[1024]={};
+	strcpy_s(output, 1024, key);
 	const char *found = strstr(output, "System");
 	if (!found)
 		return false;
@@ -3593,7 +3596,7 @@ bool spoutGL::OpenDeviceKey(const char* key, int maxsize, char* description, cha
 		if (RegQueryValueExA(hRegKey, "DriverVersion", NULL, &dwKey, (BYTE*)output, &dwSize) == 0) {
 			// Find the last 6 characters of the version string then
 			// convert to a float and multiply to get decimal in the right place
-			sprintf_s(output, 256, "%5.2f", atof(output + strlen(output) - 6)*100.0);
+			sprintf_s(output, 1024, "%5.2f", atof(output + strlen(output) - 6)*100.0);
 			strcpy_s(version, (rsize_t)maxsize, output);
 		} // endif DriverVersion
 		RegCloseKey(hRegKey);
@@ -3621,30 +3624,30 @@ void spoutGL::trim(char* s) {
 
 void spoutGL::PrintFBOstatus(GLenum status)
 {
-	char tmp[256]={};
-	sprintf_s(tmp, 256, "FBO status error %u (0x%.7X) - ", status, status);
+	char tmp[1024]={};
+	sprintf_s(tmp, 1024, "FBO status error %u (0x%.7X) - ", status, status);
 	if (status == GL_FRAMEBUFFER_UNSUPPORTED_EXT)
-		strcat_s(tmp, 256, "GL_FRAMEBUFFER_UNSUPPORTED_EXT");
+		strcat_s(tmp, 1024, "GL_FRAMEBUFFER_UNSUPPORTED_EXT");
 	else if (status == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT)
-		strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT");
+		strcat_s(tmp, 1024, "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT");
 	else if (status == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT)
-		strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT");
+		strcat_s(tmp, 1024, "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT");
 	else if (status == GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT)
-		strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT - width-height problems?");
+		strcat_s(tmp, 1024, "GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT - width-height problems?");
 	else if (status == GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT)
-		strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT");
+		strcat_s(tmp, 1024, "GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT");
 	else if (status == GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT)
-		strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT");
+		strcat_s(tmp, 1024, "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT");
 	else if (status == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT)
-		strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT");
+		strcat_s(tmp, 1024, "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT");
 	else if (status == GL_INVALID_ENUM)
-		strcat_s(tmp, 256, "GL_INVALID_ENUM");
+		strcat_s(tmp, 1024, "GL_INVALID_ENUM");
 	else if (status == GL_FRAMEBUFFER_UNDEFINED_EXT)
-		strcat_s(tmp, 256, "GL_FRAMEBUFFER_UNDEFINED");
+		strcat_s(tmp, 1024, "GL_FRAMEBUFFER_UNDEFINED");
 	// else if (status == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT)
-		// strcat_s(tmp, 256, "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT\n");
+		// strcat_s(tmp, 1024, "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT\n");
 	if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
-		strcat_s(tmp, 256, "Unknown status code");
+		strcat_s(tmp, 1024, "Unknown status code");
 		// Additionally, if an error occurs, zero is returned.
 		SpoutLogError("%s", tmp);
 	}
