@@ -4,7 +4,7 @@
 
     Visual Studio using the Spout SDK
 
-	Copyright (C) 2015-2025 Lynn Jarvis.
+	Copyright (C) 2015-2026 Lynn Jarvis.
 
 	Spout 2.007
 	OpenFrameworks 11
@@ -35,7 +35,7 @@ void ofApp::setup(){
 	//
 
 	// Console window for when a console is not available (see main.cpp)
-	// In this example it is used to show a list of senders with left mouse click
+	// In this example it shows a list of senders with LEFT mouse click
 	OpenSpoutConsole();
 
 	// Logging (see sender example)
@@ -117,6 +117,7 @@ void ofApp::draw() {
 	//		bool IsConnected();
 	//
 
+	
 	/*
 	//
 	// Option 1 : Receive pixel data
@@ -125,6 +126,7 @@ void ofApp::draw() {
 	// Change it here for testing
 	GLint glformat = GL_RGBA;
 	if (receiver.ReceiveImage(myImage.getPixels().getData(), glformat)) {
+
 		// Update the receiving image if the received size has changed
 		if (receiver.IsUpdated()) {
 			g_SenderWidth = receiver.GetSenderWidth();
@@ -142,13 +144,13 @@ void ofApp::draw() {
 	}
 	*/
 
+	/*
 	//
 	// Option 2 : Receive texture
 	//
 	if (receiver.ReceiveTexture(myTexture.getTextureData().textureID, myTexture.getTextureData().textureTarget)) {
 		// Update the receiving texture if the sender name, size or format is different
 		if (receiver.IsUpdated()) {
-			
 			//
 			// Allocate or re-allocate the receiving texture
 			//
@@ -165,8 +167,11 @@ void ofApp::draw() {
 			myTexture.allocate(g_SenderWidth, g_SenderHeight, receiver.GLDXformat());
 			return; // Return now because the texture will empty
 		}
+
 		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
+
 	}
+	*/
 
 	/*
 	//
@@ -183,37 +188,67 @@ void ofApp::draw() {
 	}
 	*/
 
-	/*
 	//
 	// Option 4 : Receive an OpenGL shared texture to access directly.
 	//
-	// Only if compatible for GL/DX interop or else BindSharedTexture fails.
-	// For this example, copy from the shared texture. For other applications
-	// the texture binding may be used directly for rendering.
+	// For this example, either copy from the shared texture or use the shared
+	// texture binding to create an Openframeworks texture wrapper for rendering.
+	// Note: BindSharedTexture fails if the system is not GL/DX interop copmatible.
 	//
 	if (receiver.ReceiveTexture()) {
-
+		//
 		// IsUpdated() returns true if the sender has changed
 		// It is optional if accessing the sender texture directly
-		// Here the receiving texture size is retrieved for on-screen display
+		// Here the receiving texture is updated for copy
+		//
 		if (receiver.IsUpdated()) {
 			g_SenderWidth  = receiver.GetSenderWidth();
 			g_SenderHeight = receiver.GetSenderHeight();
+			// Allocate or re-allocate the Openframeworks texture for draw method 1
+			myTexture.allocate(g_SenderWidth, g_SenderHeight, receiver.GLDXformat());
 		}
+
+		/*
+		//
+		// Method 1
+		// Copy the shared OpenGL texture to an Openframeworks texture for draw
+		//
 		// Bind to get access to the shared texture
 		if (receiver.BindSharedTexture()) {
-			// Copy from the shared texture 
+			// Copy from the shared texture to the Openframeworks texture
 			receiver.CopyTexture(receiver.GetSharedTextureID(), GL_TEXTURE_2D,
 				myTexture.getTextureData().textureID,
 				myTexture.getTextureData().textureTarget,
 				g_SenderWidth, g_SenderHeight);
-			// Draw the Openframeworks texture
-			myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 			// Un-bind to release access to the shared texture
 			receiver.UnBindSharedTexture();
 		}
+		// Draw the Openframeworks texture
+		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
+		*/
+
+		//
+		// Method 2
+		//
+		// Access the shared OpenGL texture by using an Openframeworks
+		// texture wrapper rather than full copy using an FBO blit
+		// This is likely to be the fastest method
+		//
+		// Bind to get access to the shared texture
+		if (receiver.BindSharedTexture()) {
+			ofTexture tex{};
+			tex.setUseExternalTextureID(receiver.GetSharedTextureID());
+			ofTextureData& data = tex.getTextureData();
+			data.textureTarget = GL_TEXTURE_2D;
+			data.width  = data.tex_w = g_SenderWidth;
+			data.height = data.tex_h = g_SenderHeight;
+			data.tex_t  = data.tex_u = 1.0f;
+			tex.draw(0, 0, ofGetWidth(), ofGetHeight());
+			// Release access to the shared texture
+			receiver.UnBindSharedTexture();
+		}
+
 	}
-	*/
 
 	// On-screen display
 	// Space bar to disable
@@ -245,32 +280,36 @@ void ofApp::showInfo() {
 			str += " - ";
 			str += receiver.GLformatName(receiver.GLDXformat());
 		}
-		str += ")";
+		str += ") at ";
+		str += ofToString((int)roundf(ofGetFrameRate()));
+		str += " fps";
 		DrawString(str, 10, 20);
 
-		// Is the receiver using CPU sharing ?
-		if (receiver.GetCPUshare()) {
-			str = "CPU share";
+		// Graphics can still be incompatible if the user
+		// did not select "Auto" or "CPU" in SpoutSettings
+		if (!receiver.IsGLDXready()) {
+			str = "Graphics not compatible";
 		}
 		else {
-			str = "Texture share";
-			// Graphics can still be incompatible if the user
-			// did not select "Auto" or "CPU" in SpoutSettings
-			if (!receiver.IsGLDXready())
-				str = "Graphics not compatible";
-		}
-
-		// Applications < 2.007 will return no frame count information
-		// Frame counting can also be disabled in SpoutSettings
-		if (receiver.GetSenderFrame() > 0) {
-			str += " - fps ";
-			str += ofToString((int)roundf(receiver.GetSenderFps()));
-			str += " frame  ";
-			str += ofToString(receiver.GetSenderFrame());
-		}
-		else {
-			// Show Openframeworks fps
-			str += " - fps : " + ofToString((int)roundf(ofGetFrameRate()));
+			// Is the receiver using CPU sharing ?
+			if (receiver.GetCPUshare()) {
+				str = "CPU share";
+			}
+			else {
+				str = "Texture share";
+			}
+			// Applications < 2.007 will return no frame count information
+			// Frame counting can also be disabled in SpoutSettings
+			if (receiver.GetSenderFrame() > 0) {
+				str += " - fps ";
+				str += ofToString((int)roundf(receiver.GetSenderFps()));
+				str += " frame ";
+				str += ofToString(receiver.GetSenderFrame());
+			}
+			else {
+				// Show Openframeworks fps
+				str += " - fps : " + ofToString((int)roundf(ofGetFrameRate()));
+			}
 		}
 		DrawString(str, 10, 40);
 

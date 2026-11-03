@@ -44,5 +44,4 @@ class ofApp : public ofBaseApp{
 		bool LoadWindowsFont(ofTrueTypeFont& font, std::string name, int size);
 		void DrawString(std::string str, int posx, int posy);
 
-
 };
