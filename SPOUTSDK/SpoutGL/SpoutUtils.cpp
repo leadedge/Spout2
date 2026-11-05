@@ -292,6 +292,7 @@
 				   SpoutUtils.h - add #include <string.h> and #include <cstring>
 				   SpoutUtils.h - test definition of NOMINMAX to avoid re-definition errors
 		01.10.26 - Update version to 2.007.018
+		23.10.26 - _dolog - change from vsprintf_s to vsnprintf for MinGW and Clang portability
 
 
 */
