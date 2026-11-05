@@ -221,6 +221,7 @@
 //		32.10.16	- Increase buffer size from 128 to 1024 for sprintf_s throughout
 //					  in line with SpoutUtils _dolog to avoid overflow error
 //					  (LinkGLDXtextures Issue #145)
+//		04.11.26	- Add LockSharedTexture and UnLockSharedTexture
 //
 // ====================================================================================
 //
@@ -421,9 +422,60 @@ spoutGL::~spoutGL()
 // Group: OpenGL shared texture
 //
 
+
+//---------------------------------------------------------
+// Function: LockSharedTexture
+// Lock OpenGL shared texture to get access
+// and prevent access by other applications
+bool spoutGL::LockSharedTexture()
+{
+	// Only for GL/DX interop mode
+	if (!m_hInteropDevice || !m_hInteropObject)
+		return false;
+
+	bool bRet = false;
+	// Wait for access to the shared texture
+	if (frame.CheckTextureAccess(m_pSharedTexture)) {
+		// lock dx object
+		if (LockInteropObject(m_hInteropDevice, &m_hInteropObject) == S_OK) {
+			// Leave interop and mutex both locked for success
+			bRet = true;
+		}
+		else {
+			// Release interop lock and allow texture access for fail
+			UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+			// Release mutex and allow access to the texture
+			frame.AllowTextureAccess(m_pSharedTexture);
+			bRet = false;
+		}
+	}
+	return bRet;
+
+} // end LockSharedTexture
+
+//---------------------------------------------------------
+// Function: UnLockSharedTexture
+// Un-lock OpenGL shared texture
+// to allow access by other applications
+bool spoutGL::UnLockSharedTexture()
+{
+	// Only for GL/DX interop mode
+	if (!m_hInteropDevice || !m_hInteropObject)
+		return false;
+
+	// unlock dx object
+	UnlockInteropObject(m_hInteropDevice, &m_hInteropObject);
+	// Release mutex and allow access to the texture
+	frame.AllowTextureAccess(m_pSharedTexture);
+
+	return true;
+
+} // end UnLockSharedTexture
+
 //---------------------------------------------------------
 // Function: BindSharedTexture
-// Bind OpenGL shared texture.
+// Lock and bind OpenGL shared texture
+// (where BindTexture would normally be used)
 bool spoutGL::BindSharedTexture()
 {
 	// Only for GL/DX interop mode
@@ -455,7 +507,7 @@ bool spoutGL::BindSharedTexture()
 
 //---------------------------------------------------------
 // Function: UnBindSharedTexture
-// Un-bind OpenGL shared texture.
+// Unlock and un-bind OpenGL shared texture.
 bool spoutGL::UnBindSharedTexture()
 {
 	// Only for GL/DX interop mode

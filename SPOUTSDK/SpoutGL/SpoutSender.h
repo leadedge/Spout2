@@ -120,6 +120,12 @@ class SPOUT_DLLEXP SpoutSender {
 	// OpenGL shared texture access
 	//
 
+	// Lock OpenGL shared texture to get access
+	// and prevent access by other applications
+	bool LockSharedTexture();
+	// Un-lock OpenGL shared texture
+	// to allow access by other applications
+	bool UnLockSharedTexture();
 	// Bind OpenGL shared texture
 	bool BindSharedTexture();
 	// Un-bind OpenGL shared texture

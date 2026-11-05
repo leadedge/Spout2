@@ -86,6 +86,7 @@
 //		22.01.26	- Review - update copyright year
 //		15.07.26	- HoldFps - change from int to double
 //  Version 2.007.018
+//		04.11.26	- Add LockSharedTexture and UnLockSharedTexture
 //
 // ====================================================================================
 /*
@@ -332,6 +333,18 @@ int SpoutSender::GetMemoryBufferSize(const char* name)
 //
 // OpenGL shared texture access
 //
+
+//---------------------------------------------------------
+bool SpoutSender::LockSharedTexture()
+{
+	return spout.LockSharedTexture();
+}
+
+//---------------------------------------------------------
+bool SpoutSender::UnLockSharedTexture()
+{
+	return spout.UnLockSharedTexture();
+}
 
 //---------------------------------------------------------
 bool SpoutSender::BindSharedTexture()
