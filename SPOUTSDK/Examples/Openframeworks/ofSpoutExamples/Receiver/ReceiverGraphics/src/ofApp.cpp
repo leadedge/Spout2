@@ -189,69 +189,40 @@ void ofApp::draw() {
 	*/
 
 	//
-	// Option 4 : Receive an OpenGL shared texture to access directly.
+	// Option 4 : Receive an OpenGL shared texture and access directly
 	//
-	// For this example, either copy from the shared texture or use the shared
-	// texture binding to create an Openframeworks texture wrapper for rendering.
-	// Note: BindSharedTexture fails if the system is not GL/DX interop copmatible.
+	// Copy from the shared texture for this example
+	// Note: LockSharedTexture fails if the system is not GL/DX interop copmatible.
 	//
 	if (receiver.ReceiveTexture()) {
-		//
+
 		// IsUpdated() returns true if the sender has changed
-		// It is optional if accessing the sender texture directly
-		// Here the receiving texture is updated for copy
-		//
 		if (receiver.IsUpdated()) {
 			g_SenderWidth  = receiver.GetSenderWidth();
 			g_SenderHeight = receiver.GetSenderHeight();
-			// Allocate or re-allocate the Openframeworks texture for draw method 1
+			// Allocate or re-allocate the Openframeworks texture for draw
 			myTexture.allocate(g_SenderWidth, g_SenderHeight, receiver.GLDXformat());
 		}
-
-		/*
+		
 		//
-		// Method 1
 		// Copy the shared OpenGL texture to an Openframeworks texture for draw
 		//
-		// Bind to get access to the shared texture
-		if (receiver.BindSharedTexture()) {
-			// Copy from the shared texture to the Openframeworks texture
+		// Lock the shared texture to get access
+		if (receiver.LockSharedTexture()) {
+			// Copy from the shared texture to an Openframeworks texture
 			receiver.CopyTexture(receiver.GetSharedTextureID(), GL_TEXTURE_2D,
 				myTexture.getTextureData().textureID,
 				myTexture.getTextureData().textureTarget,
 				g_SenderWidth, g_SenderHeight);
-			// Un-bind to release access to the shared texture
-			receiver.UnBindSharedTexture();
-		}
-		// Draw the Openframeworks texture
-		myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
-		*/
-
-		//
-		// Method 2
-		//
-		// Access the shared OpenGL texture by using an Openframeworks
-		// texture wrapper rather than full copy using an FBO blit
-		// This is likely to be the fastest method
-		//
-		// Bind to get access to the shared texture
-		if (receiver.BindSharedTexture()) {
-			ofTexture tex{};
-			tex.setUseExternalTextureID(receiver.GetSharedTextureID());
-			ofTextureData& data = tex.getTextureData();
-			data.textureTarget = GL_TEXTURE_2D;
-			data.width  = data.tex_w = g_SenderWidth;
-			data.height = data.tex_h = g_SenderHeight;
-			data.tex_t  = data.tex_u = 1.0f;
-			tex.draw(0, 0, ofGetWidth(), ofGetHeight());
-			// Release access to the shared texture
-			receiver.UnBindSharedTexture();
+			// Release the shared texture lock
+			receiver.UnLockSharedTexture();
+			// Draw the Openframeworks texture
+			myTexture.draw(0, 0, ofGetWidth(), ofGetHeight());
 		}
 
-	}
-
-	// On-screen display
-	// Space bar to disable
+	} // end ReceiveTexture
+	
+	// On-screen display - space bar to disable
 	if(bShowInfo) showInfo();
 	
 }
