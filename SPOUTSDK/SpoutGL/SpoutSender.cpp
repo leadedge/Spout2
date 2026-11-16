@@ -80,8 +80,13 @@
 //		07.08.23	- Add frame sync option functions
 //	Version 2.007.013
 //	Version 2.007.014
-//		21.09.24	-Add ReadTextureData
+//		21.09.24	- Add ReadTextureData
 //		16.08.25	- Add CloseFrameSync
+//  Version 2.007.017
+//		22.01.26	- Review - update copyright year
+//		15.07.26	- HoldFps - change from int to double
+//  Version 2.007.018
+//		04.11.26	- Add LockSharedTexture and UnLockSharedTexture
 //
 // ====================================================================================
 /*
@@ -260,7 +265,7 @@ bool SpoutSender::IsFrameCountEnabled()
 }
 
 //---------------------------------------------------------
-void SpoutSender::HoldFps(int fps)
+void SpoutSender::HoldFps(double fps)
 {
 	spout.HoldFps(fps);
 }
@@ -328,6 +333,18 @@ int SpoutSender::GetMemoryBufferSize(const char* name)
 //
 // OpenGL shared texture access
 //
+
+//---------------------------------------------------------
+bool SpoutSender::LockSharedTexture()
+{
+	return spout.LockSharedTexture();
+}
+
+//---------------------------------------------------------
+bool SpoutSender::UnLockSharedTexture()
+{
+	return spout.UnLockSharedTexture();
+}
 
 //---------------------------------------------------------
 bool SpoutSender::BindSharedTexture()

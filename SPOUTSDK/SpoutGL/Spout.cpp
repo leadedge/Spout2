@@ -53,7 +53,7 @@
 //		29.05.15	- Included SetAdapter for multiple adapters - Franz Hildgen.
 //		01.06.15	- Read/Write DX9 mode from registry
 //		02.06.15	- Added GetAdapter, GetNumAdapters, GetAdapterName
-//		04.07.15	- corrected "const char*" arg for GetSenderInfo
+//		04.07.15	- corrected "const char *" arg for GetSenderInfo
 //		08.07.15	- Recompile for global DX9 flag
 // 		01.08.15	- OpenReceiver - safety in case no opengl context
 //		22.08.15	- Change to CheckSpoutPanel to wait for SpoutPanel mutex to open and then close
@@ -313,15 +313,23 @@
 //					  empty sender list return to still display a sender list box
 //		09.08.25	- SetSenderName - add !*sendername check
 //		16.08.25	- Add CloseFrameSync
-//		28.08.25	- Update SelectSenderPanel to open file in exe folder by default
-//		01.09.25	- Correct CreateToolhelp32Snapshot processid arg from NULL to 0
-//					  Remove m_bAdapt flag - no longer used
-//		02.09.25	- CheckSender - add GL memory option to SetSenderID
+//		11.10.25	- SelectSenderPanel - CreateToolhelp32Snapshot
+//					  change NULL argument to 0, Change hRes = NULL to hRes = 0
+//		21.10.25	- Remove initial update check from ReceiveTexture and ReceiveImage
+//					  The update flag is reset on the next call to ReceiveSenderData.
+//					  Calling IsUpdated is optional if receiving to a pre-allocated
+//					  texture or accessing the sender texture directly.
+//		22.01.26	- Review - update copyright year
+//		04.07.26	- GetAdapterInfo - change if(!driverdescription || !driverversion)
+//					  to if(!driverdescription[0] || !driverversion[0])
+//					  Remove unused Devices variable
+//		15.07.26	- HoldFps - change from int to double
+//					  Version 2.007.018
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -406,6 +414,7 @@ Spout::Spout()
 	// Initialize adapter name global
 	// Adapter index and name are retrieved with create sender or receiver
 	m_AdapterName[0] = 0;
+	m_bAdapt = false; // Receiver adapt to the sender adapter
 }
 
 Spout::~Spout()
@@ -464,6 +473,7 @@ void Spout::SetSenderName(const char* sendername)
 			sprintf_s(name, 256, "%s_%d", m_SenderName, i);
 			i++;
 		} while (sendernames.FindSenderName(name));
+
 		// Re-set the global sender name
 		strcpy_s(m_SenderName, 256, name);
 	}
@@ -688,7 +698,7 @@ bool Spout::IsInitialized()
 //---------------------------------------------------------
 // Function: GetName
 // Sender name
-const char* Spout::GetName()
+const char * Spout::GetName()
 {
 	return m_SenderName;
 }
@@ -735,28 +745,22 @@ HANDLE Spout::GetHandle()
 
 //---------------------------------------------------------
 // Function: GetCPU
-//  Return application CPU sharing method
+// Sender sharing method.
+//   Returns true if the sender is using CPU methods
 bool Spout::GetCPU()
 {
-	return m_bCPUshare;
+	return m_bSenderCPU;
 }
 
 //---------------------------------------------------------
 // Function: GetGLDX
-//  Return application NVIDIA WGL_NV_DX compatibility
+// Sender sharing compatibility.
+//  Returns true if the sender graphics hardware is 
+//  compatible with NVIDIA NV_DX_interop2 extension
 bool Spout::GetGLDX()
 {
-	return m_bGLDX;
+	return m_bSenderGLDX;
 }
-
-//---------------------------------------------------------
-// Function: GetGLmemory
-//  Return application Khronos GL memory compatibility
-bool Spout::GetGLmemory()
-{
-	return m_bGLmemory;
-}
-
 
 //
 // Group: Receiver
@@ -783,7 +787,7 @@ bool Spout::GetGLmemory()
 //   The if a name is specified, the receiver will not connect to any other unless the user selects one
 //   If that sender closes, the receiver will wait for the nominated sender to open 
 //   If no name is specified, the receiver will connect to the active sender
-void Spout::SetReceiverName(const char* SenderName)
+void Spout::SetReceiverName(const char * SenderName)
 {
 	if (SenderName) {
 		if (*SenderName) {
@@ -873,7 +877,7 @@ bool Spout::ReceiveTexture()
 //   Copy from the sender shared texture if there is a texture to receive into.
 //   The receiving OpenGL texture can only be RGBA of dimension (width * height)
 //   and must be re-allocated for sender size change. Return if flagged for update.
-//   The update flag is reset when the receiving application calls IsUpdated().
+//   The update flag is reset on the next call to ReceiveSenderData.
 //
 //   If no arguments are passed :
 //
@@ -892,11 +896,6 @@ bool Spout::ReceiveTexture()
 //
 bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert, GLuint HostFbo)
 {
-	// Return if flagged for update and there is a texture to receive into.
-	// The update flag is reset when the receiving application calls IsUpdated().
-	if (m_bUpdated && TextureID != 0 && TextureTarget != 0)
-		return true;
-
 	// Make sure OpenGL and DirectX are initialized
 	if (!OpenSpout())
 		return false;
@@ -919,15 +918,15 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 			if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 				return false;
 			}
+			//
 			// Return now for the application to test IsUpdated() and 
 			// re-allocate the receiving texture.
+			//
 			// m_bUpdated is reset to false on the next call to 
 			// ReceiveSenderData until the sender changes size again.
+			//
 			return true;
 		}
-
-		// Check GL memory texture format
-		CheckOpenGLformat(TextureID, TextureTarget);
 
 		// Was the sender's shared texture handle null
 		// or has the user set 2.006 memoryshare mode?
@@ -949,7 +948,7 @@ bool Spout::ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert,
 
 		if (m_bTextureShare) {
 			// Texture share compatible
-			// 3840x2160 60 fps - 0.5-0.7 msec/frame
+			// 3840x2160 60 fps - 0.45 msec/frame
 			ReadGLDXtexture(TextureID, TextureTarget, m_Width, m_Height, bInvert, HostFbo);
 		}
 		else if (m_bCPUshare) {
@@ -1045,7 +1044,7 @@ DWORD Spout::GetSenderFormat()
 //---------------------------------------------------------
 // Function: GetSenderName
 // Get sender name
-const char* Spout::GetSenderName()
+const char * Spout::GetSenderName()
 {
 	return m_SenderName;
 }
@@ -1100,7 +1099,8 @@ ID3D11Texture2D* Spout::GetSenderTexture()
 
 //---------------------------------------------------------
 // Function: GetSenderCPU
-//  Return sender CPU sharing method
+// Received sender sharing method.
+//   Returns true if the sender is using CPU methods
 bool Spout::GetSenderCPU()
 {
 	return m_bSenderCPU;
@@ -1108,20 +1108,13 @@ bool Spout::GetSenderCPU()
 
 //---------------------------------------------------------
 // Function: GetSenderGLDX
-//  Return sender NVIDIA NV_DX interop compatibility
+// Received sender sharing compatibility.
+//   Returns true if the sender graphics hardware is 
+//   compatible with NVIDIA NV_DX_interop2 extension
 bool Spout::GetSenderGLDX()
 {
 	return m_bSenderGLDX;
 }
-
-//---------------------------------------------------------
-// Function: GetSenderGLmemory
-//  Return sendr Khronos GL memory compatibility
-bool Spout::GetSenderGLmemory()
-{
-	return m_bSenderGLmemory;
-}
-
 
 //---------------------------------------------------------
 // Function: SelectSender
@@ -1136,7 +1129,7 @@ bool Spout::SelectSender(HWND hwnd)
 
 	// For a valid window handle, convert hwnd to chars
 	// for the SpoutPanel command line
-	char* msg = nullptr;
+	char * msg = nullptr;
 	if (hwnd) {
 		// Window handle is an 32 bit unsigned value
 		// Cast to long of 8 characters without new line
@@ -1144,6 +1137,7 @@ bool Spout::SelectSender(HWND hwnd)
 		sprintf_s(msg, 256, "%8.8ld", HandleToLong(hwnd));
 	}
 
+	// LJ DEBUG
 	if (!SelectSenderPanel(msg)) {
 
 		// If SpoutPanel is not available, use a SpoutMessageBox for sender selection.
@@ -1344,6 +1338,7 @@ bool Spout::SelectSender(HWND hwnd)
 
 	return true;
 
+
 }
 
 //
@@ -1377,7 +1372,7 @@ bool Spout::IsFrameCountEnabled()
 // Function: HoldFps
 // Frame rate control.
 //    Desired frames per second.
-void Spout::HoldFps(int fps)
+void Spout::HoldFps(double fps)
 {
 	frame.HoldFps(fps);
 }
@@ -1396,7 +1391,7 @@ void Spout::HoldFps(int fps)
 // This can be achieved using event functions "SetFrameSync" and "WaitFrameSync".
 //
 //      - void SetFrameSync(const char* SenderName);
-//      - bool WaitFrameSync(const char* SenderName, DWORD dwTimeout = 0);
+//      - bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 //
 //   WaitFrameSync
 //   A sender or receiver should use this before rendering wait for a signal from
@@ -1453,7 +1448,7 @@ void Spout::SetFrameSync(const char* name)
 //   - For testing for a signal, use a wait timeout of zero.
 //   - For synchronization, use a timeout greater than the expected delay
 // 
-bool Spout::WaitFrameSync(const char* SenderName, DWORD dwTimeout)
+bool Spout::WaitFrameSync(const char *SenderName, DWORD dwTimeout)
 {
 	if (!SenderName || !*SenderName || !m_bInitialized)
 		return false;
@@ -1580,7 +1575,7 @@ int Spout::GetNumAdapters()
 //---------------------------------------------------------
 // Function: GetAdapterName
 // Get adapter item name
-bool Spout::GetAdapterName(int index, char* adaptername, int maxchars)
+bool Spout::GetAdapterName(int index, char *adaptername, int maxchars)
 {
 	char name[256]{};
 	if (spoutdx.GetAdapterName(index, name, 256)) {
@@ -1593,7 +1588,7 @@ bool Spout::GetAdapterName(int index, char* adaptername, int maxchars)
 //---------------------------------------------------------
 // Function: AdapterName
 // Return current adapter name
-char* Spout::AdapterName()
+char * Spout::AdapterName()
 {
 	GetAdapterName(spoutdx.GetAdapter(), m_AdapterName, 256);
 	return m_AdapterName;
@@ -1843,7 +1838,7 @@ bool Spout::FindNVIDIA(int &nAdapter)
 //	- 0x8087 Intel
 //
 // See also the DirectX only version :
-// bool spoutDirectX::GetAdapterInfo(char* adapter, char* display, int maxchars)
+// bool spoutDirectX::GetAdapterInfo(char *adapter, char *display, int maxchars)
 // DirectX9 not supported
 //
 bool Spout::GetAdapterInfo(char* renderadapter,
@@ -1858,7 +1853,7 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	|| !displayversion)
 		return false;
 
-	IDXGIDevice* pDXGIDevice = nullptr;
+	IDXGIDevice * pDXGIDevice = nullptr;
 
 	*renderadapter = 0; // DirectX adapter
 	*renderdescription = 0;
@@ -1874,7 +1869,7 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	spoutdx.GetDX11Device()->QueryInterface(__uuidof(IDXGIDevice), (void**)(&pDXGIDevice));
 	if (!pDXGIDevice) return false;
 
-	IDXGIAdapter* pDXGIAdapter = nullptr;
+	IDXGIAdapter * pDXGIAdapter = nullptr;
 	pDXGIDevice->GetAdapter(&pDXGIAdapter);
 	if (!pDXGIAdapter) return false;
 
@@ -1919,16 +1914,14 @@ bool Spout::GetAdapterInfo(char* renderadapter,
 	//
 	// To select all display devices in the desktop, use only the display devices
 	// that have the DISPLAY_DEVICE_ATTACHED_TO_DESKTOP flag in the DISPLAY_DEVICE structure.
-	int nDevices = 0;
 	for (DWORD i = 0; i < 10; i++) { // should be much less than 10 adapters
 		if (EnumDisplayDevices(NULL, i, &DisplayDevice, 0)) {
 			// This will list all the devices
-			nDevices++;
 			// Get the registry key
-			wcstombs_s(&charsConverted, regkey, 129, (const wchar_t*)DisplayDevice.DeviceKey, 128);
+			wcstombs_s(&charsConverted, regkey, 129, (const wchar_t *)DisplayDevice.DeviceKey, 128);
 			// This is the registry key with all the information about the adapter
 			OpenDeviceKey(regkey, 256, driverdescription, driverversion);
-			if (!driverdescription || !driverversion) {
+			if (!driverdescription[0] || !driverversion[0]) {
 				pDXGIDevice->Release();
 				return false;
 			}
@@ -2086,11 +2079,6 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 	// The receiving pixel buffer is created after the first update
 	// so the pixel pointer can be NULL here
 
-	// Return if flagged for update
-	// The update flag is reset when the receiving application calls IsUpdated()
-	if (m_bUpdated)
-		return true;
-
 	// Make sure OpenGL and DirectX are initialized
 	if (!OpenSpout())
 		return false;
@@ -2110,9 +2098,14 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 		// The sender name, width, height, format, shared texture handle and pointer have been retrieved.
 		// m_Width, m_Height, m_dwFormat are updated
 		if (m_bUpdated) {
-			// If the sender is new or changed, return to update the receiving texture.
-			// The application detects the change with IsUpdated().
-			// CreateInterop is reset "true" for receiver
+			//
+			// Return now for the application to test IsUpdated() and 
+			// re-allocate the receiving texture.
+			//
+			// m_bUpdated is reset to false on the next call to 
+			// ReceiveSenderData until the sender changes size again.
+			//
+			// CreateInterop set "true" for receiver
 			if (!CreateInterop(m_Width, m_Height, m_dwFormat, true)) {
 				return false;
 			}
@@ -2176,18 +2169,19 @@ bool Spout::ReceiveImage(unsigned char* pixels, GLenum glFormat, bool bInvert, G
 //---------------------------------------------------------
 // Function: SelectSenderPanel
 // Open dialog for the user to select a sender
-//    Optional message argument
 //
-// The selected sender becomes the "Active" sender and the receiver switches to it.
-// If either SpoutSettings or SpoutPanel have not beeen opened, SpoutPanel.exe 
-// should be in the same folder as the executable.
+//  Optional message argument
 //
-// Called by SelectSender for 2.007+
+// Replaced by SelectSender for 2.007
 //
 bool Spout::SelectSenderPanel(const char* message)
 {
 	HANDLE hMutex1 = NULL;
+	HMODULE module = NULL;
 	char path[MAX_PATH]{};
+	char drive[MAX_PATH]{};
+	char dir[MAX_PATH]{};
+	char fname[MAX_PATH]{};
 	char UserMessage[512]{};
 
 	if (message && *message) {
@@ -2195,19 +2189,37 @@ bool Spout::SelectSenderPanel(const char* message)
 	}
 	else {
 		// Send the receiver graphics adapter index by default
-		strcpy_s(UserMessage, 512, std::to_string(GetAdapter()).c_str());
+		strcpy_s(UserMessage, MAX_PATH, std::to_string(GetAdapter()).c_str());
 	}
 
-	// Does SpoutPanel exist in the executable folder
-	sprintf_s(path, MAX_PATH, "%sSpoutPanel.exe", GetExePath().c_str());
-	if (_access(path, 0) == -1) {
-		// Not in the executable folder
-		// Is there a registry path for SpoutPanel.exe
-		if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path))
-			return false;
-		// Does the file exist
-		if (_access(path, 0) == -1)
-			return false;
+	// The selected sender is then the "Active" sender and this receiver switches to it.
+	// If Spout is not installed, SpoutPanel.exe has to be in the same folder
+	// as this executable. This rather complicated process avoids having to use a dialog
+	// which causes problems with host GUI messaging.
+
+	// First find if there has been a Spout installation >= 2.002 with an install path for SpoutPanel.exe
+	path[0] = 0;
+	if (!ReadPathFromRegistry(HKEY_CURRENT_USER, "Software\\Leading Edge\\SpoutPanel", "InstallPath", path)) {
+		// Path not registered so find the path of the host program
+		// where SpoutPanel can be copied
+		module = GetModuleHandle(NULL);
+		GetModuleFileNameA(module, path, MAX_PATH);
+		_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fname, MAX_PATH, NULL, 0);
+		_makepath_s(path, MAX_PATH, drive, dir, "SpoutPanel", ".exe");
+	}
+
+	if (path[0]) {
+		// Does SpoutPanel.exe exist in this path ?
+		if(_access(path, 0) == -1) {
+			// Try the current working directory
+			if (_getcwd(path, MAX_PATH)) {
+				strcat_s(path, MAX_PATH, "\\SpoutPanel.exe");
+				// Does SpoutPanel exist here?
+				if (_access(path, 0) == -1) {
+					return false;
+				}
+			}
+		}
 	}
 
 	// Check whether the panel is already running
@@ -2263,14 +2275,14 @@ bool Spout::SelectSenderPanel(const char* message)
 			}
 			else {
 				// Retrieve information about the first process
-				BOOL bRet = Process32First(hProcessSnap, &pEntry);
-				if (!bRet) {
+				BOOL hRes = Process32First(hProcessSnap, &pEntry);
+				if (!hRes) {
 					SpoutLogError("spoutDX::OpenSpoutPanel - Process32First error");
 					CloseHandle(hProcessSnap);
 				}
 				else {
 					// Look through all processes to find SpoutPanel
-					while (bRet && !done) {
+					while (hRes && !done) {
 #ifdef UNICODE
 						int iRet = _wcsicmp(pEntry.szExeFile, L"SpoutPanel.exe");
 #else
@@ -2286,10 +2298,11 @@ bool Spout::SelectSenderPanel(const char* message)
 								done = true;
 							}
 						}
+
 						if (!done)
-							bRet = Process32Next(hProcessSnap, &pEntry); // Get the next process
+							hRes = Process32Next(hProcessSnap, &pEntry); // Get the next process
 						else
-							bRet = false; // found SpoutPanel
+							hRes = 0; // found SpoutPanel
 					}
 					CloseHandle(hProcessSnap);
 				}
@@ -2507,8 +2520,26 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 			m_Width = width;
 			m_Height = height;
 
+			//
 			// SetSenderID writes to the sender shared texture memory
 			// to set sender CPU sharing mode and hardware GL/DX compatibility
+			// 
+			//   bCPU  - using CPU sharing methods
+			//     1000 0000 0000 0000 0000 0000 0000 0000 = 0x80000000
+			//   bGLDX - compatible with Nvidia OpenGL/DirectX interop
+			//     0100 0000 0000 0000 0000 0000 0000 0000 = 0x40000000
+			//   bGLmemory - using Kronos GL memory methods for GL/DX interop
+			//     0010 0000 0000 0000 0000 0000 0000 0000 = 0x20000000
+			// Combinations with CPU sharing :
+			//   Nvidia and Khronos both not compatible
+			//     1000 0000 0000 0000 0000 0000 0000 0000 = 0x80000000
+			//   Nvidia GL/DX compatible but using CPU sharing methods
+			//     1100 0000 0000 0000 0000 0000 0000 0000 = 0xC0000000.
+			//   Khronos GL memory compatible but using CPU sharing methods
+			//     1010 0000 0000 0000 0000 0000 0000 0000 = 0xA0000000
+			//   Nvidia and Khronos compatible but using CPU sharing methods
+			//     1110 0000 0000 0000 0000 0000 0000 0000 = 0xE0000000
+			//
 			SetSenderID(m_SenderName, m_bCPUshare, m_bGLDX, m_bGLmemory);
 
 			m_Width = width;
@@ -2593,12 +2624,12 @@ bool Spout::CheckSender(unsigned int width, unsigned int height)
 
 
 //---------------------------------------------------------
-void Spout::InitReceiver(const char* SenderName, unsigned int width, unsigned int height, DWORD dwFormat)
+void Spout::InitReceiver(const char * SenderName, unsigned int width, unsigned int height, DWORD dwFormat)
 {
 	if (!SenderName)
 		return;
 
-	SpoutLogNotice("Spout::InitReceiver(%s, %dx%d, format %d (0x%X))", SenderName, width, height, dwFormat, dwFormat);
+	SpoutLogNotice("Spout::InitReceiver(%s, %dx%d)", SenderName, width, height);
 
 	// Create a named sender mutex for access to the sender's shared texture
 	frame.CreateAccessMutex(SenderName);
@@ -2653,7 +2684,7 @@ bool Spout::ReceiveSenderData()
 	HANDLE dxShareHandle = m_dxShareHandle;
 
 	// Retrieve the sender information : width, height, sharehandle and format.
-	SharedTextureInfo info{};
+	SharedTextureInfo info;
 	if (sendernames.getSharedInfo(sendername, &info)) {
 
 		width = info.width;
@@ -2661,17 +2692,15 @@ bool Spout::ReceiveSenderData()
 		dxShareHandle = UIntToPtr(info.shareHandle);
 		dwFormat = info.format;
 
+		// The following flags are informative only
+		// and may be removed in future release
+
 		//
 		// 32 bit partner ID field
 		//
-
-		//
-		// The following flags are informative only and may be removed in future.
-		// m_bSenderCPU, m_bSenderGLDX, m_bSenderGLmemory
-		// They are shown by "SpoutPanel" opened from a receiver.
-		// The values can be retrieved by a receiver using :
-		//    GetCPU(), GetGLDX() and GetGLmemory()
-		//
+		// GPU texture share and hardware GL/DX compatible by default
+		m_bSenderCPU  = false;
+		m_bSenderGLDX = true;
 
 		// Top bit
 		//   o Sender is using CPU share methods
@@ -2687,13 +2716,13 @@ bool Spout::ReceiveSenderData()
 			m_bSenderGLDX = true;
 		}
 
-		// Both bits set
-		//  Sender hardware is GL/DX compatible
-		//  but is using CPU share methods
-
-		// GL memory interop
-		if (info.partnerId & 0x20000000) {
-			m_bSenderGLmemory = true;
+		//
+		// Both bits set (and none other)
+		//   o Sender is using CPU share methods
+		//   o Sender hardware is GL/DX compatible
+		if (info.partnerId == 0xC0000000) {
+			m_bSenderCPU = true;
+			m_bSenderGLDX = true;
 		}
 
 		// Compatible DX9 formats
@@ -2713,85 +2742,77 @@ bool Spout::ReceiveSenderData()
 			// Release everything to start again
 			ReleaseReceiver();
 
-			// Update the sender share handle for repeat comparisons
+			// Update the sender share handle
 			m_dxShareHandle = dxShareHandle;
-			m_pSharedTexture = nullptr; // The texture produced from the handle
 
 			// Get a new shared texture pointer from the share handle
 			if (m_dxShareHandle) {
-				if (spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &m_pSharedTexture, m_dxShareHandle)) {
-					SpoutLogNotice("Spout::ReceiveSenderData - m_pSharedTexture = 0x%X", m_pSharedTexture);
-					spoutdx.Flush();
-				}
+
+				if(spoutdx.OpenDX11shareHandle(spoutdx.GetDX11Device(), &m_pSharedTexture, dxShareHandle)) {
+
+					// Get the texture details
+					D3D11_TEXTURE2D_DESC desc{};
+					m_pSharedTexture->GetDesc(&desc);
+
+					// Check for zero size
+					if (desc.Width == 0 || desc.Height == 0) {
+						return false;
+					}
+
+					// For incorrect sender information, use dimensions and format
+					// of the D3D11 texture generated by OpenDX11shareHandle
+					if (width    != (DWORD)desc.Width)	width = (DWORD)desc.Width;
+					if (height   != (DWORD)desc.Height) height = (DWORD)desc.Height;
+					if (dwFormat != (DWORD)desc.Format) dwFormat = (DWORD)desc.Format;
+
+					// Check for texture format supported by OpenGL/DirectX interop
+					if (!(dwFormat == D3DFMT_A8R8G8B8						// 21
+						|| dwFormat == D3DFMT_X8R8G8B8						// 22
+						|| dwFormat == DXGI_FORMAT_B8G8R8X8_UNORM			// 88
+						|| dwFormat == DXGI_FORMAT_B8G8R8A8_UNORM			// 22
+						|| dwFormat == DXGI_FORMAT_R8G8B8A8_SNORM			// 31
+						|| dwFormat == DXGI_FORMAT_R8G8B8A8_UNORM			// 28
+						|| dwFormat == DXGI_FORMAT_R10G10B10A2_UNORM		// 24
+						|| dwFormat == DXGI_FORMAT_R16G16B16A16_SNORM		// 13
+						|| dwFormat == DXGI_FORMAT_R16G16B16A16_UNORM		// 11
+						|| dwFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB		// 29
+						|| dwFormat == DXGI_FORMAT_R16G16B16A16_FLOAT		// 10
+						|| dwFormat == DXGI_FORMAT_R32G32B32A32_FLOAT)) {	// 2
+						SpoutLogError("Spout::ReceiveSenderData - texture %dx%d incompatible texture format 0x%X (%d)",
+							width, height, dwFormat, dwFormat);
+						return false;
+					}
+
+					// If the received texture is successfully updated, initialize again
+					// with the new sender name, width, height and format
+					InitReceiver(sendername, width, height, dwFormat);
+
+					// The application can now access and copy the sender texture.
+					// Signal the application to update the receiving texture or image
+					m_bUpdated = true;
+
+				} // endif OpenDX11shareHandle succeeded
 				else {
 					//
 					// Error log generated in OpenDX11shareHandle.
 					//
-					// OpenDX11shareHandle uses OpenSharedResource, and can fail if the sender and receiver
-					// applications are using different graphics adapters. This is possible if the user has
+					// OpenDX11shareHandle uses OpenSharedResource, which can fail if the sender and receiver 
+					// applications are using different graphics adapters, which is possible if the user has 
 					// specified different performance preferences using Windows Display Graphics settings.
 					//
 					// Graphics performance preference is only effective for a laptop with multiple graphics.
 					// Performance settings can be accessed directly from SpoutSettings Version 1.046 and later.
 					//
-					// Do not inform the application of texture update, but retain the share handle so
-					// the same sender is not queried again.
+					// Do not inform the application of texture update, but retain the share handle so we don't 
+					// query the same sender again.
 					//
 					// Return true and wait until another sender is selected or the shared texture handle is valid.
-					if (m_pSharedTexture)
+					// m_pSharedTexture is then null but make sure so that it is not used.
+					if (m_pSharedTexture) 
 						spoutdx.ReleaseDX11Texture(GetDX11Device(), m_pSharedTexture);
 					m_pSharedTexture = nullptr;
-					return false;
-				}
-			
-				// Get the texture details
-				D3D11_TEXTURE2D_DESC desc{};
-				m_pSharedTexture->GetDesc(&desc);
 
-				// Check for zero size
-				if (desc.Width == 0 || desc.Height == 0)
-					return false;
-
-				// For incorrect sender information, use the dimensions and format
-				// of the D3D11 texture generated by OpenDX11shareHandle
-				if (width    != (DWORD)desc.Width)  width = (DWORD)desc.Width;
-				if (height   != (DWORD)desc.Height) height = (DWORD)desc.Height;
-				if (dwFormat != (DWORD)desc.Format) dwFormat = (DWORD)desc.Format;
-
-				// Check for texture format supported by Nvidia GL/DX interop
-				if (!(dwFormat == D3DFMT_A8R8G8B8 // 21
-						|| dwFormat == D3DFMT_X8R8G8B8 // 22
-						|| dwFormat == DXGI_FORMAT_B8G8R8X8_UNORM // 88
-						|| dwFormat == DXGI_FORMAT_B8G8R8A8_UNORM // 22
-						|| dwFormat == DXGI_FORMAT_R8G8B8A8_SNORM // 31
-						|| dwFormat == DXGI_FORMAT_R8G8B8A8_UNORM // 28
-						|| dwFormat == DXGI_FORMAT_R10G10B10A2_UNORM // 24
-						|| dwFormat == DXGI_FORMAT_R16G16B16A16_SNORM // 13
-						|| dwFormat == DXGI_FORMAT_R16G16B16A16_UNORM // 11
-						|| dwFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB // 29
-						|| dwFormat == DXGI_FORMAT_R16G16B16A16_FLOAT // 10
-						|| dwFormat == DXGI_FORMAT_R32G32B32A32_FLOAT)) { // 2
-					SpoutLogError("Spout::ReceiveSenderData - texture %dx%d incompatible texture format 0x%X (%d)",
-						width, height, dwFormat, dwFormat);
-					return false;
-				}
-
-				// Formats tested with Khronos GL memory extensions
-				// others may be compatible but have not been tested
-				//   DXGI_FORMAT_B8G8R8A8_UNORM
-				//   DXGI_FORMAT_R8G8B8A8_UNORM
-				//   DXGI_FORMAT_R10G10B10A2_UNORM
-				//   DXGI_FORMAT_R16G16B16A16_UNORM
-				//   DXGI_FORMAT_R16G16B16A16_FLOAT
-				//   DXGI_FORMAT_R32G32B32A32_FLOAT
-
-				// If the received texture is successfully updated, initialize again
-				// with the new sender name, width, height and format
-				InitReceiver(sendername, width, height, dwFormat);
-
-				// The application can now access and copy the sender texture.
-				// Signal the application to update the receiving texture or image
-				m_bUpdated = true;
+				} // endif OpenDX11shareHandle fail
 
 			} // endif m_dxShareHandle valid
 			// For a null share handle from a 2.006 memoryshare sender
@@ -2807,7 +2828,7 @@ bool Spout::ReceiveSenderData()
 
 //---------------------------------------------------------
 // Check whether SpoutPanel opened and return the new sender name
-bool Spout::CheckSpoutPanel(char* sendername, int maxchars)
+bool Spout::CheckSpoutPanel(char *sendername, int maxchars)
 {
 	if (!sendername)
 		return false;

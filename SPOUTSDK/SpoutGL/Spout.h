@@ -4,7 +4,7 @@
 
 	Documentation - https://spoutgl-site.netlify.app/					
 
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -67,7 +67,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Sender status
 	bool IsInitialized();
 	// Sender name
-	const char* GetName();
+	const char * GetName();
 	// Sender width
 	unsigned int GetWidth();
 	// Sender height
@@ -78,12 +78,10 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	long GetFrame();
 	// Sender share handle
 	HANDLE GetHandle();
-	// Sender sharing method.
+	// Sender sharing method
 	bool GetCPU();
-	// Sender sharing compatibility.
+	// Sender GL/DX hardware compatibility
 	bool GetGLDX();
-	// Sender interop method
-	bool GetGLmemory();
 
 	//
 	// ====================== RECEIVER ===========================
@@ -93,7 +91,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	//   If a name is specified, the receiver will not connect to any other unless the user selects one
 	//   If that sender closes, the receiver will wait for the nominated sender to open 
 	//   If no name is specified, the receiver will connect to the active sender
-	void SetReceiverName(const char* sendername = nullptr);
+	void SetReceiverName(const char * sendername = nullptr);
 	// Get sender for connection
 	bool GetReceiverName(char* sendername, int maxchars = 256);
 	// Close receiver and release resources ready to connect to another sender
@@ -107,7 +105,8 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	//   the receiving texture if it has changed dimensions
 	//   For no change, copy the sender shared texture to the application texture
 	//   The texture must be RGBA of dimension (width * height) 
-	bool ReceiveTexture(GLuint TextureID, GLuint TextureTarget, bool bInvert = false, GLuint HostFbo = 0);
+	bool ReceiveTexture(GLuint TextureID, GLuint TextureTarget,
+		bool bInvert = false, GLuint HostFbo = 0);
 	// Receive image pixels
 	//   Connect to a sender and inform the application to update
 	//   the receiving buffer if it has changed dimensions
@@ -125,7 +124,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	//   This can be queried to process texture data only for new frames
 	bool IsFrameNew();
 	// Received sender name
-	const char* GetSenderName();
+	const char * GetSenderName();
 	// Received sender width
 	unsigned int GetSenderWidth();
 	// Received sender height
@@ -140,12 +139,10 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	HANDLE GetSenderHandle();
 	// Received sender texture
 	ID3D11Texture2D* GetSenderTexture();
-	// Received sender CPU sharing
+	// Received sender sharing method
 	bool GetSenderCPU();
-	// Received sender Nvidia WGL_NV_DX compatibility
+	// Received sender GL/DX hardware compatibility
 	bool GetSenderGLDX();
-	// Received sender GL memory compatibility
-	bool GetSenderGLmemory();
 	// Return a list of current senders
 	std::vector<std::string> GetSenderList();
 	// Sender index into the set of names
@@ -164,11 +161,11 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// Return frame count status
 	bool IsFrameCountEnabled();
 	// Frame rate control
-	void HoldFps(int fps);
+	void HoldFps(double fps);
 	// Signal sync event 
 	void SetFrameSync(const char* name = nullptr);
 	// Wait or test for a sync event
-	bool WaitFrameSync(const char* SenderName, DWORD dwTimeout = 0);
+	bool WaitFrameSync(const char *SenderName, DWORD dwTimeout = 0);
 	// Enable / disable frame sync
 	void EnableFrameSync(bool bSync = true);
 	// Close frame sync
@@ -198,9 +195,9 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	// The number of graphics adapters in the system
 	int GetNumAdapters();
 	// Get adapter item name
-	bool GetAdapterName(int index, char* adaptername, int maxchars = 256);
+	bool GetAdapterName(int index, char *adaptername, int maxchars = 256);
 	// Return current adapter name
-	char* AdapterName();
+	char * AdapterName();
 	// Get current adapter index
 	int GetAdapter();
 	// Get sender adapter index and name for a given sender
@@ -241,7 +238,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 		int maxsize);
 
 	// Create a sender
-	bool CreateSender(const char* Sendername, unsigned int width = 0, unsigned int height = 0, DWORD dwFormat = 0);
+	bool CreateSender(const char *Sendername, unsigned int width = 0, unsigned int height = 0, DWORD dwFormat = 0);
 	// Update a sender
 	bool UpdateSender(const char* Sendername, unsigned int width, unsigned int height);
 
@@ -261,7 +258,7 @@ class SPOUT_DLLEXP Spout : public spoutGL {
 	//   Optional message argument
 	bool SelectSenderPanel(const char* message = nullptr);
 	// Receiver detect sender selection
-	bool CheckSpoutPanel(char* sendername, int maxchars = 256);
+	bool CheckSpoutPanel(char *sendername, int maxchars = 256);
 
 	// Legacy OpenGL Draw functions
 	// See _SpoutCommon.h_ #define legacyOpenGL
@@ -277,11 +274,17 @@ protected:
 	// Sender creation and change
 	bool CheckSender(unsigned int width, unsigned int height);
 	// Create receiver connection
-	void InitReceiver(const char* sendername, unsigned int width, unsigned int height, DWORD dwFormat);
+	void InitReceiver(const char * sendername, unsigned int width, unsigned int height, DWORD dwFormat);
 	// Receiver find sender and retrieve information
 	bool ReceiveSenderData();
+
+	//
+	// Class globals
+	//
+
 	// Graphics adapter name
 	char m_AdapterName[256];
+	bool m_bAdapt; // Receiver adapt to the sender adapter
 
 
 };

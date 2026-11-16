@@ -2,7 +2,7 @@
 
 					SpoutReceiver.h
 
-	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -86,6 +86,8 @@ class SPOUT_DLLEXP SpoutReceiver {
 	long GetSenderFrame();
 	// Received sender share handle
 	HANDLE GetSenderHandle();
+	// Received sender texture
+	ID3D11Texture2D* GetSenderTexture();
 	// Received sender sharing method
 	bool GetSenderCPU();
 	// Received sender GL/DX hardware compatibility
@@ -106,7 +108,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// Return frame count status
 	bool IsFrameCountEnabled();
 	// Frame rate control
-	void HoldFps(int fps);
+	void HoldFps(double fps);
 	// Signal sync event 
 	void SetFrameSync(const char* SenderName);
 	// Wait or test for a sync event
@@ -131,9 +133,15 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// OpenGL shared texture access
 	//
 
-	// Bind OpenGL shared texture
+	// Lock OpenGL shared texture to get access
+	// and prevent access by other applications
+	bool LockSharedTexture();
+	// Un-lock OpenGL shared texture
+	// to allow access by other applications
+	bool UnLockSharedTexture();
+	// Lock and bind OpenGL shared texture
 	bool BindSharedTexture();
-	// Un-bind OpenGL shared texture
+	// Un-bind and un-lock OpenGL shared texture
 	bool UnBindSharedTexture();
 	// OpenGL shared texture ID
 	GLuint GetSharedTextureID();
@@ -254,8 +262,9 @@ class SPOUT_DLLEXP SpoutReceiver {
 	//   0 - buffer swaps are not synchronized to a video frame
 	//  -1 - adaptive vsync
 	bool SetVerticalSync(bool bSync = true);
-	// Get Spout version
-	int GetSpoutVersion();
+	// Get SDK version number string e.g. "2.007.000"
+	// Optional - return as a single number
+	std::string GetSDKversion(int* pNumber = nullptr);
 
 	//
 	// OpenGL utilities
@@ -268,7 +277,7 @@ class SPOUT_DLLEXP SpoutReceiver {
 	// Close OpenGL window
 	bool CloseOpenGL();
 	// Copy OpenGL texture with optional invert
-	//   Textures must be the same size
+	//   Textures can be different sizes
 	bool CopyTexture(GLuint SourceID, GLuint SourceTarget,
 		GLuint DestID, GLuint DestTarget,
 		unsigned int width, unsigned int height,

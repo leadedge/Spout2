@@ -178,11 +178,14 @@
 //		31.08.25	- FlushWait - default device and context
 //		11.09.25	- Correct Keyed shared texture misc flag in CreateSharedDX11texture
 //					  Remove redundant final Flush from FlushWait
+//		22.01.26	- Review - update copyright year
+//		16.07.26 - move using namespace spoututils from header to class file
+//	Version 2.007.018
 //
 // ====================================================================================
 /*
 
-	Copyright (c) 2014-2025. Lynn Jarvis. All rights reserved.
+	Copyright (c) 2014-2026. Lynn Jarvis. All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without modification, 
 	are permitted provided that the following conditions are met:
@@ -207,6 +210,8 @@
 */
 
 #include "SpoutDirectX.h"
+
+using namespace spoututils;
 
 //
 // Class: spoutDirectX
@@ -1559,6 +1564,35 @@ bool spoutDirectX::FindNVIDIA(int& nAdapter)
 	return false;
 
 }
+
+//---------------------------------------------------------
+// Function: GetD3D11AdapterLUID
+// Adapter associated with the D3D11 device
+bool spoutDirectX::GetD3D11AdapterLUID(ID3D11Device* device, LUID& luid)
+{
+	IDXGIDevice* dxgiDevice = nullptr;
+    if (FAILED(device->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice)))
+        return false;
+
+    IDXGIAdapter* adapter = nullptr;
+    HRESULT hr = dxgiDevice->GetAdapter(&adapter);
+    dxgiDevice->Release();
+    if (FAILED(hr))
+        return false;
+
+    DXGI_ADAPTER_DESC desc;
+    hr = adapter->GetDesc(&desc);
+    adapter->Release();
+
+    if (FAILED(hr))
+        return false;
+
+    luid = desc.AdapterLuid;
+
+    return true;
+
+}
+
 
 
 //

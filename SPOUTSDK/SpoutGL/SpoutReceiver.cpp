@@ -87,10 +87,17 @@
 //	Version 2.007.014
 //		21.09.24	-Add ReadTextureData
 //		16.08.25	- Add CloseFrameSync
+//  Version 2.007.017
+//		13.10.25	- Add GetSenderTexture, GetSenderTexture
+//					  replace GetSpoutVersion with GetSDKversion
+//		22.01.26	- Review - update copyright year
+//		15.07.26	- HoldFps - change from int to double
+//  Version 2.007.018
+//		04.11.26	- Add LockSharedTexture and UnLockSharedTexture
 //
 // ====================================================================================
 //
-//	Copyright (c) 2014-2025, Lynn Jarvis. All rights reserved.
+//	Copyright (c) 2014-2026, Lynn Jarvis. All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without modification, 
 //	are permitted provided that the following conditions are met:
@@ -249,6 +256,12 @@ HANDLE SpoutReceiver::GetSenderHandle()
 }
 
 //---------------------------------------------------------
+ID3D11Texture2D* SpoutReceiver::GetSenderTexture()
+{
+	return spout.GetSenderTexture();
+}
+
+//---------------------------------------------------------
 bool SpoutReceiver::GetSenderCPU()
 {
 	return spout.GetSenderCPU();
@@ -296,7 +309,7 @@ bool SpoutReceiver::IsFrameCountEnabled()
 }
 
 //---------------------------------------------------------
-void SpoutReceiver::HoldFps(int fps)
+void SpoutReceiver::HoldFps(double fps)
 {
 	spout.HoldFps(fps);
 }
@@ -347,6 +360,18 @@ int SpoutReceiver::GetMemoryBufferSize(const char* name)
 //
 // OpenGL shared texture access
 //
+
+//---------------------------------------------------------
+bool SpoutReceiver::LockSharedTexture()
+{
+	return spout.LockSharedTexture();
+}
+
+//---------------------------------------------------------
+bool SpoutReceiver::UnLockSharedTexture()
+{
+	return spout.UnLockSharedTexture();
+}
 
 //---------------------------------------------------------
 bool SpoutReceiver::BindSharedTexture()
@@ -624,9 +649,9 @@ bool SpoutReceiver::SetVerticalSync(bool bSync)
 }
 
 //---------------------------------------------------------
-int SpoutReceiver::GetSpoutVersion()
+std::string SpoutReceiver::GetSDKversion(int* pNumber)
 {
-	return spout.GetSpoutVersion();
+	return spoututils::GetSDKversion(pNumber); // SpoutUtils
 }
 
 //
